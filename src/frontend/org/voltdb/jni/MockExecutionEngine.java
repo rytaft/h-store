@@ -214,4 +214,10 @@ public class MockExecutionEngine extends ExecutionEngine {
         // TODO Auto-generated method stub
         return (null);
     }
+    
+    @Override
+    public int extractTable(long pointer, int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken)
+    {
+    	return 0;
+    }
 }

@@ -1483,4 +1483,12 @@ public class ExecutionEngineIPC extends ExecutionEngine {
         // TODO Auto-generated method stub
         return (null);
     }
+    
+    
+    
+    @Override
+    public int extractTable(long pointer, int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken)
+    {
+      throw new NotImplementedException("Reconfiguration is disabled for IPC EE");
+    }
 }

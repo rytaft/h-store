@@ -773,4 +773,11 @@ public abstract class ExecutionEngine implements FastDeserializer.Deserializatio
      * @return Returns the RSS size in bytes or -1 on error (or wrong platform).
      */
     public native static long nativeGetRSS();
+
+    // ----------------------------------------------------------------------------
+    // Reconfiguration
+    // ----------------------------------------------------------------------------
+    public abstract int extractTable(long pointer, int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken) throws EEException;
+    
+    protected native int nativeExtractTable(long pointer, int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken);
 }

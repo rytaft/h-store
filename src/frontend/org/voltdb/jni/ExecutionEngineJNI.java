@@ -457,6 +457,19 @@ public class ExecutionEngineJNI extends ExecutionEngine {
                                               undoToken, allowExport);
         checkErrorCode(errorCode);
     }
+    
+    @Override
+    public int extractTable(long pointer, int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken)
+    {
+    	LOG.info("Extract table");
+    	final int errorCode = nativeExtractTable(pointer, 1, new byte[10],1,1,1);
+    	//checkErrorCode(errorCode);
+    	LOG.info("Extract table 2");
+    	
+    	return errorCode;
+    }
+    
+    
 
     /**
      * This method should be called roughly every second. It allows the EE

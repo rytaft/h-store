@@ -375,6 +375,17 @@ Java_org_voltdb_jni_ExecutionEngine_nativeUpdateCatalog(
     return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
 }
 
+
+
+SHAREDLIB_JNIEXPORT jint JNICALL
+Java_org_voltdb_jni_ExecutionEngine_nativeExtractTable(JNIEnv *env, jobject obj, jlong engine_ptr, jint table_id,
+	    jbyteArray serialized_table, jlong txnId, jlong lastCommittedTxnId,
+	    jlong undoToken)
+{
+	VOLT_INFO("Calling ee extract Table");
+	return 1;
+}
+
 /**
  * This method is called to initially load table data.
  * @param pointer the VoltDBEngine pointer
