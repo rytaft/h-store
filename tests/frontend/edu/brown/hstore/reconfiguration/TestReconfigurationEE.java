@@ -35,26 +35,23 @@ public class TestReconfigurationEE extends BaseTestCase {
     
     private HStoreSite hstore_site;
     private HStoreConf hstore_conf;
-    private File anticache_dir;
     private Client client;
     
     private PartitionExecutor executor;
     private ExecutionEngine ee;
     private Table catalog_tbl;
-    private int locators[];
     
-    private int ycsbTableId(Catalog catalog) {
-        return catalog.getClusters().get("cluster").getDatabases().get("database").getTables().get(TARGET_TABLE).getRelativeIndex();
-    }
+    //private int ycsbTableId(Catalog catalog) {
+    //    return catalog.getClusters().get("cluster").getDatabases().get("database").getTables().get(TARGET_TABLE).getRelativeIndex();
+    // }
     @Before
     public void setUp() throws Exception {
         super.setUp(ProjectType.YCSB);
         initializeCatalog(1, 1, NUM_PARTITIONS);
-        this.anticache_dir = FileUtil.getTempDirectory();
         
         // Just make sure that the Table has the evictable flag set to true
         this.catalog_tbl = getTable(TARGET_TABLE);
-        this.locators = new int[] { catalog_tbl.getRelativeIndex() };
+        
         
         Site catalog_site = CollectionUtil.first(CatalogUtil.getCluster(catalog).getSites());
         this.hstore_conf = HStoreConf.singleton();
@@ -81,7 +78,7 @@ public class TestReconfigurationEE extends BaseTestCase {
     	assertTrue(true);
     	System.out.println("Test load data 2");
 
-    	this.ee.extractTable(1, 1, new byte[10], 1, 1, 1);
+    	this.ee.extractTable(1, this.catalog_tbl.getRelativeIndex(), new byte[10], 1, 1, 1);
     	System.out.println("Test load data 3");
     	assertTrue(true);
     	System.out.println("End Test load data");
