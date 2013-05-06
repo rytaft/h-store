@@ -1388,15 +1388,13 @@ size_t VoltDBEngine::tableHashCode(int32_t tableId) {
 // RECONFIGURATION FUNCTIONS
 // -------------------------------------------------
 bool VoltDBEngine::extractTable(int32_t tableId){
-	VOLT_INFO("VDBEngine export table %d",(int) tableId);
+	VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
     Table* ret = getTable(tableId);
     if (ret == NULL) {
         VOLT_ERROR("Table ID %d doesn't exist. Could not load data",
                    (int) tableId);
         return false;
     }
-    //Column* partitionColumn = ret->partitioncolumn();
-    VOLT_INFO("Table : %s Partition column ", ret->name().c_str());//, partitionColumn->name());
     return true;
 }
 

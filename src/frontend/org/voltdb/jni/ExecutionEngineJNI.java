@@ -462,7 +462,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
     public int extractTable(int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken)
     {
     	LOG.info("Extract table");
-    	final int errorCode = nativeExtractTable(this.pointer, table_id);//, 1, new byte[10],1,1,1);
+    	final int errorCode = nativeExtractTable(this.pointer, table_id, serialized_table);//, 1, new byte[10],1,1,1);
     	//checkErrorCode(errorCode);
     	LOG.info("Extract table 2");
     	
