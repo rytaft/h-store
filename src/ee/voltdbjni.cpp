@@ -378,7 +378,8 @@ Java_org_voltdb_jni_ExecutionEngine_nativeUpdateCatalog(
 
 
 SHAREDLIB_JNIEXPORT jint JNICALL
-Java_org_voltdb_jni_ExecutionEngine_nativeExtractTable(jlong engine_ptr)
+Java_org_voltdb_jni_ExecutionEngine_nativeExtractTable(JNIEnv *env, jobject obj,
+    jlong engine_ptr)
 {
 	VOLT_INFO("Calling ee extract Table");
     VoltDBEngine *engine = castToEngine(engine_ptr);
@@ -386,23 +387,7 @@ Java_org_voltdb_jni_ExecutionEngine_nativeExtractTable(jlong engine_ptr)
     if (engine == NULL) {
         return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
     }
-  /*  try{
-        //updateJNILogProxy(engine);
-    } catch (FatalException e) {
-    topend->crashVoltDB(e);
-    }  
-		// deserialize dependency.
-		/*
-		jsize length = env->GetArrayLength(serialized_table);
-		VOLT_DEBUG("deserializing %d bytes ...", (int) length);
-		jbyte *bytes = env->GetByteArrayElements(serialized_table, NULL);
-		ReferenceSerializeInput serialize_in(bytes, length);
-		bool success = engine->extractTable( table_id);
-		if (success)
-			return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
- 
-    return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
-     */
+
     return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
 }
 
