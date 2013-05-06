@@ -3,11 +3,8 @@
  */
 package edu.brown.hstore;
 
-import java.io.File;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.voltdb.SysProcSelector;
 import org.voltdb.VoltTable;
 import org.voltdb.catalog.Site;
 import org.voltdb.catalog.Table;
@@ -18,11 +15,8 @@ import org.voltdb.utils.VoltTableUtil;
 import edu.brown.BaseTestCase;
 import edu.brown.benchmark.ycsb.YCSBConstants;
 import edu.brown.catalog.CatalogUtil;
-import edu.brown.hstore.HStoreSite;
-import edu.brown.hstore.PartitionExecutor;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.CollectionUtil;
-import edu.brown.utils.FileUtil;
 import edu.brown.utils.ProjectType;
 
 /**
@@ -91,6 +85,8 @@ public class TestReconfigurationEE extends BaseTestCase {
     
     @Test
     public void testLoadData() throws Exception {
+
+        
         this.loadData();
     	System.out.println("Test load data");
     	assertTrue(true);

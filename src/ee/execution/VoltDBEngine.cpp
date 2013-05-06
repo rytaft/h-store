@@ -692,7 +692,7 @@ VoltDBEngine::loadTable(bool allowExport, int32_t tableId,
     m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
                                              txnId,
                                              lastCommittedTxnId);
-
+    VOLT_INFO("LoadTable %d", (int) tableId);
     Table* ret = getTable(tableId);
     if (ret == NULL) {
         VOLT_ERROR("Table ID %d doesn't exist. Could not load data",
@@ -1388,7 +1388,7 @@ size_t VoltDBEngine::tableHashCode(int32_t tableId) {
 // RECONFIGURATION FUNCTIONS
 // -------------------------------------------------
 bool VoltDBEngine::extractTable(int32_t tableId){
-	VOLT_INFO("VDBEngine export table %d",tableId);
+	VOLT_INFO("VDBEngine export table %d",(int) tableId);
     Table* ret = getTable(tableId);
     if (ret == NULL) {
         VOLT_ERROR("Table ID %d doesn't exist. Could not load data",

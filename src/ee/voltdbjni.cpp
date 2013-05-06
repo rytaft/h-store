@@ -378,19 +378,21 @@ Java_org_voltdb_jni_ExecutionEngine_nativeUpdateCatalog(
 
 
 SHAREDLIB_JNIEXPORT jint JNICALL
-Java_org_voltdb_jni_ExecutionEngine_nativeExtractTable(JNIEnv *env, jobject obj, jlong engine_ptr, jint table_id,
-	    jbyteArray serialized_table, jlong txnId, jlong lastCommittedTxnId,
-	    jlong undoToken)
+Java_org_voltdb_jni_ExecutionEngine_nativeExtractTable(jlong engine_ptr)
 {
 	VOLT_INFO("Calling ee extract Table");
     VoltDBEngine *engine = castToEngine(engine_ptr);
-    Topend *topend = static_cast<JNITopend*>(engine->getTopend())->updateJNIEnv(env);
+//    Topend *topend = static_cast<JNITopend*>(engine->getTopend())->updateJNIEnv(env);
     if (engine == NULL) {
         return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
     }
-    try{
-        updateJNILogProxy(engine);
+  /*  try{
+        //updateJNILogProxy(engine);
+    } catch (FatalException e) {
+    topend->crashVoltDB(e);
+    }  
 		// deserialize dependency.
+		/*
 		jsize length = env->GetArrayLength(serialized_table);
 		VOLT_DEBUG("deserializing %d bytes ...", (int) length);
 		jbyte *bytes = env->GetByteArrayElements(serialized_table, NULL);
@@ -398,10 +400,10 @@ Java_org_voltdb_jni_ExecutionEngine_nativeExtractTable(JNIEnv *env, jobject obj,
 		bool success = engine->extractTable( table_id);
 		if (success)
 			return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
-    } catch (FatalException e) {
-        topend->crashVoltDB(e);
-    }
+ 
     return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
+     */
+    return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
 }
 
 /**
