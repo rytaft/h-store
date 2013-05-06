@@ -43,7 +43,9 @@ public class TestReconfigurationEE extends BaseTestCase {
     private Table catalog_tbl;
     private int locators[];
     
-    
+    private int ycsbTableId(Catalog catalog) {
+        return catalog.getClusters().get("cluster").getDatabases().get("database").getTables().get(TARGET_TABLE).getRelativeIndex();
+    }
     @Before
     public void setUp() throws Exception {
         super.setUp(ProjectType.YCSB);
