@@ -216,7 +216,7 @@ public class MockExecutionEngine extends ExecutionEngine {
     }
     
     @Override
-    public int extractTable(long pointer, int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken)
+    public int extractTable(int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken)
     {
     	return 0;
     }

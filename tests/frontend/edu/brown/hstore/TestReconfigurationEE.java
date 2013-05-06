@@ -92,7 +92,7 @@ public class TestReconfigurationEE extends BaseTestCase {
     	assertTrue(true);
     	System.out.println("Test load data 2");
 
-    	this.ee.extractTable(1, this.catalog_tbl.getRelativeIndex(), new byte[10], 1, 1, 1);
+    	this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), new byte[10], 1, 1, 1);
     	System.out.println("Test load data 3");
     	assertTrue(true);
     	System.out.println("End Test load data");
