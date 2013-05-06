@@ -1,16 +1,19 @@
 /**
  * 
  */
-package edu.brown.hstore.reconfiguration;
+package edu.brown.hstore;
 
 import java.io.File;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.voltdb.SysProcSelector;
+import org.voltdb.VoltTable;
 import org.voltdb.catalog.Site;
 import org.voltdb.catalog.Table;
 import org.voltdb.client.Client;
 import org.voltdb.jni.ExecutionEngine;
+import org.voltdb.utils.VoltTableUtil;
 
 import edu.brown.BaseTestCase;
 import edu.brown.benchmark.ycsb.YCSBConstants;
@@ -72,8 +75,23 @@ public class TestReconfigurationEE extends BaseTestCase {
         if (this.client != null) this.client.close();
         if (this.hstore_site != null) this.hstore_site.shutdown();
     }
+    
+    private void loadData() throws Exception {
+        // Load in a bunch of dummy data for this table
+        VoltTable vt = CatalogUtil.getVoltTable(catalog_tbl);
+        assertNotNull(vt);
+        for (int i = 0; i < NUM_TUPLES; i++) {
+            Object row[] = VoltTableUtil.getRandomRow(catalog_tbl);
+            row[0] = i;
+            vt.addRow(row);
+        } // FOR
+        this.executor.loadTable(1000l, catalog_tbl, vt, false);
+
+    }
+    
     @Test
     public void testLoadData() throws Exception {
+        this.loadData();
     	System.out.println("Test load data");
     	assertTrue(true);
     	System.out.println("Test load data 2");
