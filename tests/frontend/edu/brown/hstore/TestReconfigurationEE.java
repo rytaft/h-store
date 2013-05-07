@@ -6,6 +6,7 @@ package edu.brown.hstore;
 import org.junit.Before;
 import org.junit.Test;
 import org.voltdb.VoltTable;
+import org.voltdb.VoltType;
 import org.voltdb.catalog.Site;
 import org.voltdb.catalog.Table;
 import org.voltdb.client.Client;
@@ -15,7 +16,9 @@ import org.voltdb.utils.VoltTableUtil;
 import edu.brown.BaseTestCase;
 import edu.brown.benchmark.ycsb.YCSBConstants;
 import edu.brown.catalog.CatalogUtil;
+import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.conf.HStoreConf;
+import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
 import edu.brown.utils.CollectionUtil;
 import edu.brown.utils.ProjectType;
 
@@ -91,8 +94,9 @@ public class TestReconfigurationEE extends BaseTestCase {
     	System.out.println("Test load data");
     	assertTrue(true);
     	System.out.println("Test load data 2");
-
-    	this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), new byte[10], 1, 1, 1);
+    	ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(1), new Long(10), 1, 2);
+    	VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
+    	this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);
     	System.out.println("Test load data 3");
     	assertTrue(true);
     	System.out.println("End Test load data");
