@@ -395,7 +395,7 @@ Java_org_voltdb_jni_ExecutionEngine_nativeExtractTable(JNIEnv *env, jobject obj,
 		jbyte *bytes = env->GetByteArrayElements(serialized_table, NULL);
 		ReferenceSerializeInput serialize_in(bytes, length);
 
-		bool success = engine->extractTable( table_id);
+		bool success = engine->extractTable( table_id,serialize_in);
 		if (success)
 			return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
 

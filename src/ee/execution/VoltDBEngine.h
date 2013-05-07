@@ -271,7 +271,7 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         // -------------------------------------------------
         // Reconfiguration Functions
         // -------------------------------------------------
-        bool extractTable(int32_t tableId);
+        bool extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io);
 
         // -------------------------------------------------
         // Debug functions

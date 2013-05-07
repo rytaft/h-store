@@ -1387,13 +1387,45 @@ size_t VoltDBEngine::tableHashCode(int32_t tableId) {
 // -------------------------------------------------
 // RECONFIGURATION FUNCTIONS
 // -------------------------------------------------
-bool VoltDBEngine::extractTable(int32_t tableId){
+bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io){
 	VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
     Table* ret = getTable(tableId);
     if (ret == NULL) {
-        VOLT_ERROR("Table ID %d doesn't exist. Could not load data",
-                   (int) tableId);
+        VOLT_ERROR("Table ID %d doesn't exist. Could not load data", (int) tableId);
         return false;
+    }
+    //TODO move to external manager
+
+    // todo: just skip ahead to this position
+    serialize_io.readInt(); // rowstart
+
+    serialize_io.readByte();
+
+    int16_t colcount = serialize_io.readShort();
+    assert(colcount >= 0);
+
+    // Store the following information so that we can provide them to the user
+    // on failure
+    ValueType types[colcount];
+    std::string names[colcount];
+
+    // skip the column types
+    for (int i = 0; i < colcount; ++i) {
+        types[i] = (ValueType) serialize_io.readEnumInSingleByte();
+    }
+
+    // skip the column names
+    for (int i = 0; i < colcount; ++i) {
+        names[i] = serialize_io.readTextString();
+        VOLT_DEBUG("Col: %s",names[i].c_str());
+    }
+
+    int tupleCount = serialize_io.readInt();
+    assert(tupleCount >= 0);
+    VOLT_DEBUG("Tuples in extractTable : %d ", tupleCount);
+
+    for (int i = 0; i < tupleCount; ++i) {
+
     }
     return true;
 }
