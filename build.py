@@ -286,6 +286,10 @@ CTX.INPUT['storage'] = """
  RecoveryContext.cpp
 """
 
+CTX.INPUT['migration'] = """
+ MigrationManager.cpp
+"""
+
 CTX.INPUT['stats'] = """
  StatsAgent.cpp
  StatsSource.cpp
