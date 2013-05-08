@@ -183,13 +183,14 @@ TupleSchema* TupleSchema::createMigrateTupleSchema() {
     // create a schema containing a single column for the block_id
 
     //TABLE NAME
-    columnTypes[0] = VALUE_TYPE_VARCHAR;
-    columnSizes[0] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_VARCHAR));
+    columnTypes[0] = VALUE_TYPE_INTEGER;
+    //columnSizes[0] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_VARCHAR));
+    columnSizes[0] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER));
     allowNull[0] = false;
 
     //KEY TYPE
-    columnTypes[1] = VALUE_TYPE_VARCHAR;
-    columnSizes[1] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_VARCHAR));
+    columnTypes[1] = VALUE_TYPE_INTEGER;
+    columnSizes[1] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER));
     allowNull[1] = false;
 
     //MIN INCLUSIVE

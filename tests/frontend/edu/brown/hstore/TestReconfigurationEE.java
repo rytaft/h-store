@@ -91,15 +91,15 @@ public class TestReconfigurationEE extends BaseTestCase {
 
         
         this.loadData();
-    	System.out.println("Test load data");
     	assertTrue(true);
-    	System.out.println("Test load data 2");
     	ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(1), new Long(10), 1, 2);
     	VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
+    	//System.out.println("Sleeping , attach GDB");
+    	//Thread.sleep(60000);
+    	//System.out.println("sleep over");
+        
     	this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);
-    	System.out.println("Test load data 3");
     	assertTrue(true);
-    	System.out.println("End Test load data");
     	
     }
 }
