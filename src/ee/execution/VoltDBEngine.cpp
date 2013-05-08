@@ -100,6 +100,7 @@
 #include "stats/StatsAgent.h"
 #include "voltdbipc.h"
 #include "common/FailureInjection.h"
+#include "migration/MigrationManager.h"
 
 using namespace std;
 namespace voltdb {
@@ -1394,7 +1395,18 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
         VOLT_ERROR("Table ID %d doesn't exist. Could not load data", (int) tableId);
         return false;
     }
+
+
     //TODO move to external manager
+
+    PersistentTable *table = dynamic_cast<PersistentTable*>(ret);
+    if (table == NULL) {
+        VOLT_ERROR("Table ID %d(name '%s') is not a persistent table."
+                   " Could not load data",
+                   (int) tableId, ret->name().c_str());
+        return false;
+    }
+
 
     //TODO ae andy how to get databaseId?
     std::string tableName = "EXTRACT_TABLE";
@@ -1417,15 +1429,17 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
     } catch (SerializableEEException e) {
         throwFatalException("%s", e.message().c_str());
     }
+    MigrationManager* migrationManager = new MigrationManager();
     TableIterator inputIterator = tempExtractTable->tableIterator();
     TableTuple extractTuple(tempExtractTable->schema());
     while (inputIterator.next(extractTuple)) {
 
 
     	VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
-    	VOLT_DEBUG("Extract %s - %s ", extractTuple.getNValue(2).debug().c_str(),extractTuple.getNValue(3).debug().c_str() );
+    	migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3));
     }
     //delete colNames;
+    delete migrationManager;
     TupleSchema::freeTupleSchema(extractMigrateSchema);
     return true;
 }

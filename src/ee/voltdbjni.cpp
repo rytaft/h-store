@@ -390,6 +390,7 @@ Java_org_voltdb_jni_ExecutionEngine_nativeExtractTable(JNIEnv *env, jobject obj,
 
 	try{
 		updateJNILogProxy(engine);
+        engine->resetReusedResultOutputBuffer();
 		jsize length = env->GetArrayLength(serialized_table);
 		VOLT_DEBUG("deserializing %d bytes ...", (int) length);
 		jbyte *bytes = env->GetByteArrayElements(serialized_table, NULL);

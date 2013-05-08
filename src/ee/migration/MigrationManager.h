@@ -44,7 +44,7 @@ public:
      * Extract a range from the given table
      * TODO: This is just a proposal and not what the real API should be...
      */
-    bool extractRange(PersistentTable *table, NValue *minKey, NValue *maxKey);
+    bool extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey);
     
 }; // MigrationManager class
 

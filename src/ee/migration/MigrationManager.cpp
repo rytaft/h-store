@@ -48,8 +48,9 @@ MigrationManager::~MigrationManager() {
 }
 
 
-bool MigrationManager::extractRange(PersistentTable *table, NValue *minKey, NValue *maxKey) {
+bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey) {
     // TODO
+  	VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );
     return true;
 }
 
