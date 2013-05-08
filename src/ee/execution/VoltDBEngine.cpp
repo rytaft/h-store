@@ -1417,6 +1417,14 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
     } catch (SerializableEEException e) {
         throwFatalException("%s", e.message().c_str());
     }
+    TableIterator inputIterator = tempExtractTable->tableIterator();
+    TableTuple extractTuple(tempExtractTable->schema());
+    while (inputIterator.next(extractTuple)) {
+
+
+    	VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
+    	VOLT_DEBUG("Extract %s - %s ", extractTuple.getNValue(2).debug().c_str(),extractTuple.getNValue(3).debug().c_str() );
+    }
     //delete colNames;
     TupleSchema::freeTupleSchema(extractMigrateSchema);
     return true;
