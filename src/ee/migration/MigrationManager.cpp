@@ -49,13 +49,31 @@ MigrationManager::~MigrationManager() {
 
 
 bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey) {
-    TableIndex* partitionIndex = getPartitionColumnIndex(table);
+    VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );
+    
+    //Get the right index to use
+    //TODO ae this should be cached on initialization?
+    TableIndex* partitionIndex = getPartitionColumnIndex(table);    
     if(partitionIndex == NULL){
         //TODO ae what do we do when we have no index for the partition colum?
         throwFatalException("Table %s partition column is not an index", table->name().c_str());
+    }    
+    TableTuple tuple(table->schema());
+    std::vector<ValueType> keyColumnTypes(1, minKey.getValueType());
+    std::vector<int32_t> keyColumnLengths(1, NValue::getTupleStorageSize(minKey.getValueType()));
+    std::vector<bool> keyColumnAllowNull(1, true);
+    TupleSchema* keySchema =
+        TupleSchema::createTupleSchema(keyColumnTypes,
+                                       keyColumnLengths,
+                                       keyColumnAllowNull,
+                                       true);
+    TableTuple searchkey(keySchema);
+    searchkey.move(new char[searchkey.tupleLength()]);
+    searchkey.setNValue(0, minKey);
+    bool found = partitionIndex->moveToKey(&searchkey);    
+    if(found){
+        VOLT_DEBUG("Found");
     }
-    
-    VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );
     return true;
 }
 
