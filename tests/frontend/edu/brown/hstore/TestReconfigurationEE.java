@@ -92,7 +92,7 @@ public class TestReconfigurationEE extends BaseTestCase {
         
         this.loadData();
     	assertTrue(true);
-    	ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(100), 1, 2);
+    	ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(102), 1, 2);
     	VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
     	//System.out.println("Sleeping , attach GDB");
     	//Thread.sleep(60000);

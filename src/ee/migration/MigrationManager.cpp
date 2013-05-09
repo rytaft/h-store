@@ -55,6 +55,7 @@ bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey,
     //Get the right index to use
     //TODO ae this should be cached on initialization?
     TableIndex* partitionIndex = getPartitionColumnIndex(table);    
+    int partitionColumn = table->partitionColumn();
     if(partitionIndex == NULL){
         //TODO ae what do we do when we have no index for the partition colum?
         throwFatalException("Table %s partition column is not an index", table->name().c_str());
@@ -91,9 +92,15 @@ bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey,
             VOLT_DEBUG("Found");
             if(!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()){
                 //TODO check if not migrated
-                //TODO outputTable->insertTuple(tuple);
                 //TODO set as migrated or delete
-                outputTable->insertTuple(tuple);
+                if (!outputTable->insertTuple(tuple))
+                {
+                    VOLT_ERROR("Failed to insert tuple from table '%s' into"
+                            " output table '%s'",
+                            table->name().c_str(),
+                            outputTable->name().c_str());
+                    return false;
+                }
             } else{
                 VOLT_ERROR("Tuple not found but index indicated it exists");
                 return false;
@@ -105,23 +112,64 @@ bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey,
         }
     } else if(minKey.compare(maxKey)<0){
         
-        //We have a range to check
-        //TODO keyOrGreater only if supported else scan
-        partitionIndex->moveToKeyOrGreater(&searchkey);    
-
-        while((!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()) ||
-        (!(tuple = partitionIndex->nextValue()).isNullTuple()) ){
+        //IF b-Tree
+        if (partitionIndex->getScheme().type == BALANCED_TREE_INDEX){
             
-            //TODO ae end expression based on maxKey exclusive
-            VOLT_DEBUG(" -- %s",tuple.debugNoHeader().c_str());
+            //We have a range to check
+            //TODO keyOrGreater only if supported else scan
+            partitionIndex->moveToKeyOrGreater(&searchkey);    
+
+            while((!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()) ||
+            (!(tuple = partitionIndex->nextValue()).isNullTuple()) ){
+                
+                //TODO ae end expression based on maxKey exclusive
+                VOLT_DEBUG(" -- %s",tuple.debugNoHeader().c_str());
+            }
+        }  // Else if hash index
+        else if (partitionIndex->getScheme().type == HASH_TABLE_INDEX){
+            //find key
+            bool found = partitionIndex->moveToKey(&searchkey);    
+            if (found){
+                //TODO ae andy -> actually this may not do us any good, because the data is not stored in order
+                //TODO ae andy -> if the range between keys is 'small' can we loop through possible keys and do hash look ups?
+            } else{
+                
+            }
+            
+            //Iterate through results
+            TableIterator iterator(table);
+           
+            while (iterator.next(tuple))
+            {
+                //Is the partitionColumn in the range between min inclusive and max exclusive
+                if (minKey.compare(tuple.getNValue(partitionColumn)) <= 0 && maxKey.compare(tuple.getNValue(partitionColumn)) >0){
+                    //TODO ae check if ! migrated?
+                    if (!outputTable->insertTuple(tuple))
+                    {
+                        VOLT_ERROR("Failed to insert tuple from table '%s' into"
+                                " output table '%s'",
+                                table->name().c_str(),
+                                outputTable->name().c_str());
+                        return false;
+                    }
+                }
+            }
+
+        } else {            
+            throwFatalException("Unsupported Index type %d",partitionIndex->getScheme().type );
         }
+       
     
     } else {
         //Min key should never be greater than maxKey        
         //TODO ae andy -> Appropriate exception to throw?
         throwFatalException("Max key is smaller than min key");
     } 
+    
+    //TODO build right output location
     VOLT_DEBUG("Output Table %s",outputTable->debug().c_str());
+    
+    //TODO delete keySchema,partitionIndex
     return true;
 }
 
