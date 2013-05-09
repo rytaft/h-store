@@ -118,13 +118,13 @@ bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey,
         if (partitionColumnIsIndexed && partitionIndex->getScheme().type == BALANCED_TREE_INDEX){
             
             //We have a range to check
-            //TODO keyOrGreater only if supported else scan
             partitionIndex->moveToKeyOrGreater(&searchkey);    
 
             while((!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()) ||
             (!(tuple = partitionIndex->nextValue()).isNullTuple()) ){
                 
-                //TODO ae end expression based on maxKey exclusive
+                //TODO ae andy -> should we be using an expression or ok to just do  value check
+                // I do on iteration?
                 VOLT_DEBUG(" -- %s",tuple.debugNoHeader().c_str());
             }
         }  // Else if hash index
