@@ -28,6 +28,7 @@
 #include "common/debuglog.h"
 #include "storage/table.h"
 #include "storage/persistenttable.h"
+#include "storage/tablefactory.h"
 
 #include <string>
 #include <vector>
@@ -50,15 +51,27 @@ MigrationManager::~MigrationManager() {
 
 bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey) {
     VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );
-    
+        
     //Get the right index to use
     //TODO ae this should be cached on initialization?
     TableIndex* partitionIndex = getPartitionColumnIndex(table);    
     if(partitionIndex == NULL){
         //TODO ae what do we do when we have no index for the partition colum?
         throwFatalException("Table %s partition column is not an index", table->name().c_str());
-    }    
+    }       
+    
     TableTuple tuple(table->schema());
+    //TODO ae andy -> How many byes should we set this to? Below is just a silly guess
+    int outTableSizeInBytes = 1024; 
+    //int outTableSizeInBytes = (maxKey.op_subtract(minKey)).castAs(VALUE_TYPE_INTEGER).getInteger() *tuple.maxExportSerializationSize();
+    
+    //output table
+    Table* outputTable = reinterpret_cast<Table*>(TableFactory::getCopiedTempTable(table->databaseId(),
+                    table->name(),
+                    table,
+                    &outTableSizeInBytes));
+    
+    //TODO ae andy -> should max go in search or be apart of expression for end on iteration?    
     std::vector<ValueType> keyColumnTypes(1, minKey.getValueType());
     std::vector<int32_t> keyColumnLengths(1, NValue::getTupleStorageSize(minKey.getValueType()));
     std::vector<bool> keyColumnAllowNull(1, true);
@@ -70,10 +83,45 @@ bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey,
     TableTuple searchkey(keySchema);
     searchkey.move(new char[searchkey.tupleLength()]);
     searchkey.setNValue(0, minKey);
-    bool found = partitionIndex->moveToKey(&searchkey);    
-    if(found){
-        VOLT_DEBUG("Found");
-    }
+    
+    //Do we have a single key to pull
+    if(minKey.compare(maxKey)==0){
+        bool found = partitionIndex->moveToKey(&searchkey);    
+        if(found){
+            VOLT_DEBUG("Found");
+            if(!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()){
+                //TODO check if not migrated
+                //TODO outputTable->insertTuple(tuple);
+                //TODO set as migrated or delete
+                outputTable->insertTuple(tuple);
+            } else{
+                VOLT_ERROR("Tuple not found but index indicated it exists");
+                return false;
+            }            
+        }
+        else{
+            VOLT_DEBUG("key not found for single key extract");       
+            return false;
+        }
+    } else if(minKey.compare(maxKey)<0){
+        
+        //We have a range to check
+        //TODO keyOrGreater only if supported else scan
+        partitionIndex->moveToKeyOrGreater(&searchkey);    
+
+        while((!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()) ||
+        (!(tuple = partitionIndex->nextValue()).isNullTuple()) ){
+            
+            //TODO ae end expression based on maxKey exclusive
+            VOLT_DEBUG(" -- %s",tuple.debugNoHeader().c_str());
+        }
+    
+    } else {
+        //Min key should never be greater than maxKey        
+        //TODO ae andy -> Appropriate exception to throw?
+        throwFatalException("Max key is smaller than min key");
+    } 
+    VOLT_DEBUG("Output Table %s",outputTable->debug().c_str());
     return true;
 }
 
