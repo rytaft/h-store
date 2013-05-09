@@ -49,9 +49,33 @@ MigrationManager::~MigrationManager() {
 
 
 bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey) {
-    // TODO
-  	VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );
+    TableIndex* partitionIndex = getPartitionColumnIndex(table);
+    if(partitionIndex == NULL){
+        //TODO ae what do we do when we have no index for the partition colum?
+        throwFatalException("Table %s partition column is not an index", table->name().c_str());
+    }
+    
+    VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );
     return true;
+}
+
+TableIndex* MigrationManager::getPartitionColumnIndex(PersistentTable *table) {
+    int partitionColumn = table->partitionColumn();
+    std::vector<TableIndex*> tableIndexes = table->allIndexes();
+    
+    for (int i = 0; i < table->indexCount(); ++i) {
+        TableIndex *index = tableIndexes[i];
+        
+        VOLT_DEBUG("Index %s ", index->debug().c_str());
+        //One column in this index
+        if(index->getColumnCount() == 1 && index->isUniqueIndex()) {
+            if (index->getColumnIndices()[0] == partitionColumn){
+                VOLT_DEBUG("Index matches");
+                return index;
+            }
+        }
+    }
+    return NULL;
 }
 
 

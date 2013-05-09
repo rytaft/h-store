@@ -28,6 +28,7 @@
 #define MIGRATIONMANAGER_H
 
 #include "common/tabletuple.h"
+#include "indexes/tableindex.h"
 
 namespace voltdb {
 
@@ -45,7 +46,7 @@ public:
      * TODO: This is just a proposal and not what the real API should be...
      */
     bool extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey);
-    
+    TableIndex* getPartitionColumnIndex(PersistentTable *table);
 }; // MigrationManager class
 
 
