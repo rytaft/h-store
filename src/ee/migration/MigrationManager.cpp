@@ -56,9 +56,11 @@ bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey,
     //TODO ae this should be cached on initialization?
     TableIndex* partitionIndex = getPartitionColumnIndex(table);    
     int partitionColumn = table->partitionColumn();
+    bool partitionColumnIsIndexed=true;
     if(partitionIndex == NULL){
         //TODO ae what do we do when we have no index for the partition colum?
-        throwFatalException("Table %s partition column is not an index", table->name().c_str());
+        partitionColumnIsIndexed = false;
+        //throwFatalException("Table %s partition column is not an index", table->name().c_str());
     }       
     
     TableTuple tuple(table->schema());
@@ -86,7 +88,7 @@ bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey,
     searchkey.setNValue(0, minKey);
     
     //Do we have a single key to pull
-    if(minKey.compare(maxKey)==0){
+    if(minKey.compare(maxKey)==0 && partitionColumnIsIndexed){
         bool found = partitionIndex->moveToKey(&searchkey);    
         if(found){
             VOLT_DEBUG("Found");
@@ -113,7 +115,7 @@ bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey,
     } else if(minKey.compare(maxKey)<0){
         
         //IF b-Tree
-        if (partitionIndex->getScheme().type == BALANCED_TREE_INDEX){
+        if (partitionColumnIsIndexed && partitionIndex->getScheme().type == BALANCED_TREE_INDEX){
             
             //We have a range to check
             //TODO keyOrGreater only if supported else scan
@@ -126,7 +128,7 @@ bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey,
                 VOLT_DEBUG(" -- %s",tuple.debugNoHeader().c_str());
             }
         }  // Else if hash index
-        else if (partitionIndex->getScheme().type == HASH_TABLE_INDEX){
+        else if (!partitionColumnIsIndexed || partitionIndex->getScheme().type == HASH_TABLE_INDEX){
             //find key
             bool found = partitionIndex->moveToKey(&searchkey);    
             if (found){
