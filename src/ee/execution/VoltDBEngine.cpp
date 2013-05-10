@@ -1434,13 +1434,28 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
     TableTuple extractTuple(tempExtractTable->schema());
     while (inputIterator.next(extractTuple)) {
 
-
-    	VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
-    	migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3));
+        //TODO more than 1 range -> into a single result?
+        VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
+        Table* outputTable = migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3));
+        size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
+        if (outputTable != NULL) {
+            outputTable->serializeTo(m_resultOutput);
+            m_resultOutput.writeIntAt(lengthPosition,
+                                    static_cast<int32_t>(outputTable.size()
+                                                        - sizeof(int32_t)));
+        
+        
+            //TODO delete keySchema,partitionIndex
+            //delete colNames;
+            delete migrationManager;
+            TupleSchema::freeTupleSchema(extractMigrateSchema);
+            return true;
+        } 
+        else{
+             return false;
+        }
     }
-    //delete colNames;
-    delete migrationManager;
-    TupleSchema::freeTupleSchema(extractMigrateSchema);
+
     return true;
 }
 

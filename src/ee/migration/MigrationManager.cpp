@@ -101,16 +101,16 @@ bool MigrationManager::extractRange(PersistentTable *table, ReferenceSerializeOu
                             " output table '%s'",
                             table->name().c_str(),
                             outputTable->name().c_str());
-                    return false;
+                    return NULL;
                 }
             } else{
                 VOLT_ERROR("Tuple not found but index indicated it exists");
-                return false;
+                return NULL;
             }            
         }
         else{
             VOLT_DEBUG("key not found for single key extract");       
-            return false;
+            return NULL;
         }
     } else if(minKey.compare(maxKey)<0){
         
@@ -152,7 +152,7 @@ bool MigrationManager::extractRange(PersistentTable *table, ReferenceSerializeOu
                                 " output table '%s'",
                                 table->name().c_str(),
                                 outputTable->name().c_str());
-                        return false;
+                        return NULL;
                     }
                 }
             }
@@ -170,19 +170,9 @@ bool MigrationManager::extractRange(PersistentTable *table, ReferenceSerializeOu
     
     //TODO build right output location
     VOLT_DEBUG("Output Table %s",outputTable->debug().c_str());
-    size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
-    if (outputTable != NULL) {
-        outputTable->serializeTo(m_resultOutput);
-        m_resultOutput.writeIntAt(lengthPosition,
-                                  static_cast<int32_t>(outputTable.size()
-                                                       - sizeof(int32_t)));
     
     
-        //TODO delete keySchema,partitionIndex
-        return true;
-    } 
-    
-    return false;
+    return outputTable;
 }
 
 TableIndex* MigrationManager::getPartitionColumnIndex(PersistentTable *table) {
