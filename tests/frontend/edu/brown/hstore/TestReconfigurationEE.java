@@ -101,7 +101,7 @@ public class TestReconfigurationEE extends BaseTestCase {
     }
     
     @Test
-    public void tesatExtractData() throws Exception {
+    public void testExtractData() throws Exception {
 
         
         this.loadData(NUM_TUPLES);
