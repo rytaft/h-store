@@ -49,7 +49,7 @@ MigrationManager::~MigrationManager() {
 }
 
 
-bool MigrationManager::extractRange(PersistentTable *table, ReferenceSerializeOutput m_resultOutput, const NValue minKey, const NValue maxKey) {
+Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minKey, const NValue maxKey) {
     VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );
         
     //Get the right index to use

@@ -1440,9 +1440,7 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
         size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
         if (outputTable != NULL) {
             outputTable->serializeTo(m_resultOutput);
-            m_resultOutput.writeIntAt(lengthPosition,
-                                    static_cast<int32_t>(outputTable.size()
-                                                        - sizeof(int32_t)));
+            m_resultOutput.writeIntAt(lengthPosition,static_cast<int32_t>(m_resultOutput.size()- sizeof(int32_t)));
         
         
             //TODO delete keySchema,partitionIndex

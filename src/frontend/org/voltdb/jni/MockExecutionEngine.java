@@ -216,8 +216,8 @@ public class MockExecutionEngine extends ExecutionEngine {
     }
     
     @Override
-    public int extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken)
+    public VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken)
     {
-    	return 0;
+    	return null;
     }
 }

@@ -3,6 +3,7 @@
  */
 package edu.brown.hstore;
 
+import org.apache.log4j.Logger;
 import org.junit.Before;
 import org.junit.Test;
 import org.voltdb.VoltTable;
@@ -27,7 +28,8 @@ import edu.brown.utils.ProjectType;
  *
  */
 public class TestReconfigurationEE extends BaseTestCase {
-    
+
+    private static final Logger LOG = Logger.getLogger(TestReconfigurationEE.class);
     private static final int NUM_PARTITIONS = 1;
     private static final int NUM_TUPLES = 1000;
     private static final String TARGET_TABLE = YCSBConstants.TABLE_NAME;
@@ -94,12 +96,15 @@ public class TestReconfigurationEE extends BaseTestCase {
     	assertTrue(true);
     	ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(102), 1, 2);
     	VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
+
     	//System.out.println("Sleeping , attach GDB");
     	//Thread.sleep(60000);
     	//System.out.println("sleep over");
         
-    	this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);
-    	assertTrue(true);
+    	VoltTable resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);
+    	
+        assertTrue(resTable.getRowCount()==2);
+    	LOG.info("Results : " + resTable.toString(true));  	
     	
     }
 }

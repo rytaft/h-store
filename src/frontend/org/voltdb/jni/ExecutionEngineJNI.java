@@ -459,17 +459,27 @@ public class ExecutionEngineJNI extends ExecutionEngine {
     }
     
     @Override
-    public int extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken)
+    public VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken)
     {
     	LOG.info("Extract table");
+        deserializer.clear();
         byte[] serialized_table = extractTable.getTableDataReference().array();
         if (trace.val) LOG.trace(String.format("Passing extract table into EE  [id=%d, bytes=%s]", tableId, serialized_table.length));
-  
-    	final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table);//, 1, new byte[10],1,1,1);
-    	//checkErrorCode(errorCode);
-    	LOG.info("Extract table 2");
-    	
-    	return errorCode;
+        int results;
+        try {
+            results = deserializer.readInt();
+            LOG.info("Results :"+results);
+            final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table);//, 1, new byte[10],1,1,1);
+            checkErrorCode(errorCode);
+            
+            LOG.info("Extract table 2");
+            
+            return deserializer.readObject(VoltTable.class);
+        } catch (IOException e) {
+            LOG.error("Failed to deserialze result dependencies" + e);
+            throw new EEException(ERRORCODE_WRONG_SERIALIZED_BYTES);
+        }
+
     }
     
     
