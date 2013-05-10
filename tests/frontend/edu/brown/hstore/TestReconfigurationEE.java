@@ -31,7 +31,7 @@ public class TestReconfigurationEE extends BaseTestCase {
 
     private static final Logger LOG = Logger.getLogger(TestReconfigurationEE.class);
     private static final int NUM_PARTITIONS = 1;
-    private static final int NUM_TUPLES = 1000;
+    private static final long NUM_TUPLES = 1000;
     private static final String TARGET_TABLE = YCSBConstants.TABLE_NAME;
 
     
@@ -75,24 +75,36 @@ public class TestReconfigurationEE extends BaseTestCase {
         if (this.hstore_site != null) this.hstore_site.shutdown();
     }
     
-    private void loadData() throws Exception {
+    private void loadData(Long numTuples) throws Exception {
         // Load in a bunch of dummy data for this table
         VoltTable vt = CatalogUtil.getVoltTable(catalog_tbl);
         assertNotNull(vt);
-        for (int i = 0; i < NUM_TUPLES; i++) {
+        for (int i = 0; i < numTuples; i++) {
             Object row[] = VoltTableUtil.getRandomRow(catalog_tbl);
             row[0] = i;
             vt.addRow(row);
         } // FOR
-        this.executor.loadTable(1000l, catalog_tbl, vt, false);
+        this.executor.loadTable(1000L, catalog_tbl, vt, false);
 
     }
     
     @Test
-    public void testExtractData() throws Exception {
+    public void testExtractDataLarge() throws Exception {
+
+        long tuples= 9000;
+        this.loadData(tuples);
+        assertTrue(true);
+        ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(0), tuples, 1, 2);
+        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
+        VoltTable resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);       
+        assertEquals(tuples,resTable.getRowCount());
+    }
+    
+    @Test
+    public void tesatExtractData() throws Exception {
 
         
-        this.loadData();
+        this.loadData(NUM_TUPLES);
     	assertTrue(true);
     	ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(102), 1, 2);
     	VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);        

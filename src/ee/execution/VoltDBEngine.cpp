@@ -1388,8 +1388,11 @@ size_t VoltDBEngine::tableHashCode(int32_t tableId) {
 // -------------------------------------------------
 // RECONFIGURATION FUNCTIONS
 // -------------------------------------------------
-bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io){
+bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId){
     VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
+    m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
+                                            txnId,
+                                            lastCommittedTxnId);
     Table* ret = getTable(tableId);
     if (ret == NULL) {
         VOLT_ERROR("Table ID %d doesn't exist. Could not load data", (int) tableId);

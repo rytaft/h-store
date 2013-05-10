@@ -469,7 +469,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
         try {
             results = deserializer.readInt();
             LOG.info("Results :"+results);
-            final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table);//, 1, new byte[10],1,1,1);
+            final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table, txnId, lastCommittedTxnId, undoToken);
             checkErrorCode(errorCode);
             
             LOG.info("Extract table 2");

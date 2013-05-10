@@ -4886,6 +4886,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
     
     public VoltTable extractTable(Table table, ReconfigurationRange<? extends Comparable<?>> range){
+        LOG.info(String.format("Extract table %s Range:%s",table.toString(),range.toString()));
         int table_id = table.getRelativeIndex();
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);  
         return this.getExecutionEngine().extractTable(table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken());
