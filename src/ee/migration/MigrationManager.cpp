@@ -50,17 +50,16 @@ MigrationManager::~MigrationManager() {
 
 
 Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minKey, const NValue maxKey) {
-    VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );
-        
+    VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );        
     //Get the right index to use
-    //TODO ae this should be cached on initialization?
+    //TODO andy ae this should be cached on initialization. do tables exists? when should migration mgr be created? should it exist in dbcontext
+    
     TableIndex* partitionIndex = getPartitionColumnIndex(table);    
     int partitionColumn = table->partitionColumn();
     bool partitionColumnIsIndexed=true;
     if(partitionIndex == NULL){
         //TODO ae what do we do when we have no index for the partition colum?
         partitionColumnIsIndexed = false;
-        //throwFatalException("Table %s partition column is not an index", table->name().c_str());
     }       
     
     TableTuple tuple(table->schema());
@@ -70,19 +69,13 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
     
     //output table
     Table* outputTable = reinterpret_cast<Table*>(TableFactory::getCopiedTempTable(table->databaseId(),
-                    table->name(),
-                    table,
-                    &outTableSizeInBytes));
+            table->name(),table,&outTableSizeInBytes));
     
-    //TODO ae andy -> should max go in search or be apart of expression for end on iteration?    
+    
     std::vector<ValueType> keyColumnTypes(1, minKey.getValueType());
     std::vector<int32_t> keyColumnLengths(1, NValue::getTupleStorageSize(minKey.getValueType()));
     std::vector<bool> keyColumnAllowNull(1, true);
-    TupleSchema* keySchema =
-        TupleSchema::createTupleSchema(keyColumnTypes,
-                                       keyColumnLengths,
-                                       keyColumnAllowNull,
-                                       true);
+    TupleSchema* keySchema = TupleSchema::createTupleSchema(keyColumnTypes,keyColumnLengths,keyColumnAllowNull,true);
     TableTuple searchkey(keySchema);
     searchkey.move(new char[searchkey.tupleLength()]);
     searchkey.setNValue(0, minKey);
@@ -93,8 +86,7 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
         if(found){
             VOLT_DEBUG("Found");
             if(!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()){
-                //TODO check if not migrated
-                //TODO set as migrated or delete
+                //TODO check if not migrated                
                 if (!outputTable->insertTuple(tuple))
                 {
                     VOLT_ERROR("Failed to insert tuple from table '%s' into"
@@ -102,7 +94,9 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
                             table->name().c_str(),
                             outputTable->name().c_str());
                     return NULL;
-                }
+                }                
+                //TODO set as migrated and delete later
+                table->deleteTuple(tuple,true);
             } else{
                 VOLT_ERROR("Tuple not found but index indicated it exists");
                 return NULL;
@@ -113,65 +107,53 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
             return NULL;
         }
     } else if(minKey.compare(maxKey)<0){
-        
+        //TODO ae andy -> on searching and checking for the max key condition
+            // (cont) should we be using an expression or ok to just do  value check end value on iteration?
         //IF b-Tree
-        if (partitionColumnIsIndexed && partitionIndex->getScheme().type == BALANCED_TREE_INDEX){
-            
+        if (partitionColumnIsIndexed && partitionIndex->getScheme().type == BALANCED_TREE_INDEX){            
             //We have a range to check
             partitionIndex->moveToKeyOrGreater(&searchkey);    
-
-            while((!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()) ||
-            (!(tuple = partitionIndex->nextValue()).isNullTuple()) ){
-                
-                //TODO ae andy -> should we be using an expression or ok to just do  value check
-                // I do on iteration?
-                VOLT_DEBUG(" -- %s",tuple.debugNoHeader().c_str());
+            while(((!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()) ||
+            (!(tuple = partitionIndex->nextValue()).isNullTuple())) && (maxKey.compare(tuple.getNValue(partitionColumn)) >0)){                
+                //TODO ae check if ! migrated
+                if (!outputTable->insertTuple(tuple))
+                {
+                    VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",table->name().c_str(),outputTable->name().c_str());
+                    return NULL;
+                }
+                //TODO set as migrated and delete later
+                table->deleteTuple(tuple,true);
             }
         }  // Else if hash index
         else if (!partitionColumnIsIndexed || partitionIndex->getScheme().type == HASH_TABLE_INDEX){
             //find key
-            bool found = partitionIndex->moveToKey(&searchkey);    
-            if (found){
-                //TODO ae andy -> actually this may not do us any good, because the data is not stored in order
-                //TODO ae andy -> if the range between keys is 'small' can we loop through possible keys and do hash look ups?
-            } else{
-                
-            }
             
+            //TODO ae andy -> assume we cannot leverage anything about hashing with ranges, correct?
             //Iterate through results
-            TableIterator iterator(table);
-           
+            TableIterator iterator(table);           
             while (iterator.next(tuple))
             {
                 //Is the partitionColumn in the range between min inclusive and max exclusive
                 if (minKey.compare(tuple.getNValue(partitionColumn)) <= 0 && maxKey.compare(tuple.getNValue(partitionColumn)) >0){
-                    //TODO ae check if ! migrated?
+                    //TODO ae check if ! migrated
                     if (!outputTable->insertTuple(tuple))
                     {
-                        VOLT_ERROR("Failed to insert tuple from table '%s' into"
-                                " output table '%s'",
-                                table->name().c_str(),
-                                outputTable->name().c_str());
+                        VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",table->name().c_str(),outputTable->name().c_str());
                         return NULL;
                     }
+                    //TODO set as migrated and delete later
+                    table->deleteTuple(tuple,true);
                 }
             }
-
         } else {            
             throwFatalException("Unsupported Index type %d",partitionIndex->getScheme().type );
-        }
-       
-    
+        }     
     } else {
         //Min key should never be greater than maxKey        
         //TODO ae andy -> Appropriate exception to throw?
         throwFatalException("Max key is smaller than min key");
     } 
-    
-    //TODO build right output location
     VOLT_DEBUG("Output Table %s",outputTable->debug().c_str());
-    
-    
     return outputTable;
 }
 

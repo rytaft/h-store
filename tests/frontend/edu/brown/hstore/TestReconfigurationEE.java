@@ -89,22 +89,58 @@ public class TestReconfigurationEE extends BaseTestCase {
     }
     
     @Test
-    public void testLoadData() throws Exception {
+    public void testExtractData() throws Exception {
 
         
         this.loadData();
     	assertTrue(true);
     	ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(102), 1, 2);
-    	VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
-
-    	//System.out.println("Sleeping , attach GDB");
-    	//Thread.sleep(60000);
-    	//System.out.println("sleep over");
-        
-    	VoltTable resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);
-    	
+    	VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
+    	VoltTable resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);    	
         assertTrue(resTable.getRowCount()==2);
     	LOG.info("Results : " + resTable.toString(true));  	
+    	resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);
+    	assertTrue(resTable.getRowCount()==0);
     	
+    	range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(998), new Long(1002), 1, 2);
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
+        resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);       
+        assertTrue(resTable.getRowCount()==2);
+        
+        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(995), new Long(998), 1, 2);
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
+        resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);       
+        assertTrue(resTable.getRowCount()==3);
+        
+        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(200), new Long(300), 1, 2);
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
+        resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);       
+        assertTrue(resTable.getRowCount()==100);
+        
+        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(300), new Long(300), 1, 2);
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
+        resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);       
+        assertTrue(resTable.getRowCount()==1);
+        
+        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(301), new Long(302), 1, 2);
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
+        resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);       
+        assertTrue(resTable.getRowCount()==1);
+        
+        //TODO ae andy we don't want to crash the system. need to find right exception
+        /*
+        boolean excCaught = false;
+        try{
+            range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(301), new Long(300), 1, 2);
+            extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
+            resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);      
+            
+        }
+        catch(Exception ex){
+            excCaught=true;
+        }
+        assertTrue(excCaught);
+        */
+        
     }
 }

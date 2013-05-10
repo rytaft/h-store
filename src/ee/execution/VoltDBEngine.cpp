@@ -1389,24 +1389,21 @@ size_t VoltDBEngine::tableHashCode(int32_t tableId) {
 // RECONFIGURATION FUNCTIONS
 // -------------------------------------------------
 bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io){
-	VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
+    VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
     Table* ret = getTable(tableId);
     if (ret == NULL) {
         VOLT_ERROR("Table ID %d doesn't exist. Could not load data", (int) tableId);
         return false;
     }
 
-
-    //TODO move to external manager
-
+    //TODO move some computation to external manager?
     PersistentTable *table = dynamic_cast<PersistentTable*>(ret);
     if (table == NULL) {
         VOLT_ERROR("Table ID %d(name '%s') is not a persistent table."
-                   " Could not load data",
-                   (int) tableId, ret->name().c_str());
+                " Could not load data",
+                (int) tableId, ret->name().c_str());
         return false;
     }
-
 
     //TODO ae andy how to get databaseId?
     std::string tableName = "EXTRACT_TABLE";
@@ -1423,7 +1420,6 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
             NULL));
 
     VOLT_DEBUG("Extract table: %s", tempExtractTable->name().c_str());
-
     try {
     	tempExtractTable->loadTuplesFrom(false, serialize_io);
     } catch (SerializableEEException e) {
@@ -1433,16 +1429,13 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
     TableIterator inputIterator = tempExtractTable->tableIterator();
     TableTuple extractTuple(tempExtractTable->schema());
     while (inputIterator.next(extractTuple)) {
-
-        //TODO more than 1 range -> into a single result?
+        //TODO ae more than 1 range -> into a single result?
         VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
         Table* outputTable = migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3));
         size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
         if (outputTable != NULL) {
             outputTable->serializeTo(m_resultOutput);
-            m_resultOutput.writeIntAt(lengthPosition,static_cast<int32_t>(m_resultOutput.size()- sizeof(int32_t)));
-        
-        
+            m_resultOutput.writeIntAt(lengthPosition,static_cast<int32_t>(m_resultOutput.size()- sizeof(int32_t)));        
             //TODO delete keySchema,partitionIndex
             //delete colNames;
             delete migrationManager;
@@ -1450,10 +1443,9 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
             return true;
         } 
         else{
-             return false;
+            return false;
         }
     }
-
     return true;
 }
 
