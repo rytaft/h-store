@@ -49,7 +49,7 @@ MigrationManager::~MigrationManager() {
 }
 
 
-bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey) {
+bool MigrationManager::extractRange(PersistentTable *table, ReferenceSerializeOutput m_resultOutput, const NValue minKey, const NValue maxKey) {
     VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );
         
     //Get the right index to use
@@ -170,9 +170,19 @@ bool MigrationManager::extractRange(PersistentTable *table, const NValue minKey,
     
     //TODO build right output location
     VOLT_DEBUG("Output Table %s",outputTable->debug().c_str());
+    size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
+    if (outputTable != NULL) {
+        outputTable->serializeTo(m_resultOutput);
+        m_resultOutput.writeIntAt(lengthPosition,
+                                  static_cast<int32_t>(outputTable.size()
+                                                       - sizeof(int32_t)));
     
-    //TODO delete keySchema,partitionIndex
-    return true;
+    
+        //TODO delete keySchema,partitionIndex
+        return true;
+    } 
+    
+    return false;
 }
 
 TableIndex* MigrationManager::getPartitionColumnIndex(PersistentTable *table) {
