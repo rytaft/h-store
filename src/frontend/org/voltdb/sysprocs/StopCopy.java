@@ -116,6 +116,8 @@ public class StopCopy extends VoltSystemProcedure {
                             Object row[] = null;
                             for (ReconfigurationRange<? extends Comparable<?>> range : outgoing_ranges) {
                                 catalog_tbl = this.catalogContext.getTableByName(range.table_name);
+                                table = executor.extractTable(catalog_tbl, range);
+                                /*
                                 table = org.voltdb.utils.CatalogUtil.getVoltTable(catalog_tbl);
                                 row = new Object[table.getColumnCount()];
                                 table.clearRowData();
@@ -138,6 +140,7 @@ public class StopCopy extends VoltSystemProcedure {
                                     } // FOR
                                     table.addRow(row);
                                 }
+                                */
                                 rc.pushTuples(range.old_partition, range.new_partition, range.table_name, table);
                             }
                         } else {

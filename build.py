@@ -286,6 +286,10 @@ CTX.INPUT['storage'] = """
  RecoveryContext.cpp
 """
 
+CTX.INPUT['migration'] = """
+ MigrationManager.cpp
+"""
+
 CTX.INPUT['stats'] = """
  StatsAgent.cpp
  StatsSource.cpp
@@ -363,7 +367,7 @@ CTX.TESTS['storage'] = """
 ###############################################################################
 # ANTI-CACHING
 ###############################################################################
-ENABLE_ANTICACHE = True
+ENABLE_ANTICACHE = False 
 if ENABLE_ANTICACHE:
     CTX.CPPFLAGS += " -DANTICACHE"
     CTX.SYSTEM_DIRS.append(os.path.join(CTX.OUTPUT_PREFIX, 'berkeleydb'))

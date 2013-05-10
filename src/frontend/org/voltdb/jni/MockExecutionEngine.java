@@ -214,4 +214,10 @@ public class MockExecutionEngine extends ExecutionEngine {
         // TODO Auto-generated method stub
         return (null);
     }
+    
+    @Override
+    public VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken)
+    {
+    	return null;
+    }
 }

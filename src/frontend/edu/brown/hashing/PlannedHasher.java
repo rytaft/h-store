@@ -40,7 +40,17 @@ public class PlannedHasher extends DefaultHasher {
             "                }     "+
             "              }"+
             "            }"+
-            "          }"+ 
+            "          },"+
+            "          \"3\" : {"+
+            "            \"tables\":{"+
+            "              \"usertable\":{"+
+            "                \"partitions\":{"+
+            "                  0 : \"0-95000\","+
+            "                  1 : \"95000-100000\""+
+            "                }     "+
+            "              }"+
+            "            }"+
+            "          }"+
             "        }"+
             "}";
     

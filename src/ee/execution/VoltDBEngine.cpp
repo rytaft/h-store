@@ -100,6 +100,7 @@
 #include "stats/StatsAgent.h"
 #include "voltdbipc.h"
 #include "common/FailureInjection.h"
+#include "migration/MigrationManager.h"
 
 using namespace std;
 namespace voltdb {
@@ -692,7 +693,6 @@ VoltDBEngine::loadTable(bool allowExport, int32_t tableId,
     m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
                                              txnId,
                                              lastCommittedTxnId);
-
     Table* ret = getTable(tableId);
     if (ret == NULL) {
         VOLT_ERROR("Table ID %d doesn't exist. Could not load data",
@@ -1383,6 +1383,74 @@ size_t VoltDBEngine::tableHashCode(int32_t tableId) {
     }
     return table->hashCode();
 }
+
+// -------------------------------------------------
+// RECONFIGURATION FUNCTIONS
+// -------------------------------------------------
+bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId){
+    VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
+    m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
+                                            txnId,
+                                            lastCommittedTxnId);
+    Table* ret = getTable(tableId);
+    if (ret == NULL) {
+        VOLT_ERROR("Table ID %d doesn't exist. Could not load data", (int) tableId);
+        return false;
+    }
+
+    //TODO move some computation to external manager?
+    PersistentTable *table = dynamic_cast<PersistentTable*>(ret);
+    if (table == NULL) {
+        VOLT_ERROR("Table ID %d(name '%s') is not a persistent table."
+                " Could not load data",
+                (int) tableId, ret->name().c_str());
+        return false;
+    }
+
+    //TODO ae andy how to get databaseId?
+    std::string tableName = "EXTRACT_TABLE";
+    CatalogId databaseId = 1;
+
+    std::string* colNames = TupleSchema::createMigrateColumnNames();
+    TupleSchema *extractMigrateSchema = TupleSchema::createMigrateTupleSchema();
+
+    Table* tempExtractTable = reinterpret_cast<Table*>(TableFactory::getTempTable(
+            databaseId,
+            tableName,
+            extractMigrateSchema,
+            &colNames[0],
+            NULL));
+
+    VOLT_DEBUG("Extract table: %s", tempExtractTable->name().c_str());
+    try {
+    	tempExtractTable->loadTuplesFrom(false, serialize_io);
+    } catch (SerializableEEException e) {
+        throwFatalException("%s", e.message().c_str());
+    }
+    MigrationManager* migrationManager = new MigrationManager();
+    TableIterator inputIterator = tempExtractTable->tableIterator();
+    TableTuple extractTuple(tempExtractTable->schema());
+    while (inputIterator.next(extractTuple)) {
+        //TODO ae more than 1 range -> into a single result?
+        VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
+        Table* outputTable = migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3));
+        size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
+        if (outputTable != NULL) {
+            outputTable->serializeTo(m_resultOutput);
+            m_resultOutput.writeIntAt(lengthPosition,static_cast<int32_t>(m_resultOutput.size()- sizeof(int32_t)));        
+            //TODO delete keySchema,partitionIndex
+            //delete colNames;
+            delete migrationManager;
+            TupleSchema::freeTupleSchema(extractMigrateSchema);
+            return true;
+        } 
+        else{
+            return false;
+        }
+    }
+    return true;
+}
+
 
 // -------------------------------------------------
 // ANTI-CACHE FUNCTIONS

@@ -457,6 +457,32 @@ public class ExecutionEngineJNI extends ExecutionEngine {
                                               undoToken, allowExport);
         checkErrorCode(errorCode);
     }
+    
+    @Override
+    public VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken)
+    {
+    	LOG.info("Extract table");
+        deserializer.clear();
+        byte[] serialized_table = extractTable.getTableDataReference().array();
+        if (trace.val) LOG.trace(String.format("Passing extract table into EE  [id=%d, bytes=%s]", tableId, serialized_table.length));
+        int results;
+        try {
+            results = deserializer.readInt();
+            LOG.info("Results :"+results);
+            final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table, txnId, lastCommittedTxnId, undoToken);
+            checkErrorCode(errorCode);
+            
+            LOG.info("Extract table 2");
+            
+            return deserializer.readObject(VoltTable.class);
+        } catch (IOException e) {
+            LOG.error("Failed to deserialze result dependencies" + e);
+            throw new EEException(ERRORCODE_WRONG_SERIALIZED_BYTES);
+        }
+
+    }
+    
+    
 
     /**
      * This method should be called roughly every second. It allows the EE

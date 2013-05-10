@@ -269,6 +269,11 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         #endif
         
         // -------------------------------------------------
+        // Reconfiguration Functions
+        // -------------------------------------------------
+        bool extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId);
+
+        // -------------------------------------------------
         // Debug functions
         // -------------------------------------------------
         std::string debug(void) const;

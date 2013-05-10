@@ -151,6 +151,7 @@ import edu.brown.hstore.internal.UtilityWorkMessage.UpdateMemoryMessage;
 import edu.brown.hstore.internal.WorkFragmentMessage;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
 import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator;
+import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
 import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator.ReconfigurationState;
 import edu.brown.hstore.specexec.AbstractConflictChecker;
 import edu.brown.hstore.specexec.MarkovConflictChecker;
@@ -4951,5 +4952,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
           table.addRow(row);
          }
         return table;
+    }
+    
+    public VoltTable extractTable(Table table, ReconfigurationRange<? extends Comparable<?>> range){
+        LOG.info(String.format("Extract table %s Range:%s",table.toString(),range.toString()));
+        int table_id = table.getRelativeIndex();
+        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);  
+        return this.getExecutionEngine().extractTable(table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken());
     }
 }

@@ -1483,4 +1483,12 @@ public class ExecutionEngineIPC extends ExecutionEngine {
         // TODO Auto-generated method stub
         return (null);
     }
+    
+    
+    
+    @Override
+    public VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken)
+    {
+      throw new NotImplementedException("Reconfiguration is disabled for IPC EE");
+    }
 }
