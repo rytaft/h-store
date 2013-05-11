@@ -20,6 +20,8 @@ import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 public class ReconfigurationTracking implements ReconfigurationTrackingInterface {
     private List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges;
     private List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges;
+    public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut;
+    public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedIn;
     private int partition_id;
     
     
