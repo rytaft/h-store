@@ -118,7 +118,8 @@ VoltDBEngine::VoltDBEngine(Topend *topend, LogProxy *logProxy)
       m_numResultDependencies(0),
       m_logManager(logProxy),
       m_templateSingleLongTable(NULL),
-      m_topend(topend)
+      m_topend(topend),
+      m_migrationManager(NULL)
 {
     m_currentUndoQuantum = new DummyUndoQuantum();
 
@@ -166,6 +167,7 @@ bool VoltDBEngine::initialize(
                                             0, /* epoch not yet known */
                                             hostname,
                                             hostId);
+    
     return true;
 }
 
@@ -216,6 +218,10 @@ VoltDBEngine::~VoltDBEngine() {
         tidPair.second->decrementRefcount();
     }
     m_exportingTables.clear();
+    
+    if (m_migrationManager != NULL) {
+        delete m_migrationManager;
+    }
 
     delete m_topend;
     delete m_executorContext;
@@ -567,6 +573,9 @@ bool VoltDBEngine::loadCatalog(const string &catalogPayload) {
     // load the plan fragments from the catalog
     if (!rebuildPlanFragmentCollections())
         return false;
+    
+    // Initialize MigrationManager
+    m_migrationManager = new MigrationManager(m_executorContext, m_database);
 
     VOLT_DEBUG("Loaded catalog...");
     return true;
@@ -1423,24 +1432,22 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
 
     VOLT_DEBUG("Extract table: %s", tempExtractTable->name().c_str());
     try {
-    	tempExtractTable->loadTuplesFrom(false, serialize_io);
+        tempExtractTable->loadTuplesFrom(false, serialize_io);
     } catch (SerializableEEException e) {
         throwFatalException("%s", e.message().c_str());
     }
-    MigrationManager* migrationManager = new MigrationManager();
     TableIterator inputIterator = tempExtractTable->tableIterator();
     TableTuple extractTuple(tempExtractTable->schema());
     while (inputIterator.next(extractTuple)) {
         //TODO ae more than 1 range -> into a single result?
         VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
-        Table* outputTable = migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3));
+        Table* outputTable = m_migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3));
         size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
         if (outputTable != NULL) {
             outputTable->serializeTo(m_resultOutput);
             m_resultOutput.writeIntAt(lengthPosition,static_cast<int32_t>(m_resultOutput.size()- sizeof(int32_t)));        
             //TODO delete keySchema,partitionIndex
             //delete colNames;
-            delete migrationManager;
             TupleSchema::freeTupleSchema(extractMigrateSchema);
             return true;
         } 

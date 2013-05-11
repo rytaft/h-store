@@ -67,6 +67,7 @@
 #include "logging/LogProxy.h"
 #include "logging/StdoutLogProxy.h"
 #include "stats/StatsAgent.h"
+#include "migration/MigrationManager.h"
 
 #ifdef ANTICACHE
 #include "anticache/EvictedTupleAccessException.h"
@@ -482,7 +483,7 @@ class __attribute__((visibility("default"))) VoltDBEngine {
 
         /**
          * System Catalog.
-        */
+         */
         boost::shared_ptr<catalog::Catalog> m_catalog;
         int m_catalogVersion;
         catalog::Database *m_database;
@@ -563,6 +564,9 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         ExecutorContext *m_executorContext;
 
         DefaultTupleSerializer m_tupleSerializer;
+        
+        // Live Migration
+        MigrationManager *m_migrationManager;
 };
 
 inline void VoltDBEngine::resetReusedResultOutputBuffer(const size_t headerSize) {

@@ -27,18 +27,21 @@
 #ifndef MIGRATIONMANAGER_H
 #define MIGRATIONMANAGER_H
 
+#include "catalog/database.h"
 #include "common/tabletuple.h"
 #include "indexes/tableindex.h"
 
 namespace voltdb {
 
 class Table;
+class TableIndex;
 class PersistentTable;
-    
+class ExecutorContext;
+
 class MigrationManager {
         
 public: 
-    MigrationManager();
+    MigrationManager(ExecutorContext *executorContext, catalog::Database *catalogDatabase);
     ~MigrationManager();
 
     /**
@@ -47,6 +50,11 @@ public:
      */
     Table* extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey);
     TableIndex* getPartitionColumnIndex(PersistentTable *table);
+    
+private:
+    ExecutorContext *m_executorContext;
+    catalog::Database *m_catalogDatabase;
+    
 }; // MigrationManager class
 
 

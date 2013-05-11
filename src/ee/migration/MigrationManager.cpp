@@ -40,8 +40,13 @@ namespace voltdb
 // MigrationManager Implementation 
 // -----------------------------------------
     
-MigrationManager::MigrationManager() {
-    // TODO
+MigrationManager::MigrationManager(ExecutorContext *executorContext, catalog::Database *catalogDatabase) :
+    m_executorContext(executorContext),
+    m_catalogDatabase(catalogDatabase) {
+    
+    // TODO: Precompute all of the stuff that we need for each table
+        
+        
 }
 
 MigrationManager::~MigrationManager() {
