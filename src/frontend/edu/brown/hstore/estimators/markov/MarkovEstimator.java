@@ -170,16 +170,18 @@ public class MarkovEstimator extends TransactionEstimator {
         
         assert (catalog_proc != null);
         long start_time = EstTime.currentTimeMillis();
-        if (debug.val) LOG.debug(String.format("%s - Starting transaction estimation [partition=%d]",
-                         AbstractTransaction.formatTxnName(catalog_proc, txn_id), base_partition));
+        if (debug.val)
+            LOG.debug(String.format("%s - Starting transaction estimation [partition=%d]",
+                      AbstractTransaction.formatTxnName(catalog_proc, txn_id), base_partition));
 
         // If we don't have a graph for this procedure, we should probably just return null
         // This will be the case for all sysprocs
         if (this.markovs == null) return (null);
         MarkovGraph markov = this.markovs.getFromParams(txn_id, base_partition, args, catalog_proc);
         if (markov == null) {
-            if (debug.val) LOG.debug(String.format("%s - No MarkovGraph is available for transaction",
-                             AbstractTransaction.formatTxnName(catalog_proc, txn_id)));
+            if (debug.val)
+                LOG.debug(String.format("%s - No MarkovGraph is available for transaction",
+                          AbstractTransaction.formatTxnName(catalog_proc, txn_id)));
             if (this.profiler != null) this.profiler.start_time.appendTime(timestamp);
             return (null);
         }
@@ -207,7 +209,8 @@ public class MarkovEstimator extends TransactionEstimator {
             LOG.debug(String.format("%s - Initial MarkovEstimate\n%s", txnName, initialEst));
             List<MarkovVertex> path = initialEst.getMarkovPath();
             if (path.isEmpty()) {
-                LOG.debug(String.format("%s - Initial empty path for txn is empty because the graph is new", txnName));
+                LOG.debug(String.format("%s - Initial empty path for txn is empty because the graph is new",
+                          txnName));
             } else {
                 LOG.trace(String.format("%s - Estimated Path [length=%d]\n%s",
                           txnName, path.size(),
@@ -218,12 +221,20 @@ public class MarkovEstimator extends TransactionEstimator {
         // Update EstimatorState.prefetch any time we transition to a MarkovVertex where the
         // underlying Statement catalog object was marked as prefetchable
         // Do we want to put this traversal above?
-        for (MarkovVertex vertex : initialEst.getMarkovPath()) {
-            Statement statement = (Statement) vertex.getCatalogItem();
-            if (statement.getPrefetchable()) {
-                state.addPrefetchableStatement(vertex.getCountedStatement());
-            }
-        } // FOR
+        if (hstore_conf.site.exec_prefetch_queries) {
+            for (MarkovVertex vertex : initialEst.getMarkovPath()) {
+                Statement statement = (Statement) vertex.getCatalogItem();
+                if (statement.getPrefetchable()) {
+                    if (debug.val)
+                        LOG.debug(String.format("%s - Checking whether we can prefetch %s on partitions %s",
+                                 AbstractTransaction.formatTxnName(catalog_proc, txn_id),
+                                 statement.fullName(), vertex.getPartitions()));
+                    if (vertex.getPartitions().isEmpty() == false && vertex.getPartitions().get() != base_partition) {
+                        state.addPrefetchableStatement(vertex.getCountedStatement());
+                    }
+                }
+            } // FOR
+        }
         
         // We want to add the estimate to the state down here after we have initialized
         // everything. This prevents other threads from accessing it before we have
@@ -241,7 +252,9 @@ public class MarkovEstimator extends TransactionEstimator {
         if (this.profiler != null) timestamp = ProfileMeasurement.getTime();
         
         MarkovEstimatorState state = (MarkovEstimatorState)s; 
-        if (debug.val) LOG.debug(String.format("Processing %d queries for txn #%d", catalog_stmts.length, state.getTransactionId()));
+        if (debug.val)
+            LOG.debug(String.format("Processing %d queries for txn #%d",
+                      catalog_stmts.length, state.getTransactionId()));
         int batch_size = catalog_stmts.length;
         
         // If we get here, then we should definitely have a MarkovGraph
@@ -257,7 +270,8 @@ public class MarkovEstimator extends TransactionEstimator {
 
         if (hstore_conf.site.markov_endpoint_caching && batch_size >= hstore_conf.site.markov_batch_caching_min) {
             assert(current != null);
-            if (debug.val) LOG.debug("Attempting cache look-up for last statement in batch: " + Arrays.toString(catalog_stmts));
+            if (debug.val)
+                LOG.debug("Attempting cache look-up for last statement in batch: " + Arrays.toString(catalog_stmts));
             
             state.cache_last_partitions.clear();
             state.cache_past_partitions.clear();
@@ -282,7 +296,9 @@ public class MarkovEstimator extends TransactionEstimator {
                 assert(next_e != null);
                 next_v = pair.getSecond();
                 assert(next_v != null);
-                if (debug.val) LOG.debug(String.format("Got cached batch end for %s: %s -> %s", markov, current, next_v));
+                if (debug.val)
+                    LOG.debug(String.format("Got cached batch end for %s: %s -> %s",
+                              markov, current, next_v));
                 
                 // Update the counters and other info for the next vertex and edge
                 if (this.enable_recomputes) {

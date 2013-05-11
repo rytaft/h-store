@@ -1620,9 +1620,10 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         final long client_handle = StoredProcedureInvocation.getClientHandle(buffer);
         final int procId = StoredProcedureInvocation.getProcedureId(buffer);
         int base_partition = StoredProcedureInvocation.getBasePartition(buffer);
-        if (trace.val)
-            LOG.trace(String.format("Raw Request: clientHandle=%d / procId=%d / basePartition=%d",
-                      client_handle, procId, base_partition));
+        if (debug.val)
+            LOG.debug(String.format("Raw Request: clientHandle=%d / basePartition=%d / procId=%d / procName=%s",
+                      client_handle, base_partition, 
+                      procId, StoredProcedureInvocation.getProcedureName(incomingDeserializer)));
         
         // Optimization: We can get the Procedure catalog handle from its procId
         Procedure catalog_proc = catalogContext.getProcedureById(procId);
@@ -1884,10 +1885,6 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
      */
     public void transactionInit(AbstractTransaction ts) {
         assert(ts.isInitialized()) : "Uninitialized transaction handle [" + ts + "]";
-        if (hstore_conf.site.txn_profiling && ts instanceof LocalTransaction) {
-            LocalTransaction localTxn = (LocalTransaction)ts;
-            if (localTxn.profiler != null) localTxn.profiler.startInitQueue();
-        }
         this.txnQueueManager.queueTransactionInit(ts);
     }
     
@@ -2821,6 +2818,18 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                        status != Status.ABORT_SPECULATIVE) {
                 (singlePartitioned ? TransactionCounter.SINGLE_PARTITION : TransactionCounter.MULTI_PARTITION).inc(catalog_proc);
                 
+                // Check for the number of multi-site txns
+                if (singlePartitioned == false) {
+                    int baseSite = catalogContext.getSiteIdForPartitionId(base_partition);
+                    for (int partition : ts.getPredictTouchedPartitions().values()) {
+                        int site = catalogContext.getSiteIdForPartitionId(partition);
+                        if (site != baseSite) {
+                            TransactionCounter.MULTI_SITE.inc(catalog_proc);
+                            break;
+                        }
+                    } // FOR
+                }
+                
                 // Only count no-undo buffers for completed transactions
                 if (ts.isExecNoUndoBuffer(base_partition)) TransactionCounter.NO_UNDO.inc(catalog_proc);
             }
@@ -2897,7 +2906,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         AsyncCompilerResult result = null;
  
         while ((result = asyncCompilerWork_thread.getPlannedStmt()) != null) {
-            if (debug.val) LOG.debug("AsyncCompilerResult\n" + result);
+            if (trace.val) LOG.trace("AsyncCompilerResult\n" + result);
             
             // ----------------------------------
             // BUSTED!

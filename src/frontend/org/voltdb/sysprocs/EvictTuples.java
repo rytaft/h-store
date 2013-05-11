@@ -16,28 +16,33 @@ import org.voltdb.jni.ExecutionEngine;
 import org.voltdb.types.TimestampType;
 
 import edu.brown.hstore.PartitionExecutor;
+import edu.brown.logging.LoggerUtil;
+import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.profilers.AntiCacheManagerProfiler;
 import edu.brown.profilers.AntiCacheManagerProfiler.EvictionHistory;
 
 /** 
- * 
+ * Special system procedure for evicting tuples using the anti-cache feature
  */
 @ProcInfo(
     partitionParam = 0,
     singlePartition = true
 )
 public class EvictTuples extends VoltSystemProcedure {
-    @SuppressWarnings("unused")
     private static final Logger LOG = Logger.getLogger(EvictTuples.class);
+    private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
+    static {
+        LoggerUtil.attachObserver(LOG, debug);
+    }
 
     public static final ColumnInfo ResultsColumns[] = {
         new ColumnInfo(VoltSystemProcedure.CNAME_HOST_ID, VoltSystemProcedure.CTYPE_ID),
         new ColumnInfo("HOSTNAME", VoltType.STRING),
         new ColumnInfo("PARTITION", VoltType.INTEGER),
         new ColumnInfo("TABLE", VoltType.STRING),
-        new ColumnInfo("TUPLES_EVICTED", VoltType.INTEGER),
-        new ColumnInfo("BLOCKS_EVICTED", VoltType.INTEGER),
-        new ColumnInfo("BYTES_EVICTED", VoltType.BIGINT),
+        new ColumnInfo("ANTICACHE_TUPLES_EVICTED", VoltType.INTEGER),
+        new ColumnInfo("ANTICACHE_BLOCKS_EVICTED", VoltType.INTEGER),
+        new ColumnInfo("ANTICACHE_BYTES_EVICTED", VoltType.BIGINT),
         new ColumnInfo("CREATED", VoltType.TIMESTAMP),
     };
     
@@ -101,7 +106,9 @@ public class EvictTuples extends VoltSystemProcedure {
         long totalBlocksEvicted = 0;
         long totalBytesEvicted = 0;
         for (int i = 0; i < tableNames.length; i++) {
-            System.err.printf("Evicting %d blocks of blockSize %d", (int)numBlocks[i], blockSizes[i]);
+            if (debug.val)
+                LOG.debug(String.format("Evicting %d blocks of blockSize %d",
+                          numBlocks[i], blockSizes[i]));
             
             VoltTable vt = ee.antiCacheEvictBlock(tables[i], blockSizes[i], numBlocks[i]);
             boolean adv = vt.advanceRow();
@@ -111,9 +118,9 @@ public class EvictTuples extends VoltSystemProcedure {
                 throw new VoltAbortException(msg);
             }
 //            assert(adv);
-            long tuplesEvicted = vt.getLong("TUPLES_EVICTED");
-            long blocksEvicted = vt.getLong("BLOCKS_EVICTED");
-            long bytesEvicted = vt.getLong("BYTES_EVICTED");
+            long tuplesEvicted = vt.getLong("ANTICACHE_TUPLES_EVICTED");
+            long blocksEvicted = vt.getLong("ANTICACHE_BLOCKS_EVICTED");
+            long bytesEvicted = vt.getLong("ANTICACHE_BYTES_EVICTED");
             Object row[] = {
                     this.hstore_site.getSiteId(),
                     this.hstore_site.getSiteName(),

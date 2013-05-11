@@ -40,6 +40,7 @@ import string
 import math
 import types
 import subprocess
+import csv
 from datetime import datetime
 from pprint import pprint, pformat
 from types import *
@@ -57,7 +58,7 @@ sys.path.append(os.path.realpath(os.path.join(basedir, "../../third_party/python
 
 import hstore
 import hstore.codespeed
-import hstore.fabfile
+import hstore.fabric
 
 import argparse
 from fabric.api import *
@@ -84,9 +85,9 @@ OPT_BASE_BLOCKING_CONCURRENT = 1
 OPT_BASE_TXNRATE_PER_PARTITION = 1000
 OPT_BASE_TXNRATE = 1000
 OPT_BASE_CLIENT_COUNT = 1
-OPT_BASE_CLIENT_THREADS_PER_HOST = 100
+OPT_BASE_CLIENT_THREADS_PER_HOST = 200
 OPT_BASE_SCALE_FACTOR = float(1.0)
-OPT_BASE_PARTITIONS_PER_SITE = 6
+OPT_BASE_PARTITIONS_PER_SITE = 8
 OPT_PARTITION_PLAN_DIR = "files/designplans"
 OPT_MARKOV_DIR = "files/markovs/vldb-august2012"
 OPT_GIT_BRANCH = subprocess.check_output("git rev-parse --abbrev-ref HEAD", shell=True).strip()
@@ -144,10 +145,8 @@ BASE_SETTINGS = {
     "site.jvm_asserts":                         False,
     "site.log_backup":                          False,
     "site.status_enable":                       False,
-    "site.status_show_thread_info":             False,
-    "site.status_exec_info":           False,
-    "site.coordinator_init_thread":             False,
-    "site.coordinator_finish_thread":           False,
+    "site.commandlog_enable":                   True,
+    "site.commandlog_timeout":                  10,
     "site.txn_restart_limit":                   5,
     "site.txn_restart_limit_sysproc":           100,
     "site.exec_force_singlepartitioned":        True,
@@ -155,207 +154,220 @@ BASE_SETTINGS = {
     "site.exec_db2_redirects":                  False,
     "site.cpu_affinity":                        True,
     "site.cpu_affinity_one_partition_per_core": True,
+}
+
+EXPERIMENT_SETTINGS = [
+    # Motivation Experiments
+    "motivation-singlepartition",
+    "motivation-dtxn-singlenode",
+    "motivation-dtxn-multinode",
+    "motivation-remotequery",
     
-    "site.txn_incoming_delay":                  5,
-    "site.network_incoming_max_per_partition":  400,
-}
-
-EXPERIMENT_SETTINGS = {
-    "motivation": {
-        # HVM Instances
-        # http://cloud-images.ubuntu.com/desktop/precise/current/
-        #"ec2.site_ami":                         "ami-efa81d86",
-        #"ec2.site_type":                        "cc1.4xlarge",
-        #"ec2.client_type":                      "c1.xlarge",
-        #"ec2.change_type":                      False,
-        #"ec2.cluster_group":                    "hstore-hvm",
-        #"hstore.partitions_per_site":           64,
-        
-        "site.specexec_enable":                 False,
-        "site.markov_enable":                   False,
-        "site.markov_fixed":                    True,
-        "site.exec_force_singlepartitioned":    False,
-        "client.count":                         1,
-        "client.txnrate":                       100000,
-        "client.blocking":                      True,
-        "client.output_response_status":        True,
-        "client.output_exec_profiling":         "execprofile.csv",
-        #"client.output_queue_profiling":        "queueprofile.csv",
-
-        #"client.output_txn_profiling":          "txnprofile.csv",
-        #"client.output_txn_profiling_combine":  True,
-        #"client.output_txn_counters":           "txncounters.csv",
-        #"client.output_txn_counters_combine":   False,
-        "client.output_basepartitions":         True,
-        "benchmark.neworder_only":              True,
-        "benchmark.neworder_multip_remote":     True,
-        "benchmark.neworder_abort":             False,
-        "benchmark.neworder_multip_mix":        100,
-        "benchmark.loadthread_per_warehouse":   False,
-    },
-    "remotequery": {
-        "site.specexec_enable":                 False,
-        "site.specexec_nonblocking":            True,
-        "site.markov_enable":                   False,
-        "site.markov_fixed":                    True,
-        "site.exec_force_singlepartitioned":    False,
-        "client.count":                         1,
-        "client.txnrate":                       100000,
-        "client.blocking":                      True,
-        "client.output_exec_profiling":         "execprofile.csv",
-        # "client.output_txn_profiling":          "txnprofile.csv",
-        # "client.output_txn_profiling_combine":  True,
-    },
-    "prefetchquery": {
-        "site.exec_prefetch_queries":           True,
-        "site.specexec_enable":                 False,
-        "site.specexec_nonblocking":            False,
-        "site.markov_enable":                   True,
-        "site.txn_client_debug":                False,
-        "site.markov_fixed":                    False,
-        "site.exec_force_singlepartitioned":    False,
-        "site.exec_voltdb_procinfo":            False,
-        "client.txn_hints":                     False,
-        "client.count":                         1,
-        "client.txnrate":                       100000,
-        "client.blocking":                      True,
-        "client.output_txn_counters":           "txncounters.csv",
-        "client.output_txn_counters_combine":   True,
-    },
-    "onepartition": {
-        "site.exec_force_singlepartitioned":    True,
-        "client.count":                         1,
-        "client.txnrate":                       100000,
-        "client.blocking":                      True,
-        "client.output_txn_profiling":          "txnprofile.csv",
-    },
-    "specexec": {
-        "site.specexec_enable":                 True,
-        "site.specexec_markov":                 False,
-        "site.markov_enable":                   True,
-        "site.markov_singlep_updates":          False,
-        "site.markov_dtxn_updates":             False,
-        "site.markov_path_caching":             True,
-        "site.markov_endpoint_caching":         False,
-        "site.markov_fixed":                    True,
-        "site.exec_force_singlepartitioned":    False,
-        "client.count":                         1,
-        "client.output_specexec":               True,
-        "client.txnrate":                       1000, # 1500,
-        "client.output_response_status":        True,
-        "client.output_basepartitions":         False,
-        "client.output_txn_counters":           "txncounters.csv",
-        "client.output_txn_counters_combine":   True,
-        "client.output_specexec_profiling":     "specexec.csv",
-        "client.output_exec_profiling":         "executor.csv",
-        "benchmark.warehouse_pairing":          False,
-        "benchmark.loadthread_per_warehouse":   False,
-    },
-}
-EXPERIMENT_SETTINGS['motivation-oneclient'] = dict(EXPERIMENT_SETTINGS['motivation'].items())
-
-EXPERIMENT_SETTINGS['specexec-base'] = dict(EXPERIMENT_SETTINGS['specexec'].items())
-for k, v in EXPERIMENT_SETTINGS['specexec-base'].iteritems():
-    if isinstance(v, bool) and (k.startswith("site.markov_") or k.startswith("site.specexec_")):
-        EXPERIMENT_SETTINGS['specexec-base'][k] = False
-## FOR
-EXPERIMENT_SETTINGS['specexec-base']["site.exec_force_singlepartitioned"] = True
+    # Performance Experiments
+    "performance-nospec",
+    "performance-spec-txn",
+    "performance-spec-queries",
+    "performance-spec-all",
+]
 
 ## ==============================================
-## updateEnv
+## updateExperimentEnv
 ## ==============================================
-def updateEnv(args, env, benchmark, partitions):
+def updateExperimentEnv(fabric, args, benchmark, partitions):
     global OPT_BASE_TXNRATE_PER_PARTITION
   
     ## ----------------------------------------------
     ## MOTIVATION
     ## ----------------------------------------------
     if args['exp_type'].startswith("motivation"):
-        if env.get('site.markov_enable', False):
-            if benchmark == "tpcc":
-                markov = "%s-%dp.markov.gz" % (benchmark, partitions)
-            else:
-                markov = "%s.markov.gz" % (benchmark)
-            env["hstore.exec_prefix"] += " -Dmarkov=%s" % os.path.join(OPT_MARKOV_DIR, markov)
-        else:
-            env['site.markov_fixed'] = True
+        fabric.env["site.specexec_enable"] = False
+        fabric.env["site.specexec_nonblocking"] = False
+        fabric.env["site.markov_enable"] = True
+        fabric.env["site.markov_fixed"] = True
+        fabric.env["site.exec_force_singlepartitioned"] = False
+        fabric.env["client.count"] = 1
+        fabric.env["client.txnrate"] = 100000
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.output_exec_profiling"] = "execprofile.csv"
+        fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
+        fabric.env["client.output_txn_profiling_combine"] = True
+        fabric.env["client.output_txn_counters"] = "txncounters.csv"
+        
         ## IF
-        if args['exp_type'] == 'motivation-oneclient':
-            env["client.threads_per_host"] = 1
+        if args['exp_type'] in ('motivation-oneclient', 'motivation-remotequery'):
+            fabric.env["client.threads_per_host"] = 1
         else:
-            env["client.threads_per_host"] = int(partitions/2)
-        env["benchmark.loadthreads"] = min(16, partitions)
-
-    ## ----------------------------------------------
-    ## REMOTE QUERY
-    ## ----------------------------------------------
-    elif args['exp_type'].startswith("remotequery"):
-        env["client.threads_per_host"] = int(partitions/2)
+            fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
         
         if benchmark == "tpcc":
-            env["client.weights"] = "neworder:50,paymentByCustomerId:50,*:0"
-            env["benchmark.neworder_multip_mix"] = 100
-            env["benchmark.payment_multip_mix"] = 100
-            
-        elif benchmark == "tm1":
-            env["client.weights"] = "DeleteCallForwarding:33,InsertCallForwarding:33,UpdateLocation:34,*:0"
+            fabric.env["client.weights"] = "neworder:50,paymentByCustomerId:50,*:0"
+            fabric.env["benchmark.payment_only"] = False
+            fabric.env["benchmark.neworder_only"] = False
+            fabric.env["benchmark.neworder_abort"] = False
+            fabric.env["benchmark.loadthread_per_warehouse"] = False
+            fabric.env["benchmark.loadthreads"] = max(16, partitions)
         elif benchmark == "seats":
-            env["client.weights"] = ""
-        else:
-            env["client.weights"] = ""
-    ## ----------------------------------------------
-    ## ONE PARTITION EXPERIMENTS
-    ## ----------------------------------------------
-    elif args['exp_type'].startswith("onepartition"):
-        pass
+            fabric.env["client.weights"] = "DeleteReservation:10,NewReservation:75,FindOpenSeats:15,*:0"
+        elif benchmark == "smallbank":
+            fabric.env["client.weights"] = "SendPayment:100,*:0"
+            fabric.env["benchmark.prob_account_hotspot"] = 0
+        
+        ## ----------------------------------------------
+        ## MOTIVATION-SINGLEPARTITION
+        ## ----------------------------------------------
+        if args['exp_type'] == "motivation-singlepartition":
+            fabric.env["client.weights"] = ""
+            
+            if benchmark == "tpcc":
+                fabric.env["benchmark.neworder_multip"] = False
+                fabric.env["benchmark.neworder_multip_remote"] = False
+                fabric.env["benchmark.neworder_multip_mix"] = -1
+                fabric.env["benchmark.payment_multip"] = False
+                fabric.env["benchmark.payment_multip_remote"] = False
+                fabric.env["benchmark.payment_multip_mix"] = -1
+            elif benchmark == "seats":
+                fabric.env["benchmark.force_all_distributed"] = False
+                fabric.env["benchmark.force_all_singlepartition"] = True
+            elif benchmark == "smallbank":
+                fabric.env["client.weights"] = "SendPayment:25,*:15"
+                fabric.env["benchmark.prob_multiaccount_dtxn"] = 0
+                fabric.env["benchmark.force_multisite_dtxns"] = False
+                fabric.env["benchmark.force_singlesite_dtxns"] = False
+        ## ----------------------------------------------
+        ## MOTIVATION-DTXN-SINGLENODE
+        ## ----------------------------------------------
+        elif args['exp_type'] == "motivation-dtxn-singlenode":
+            if benchmark == "tpcc":
+                fabric.env["benchmark.neworder_multip"] = True
+                fabric.env["benchmark.neworder_multip_remote"] = False
+                fabric.env["benchmark.neworder_multip_mix"] = 100
+                fabric.env["benchmark.payment_multip"] = True
+                fabric.env["benchmark.payment_multip_remote"] = False
+                fabric.env["benchmark.payment_multip_mix"] = 100
+            elif benchmark == "seats":
+                fabric.env["benchmark.force_all_distributed"] = True
+                fabric.env["benchmark.force_all_singlepartition"] = False
+            elif benchmark == "smallbank":
+                fabric.env["benchmark.prob_multiaccount_dtxn"] = 100
+                fabric.env["benchmark.force_multisite_dtxns"] = False
+                fabric.env["benchmark.force_singlesite_dtxns"] = True
+        ## ----------------------------------------------
+        ## MOTIVATION-DTXN-MULITNODE
+        ## ----------------------------------------------
+        elif args['exp_type'] in ("motivation-dtxn-multinode", "motivation-remotequery"):
+            if args['exp_type'] == "motivation-remotequery":
+                fabric.env["site.specexec_enable"] = False
+                fabric.env["site.specexec_nonblocking"] = True
+            
+            if benchmark == "tpcc":
+                fabric.env["benchmark.neworder_multip"] = True
+                fabric.env["benchmark.neworder_multip_remote"] = True
+                fabric.env["benchmark.neworder_multip_mix"] = 100
+                fabric.env["benchmark.payment_multip"] = True
+                fabric.env["benchmark.payment_multip_remote"] = True
+                fabric.env["benchmark.payment_multip_mix"] = 100
+            elif benchmark == "seats":
+                fabric.env["benchmark.force_all_distributed"] = True
+                fabric.env["benchmark.force_all_singlepartition"] = False
+            elif benchmark == "smallbank":
+                fabric.env["benchmark.prob_multiaccount_dtxn"] = 100
+                fabric.env["benchmark.force_multisite_dtxns"] = True
+                fabric.env["benchmark.force_singlesite_dtxns"] = False
 
     ## ----------------------------------------------
-    ## SPECEXEC EXPERIMENTS
+    ## PERFORMANCE EXPERIMENTS
     ## ----------------------------------------------
-    elif args['exp_type'].startswith("specexec"):
-        if benchmark == "tpcc":
-            markov = "%s-%dp.markov.gz" % (benchmark, partitions)
-        else:
-            markov = "%s.markov.gz" % (benchmark)
-        # env["hstore.exec_prefix"] += " -Dmarkov=%s" % os.path.join(OPT_MARKOV_DIR, markov)
-        env["client.threads_per_host"] = int(partitions*2)
-        env["benchmark.loadthreads"] = min(16, partitions)
+    elif args['exp_type'].startswith("performance"):
+        fabric.env["site.markov_enable"] = True
+        fabric.env["site.markov_singlep_updates"] = False
+        fabric.env["site.markov_dtxn_updates"] = False
+        fabric.env["site.markov_path_caching"] = True
+        fabric.env["site.markov_endpoint_caching"] = False
+        fabric.env["site.markov_fixed"] = False
+        fabric.env["site.exec_prefetch_queries"] = False
+        fabric.env["site.specexec_enable"] = False
+        fabric.env["site.specexec_nonblocking"] = False
+        fabric.env["site.specexec_ignore_all_local"] = True
+        fabric.env["site.specexec_markov"] = True
         
-    #pplan = "%s.lns.pplan" % benchmark
-    #env["hstore.exec_prefix"] += " -Dpartitionplan=%s" % os.path.join(OPT_PARTITION_PLAN_DIR, pplan)
-    #env["hstore.exec_prefix"] += " -Dpartitionplan.ignore_missing=True"
+        fabric.env["client.txn_hints"] = True
+        fabric.env["client.count"] = 1
+        fabric.env["client.txnrate"] = 100000
+        fabric.env["client.blocking"] = True
+        fabric.env["client.threads_per_host"] = OPT_BASE_CLIENT_THREADS_PER_HOST * int(partitions/8)
+        fabric.env["client.scalefactor"] = OPT_BASE_SCALE_FACTOR * int(partitions/8)
+        
+        if benchmark == "tpcc":
+            fabric.env["client.scalefactor"] = OPT_BASE_SCALE_FACTOR
+            fabric.env["benchmark.neworder_multip"] = True
+            fabric.env["benchmark.neworder_multip_remote"] = False
+            fabric.env["benchmark.neworder_multip_mix"] = -1
+            fabric.env["benchmark.payment_multip"] = True
+            fabric.env["benchmark.payment_multip_remote"] = False
+            fabric.env["benchmark.payment_multip_mix"] = -1
+        elif benchmark == "seats":
+            fabric.env["benchmark.force_all_distributed"] = False
+            fabric.env["benchmark.force_all_singlepartition"] = False
+        elif benchmark == "smallbank":
+            fabric.env["client.weights"] = "SendPayment:25,*:15"
+            fabric.env["benchmark.force_multisite_dtxns"] = False
+            fabric.env["benchmark.force_singlesite_dtxns"] = False
+        
+        ## ----------------------------------------------
+        ## NO SPECULATION
+        ## ----------------------------------------------
+        if args['exp_type'] == "performance-nospec":
+            # Nothing else is needed
+            pass
+        ## ----------------------------------------------
+        ## SPECULATIVE TXNS
+        ## ----------------------------------------------
+        if args['exp_type'] in ("performance-spec-txn", "performance-spec-all"):
+            fabric.env["site.specexec_enable"] = True
+            fabric.env["site.markov_enable"] = True
+            fabric.env["site.specexec_markov"] = True
+        ## ----------------------------------------------
+        ## SPECULATIVE QUERIES
+        ## ----------------------------------------------
+        if args['exp_type'] in ("performance-queries", "performance-spec-all"):
+            fabric.env["site.exec_prefetch_queries"] = True
+            fabric.env["site.specexec_markov"] = True
+            
+    if fabric.env.get('site.markov_enable', False):
+        markov = "%s-%dp.markov.gz" % (benchmark, partitions)
+        #else:
+            #markov = "%s.markov.gz" % (benchmark)
+        fabric.env["hstore.exec_prefix"] += " -Dmarkov=%s" % os.path.join(OPT_MARKOV_DIR, markov)
+    else:
+        fabric.env['site.markov_fixed'] = True
 ## DEF
 
 ## ==============================================
 ## getCSVOutput
 ## ==============================================
-def getCSVOutput(args, env, benchmark, partitions):
+def getCSVOutput(inst, fabric, args, benchmark, partitions):
     """Find all of the output parameters in the env and retrieve the files from the cluster"""
-    for k,v in env.iteritems():
+    for k,v in fabric.env.iteritems():
         if k.startswith("client.output_"):
             LOG.debug("Checking whether '%s' is enabled" % (k))
             if not v is None and isinstance(v, str) and v.endswith(".csv"):
-                saveCSVResults(args, benchmark, partitions, v)
+                saveCSVResults(inst, fabric, args, benchmark, partitions, v)
     ## FOR
 ## DEF
 
 ## ==============================================
 ## saveCSVResults
 ## ==============================================
-def saveCSVResults(args, benchmark, partitions, filename):
-    # Create local results directory
-    resultsDir = os.path.join(args['results_dir'], args['exp_type'])
-    if not os.path.exists(resultsDir):
-        LOG.info("Creating results directory '%s'" % resultsDir)
-        os.makedirs(resultsDir)
-    
+def saveCSVResults(inst, fabric, args, benchmark, partitions, filename):
     # Go out and grab the remote file and save it locally in our results dir.
-    filename = os.path.join(hstore.fabfile.HSTORE_DIR, filename)
+    filename = os.path.join(fabric.hstore_dir, filename)
     LOG.info("Going to retrieve remote CSV file '%s'" % filename)
-    contents = hstore.fabfile.get_file(filename)
+    contents = fabric.get_file(inst, filename)
     if len(contents) > 0:
         # We'll prefix the name with the number of partitions
         localName = "%s-%02dp-%s" % (benchmark, partitions, os.path.basename(filename))
+        resultsDir = os.path.join(args['results_dir'], args['exp_type'])
         localFile = os.path.join(resultsDir, localName)
         with open(localFile, "w") as f:
             f.write(contents)
@@ -368,24 +380,26 @@ def saveCSVResults(args, benchmark, partitions, filename):
 ## ==============================================
 ## processResults
 ## ==============================================
-def processResults(args, partitions, output, workloads, results):
+def processResults(inst, fabric, args, partitions, output, workloads):
     data = hstore.parseJSONResults(output)
-    for key in [ 'TXNTOTALPERSECOND' ]:
-        if key in data:
-            txnrate = float(data[key])
-            break
-    ## FOR
-    assert not txnrate is None, \
-        "Failed to extract throughput rate from output\n" + pformat(data)
+    
+    txnrate = float(data['TXNTOTALPERSECOND'])
+    if int(txnrate) == 0: return (data)
+    LOG.info("Throughput: %.2f" % txnrate)
+    
+    txnlatency = float(data['TOTALAVGLATENCY'])
+    LOG.info("Latency: %.2f" % txnlatency)
+    
+    dtxnPercent = float(data['DTXNTOTALCOUNT']) / float(data['TXNTOTALCOUNT'])
+    LOG.info("DTXN Percentage: %.4f" % dtxnPercent)
+    
+    specPercent = float(data['SPECEXECTOTALCOUNT']) / float(data['TXNTOTALCOUNT'])
+    LOG.info("Speculative Percentage: %.4f" % specPercent)
     
     minTxnRate = float(data["MINTXNPERSECOND"]) if "MINTXNPERSECOND" in data else None
     maxTxnRate = float(data["MAXTXNPERSECOND"]) if "MAXTXNPERSECOND" in data else None
     stddevTxnRate = float(data["STDDEVTXNPERSECOND"]) if "STDDEVTXNPERSECOND" in data else None
     
-    if int(txnrate) == 0: return
-    LOG.info("Throughput: %.2f" % txnrate)
-    
-    results.append(txnrate)
     if args['workload_trace'] and not workloads is None:
         for f in workloads:
             LOG.info("Workload File: %s" % f)
@@ -401,7 +415,7 @@ def processResults(args, partitions, output, workloads, results):
             last_changed_rev = args["codespeed_revision"][0]
             last_changed_rev, last_changed_date = svnInfo(env["hstore.svn"], last_changed_rev)
         else:
-            last_changed_rev, last_changed_date = hstore.fabfile.get_version()
+            last_changed_rev, last_changed_date = fabric.get_version(inst)
         LOG.info("last_changed_rev:", last_changed_rev)
         LOG.info("last_changed_date:", last_changed_date)
             
@@ -409,7 +423,7 @@ def processResults(args, partitions, output, workloads, results):
         if not args["codespeed_benchmark"] is None:
             codespeedBenchmark = args["codespeed_benchmark"]
         
-        codespeedBranch = env["hstore.git_branch"]
+        codespeedBranch = fabric.env["hstore.git_branch"]
         if not args["codespeed_branch"] is None:
             codespeedBranch = args["codespeed_branch"]
             
@@ -430,7 +444,40 @@ def processResults(args, partitions, output, workloads, results):
         )
         result.upload(upload_url)
     ## IF
-    return
+    return (data)
+## DEF
+
+## ==============================================
+## writeResultsCSV
+## ==============================================
+def writeResultsCSV(args, benchmark, finalResults):
+    for partitions in sorted(finalResults.keys()):
+        baseName = "%s-%02dp-results.csv" % (benchmark, partitions)
+        output = os.path.join(args['results_dir'], args['exp_type'], baseName)
+        with open(output, "w") as fd:
+            writer = csv.writer(fd)
+            header = None
+            for data in finalResults[partitions]:
+                if header is None:
+                    header = sorted(data.keys())
+                    header.remove("TXNRESULTS")
+                    writer.writerow(header)
+                writer.writerow([ data[key] for key in header ])
+            ## FOR
+        ## WITH
+        LOG.info("Wrote %s results to '%s'", benchmark, output)
+    ## FOR
+## DEF
+
+## ==============================================
+## createFabricHandle
+## ==============================================
+def createFabricHandle(name, env):
+    fullName = "%sFabric" % name.upper()
+    moduleName = "hstore.fabric.%s" % (fullName.lower())
+    moduleHandle = __import__(moduleName, globals(), locals(), [fullName])
+    klass = getattr(moduleHandle, fullName)
+    return klass(env)
 ## DEF
 
 ## ==============================================
@@ -441,6 +488,7 @@ if __name__ == '__main__':
     
     aparser = argparse.ArgumentParser(description='H-Store Experiment Runner')
     
+    aparser.add_argument('fabric', choices=["ec2", "ssh"], help='Fabric Configuration Type')
     aparser.add_argument('--benchmark', choices=hstore.getBenchmarks(), nargs='+',
                          help='Target benchmarks')
     
@@ -464,7 +512,7 @@ if __name__ == '__main__':
     
     ## Experiment Parameters
     agroup = aparser.add_argument_group('Experiment Parameters')
-    agroup.add_argument("--exp-type", type=str, choices=sorted(EXPERIMENT_SETTINGS.keys()), default=EXPERIMENT_SETTINGS.keys()[0])
+    agroup.add_argument("--exp-type", type=str, choices=EXPERIMENT_SETTINGS, default=EXPERIMENT_SETTINGS[0])
     agroup.add_argument("--exp-trials", type=int, default=3, metavar='N')
     agroup.add_argument("--exp-attempts", type=int, default=3, metavar='N')
     
@@ -485,16 +533,16 @@ if __name__ == '__main__':
     agroup.add_argument("--codespeed-lastrevision", type=str, metavar="REV")
     agroup.add_argument("--codespeed-branch", type=str, metavar="BRANCH")
     
-    # And our Boto environment keys
-    agroup = aparser.add_argument_group('Boto Parameters')
-    for key in sorted(hstore.fabfile.ENV_DEFAULT):
+    # And our Fabric environment keys
+    agroup = aparser.add_argument_group('Fabric Parameters')
+    for key in sorted(hstore.fabric.ENV_DEFAULT):
         keyPrefix = key.split(".")[0]
         if key not in BASE_SETTINGS and keyPrefix in [ "ec2", "hstore" ]:
-            confType = type(hstore.fabfile.ENV_DEFAULT[key])
+            confType = type(hstore.fabric.ENV_DEFAULT[key])
             if key in DEFAULT_OPTIONS and not DEFAULT_OPTIONS[key] is None:
                 confDefault = DEFAULT_OPTIONS[key]
             else:
-                confDefault = hstore.fabfile.ENV_DEFAULT[key]
+                confDefault = hstore.fabric.ENV_DEFAULT[key]
             
             metavar = key.split(".")[-1].upper()
             agroup.add_argument("--"+key, type=confType, default=confDefault, metavar=metavar)
@@ -532,10 +580,11 @@ if __name__ == '__main__':
     ## ARGUMENT PROCESSING 
     ## ----------------------------------------------
     
-    for key in env.keys():
-        if key in args and not args[key] is None:
-            env[key] = args[key]
-    ## FOR
+    fabric = createFabricHandle(args["fabric"], env)
+    for key in fabric.env.iterkeys():
+        if not args.get(key, None) is None:
+            fabric.env[key] = args[key]
+
     for key in args:
         if args[key] is None: continue
         if (key in BASE_SETTINGS or key in HSTORE_PARAMS):
@@ -544,7 +593,8 @@ if __name__ == '__main__':
     
     if args['debug']:
         LOG.setLevel(logging.DEBUG)
-        hstore.fabfile.LOG.setLevel(logging.DEBUG)
+        hstore.fabric.abstractfabric.LOG.setLevel(logging.DEBUG)
+        hstore.fabric.sshfabric.LOG.setLevel(logging.DEBUG)
     if args['debug_hstore']:
         for k,v in DEBUG_OPTIONS.iteritems():
             BASE_SETTINGS[k] = v
@@ -562,13 +612,13 @@ if __name__ == '__main__':
     
     # If we get two consecutive intervals with zero results, then stop the benchmark
     if args['retry_on_zero']:
-        env["hstore.exec_prefix"] += " -Dkillonzero=true"
+        fabric.env["hstore.exec_prefix"] += " -Dkillonzero=true"
     if args['no_shutdown']:
-        env["hstore.exec_prefix"] += " -Dnoshutdown=true"
+        fabric.env["hstore.exec_prefix"] += " -Dnoshutdown=true"
     
     # Update Fabric env
     conf_remove = set()
-    for exp_opts in [ BASE_SETTINGS, EXPERIMENT_SETTINGS[args['exp_type']] ]:
+    for exp_opts in [ BASE_SETTINGS ]:
         assert exp_opts
         exp_conf_remove = [ ]
         for key,val in exp_opts.iteritems():
@@ -576,7 +626,7 @@ if __name__ == '__main__':
                 LOG.debug("Parameter to Remove: %s" % key)
                 exp_conf_remove.append(key)
             elif type(val) != types.FunctionType:
-                env[key] = val
+                fabric.env[key] = val
                 LOG.debug("env[\"%s\"] = %s", key, val)
         ## FOR
         map(exp_opts.pop, exp_conf_remove)
@@ -585,13 +635,13 @@ if __name__ == '__main__':
     
     # Figure out what keys we need to remove to ensure that one experiment
     # doesn't contaminate another
-    for other_type in EXPERIMENT_SETTINGS.keys():
-        if other_type != args['exp_type']:
-            for key in EXPERIMENT_SETTINGS[other_type].keys():
-                if not key in exp_opts: conf_remove.add(key)
-            ## FOR
-        ## IF
-    ## FOR
+    #for other_type in EXPERIMENT_SETTINGS:
+        #if other_type != args['exp_type']:
+            #for key in EXPERIMENT_SETTINGS[other_type].keys():
+                #if not key in exp_opts: conf_remove.add(key)
+            ### FOR
+        ### IF
+    ### FOR
     LOG.debug("Configuration Parameters to Remove:\n" + pformat(conf_remove))
     
     # BenchmarkController Parameters
@@ -600,11 +650,18 @@ if __name__ == '__main__':
     # Shut 'er down!
     if args['stop_cluster']:
         LOG.info("Stopping cluster now!")
-        hstore.fabfile.stop_cluster()
+        fabric.stop_cluster()
         sys.exit(0)
         
     if not args['benchmark']:
         raise Exception("Did not specify benchmarks to execute")
+    
+    # Create local results directory
+    if not args.get("results_dir", None) is None:
+        resultsDir = os.path.join(args['results_dir'], args['exp_type'])
+        if not os.path.exists(resultsDir):
+            LOG.info("Creating results directory '%s'" % resultsDir)
+            os.makedirs(resultsDir)
     
     needUpdate = (args['no_update'] == False)
     needUpdateLog4j = args['debug_log4j_site'] or args['debug_log4j_client']
@@ -613,89 +670,84 @@ if __name__ == '__main__':
     needCompile = (args['no_compile'] == False)
     needClearLogs = (args['clear_logs'] == True)
     origScaleFactor = BASE_SETTINGS['client.scalefactor']
+    
     for benchmark in args['benchmark']:
-        final_results = { }
+        finalResults = { }
         totalAttempts = args['exp_trials'] * args['exp_attempts']
         stop = False
         
-        for partitions in map(int, args["partitions"]):
-            LOG.info("%s - %s - %d Partitions" % (args['exp_type'].upper(), benchmark.upper(), partitions))
-            env["hstore.partitions"] = partitions
-            all_results = [ ]
-            updateEnv(args, env, benchmark, partitions)
-                
-            # Increase the client.scalefactor based on the number of partitions
-            if args['multiply_scalefactor']:
-                BASE_SETTINGS["client.scalefactor"] = float(BASE_SETTINGS["client.scalefactor"] * partitions)
-                
-            if args['start_cluster']:
-                LOG.info("Starting cluster for experiments [noExecute=%s]" % args['no_execute'])
-                hstore.fabfile.start_cluster(updateSync=needSync)
-                if args['no_execute']: sys.exit(0)
-            ## IF
-            
-            # Disable all profiling
-            if args['no_profiling']:
-                for k,v in env.iteritems():
-                    if re.match("^(client|site)\.[\w\_]*profiling[\w\_]*", k):
-                        env[k] = False if isinstance(v, bool) else ""
-                ## FOR
-            
-            client_inst = hstore.fabfile.__getRunningClientInstances__()[0]
-            LOG.debug("Client Instance: " + client_inst.public_dns_name)
-            
-            ## Synchronize Instance Times
-            if needSync: hstore.fabfile.sync_time()
-            needSync = False
-                
-            ## Clear Log Files
-            if needClearLogs: hstore.fabfile.clear_logs()
-            needClearLogs = False
-            
-            ## Update Log4j
-            if needUpdateLog4j:
-                LOG.info("Updating log4j.properties")
-                enableDebug = [ ]
-                if args['debug_log4j_site']:
-                    enableDebug += DEBUG_SITE_LOGGING
-                if args['debug_log4j_client']:
-                    enableDebug += DEBUG_CLIENT_LOGGING
-                with settings(host_string=client_inst.public_dns_name):
-                    hstore.fabfile.enable_debugging(debug=enableDebug)
-                ## WITH
-                needUpdateLog4j = False
-                
-            updateJar = (args['no_jar'] == False)
-            LOG.debug("Parameters:\n%s" % pformat(env))
-            conf_remove = conf_remove - set(env.keys())
-            
-            results = [ ]
-            attempts = 0
-            updateConf = (args['no_conf'] == False)
-            while len(results) < args['exp_trials'] and attempts < totalAttempts and stop == False:
-                ## Only compile for the very first invocation
-                if needCompile:
-                    if env["hstore.exec_prefix"].find("compile") == -1:
-                        env["hstore.exec_prefix"] += " compile"
-                else:
-                    env["hstore.exec_prefix"] = env["hstore.exec_prefix"].replace("compile", "")
+        try:
+            for partitions in map(int, args["partitions"]):
+                LOG.info("%s - %s - %d Partitions" % (args['exp_type'].upper(), benchmark.upper(), partitions))
+                fabric.env["hstore.partitions"] = partitions
+                all_results = [ ]
+                updateExperimentEnv(fabric, args, benchmark, partitions)
                     
-                needCompile = False
-                attempts += 1
-                LOG.info("Executing %s Trial #%d/%d [attempt=%d/%d]" % (\
-                            benchmark.upper(),
-                            len(results),
-                            args['exp_trials'],
-                            attempts,
-                            totalAttempts
-                ))
-                try:
-                    with settings(host_string=client_inst.public_dns_name):
-                        output, workloads = hstore.fabfile.exec_benchmark(
+                # Increase the client.scalefactor based on the number of partitions
+                if args['multiply_scalefactor']:
+                    BASE_SETTINGS["client.scalefactor"] = float(BASE_SETTINGS["client.scalefactor"] * partitions)
+                    
+                if args['start_cluster']:
+                    LOG.info("Starting cluster for experiments [noExecute=%s]" % args['no_execute'])
+                    fabric.start_cluster()
+                    if args['no_execute']: sys.exit(0)
+                ## IF
+                
+                # Disable all profiling
+                if args['no_profiling']:
+                    for k,v in fabric.env.iteritems():
+                        if re.match("^(client|site)\.[\w\_]*profiling[\w\_]*", k):
+                            fabric.env[k] = False if isinstance(v, bool) else ""
+                    ## FOR
+                
+                client_inst = fabric.getRunningClientInstances()[0]
+                LOG.info("Client Instance: " + client_inst.public_dns_name)
+                
+                ## Synchronize Instance Times
+                if needSync: fabric.sync_time()
+                needSync = False
+                    
+                ## Clear Log Files
+                if needClearLogs: fabric.clear_logs()
+                needClearLogs = False
+                
+                ## Update Log4j
+                if needUpdateLog4j:
+                    LOG.info("Updating log4j.properties")
+                    enableDebug = [ ]
+                    if args['debug_log4j_site']:
+                        enableDebug += DEBUG_SITE_LOGGING
+                    if args['debug_log4j_client']:
+                        enableDebug += DEBUG_CLIENT_LOGGING
+                    fabric.enable_debugging(debug=enableDebug)
+                    needUpdateLog4j = False
+                    
+                updateJar = (args['no_jar'] == False)
+                LOG.debug("Parameters:\n%s" % pformat(env))
+                conf_remove = conf_remove - set(env.keys())
+                
+                finalResults[partitions] = [ ]
+                attempts = 0
+                updateConf = (args['no_conf'] == False)
+                while len(finalResults[partitions]) < args['exp_trials'] and \
+                    attempts < totalAttempts and \
+                    stop == False:
+                    attempts += 1
+                    LOG.info("Executing %s Trial #%d/%d [attempt=%d/%d]",
+                                benchmark.upper(),
+                                len(finalResults[partitions]),
+                                args['exp_trials'],
+                                attempts,
+                                totalAttempts
+                    )
+                    try:
+                        output, workloads = fabric.exec_benchmark(
+                                                client_inst, \
                                                 project=benchmark, \
                                                 removals=conf_remove, \
                                                 json=(args['no_json'] == False), \
                                                 trace=args['workload_trace'], \
+                                                build=needCompile, \
                                                 updateJar=updateJar, \
                                                 updateConf=updateConf, \
                                                 updateRepo=needUpdate, \
@@ -704,58 +756,42 @@ if __name__ == '__main__':
                                                 
                         # Process JSON Output
                         if args['no_json'] == False:
-                            processResults(args, partitions, output, workloads, results)
-                        else:
-                            results.append(None)
+                            data = processResults(client_inst, fabric, args, partitions, output, workloads)
+                            finalResults[partitions].append(data)
                         
                         # CSV RESULT FILES
-                        getCSVOutput(args, env, benchmark, partitions)
-                    ## WITH
-                except KeyboardInterrupt:
-                    stop = True
-                    break
-                except SystemExit:
-                    LOG.warn("Failed to complete trial succesfully")
-                    if args['stop_on_error']:
+                        getCSVOutput(client_inst, fabric, args, benchmark, partitions)
+                        
+                        # Only compile for the very first invocation
+                        needCompile = False
+                    except KeyboardInterrupt:
                         stop = True
                         break
-                    pass
-                except:
-                    LOG.warn("Failed to complete trial succesfully")
-                    stop = True
-                    raise
-                    break
-                finally:
-                    needUpdate = False
-                    updateJar = False
-                    updateConf = False
-                ## TRY
-            ## FOR (TRIALS)
-            if results: final_results[partitions] = (benchmark, results, attempts)
-            if stop: break
-            stop = False
-        ## FOR (PARTITIONS)
+                    except SystemExit:
+                        LOG.warn("Failed to complete trial succesfully")
+                        if args['stop_on_error']:
+                            stop = True
+                            break
+                        pass
+                    except:
+                        LOG.warn("Failed to complete trial succesfully")
+                        stop = True
+                        raise
+                        break
+                    finally:
+                        needUpdate = False
+                        updateJar = False
+                        updateConf = False
+                    ## TRY
+                ## FOR (TRIALS)
+                if stop: break
+            ## FOR (PARTITIONS)
+        finally:
+            if not args['no_json']:
+                writeResultsCSV(args, benchmark, finalResults)
         if stop: break
-        stop = False
     ## FOR (BENCHMARKS)
     
     LOG.info("Disconnecting and dumping results")
-    try:
-        disconnect_all()
-    finally:
-        if args['no_json']:
-            pass
-        for partitions in sorted(final_results.keys()):
-            print "%s - Partitions %d" % (args['exp_type'].upper(), partitions)
-            pprint(final_results[partitions])
-            
-            #for benchmark, results, attempts in final_results[partitions]:
-                #print "   %s [Attempts:%s/%s]" % (benchmark.upper(), attempts, totalAttempts)
-                #for trial in xrange(len(results)):
-                    #print "      TRIAL #%d: %.4f" % (trial, results[trial])
-                ### FOR
-            ### FOR
-            #print
-        ## FOR
-    ## TRY
+    disconnect_all()
 ## MAIN

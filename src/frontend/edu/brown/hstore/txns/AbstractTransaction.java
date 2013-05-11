@@ -37,6 +37,7 @@ import org.apache.log4j.Logger;
 import org.voltdb.ParameterSet;
 import org.voltdb.VoltTable;
 import org.voltdb.catalog.Procedure;
+import org.voltdb.catalog.Statement;
 import org.voltdb.catalog.Table;
 import org.voltdb.exceptions.SerializableException;
 import org.voltdb.exceptions.ServerFaultException;
@@ -343,15 +344,6 @@ public abstract class AbstractTransaction implements Poolable, Comparable<Abstra
         if (this.attached_inputs != null) this.attached_inputs.clear();
         this.attached_parameterSets = null;
 
-        // If this transaction handle was keeping track of pre-fetched queries,
-        // then go ahead and reset those state variables.
-        if (this.prefetch != null) {
-            hstore_site.getObjectPools()
-                       .getPrefetchStatePool(this.base_partition)
-                       .returnObject(this.prefetch);
-            this.prefetch = null;
-        }
-        
         for (int partition : this.hstore_site.getLocalPartitionIds().values()) {
             this.released[partition] = false;
             this.prepared[partition] = false;
@@ -1092,16 +1084,8 @@ public abstract class AbstractTransaction implements Poolable, Comparable<Abstra
      */
     public final void initializePrefetch() {
         if (this.prefetch == null) {
-            try {
-                this.prefetch = hstore_site.getObjectPools()
-                                           .getPrefetchStatePool(this.base_partition)
-                                           .borrowObject();
-                this.prefetch.init(this);
-            } catch (Throwable ex) {
-                String message = String.format("Unexpected error when trying to initialize %s for %s",
-                                               PrefetchState.class.getSimpleName(), this);
-                throw new ServerFaultException(message, ex, this.txn_id);
-            }
+            this.prefetch = new PrefetchState(this.hstore_site);
+            this.prefetch.init(this);
         }
     }
     
@@ -1111,6 +1095,21 @@ public abstract class AbstractTransaction implements Poolable, Comparable<Abstra
     public final boolean hasPrefetchQueries() {
         // return (this.prefetch.fragments != null && this.prefetch.fragments.isEmpty() == false);
         return (this.prefetch != null);
+    }
+    
+    public final void markPrefetchQuery(Statement stmt, int counter) {
+        
+    }
+    
+    /**
+     * Returns true if this query 
+     * @param stmt
+     * @param counter
+     * @return
+     */
+    public final boolean isMarkedPrefetched(Statement stmt, int counter) {
+        
+        return (false);
     }
     
     /**
@@ -1154,6 +1153,16 @@ public abstract class AbstractTransaction implements Poolable, Comparable<Abstra
         this.prefetch.partitions.set(partition);
     }
     
+    /**
+     * Update an internal counter for the number of times that we've invoked queries
+     * @param stmt
+     * @return
+     */
+    public final int updateStatementCounter(Statement stmt, PartitionSet partitions) {
+        assert(this.prefetch != null);
+        return (int)this.prefetch.stmtCounters.put(stmt);
+    }
+    
     // ----------------------------------------------------------------------------
     // DEBUG METHODS
     // ----------------------------------------------------------------------------
@@ -1178,7 +1187,7 @@ public abstract class AbstractTransaction implements Poolable, Comparable<Abstra
             if (this.last_txn_id != null) str += String.format(" {LAST:%d}", this.last_txn_id);
         }
         // Include hashCode for debugging
-        str += "/" + this.hashCode();
+        // str += "/" + this.hashCode();
         return (str);
     }
     

@@ -1,6 +1,5 @@
 package org.voltdb.regressionsuites;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Random;
 
@@ -14,7 +13,6 @@ import org.voltdb.VoltType;
 import org.voltdb.benchmark.tpcc.TPCCConstants;
 import org.voltdb.benchmark.tpcc.TPCCLoader;
 import org.voltdb.benchmark.tpcc.TPCCSimulation;
-import org.voltdb.catalog.Catalog;
 import org.voltdb.catalog.Column;
 import org.voltdb.catalog.Table;
 import org.voltdb.client.Client;
@@ -26,8 +24,6 @@ import org.voltdb.sysprocs.Statistics;
 import org.voltdb.types.TimestampType;
 import org.voltdb.utils.VoltTypeUtil;
 
-import edu.brown.benchmark.seats.SEATSLoader;
-import edu.brown.benchmark.seats.util.SEATSHistogramUtil;
 import edu.brown.benchmark.tm1.TM1Loader;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.Hstoreservice.Status;
@@ -110,8 +106,8 @@ public abstract class RegressionSuiteUtil {
                 this.setClientHandle(client);
             }
             @Override
-            public Catalog getCatalog() {
-                return (catalogContext.catalog);
+            public CatalogContext getCatalogContext() {
+                return (catalogContext);
             }
         };
         loader.load();
@@ -125,13 +121,13 @@ public abstract class RegressionSuiteUtil {
                 this.setClientHandle(client);
             }
             @Override
-            public Catalog getCatalog() {
-                return (catalogContext.catalog);
+            public CatalogContext getCatalogContext() {
+                return (catalogContext);
             }
         };
         loader.load();
     }
-
+    
     protected static Object[] generateNewOrder(int num_warehouses, boolean dtxn, int w_id, int d_id) throws Exception {
         short supply_w_id;
         if (dtxn) {

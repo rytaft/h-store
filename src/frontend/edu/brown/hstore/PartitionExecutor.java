@@ -943,10 +943,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     // If we get something back here, then it should become our
                     // current transaction.
                     if (nextTxn != null) {
-                        // If it's a single-partition txn, then we can return
-                        // the StartTxnMessage
-                        // so that we can fire it off right away.
-
                         // If this a single-partition txn, then we'll want to
                         // execute it right away
                         if (nextTxn.isPredictSinglePartition()) {
@@ -1546,9 +1542,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     private void updateMemoryStats(long time) {
-        if (debug.val)
-            LOG.debug("Updating memory stats for partition " + this.partitionId);
-
+        if (trace.val)
+            LOG.trace("Updating memory stats for partition " + this.partitionId);
         Collection<Table> tables = this.catalogContext.database.getTables();
         int[] tableIds = new int[tables.size()];
         int i = 0;
@@ -1558,6 +1553,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
         // data to aggregate
         long tupleCount = 0;
+        @SuppressWarnings("unused")
+        long tupleAccessCount = 0;
         int tupleDataMem = 0;
         int tupleAllocatedMem = 0;
         int indexMem = 0;
@@ -1593,6 +1590,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             while (stats.advanceRow()) {
                 int idx = 7;
                 tupleCount += stats.getLong(idx++);
+                tupleAccessCount += stats.getLong(idx++);
                 tupleAllocatedMem += (int) stats.getLong(idx++);
                 tupleDataMem += (int) stats.getLong(idx++);
                 stringMem += (int) stats.getLong(idx++);
@@ -1819,9 +1817,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
         }
         // Make sure that it's at least as big as the last one handed out
-        if (undoToken < this.lastUndoToken)
-            undoToken = this.lastUndoToken;
-
+        if (undoToken < this.lastUndoToken) undoToken = this.lastUndoToken;
+        
+        if (debug.val)
+            LOG.debug(String.format("%s - Next undo token at partition %d is %s [readOnly=%s]",
+                      ts, this.partitionId,
+                      (undoToken == HStoreConstants.DISABLE_UNDO_LOGGING_TOKEN ? "<DISABLED>" :
+                          (undoToken == HStoreConstants.NULL_UNDO_LOGGING_TOKEN ? "<NULL>" : undoToken)),
+                      readOnly));
+        
         return (undoToken);
     }
 
@@ -2004,7 +2008,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      */
     public void queueUtilityWork(InternalMessage work) {
         if (debug.val)
-            LOG.debug(String.format("Queuing utility work on partition %d\n%s", this.partitionId, work));
+            LOG.debug(String.format("Added utility work %s to partition %d",
+                      work.getClass().getSimpleName(), this.partitionId));
         this.work_queue.offer(work);
     }
 
@@ -2542,15 +2547,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         boolean is_local = (ts.getBasePartition() == this.partitionId);
         boolean is_remote = (ts instanceof LocalTransaction == false);
         boolean is_prefetch = fragment.getPrefetch();
+        boolean is_readonly = fragment.getReadOnly();
         if (debug.val)
-            LOG.debug(String.format("%s - Executing %s [isLocal=%s, isRemote=%s, isPrefetch=%s, fragments=%s]", ts, fragment.getClass().getSimpleName(), is_local, is_remote, is_prefetch,
-                    fragment.getFragmentIdCount()));
-
-        // If this WorkFragment isn't being executed at this txn's base
-        // partition, then
+            LOG.debug(String.format("%s - Executing %s [isLocal=%s, isRemote=%s, isPrefetch=%s, isReadOnly=%s, fragments=%s]",
+                      ts, fragment.getClass().getSimpleName(),
+                      is_local, is_remote, is_prefetch, is_readonly,
+                      fragment.getFragmentIdCount()));
+        
+        // If this WorkFragment isn't being executed at this txn's base partition, then
         // we need to start a new execution round
         if (is_local == false) {
-            long undoToken = this.calculateNextUndoToken(ts, fragment.getReadOnly());
+            long undoToken = this.calculateNextUndoToken(ts, is_readonly);
             ts.initRound(this.partitionId, undoToken);
             ts.startRound(this.partitionId);
         }
@@ -2924,11 +2931,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
         // LOG.info("in executePlanFragments()");
 
-        // *********************************** DEBUG
-        // ***********************************
+        // *********************************** DEBUG ***********************************
         if (debug.val) {
             StringBuilder sb = new StringBuilder();
-            sb.append(String.format("%s - Executing %d fragments [lastTxnId=%d, undoToken=%d]", ts, batchSize, this.lastCommittedTxnId, undoToken));
+            sb.append(String.format("%s - Executing %d fragments [lastTxnId=%d, undoToken=%d]",
+                      ts, batchSize, this.lastCommittedTxnId, undoToken));
             if (trace.val) {
                 Map<String, Object> m = new LinkedHashMap<String, Object>();
                 m.put("Fragments", Arrays.toString(fragmentIds));
@@ -2951,8 +2958,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
             LOG.debug(sb.toString());
         }
-        // *********************************** DEBUG
-        // ***********************************
+        // *********************************** DEBUG ***********************************
 
         // pass attached dependencies to the EE (for non-sysproc work).
         if (input_deps != null && input_deps.isEmpty() == false) {
@@ -3138,10 +3144,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // for this batch. So somehow right now we need to fire this off to
         // either our
         // local executor or to Evan's magical distributed transaction manager
-        BatchPlanner.BatchPlan plan = planner.plan(ts.getTransactionId(), ts.getClientHandle(), this.partitionId, ts.getPredictTouchedPartitions(), ts.isPredictSinglePartition(),
-                ts.getTouchedPartitions(), batchParams);
-
-        assert (plan != null);
+        BatchPlanner.BatchPlan plan = planner.plan(ts.getTransactionId(),
+                                                   this.partitionId,
+                                                   ts.getPredictTouchedPartitions(), 
+                                                   ts.isPredictSinglePartition(),
+                                                   ts.getTouchedPartitions(),
+                                                   batchParams);
+        assert(plan != null);
         if (trace.val) {
             LOG.trace(ts + " - Touched Partitions: " + ts.getTouchedPartitions().values());
             LOG.trace(ts + " - Next BatchPlan:\n" + plan.toString());
@@ -3184,7 +3193,28 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
             throw ex;
         }
+        
+        // If we prefetched queries for this txn, we need to check whether we 
+        // have already submit a request for one of the queries in our batch
+        if (ts.hasPrefetchQueries()) {
+            PartitionSet stmtPartitions[] = plan.getStatementPartitions();
+            for (int i = 0; i < batchSize; i++) {
+                Statement stmt = batchStmts[i].getStatement();
+                // We only need to maintain counters for the prefetchable queries.
+                if (stmt.getPrefetchable()) {
+                    int stmtCnt = ts.updateStatementCounter(stmt, stmtPartitions[i]);
 
+                    // Check whether we have already sent a request to execute this query
+                    if (ts.isMarkedPrefetched(stmt, stmtCnt)) {
+                        // We have... so that means that we don't want to send it
+                        // again and should expect the result to come from somewhere else.
+                        
+                    }
+                }
+            } // FOR
+            
+            
+        }
         VoltTable results[] = null;
 
         // If the BatchPlan only has WorkFragments that are for this partition,
@@ -3199,6 +3229,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // messages out
         // to our remote partitions using the HStoreCoordinator
         else {
+            
+
+            
+            
             if (trace.val)
                 LOG.trace(ts + " - Using PartitionExecutor.dispatchWorkFragments() to execute distributed queries");
             ExecutionState execState = ts.getExecutionState();
@@ -3457,7 +3491,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // *********************************** DEBUG
         // ***********************************
         if (debug.val) {
-            LOG.debug(String.format("%s - Preparing to dispatch %d messages and wait for the results", ts, allFragmentBuilders.size()));
+            LOG.debug(String.format("%s - Preparing to dispatch %d messages and wait for the results [needsProfiling=%s]",
+                      ts, allFragmentBuilders.size(), needs_profiling));
             if (trace.val) {
                 StringBuilder sb = new StringBuilder();
                 sb.append(ts + " - WorkFragments:\n");
@@ -3798,7 +3833,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // to need to get queued up by at the other PartitionExecutors
                 if (num_localPartition > 0) {
                     if (trace.val)
-                        LOG.trace(String.format("%s - Executing %d WorkFragments on local partition", ts, num_localPartition));
+                        LOG.trace(String.format("%s - Executing %d WorkFragments on local partition",
+                                  ts, num_localPartition));
                     for (WorkFragment.Builder fragmentBuilder : this.tmp_localWorkFragmentBuilders) {
                         WorkFragment fragment = fragmentBuilder.build();
                         ParameterSet fragmentParams[] = this.getFragmentParameters(ts, fragment, parameters);
@@ -3944,7 +3980,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     ts.isPredictSinglePartition(), ts.isExecLocal(this.partitionId), cresponse.getClientHandle()));
             if (trace.val) {
                 LOG.trace(ts + " Touched Partitions: " + ts.getTouchedPartitions().values());
-                LOG.trace(ts + " Done Partitions: " + ts.getDonePartitions());
+                if (ts.isPredictSinglePartition() == false)
+                    LOG.trace(ts + " Done Partitions: " + ts.getDonePartitions());
             }
         }
 

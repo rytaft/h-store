@@ -31,11 +31,37 @@ package edu.brown.benchmark.smallbank;
 
 public abstract class SmallBankConstants {
 
+    // ----------------------------------------------------------------
+    // STORED PROCEDURE EXECUTION FREQUENCIES (0-100)
+    // ----------------------------------------------------------------
+    public static final int FREQUENCY_AMALGAMATE        = 20;
+    public static final int FREQUENCY_BALANCE           = 20;
+    public static final int FREQUENCY_DEPOSIT_CHECKING  = 20;
+    public static final int FREQUENCY_SEND_PAYMENT      = 0;
+    public static final int FREQUENCY_TRANSACT_SAVINGS  = 20;
+    public static final int FREQUENCY_WRITE_CHECK       = 20;
+
+    // ----------------------------------------------------------------
+    // TABLE NAMES
+    // ----------------------------------------------------------------
     public static final String TABLENAME_ACCOUNTS   = "ACCOUNTS";
     public static final String TABLENAME_SAVINGS    = "SAVINGS";
     public static final String TABLENAME_CHECKING   = "CHECKING";
     
     public static final int BATCH_SIZE              = 1000;
+    
+    // ----------------------------------------------------------------
+    // ACCOUNT INFORMATION
+    // ----------------------------------------------------------------
+    
+    // Default number of customers in bank
+    public static final int NUM_ACCOUNTS            = 1000000;
+    
+    public static final int HOTSPOT_SIZE            = 100;
+    
+    // ----------------------------------------------------------------
+    // ADDITIONAL CONFIGURATION SETTINGS
+    // ----------------------------------------------------------------
     
     // Percentage of customers that do not have a SAVINGS account [0-100%]
     public static final int PERCENTAGE_NO_SAVINGS   = 0;
@@ -43,11 +69,8 @@ public abstract class SmallBankConstants {
     // Percentage of customers that do not have a CHECKING account [0-100%]
     public static final int PERCENTAGE_NO_CHECKING  = 0;
     
-    // Default number of customers in bank
-    public static final int NUM_ACCOUNTS            = 1000000;
-    
     // Initial balance amount
-    public static final int MIN_BALANCE             = 1;
-    public static final int MAX_BALANCE             = 1000;
+    public static final int MIN_BALANCE             = 100;
+    public static final int MAX_BALANCE             = 5000;
 
 }

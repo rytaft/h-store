@@ -497,7 +497,11 @@ public final class HStoreConf {
         public boolean specexec_ignore_all_local;
         
         @ConfigProperty(
-            description="Special non-blocking remote query execution.",
+            description="Experimental non-blocking remote query execution. All query results will be wrapped " +
+            		    "in a special VoltTable that acts as a placeholder for a remote query whose " +
+            		    "result has not returned yet. A transaction when it tries to access the real " +
+            		    "result. Otherwise, it will proceed as normal. This does not require any changes " +
+            		    "to existing stored procedure code.",
             defaultBoolean=false,
             experimental=true
         )
@@ -505,7 +509,7 @@ public final class HStoreConf {
         
         @ConfigProperty(
             description="Use the row-based MarkovConflictChecker to determine whether queued transactions " +
-            		    "conflict with the current distributed transaction. This is used to selecte " +
+            		    "conflict with the current distributed transaction. This is used to select " +
             		    "speculative execution candidates at runtime. " +
             		    "Note that ${site.markov_enable} must be set to true.",
             defaultBoolean=false,
@@ -699,7 +703,7 @@ public final class HStoreConf {
         
         @ConfigProperty(
             description="Max size of queued transactions before an HStoreSite will stop accepting new requests " +
-                        "from clients and will block the network connections.",
+                        "from clients and will block the network connections. This is per partition.",
             defaultInt=8000,
             experimental=false
         )
@@ -786,7 +790,7 @@ public final class HStoreConf {
         // ----------------------------------------------------------------------------
         
         @ConfigProperty(
-            description="Enable profiling in the TransactionQueueManager and TransactionInitPriority " +
+            description="Enable profiling in the TransactionQueueManager and PartitionLockQueue " +
             		    "in the HStoreSite. " +
             		    "The profiling data collected can be retrieved using the @Statistics sysproc.",
             defaultBoolean=false,
