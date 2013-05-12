@@ -147,11 +147,12 @@ public class ReconfigurationPlan {
         
         private List<ReconfigurationRange<T>> splitReconfigurations(List<ReconfigurationRange<T>> reconfiguration_range, Table catalog_table) {
             
-            long tupleBytes = MemoryEstimator.estimateTupleSize(catalog_table);
-            long currentMax = ReconfigurationConstants.MAX_TRANSFER_BYTES;
-            long maxRows = currentMax/tupleBytes;
-            List<ReconfigurationRange<T>> res = new ArrayList<>();
+
             try{
+                long tupleBytes = MemoryEstimator.estimateTupleSize(catalog_table);
+                long currentMax = ReconfigurationConstants.MAX_TRANSFER_BYTES;
+                long maxRows = currentMax/tupleBytes;
+                List<ReconfigurationRange<T>> res = new ArrayList<>();
                 Comparable<?> sampleKey = reconfiguration_range.get(0).getMin_inclusive() ;
                 if (sampleKey instanceof Short || sampleKey instanceof Integer || sampleKey instanceof Long  ){
                     for(ReconfigurationRange<T> range : reconfiguration_range){
@@ -168,8 +169,10 @@ public class ReconfigurationPlan {
                         }
                         
                     }
+                } else{
+                
+                    throw new NotImplementedException("Can only handle types of small, long, int. Class: " +sampleKey.getClass().getName());
                 }
-                throw new NotImplementedException("Can only handle types of small, long, int ");
                 
             } catch(Exception ex){
               LOG.error("Exception splitting reconfiguration ranges, returning original list",ex);  
