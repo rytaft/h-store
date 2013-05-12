@@ -159,6 +159,9 @@ public class TestPlannedPartitions extends BaseTestCase {
     assertTrue(range.min_inclusive == 25 && range.max_exclusive == 26 && range.old_partition == 3 && range.new_partition == 1);
   }
   
+  public void testPreviousPhase() throws Exception{
+      assertTrue(false);
+  }
   
   public void testReconfigurationTable2() throws Exception {
     List<PartitionRange<Integer>> olds = new ArrayList<>();

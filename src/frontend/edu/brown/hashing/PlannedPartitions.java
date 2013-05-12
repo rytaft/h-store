@@ -75,6 +75,7 @@ public class PlannedPartitions implements JSONSerializable {
     private Map<CatalogType, String> catalog_to_table_map;
     private ParameterMappingsSet paramMappings;
     private String current_phase;
+    private String previous_phase;
     private String default_table = null;
 
     public PlannedPartitions(CatalogContext catalog_context, File planned_partition_json_file) throws Exception {
@@ -82,6 +83,8 @@ public class PlannedPartitions implements JSONSerializable {
     }
 
     public PlannedPartitions(CatalogContext catalog_context, JSONObject planned_partition_json) throws Exception {
+        this.current_phase = null;
+        this.previous_phase = null;
         this.catalog_context = catalog_context;
         this.partition_phase_map = new HashMap<>();
         this.catalog_to_table_map = new HashMap<>();
@@ -159,6 +162,30 @@ public class PlannedPartitions implements JSONSerializable {
     }
 
     public int getPartitionId(CatalogType catalog, Object id) throws Exception {
+        String table_name = this.catalog_to_table_map.get(catalog);
+        return this.getPartitionId(table_name, id);
+    }
+    
+    /**
+     * Get the previous partition id for a given table and partition id/key
+     * 
+     * @param table_name
+     * @param id
+     * @return the partition id, or -1 / null partition if the id/key is not
+     *         found in the plan OR if there is no previous phase
+     * @throws Exception
+     */
+    public int getPreviousPartitionId(String table_name, Object id) throws Exception {
+        String previousPhase = this.getPreviousPhase_phase();
+        if(previousPhase == null)
+            return -1;
+        PartitionPhase phase = this.partition_phase_map.get(previousPhase);
+        PartitionedTable<?> table = phase.getTable(table_name);
+        assert table != null : "Table not found " + table_name;
+        return table.findPartition(id);
+    }
+
+    public int getPreviousPartitionId(CatalogType catalog, Object id) throws Exception {
         String table_name = this.catalog_to_table_map.get(catalog);
         return this.getPartitionId(table_name, id);
     }
@@ -389,6 +416,7 @@ public class PlannedPartitions implements JSONSerializable {
         }
         synchronized (this) {
             this.current_phase = new_phase;
+            this.previous_phase = old_phase;
         }
         try {
             if (old_phase == null) {
@@ -409,6 +437,14 @@ public class PlannedPartitions implements JSONSerializable {
         return this.current_phase;
     }
 
+    /**
+     * @return the current partition phase/epoch
+     */
+    public synchronized String getPreviousPhase_phase() {
+        return this.previous_phase;
+    }
+
+    
     /*
      * (non-Javadoc)
      * @see org.json.JSONString#toJSONString()
