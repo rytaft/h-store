@@ -92,7 +92,8 @@ public class ReconfigurationPlan {
                     old_range.partition, new_range.partition));
               }
               max_old_accounted_for = old_range.max_exclusive;
-              new_range = new_ranges.next();
+              if(new_ranges.hasNext())
+                  new_range = new_ranges.next();
             } else {
               if (old_range.max_exclusive.compareTo(new_range.max_exclusive) <= 0) {
                 // The old range is a subset of the new range

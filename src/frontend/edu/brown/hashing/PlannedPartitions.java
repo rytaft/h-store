@@ -64,6 +64,7 @@ public class PlannedPartitions implements JSONSerializable {
     public static final String TABLES = "tables";
     public static final String PARTITIONS = "partitions";
     private static final String DEFAULT_TABLE = "default_table";
+    public static final VoltType DEFAULT_VOLTTYPE = VoltType.BIGINT;
 
     static {
         LoggerUtil.attachObserver(LOG, debug, trace);
@@ -223,10 +224,18 @@ public class PlannedPartitions implements JSONSerializable {
             Iterator<String> table_names = json_tables.keys();
             while (table_names.hasNext()) {
                 String table_name = table_names.next();
-                assert (table_vt_map.containsKey(table_name.toLowerCase()));
+                VoltType vt = null;
+                if(table_vt_map.containsKey(table_name.toLowerCase())){
+                    vt = table_vt_map.get(table_name);
+                }
+                else{
+                    LOG.info(String.format("Using default voltType %s for table %s ", DEFAULT_VOLTTYPE, table_name));
+                    vt=DEFAULT_VOLTTYPE;
+                }
+                    
                 JSONObject table_json = json_tables.getJSONObject(table_name.toLowerCase());
                 // Class<?> c = table_vt_map.get(table_name).classFromType();
-                this.tables_map.put(table_name, new PartitionedTable<>(table_vt_map.get(table_name), table_name, table_json));
+                this.tables_map.put(table_name, new PartitionedTable<>(vt, table_name, table_json));
             }
         }
 
@@ -427,7 +436,7 @@ public class PlannedPartitions implements JSONSerializable {
             }
             return new ReconfigurationPlan(this.partition_phase_map.get(old_phase), this.partition_phase_map.get(new_phase));
         } catch (Exception ex) {
-            Log.error(ex);
+            LOG.error("Exception on setting partition phase", ex);
             throw new RuntimeException("Exception building Reconfiguration plan", ex);
         }
 
