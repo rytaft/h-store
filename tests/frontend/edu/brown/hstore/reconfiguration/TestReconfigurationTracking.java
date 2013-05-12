@@ -207,6 +207,8 @@ public class TestReconfigurationTracking extends BaseTestCase {
         ReconfigurationTrackingInterface tracking1 = new ReconfigurationTracking(p,plan,1);
         //PE 2
         ReconfigurationTrackingInterface tracking2 = new ReconfigurationTracking(p, plan,2);
+        ReconfigurationTrackingInterface tracking3 = new ReconfigurationTracking(p, plan,3);
+        ReconfigurationTrackingInterface tracking4 = new ReconfigurationTracking(p, plan,4);
         
         //keys that should be present
         assertTrue(tracking1.checkKeyOwned(tbl, 1L));
@@ -252,6 +254,39 @@ public class TestReconfigurationTracking extends BaseTestCase {
         assertTrue(range.getMin_inclusive() ==  100L && range.getMax_exclusive() == 100L); 
         
 
+        //check table 2
+        assertTrue(tracking3.checkKeyOwned("table2", 1L));
+        ex = null;
+        try{
+            tracking4.checkKeyOwned("table2", 1L);
+        } catch(ReconfigurationException e){
+          ex =e;  
+        }
+        assertNotNull(ex);
+        assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_NOT_MIGRATED,ex.exceptionType);        
+        assertTrue(ex.dataNotYetMigrated.size()== 1);
+        range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.get(0);
+        assertTrue(range.getMin_inclusive() ==  1L && range.getMax_exclusive() == 1L);
+        
+        tracking3.markKeyAsMigratedOut("table2", 1L);
+        tracking4.markKeyAsReceived("table2", 1L);
+        assertTrue(tracking4.checkKeyOwned("table2", 1L));
+        
+        ex = null;
+        try{
+            assertTrue(tracking3.checkKeyOwned("table2", 1L));
+        } catch(ReconfigurationException e){
+          ex =e;  
+        }
+        assertNotNull(ex);
+        assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_MIGRATED_OUT,ex.exceptionType);        
+        assertTrue(ex.dataNotYetMigrated.size()== 0);
+        assertTrue(ex.dataMigratedOut.size()== 1);
+        range = (ReconfigurationRange<Long>) ex.dataMigratedOut.get(0);  
+        assertTrue(range.getMin_inclusive() ==  1L && range.getMax_exclusive() == 1L);      
+        
+
+        
         
     }
 
