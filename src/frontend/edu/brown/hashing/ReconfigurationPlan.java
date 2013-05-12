@@ -10,11 +10,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.log4j.Logger;
 import org.voltdb.VoltType;
+import org.voltdb.catalog.Table;
 
+import edu.brown.designer.MemoryEstimator;
 import edu.brown.hashing.PlannedPartitions.PartitionPhase;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
+import edu.brown.hstore.reconfiguration.ReconfigurationConstants;
+import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
 
 /**
  * The delta between two partition plans
@@ -22,6 +28,8 @@ import edu.brown.hashing.PlannedPartitions.PartitionedTable;
  *
  */
 public class ReconfigurationPlan {
+
+    private static final Logger LOG = Logger.getLogger(ReconfigurationPlan.class);
     Map<String,ReconfigurationTable<? extends Comparable<?>>> tables_map;
     
     //Helper map of partition ID and outgoing/incoming ranges for this reconfiguration
@@ -133,6 +141,40 @@ public class ReconfigurationPlan {
 
             }
           }
+          reconfigurations = splitReconfigurations(reconfigurations,old_table.getCatalog_table());
+        }
+        
+        
+        private List<ReconfigurationRange<T>> splitReconfigurations(List<ReconfigurationRange<T>> reconfiguration_range, Table catalog_table) {
+            
+            long tupleBytes = MemoryEstimator.estimateTupleSize(catalog_table);
+            long currentMax = ReconfigurationConstants.MAX_TRANSFER_BYTES;
+            long maxRows = currentMax/tupleBytes;
+            List<ReconfigurationRange<T>> res = new ArrayList<>();
+            try{
+                Comparable<?> sampleKey = reconfiguration_range.get(0).getMin_inclusive() ;
+                if (sampleKey instanceof Short || sampleKey instanceof Integer || sampleKey instanceof Long  ){
+                    for(ReconfigurationRange<T> range : reconfiguration_range){
+                        long max = ((Number)range.max_exclusive).longValue();
+                        long min = ((Number)range.min_inclusive).longValue();
+                        long max_potential_keys = max - min;
+                        if (max_potential_keys > maxRows){
+                            //We need to split up this range
+                            //TODO leftoff ae
+                            
+                        } else {
+                            //This range is ok to keep
+                            res.add(range);
+                        }
+                        
+                    }
+                }
+                throw new NotImplementedException("Can only handle types of small, long, int ");
+                
+            } catch(Exception ex){
+              LOG.error("Exception splitting reconfiguration ranges, returning original list",ex);  
+            }
+            return reconfiguration_range;
         }
       }
       

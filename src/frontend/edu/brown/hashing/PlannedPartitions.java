@@ -90,6 +90,7 @@ public class PlannedPartitions implements JSONSerializable {
         this.partition_phase_map = new HashMap<>();
         this.catalog_to_table_map = new HashMap<>();
         this.paramMappings = catalog_context.paramMappings;
+        
         // TODO find catalogContext.getParameter mapping to find
         // statement_column
         // from project mapping (ae)
@@ -235,7 +236,7 @@ public class PlannedPartitions implements JSONSerializable {
                     
                 JSONObject table_json = json_tables.getJSONObject(table_name.toLowerCase());
                 // Class<?> c = table_vt_map.get(table_name).classFromType();
-                this.tables_map.put(table_name, new PartitionedTable<>(vt, table_name, table_json));
+                this.tables_map.put(table_name, new PartitionedTable<>(vt, table_name, table_json, catalog_context.getTableByName(table_name)));
             }
         }
 
@@ -253,8 +254,10 @@ public class PlannedPartitions implements JSONSerializable {
         protected List<PartitionRange<T>> partitions;
         protected String table_name;
         private VoltType vt;
+        private Table catalog_table;
 
-        public PartitionedTable(VoltType vt, String table_name, JSONObject table_json) throws Exception {
+        public PartitionedTable(VoltType vt, String table_name, JSONObject table_json, Table catalog_table) throws Exception {
+            this.catalog_table = catalog_table;
             this.partitions = new ArrayList<>();
             this.table_name = table_name;
             this.vt = vt;
@@ -324,6 +327,10 @@ public class PlannedPartitions implements JSONSerializable {
             for (String range : partition_values.split(",")) {
                 this.partitions.add(new PartitionRange<T>(this.vt, partition_id, range));
             }
+        }
+
+        public Table getCatalog_table() {
+            return catalog_table;
         }
     }
 
