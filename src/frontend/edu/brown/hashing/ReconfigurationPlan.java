@@ -158,8 +158,26 @@ public class ReconfigurationPlan {
         public String toString(){
           return String.format("ReconfigRange [%s,%s) id:%s->%s ",min_inclusive,max_exclusive,old_partition,new_partition);
         }
+        
+        //FIXME Ugh this needs to be fixed the generic comparable in these classes are a mess
+        public boolean inRange(Comparable<?> key){
+            @SuppressWarnings("unchecked")
+            T castKey = (T)key;
+            if(this.min_inclusive.compareTo(castKey)<=0 && this.max_exclusive.compareTo(castKey)>0){
+                return true;
+            }
+            return false;
+        }
+        
+        @SuppressWarnings("unchecked")
+        public <T> T castKey(Comparable<?> key){
+            return (T)key;
+        }  
       }
+      
 
+      
+      
     public Map<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> getOutgoing_ranges() {
         return outgoing_ranges;
     }

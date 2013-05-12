@@ -17,34 +17,54 @@ public interface ReconfigurationTrackingInterface {
     
     /**
      * Mark an individual key as migrated away from this partition
+     * Does not verify that this key was expected
      * @param table_name
      * @param key
      * @return
      */
-    public boolean markKeyAsMigratedOut(String table_name, Object key ); 
+    public boolean markKeyAsMigratedOut(String table_name, Comparable<?> key ); 
     
     /**
-     * Mark a key range migrated away from this partition
+     * Mark a key range migrated away from this partition      
+     * Does not verify that this range was expected
      * @param range
      * @return
      */
     public boolean markRangeAsMigratedOut(List<ReconfigurationRange<? extends Comparable<?>>> range );
     
     /**
+     * Mark a key range migrated away from this partition
+     * Does not verify that this range was expected
+     * @param range
+     * @return
+     */
+    public boolean markRangeAsMigratedOut(ReconfigurationRange<? extends Comparable<?>> range );
+    
+    /**
      * Mark a key received by this partition
+     * Does not verify that this key was expected
      * @param table_name
      * @param key
      * @return
      */
-    public boolean markKeyAsReceived(String table_name, Object key);
+    public boolean markKeyAsReceived(String table_name, Comparable<?> key);
     
     
     /**
-     * Mark a range as received by this partition
+     * Mark a range as received by this partition.
+     * Does not verify that this range was expected
      * @param range
      * @return
      */
     public boolean markRangeAsReceived(List<ReconfigurationRange<? extends Comparable<?>>> range );
+    
+    /**
+     * Mark a range as received by this partition
+     * Does not verify that this range was expected
+     * @param range
+     * @return
+     */
+    public boolean markRangeAsReceived(ReconfigurationRange<? extends Comparable<?>> range );
     
     /**
      * Check if a key is owned and currently present
@@ -53,5 +73,5 @@ public interface ReconfigurationTrackingInterface {
      * @return if the key is owned or not.
      * @throws ReconfigurationException to indicate a set of keys must be migrated out, in or both
      */
-    public boolean checkKeyOwned(String table_name, Object key) throws ReconfigurationException;
+    public boolean checkKeyOwned(String table_name, Comparable<?> key) throws ReconfigurationException;
 }

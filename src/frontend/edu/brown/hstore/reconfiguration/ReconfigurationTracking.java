@@ -56,6 +56,8 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         this.partition_id = partition_id;
         this.migratedIn = new HashMap<String, Set<Comparable>>();
         this.migratedOut = new HashMap<String, Set<Comparable>>();
+        this.dataMigratedIn = new ArrayList<>();
+        this.dataMigratedOut = new ArrayList<>();
     }
     
     public ReconfigurationTracking(PlannedPartitions partitionPlan, ReconfigurationPlan plan, int partition_id){
@@ -69,46 +71,56 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
             this.incoming_ranges.addAll(plan.getIncoming_ranges().get(partition_id));
         this.partition_id = partition_id;*/       
     }
+  
+    @Override 
+    public boolean markRangeAsMigratedOut(ReconfigurationRange<? extends Comparable<?>> range ){
+        return this.dataMigratedOut.add(range);
+    }
+    
     
     @Override 
     public boolean markRangeAsMigratedOut(List<ReconfigurationRange<? extends Comparable<?>>> range ){
-        throw new NotImplementedException();
+        return this.dataMigratedOut.addAll(range);
     }
     
     @Override
     public boolean markRangeAsReceived(List<ReconfigurationRange<? extends Comparable<?>>> range ){
-
-        throw new NotImplementedException();
+        return this.dataMigratedIn.addAll(range);
     }
     
-    @SuppressWarnings({ "unused", "rawtypes", "unchecked" })
-    private boolean markAsMigrated(Map<String,Set<Comparable>> migratedMapSet, String table_name, Object key){
+    @Override
+    public boolean markRangeAsReceived(ReconfigurationRange<? extends Comparable<?>> range ){
+        return this.dataMigratedIn.add(range);
+    }
+    
+
+    private boolean markAsMigrated(Map<String,Set<Comparable>> migratedMapSet, String table_name, Comparable<?> key){
         if(migratedMapSet.containsKey(table_name) == false){
             migratedMapSet.put(table_name, new HashSet());
         }
         assert(key instanceof Comparable);
-        return migratedMapSet.get(table_name).add((Comparable) key);
+        return migratedMapSet.get(table_name).add(key);
     }
 
     private boolean checkMigratedMapSet(Map<String,Set<Comparable>> migratedMapSet, String table_name, Object key){
         if(migratedMapSet.containsKey(table_name) == false){
            return false;
         }
-        return migratedMapSet.get(table_name).contains((Comparable)key);
+        return migratedMapSet.get(table_name).contains(key);
     }
     
     @Override
-    public boolean markKeyAsMigratedOut(String table_name, Object key) {
+    public boolean markKeyAsMigratedOut(String table_name, Comparable<?> key) {
         return markAsMigrated(migratedOut, table_name, key);
     }
 
     @Override
-    public boolean markKeyAsReceived(String table_name, Object key) {
+    public boolean markKeyAsReceived(String table_name, Comparable<?> key) {
         return markAsMigrated(migratedIn, table_name, key);
     }
 
     @Override
-    public boolean checkKeyOwned(String table_name, Object key) throws ReconfigurationException {
+    public boolean checkKeyOwned(String table_name, Comparable<?> key) throws ReconfigurationException {
         
             int expectedPartition;
             int previousPartition;
@@ -127,23 +139,39 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
             } else if (expectedPartition == partition_id &&  previousPartition != partition_id) {
                 //Key should be moving to here
                 if (debug.val) LOG.debug(String.format("Key %s should be at %s. Checking if migrated in",key,partition_id));
+                
+                //Has the key been received as a single key
                 if (checkMigratedMapSet(migratedIn,table_name,key)== true){
                     return true;
-                } else {                
-                    //  TODO check ranges if false
-                    ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED,table_name, previousPartition,expectedPartition,(Comparable) key);
+                } else {                       
+                    //check if the key was received out in a range        
+                    for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedIn){
+                        if(range.inRange(key)){
+                            return true;
+                        }
+                    }
+                    // The key has not been received. Throw an exception to notify
+                    ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED,table_name, previousPartition,expectedPartition,key);
                     throw ex;
                 }
                 
             } else if (expectedPartition != partition_id &&  previousPartition == partition_id) {
                 //Key should be moving away
                 if (debug.val) LOG.debug(String.format("Key %s was at %s. Checking if migrated ",key,partition_id));
+                
+                //Check to see if we migrated this key individually
                 if (checkMigratedMapSet(migratedOut,table_name,key)){
-
-                    //TODO check ranges
-                    ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table_name, previousPartition,expectedPartition,(Comparable) key);
+                    ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table_name, previousPartition,expectedPartition, key);
                     throw ex;
                 }
+                //check to see if this key was migrated in a range
+                for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedOut){
+                    if(range.inRange(key)){
+                        ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table_name, previousPartition,expectedPartition, key);
+                        throw ex;
+                    }
+                }
+                
                 return true;
             } else if (expectedPartition != partition_id &&  previousPartition != partition_id) {
                 //We didnt have nor are are expected to
