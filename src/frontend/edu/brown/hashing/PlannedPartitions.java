@@ -275,12 +275,19 @@ public class PlannedPartitions implements JSONSerializable {
             Collections.sort(this.partitions);
         }
 
-        protected PartitionedTable(List<PartitionRange<T>> partitions, String table_name, VoltType vt) {
+        public PartitionedTable(List<PartitionRange<T>> partitions, String table_name, VoltType vt) {
             this.partitions = partitions;
             this.table_name = table_name;
             this.vt = vt;
         }
 
+        public PartitionedTable(List<PartitionRange<T>> partitions, String table_name, VoltType vt, Table catalog_table ) {
+            this.partitions = partitions;
+            this.table_name = table_name;
+            this.vt = vt;
+            this.catalog_table = catalog_table;
+        }
+        
         /**
          * Find the partition for a key
          * 

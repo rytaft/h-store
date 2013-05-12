@@ -53,7 +53,7 @@ public class ReconfigurationPlan {
     
     protected void registerReconfigurationRanges(){
         for(String table_name : tables_map.keySet()){
-            for(ReconfigurationRange<?> range : tables_map.get(table_name).reconfigurations){
+            for(ReconfigurationRange<?> range : tables_map.get(table_name).getReconfigurations()){
                 if(outgoing_ranges.containsKey(range.old_partition)==false){
                     outgoing_ranges.put(range.old_partition, new ArrayList<ReconfigurationRange<? extends Comparable<?>>>());
                 }
@@ -67,11 +67,11 @@ public class ReconfigurationPlan {
     }
 
     public static class ReconfigurationTable<T extends Comparable<T>> {
-        List<ReconfigurationRange<T>> reconfigurations;
+        private List<ReconfigurationRange<T>> reconfigurations;
         String table_name;
         public ReconfigurationTable(PartitionedTable<T> old_table, PartitionedTable<T> new_table) throws Exception {
           table_name = old_table.table_name;
-          reconfigurations = new ArrayList<ReconfigurationRange<T>>();
+          setReconfigurations(new ArrayList<ReconfigurationRange<T>>());
           Iterator<PartitionRange<T>> old_ranges = old_table.partitions.iterator();
           Iterator<PartitionRange<T>> new_ranges = new_table.partitions.iterator();
 
@@ -96,7 +96,7 @@ public class ReconfigurationPlan {
                 // No change do nothing
               } else {
                 // Same range new partition
-                reconfigurations.add(new ReconfigurationRange<T>(table_name, old_range.vt, old_range.min_inclusive, old_range.max_exclusive,
+                getReconfigurations().add(new ReconfigurationRange<T>(table_name, old_range.vt, old_range.min_inclusive, old_range.max_exclusive,
                     old_range.partition, new_range.partition));
               }
               max_old_accounted_for = old_range.max_exclusive;
@@ -110,7 +110,7 @@ public class ReconfigurationPlan {
                   max_old_accounted_for = old_range.max_exclusive;
                 } else {
                   // Need to move the old range to new range
-                  reconfigurations.add(new ReconfigurationRange<T>(table_name, old_range.vt, max_old_accounted_for, old_range.max_exclusive,
+                  getReconfigurations().add(new ReconfigurationRange<T>(table_name, old_range.vt, max_old_accounted_for, old_range.max_exclusive,
                       old_range.partition, new_range.partition));
                   max_old_accounted_for = old_range.max_exclusive;
                   
@@ -128,7 +128,7 @@ public class ReconfigurationPlan {
                     max_old_accounted_for = new_range.max_exclusive;
                   } else {
                     // move
-                    reconfigurations.add(new ReconfigurationRange<T>(table_name, old_range.vt, max_old_accounted_for, new_range.max_exclusive,
+                    getReconfigurations().add(new ReconfigurationRange<T>(table_name, old_range.vt, max_old_accounted_for, new_range.max_exclusive,
                         old_range.partition, new_range.partition));
                     max_old_accounted_for = new_range.max_exclusive;
                   }
@@ -141,14 +141,21 @@ public class ReconfigurationPlan {
 
             }
           }
-          reconfigurations = splitReconfigurations(reconfigurations,old_table.getCatalog_table());
+          setReconfigurations(splitReconfigurations(getReconfigurations(),new_table.getCatalog_table()));
         }
         
         
+        
+        
         private List<ReconfigurationRange<T>> splitReconfigurations(List<ReconfigurationRange<T>> reconfiguration_range, Table catalog_table) {
-            
-
+            if(catalog_table==null){
+                LOG.info("Catalog table is null. Not splitting reconfigurations");
+                return reconfiguration_range;
+            }
+            boolean modified = false;
             try{
+                
+                LOG.info(String.format("Trying to split on table : %s", catalog_table.fullName()));
                 long tupleBytes = MemoryEstimator.estimateTupleSize(catalog_table);
                 long currentMax = ReconfigurationConstants.MAX_TRANSFER_BYTES;
                 long maxRows = currentMax/tupleBytes;
@@ -160,8 +167,22 @@ public class ReconfigurationPlan {
                         long min = ((Number)range.min_inclusive).longValue();
                         long max_potential_keys = max - min;
                         if (max_potential_keys > maxRows){
+                            LOG.info(String.format("Splitting up a range %s-%s. Max row:%s. Table:%s",min,max,maxRows,table_name));
+                            long orig_max = max;
+                            Class<?> keyclass =  sampleKey.getClass();
+                            long keysRemaining = max_potential_keys;
+
                             //We need to split up this range
-                            //TODO leftoff ae
+                            while(keysRemaining > 0) {
+                                max = Math.min(min+maxRows,orig_max);
+                                LOG.info(String.format("New range %s-%s",min,max));
+                                ReconfigurationRange<T> newRange = new ReconfigurationRange<T>(
+                                        range.table_name, range.vt, (T)keyclass.cast(min), (T)keyclass.cast(max), range.old_partition, range.new_partition);
+                                min = max;
+                                keysRemaining-=maxRows;
+                                modified = true;
+                                res.add(newRange);
+                            }
                             
                         } else {
                             //This range is ok to keep
@@ -173,11 +194,28 @@ public class ReconfigurationPlan {
                 
                     throw new NotImplementedException("Can only handle types of small, long, int. Class: " +sampleKey.getClass().getName());
                 }
-                
+                if(modified){
+                    return res;
+                }
             } catch(Exception ex){
               LOG.error("Exception splitting reconfiguration ranges, returning original list",ex);  
             }
+
             return reconfiguration_range;
+        }
+
+
+
+
+        public List<ReconfigurationRange<T>> getReconfigurations() {
+            return reconfigurations;
+        }
+
+
+
+
+        public void setReconfigurations(List<ReconfigurationRange<T>> reconfigurations) {
+            this.reconfigurations = reconfigurations;
         }
       }
       

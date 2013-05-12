@@ -3,6 +3,9 @@
  */
 package edu.brown.hstore;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.log4j.Logger;
 import org.junit.Before;
 import org.junit.Test;
@@ -17,7 +20,10 @@ import org.voltdb.utils.VoltTableUtil;
 import edu.brown.BaseTestCase;
 import edu.brown.benchmark.ycsb.YCSBConstants;
 import edu.brown.catalog.CatalogUtil;
+import edu.brown.hashing.PlannedPartitions.PartitionRange;
+import edu.brown.hashing.PlannedPartitions.PartitionedTable;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.hashing.ReconfigurationPlan.ReconfigurationTable;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
 import edu.brown.utils.CollectionUtil;
@@ -90,14 +96,31 @@ public class TestReconfigurationEE extends BaseTestCase {
     
     @Test
     public void testExtractDataLarge() throws Exception {
-
-        long tuples= 9000;
+        List<PartitionRange<Long>> olds = new ArrayList<>();
+        List<PartitionRange<Long>> news = new ArrayList<>();
+        long tuples= 15000;
         this.loadData(tuples);
         assertTrue(true);
-        ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(0), tuples, 1, 2);
-        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
-        VoltTable resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);       
-        assertEquals(tuples,resTable.getRowCount());
+        String rangeString = String.format("0-%s", tuples);
+        olds.add(new PartitionRange<Long>(VoltType.BIGINT, 1, rangeString));
+        PartitionedTable<Long> old_table = new PartitionedTable<Long>(olds, TARGET_TABLE, VoltType.BIGINT, this.catalog_tbl);
+
+        news.add(new PartitionRange<Long>(VoltType.BIGINT, 2, rangeString));
+        PartitionedTable<Long> new_table = new PartitionedTable<Long>(news, TARGET_TABLE, VoltType.BIGINT, this.catalog_tbl);
+
+        ReconfigurationTable<Long> reconfig = new ReconfigurationTable<>(old_table, new_table);     
+        long rowCount = 0;
+        for(ReconfigurationRange<Long> range : reconfig.getReconfigurations()){
+
+            assertNotNull(range);
+            //assertEquals((Long)tuples, range.getMax_exclusive());
+            
+            // ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(0), tuples, 1, 2);
+            VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
+            VoltTable resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1);
+            rowCount+=resTable.getRowCount();
+        }
+        assertEquals(tuples,rowCount);
     }
     
     @Test
