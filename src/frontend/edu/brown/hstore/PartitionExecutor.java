@@ -3086,7 +3086,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             for (Pair<Column, Integer> offsetPair : offsets) {
                 Object parameterToCheck = parameterSet.toArray()[offsetPair.getSecond()];
                 try {
-                    boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), parameterToCheck);
+                    //FIXME make generic
+                    LOG.info(String.format("PE (%s) checking if key owned",this.partitionId));
+                    boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), (Long)parameterToCheck);
                     LOG.info("Key owned " + keyOwned);
                     // Check with the reconfig tracking function if the values
                     // are present
@@ -5052,7 +5054,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, Long max_exclusive, VoltTable vt) throws Exception {
         LOG.info(String.format("Received tuples for %s (%s) (from:%s to:%s) for range, " + "(from:%s to:%s)", txnId, vt.getRowCount(), newPartitionId, oldPartitionId, min_inclusive, max_exclusive));
 
-        if (min_inclusive == max_exclusive || min_inclusive == (max_exclusive + 1)) {
+        if (min_inclusive.compareTo(max_exclusive) == 0 || min_inclusive.compareTo(max_exclusive + 1)==0) {
             // We have received a single key
             LOG.info(String.format("PE (%s) marking key as received %s %s ",this.partitionId, table_name,min_inclusive));
             this.reconfiguration_tracker.markKeyAsReceived(table_name, min_inclusive);
