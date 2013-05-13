@@ -168,6 +168,10 @@ public class PlannedPartitions implements JSONSerializable {
         return this.getPartitionId(table_name, id);
     }
     
+    public String getTableName(CatalogType catalog){
+        return this.catalog_to_table_map.get(catalog);
+    }
+    
     /**
      * Get the previous partition id for a given table and partition id/key
      * 
