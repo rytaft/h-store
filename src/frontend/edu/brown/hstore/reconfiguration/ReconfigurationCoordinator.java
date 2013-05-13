@@ -582,5 +582,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public String getCurrentPartitionPlan() {
         return this.currentPartitionPlan;
     }
+    
+    public boolean getReconfigurationInProgress(){
+      return this.reconfigurationInProgress.get();
+    }
 
 }
