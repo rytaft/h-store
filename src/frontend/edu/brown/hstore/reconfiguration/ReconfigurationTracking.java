@@ -12,6 +12,7 @@ import java.util.Set;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
+import org.voltdb.catalog.CatalogType;
 import org.voltdb.exceptions.ReconfigurationException;
 import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 
@@ -119,6 +120,17 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         return markAsMigrated(migratedIn, table_name, key);
     }
 
+    @Override
+    public boolean checkKeyOwned(CatalogType catalog, Object key) throws ReconfigurationException{
+        
+        if(key instanceof Comparable<?>){
+            return checkKeyOwned(this.partitionPlan.getTableName(catalog), (Comparable)key);
+        }
+        else
+            throw new NotImplementedException("Only comparable keys are supported");
+    }
+    
+    
     @Override
     public boolean checkKeyOwned(String table_name, Comparable<?> key) throws ReconfigurationException {
         

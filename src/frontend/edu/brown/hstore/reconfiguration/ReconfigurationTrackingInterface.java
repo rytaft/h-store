@@ -5,6 +5,7 @@ package edu.brown.hstore.reconfiguration;
 
 import java.util.List;
 
+import org.voltdb.catalog.CatalogType;
 import org.voltdb.exceptions.ReconfigurationException;
 
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
@@ -74,4 +75,13 @@ public interface ReconfigurationTrackingInterface {
      * @throws ReconfigurationException to indicate a set of keys must be migrated out, in or both
      */
     public boolean checkKeyOwned(String table_name, Comparable<?> key) throws ReconfigurationException;
+    
+    /**
+     * Check if a key is owned and currently present
+     * @param catalog
+     * @param key
+     * @return if the key is owned or not.
+     * @throws ReconfigurationException to indicate a set of keys must be migrated out, in or both
+     */
+    public boolean checkKeyOwned(CatalogType catalog, Object key) throws ReconfigurationException;
 }
