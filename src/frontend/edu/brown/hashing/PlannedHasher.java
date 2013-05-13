@@ -113,4 +113,8 @@ public class PlannedHasher extends DefaultHasher {
         throw new NotImplementedException("Hashing without Catalog not supported");
     }
 
+    public synchronized PlannedPartitions getPlanned_partitions() {
+        return planned_partitions;
+    }
+
 }

@@ -21,6 +21,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
 
 import edu.brown.hashing.PlannedHasher;
+import edu.brown.hashing.PlannedPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.HStoreSite;
@@ -78,6 +79,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     // in reconfiguration;
     private Map<Integer, ReconfigurationState> partitionStates;
     private Map<Integer, ReconfigurationState> initialPartitionStates;
+    private PlannedPartitions planned_partitions;
 
     public ReconfigurationCoordinator(HStoreSite hstore_site) {
         // TODO Auto-generated constructor stub
@@ -149,13 +151,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
             try {
                 // Find reconfig plan
                 reconfig_plan = hasher.changePartitionPhase(partitionPlan);
+                this.planned_partitions = hasher.getPlanned_partitions();
                 if (reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
                     // Nothing to do for S&C. PE's directly notified by
                     // sysProcedure
                 } else if(reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL) {
                     if (reconfig_plan != null) {
                         for (PartitionExecutor executor : this.local_executors) {
-                            executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE);
+                            executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
                             this.partitionStates.put(partitionId, ReconfigurationState.PREPARE);
                         }
                         //Notify leader that this node has been initialized / prepared

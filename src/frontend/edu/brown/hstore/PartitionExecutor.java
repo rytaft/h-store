@@ -114,6 +114,7 @@ import com.google.protobuf.RpcCallback;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.catalog.PlanFragmentIdGenerator;
 import edu.brown.catalog.special.CountedStatement;
+import edu.brown.hashing.PlannedPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.Hstoreservice.LivePullRequest;
@@ -151,6 +152,8 @@ import edu.brown.hstore.internal.UtilityWorkMessage.UpdateMemoryMessage;
 import edu.brown.hstore.internal.WorkFragmentMessage;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
 import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator;
+import edu.brown.hstore.reconfiguration.ReconfigurationTracking;
+import edu.brown.hstore.reconfiguration.ReconfigurationTrackingInterface;
 import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
 import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator.ReconfigurationState;
 import edu.brown.hstore.specexec.AbstractConflictChecker;
@@ -984,7 +987,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // Process Work
                 // -------------------------------
                 if (nextWork != null) {
-                    LOG.info("Next Work: " + nextWork);
                     if (trace.val)
                         LOG.trace("Next Work: " + nextWork);
                     if (hstore_conf.site.exec_profiling) {
@@ -4841,6 +4843,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges;
     private HashMap<Long, Boolean> to_pull;
     private HashMap<Long, Integer> pulled_tuples;
+    private ReconfigurationTrackingInterface reconfiguration_tracker;
 
     public Debug getDebugContext() {
         if (this.cachedDebugContext == null) {
@@ -4866,10 +4869,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.reconfig_plan = null;
             this.outgoing_ranges = null;
             this.incoming_ranges = null;
+            this.reconfiguration_tracker = null;
         }
     }
 
-    public void initReconfiguration(ReconfigurationPlan reconfig_plan, ReconfigurationProtocols reconfig_protocol, ReconfigurationState reconfig_state) throws Exception {
+    public void initReconfiguration(ReconfigurationPlan reconfig_plan, ReconfigurationProtocols reconfig_protocol, ReconfigurationState reconfig_state, PlannedPartitions planned_partitions) throws Exception {
         // FIXME (ae) We need to check with Andy about concurrency issues here
         LOG.info(String.format("PE %s InitReconfiguration plan  %s %s", this.partitionId, reconfig_protocol, reconfig_state));
         if (this.reconfig_plan != null) {
@@ -4892,8 +4896,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             LOG.info("Stopping exeuction");
             this.currentExecMode = ExecutionMode.DISABLED_REJECT;
         } else if (reconfig_protocol == ReconfigurationProtocols.LIVEPULL) {
+            LOG.info("Creating reconfiguration tracker");
+            this.reconfiguration_tracker = new ReconfigurationTracking(planned_partitions, reconfig_plan, this.partitionId);
+            
+            //TODO remove the following
             this.to_pull = new HashMap<>();
             this.pulled_tuples = new HashMap<>();
+            
             if(this.incoming_ranges!= null && this.incoming_ranges.isEmpty()==false){
                 for (ReconfigurationRange range : this.incoming_ranges) {
                     // TODO ae how to iterate? do we need to? same as StopCopy
