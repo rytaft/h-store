@@ -216,8 +216,14 @@ public class MockExecutionEngine extends ExecutionEngine {
     }
     
     @Override
-    public VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken)
+    public VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
     {
     	return null;
+    }
+
+    @Override
+    public boolean updateExtractRequest(int requestToken, boolean deleteRequestedData) {
+        // TODO Auto-generated method stub
+        return false;
     }
 }

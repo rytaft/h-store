@@ -777,7 +777,13 @@ public abstract class ExecutionEngine implements FastDeserializer.Deserializatio
     // ----------------------------------------------------------------------------
     // Reconfiguration
     // ----------------------------------------------------------------------------
-    public abstract VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken) throws EEException;
+    public abstract VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken) throws EEException;
     
-    protected native int nativeExtractTable(long pointer, int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken);
+    protected native int nativeExtractTable(long pointer, int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken, int requestToken);
+    
+    public abstract boolean updateExtractRequest(int requestToken, boolean deleteRequestedData);
+    
+    protected native int nativeUpdateExtractRequest(long pointer, int requestToken, boolean deleteRequestedData);
+    
 }
+

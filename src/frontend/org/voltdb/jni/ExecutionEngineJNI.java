@@ -459,26 +459,35 @@ public class ExecutionEngineJNI extends ExecutionEngine {
     }
     
     @Override
-    public VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken)
+    public VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
     {
-    	LOG.info("Extract table");
+        if (debug.val) LOG.debug("Extract table");
         deserializer.clear();
         byte[] serialized_table = extractTable.getTableDataReference().array();
         if (trace.val) LOG.trace(String.format("Passing extract table into EE  [id=%d, bytes=%s]", tableId, serialized_table.length));
         int results;
         try {
             results = deserializer.readInt();
-            LOG.info("Results :"+results);
-            final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table, txnId, lastCommittedTxnId, undoToken);
+            if (trace.val) LOG.trace("Results :"+results);
+            final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table, txnId, lastCommittedTxnId, undoToken,requestToken);
             checkErrorCode(errorCode);
             
-            LOG.info("Extract table 2");
             
             return deserializer.readObject(VoltTable.class);
         } catch (IOException e) {
             LOG.error("Failed to deserialze result dependencies" + e);
             throw new EEException(ERRORCODE_WRONG_SERIALIZED_BYTES);
         }
+        
+    }
+    
+    @Override
+    public boolean updateExtractRequest(int requestToken, boolean deleteRequestedData)
+    {
+        if (debug.val) LOG.debug("updateExtractRequest table");
+        final int errorCode = nativeUpdateExtractRequest(this.pointer, requestToken, deleteRequestedData);
+        checkErrorCode(errorCode);  
+        return true;
 
     }
     

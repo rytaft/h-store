@@ -272,7 +272,9 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         // -------------------------------------------------
         // Reconfiguration Functions
         // -------------------------------------------------
-        bool extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId);
+        bool extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken);
+
+        bool updateExtractRequest(int32_t requestToken, bool confirmDelete);
 
         // -------------------------------------------------
         // Debug functions

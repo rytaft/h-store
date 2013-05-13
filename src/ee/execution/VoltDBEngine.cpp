@@ -1396,7 +1396,12 @@ size_t VoltDBEngine::tableHashCode(int32_t tableId) {
 // -------------------------------------------------
 // RECONFIGURATION FUNCTIONS
 // -------------------------------------------------
-bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId){
+bool updateExtractRequest(int32_t requestToken, bool confirmDelete){
+	VOLT_ERROR("TODO");
+	return true;
+}
+
+bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken){
     VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
     m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
                                             txnId,
