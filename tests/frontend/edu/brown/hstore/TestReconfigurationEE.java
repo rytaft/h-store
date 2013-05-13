@@ -123,6 +123,38 @@ public class TestReconfigurationEE extends BaseTestCase {
         assertEquals(tuples,rowCount);
     }
     
+    
+    @Test
+    public void testExtractAndConfirmData() throws Exception {
+        this.loadData(NUM_TUPLES);
+        assertTrue(true);
+        ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(102), 1, 2);
+        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);     
+        int deleteToken  = 47;
+        VoltTable resTable = this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken);
+        assertTrue(resTable.getRowCount()==2);
+        LOG.info("confirming extract request" );
+        boolean success = this.ee.updateExtractRequest(deleteToken, true);
+        assertTrue(success);
+        //LOG.info("Redundant confirm delete");
+        //success = this.ee.updateExtractRequest(deleteToken, true);
+        //assertTrue(success==false);
+        
+        
+        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(110), new Long(120), 1, 2);
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range);
+        
+        resTable = this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, ++deleteToken);
+        assertTrue(resTable.getRowCount()==10);
+
+        //TODO undo migration
+        //LOG.info("undo  extract request" );
+        //success = this.ee.updateExtractRequest(deleteToken, false);
+        
+        
+
+    }
+    
     @Test
     public void testExtractData() throws Exception {
 

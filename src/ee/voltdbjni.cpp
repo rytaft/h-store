@@ -382,7 +382,7 @@ Java_org_voltdb_jni_ExecutionEngine_nativeUpdateExtractRequest(JNIEnv *env,
     jint request_token,
     jboolean confirm_delete)
 {
-    VOLT_INFO("Calling ee update extract request");
+    VOLT_DEBUG("Calling ee update extract request");
     bool bConfirmDelete = (confirm_delete == JNI_FALSE ? false : true);
     int requestToken = request_token;
     VoltDBEngine *engine = castToEngine(engine_ptr);

@@ -45,8 +45,9 @@ MigrationManager::MigrationManager(ExecutorContext *executorContext, catalog::Da
     m_catalogDatabase(catalogDatabase) {
     
     // TODO: Precompute all of the stuff that we need for each table
-        
-        
+    
+    m_extractedTables.clear();
+    m_extractedTableNames.clear();
 }
 
 MigrationManager::~MigrationManager() {
@@ -54,7 +55,7 @@ MigrationManager::~MigrationManager() {
 }
 
 
-Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minKey, const NValue maxKey) {
+Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minKey, const NValue maxKey, int32_t requestToken) {
     VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );        
     //Get the right index to use
     //TODO andy ae this should be cached on initialization. do tables exists? when should migration mgr be created? should it exist in dbcontext
@@ -159,6 +160,8 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
         throwFatalException("Max key is smaller than min key");
     } 
     VOLT_DEBUG("Output Table %s",outputTable->debug().c_str());
+    m_extractedTables[requestToken] = outputTable;
+    m_extractedTableNames[requestToken] = table->name();
     return outputTable;
 }
 
@@ -179,6 +182,28 @@ TableIndex* MigrationManager::getPartitionColumnIndex(PersistentTable *table) {
         }
     }
     return NULL;
+}
+
+
+bool MigrationManager::confirmExtractDelete(int32_t requestTokenId) {
+    if(m_extractedTables.find(requestTokenId) == m_extractedTables.end()){
+        VOLT_DEBUG("confirmExtractDelte requestTokenId was not found");
+        return false;
+    }
+    else {
+        VOLT_DEBUG("confirmExtractDelete for token %d", requestTokenId);
+        Table* migratedData = m_extractedTables[requestTokenId];
+        migratedData->deleteAllTuples(true);
+        delete migratedData;        
+        m_extractedTables.erase(requestTokenId);
+        m_extractedTableNames.erase(requestTokenId);
+        return true;
+    }      
+    return false;
+}
+bool MigrationManager::undoExtractDelete(int32_t requestTokenId) {
+    throwFatalException("Undo delete not implemented yet");
+    return false;
 }
 
 

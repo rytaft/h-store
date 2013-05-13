@@ -1396,9 +1396,12 @@ size_t VoltDBEngine::tableHashCode(int32_t tableId) {
 // -------------------------------------------------
 // RECONFIGURATION FUNCTIONS
 // -------------------------------------------------
-bool updateExtractRequest(int32_t requestToken, bool confirmDelete){
-	VOLT_ERROR("TODO");
-	return true;
+bool VoltDBEngine::updateExtractRequest(int32_t requestToken, bool confirmDelete){
+    VOLT_DEBUG("UpdateExtractRequest %d, %d",requestToken,confirmDelete);
+    if(confirmDelete == true)
+        return m_migrationManager->confirmExtractDelete(requestToken);
+    else
+        return m_migrationManager->undoExtractDelete(requestToken);            
 }
 
 bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken){
@@ -1446,13 +1449,14 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
     while (inputIterator.next(extractTuple)) {
         //TODO ae more than 1 range -> into a single result?
         VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
-        Table* outputTable = m_migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3));
+        Table* outputTable = m_migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3),requestToken);
         size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
         if (outputTable != NULL) {
             outputTable->serializeTo(m_resultOutput);
             m_resultOutput.writeIntAt(lengthPosition,static_cast<int32_t>(m_resultOutput.size()- sizeof(int32_t)));        
             //TODO delete keySchema,partitionIndex
             //delete colNames;
+            
             TupleSchema::freeTupleSchema(extractMigrateSchema);
             return true;
         } 

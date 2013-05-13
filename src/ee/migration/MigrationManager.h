@@ -48,12 +48,21 @@ public:
      * Extract a range from the given table
      * TODO: This is just a proposal and not what the real API should be...
      */
-    Table* extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey);
+    Table* extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey, int32_t requestTokenId);
     TableIndex* getPartitionColumnIndex(PersistentTable *table);
+    
+    bool confirmExtractDelete(int32_t requestTokenId);
+    bool undoExtractDelete(int32_t requestTokenId);
     
 private:
     ExecutorContext *m_executorContext;
     catalog::Database *m_catalogDatabase;
+    
+    // map catalog reconfig/migration requestTokenIds to pointers of data tables that have been migrated
+    std::map<int32_t, Table*> m_extractedTables;
+    // map catalog reconfig/migration requestTokenIds to TableIds. used to undo a migration
+    std::map<int32_t, std::string> m_extractedTableNames;
+    
     
 }; // MigrationManager class
 
