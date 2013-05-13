@@ -231,7 +231,7 @@ public class ReconfigurationPlan {
         public int new_partition;
         public String table_name;
 
-        public ReconfigurationRange(String table_name, VoltType vt, T min_inclusive, T max_exclusive, int old_partition, int new_partition) throws ParseException {
+        public ReconfigurationRange(String table_name, VoltType vt, T min_inclusive, T max_exclusive, int old_partition, int new_partition)  {
           super(vt, min_inclusive, max_exclusive);
           this.old_partition = old_partition;
           this.new_partition = new_partition;

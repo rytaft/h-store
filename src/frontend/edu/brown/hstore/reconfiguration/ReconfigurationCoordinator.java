@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang.NotImplementedException;
@@ -75,10 +76,16 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private HStoreService channels[];
     private Set<Integer> destinationsReady;
     private int destinationSize;
+    
+    //used for generating unique IDs
+    private int rcRequestId;
     // Map of partitions in a reconfiguration and their state. No entry is not
     // in reconfiguration;
     private Map<Integer, ReconfigurationState> partitionStates;
     private Map<Integer, ReconfigurationState> initialPartitionStates;
+    
+    //map of requests a PE is blocked on
+    private Map<Integer, Semaphore> blockedRequests;
     private PlannedPartitions planned_partitions;
 
     public ReconfigurationCoordinator(HStoreSite hstore_site) {
@@ -97,6 +104,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
         this.initialPartitionStates = Collections.unmodifiableMap(partitionStates);
         this.localSiteId = hstore_site.getSiteId();
+        this.blockedRequests = new ConcurrentHashMap<>();
+        this.rcRequestId = 1;
     }
 
     /**
@@ -384,6 +393,39 @@ public class ReconfigurationCoordinator implements Shutdownable {
       return;
     }
     
+    
+    /**
+     * Non-blocking call to pull reconfiguration ranges. 
+     * Wrapper for pullRanges
+     * @param callingPartition
+     * @param pullRequests
+     */
+    public void pullRangesNonBlocking(long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests){
+        pullRanges(txnId, callingPartition, pullRequests, null);
+    }
+    
+    /**
+     * A request to pull a list of ranges. Non-null blocking sempaphore indicates PE is blocked on list.
+     * Each range is an item in semaphore.
+     * Does not return until calls are issued and sempaphore is acquired
+     * @param callingPartition
+     * @param pullRequests
+     * @param blockingSemaphore
+     */
+    public void pullRanges(long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests, Semaphore blockingSemaphore){
+        for(ReconfigurationRange range : pullRequests){
+            int pullRequestId = getNextRequestId();
+            //TODO vaibhav issue pull request, asssociated pullRequestId for callback
+            //on callBack on each pull call blockedRequests.get(pullRequestId).blockingSemaphore.release()            
+            //FIXME change pullTuples to be generic comparable
+            pullTuples(txnId, range.old_partition, range.new_partition, range.table_name, (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive(), range.getVt());
+            blockedRequests.put(pullRequestId, blockingSemaphore);
+            LOG.error("TODO temp removing sempahore for testing");
+            blockingSemaphore.release();
+            
+        }
+    }
+    
    /**
     * Live Pull the tuples for a reconfiguration range
     * by generating a live pull request
@@ -504,6 +546,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // bulk transfer the table data
             // by calling on transfer for each partition of the site
         }
+    }
+    
+    public int getNextRequestId(){
+        return ++rcRequestId;
     }
 
     /**

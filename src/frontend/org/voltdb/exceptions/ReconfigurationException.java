@@ -55,21 +55,18 @@ public class ReconfigurationException extends SerializableException {
         List<ReconfigurationRange<? extends Comparable<?>>> keys = new ArrayList<>();
 
         ReconfigurationRange<? extends Comparable<?>> range;
-        try {
-            range = new ReconfigurationRange(table_name, VoltType.typeFromObject(key), key, key, old_partition, new_partition);
-            keys.add(range);
-            this.exceptionType = exceptionType;
-            if (exceptionType == ExceptionTypes.TUPLES_NOT_MIGRATED) {
-                dataNotYetMigrated = keys;
-                dataMigratedOut = new ArrayList<>();
-            } else if (exceptionType == ExceptionTypes.TUPLES_MIGRATED_OUT) {
-                dataMigratedOut = keys;
-                dataNotYetMigrated = new ArrayList<>();
-            } else
-                throw new NotImplementedException("ExceptionType for single key not supported " + exceptionType);
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
-        }
+
+        range = new ReconfigurationRange(table_name, VoltType.typeFromObject(key), key, key, old_partition, new_partition);
+        keys.add(range);
+        this.exceptionType = exceptionType;
+        if (exceptionType == ExceptionTypes.TUPLES_NOT_MIGRATED) {
+            dataNotYetMigrated = keys;
+            dataMigratedOut = new ArrayList<>();
+        } else if (exceptionType == ExceptionTypes.TUPLES_MIGRATED_OUT) {
+            dataMigratedOut = keys;
+            dataNotYetMigrated = new ArrayList<>();
+        } else
+            throw new NotImplementedException("ExceptionType for single key not supported " + exceptionType);
 
     }
 
@@ -82,7 +79,5 @@ public class ReconfigurationException extends SerializableException {
         return "ReconfigurationException [reconfigurationProtocols=" + reconfigurationProtocols + ", exceptionType=" + exceptionType + ", dataMigratedOut=" + dataMigratedOut + ", dataNotYetMigrated="
                 + dataNotYetMigrated + "]";
     }
-    
-    
 
 }
