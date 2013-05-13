@@ -3069,6 +3069,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     private void checkReconfigurationTracking(long fragmentIds[], ParameterSet parameterSets[]){
+      LOG.info("check reconfiguration " );
       // Check if all the keys within the parameter sets are supposed to be present and not 
       // in reconfiguration state (either already migrated or waiting to be migrated)
       
@@ -3090,12 +3091,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
           try{
             boolean  keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), parameterToCheck);
             //Check with the reconfig tracking function if the values are present
-            LOG.info("Parameter "+ parameterToCheck.toString()+ " "+keyOwned);
-          } catch(ReconfigurationException rex){
-            LOG.info("Exception thrown from reconfig check"+rex.toString(),rex);
-            //Blocking here 
-          }
-        }
+    LOG.info("Parameter "+ parameterToCheck.toString()+ " "+keyOwned);
+      } catch(ReconfigurationException rex){
+        LOG.info("Exception thrown from reconfig check"+rex.toString(),rex);
+    //Blocking here 
+      }
+    }
       }
       
      
@@ -4958,13 +4959,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     // TODO ae how to iterate? do we need to? same as StopCopy
                     assert (range.getMin_inclusive() instanceof Long);
                     // TODO : Test this instance of pulling out a complete range
-                    LOG.info("TODO ae force pulling tuples range to test");
+                    /*LOG.info("TODO ae force pulling tuples range to test");
                     reconfiguration_coordinator.pullTuples(currentTxnId, range.old_partition, 
                         range.new_partition, range.table_name, (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive(), range.getVt());
                     for (Long i = (Long) range.getMin_inclusive(); i < (Long) range.getMax_exclusive(); i++) {
                         this.to_pull.put(i, true);
                 
-                    }
+                    }*/
                 }
             }
         }

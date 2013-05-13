@@ -77,4 +77,12 @@ public class ReconfigurationException extends SerializableException {
         return this.reconfigurationProtocols;
     }
 
+    @Override
+    public String toString() {
+        return "ReconfigurationException [reconfigurationProtocols=" + reconfigurationProtocols + ", exceptionType=" + exceptionType + ", dataMigratedOut=" + dataMigratedOut + ", dataNotYetMigrated="
+                + dataNotYetMigrated + "]";
+    }
+    
+    
+
 }
