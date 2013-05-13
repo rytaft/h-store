@@ -78,6 +78,7 @@ import org.voltdb.VoltSystemProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.catalog.Catalog;
 import org.voltdb.catalog.Cluster;
+import org.voltdb.catalog.Column;
 import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Host;
 import org.voltdb.catalog.Partition;
@@ -90,6 +91,7 @@ import org.voltdb.exceptions.ConstraintFailureException;
 import org.voltdb.exceptions.EEException;
 import org.voltdb.exceptions.EvictedTupleAccessException;
 import org.voltdb.exceptions.MispredictionException;
+import org.voltdb.exceptions.ReconfigurationException;
 import org.voltdb.exceptions.SQLException;
 import org.voltdb.exceptions.SerializableException;
 import org.voltdb.exceptions.ServerFaultException;
@@ -152,10 +154,10 @@ import edu.brown.hstore.internal.UtilityWorkMessage.UpdateMemoryMessage;
 import edu.brown.hstore.internal.WorkFragmentMessage;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
 import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator;
+import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator.ReconfigurationState;
 import edu.brown.hstore.reconfiguration.ReconfigurationTracking;
 import edu.brown.hstore.reconfiguration.ReconfigurationTrackingInterface;
 import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
-import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator.ReconfigurationState;
 import edu.brown.hstore.specexec.AbstractConflictChecker;
 import edu.brown.hstore.specexec.MarkovConflictChecker;
 import edu.brown.hstore.specexec.TableConflictChecker;
@@ -2928,7 +2930,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      */
     private DependencySet executePlanFragments(AbstractTransaction ts, long undoToken, int batchSize, long fragmentIds[], ParameterSet parameterSets[], int output_depIds[], int input_depIds[],
             Map<Integer, List<VoltTable>> input_deps) {
+      
         assert (this.ee != null) : "The EE object is null. This is bad!";
+        // If Reconfiguration is in progress then check if we have all the parameters 
+        if(this.hstore_site.getReconfigurationCoordinator().getReconfigurationInProgress()){
+          checkReconfigurationTracking(fragmentIds, parameterSets);
+        }
+
+
         Long txn_id = ts.getTransactionId();
 
         // LOG.info("in executePlanFragments()");
@@ -3059,6 +3068,47 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         return (result);
     }
 
+    private void checkReconfigurationTracking(long fragmentIds[], ParameterSet parameterSets[]){
+      // Check if all the keys within the parameter sets are supposed to be present and not 
+      // in reconfiguration state (either already migrated or waiting to be migrated)
+      
+      //Get all the fragments
+      List<PlanFragment> planFragments = new ArrayList<PlanFragment>();
+      for(long fragmentId : fragmentIds){
+        planFragments.add(CatalogUtil.getPlanFragment(catalogContext.database, (int)fragmentId));
+      }
+      
+      // Calls andy's methods for calculaitng the offsets
+      List<Pair<Column, Integer>> offsets = new ArrayList<>();
+      int index = 0;
+      for(PlanFragment planFragment: planFragments){
+        p_estimator.getPlanFragmentEstimationParameters(planFragment, offsets);
+        ParameterSet parameterSet = parameterSets[index];
+        index++;
+        for(Pair<Column, Integer> offsetPair: offsets){
+          Object parameterToCheck = parameterSet.toArray()[offsetPair.getSecond()];
+          try{
+            boolean  keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), parameterToCheck);
+            //Check with the reconfig tracking function if the values are present
+            LOG.info("Parameter "+ parameterToCheck.toString()+ " "+keyOwned);
+          } catch(ReconfigurationException rex){
+            LOG.info("Exception thrown from reconfig check"+rex.toString(),rex);
+            //Blocking here 
+          }
+        }
+      }
+      
+     
+      
+      // If they are not present, check the reconfiguration exception thrown (Tuples migrated out or
+      // not yet migrated in)
+      // and block and make a pull call of the tuple to the RC
+      // and block the PE thread on RC
+      
+      // When RC gets the data it will unblock the PE
+    
+    }
+    
     /**
      * @param txn_id
      * @param clusterName
