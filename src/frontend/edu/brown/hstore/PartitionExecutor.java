@@ -3069,6 +3069,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private void checkReconfigurationTracking(long fragmentIds[], ParameterSet parameterSets[]) {
         if (debug.val)
             LOG.debug("check reconfigurationTracking");
+        if (this.reconfiguration_tracker == null) {
+            throw new RuntimeException("null reconfig tracker");
+        }
+
         // Check if all the keys within the parameter sets are supposed to be
         // present and not
         // in reconfiguration state (either already migrated or waiting to be
@@ -3086,9 +3090,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             for (Pair<Column, Integer> offsetPair : offsets) {
                 Object parameterToCheck = parameterSet.toArray()[offsetPair.getSecond()];
                 try {
-                    //FIXME make generic
-                    LOG.info(String.format("PE (%s) checking if key owned",this.partitionId));
-                    boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), (Long)parameterToCheck);
+                    // FIXME make generic
+                    LOG.info(String.format("PE (%s) checking if key owned", this.partitionId));
+                    boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), (Long) parameterToCheck);
                     LOG.info("Key owned " + keyOwned);
                     // Check with the reconfig tracking function if the values
                     // are present
@@ -4986,12 +4990,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.outgoing_ranges = reconfig_plan.getOutgoing_ranges().get(this.partitionId);
         this.incoming_ranges = reconfig_plan.getIncoming_ranges().get(this.partitionId);
 
+        this.reconfiguration_tracker = new ReconfigurationTracking(planned_partitions, reconfig_plan, this.partitionId);
         if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY) {
             LOG.info("Stopping exeuction");
             this.currentExecMode = ExecutionMode.DISABLED_REJECT;
         } else if (reconfig_protocol == ReconfigurationProtocols.LIVEPULL) {
             LOG.info("Creating reconfiguration tracker");
-            this.reconfiguration_tracker = new ReconfigurationTracking(planned_partitions, reconfig_plan, this.partitionId);
 
             // TODO remove the following
             this.to_pull = new HashMap<>();
@@ -5039,8 +5043,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // TODO ae currentTXN and 0 for allowETL?
         loadTable(currentTxn, this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), tableName, vt, 0);
 
-        // TODO vaibhav why is this here? we need ranges for tracking.
-        throw new NotImplementedException("TODO");
+        // TODO vaibhav we should rename
     }
 
     /**
@@ -5054,15 +5057,16 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, Long max_exclusive, VoltTable vt) throws Exception {
         LOG.info(String.format("Received tuples for %s (%s) (from:%s to:%s) for range, " + "(from:%s to:%s)", txnId, vt.getRowCount(), newPartitionId, oldPartitionId, min_inclusive, max_exclusive));
 
-        if (min_inclusive.compareTo(max_exclusive) == 0 || min_inclusive.compareTo(max_exclusive + 1)==0) {
-            // We have received a single key
-            LOG.info(String.format("PE (%s) marking key as received %s %s ",this.partitionId, table_name,min_inclusive));
-            this.reconfiguration_tracker.markKeyAsReceived(table_name, min_inclusive);
-        } else {
-            // TODO ae can we just receive range?
-
-            LOG.info(String.format("PE (%s) marking range as received %s %s-%s ",this.partitionId, table_name,min_inclusive,max_exclusive));
-            this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
+        if (this.reconfiguration_tracker != null) {
+            if (min_inclusive.compareTo(max_exclusive) == 0 || min_inclusive.compareTo(max_exclusive + 1) == 0) {
+                // We have received a single key
+                LOG.info(String.format("PE (%s) marking key as received %s %s ", this.partitionId, table_name, min_inclusive));
+                this.reconfiguration_tracker.markKeyAsReceived(table_name, min_inclusive);
+            } else {
+                // TODO ae can we just receive range?
+                LOG.info(String.format("PE (%s) marking range as received %s %s-%s ", this.partitionId, table_name, min_inclusive, max_exclusive));
+                this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
+            }
         }
         loadTable(currentTxn, this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), table_name, vt, 0);
     }
@@ -5078,14 +5082,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public VoltTable sendTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, Long max_exclusive) {
         LOG.info(String.format("sendTuples keys %s->%s for %s  partIds %s->%s", min_inclusive, max_exclusive, table_name, oldPartitionId, newPartitionId));
         VoltTable vt = null;
-        //FIXME make generic
-        
+        // FIXME make generic
+
         Table catalog_tbl = this.catalogContext.getTableByName(table_name);
-        return extractTable(catalog_tbl,new ReconfigurationRange<Long>(table_name, VoltType.BIGINT,min_inclusive,max_exclusive, oldPartitionId,newPartitionId));
+        return extractTable(catalog_tbl, new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
     }
 
     /**
      * Extract the table from the underlying EE engine
+     * 
      * @param table
      * @param range
      * @return
@@ -5095,18 +5100,19 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         int table_id = table.getRelativeIndex();
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         VoltTable res = this.getExecutionEngine().extractTable(table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
-        if(res != null){
+        if (res != null) {
 
-            LOG.info(String.format("PE (%s) marking range as migrated out %s  ",this.partitionId, range.toString()));
-            this.reconfiguration_tracker.markRangeAsMigratedOut(range);
+            LOG.info(String.format("PE (%s) marking range as migrated out %s  ", this.partitionId, range.toString()));
+            if (this.reconfiguration_tracker != null)
+                this.reconfiguration_tracker.markRangeAsMigratedOut(range);
         }
         return res;
-        
+
     }
 
     public int getNextRequestToken() {
-        
-        //TODO vaibhav make 32 bit
+
+        // TODO vaibhav make 32 bit
         return requestCounter++;
     }
 }
