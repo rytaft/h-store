@@ -400,8 +400,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param callingPartition
      * @param pullRequests
      */
-    public void pullRangesNonBlocking(long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests){
-        pullRanges(txnId, callingPartition, pullRequests, null);
+    public void pullRangesNonBlocking(int livePullId, long txnId, int callingPartition, 
+            List<ReconfigurationRange<? extends Comparable<?>>> pullRequests){
+        pullRanges(livePullId, txnId, callingPartition, pullRequests, null);
     }
     
     /**
@@ -412,17 +413,18 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param pullRequests
      * @param blockingSemaphore
      */
-    public void pullRanges(long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests, Semaphore blockingSemaphore){
+    public void pullRanges(int livePullId, 
+            long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests, Semaphore blockingSemaphore){
         for(ReconfigurationRange range : pullRequests){
             int pullRequestId = getNextRequestId();
             //TODO vaibhav issue pull request, asssociated pullRequestId for callback
             //on callBack on each pull call blockedRequests.get(pullRequestId).blockingSemaphore.release()            
             //FIXME change pullTuples to be generic comparable
-            pullTuples(txnId, range.old_partition, range.new_partition, range.table_name, (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive(), range.getVt());
+            pullTuples(livePullId, txnId, range.old_partition, range.new_partition, range.table_name, 
+                    (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive(), range.getVt());
             blockedRequests.put(pullRequestId, blockingSemaphore);
             LOG.error("TODO temp removing sempahore for testing");
-            blockingSemaphore.release();
-            
+            blockingSemaphore.release();         
         }
     }
     
@@ -437,7 +439,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     * @param max_exclusive
     * @param voltType
     */
-    public void pullTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, 
+    public void pullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, 
         Long min_inclusive, Long max_exclusive,
         VoltType voltType){
       LOG.info(String.format("pullTuples  keys %s->%s for %s  partIds %s->%s",min_inclusive,max_exclusive, table_name,oldPartitionId,newPartitionId));
@@ -446,7 +448,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
       ProtoRpcController controller = new ProtoRpcController();
 
-      LivePullRequest livePullRequest = LivePullRequest.newBuilder().setSenderSite(this.localSiteId).
+      LivePullRequest livePullRequest = LivePullRequest.newBuilder().setLivePullIdentifier(livePullId).setSenderSite(this.localSiteId).
           setTransactionID(txnId).setOldPartition(oldPartitionId).setNewPartition(newPartitionId).
           setVoltTableName(table_name).setMinInclusive(min_inclusive).
           setMaxExclusive(max_exclusive).
@@ -466,7 +468,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
       this.channels[sourceID].livePull(controller, livePullRequest, livePullRequestCallback);
     }
     
-     public void receiveLivePullTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, 
+     public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, 
          Long min_inclusive, Long max_exclusive,
          VoltTable voltTable){
       
@@ -608,7 +610,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
           //TODO : change the log status later. Info for testing.
           //LOG.info("Volt table Received in callback is "+vt.toString());
           
-          receiveLivePullTuples(msg.getTransactionID(), 
+          receiveLivePullTuples(msg.getLivePullIdentifier(), msg.getTransactionID(), 
               msg.getOldPartition(), msg.getNewPartition(),
               msg.getVoltTableName(), msg.getMinInclusive(), msg.getMaxExclusive(),
               vt);

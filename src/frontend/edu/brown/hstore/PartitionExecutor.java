@@ -2138,7 +2138,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         LOG.info("Adding reconfiguration work to the queue");
         boolean success = this.work_queue.offer(livePullRequestMessage); // ,
                                                                          // true);
-        assert (success) : String.format("Failed to queue %s at partition %d for %s", livePullRequestMessage, this.partitionId, livePullRequestMessage.getTransactionId());
+        assert (success) : String.format("Failed to queue %s at partition %d for %s", livePullRequestMessage, 
+                this.partitionId, livePullRequestMessage.getTransactionId());
         LOG.info("success " + success);
         return success;
     }
@@ -2753,7 +2754,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
         }
 
-        LivePullResponse livePullResponse = LivePullResponse.newBuilder().setSenderSite(this.hstore_site.getSiteId()).setOldPartition(livePullRequest.getOldPartition())
+        LivePullResponse livePullResponse = LivePullResponse.newBuilder().setLivePullIdentifier(livePullRequest.getLivePullIdentifier()).
+                setSenderSite(this.hstore_site.getSiteId()).setOldPartition(livePullRequest.getOldPartition())
                 .setNewPartition(livePullRequest.getNewPartition()).setVoltTableName(livePullRequest.getVoltTableName()).setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes)
                 .setMinInclusive(livePullRequest.getMinInclusive()).setMaxExclusive(livePullRequest.getMaxExclusive()).setTransactionID(livePullRequest.getTransactionID()).build();
 
@@ -2762,7 +2764,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             livePullRequestMessage.getLivePullResponseCallback().run(livePullResponse);
         } else {
             // Shows that the request is local , pass it to the local site's RC
-            this.hstore_site.getReconfigurationCoordinator().receiveLivePullTuples(livePullRequest.getTransactionID(), livePullRequest.getOldPartition(), livePullRequest.getNewPartition(),
+            this.hstore_site.getReconfigurationCoordinator().receiveLivePullTuples(livePullRequest.getLivePullIdentifier(), 
+                    livePullRequest.getTransactionID(), livePullRequest.getOldPartition(), livePullRequest.getNewPartition(),
                     livePullRequest.getVoltTableName(), livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), voltTable);
         }
     }
@@ -3127,7 +3130,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // block on the pull request
                 Semaphore pullBlockSemaphore = new Semaphore(pullRequestsNeeded.size());
                 LOG.info("Pulling ranges " + pullRequestsNeeded.size());
-                this.reconfiguration_coordinator.pullRanges(this.currentTxnId, this.partitionId, pullRequestsNeeded, pullBlockSemaphore);
+                this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), 
+                        this.currentTxnId, this.partitionId, pullRequestsNeeded, pullBlockSemaphore);
                 LOG.info("Blocking on ranges " + pullRequestsNeeded.size());
                 try {
                     pullBlockSemaphore.acquire(pullRequestsNeeded.size());
@@ -3137,7 +3141,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 }
             } else {
                 LOG.info("Issueing non blocking pull for ranges : " + pullRequestsNeeded.size());
-                this.reconfiguration_coordinator.pullRangesNonBlocking(this.currentTxnId, this.partitionId, pullRequestsNeeded);
+                this.reconfiguration_coordinator.pullRangesNonBlocking(getNextRequestToken(), 
+                        this.currentTxnId, this.partitionId, pullRequestsNeeded);
             }
         }
         if (restartsNeeded.size() > 0) {
