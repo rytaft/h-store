@@ -5113,18 +5113,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     }
 
-    public int getNextRequestToken() {
-        
-        int counter = (( (1 >> PARTITION_BITS) - 1) & this.partitionId);
-        counter = (counter >> (COUNTER_SIZE_BITS - LOCAL_COUNTER_BITS));
-        counter = requestCounter & (1 >> LOCAL_COUNTER_BITS);
-        requestCounter++; 
-        if((requestCounter | (1 >> LOCAL_COUNTER_BITS)) > 0){
+    public int getNextRequestToken() {      
+        int counter = (( (1 << PARTITION_BITS) - 1) & this.partitionId);
+        counter = (counter << (COUNTER_SIZE_BITS - PARTITION_BITS));
+        counter = counter | (requestCounter & ( (1 << LOCAL_COUNTER_BITS) - 1) );
+        this.requestCounter++; 
+        if((this.requestCounter >> (COUNTER_SIZE_BITS - PARTITION_BITS)) > 0){
             // Reset the local counter once it gets over 24 bits
             // Well it should even if you dont, as there should not be a old reconfig request
             // which has 2^24 reconfig requests before the current request
-            requestCounter = 0;
+            resetRequestCounter();
         }
         return counter;
+    }
+    
+    public void resetRequestCounter() {
+        this.requestCounter = 0;
     }
 }
