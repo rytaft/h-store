@@ -423,8 +423,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
             pullTuples(livePullId, txnId, range.old_partition, range.new_partition, range.table_name, 
                     (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive(), range.getVt());
             blockedRequests.put(pullRequestId, blockingSemaphore);
-            LOG.error("TODO temp removing sempahore for testing");
-            blockingSemaphore.release();         
+            //LOG.error("TODO temp removing sempahore for testing");
+            //blockingSemaphore.release();         
         }
     }
     
@@ -480,6 +480,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
                    oldPartitionId, newPartitionId,
                    table_name, min_inclusive, max_exclusive,
                    voltTable);
+               //Unblock the semaphore for a blocking request
+               if(blockedRequests.containsKey(livePullId)){
+                   blockedRequests.get(livePullId).release();
+               }
              } catch (Exception e) {
                LOG.error("Error in partition executors receiving tuples for their pull " +
                    "request", e);
