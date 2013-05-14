@@ -4940,6 +4940,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private HashMap<Long, Boolean> to_pull;
     private HashMap<Long, Integer> pulled_tuples;
     private ReconfigurationTrackingInterface reconfiguration_tracker;
+    public static int PARTITION_BITS = 8;
+    public static int LOCAL_COUNTER_BITS = 24;
+    public static int COUNTER_SIZE_BITS = 32;
     private int requestCounter = 1;
 
     public Debug getDebugContext() {
@@ -5111,8 +5114,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     public int getNextRequestToken() {
-
-        // TODO vaibhav make 32 bit
-        return requestCounter++;
+        
+        int counter = (( (1 >> PARTITION_BITS) - 1) & this.partitionId);
+        counter = (counter >> (COUNTER_SIZE_BITS - LOCAL_COUNTER_BITS));
+        counter = requestCounter & (1 >> LOCAL_COUNTER_BITS);
+        requestCounter++; 
+        if((requestCounter | (1 >> LOCAL_COUNTER_BITS)) > 0){
+            // Reset the local counter once it gets over 24 bits
+            // Well it should even if you dont, as there should not be a old reconfig request
+            // which has 2^24 reconfig requests before the current request
+            requestCounter = 0;
+        }
+        return counter;
     }
 }
