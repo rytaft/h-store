@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.PriorityBlockingQueue;
 
+import edu.brown.hstore.internal.AsyncLivePushRequestMessage;
 import edu.brown.hstore.internal.FinishTxnMessage;
 import edu.brown.hstore.internal.InitializeRequestMessage;
 import edu.brown.hstore.internal.InitializeTxnMessage;
@@ -63,6 +64,7 @@ public class PartitionMessageQueue extends PriorityBlockingQueue<InternalMessage
             PrepareTxnMessage.class,
             FinishTxnMessage.class,
             WorkFragmentMessage.class,
+            AsyncLivePushRequestMessage.class
         };
         
         @Override
