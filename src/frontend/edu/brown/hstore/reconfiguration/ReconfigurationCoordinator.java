@@ -418,12 +418,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
      */
     public void pullRanges(int livePullId, 
             long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests, Semaphore blockingSemaphore){
-        for(ReconfigurationRange range : pullRequests){
-            int pullRequestId = getNextRequestId();         
+        for(ReconfigurationRange range : pullRequests){       
             //FIXME change pullTuples to be generic comparable
             pullTuples(livePullId, txnId, range.old_partition, range.new_partition, range.table_name, 
                     (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive(), range.getVt());
-            blockedRequests.put(pullRequestId, blockingSemaphore);
+            blockedRequests.put(livePullId, blockingSemaphore);
             //LOG.error("TODO temp removing sempahore for testing");
             //blockingSemaphore.release();         
         }
