@@ -3135,6 +3135,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.info("Blocking on ranges " + pullRequestsNeeded.size());
                 try {
                     pullBlockSemaphore.acquire(pullRequestsNeeded.size());
+                    LOG.info(String.format("PE (%s) has received all pull requests. Unblocking",this.partitionId));
                 } catch (InterruptedException ex) {
                     LOG.error("Waiting for pull was interuppted. ", ex);
                     // TODO ae restart txn?
@@ -5058,8 +5059,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      */
     public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, 
             Long min_inclusive, Long max_exclusive, VoltTable vt) throws Exception {
-        LOG.info(String.format("Received tuples for %s (%s) (from:%s to:%s) for range, " + 
-            "(from:%s to:%s)", txnId, vt.getRowCount(), newPartitionId, oldPartitionId, min_inclusive, max_exclusive));
+        LOG.info(String.format("PE (%s) Received tuples for txnId:%s Rows(%s) pIds(from:%s to:%s) for range, " + 
+            "(from:%s to:%s)", this.partitionId, txnId, vt.getRowCount(), newPartitionId, oldPartitionId, min_inclusive, max_exclusive));
 
         //Currently we don't have any tracking for Stop and Copy.
         // Sanity checks can be added to make sure all data is added. But tracker during the 
@@ -5076,6 +5077,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
             }
         }
+        LOG.info("load table");
         loadTable(currentTxn, this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), table_name, vt, 0);
     }
 
