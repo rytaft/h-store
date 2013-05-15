@@ -3143,9 +3143,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 Object parameterToCheck = parameterSet.toArray()[offsetPair.getSecond()];
                 try {
                     // FIXME make generic
-                    LOG.info(String.format("PE (%s) checking if key owned", this.partitionId));
+                    if (trace.val) LOG.trace(String.format("PE (%s) checking if key owned", this.partitionId));
                     boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), (Long) parameterToCheck);
-                    LOG.info("Key owned " + keyOwned);
+                    if (trace.val) LOG.trace("Key owned " + keyOwned);
                     // Check with the reconfig tracking function if the values
                     // are present
                     if (trace.val)
