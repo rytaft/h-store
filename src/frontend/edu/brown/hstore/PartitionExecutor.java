@@ -3235,6 +3235,40 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     /**
+     * Loads table using the same transaction as the current, but creats a new
+     * undo token
+     * 
+     * @param clusterName
+     * @param databaseName
+     * @param tableName
+     * @param data
+     * @throws VoltAbortException
+     */
+    public void loadTableForReconfiguration(String clusterName, String databaseName, String tableName, VoltTable data) throws VoltAbortException {
+        Table table = this.catalogContext.database.getTables().getIgnoreCase(tableName);
+        if (table == null) {
+            throw new VoltAbortException("Table '" + tableName + "' does not exist in database " + clusterName + "." + databaseName);
+        }
+        boolean allowExport = false; // TODO ae what do
+        long lastCommitted = -1;
+        if (this.lastCommittedTxnId == null) {
+            LOG.info("Last commited txn is null");
+        }
+        else {
+            lastCommitted = this.lastCommittedTxnId.longValue();
+        }
+        if(this.ee == null){
+            throw new VoltAbortException("ee is null!");
+        }
+        if(data == null)
+            throw new VoltAbortException("data i s null");
+        
+        
+        this.ee.loadTable(table.getRelativeIndex(), data, -1, lastCommitted, getNextUndoToken(), allowExport);
+
+    }
+
+    /**
      * <B>NOTE:</B> This should only be used for testing
      * 
      * @param txnId
@@ -5058,10 +5092,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.pulled_tuples = new HashMap<>();
             queueAsyncPushRequests(outgoing_ranges);
             if (this.incoming_ranges != null && this.incoming_ranges.isEmpty()) {
-                this.reconfiguration_coordinator.notifyAllRanges(partitionId,ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+                this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
             }
             if (this.outgoing_ranges != null && this.outgoing_ranges.isEmpty()) {
-                this.reconfiguration_coordinator.notifyAllRanges(partitionId,ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
+                this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
             }
         }
     }
@@ -5112,19 +5146,19 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             } else {
                 // TODO ae can we just receive range?
                 LOG.info(String.format("PE (%s) marking range as received %s %s-%s ", this.partitionId, table_name, min_inclusive, max_exclusive));
-                try{
+                try {
                     this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
                 } catch (ReconfigurationException re) {
-                    if (re.exceptionType==ExceptionTypes.ALL_RANGES_MIGRATED_IN)
+                    if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_IN)
                         this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
                     else
-                        LOG.error("Unexpected reconfiguration Exception", re);                    
+                        LOG.error("Unexpected reconfiguration Exception", re);
                 }
-                
+
             }
         }
         LOG.info("load table");
-        loadTable(currentTxn, this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), table_name, vt, 0);
+        loadTableForReconfiguration(this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), table_name, vt);
     }
 
     /**
