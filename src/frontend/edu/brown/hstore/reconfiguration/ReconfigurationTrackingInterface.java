@@ -21,29 +21,32 @@ public interface ReconfigurationTrackingInterface {
      * Does not verify that this key was expected
      * @param table_name
      * @param key
-     * @return
+     * @return if key was added
      */
     public boolean markKeyAsMigratedOut(String table_name, Comparable<?> key ); 
     
     /**
      * Mark a key range migrated away from this partition      
      * Does not verify that this range was expected
+     * Throws a reconfigurationException if the entire set of ranges
+     * was completed with this request
      * @param range
      * @return
      */
-    public boolean markRangeAsMigratedOut(List<ReconfigurationRange<? extends Comparable<?>>> range );
+    public boolean markRangeAsMigratedOut(List<ReconfigurationRange<? extends Comparable<?>>> range ) throws ReconfigurationException ;
     
     /**
      * Mark a key range migrated away from this partition
      * Does not verify that this range was expected
+     * Throws a reconfigurationException if the entire set of ranges
+     * was completed with this request
      * @param range
      * @return
      */
-    public boolean markRangeAsMigratedOut(ReconfigurationRange<? extends Comparable<?>> range );
+    public boolean markRangeAsMigratedOut(ReconfigurationRange<? extends Comparable<?>> range ) throws ReconfigurationException;
     
     /**
      * Mark a key received by this partition
-     * Does not verify that this key was expected
      * @param table_name
      * @param key
      * @return
@@ -54,18 +57,22 @@ public interface ReconfigurationTrackingInterface {
     /**
      * Mark a range as received by this partition.
      * Does not verify that this range was expected
+     * Throws a reconfigurationException if the entire set of ranges
+     * was completed with this request
      * @param range
      * @return
      */
-    public boolean markRangeAsReceived(List<ReconfigurationRange<? extends Comparable<?>>> range );
+    public boolean markRangeAsReceived(List<ReconfigurationRange<? extends Comparable<?>>> range )  throws ReconfigurationException;
     
     /**
      * Mark a range as received by this partition
      * Does not verify that this range was expected
+     * Throws a reconfigurationException if the entire set of ranges
+     * was completed with this request
      * @param range
      * @return
      */
-    public boolean markRangeAsReceived(ReconfigurationRange<? extends Comparable<?>> range );
+    public boolean markRangeAsReceived(ReconfigurationRange<? extends Comparable<?>> range )  throws ReconfigurationException;
     
     /**
      * Check if a key is owned and currently present

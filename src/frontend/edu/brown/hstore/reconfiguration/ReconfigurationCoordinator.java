@@ -15,6 +15,7 @@ import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
+import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.messaging.FastSerializer;
 
@@ -627,6 +628,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     public boolean getReconfigurationInProgress() {
         return this.reconfigurationInProgress.get();
+    }
+
+    public void notifyAllRanges(int partitionId, ExceptionTypes allRangesMigratedType) {
+        // TODO Auto-generated method stub
+        LOG.error("NOTIFY " + partitionId + " " + allRangesMigratedType);
+        
     }
 
 }

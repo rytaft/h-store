@@ -1221,20 +1221,27 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
             // TODO ae leftoff FIXME
             long _txnid = -1;
-            //TODO  Check that this range still needs to be pushed
+            // TODO Check that this range still needs to be pushed
             Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
             int table_id = catalog_tbl.getRelativeIndex();
             VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(pushRange);
-            VoltTable vt= this.ee.extractTable(table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
+            VoltTable vt = this.ee.extractTable(table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
             try {
 
                 // RC push tuples
-                reconfiguration_coordinator.pushTuples(pushRange.old_partition, pushRange.new_partition, pushRange.table_name, vt, (Long) pushRange.getMin_inclusive(), (Long) pushRange.getMax_exclusive());
+                reconfiguration_coordinator.pushTuples(pushRange.old_partition, pushRange.new_partition, pushRange.table_name, vt, (Long) pushRange.getMin_inclusive(),
+                        (Long) pushRange.getMax_exclusive());
                 this.reconfiguration_tracker.markRangeAsMigratedOut(pushRange);
+            } catch (ReconfigurationException re) {
+                if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_OUT)
+                    this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
+                else
+                    LOG.error("Unexpected reconfiguration Exception", re);
+
             } catch (Exception e) {
-                LOG.error("Exception when pushing tuples on asynch push",e);
+                LOG.error("Exception when pushing tuples on asynch push", e);
             }
-            
+
         }
         // -------------------------------
         // BAD MOJO!
@@ -5050,22 +5057,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.to_pull = new HashMap<>();
             this.pulled_tuples = new HashMap<>();
             queueAsyncPushRequests(outgoing_ranges);
-            if (this.incoming_ranges != null && this.incoming_ranges.isEmpty() == false) {
-                for (ReconfigurationRange range : this.incoming_ranges) {
-                    // TODO ae how to iterate? do we need to? same as StopCopy
-                    assert (range.getMin_inclusive() instanceof Long);
-                    // TODO : Test this instance of pulling out a complete range
-                    /*
-                     * LOG.info("TODO ae force pulling tuples range to test");
-                     * reconfiguration_coordinator.pullTuples(currentTxnId,
-                     * range.old_partition, range.new_partition,
-                     * range.table_name, (Long)range.getMin_inclusive(),
-                     * (Long)range.getMax_exclusive(), range.getVt()); for (Long
-                     * i = (Long) range.getMin_inclusive(); i < (Long)
-                     * range.getMax_exclusive(); i++) { this.to_pull.put(i,
-                     * true); }
-                     */
-                }
+            if (this.incoming_ranges != null && this.incoming_ranges.isEmpty()) {
+                this.reconfiguration_coordinator.notifyAllRanges(partitionId,ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+            }
+            if (this.outgoing_ranges != null && this.outgoing_ranges.isEmpty()) {
+                this.reconfiguration_coordinator.notifyAllRanges(partitionId,ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
             }
         }
     }
@@ -5116,7 +5112,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             } else {
                 // TODO ae can we just receive range?
                 LOG.info(String.format("PE (%s) marking range as received %s %s-%s ", this.partitionId, table_name, min_inclusive, max_exclusive));
-                this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
+                try{
+                    this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
+                } catch (ReconfigurationException re) {
+                    if (re.exceptionType==ExceptionTypes.ALL_RANGES_MIGRATED_IN)
+                        this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+                    else
+                        LOG.error("Unexpected reconfiguration Exception", re);                    
+                }
+                
             }
         }
         LOG.info("load table");
@@ -5155,8 +5159,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (res != null) {
 
             LOG.info(String.format("PE (%s) marking range as migrated out %s  ", this.partitionId, range.toString()));
-            if (this.reconfiguration_tracker != null)
-                this.reconfiguration_tracker.markRangeAsMigratedOut(range);
+            if (this.reconfiguration_tracker != null) {
+                try {
+                    this.reconfiguration_tracker.markRangeAsMigratedOut(range);
+                } catch (ReconfigurationException re) {
+                    if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_OUT)
+                        this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
+                    else
+                        LOG.error("Unexpected reconfiguration Exception", re);
+
+                }
+            }
         }
         return res;
 

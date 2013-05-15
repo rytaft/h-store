@@ -36,9 +36,12 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     private List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges;
     public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut;
     public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedIn;
+    private int rangesMigratedInCount = 0;
+    private int rangesMigratedOutCount = 0;
     
-    public Map<String,Set<Comparable>> migratedIn;
-    public Map<String,Set<Comparable>> migratedOut;
+    //set of individual keys migrated out/in status, stored in a map by table name as key 
+    public Map<String,Set<Comparable>> migratedKeyIn;
+    public Map<String,Set<Comparable>> migratedKeyOut;
     
     private int partition_id;
     private PlannedPartitions partitionPlan;
@@ -55,8 +58,8 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         if (incoming_ranges != null)
             this.incoming_ranges.addAll(incoming_ranges);
         this.partition_id = partition_id;
-        this.migratedIn = new HashMap<String, Set<Comparable>>();
-        this.migratedOut = new HashMap<String, Set<Comparable>>();
+        this.migratedKeyIn = new HashMap<String, Set<Comparable>>();
+        this.migratedKeyOut = new HashMap<String, Set<Comparable>>();
         this.dataMigratedIn = new ArrayList<>();
         this.dataMigratedOut = new ArrayList<>();
     }
@@ -74,24 +77,50 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     }
   
     @Override 
-    public boolean markRangeAsMigratedOut(ReconfigurationRange<? extends Comparable<?>> range ){
-        return this.dataMigratedOut.add(range);
+    public boolean markRangeAsMigratedOut(ReconfigurationRange<? extends Comparable<?>> range ) throws ReconfigurationException{
+        boolean added =  this.dataMigratedOut.add(range);
+        if(added){
+            rangesMigratedOutCount++;
+            if(rangesMigratedOutCount==this.outgoing_ranges.size()){
+                throw new ReconfigurationException(ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
+            }
+        }
+        return added;
     }
     
     
     @Override 
-    public boolean markRangeAsMigratedOut(List<ReconfigurationRange<? extends Comparable<?>>> range ){
-        return this.dataMigratedOut.addAll(range);
+    public boolean markRangeAsMigratedOut(List<ReconfigurationRange<? extends Comparable<?>>> ranges ){
+        boolean allAdded = true;
+        for(ReconfigurationRange<? extends Comparable<?>> range : ranges){
+            boolean res = this.markRangeAsMigratedOut(range);
+            if (!res)
+                allAdded =false;
+        }
+        return allAdded;
     }
     
     @Override
-    public boolean markRangeAsReceived(List<ReconfigurationRange<? extends Comparable<?>>> range ){
-        return this.dataMigratedIn.addAll(range);
+    public boolean markRangeAsReceived(List<ReconfigurationRange<? extends Comparable<?>>> ranges ){
+        boolean allAdded = true;
+        for(ReconfigurationRange<? extends Comparable<?>> range : ranges){
+            boolean res = this.markRangeAsReceived(range);
+            if (!res)
+                allAdded =false;
+        }
+        return allAdded;
     }
     
     @Override
     public boolean markRangeAsReceived(ReconfigurationRange<? extends Comparable<?>> range ){
-        return this.dataMigratedIn.add(range);
+        boolean added =  this.dataMigratedIn.add(range);
+        if(added){
+            rangesMigratedInCount++;
+            if(rangesMigratedInCount==this.incoming_ranges.size()){
+                throw new ReconfigurationException(ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+            }
+        }
+        return added;
     }
     
 
@@ -112,12 +141,12 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     
     @Override
     public boolean markKeyAsMigratedOut(String table_name, Comparable<?> key) {
-        return markAsMigrated(migratedOut, table_name, key);
+        return markAsMigrated(migratedKeyOut, table_name, key);
     }
 
     @Override
     public boolean markKeyAsReceived(String table_name, Comparable<?> key) {
-        return markAsMigrated(migratedIn, table_name, key);
+        return markAsMigrated(migratedKeyIn, table_name, key);
     }
 
     @Override
@@ -153,7 +182,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 if (debug.val) LOG.debug(String.format("Key %s should be at %s. Checking if migrated in",key,partition_id));
                 
                 //Has the key been received as a single key
-                if (checkMigratedMapSet(migratedIn,table_name,key)== true){
+                if (checkMigratedMapSet(migratedKeyIn,table_name,key)== true){
                     return true;
                 } else {                       
                     //check if the key was received out in a range        
@@ -172,7 +201,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 if (debug.val) LOG.debug(String.format("Key %s was at %s. Checking if migrated ",key,partition_id));
                 
                 //Check to see if we migrated this key individually
-                if (checkMigratedMapSet(migratedOut,table_name,key)){
+                if (checkMigratedMapSet(migratedKeyOut,table_name,key)){
                     ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table_name, previousPartition,expectedPartition, key);
                     throw ex;
                 }

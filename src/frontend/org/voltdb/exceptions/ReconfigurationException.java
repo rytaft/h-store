@@ -22,7 +22,7 @@ public class ReconfigurationException extends SerializableException {
     public ReconfigurationProtocols reconfigurationProtocols;
 
     public enum ExceptionTypes {
-        TUPLES_MIGRATED_OUT, TUPLES_NOT_MIGRATED, BOTH
+        TUPLES_MIGRATED_OUT, TUPLES_NOT_MIGRATED, BOTH, ALL_RANGES_MIGRATED_OUT, ALL_RANGES_MIGRATED_IN
     };
 
     public ExceptionTypes exceptionType;
@@ -35,6 +35,13 @@ public class ReconfigurationException extends SerializableException {
 
     public ReconfigurationException() {
         // TODO Auto-generated constructor stub
+    }
+    
+    
+
+    public ReconfigurationException(ExceptionTypes exceptionType) {
+        super();
+        this.exceptionType = exceptionType;
     }
 
     public ReconfigurationException(List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut, List<ReconfigurationRange<? extends Comparable<?>>> dataNotYetMigrated) {
