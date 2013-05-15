@@ -14920,8 +14920,22 @@ public final class Hstoreservice {
     public boolean hasVoltTableName() { return hasVoltTableName; }
     public java.lang.String getVoltTableName() { return voltTableName_; }
     
-    // required bytes volt_table_data = 6;
-    public static final int VOLT_TABLE_DATA_FIELD_NUMBER = 6;
+    // required int64 min_inclusive = 6;
+    public static final int MIN_INCLUSIVE_FIELD_NUMBER = 6;
+    private boolean hasMinInclusive;
+    private long minInclusive_ = 0L;
+    public boolean hasMinInclusive() { return hasMinInclusive; }
+    public long getMinInclusive() { return minInclusive_; }
+    
+    // required int64 max_exclusive = 7;
+    public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 7;
+    private boolean hasMaxExclusive;
+    private long maxExclusive_ = 0L;
+    public boolean hasMaxExclusive() { return hasMaxExclusive; }
+    public long getMaxExclusive() { return maxExclusive_; }
+    
+    // required bytes volt_table_data = 8;
+    public static final int VOLT_TABLE_DATA_FIELD_NUMBER = 8;
     private boolean hasVoltTableData;
     private com.google.protobuf.ByteString voltTableData_ = com.google.protobuf.ByteString.EMPTY;
     public boolean hasVoltTableData() { return hasVoltTableData; }
@@ -14935,6 +14949,8 @@ public final class Hstoreservice {
       if (!hasOldPartition) return false;
       if (!hasNewPartition) return false;
       if (!hasVoltTableName) return false;
+      if (!hasMinInclusive) return false;
+      if (!hasMaxExclusive) return false;
       if (!hasVoltTableData) return false;
       return true;
     }
@@ -14957,8 +14973,14 @@ public final class Hstoreservice {
       if (hasVoltTableName()) {
         output.writeString(5, getVoltTableName());
       }
+      if (hasMinInclusive()) {
+        output.writeInt64(6, getMinInclusive());
+      }
+      if (hasMaxExclusive()) {
+        output.writeInt64(7, getMaxExclusive());
+      }
       if (hasVoltTableData()) {
-        output.writeBytes(6, getVoltTableData());
+        output.writeBytes(8, getVoltTableData());
       }
       getUnknownFields().writeTo(output);
     }
@@ -14989,9 +15011,17 @@ public final class Hstoreservice {
         size += com.google.protobuf.CodedOutputStream
           .computeStringSize(5, getVoltTableName());
       }
+      if (hasMinInclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(6, getMinInclusive());
+      }
+      if (hasMaxExclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(7, getMaxExclusive());
+      }
       if (hasVoltTableData()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(6, getVoltTableData());
+          .computeBytesSize(8, getVoltTableData());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -15166,6 +15196,12 @@ public final class Hstoreservice {
         if (other.hasVoltTableName()) {
           setVoltTableName(other.getVoltTableName());
         }
+        if (other.hasMinInclusive()) {
+          setMinInclusive(other.getMinInclusive());
+        }
+        if (other.hasMaxExclusive()) {
+          setMaxExclusive(other.getMaxExclusive());
+        }
         if (other.hasVoltTableData()) {
           setVoltTableData(other.getVoltTableData());
         }
@@ -15214,7 +15250,15 @@ public final class Hstoreservice {
               setVoltTableName(input.readString());
               break;
             }
-            case 50: {
+            case 48: {
+              setMinInclusive(input.readInt64());
+              break;
+            }
+            case 56: {
+              setMaxExclusive(input.readInt64());
+              break;
+            }
+            case 66: {
               setVoltTableData(input.readBytes());
               break;
             }
@@ -15316,7 +15360,43 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required bytes volt_table_data = 6;
+      // required int64 min_inclusive = 6;
+      public boolean hasMinInclusive() {
+        return result.hasMinInclusive();
+      }
+      public long getMinInclusive() {
+        return result.getMinInclusive();
+      }
+      public Builder setMinInclusive(long value) {
+        result.hasMinInclusive = true;
+        result.minInclusive_ = value;
+        return this;
+      }
+      public Builder clearMinInclusive() {
+        result.hasMinInclusive = false;
+        result.minInclusive_ = 0L;
+        return this;
+      }
+      
+      // required int64 max_exclusive = 7;
+      public boolean hasMaxExclusive() {
+        return result.hasMaxExclusive();
+      }
+      public long getMaxExclusive() {
+        return result.getMaxExclusive();
+      }
+      public Builder setMaxExclusive(long value) {
+        result.hasMaxExclusive = true;
+        result.maxExclusive_ = value;
+        return this;
+      }
+      public Builder clearMaxExclusive() {
+        result.hasMaxExclusive = false;
+        result.maxExclusive_ = 0L;
+        return this;
+      }
+      
+      // required bytes volt_table_data = 8;
       public boolean hasVoltTableData() {
         return result.hasVoltTableData();
       }
@@ -15404,6 +15484,27 @@ public final class Hstoreservice {
     public boolean hasNewPartition() { return hasNewPartition; }
     public int getNewPartition() { return newPartition_; }
     
+    // required string volt_table_name = 5;
+    public static final int VOLT_TABLE_NAME_FIELD_NUMBER = 5;
+    private boolean hasVoltTableName;
+    private java.lang.String voltTableName_ = "";
+    public boolean hasVoltTableName() { return hasVoltTableName; }
+    public java.lang.String getVoltTableName() { return voltTableName_; }
+    
+    // required int64 min_inclusive = 6;
+    public static final int MIN_INCLUSIVE_FIELD_NUMBER = 6;
+    private boolean hasMinInclusive;
+    private long minInclusive_ = 0L;
+    public boolean hasMinInclusive() { return hasMinInclusive; }
+    public long getMinInclusive() { return minInclusive_; }
+    
+    // required int64 max_exclusive = 7;
+    public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 7;
+    private boolean hasMaxExclusive;
+    private long maxExclusive_ = 0L;
+    public boolean hasMaxExclusive() { return hasMaxExclusive; }
+    public long getMaxExclusive() { return maxExclusive_; }
+    
     private void initFields() {
     }
     public final boolean isInitialized() {
@@ -15411,6 +15512,9 @@ public final class Hstoreservice {
       if (!hasT0S) return false;
       if (!hasOldPartition) return false;
       if (!hasNewPartition) return false;
+      if (!hasVoltTableName) return false;
+      if (!hasMinInclusive) return false;
+      if (!hasMaxExclusive) return false;
       return true;
     }
     
@@ -15428,6 +15532,15 @@ public final class Hstoreservice {
       }
       if (hasNewPartition()) {
         output.writeInt32(4, getNewPartition());
+      }
+      if (hasVoltTableName()) {
+        output.writeString(5, getVoltTableName());
+      }
+      if (hasMinInclusive()) {
+        output.writeInt64(6, getMinInclusive());
+      }
+      if (hasMaxExclusive()) {
+        output.writeInt64(7, getMaxExclusive());
       }
       getUnknownFields().writeTo(output);
     }
@@ -15453,6 +15566,18 @@ public final class Hstoreservice {
       if (hasNewPartition()) {
         size += com.google.protobuf.CodedOutputStream
           .computeInt32Size(4, getNewPartition());
+      }
+      if (hasVoltTableName()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeStringSize(5, getVoltTableName());
+      }
+      if (hasMinInclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(6, getMinInclusive());
+      }
+      if (hasMaxExclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(7, getMaxExclusive());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -15624,6 +15749,15 @@ public final class Hstoreservice {
         if (other.hasNewPartition()) {
           setNewPartition(other.getNewPartition());
         }
+        if (other.hasVoltTableName()) {
+          setVoltTableName(other.getVoltTableName());
+        }
+        if (other.hasMinInclusive()) {
+          setMinInclusive(other.getMinInclusive());
+        }
+        if (other.hasMaxExclusive()) {
+          setMaxExclusive(other.getMaxExclusive());
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -15663,6 +15797,18 @@ public final class Hstoreservice {
             }
             case 32: {
               setNewPartition(input.readInt32());
+              break;
+            }
+            case 42: {
+              setVoltTableName(input.readString());
+              break;
+            }
+            case 48: {
+              setMinInclusive(input.readInt64());
+              break;
+            }
+            case 56: {
+              setMaxExclusive(input.readInt64());
               break;
             }
           }
@@ -15739,6 +15885,63 @@ public final class Hstoreservice {
       public Builder clearNewPartition() {
         result.hasNewPartition = false;
         result.newPartition_ = 0;
+        return this;
+      }
+      
+      // required string volt_table_name = 5;
+      public boolean hasVoltTableName() {
+        return result.hasVoltTableName();
+      }
+      public java.lang.String getVoltTableName() {
+        return result.getVoltTableName();
+      }
+      public Builder setVoltTableName(java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasVoltTableName = true;
+        result.voltTableName_ = value;
+        return this;
+      }
+      public Builder clearVoltTableName() {
+        result.hasVoltTableName = false;
+        result.voltTableName_ = getDefaultInstance().getVoltTableName();
+        return this;
+      }
+      
+      // required int64 min_inclusive = 6;
+      public boolean hasMinInclusive() {
+        return result.hasMinInclusive();
+      }
+      public long getMinInclusive() {
+        return result.getMinInclusive();
+      }
+      public Builder setMinInclusive(long value) {
+        result.hasMinInclusive = true;
+        result.minInclusive_ = value;
+        return this;
+      }
+      public Builder clearMinInclusive() {
+        result.hasMinInclusive = false;
+        result.minInclusive_ = 0L;
+        return this;
+      }
+      
+      // required int64 max_exclusive = 7;
+      public boolean hasMaxExclusive() {
+        return result.hasMaxExclusive();
+      }
+      public long getMaxExclusive() {
+        return result.getMaxExclusive();
+      }
+      public Builder setMaxExclusive(long value) {
+        result.hasMaxExclusive = true;
+        result.maxExclusive_ = value;
+        return this;
+      }
+      public Builder clearMaxExclusive() {
+        result.hasMaxExclusive = false;
+        result.maxExclusive_ = 0L;
         return this;
       }
       
@@ -18574,74 +18777,77 @@ public final class Hstoreservice {
       "\002(\003\022\014\n\004t1_s\030\004 \002(\003\";\n\026ReconfigurationRequ" +
       "est\022\023\n\013sender_site\030\001 \002(\005\022\014\n\004t0_s\030\002 \002(\003\"<",
       "\n\027ReconfigurationResponse\022\023\n\013sender_site" +
-      "\030\001 \002(\005\022\014\n\004t0_s\030\002 \002(\003\"\230\001\n\023DataTransferReq" +
+      "\030\001 \002(\005\022\014\n\004t0_s\030\002 \002(\003\"\306\001\n\023DataTransferReq" +
       "uest\022\023\n\013sender_site\030\001 \002(\005\022\014\n\004t0_s\030\002 \002(\003\022" +
       "\025\n\rold_partition\030\003 \002(\005\022\025\n\rnew_partition\030" +
-      "\004 \002(\005\022\027\n\017volt_table_name\030\005 \002(\t\022\027\n\017volt_t" +
-      "able_data\030\006 \002(\014\"g\n\024DataTransferResponse\022" +
-      "\023\n\013sender_site\030\001 \002(\005\022\014\n\004t0_s\030\002 \002(\003\022\025\n\rol" +
-      "d_partition\030\003 \002(\005\022\025\n\rnew_partition\030\004 \002(\005" +
-      "\"\336\001\n\017LivePullRequest\022\034\n\024live_pull_identi" +
-      "fier\030\001 \002(\005\022\023\n\013sender_site\030\002 \002(\005\022\014\n\004t0_s\030",
-      "\003 \002(\003\022\025\n\rtransactionID\030\004 \002(\003\022\025\n\rold_part" +
-      "ition\030\005 \002(\005\022\025\n\rnew_partition\030\006 \002(\005\022\027\n\017vo" +
-      "lt_table_name\030\007 \002(\t\022\025\n\rmin_inclusive\030\010 \002" +
-      "(\003\022\025\n\rmax_exclusive\030\t \002(\003\"\370\001\n\020LivePullRe" +
-      "sponse\022\034\n\024live_pull_identifier\030\001 \002(\005\022\023\n\013" +
-      "sender_site\030\002 \002(\005\022\014\n\004t0_s\030\003 \002(\003\022\025\n\rtrans" +
-      "actionID\030\004 \002(\003\022\025\n\rold_partition\030\005 \002(\005\022\025\n" +
-      "\rnew_partition\030\006 \002(\005\022\027\n\017volt_table_name\030" +
-      "\007 \002(\t\022\025\n\rmin_inclusive\030\010 \002(\003\022\025\n\rmax_excl" +
-      "usive\030\t \002(\003\022\027\n\017volt_table_data\030\n \002(\014*\320\001\n",
-      "\006Status\022\006\n\002OK\020\000\022\016\n\nABORT_USER\020\001\022\022\n\016ABORT" +
-      "_GRACEFUL\020\002\022\024\n\020ABORT_UNEXPECTED\020\003\022\031\n\025ABO" +
-      "RT_CONNECTION_LOST\020\004\022\024\n\020ABORT_MISPREDICT" +
-      "\020\005\022\021\n\rABORT_RESTART\020\006\022\020\n\014ABORT_REJECT\020\007\022" +
-      "\027\n\023ABORT_EVICTEDACCESS\020\010\022\025\n\021ABORT_SPECUL" +
-      "ATIVE\020\t2\276\r\n\rHStoreService\022f\n\017Transaction" +
-      "Init\022(.edu.brown.hstore.TransactionInitR" +
-      "equest\032).edu.brown.hstore.TransactionIni" +
-      "tResponse\022f\n\017TransactionWork\022(.edu.brown" +
-      ".hstore.TransactionWorkRequest\032).edu.bro",
-      "wn.hstore.TransactionWorkResponse\022x\n\023Tra" +
-      "nsactionPrefetch\022+.edu.brown.hstore.Tran" +
-      "sactionPrefetchResult\0324.edu.brown.hstore" +
-      ".TransactionPrefetchAcknowledgement\022c\n\016T" +
-      "ransactionMap\022\'.edu.brown.hstore.Transac" +
-      "tionMapRequest\032(.edu.brown.hstore.Transa" +
-      "ctionMapResponse\022l\n\021TransactionReduce\022*." +
-      "edu.brown.hstore.TransactionReduceReques" +
-      "t\032+.edu.brown.hstore.TransactionReduceRe" +
-      "sponse\022o\n\022TransactionPrepare\022+.edu.brown",
-      ".hstore.TransactionPrepareRequest\032,.edu." +
-      "brown.hstore.TransactionPrepareResponse\022" +
-      "l\n\021TransactionFinish\022*.edu.brown.hstore." +
-      "TransactionFinishRequest\032+.edu.brown.hst" +
-      "ore.TransactionFinishResponse\022r\n\023Transac" +
-      "tionRedirect\022,.edu.brown.hstore.Transact" +
-      "ionRedirectRequest\032-.edu.brown.hstore.Tr" +
-      "ansactionRedirectResponse\022i\n\020Transaction" +
-      "Debug\022).edu.brown.hstore.TransactionDebu" +
-      "gRequest\032*.edu.brown.hstore.TransactionD",
-      "ebugResponse\022Q\n\010SendData\022!.edu.brown.hst" +
-      "ore.SendDataRequest\032\".edu.brown.hstore.S" +
-      "endDataResponse\022W\n\nInitialize\022#.edu.brow" +
-      "n.hstore.InitializeRequest\032$.edu.brown.h" +
-      "store.InitializeResponse\022f\n\017ShutdownPrep" +
-      "are\022(.edu.brown.hstore.ShutdownPrepareRe" +
-      "quest\032).edu.brown.hstore.ShutdownPrepare" +
-      "Response\022Q\n\010Shutdown\022!.edu.brown.hstore." +
-      "ShutdownRequest\032\".edu.brown.hstore.Shutd" +
-      "ownResponse\022Q\n\010TimeSync\022!.edu.brown.hsto",
-      "re.TimeSyncRequest\032\".edu.brown.hstore.Ti" +
-      "meSyncResponse\022f\n\017Reconfiguration\022(.edu." +
-      "brown.hstore.ReconfigurationRequest\032).ed" +
-      "u.brown.hstore.ReconfigurationResponse\022]" +
-      "\n\014DataTransfer\022%.edu.brown.hstore.DataTr" +
-      "ansferRequest\032&.edu.brown.hstore.DataTra" +
-      "nsferResponse\022Q\n\010LivePull\022!.edu.brown.hs" +
-      "tore.LivePullRequest\032\".edu.brown.hstore." +
-      "LivePullResponse"
+      "\004 \002(\005\022\027\n\017volt_table_name\030\005 \002(\t\022\025\n\rmin_in" +
+      "clusive\030\006 \002(\003\022\025\n\rmax_exclusive\030\007 \002(\003\022\027\n\017" +
+      "volt_table_data\030\010 \002(\014\"\256\001\n\024DataTransferRe" +
+      "sponse\022\023\n\013sender_site\030\001 \002(\005\022\014\n\004t0_s\030\002 \002(" +
+      "\003\022\025\n\rold_partition\030\003 \002(\005\022\025\n\rnew_partitio" +
+      "n\030\004 \002(\005\022\027\n\017volt_table_name\030\005 \002(\t\022\025\n\rmin_",
+      "inclusive\030\006 \002(\003\022\025\n\rmax_exclusive\030\007 \002(\003\"\336" +
+      "\001\n\017LivePullRequest\022\034\n\024live_pull_identifi" +
+      "er\030\001 \002(\005\022\023\n\013sender_site\030\002 \002(\005\022\014\n\004t0_s\030\003 " +
+      "\002(\003\022\025\n\rtransactionID\030\004 \002(\003\022\025\n\rold_partit" +
+      "ion\030\005 \002(\005\022\025\n\rnew_partition\030\006 \002(\005\022\027\n\017volt" +
+      "_table_name\030\007 \002(\t\022\025\n\rmin_inclusive\030\010 \002(\003" +
+      "\022\025\n\rmax_exclusive\030\t \002(\003\"\370\001\n\020LivePullResp" +
+      "onse\022\034\n\024live_pull_identifier\030\001 \002(\005\022\023\n\013se" +
+      "nder_site\030\002 \002(\005\022\014\n\004t0_s\030\003 \002(\003\022\025\n\rtransac" +
+      "tionID\030\004 \002(\003\022\025\n\rold_partition\030\005 \002(\005\022\025\n\rn",
+      "ew_partition\030\006 \002(\005\022\027\n\017volt_table_name\030\007 " +
+      "\002(\t\022\025\n\rmin_inclusive\030\010 \002(\003\022\025\n\rmax_exclus" +
+      "ive\030\t \002(\003\022\027\n\017volt_table_data\030\n \002(\014*\320\001\n\006S" +
+      "tatus\022\006\n\002OK\020\000\022\016\n\nABORT_USER\020\001\022\022\n\016ABORT_G" +
+      "RACEFUL\020\002\022\024\n\020ABORT_UNEXPECTED\020\003\022\031\n\025ABORT" +
+      "_CONNECTION_LOST\020\004\022\024\n\020ABORT_MISPREDICT\020\005" +
+      "\022\021\n\rABORT_RESTART\020\006\022\020\n\014ABORT_REJECT\020\007\022\027\n" +
+      "\023ABORT_EVICTEDACCESS\020\010\022\025\n\021ABORT_SPECULAT" +
+      "IVE\020\t2\276\r\n\rHStoreService\022f\n\017TransactionIn" +
+      "it\022(.edu.brown.hstore.TransactionInitReq",
+      "uest\032).edu.brown.hstore.TransactionInitR" +
+      "esponse\022f\n\017TransactionWork\022(.edu.brown.h" +
+      "store.TransactionWorkRequest\032).edu.brown" +
+      ".hstore.TransactionWorkResponse\022x\n\023Trans" +
+      "actionPrefetch\022+.edu.brown.hstore.Transa" +
+      "ctionPrefetchResult\0324.edu.brown.hstore.T" +
+      "ransactionPrefetchAcknowledgement\022c\n\016Tra" +
+      "nsactionMap\022\'.edu.brown.hstore.Transacti" +
+      "onMapRequest\032(.edu.brown.hstore.Transact" +
+      "ionMapResponse\022l\n\021TransactionReduce\022*.ed",
+      "u.brown.hstore.TransactionReduceRequest\032" +
+      "+.edu.brown.hstore.TransactionReduceResp" +
+      "onse\022o\n\022TransactionPrepare\022+.edu.brown.h" +
+      "store.TransactionPrepareRequest\032,.edu.br" +
+      "own.hstore.TransactionPrepareResponse\022l\n" +
+      "\021TransactionFinish\022*.edu.brown.hstore.Tr" +
+      "ansactionFinishRequest\032+.edu.brown.hstor" +
+      "e.TransactionFinishResponse\022r\n\023Transacti" +
+      "onRedirect\022,.edu.brown.hstore.Transactio" +
+      "nRedirectRequest\032-.edu.brown.hstore.Tran",
+      "sactionRedirectResponse\022i\n\020TransactionDe" +
+      "bug\022).edu.brown.hstore.TransactionDebugR" +
+      "equest\032*.edu.brown.hstore.TransactionDeb" +
+      "ugResponse\022Q\n\010SendData\022!.edu.brown.hstor" +
+      "e.SendDataRequest\032\".edu.brown.hstore.Sen" +
+      "dDataResponse\022W\n\nInitialize\022#.edu.brown." +
+      "hstore.InitializeRequest\032$.edu.brown.hst" +
+      "ore.InitializeResponse\022f\n\017ShutdownPrepar" +
+      "e\022(.edu.brown.hstore.ShutdownPrepareRequ" +
+      "est\032).edu.brown.hstore.ShutdownPrepareRe",
+      "sponse\022Q\n\010Shutdown\022!.edu.brown.hstore.Sh" +
+      "utdownRequest\032\".edu.brown.hstore.Shutdow" +
+      "nResponse\022Q\n\010TimeSync\022!.edu.brown.hstore" +
+      ".TimeSyncRequest\032\".edu.brown.hstore.Time" +
+      "SyncResponse\022f\n\017Reconfiguration\022(.edu.br" +
+      "own.hstore.ReconfigurationRequest\032).edu." +
+      "brown.hstore.ReconfigurationResponse\022]\n\014" +
+      "DataTransfer\022%.edu.brown.hstore.DataTran" +
+      "sferRequest\032&.edu.brown.hstore.DataTrans" +
+      "ferResponse\022Q\n\010LivePull\022!.edu.brown.hsto",
+      "re.LivePullRequest\032\".edu.brown.hstore.Li" +
+      "vePullResponse"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -18925,7 +19131,7 @@ public final class Hstoreservice {
           internal_static_edu_brown_hstore_DataTransferRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_edu_brown_hstore_DataTransferRequest_descriptor,
-              new java.lang.String[] { "SenderSite", "T0S", "OldPartition", "NewPartition", "VoltTableName", "VoltTableData", },
+              new java.lang.String[] { "SenderSite", "T0S", "OldPartition", "NewPartition", "VoltTableName", "MinInclusive", "MaxExclusive", "VoltTableData", },
               edu.brown.hstore.Hstoreservice.DataTransferRequest.class,
               edu.brown.hstore.Hstoreservice.DataTransferRequest.Builder.class);
           internal_static_edu_brown_hstore_DataTransferResponse_descriptor =
@@ -18933,7 +19139,7 @@ public final class Hstoreservice {
           internal_static_edu_brown_hstore_DataTransferResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_edu_brown_hstore_DataTransferResponse_descriptor,
-              new java.lang.String[] { "SenderSite", "T0S", "OldPartition", "NewPartition", },
+              new java.lang.String[] { "SenderSite", "T0S", "OldPartition", "NewPartition", "VoltTableName", "MinInclusive", "MaxExclusive", },
               edu.brown.hstore.Hstoreservice.DataTransferResponse.class,
               edu.brown.hstore.Hstoreservice.DataTransferResponse.Builder.class);
           internal_static_edu_brown_hstore_LivePullRequest_descriptor =

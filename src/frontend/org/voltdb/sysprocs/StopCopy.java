@@ -117,7 +117,8 @@ public class StopCopy extends VoltSystemProcedure {
                             for (ReconfigurationRange<? extends Comparable<?>> range : outgoing_ranges) {
                                 catalog_tbl = this.catalogContext.getTableByName(range.table_name);
                                 table = executor.extractTable(catalog_tbl, range);
-                                rc.pushTuples(range.old_partition, range.new_partition, range.table_name, table);
+                                rc.pushTuples(range.old_partition, range.new_partition, range.table_name, table, 
+                                        (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive());
                             }
                         } else {
                             LOG.info("No outgoing ranges for this partition");

@@ -491,8 +491,13 @@ message DataTransferRequest {
     required int32 new_partition = 4;   
      // This is the table name
     required string volt_table_name = 5; 
+    // This is the minimum inclusive range for the pull
+    // Set to long for now, generalize later  
+    required int64 min_inclusive = 6;
+    // This is the maximum exclusive range for the pull 
+    required int64 max_exclusive = 7;
     // This is the data (in form of serialized volt table)
-    required bytes volt_table_data = 6; 
+    required bytes volt_table_data = 8; 
 }
 
 message DataTransferResponse {
@@ -504,6 +509,13 @@ message DataTransferResponse {
     required int32 old_partition = 3; 
     // This is the new partition this data is associated with 
     required int32 new_partition = 4; 
+    // This is the table name
+    required string volt_table_name = 5; 
+    // This is the minimum inclusive range for the pull
+    // Set to long for now, generalize later  
+    required int64 min_inclusive = 6;
+    // This is the maximum exclusive range for the pull 
+    required int64 max_exclusive = 7;
 }
 
 //------------------------------------

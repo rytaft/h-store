@@ -284,14 +284,16 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param vt
      * @throws Exception
      */
-    public void pushTuples(int oldPartitionId, int newPartitionId, String table_name, VoltTable vt) throws Exception {
+    public void pushTuples(int oldPartitionId, int newPartitionId, String table_name, VoltTable vt, 
+            Long minInclusive, Long maxExclusive) throws Exception {
         LOG.info(String.format("pushTuples  keys for %s  partIds %s->%s",table_name,oldPartitionId,newPartitionId));
         // TODO Auto-generated method stub
         int destinationId = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(newPartitionId);
 
         if (destinationId == localSiteId) {
             // Just push the message through local receive Tuples to the PE'S
-            receiveTuples(destinationId, System.currentTimeMillis(), oldPartitionId, newPartitionId, table_name, vt);
+            receiveTuples(destinationId, System.currentTimeMillis(), oldPartitionId, newPartitionId, table_name, vt,
+                    minInclusive, maxExclusive);
             return;
         }
 
@@ -304,7 +306,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
             throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
         }
 
-        DataTransferRequest dataTransferRequest = DataTransferRequest.newBuilder().setSenderSite(this.localSiteId).
+        DataTransferRequest dataTransferRequest = DataTransferRequest.newBuilder().setMinInclusive(minInclusive).
+                setMaxExclusive(maxExclusive).setSenderSite(this.localSiteId).
             setOldPartition(oldPartitionId).setNewPartition(newPartitionId)
                 .setVoltTableName(table_name).setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).build();
 
@@ -312,7 +315,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
 
     /**
-     * Receive the tuples
+     * Receive the tuples and send it to EE through PE
      * 
      * @param partitionId
      * @param newPartitionId
@@ -321,7 +324,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @throws Exception
      */
     public DataTransferResponse receiveTuples(int sourceId, long sentTimeStamp, int partitionId, int newPartitionId, 
-        String table_name, VoltTable vt) throws Exception {
+        String table_name, VoltTable vt, Long minInclusive, Long maxExclusive) throws Exception {
         LOG.info(String.format("receiveTuples  keys for %s  partIds %s->%s",table_name,sourceId,newPartitionId));
         
         if (vt == null) {
@@ -331,14 +334,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
         for (PartitionExecutor executor : this.local_executors) {
             // TODO : check if we can more efficient here
             if (executor.getPartitionId() == newPartitionId) {
-                executor.receiveTuples(partitionId, newPartitionId, table_name, vt);
+                // Transaction Id is not needed to be tracked for Stop and Copy so just set it to 0 for now
+                executor.receiveTuples(0L, partitionId, newPartitionId, table_name, minInclusive, maxExclusive, vt);
             }
         }
 
-        DataTransferResponse response = null;
-
-        response = DataTransferResponse.newBuilder().setNewPartition(newPartitionId).setOldPartition(partitionId).
-            setT0S(sentTimeStamp).setSenderSite(sourceId).build();
+        DataTransferResponse response = DataTransferResponse.newBuilder().setNewPartition(newPartitionId).setOldPartition(partitionId).
+            setT0S(sentTimeStamp).setSenderSite(sourceId).setVoltTableName(table_name).setMinInclusive(minInclusive).
+            setMaxExclusive(maxExclusive).build();
 
         return response;
     }
@@ -416,9 +419,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public void pullRanges(int livePullId, 
             long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests, Semaphore blockingSemaphore){
         for(ReconfigurationRange range : pullRequests){
-            int pullRequestId = getNextRequestId();
-            //TODO vaibhav issue pull request, asssociated pullRequestId for callback
-            //on callBack on each pull call blockedRequests.get(pullRequestId).blockingSemaphore.release()            
+            int pullRequestId = getNextRequestId();         
             //FIXME change pullTuples to be generic comparable
             pullTuples(livePullId, txnId, range.old_partition, range.new_partition, range.table_name, 
                     (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive(), range.getVt());
@@ -457,14 +458,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
       if (sourceID == localSiteId) {
           LOG.info("pulling from localsite");
           // Just push the message through local receive Tuples to the PE'S
-          //TODO : if the callback is null, it shows that the request is from a partition in
-          // the local site itself
+          // If the callback is null, it shows that the request is from a partition in
+          // the local site itself. 
           sendTuples(livePullRequest, null);
           return;
       }
       
-      
-
       this.channels[sourceID].livePull(controller, livePullRequest, livePullRequestCallback);
     }
     
@@ -592,7 +591,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
             int oldPartition = msg.getOldPartition();
             int newPartition = msg.getNewPartition();
             long timeStamp = msg.getT0S();
-
+            Long minInclusive = msg.getMinInclusive();
+            Long maxExlusive = msg.getMaxExclusive();
+            // We can track the data Transfer progress using these fields 
         }
     };
     

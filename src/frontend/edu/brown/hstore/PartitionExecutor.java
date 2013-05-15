@@ -5030,6 +5030,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     public void startReconfiguration() throws Exception {
+        //TODO : Check if this function is even called / needed, remove if it is not
+        //because STOP and COPY procedure handles it directly
         LOG.info(String.format("Starting reconfiguration"));
         if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY) {
             Table catalog_tbl = null;
@@ -5039,33 +5041,30 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 catalog_tbl = catalogContext.getTableByName(out_range.table_name);
                 table = CatalogUtil.getVoltTable(catalog_tbl);
                 // TODO ae leftoff
-                reconfiguration_coordinator.pushTuples(this.partitionId, out_range.new_partition, out_range.table_name, table);
+                // Push Tuples is not called from here
+                //reconfiguration_coordinator.pushTuples(
+                //this.partitionId, out_range.new_partition, out_range.table_name, table);
             }
         }
     }
 
-    public void receiveTuples(int sourcePartitionId, int newPartitionId, String tableName, VoltTable vt) throws Exception {
-
-        // TODO : Add data processing
-        LOG.info(String.format("Received tuples for %s (%s) (from:%s to:%s)", tableName, vt.getRowCount(), sourcePartitionId, newPartitionId));
-        // TODO ae currentTXN and 0 for allowETL?
-        loadTable(currentTxn, this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), tableName, vt, 0);
-
-        // TODO vaibhav we should rename
-    }
-
     /**
-     * Receiving tuples for the asynchronous pull operation made
+     * Receiving tuples for the asynchronous pull operation made as well as the Stop and Copy
      * 
      * @param txnId
      * @param reconfigurationRange
      * @param vt
      * @throws Exception
      */
-    public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, Long max_exclusive, VoltTable vt) throws Exception {
-        LOG.info(String.format("Received tuples for %s (%s) (from:%s to:%s) for range, " + "(from:%s to:%s)", txnId, vt.getRowCount(), newPartitionId, oldPartitionId, min_inclusive, max_exclusive));
+    public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, 
+            Long min_inclusive, Long max_exclusive, VoltTable vt) throws Exception {
+        LOG.info(String.format("Received tuples for %s (%s) (from:%s to:%s) for range, " + 
+            "(from:%s to:%s)", txnId, vt.getRowCount(), newPartitionId, oldPartitionId, min_inclusive, max_exclusive));
 
-        if (this.reconfiguration_tracker != null) {
+        //Currently we don't have any tracking for Stop and Copy.
+        // Sanity checks can be added to make sure all data is added. But tracker during the 
+        //executions is not required as Stop and Copy -> "Stops"
+        if (this.reconfig_protocol != ReconfigurationProtocols.STOPCOPY && this.reconfiguration_tracker != null) {
             if (min_inclusive.compareTo(max_exclusive) == 0 || min_inclusive.compareTo(max_exclusive + 1) == 0) {
                 // We have received a single key
                 LOG.info(String.format("PE (%s) marking key as received %s %s ", this.partitionId, table_name, min_inclusive));
@@ -5073,7 +5072,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             } else {
                 // TODO ae can we just receive range?
                 LOG.info(String.format("PE (%s) marking range as received %s %s-%s ", this.partitionId, table_name, min_inclusive, max_exclusive));
-                this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
+                this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>(table_name, 
+                        VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
             }
         }
         loadTable(currentTxn, this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), table_name, vt, 0);
@@ -5093,7 +5093,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // FIXME make generic
 
         Table catalog_tbl = this.catalogContext.getTableByName(table_name);
-        return extractTable(catalog_tbl, new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
+        return extractTable(catalog_tbl, new ReconfigurationRange<Long>(table_name, VoltType.BIGINT,
+                min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
     }
 
     /**
