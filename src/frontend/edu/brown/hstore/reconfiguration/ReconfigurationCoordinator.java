@@ -443,7 +443,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public void pullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, 
         Long min_inclusive, Long max_exclusive,
         VoltType voltType){
-      LOG.info(String.format("pullTuples  keys %s->%s for %s  partIds %s->%s",min_inclusive,max_exclusive, table_name,oldPartitionId,newPartitionId));
+      LOG.info(String.format("pullTuples with Live Pull ID %s, keys %s->%s for %s  partIds %s->%s",livePullId, 
+              min_inclusive,max_exclusive, table_name,oldPartitionId,newPartitionId));
       //TODO : Check if volt type makes can be used here for generic values or remove it
       int sourceID = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(oldPartitionId);
 
@@ -471,6 +472,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
          Long min_inclusive, Long max_exclusive,
          VoltTable voltTable){
       
+         LOG.info(String.format("Received tuples for %s %s (%s) (from:%s to:%s) for range, " + 
+                 "(from:%s to:%s)", livePullId, txnId, table_name, newPartitionId, oldPartitionId, min_inclusive, max_exclusive));
        for (PartitionExecutor executor : local_executors) {
          // TODO : check if we can more efficient here
          if (executor.getPartitionId() == newPartitionId) {
@@ -481,6 +484,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                    voltTable);
                //Unblock the semaphore for a blocking request
                if(blockedRequests.containsKey(livePullId) && blockedRequests.get(livePullId)!=null){
+                   LOG.info("Unblocking the PE for the pulles request "+livePullId);
                    blockedRequests.get(livePullId).release();
                }
              } catch (Exception e) {
