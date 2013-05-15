@@ -1219,11 +1219,22 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             ReconfigurationRange<? extends Comparable<?>> pushRange = ((AsyncLivePushRequestMessage) work).getPushRange();
             LOG.info("Asynch push message scheduled " + pushRange.toString());
 
-            // TODO ae leftoff
-            // Check that this range still needs to be pushed
-            // VoltTable vt= this.ee.extractTable(tableId, extractTable, txnId,
-            // lastCommittedTxnId, undoToken, requestToken);
-            // RC push tuples
+            // TODO ae leftoff FIXME
+            long _txnid = -1;
+            //TODO  Check that this range still needs to be pushed
+            Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
+            int table_id = catalog_tbl.getRelativeIndex();
+            VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(pushRange);
+            VoltTable vt= this.ee.extractTable(table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
+            try {
+
+                // RC push tuples
+                reconfiguration_coordinator.pushTuples(pushRange.old_partition, pushRange.new_partition, pushRange.table_name, vt, (Long) pushRange.getMin_inclusive(), (Long) pushRange.getMax_exclusive());
+                this.reconfiguration_tracker.markRangeAsMigratedOut(pushRange);
+            } catch (Exception e) {
+                LOG.error("Exception when pushing tuples on asynch push",e);
+            }
+            
         }
         // -------------------------------
         // BAD MOJO!
