@@ -480,7 +480,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                    table_name, min_inclusive, max_exclusive,
                    voltTable);
                //Unblock the semaphore for a blocking request
-               if(blockedRequests.containsKey(livePullId)){
+               if(blockedRequests.containsKey(livePullId) && blockedRequests.get(livePullId)!=null){
                    blockedRequests.get(livePullId).release();
                }
              } catch (Exception e) {
