@@ -636,4 +636,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
         
     }
 
+    public boolean scheduleAsyncPush() {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    public boolean scheduleAsyncPull() {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
 }

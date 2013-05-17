@@ -64,6 +64,7 @@ public class PartitionMessageQueue extends PriorityBlockingQueue<InternalMessage
             PrepareTxnMessage.class,
             FinishTxnMessage.class,
             WorkFragmentMessage.class,
+            AsyncLivePushRequestMessage.class,
             AsyncLivePushRequestMessage.class
         };
         

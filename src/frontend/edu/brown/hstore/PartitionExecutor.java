@@ -140,6 +140,7 @@ import edu.brown.hstore.estimators.Estimate;
 import edu.brown.hstore.estimators.EstimatorState;
 import edu.brown.hstore.estimators.EstimatorUtil;
 import edu.brown.hstore.estimators.TransactionEstimator;
+import edu.brown.hstore.internal.AsyncLivePullRequestMessage;
 import edu.brown.hstore.internal.AsyncLivePushRequestMessage;
 import edu.brown.hstore.internal.DeferredQueryMessage;
 import edu.brown.hstore.internal.FinishTxnMessage;
@@ -1242,6 +1243,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.error("Exception when pushing tuples on asynch push", e);
             }
 
+        } 
+        else if (work instanceof AsyncLivePullRequestMessage) {
+            ReconfigurationRange<? extends Comparable<?>> pullRanges = ((AsyncLivePullRequestMessage) work).getPullRange();
+            LOG.info("Asynch pull message scheduled " + pullRanges.toString());
+
+            // TODO ae leftoff FIXME
+            LOG.error("Implement AsyncLivePull");
+            throw new NotImplementedException();
         }
         // -------------------------------
         // BAD MOJO!
@@ -2145,6 +2154,24 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (success && hstore_conf.site.specexec_enable)
             this.specExecScheduler.interruptSearch(work);
         return (success);
+    }
+
+    public boolean queueAsyncPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+        if (incomingRanges != null && !incomingRanges.isEmpty()) {
+            LOG.info("Scheduling async pull requests : " + incomingRanges.size());
+            boolean res = true;
+            for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
+                AsyncLivePullRequestMessage pullMessage = new AsyncLivePullRequestMessage(range);
+                boolean success = this.work_queue.offer(pullMessage); // ,
+                if (!success)
+                    res = false;
+            }
+            return res;
+        } else {
+            if (debug.val)
+                LOG.debug("No incoming ranges to request");
+            return true;
+        }
     }
 
     public boolean queueAsyncPushRequests(List<ReconfigurationRange<? extends Comparable<?>>> outgoingRanges) {
@@ -3143,9 +3170,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 Object parameterToCheck = parameterSet.toArray()[offsetPair.getSecond()];
                 try {
                     // FIXME make generic
-                    if (trace.val) LOG.trace(String.format("PE (%s) checking if key owned", this.partitionId));
+                    if (trace.val)
+                        LOG.trace(String.format("PE (%s) checking if key owned", this.partitionId));
                     boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), (Long) parameterToCheck);
-                    if (trace.val) LOG.trace("Key owned " + keyOwned);
+                    if (trace.val)
+                        LOG.trace("Key owned " + keyOwned);
                     // Check with the reconfig tracking function if the values
                     // are present
                     if (trace.val)
@@ -3253,17 +3282,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         long lastCommitted = -1;
         if (this.lastCommittedTxnId == null) {
             LOG.info("Last commited txn is null");
-        }
-        else {
+        } else {
             lastCommitted = this.lastCommittedTxnId.longValue();
         }
-        if(this.ee == null){
+        if (this.ee == null) {
             throw new VoltAbortException("ee is null!");
         }
-        if(data == null)
+        if (data == null)
             throw new VoltAbortException("data i s null");
-        
-        
+
         this.ee.loadTable(table.getRelativeIndex(), data, -1, lastCommitted, getNextUndoToken(), allowExport);
 
     }
@@ -5090,7 +5117,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             // TODO remove the following
             this.to_pull = new HashMap<>();
             this.pulled_tuples = new HashMap<>();
-            queueAsyncPushRequests(outgoing_ranges);
+            if(this.reconfiguration_coordinator.scheduleAsyncPush()){
+                LOG.info("Scheduling asynch pushes");
+                queueAsyncPushRequests(outgoing_ranges);
+            }
+            else if(this.reconfiguration_coordinator.scheduleAsyncPull()){
+                LOG.info("Scheduling asynch pulls");
+                queueAsyncPullRequests(incoming_ranges);
+            }
+            else {
+                LOG.info("Scheduling no asyn msgs");
+            }
             if (this.incoming_ranges != null && this.incoming_ranges.isEmpty()) {
                 this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
             }
