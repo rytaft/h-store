@@ -1230,7 +1230,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             try {
 
                 // RC push tuples
-                reconfiguration_coordinator.pushTuples(pushRange.old_partition, pushRange.new_partition, pushRange.table_name, vt, (Long) pushRange.getMin_inclusive(),
+                reconfiguration_coordinator.pushTuples(pushRange.old_partition, pushRange.new_partition, pushRange.table_name, 
+                        vt, (Long) pushRange.getMin_inclusive(),
                         (Long) pushRange.getMax_exclusive());
                 this.reconfiguration_tracker.markRangeAsMigratedOut(pushRange);
             } catch (ReconfigurationException re) {
@@ -1245,11 +1246,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
         } 
         else if (work instanceof AsyncLivePullRequestMessage) {
-            ReconfigurationRange<? extends Comparable<?>> pullRanges = ((AsyncLivePullRequestMessage) work).getPullRange();
-            LOG.info("Asynch pull message scheduled " + pullRanges.toString());
+            
 
-            // TODO ae leftoff FIXME
-            LOG.error("Implement AsyncLivePull");
+            AsyncLivePullRequestMessage asyncLivePullRequestMessage = (AsyncLivePullRequestMessage)work;
+            processAsyncLivePullRequestMessage(asyncLivePullRequestMessage);
             throw new NotImplementedException();
         }
         // -------------------------------
@@ -2204,7 +2204,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         PartitionSet partitionSet = new PartitionSet();
         partitionSet.add(partitionId);
         // Random procedure for now
-        // FIXME vaibhav : Procedure Id shouldn't be hardcoded. This is the code
+        // FIXME vaibhav : Procedure Id shouldn't be hardcoded. This is the procedure id
         // for
         // Reconfiguration
         Procedure procedure = hstore_site.getCatalogContext().getProcedureById(25);
@@ -2820,7 +2820,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public void processLivePullRequestMessage(LivePullRequestMessage livePullRequestMessage) {
         LivePullRequest livePullRequest = livePullRequestMessage.getLivePullRequest();
 
-        VoltTable voltTable = sendTuples(livePullRequest.getTransactionID(), livePullRequest.getOldPartition(), livePullRequest.getNewPartition(), livePullRequest.getVoltTableName(),
+        VoltTable voltTable = sendTuples(livePullRequest.getTransactionID(), livePullRequest.getOldPartition(), 
+                livePullRequest.getNewPartition(), livePullRequest.getVoltTableName(),
                 livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive());
 
         ByteString tableBytes = null;
@@ -2844,6 +2845,19 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.hstore_site.getReconfigurationCoordinator().receiveLivePullTuples(livePullRequest.getLivePullIdentifier(), livePullRequest.getTransactionID(), livePullRequest.getOldPartition(),
                     livePullRequest.getNewPartition(), livePullRequest.getVoltTableName(), livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), voltTable);
         }
+    }
+    
+    public void processAsyncLivePullRequestMessage(AsyncLivePullRequestMessage asyncPullRequestMessage){
+        //This is executing at the intended destination of the tuples -  
+        // We can just fire off a live Pull request here and the source of the tuples / destination of Async Request
+        // can just return the tuples. Because we are blocking the destination we might not want to have low priority messages at the 
+        // source lying around
+        
+        ReconfigurationRange<? extends Comparable<?>> pullRange = asyncPullRequestMessage.getPullRange();
+        LOG.info("Asynch pull message scheduled " + pullRange.toString());
+        
+        
+        LOG.error("Implement AsyncLivePull");
     }
 
     /**
@@ -5115,6 +5129,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             LOG.info("Creating reconfiguration tracker");
 
             // TODO remove the following
+            //TODO : May be check when should we schedule the pull requests , right away with low priority
+            //or after a stage in recofiguration
             this.to_pull = new HashMap<>();
             this.pulled_tuples = new HashMap<>();
             if(this.reconfiguration_coordinator.scheduleAsyncPush()){
