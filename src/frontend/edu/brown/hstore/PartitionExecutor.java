@@ -1250,7 +1250,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
             AsyncLivePullRequestMessage asyncLivePullRequestMessage = (AsyncLivePullRequestMessage)work;
             processAsyncLivePullRequestMessage(asyncLivePullRequestMessage);
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
         // -------------------------------
         // BAD MOJO!
