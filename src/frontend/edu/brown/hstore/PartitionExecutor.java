@@ -2854,10 +2854,24 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // source lying around
         
         ReconfigurationRange<? extends Comparable<?>> pullRange = asyncPullRequestMessage.getPullRange();
-        LOG.info("Asynch pull message scheduled " + pullRange.toString());
+        LOG.info("Asynch pull message being scheduled for range " + pullRange.toString());
         
-        
-        LOG.error("Implement AsyncLivePull");
+        //TODO : For now the function is called for each range being pulled, check if we should move the logic of breaking the requests here
+        int requestSize = 1;
+        Semaphore pullBlockSemaphore = new Semaphore(requestSize);
+        List<ReconfigurationRange<? extends Comparable<?>>> pullRequests = new  ArrayList<ReconfigurationRange<? extends Comparable<?>>>();
+        pullRequests.add(pullRange);
+        // transaction id is a dummy here
+        // Calling the RC to generates a Live Pull Request for a range and blocking. When the reply comes back the RC will unblock the semaphore
+        this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), -1, this.partitionId, pullRequests, pullBlockSemaphore);
+        LOG.info("Blocking on ranges " + requestSize);
+        try {
+            pullBlockSemaphore.acquire(requestSize);
+            LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId));
+        } catch (InterruptedException ex) {
+            LOG.error("Waiting for pull was interuppted. ", ex);
+            // TODO ae restart txn?
+        }
     }
 
     /**
