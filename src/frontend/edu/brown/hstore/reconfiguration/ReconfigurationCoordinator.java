@@ -61,7 +61,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
 
     public enum ReconfigurationState {
-        NORMAL, BEGIN, PREPARE, DATA_TRANSFER, END
+        NORMAL, BEGIN, PREPARE, DATA_TRANSFER, BULK_TRANSFER, END
     }
 
     private HStoreSite hstore_site;
@@ -487,6 +487,16 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
 
     /**
+     * Fire off Async pull requests in the executors 
+     * This is called when state turns to Bulk Data Transfer
+     */
+    public void scheduleAsyncPullRequests(){
+        for (PartitionExecutor executor : local_executors) {
+            executor.scheduleAsyncPullRequests();
+        }
+    }
+    
+    /**
      * Parse the partition plan and figure out the destination sites and
      * populates the destination size
      * 
@@ -511,7 +521,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 // Send a control message to start the reconfiguration
 
                 ProtoRpcController controller = new ProtoRpcController();
-                ReconfigurationRequest reconfigurationRequest = ReconfigurationRequest.newBuilder().setSenderSite(this.localSiteId).setT0S(System.currentTimeMillis()).build();
+                ReconfigurationRequest reconfigurationRequest = ReconfigurationRequest.newBuilder().setSenderSite
+                        (this.localSiteId).setT0S(System.currentTimeMillis()).build();
 
                 this.channels[destinationId].reconfiguration(controller, reconfigurationRequest, this.reconfigurationRequestCallback);
             }

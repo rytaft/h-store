@@ -5115,7 +5115,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
     }
 
-    public void initReconfiguration(ReconfigurationPlan reconfig_plan, ReconfigurationProtocols reconfig_protocol, ReconfigurationState reconfig_state, PlannedPartitions planned_partitions)
+    public void initReconfiguration(ReconfigurationPlan reconfig_plan, ReconfigurationProtocols reconfig_protocol, 
+            ReconfigurationState reconfig_state, PlannedPartitions planned_partitions)
             throws Exception {
         // FIXME (ae) We need to check with Andy about concurrency issues here
         LOG.info(String.format("PE %s InitReconfiguration plan  %s %s", this.partitionId, reconfig_protocol, reconfig_state));
@@ -5143,7 +5144,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             LOG.info("Creating reconfiguration tracker");
 
             // TODO remove the following
-            //TODO : May be check when should we schedule the pull requests , right away with low priority
+            //TODO : May be check when should we schedule the pull requests, right away with low priority
             //or after a stage in recofiguration
             this.to_pull = new HashMap<>();
             this.pulled_tuples = new HashMap<>();
@@ -5165,6 +5166,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
             }
         }
+    }
+    
+    public void scheduleAsyncPullRequests(){
+        LOG.info("Scheduling asynch pushes");
+        queueAsyncPushRequests(outgoing_ranges);
     }
 
     public void startReconfiguration() throws Exception {
