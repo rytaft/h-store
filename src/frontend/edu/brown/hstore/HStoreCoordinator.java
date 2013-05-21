@@ -42,6 +42,8 @@ import edu.brown.hstore.Hstoreservice.InitializeRequest;
 import edu.brown.hstore.Hstoreservice.InitializeResponse;
 import edu.brown.hstore.Hstoreservice.LivePullRequest;
 import edu.brown.hstore.Hstoreservice.LivePullResponse;
+import edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest;
+import edu.brown.hstore.Hstoreservice.ReconfigurationControlResponse;
 import edu.brown.hstore.Hstoreservice.ReconfigurationRequest;
 import edu.brown.hstore.Hstoreservice.ReconfigurationResponse;
 import edu.brown.hstore.Hstoreservice.SendDataRequest;
@@ -809,6 +811,13 @@ public class HStoreCoordinator implements Shutdownable {
           // from the queue
           //done.run(response);
           
+        }
+
+        @Override
+        public void reconfigurationControlMsg(RpcController controller, 
+                ReconfigurationControlRequest request, RpcCallback<ReconfigurationControlResponse> done) {
+            // TODO Auto-generated method stub
+            
         }
 
     } // END CLASS
