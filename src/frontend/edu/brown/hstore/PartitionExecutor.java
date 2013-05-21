@@ -2863,10 +2863,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         pullRequests.add(pullRange);
         // transaction id is a dummy here
         // Calling the RC to generates a Live Pull Request for a range and blocking. When the reply comes back the RC will unblock the semaphore
+        if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.start();
+
         this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), -1, this.partitionId, pullRequests, pullBlockSemaphore);
         LOG.info("Blocking on ranges " + requestSize);
         try {
             pullBlockSemaphore.acquire(requestSize);
+            if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.stopIfStarted();
+
             LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId));
         } catch (InterruptedException ex) {
             LOG.error("Waiting for pull was interuppted. ", ex);
@@ -3243,7 +3247,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     pullBlockSemaphore.acquire(pullRequestsNeeded.size());
 
                     if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.stopIfStarted();
-                    if(hstore_conf.site.reconfiguration_profiling && this.lastCommittedTxnId%100 == 0) LOG.info(String.format("Avg Time MS %s",this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getAverageThinkTimeMS()));
+                    if(hstore_conf.site.reconfiguration_profiling && this.lastCommittedTxnId%1000 == 0) LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
+                            this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getAverageThinkTimeMS(),
+                            this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getInvocations()));
                     LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId));
                 } catch (InterruptedException ex) {
                     LOG.error("Waiting for pull was interuppted. ", ex);
