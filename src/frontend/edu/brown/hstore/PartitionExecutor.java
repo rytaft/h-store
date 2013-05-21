@@ -5170,7 +5170,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     
     public void scheduleAsyncPullRequests(){
         LOG.info("Scheduling asynch pushes");
-        queueAsyncPushRequests(outgoing_ranges);
+        queueAsyncPullRequests(incoming_ranges);
     }
 
     public void startReconfiguration() throws Exception {

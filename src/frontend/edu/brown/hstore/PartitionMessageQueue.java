@@ -6,12 +6,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.PriorityBlockingQueue;
 
+import edu.brown.hstore.internal.AsyncLivePullRequestMessage;
 import edu.brown.hstore.internal.AsyncLivePushRequestMessage;
 import edu.brown.hstore.internal.FinishTxnMessage;
 import edu.brown.hstore.internal.InitializeRequestMessage;
 import edu.brown.hstore.internal.InitializeTxnMessage;
 import edu.brown.hstore.internal.InternalMessage;
 import edu.brown.hstore.internal.InternalTxnMessage;
+import edu.brown.hstore.internal.LivePullRequestMessage;
 import edu.brown.hstore.internal.PrepareTxnMessage;
 import edu.brown.hstore.internal.SetDistributedTxnMessage;
 import edu.brown.hstore.internal.WorkFragmentMessage;
@@ -59,13 +61,14 @@ public class PartitionMessageQueue extends PriorityBlockingQueue<InternalMessage
     private static final Comparator<InternalMessage> WORK_COMPARATOR = new Comparator<InternalMessage>() {
         @SuppressWarnings("unchecked")
         private final Class<? extends InternalMessage> compareOrder[] = (Class<? extends InternalMessage>[])new Class<?>[]{
+            LivePullRequestMessage.class,
             SetDistributedTxnMessage.class,
             InitializeTxnMessage.class,
             PrepareTxnMessage.class,
             FinishTxnMessage.class,
             WorkFragmentMessage.class,
             AsyncLivePushRequestMessage.class,
-            AsyncLivePushRequestMessage.class
+            AsyncLivePullRequestMessage.class
         };
         
         @Override
