@@ -88,7 +88,14 @@ public class TestReconfigurationTracking extends BaseTestCase {
         
         //Test single range
         tracking1.markRangeAsReceived(migrRange);
-        tracking2.markRangeAsMigratedOut(migrRange);
+        boolean migrOut = false;
+        try{
+            tracking2.markRangeAsMigratedOut(migrRange);
+        } catch(ReconfigurationException re){
+            if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_OUT)
+                migrOut = true;
+        }
+        assertTrue(migrOut);
         
         //check keys that should have been migrated
         assertTrue(tracking1.checkKeyOwned(tbl, 100L));
