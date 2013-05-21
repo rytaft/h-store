@@ -39,6 +39,7 @@ import edu.brown.hstore.reconfiguration.ReconfigurationConstants.Reconfiguration
 import edu.brown.interfaces.Shutdownable;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import edu.brown.profilers.ReconfigurationProfiler;
 import edu.brown.protorpc.ProtoRpcController;
 
 /**
@@ -88,6 +89,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     // map of requests a PE is blocked on
     private Map<Integer, Semaphore> blockedRequests;
     private PlannedPartitions planned_partitions;
+    public ReconfigurationProfiler profilers[];
 
     public ReconfigurationCoordinator(HStoreSite hstore_site) {
         // TODO Auto-generated constructor stub
@@ -99,9 +101,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.local_executors = new ArrayList<>();
         this.channels = hstore_site.getCoordinator().getChannels();
         this.partitionStates = new ConcurrentHashMap<Integer, ReconfigurationCoordinator.ReconfigurationState>();
+        
+        int num_partitions = hstore_site.getCatalogContext().numberOfPartitions;
+
+        this.profilers = new ReconfigurationProfiler[num_partitions];
         for (int p_id : hstore_site.getLocalPartitionIds().values()) {
             this.local_executors.add(hstore_site.getPartitionExecutor(p_id));
             this.partitionStates.put(p_id, ReconfigurationState.NORMAL);
+            this.profilers[p_id] = new ReconfigurationProfiler();
         }
         this.initialPartitionStates = Collections.unmodifiableMap(partitionStates);
         this.localSiteId = hstore_site.getSiteId();

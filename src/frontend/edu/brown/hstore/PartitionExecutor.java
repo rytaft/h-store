@@ -3236,10 +3236,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // block on the pull request
                 Semaphore pullBlockSemaphore = new Semaphore(pullRequestsNeeded.size());
                 LOG.info("Pulling ranges " + pullRequestsNeeded.size());
+                if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.start();
                 this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), this.currentTxnId, this.partitionId, pullRequestsNeeded, pullBlockSemaphore);
                 LOG.info("Blocking on ranges " + pullRequestsNeeded.size());
                 try {
                     pullBlockSemaphore.acquire(pullRequestsNeeded.size());
+
+                    if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.stopIfStarted();
+                    if(hstore_conf.site.reconfiguration_profiling && this.lastCommittedTxnId%100 == 0) LOG.info(String.format("Avg Time MS %s",this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getAverageThinkTimeMS()));
                     LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId));
                 } catch (InterruptedException ex) {
                     LOG.error("Waiting for pull was interuppted. ", ex);
