@@ -44,6 +44,7 @@ import edu.brown.hstore.Hstoreservice.LivePullRequest;
 import edu.brown.hstore.Hstoreservice.LivePullResponse;
 import edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest;
 import edu.brown.hstore.Hstoreservice.ReconfigurationControlResponse;
+import edu.brown.hstore.Hstoreservice.ReconfigurationControlType;
 import edu.brown.hstore.Hstoreservice.ReconfigurationRequest;
 import edu.brown.hstore.Hstoreservice.ReconfigurationResponse;
 import edu.brown.hstore.Hstoreservice.SendDataRequest;
@@ -824,7 +825,10 @@ public class HStoreCoordinator implements Shutdownable {
             
             // No callback to be sent
             try{
-                hstore_site.getReconfigurationCoordinator().deleteTuples(request);
+                if(request.getReconfigControlType() == ReconfigurationControlType.PULL_RECEIVED){
+                    hstore_site.getReconfigurationCoordinator().deleteTuples(request);
+                }
+               
             } catch (Exception e) {
                 // TODO Auto-generated catch block
                 LOG.error("Exception incurred while deleting tuples (not just marking)", e);
