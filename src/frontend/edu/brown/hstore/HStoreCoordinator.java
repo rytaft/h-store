@@ -816,7 +816,19 @@ public class HStoreCoordinator implements Shutdownable {
         @Override
         public void reconfigurationControlMsg(RpcController controller, 
                 ReconfigurationControlRequest request, RpcCallback<ReconfigurationControlResponse> done) {
-            // TODO Auto-generated method stub
+
+            if (debug.val)
+                LOG.debug(String.format("Received %s from HStoreSite %s",
+                          request.getClass().getSimpleName(),
+                          HStoreThreadManager.formatSiteName(request.getSenderSite())));
+            
+            // No callback to be sent
+            try{
+                hstore_site.getReconfigurationCoordinator().deleteTuples(request);
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                LOG.error("Exception incurred while deleting tuples (not just marking)", e);
+              }
             
         }
 

@@ -32,6 +32,8 @@ import edu.brown.hstore.Hstoreservice.DataTransferResponse;
 import edu.brown.hstore.Hstoreservice.HStoreService;
 import edu.brown.hstore.Hstoreservice.LivePullRequest;
 import edu.brown.hstore.Hstoreservice.LivePullResponse;
+import edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest;
+import edu.brown.hstore.Hstoreservice.ReconfigurationControlType;
 import edu.brown.hstore.Hstoreservice.ReconfigurationRequest;
 import edu.brown.hstore.Hstoreservice.ReconfigurationResponse;
 import edu.brown.hstore.PartitionExecutor;
@@ -617,10 +619,30 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
             receiveLivePullTuples(msg.getLivePullIdentifier(), msg.getTransactionID(), msg.getOldPartition(), msg.getNewPartition(), msg.getVoltTableName(), msg.getMinInclusive(),
                     msg.getMaxExclusive(), vt);
+            
+            // send Acknowledgement 
 
+            ReconfigurationControlRequest acknowledgingCallback = ReconfigurationControlRequest.newBuilder().setSrcPartition(msg.getOldPartition())
+                    .setDestPartition(msg.getNewPartition())
+                    .setReconfigControlType(ReconfigurationControlType.PULL_RECEIVED)
+                    .setReceiverSite(msg.getSenderSite())
+                    .setMessageIdentifier(msg.getLivePullIdentifier()).
+                    setSenderSite(localSiteId).build();
+            
+            //TODO : Can we get away with creating an instance each time
+            ProtoRpcController controller = new ProtoRpcController();
+            channels[msg.getSenderSite()].reconfigurationControlMsg(controller, acknowledgingCallback, null);
         }
     };
 
+    /**
+     * Deletes the tuples associated with the live Pull Id of the request processed before
+     * @param request
+     */
+    public void deleteTuples(ReconfigurationControlRequest request){
+        
+    }
+    
     public ReconfigurationState getState() {
         return this.reconfigurationState;
     }
