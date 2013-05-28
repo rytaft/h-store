@@ -951,7 +951,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     
     protected ReconfigurationCoordinator initReconfigCoordinator() {
         assert(this.shutdown_state != ShutdownState.STARTED);
-        return new ReconfigurationCoordinator(this);
+        return new ReconfigurationCoordinator(this, hstore_conf);
     }
     
     protected void setTransactionIdManagerTimeDelta(long delta) {
@@ -1527,6 +1527,10 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                 throw new RuntimeException(ex);
             }
             this.clientInterface.shutdown();
+        }
+        
+        if(hstore_conf.site.reconfiguration_profiling) {
+            this.reconfiguration_coordinator.showReconfigurationProfiler();
         }
         
         LOG.info(String.format("Completed shutdown process at %s [hashCode=%d]",

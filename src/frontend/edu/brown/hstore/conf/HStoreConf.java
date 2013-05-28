@@ -646,6 +646,18 @@ public final class HStoreConf {
         public double anticache_threshold;
         
         // ----------------------------------------------------------------------------
+        // Reconfiguration Options
+        // ----------------------------------------------------------------------------
+                
+        
+        @ConfigProperty(
+                description="Enable the reconfiguration profiling.",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfiguration_profiling;
+        
+        // ----------------------------------------------------------------------------
         // MapReduce Options
         // ----------------------------------------------------------------------------
         

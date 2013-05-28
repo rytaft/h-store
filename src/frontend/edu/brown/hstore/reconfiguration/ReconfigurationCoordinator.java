@@ -37,10 +37,12 @@ import edu.brown.hstore.Hstoreservice.ReconfigurationControlType;
 import edu.brown.hstore.Hstoreservice.ReconfigurationRequest;
 import edu.brown.hstore.Hstoreservice.ReconfigurationResponse;
 import edu.brown.hstore.PartitionExecutor;
+import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
 import edu.brown.interfaces.Shutdownable;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import edu.brown.profilers.ReconfigurationProfiler;
 import edu.brown.protorpc.ProtoRpcController;
 
 /**
@@ -90,9 +92,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
     // map of requests a PE is blocked on
     private Map<Integer, Semaphore> blockedRequests;
     private PlannedPartitions planned_partitions;
+    public ReconfigurationProfiler profilers[];
+    private HStoreConf hstore_conf;
 
-    public ReconfigurationCoordinator(HStoreSite hstore_site) {
-        // TODO Auto-generated constructor stub
+    public ReconfigurationCoordinator(HStoreSite hstore_site, HStoreConf hstore_conf) {        
         this.reconfigurationLeader = -1;
         this.reconfigurationInProgress = new AtomicBoolean(false);
         this.currentReconfigurationPlan = null;
@@ -101,9 +104,16 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.local_executors = new ArrayList<>();
         this.channels = hstore_site.getCoordinator().getChannels();
         this.partitionStates = new ConcurrentHashMap<Integer, ReconfigurationCoordinator.ReconfigurationState>();
+        this.hstore_conf = hstore_conf;
+        
+        int num_partitions = hstore_site.getCatalogContext().numberOfPartitions;
+        if(hstore_conf.site.reconfiguration_profiling) 
+            this.profilers = new ReconfigurationProfiler[num_partitions];
         for (int p_id : hstore_site.getLocalPartitionIds().values()) {
             this.local_executors.add(hstore_site.getPartitionExecutor(p_id));
             this.partitionStates.put(p_id, ReconfigurationState.NORMAL);
+            if(hstore_conf.site.reconfiguration_profiling) 
+                this.profilers[p_id] = new ReconfigurationProfiler();
         }
         this.initialPartitionStates = Collections.unmodifiableMap(partitionStates);
         this.localSiteId = hstore_site.getSiteId();
@@ -677,6 +687,22 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public boolean scheduleAsyncPull() {
         // TODO Auto-generated method stub
         return true;
+    }
+
+    public void showReconfigurationProfiler() {
+        if(hstore_conf.site.reconfiguration_profiling) {
+            for (int p_id : hstore_site.getLocalPartitionIds().values()) {
+                LOG.info("Showing reconfig stats");
+                LOG.info(this.profilers[p_id].toString());
+                LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
+                        this.profilers[p_id].on_demand_pull_time.getAverageThinkTimeMS(),
+                        this.profilers[p_id].on_demand_pull_time.getInvocations()));
+    
+                LOG.info(String.format("Avg async pull Time MS %s Count:%s ",
+                        this.profilers[p_id].async_pull_time.getAverageThinkTimeMS(),
+                        this.profilers[p_id].async_pull_time.getInvocations()));
+            }
+        }
     }
 
 }
