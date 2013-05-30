@@ -185,6 +185,7 @@ import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.markov.EstimationThresholds;
 import edu.brown.profilers.PartitionExecutorProfiler;
+import edu.brown.profilers.ProfileMeasurement;
 import edu.brown.statistics.FastIntHistogram;
 import edu.brown.statistics.Histogram;
 import edu.brown.utils.ClassUtil;
@@ -1445,6 +1446,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         else if (work instanceof LivePullRequestMessage) {
             // Process the pull request
             LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
+            if(hstore_conf.site.reconfiguration_profiling)
+                this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.appendTime(livePullRequestMessage.getStartTime(), ProfileMeasurement.getTime());
             processLivePullRequestMessage(livePullRequestMessage);
         }
 
@@ -2212,7 +2215,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         ParameterSet parameterSet = new ParameterSet();
         RpcCallback<ClientResponseImpl> dummyCallback = null;
         localTransaction.init(transactionId, initiateTime, clientHandle, 0, partitionSet, false, false, procedure, parameterSet, dummyCallback);
-        LivePullRequestMessage livePullRequestMessage = new LivePullRequestMessage(localTransaction, livePullRequest, livePullResponseCallback);
+        LivePullRequestMessage livePullRequestMessage = new LivePullRequestMessage(localTransaction, livePullRequest, livePullResponseCallback, hstore_conf.site.reconfiguration_profiling);
         // TODO : Remove log statement : for Testing
         LOG.info("Adding reconfiguration work to the queue");
         boolean success = this.work_queue.offer(livePullRequestMessage); // ,

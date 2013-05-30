@@ -8,4 +8,6 @@ public class ReconfigurationProfiler extends AbstractProfiler {
     
     public ProfileMeasurement on_demand_pull_time= new ProfileMeasurement("DEMAND_PULL");
     public ProfileMeasurement async_pull_time = new ProfileMeasurement("ASYNC_PULL");
+
+    public ProfileMeasurement on_demand_pull_response_queue = new ProfileMeasurement("DEMAN_PULL_RESPONSE_QUEUE");
 }

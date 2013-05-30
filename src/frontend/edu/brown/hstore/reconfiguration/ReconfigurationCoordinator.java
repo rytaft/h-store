@@ -702,6 +702,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 LOG.info(String.format("Avg async pull Time MS %s Count:%s ",
                         this.profilers[p_id].async_pull_time.getAverageThinkTimeMS(),
                         this.profilers[p_id].async_pull_time.getInvocations()));
+                
+                
+                LOG.info(String.format("Avg live pull response queue Time MS %s Count:%s ",
+                        this.profilers[p_id].on_demand_pull_response_queue.getAverageThinkTimeMS(),
+                        this.profilers[p_id].on_demand_pull_response_queue.getInvocations()));
+                
             }
         }
     }
