@@ -2879,8 +2879,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), -1, this.partitionId, pullRequests, pullBlockSemaphore);
         LOG.info("Blocking on ranges " + requestSize);
         try {
-            pullBlockSemaphore.acquire(requestSize);
-            if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.stopIfStarted();
+            boolean acquired = pullBlockSemaphore.tryAcquire(requestSize,30, TimeUnit.SECONDS);
+            if(acquired){
+                if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.stopIfStarted();
+            }
+            else{
+                final String msg = "Timeout on blokcing for pullrequest.";
+                LOG.error(msg);
+                throw new RuntimeException(msg);
+            }
 
             LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId));
         } catch (InterruptedException ex) {
