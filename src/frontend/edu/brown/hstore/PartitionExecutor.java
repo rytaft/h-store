@@ -943,7 +943,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // partition.
                 // So we need to go our PartitionLockQueue and get back the next
                 // txn that will have our lock.
-                if (this.currentDtxn == null) {
+                // Aaron 5.28.14 - if work queue has work, it could be reconfiguration 
+                // related, so use that first.
+                if (this.currentDtxn == null && this.work_queue.isEmpty()) {
                     this.tick();
 
                     if (hstore_conf.site.exec_profiling)
