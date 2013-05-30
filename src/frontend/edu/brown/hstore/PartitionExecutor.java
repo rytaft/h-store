@@ -2218,7 +2218,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         boolean success = this.work_queue.offer(livePullRequestMessage); // ,
                                                                          // true);
         assert (success) : String.format("Failed to queue %s at partition %d for %s", livePullRequestMessage, this.partitionId, livePullRequestMessage.getTransactionId());
-        LOG.info("success " + success);
         return success;
     }
 
@@ -2820,6 +2819,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     public void processLivePullRequestMessage(LivePullRequestMessage livePullRequestMessage) {
         LivePullRequest livePullRequest = livePullRequestMessage.getLivePullRequest();
+        LOG.info("Processing Live pull request :" + livePullRequest.getLivePullIdentifier() );
 
         VoltTable voltTable = sendTuples(livePullRequest.getTransactionID(), livePullRequest.getOldPartition(), 
                 livePullRequest.getNewPartition(), livePullRequest.getVoltTableName(),
@@ -2846,6 +2846,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.hstore_site.getReconfigurationCoordinator().receiveLivePullTuples(livePullRequest.getLivePullIdentifier(), livePullRequest.getTransactionID(), livePullRequest.getOldPartition(),
                     livePullRequest.getNewPartition(), livePullRequest.getVoltTableName(), livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), voltTable);
         }
+        LOG.info("sent response to live pull : " + livePullRequest.getLivePullIdentifier());
     }
     
     public void processAsyncLivePullRequestMessage(AsyncLivePullRequestMessage asyncPullRequestMessage){
