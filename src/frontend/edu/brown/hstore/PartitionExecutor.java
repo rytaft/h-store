@@ -220,6 +220,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private ReconfigurationState reconfig_state;
 
     private int tempPullCounter=0;
+    private int tempPullResponseCounter=0;
     // ----------------------------------------------------------------------------
     // INTERNAL EXECUTION STATE
     // ----------------------------------------------------------------------------
@@ -1446,8 +1447,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         else if (work instanceof LivePullRequestMessage) {
             // Process the pull request
             LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
-            if(hstore_conf.site.reconfiguration_profiling)
+            if(hstore_conf.site.reconfiguration_profiling){
                 this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.appendTime(livePullRequestMessage.getStartTime(), ProfileMeasurement.getTime());
+                if(tempPullResponseCounter++%100==0)
+                    LOG.info(String.format("Avg live pull response queue Time MS %s Count:%s ",
+                            this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getAverageThinkTimeMS(),
+                            this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getInvocations()));
+            }
             processLivePullRequestMessage(livePullRequestMessage);
         }
 
