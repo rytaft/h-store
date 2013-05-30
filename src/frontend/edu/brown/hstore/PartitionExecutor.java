@@ -218,6 +218,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     private ReconfigurationState reconfig_state;
 
+    private int tempPullCounter=0;
     // ----------------------------------------------------------------------------
     // INTERNAL EXECUTION STATE
     // ----------------------------------------------------------------------------
@@ -3247,10 +3248,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     pullBlockSemaphore.acquire(pullRequestsNeeded.size());
 
                     if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.stopIfStarted();
-                    if(hstore_conf.site.reconfiguration_profiling && this.lastCommittedTxnId%1000 == 0) LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
+                    if(hstore_conf.site.reconfiguration_profiling && tempPullCounter % 500 == 0) LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
                             this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getAverageThinkTimeMS(),
                             this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getInvocations()));
                     LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId));
+		    tempPullCounter++;	
                 } catch (InterruptedException ex) {
                     LOG.error("Waiting for pull was interuppted. ", ex);
                     // TODO ae restart txn?
