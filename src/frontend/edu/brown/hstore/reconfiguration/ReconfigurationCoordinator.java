@@ -371,7 +371,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @return
      */
     public void sendTuples(LivePullRequest livePullRequest, RpcCallback<LivePullResponse> livePullResponseCallback) {
-        LOG.info(String.format("sendTuples  keys %s->%s for %s  partIds %s->%s", livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), livePullRequest.getVoltTableName(),
+        LOG.info(String.format("sendTuples livePullId %s  keys %s->%s for %s  partIds %s->%s", livePullRequest.getLivePullIdentifier(), livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), livePullRequest.getVoltTableName(),
                 livePullRequest.getOldPartition(), livePullRequest.getNewPartition()));
 
         VoltTable vt = null;
@@ -617,7 +617,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
             int senderId = msg.getSenderSite();
             long timeStamp = msg.getT0S();
             long txnId = msg.getT0S();
-            LOG.debug("Received senderId " + senderId + " timestamp " + timeStamp + " Transaction Id " + txnId);
+            long pullId = msg.getLivePullIdentifier();
+            LOG.info("Received senderId " + senderId + " timestamp " + timeStamp + " Transaction Id " + txnId + " Pull ID:"+pullId);
             VoltTable vt = null;
             try {
                 vt = FastDeserializer.deserialize(msg.getVoltTableData().toByteArray(), VoltTable.class);
