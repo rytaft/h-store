@@ -14,6 +14,7 @@ import org.voltdb.TheHashinator;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Database;
 
+import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.ClassUtil;
 
 /**
@@ -25,13 +26,22 @@ public class DefaultHasher extends AbstractHasher {
     /**
      * @param catalogContext
      * @param num_partitions
+     * @param hstore_conf 
      */
-    public DefaultHasher(CatalogContext catalogContext, int num_partitions) {
-        super(catalogContext, num_partitions);
+    public DefaultHasher(CatalogContext catalogContext, int num_partitions, HStoreConf hstore_conf) {
+        super(catalogContext, num_partitions, hstore_conf);
     }
 
+    /**
+     * @param catalogContext
+     * @param num_partitions
+     */
+    public DefaultHasher(CatalogContext catalogContext, int num_partitions) {
+        this(catalogContext, num_partitions,  null);
+    }
+    
     public DefaultHasher(CatalogContext catalogContext) {
-        this(catalogContext, catalogContext.numberOfPartitions);
+        this(catalogContext, catalogContext.numberOfPartitions, null);
     }
     
     @Override
@@ -81,7 +91,7 @@ public class DefaultHasher extends AbstractHasher {
         }
         assert(!values.isEmpty());
      
-        DefaultHasher hasher = new DefaultHasher(null, partitions);
+        DefaultHasher hasher = new DefaultHasher(null, partitions, null);
         if (values.size() == 1) {
             int hash = hasher.hash(values.get(0));
             System.err.println(String.format("hash(%s, %s) = %d", values.get(0).toString(), partitions.toString(), hash));

@@ -22,7 +22,7 @@ public class TestPlannedHasher extends BaseTestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp(ProjectType.YCSB);
-        hasher = new PlannedHasher(catalogContext, NUM_PARTITIONS);
+        hasher = new PlannedHasher(catalogContext, NUM_PARTITIONS, null);
         
         Table catalog_tbl = this.getTable("USERTABLE");
         Column catalog_col = this.getColumn(catalog_tbl, "YCSB_KEY");

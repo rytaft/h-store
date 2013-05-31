@@ -9,6 +9,7 @@ import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Database;
 
+import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.JSONSerializable;
 import edu.brown.utils.JSONUtil;
 
@@ -17,10 +18,11 @@ public abstract class AbstractHasher implements JSONSerializable {
 
     protected final int num_partitions;
     protected final CatalogContext catalogContext;
-    
-    public AbstractHasher(CatalogContext catalogContext, int num_partitions) {
+    protected final HStoreConf hstore_conf;
+    public AbstractHasher(CatalogContext catalogContext, int num_partitions, HStoreConf hstore_conf) {
         this.catalogContext = catalogContext;
         this.num_partitions = num_partitions;
+        this.hstore_conf = hstore_conf;
     }
     
     /**

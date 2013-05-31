@@ -449,8 +449,8 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         // Get the hasher we will use for this HStoreSite
         LOG.info("Using hasher class: " + hstore_conf.global.hasher_class );
         this.hasher = ClassUtil.newInstance(hstore_conf.global.hasher_class,
-                                             new Object[]{ this.catalogContext, num_partitions },
-                                             new Class<?>[]{ CatalogContext.class, int.class });
+                                             new Object[]{ this.catalogContext, num_partitions , this.hstore_conf },
+                                             new Class<?>[]{ CatalogContext.class, int.class, HStoreConf.class });
         this.p_estimator = new PartitionEstimator(this.catalogContext, this.hasher);
         this.remoteTxnEstimator = new RemoteEstimator(this.p_estimator);
 

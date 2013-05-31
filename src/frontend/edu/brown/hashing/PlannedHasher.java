@@ -13,6 +13,9 @@ import org.voltdb.catalog.Statement;
 import org.voltdb.catalog.Table;
 import org.voltdb.utils.NotImplementedException;
 
+import edu.brown.hstore.conf.HStoreConf;
+import edu.brown.utils.FileUtil;
+
 /**
  * @author aelmore Hasher that uses a planned partition plan, stored in the
  *         database catalog. This partition plan can change over time
@@ -71,10 +74,18 @@ public class PlannedHasher extends DefaultHasher {
      * @param catalog_db
      * @param num_partitions
      */
-    public PlannedHasher(CatalogContext catalogContext, int num_partitions) {
-        super(catalogContext, num_partitions);
+    public PlannedHasher(CatalogContext catalogContext, int num_partitions, HStoreConf hstore_conf) {
+        super(catalogContext, num_partitions,hstore_conf);
         try {
-            JSONObject partition_json = new JSONObject(ycsb_plan);
+            JSONObject partition_json = null;
+            if(hstore_conf != null && hstore_conf.global.hasher_plan != null){
+                LOG.info("Attempting to use partition plan at : " + hstore_conf.global.hasher_plan);
+                partition_json = new JSONObject(FileUtil.readFile(hstore_conf.global.hasher_plan));
+            } else {
+                LOG.error(" *** Using a planned hasher without a specified partition plan. Using YCSB default *** ");
+                partition_json = new JSONObject(ycsb_plan);
+            }
+            
             planned_partitions = new PlannedPartitions(catalogContext, partition_json);
         } catch (Exception ex) {
             LOG.error("Error intializing planned partitions", ex);

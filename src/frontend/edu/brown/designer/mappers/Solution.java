@@ -168,7 +168,7 @@ public class Solution extends AbstractDirectedTree<Solution.Vertex, Solution.Edg
         // num_partitions += node.size();
         // } // FOR
 
-        MappedHasher hasher = new MappedHasher(null, this.partitions.size());
+        MappedHasher hasher = new MappedHasher(null, this.partitions.size(),null);
         // DefaultHasher default_hasher = new DefaultHasher(null,
         // num_partitions);
         // int partition_id = 0;
