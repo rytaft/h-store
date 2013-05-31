@@ -13,8 +13,11 @@ for tablename, maxkey in tables.iteritems():
     if filler != 0:
        range_max+=1
        filler-=1
-    partitionranges[cur_partition] = [keyscovered,range_max]
+    partitionranges[cur_partition] = "%s-%s"% (keyscovered,range_max)
     cur_partition+=1
     keyscovered=range_max
-  plan_out[tablename] = partitionranges
-print plan_out    
+  plan_out[tablename] = {} 
+  plan_out[tablename]["partitions"] = partitionranges
+table_map ={}
+table_map["tables"]=plan_out  
+print table_map
