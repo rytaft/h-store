@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -94,6 +95,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private PlannedPartitions planned_partitions;
     public ReconfigurationProfiler profilers[];
     private HStoreConf hstore_conf;
+    
+    private Set<Integer> reconfigurationDonePartitionIds;
+    private Set<Integer> reconfigurationDoneSites;
 
     public ReconfigurationCoordinator(HStoreSite hstore_site, HStoreConf hstore_conf) {        
         this.reconfigurationLeader = -1;
@@ -119,6 +123,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.localSiteId = hstore_site.getSiteId();
         this.blockedRequests = new ConcurrentHashMap<>();
         this.rcRequestId = 1;
+        this.reconfigurationDonePartitionIds = new HashSet<Integer>();
+        reconfigurationDoneSites = new HashSet<Integer>();;
     }
 
     /**
@@ -248,10 +254,37 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 LOG.info("Last PE finished reconfiguration");
                 resetReconfigurationInProgress();
             }
-        } else {
-            throw new NotImplementedException();
+        } else if (this.reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL){
+            // send a message to the leader that the reconfiguration is done
+            
+            this.reconfigurationDonePartitionIds.add(partitionId);
+            if(this.reconfigurationDonePartitionIds.size() == this.local_executors.size()){
+                // signal end of reconfiguration to leader
+                signalEndReconfigurationLeader(this.localSiteId);
+            }
+            
         }
 
+    }
+    
+    public void signalEndReconfigurationLeader(int siteId) {
+        this.reconfigurationDoneSites.add(siteId);
+        
+        if(reconfigurationDoneSites.size() == this.hstore_site.getCatalogContext().numberOfSites){
+            // Call the leader
+            
+            ReconfigurationControlRequest leaderCallback = ReconfigurationControlRequest.newBuilder().setSrcPartition(-1)
+                    .setDestPartition(-1)
+                    .setReconfigControlType(ReconfigurationControlType.RECONFIGURATION_DONE)
+                    .setReceiverSite(this.reconfigurationLeader)
+                    .setMessageIdentifier(-1).
+                    setSenderSite(localSiteId).build();
+                    
+           
+            //TODO : Can we get away with creating an instance each time
+            ProtoRpcController controller = new ProtoRpcController();
+            this.channels[this.reconfigurationLeader].reconfigurationControlMsg(controller, leaderCallback, null);
+        }
     }
 
     private boolean allPartitionsFinished() {
