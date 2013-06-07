@@ -258,6 +258,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // send a message to the leader that the reconfiguration is done
             
             this.reconfigurationDonePartitionIds.add(partitionId);
+            //Check all the partitions are done
             if(this.reconfigurationDonePartitionIds.size() == this.local_executors.size()){
                 // signal end of reconfiguration to leader
                 signalEndReconfigurationLeader(this.localSiteId);
@@ -267,23 +268,40 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     }
     
+    /**
+     * Signal the end of reconfiguration for a siteId to the leader
+     * @param siteId
+     */
     public void signalEndReconfigurationLeader(int siteId) {
+        
+        ReconfigurationControlRequest leaderCallback = ReconfigurationControlRequest.newBuilder().setSrcPartition(-1)
+                .setDestPartition(-1)
+                .setReconfigControlType(ReconfigurationControlType.RECONFIGURATION_DONE)
+                .setReceiverSite(this.reconfigurationLeader)
+                .setMessageIdentifier(-1).
+                setSenderSite(localSiteId).build();
+                
+       
+        //TODO : Can we get away with creating an instance each time
+        ProtoRpcController controller = new ProtoRpcController();
+        this.channels[this.reconfigurationLeader].reconfigurationControlMsg(controller, leaderCallback, null);    
+    }
+    
+    /**
+     * Called for the reconfiguration leader to signify that
+     * @siteId is done with reconfiguration
+     * @param siteId
+     */
+    public void markReconfigurationIsDone(int siteId) {
+        if(this.localSiteId != this.reconfigurationLeader){
+            LOG.error("This message should only go to reconfiguration leader");
+            return;
+        } 
+        
         this.reconfigurationDoneSites.add(siteId);
         
         if(reconfigurationDoneSites.size() == this.hstore_site.getCatalogContext().numberOfSites){
-            // Call the leader
-            
-            ReconfigurationControlRequest leaderCallback = ReconfigurationControlRequest.newBuilder().setSrcPartition(-1)
-                    .setDestPartition(-1)
-                    .setReconfigControlType(ReconfigurationControlType.RECONFIGURATION_DONE)
-                    .setReceiverSite(this.reconfigurationLeader)
-                    .setMessageIdentifier(-1).
-                    setSenderSite(localSiteId).build();
-                    
-           
-            //TODO : Can we get away with creating an instance each time
-            ProtoRpcController controller = new ProtoRpcController();
-            this.channels[this.reconfigurationLeader].reconfigurationControlMsg(controller, leaderCallback, null);
+            // Now the leader can be sure that the reconfiguration is done as all sites have checked in
         }
     }
 
