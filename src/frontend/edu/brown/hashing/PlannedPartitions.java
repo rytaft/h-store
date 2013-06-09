@@ -21,6 +21,7 @@ import org.json.JSONStringer;
 import org.voltdb.CatalogContext;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.CatalogType;
+import org.voltdb.catalog.Column;
 import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Procedure;
 import org.voltdb.catalog.Statement;
@@ -98,8 +99,14 @@ public class PlannedPartitions implements JSONSerializable {
         this.default_table = planned_partition_json.getString(DEFAULT_TABLE);
         this.table_vt_map = new HashMap<>();
         for (Table table : catalog_context.getDataTables()) {
-            this.table_vt_map.put(table.getName().toLowerCase(), VoltType.get(table.getPartitioncolumn().getType()));
-            this.catalog_to_table_map.put(table.getPartitioncolumn(), table.getName().toLowerCase());
+            String tableName = table.getName().toLowerCase();
+            Column partitionCol = table.getPartitioncolumn();
+            if(partitionCol == null){
+                LOG.info(String.format("Partition col for table %s is null. Skipping",tableName));                
+            } else {
+                this.table_vt_map.put(tableName, VoltType.get(partitionCol.getType()));
+                this.catalog_to_table_map.put(partitionCol, tableName);
+            }
         }
 
         for (Procedure proc : catalog_context.procedures) {
@@ -159,6 +166,10 @@ public class PlannedPartitions implements JSONSerializable {
     public int getPartitionId(String table_name, Object id) throws Exception {
         PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
         PartitionedTable<?> table = phase.getTable(table_name);
+        if(table == null){
+            LOG.info("Table not found, using default : " + this.default_table);
+            table = phase.getTable(this.default_table);
+        }
         assert table != null : "Table not found " + table_name;
         return table.findPartition(id);
     }

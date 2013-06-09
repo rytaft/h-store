@@ -60,8 +60,8 @@ def genPlanJSON(tables,phases,default_table):
 
 
 if __name__ == "__main__":
-  tables = { 'warehouse':10, 'customer':1300, 'order':10 }
-  default_table = "warehouse"
-  phases = { "1":4, "2":2,"5":5 }
+  tables = { 'WAREHOUSE': 2, 'ITEM':100000,  }
+  default_table = "WAREHOUSE"
+  phases = { "1":2, "2":1  }
   plan_json = genPlanJSON(tables, phases, default_table)
   print str(plan_json)
