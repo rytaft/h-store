@@ -91,4 +91,10 @@ public interface ReconfigurationTrackingInterface {
      * @throws ReconfigurationException to indicate a set of keys must be migrated out, in or both
      */
     public boolean checkKeyOwned(CatalogType catalog, Object key) throws ReconfigurationException;
+    
+    /**
+     * Called to check if all reconfiguration ranges are received 
+     * @return
+     */
+    public boolean checkIfAllRangesAreMigratedIn();
 }

@@ -224,6 +224,14 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         
         return false;
     }
+
+    @Override
+    public boolean checkIfAllRangesAreMigratedIn() {       
+        if(this.incoming_ranges.size() == rangesMigratedInCount){
+            return true;
+        } 
+        return false;     
+    }
     
     
 }

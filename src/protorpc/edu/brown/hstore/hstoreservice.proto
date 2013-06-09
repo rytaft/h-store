@@ -576,6 +576,9 @@ enum ReconfigurationControlType{
   // that the source of the tuple can delete the tuple, it saves it 
   // in temp buffer upto that point
   PULL_RECEIVED = 0;
+  // This is the message to signal the end of reconfiguration send by each site 
+  // to the leader
+  RECONFIGURATION_DONE = 1;
 }
 
 message ReconfigurationControlRequest {
