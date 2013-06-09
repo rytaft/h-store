@@ -104,6 +104,7 @@ public class PlannedPartitions implements JSONSerializable {
             if(partitionCol == null){
                 LOG.info(String.format("Partition col for table %s is null. Skipping",tableName));                
             } else {
+                LOG.info(String.format("Adding table:%s partitionCol:%s %s", tableName,partitionCol,VoltType.get(partitionCol.getType())));
                 this.table_vt_map.put(tableName, VoltType.get(partitionCol.getType()));
                 this.catalog_to_table_map.put(partitionCol, tableName);
             }
@@ -116,11 +117,11 @@ public class PlannedPartitions implements JSONSerializable {
                     LOG.info(String.format("Using default table %s for procedure: %s ", this.default_table, proc.toString()));
                     table_name = this.default_table;
                 } else {
-                    LOG.info(table_name + " adding procedure: " + proc.toString());
+                    LOG.debug(table_name + " adding procedure: " + proc.toString());
                 }
                 this.catalog_to_table_map.put(proc, table_name);
                 for (Statement statement : proc.getStatements()) {
-                    LOG.info(table_name + " adding statement: " + statement.toString());
+                    LOG.debug(table_name + " adding statement: " + statement.toString());
 
                     this.catalog_to_table_map.put(statement, table_name);
                 }
@@ -167,7 +168,7 @@ public class PlannedPartitions implements JSONSerializable {
         PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
         PartitionedTable<?> table = phase.getTable(table_name);
         if(table == null){
-            LOG.info("Table not found, using default : " + this.default_table);
+            LOG.info(String.format("Table not found: %s, using default:%s ",table_name,this.default_table));
             table = phase.getTable(this.default_table);
         }
         assert table != null : "Table not found " + table_name;
@@ -245,7 +246,7 @@ public class PlannedPartitions implements JSONSerializable {
                     vt = table_vt_map.get(table_name);
                 }
                 else{
-                    LOG.info(String.format("Using default voltType %s for table %s ", DEFAULT_VOLTTYPE, table_name));
+                    LOG.info(String.format("Using default voltType %s for table '%s' ", DEFAULT_VOLTTYPE, table_name));
                     vt=DEFAULT_VOLTTYPE;
                 }
                     
@@ -318,6 +319,7 @@ public class PlannedPartitions implements JSONSerializable {
             assert (id instanceof Comparable<?>);
 
             // TODO I am sure there is a better way to do this... Andy? (ae)
+            //TODO fix partitiontype
             T cast_id = (T) id;
 
             try {
@@ -331,6 +333,7 @@ public class PlannedPartitions implements JSONSerializable {
                     }
                 }
             } catch (Exception e) {
+                LOG.error("Error looking up partition",e);
             }
 
             LOG.error(String.format("Partition not found for ID:%s.  Type:%s  TableType", cast_id, cast_id.getClass().toString(), this.vt.getClass().toString()));
