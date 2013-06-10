@@ -702,7 +702,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param request
      */
     public void deleteTuples(ReconfigurationControlRequest request){
-        
+        LOG.info("Acknowledgement received by source of the tuple in the specified pull request," +
+        		" hence we can delete the associated tuples");
+        for (PartitionExecutor executor : local_executors) {
+            if(request.getSrcPartition() == executor.getPartitionId()){
+                executor.getExecutionEngine().updateExtractRequest(request.getMessageIdentifier(), true);
+                break;
+            }
+        }
     }
     
     public ReconfigurationState getState() {
