@@ -2891,7 +2891,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 throw new RuntimeException(msg);
             }
 
-            LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId));
+            LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId)); 
         } catch (InterruptedException ex) {
             LOG.error("Waiting for pull was interuppted. ", ex);
             // TODO ae restart txn?
@@ -5251,7 +5251,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // TODO ae can we just receive range?
                 LOG.info(String.format("PE (%s) marking range as received %s %s-%s ", this.partitionId, table_name, min_inclusive, max_exclusive));
                 try {
-                    this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
+                    this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>
+                    (table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
+                    if(this.reconfiguration_tracker.checkIfAllRangesAreMigratedIn()){
+                        // Now reconfiguration resposnibilty of a destination of Live Pull is done,
+                        // so it tells the leader it is done
+                        this.hstore_site.getReconfigurationCoordinator().finishReconfiguration(partitionId);
+                    }
                 } catch (ReconfigurationException re) {
                     if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_IN)
                         this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
