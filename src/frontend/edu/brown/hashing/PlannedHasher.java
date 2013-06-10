@@ -14,6 +14,7 @@ import org.voltdb.catalog.Table;
 import org.voltdb.utils.NotImplementedException;
 
 import edu.brown.hstore.conf.HStoreConf;
+import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.utils.FileUtil;
 
 /**
@@ -21,6 +22,8 @@ import edu.brown.utils.FileUtil;
  *         database catalog. This partition plan can change over time
  */
 public class PlannedHasher extends DefaultHasher {
+    private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
+    private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
 
     String ycsb_plan = "{"+
             "       \"default_table\":\"usertable\"," +        
@@ -109,7 +112,7 @@ public class PlannedHasher extends DefaultHasher {
     public int hash(Object value, CatalogType catalogItem) {
         if (catalogItem instanceof Column || catalogItem instanceof Procedure || catalogItem instanceof Statement) {
             try {
-                LOG.info(String.format("\t%s Id:%s Partition:%s Phase:%s",catalogItem,value,planned_partitions.getPartitionId(catalogItem, value),planned_partitions.getCurrent_phase()));
+                if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s Phase:%s",catalogItem,value,planned_partitions.getPartitionId(catalogItem, value),planned_partitions.getCurrent_phase()));
                 return planned_partitions.getPartitionId(catalogItem, value);
             } catch (Exception e) {
                 LOG.error("Error on looking up partitionId from planned partition", e);
