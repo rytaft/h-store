@@ -706,7 +706,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
         		" hence we can delete the associated tuples");
         for (PartitionExecutor executor : local_executors) {
             if(request.getSrcPartition() == executor.getPartitionId()){
-                executor.getExecutionEngine().updateExtractRequest(request.getMessageIdentifier(), true);
+                LOG.info("Partition Id is "+ executor.getPartitionId()+" Getting EE to delete the tuples");
+                if(executor.getExecutionEngine() != null){
+                    executor.getExecutionEngine().updateExtractRequest(request.getMessageIdentifier(), true);
+                } else {
+                    LOG.error("EE seems to be null here");
+                }
                 break;
             }
         }
