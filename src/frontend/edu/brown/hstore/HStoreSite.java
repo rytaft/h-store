@@ -1726,7 +1726,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                     Status.OK,
                     HStoreConstants.EMPTY_RESULT,
                     "");
-            this.responseSend(cresponse, clientCallback, EstTime.currentTimeMillis(), 0);
+            this.responseSend(cresponse, clientCallback, EstTime.currentTimeMillis(), 0,
+            		-1 // Marco
+            		);
 
             // Non-blocking....
             Exception error = new Exception("Shutdown command received at " + this.getSiteName());
@@ -1759,7 +1761,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                     Status.OK,
                     HStoreConstants.EMPTY_RESULT,
                     "");
-            this.responseSend(cresponse, clientCallback, EstTime.currentTimeMillis(), 0);
+            this.responseSend(cresponse, clientCallback, EstTime.currentTimeMillis(), 0,
+            		-1 // Marco
+            		);
             return (true);
         }
         
@@ -2471,7 +2475,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                 this.responseSend(cresponse,
                                   ts.getClientCallback(),
                                   ts.getInitiateTime(),
-                                  ts.getRestartCounter());
+                                  ts.getRestartCounter(),
+                                  ts.getTransactionId() // Marco
+                                  );
             }
         } else if (debug.val) { 
             LOG.debug(String.format("%s - Holding the ClientResponse until logged to disk", ts));
@@ -2537,7 +2543,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                                             status,
                                             HStoreConstants.EMPTY_RESULT,
                                             message);
-        this.responseSend(cresponse, clientCallback, initiateTime, 0);
+        this.responseSend(cresponse, clientCallback, initiateTime, 0,
+        		-1 // Marco
+        		);
     }
     
     /**
@@ -2551,7 +2559,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     public void responseSend(ClientResponseImpl cresponse,
                              RpcCallback<ClientResponseImpl> clientCallback,
                              long initiateTime,
-                             int restartCounter) {
+                             int restartCounter,
+                             long txn_id
+                             ) {
         Status status = cresponse.getStatus();
  
         // If the txn committed/aborted, then we can send the response directly back to the

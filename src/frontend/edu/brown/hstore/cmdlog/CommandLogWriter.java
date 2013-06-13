@@ -87,12 +87,14 @@ public class CommandLogWriter extends ExceptionHandlingRunnable implements Shutd
         protected RpcCallback<ClientResponseImpl> clientCallback;
         protected long initiateTime;
         protected int restartCounter;
+        protected long txn_id; // Marco
         
         public LogEntry init(LocalTransaction ts, ClientResponseImpl cresponse) {
             this.cresponse = cresponse;
             this.clientCallback = ts.getClientCallback();
             this.initiateTime = ts.getInitiateTime();
             this.restartCounter = ts.getRestartCounter();
+            this.txn_id = ts.getTransactionId();	// Marco
             return super.init(ts);
         }
         
@@ -510,7 +512,9 @@ public class CommandLogWriter extends ExceptionHandlingRunnable implements Shutd
                             hstore_site.responseSend(entry.cresponse,
                                                      entry.clientCallback,
                                                      entry.initiateTime,
-                                                     entry.restartCounter);
+                                                     entry.restartCounter,
+                                                     entry.txn_id // Marco
+                                                     );
                         }
                     } else {
                         LOG.warn("Unexpected unintialized " + entry.getClass().getSimpleName());
