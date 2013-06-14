@@ -87,14 +87,14 @@ public class CommandLogWriter extends ExceptionHandlingRunnable implements Shutd
         protected RpcCallback<ClientResponseImpl> clientCallback;
         protected long initiateTime;
         protected int restartCounter;
-        protected long txn_id; // Marco
+        protected Procedure catalog_proc ; // Marco
         
         public LogEntry init(LocalTransaction ts, ClientResponseImpl cresponse) {
             this.cresponse = cresponse;
             this.clientCallback = ts.getClientCallback();
             this.initiateTime = ts.getInitiateTime();
             this.restartCounter = ts.getRestartCounter();
-            this.txn_id = ts.getTransactionId();	// Marco
+            this.catalog_proc = ts.getProcedure();	// Marco
             return super.init(ts);
         }
         
@@ -513,7 +513,7 @@ public class CommandLogWriter extends ExceptionHandlingRunnable implements Shutd
                                                      entry.clientCallback,
                                                      entry.initiateTime,
                                                      entry.restartCounter,
-                                                     entry.txn_id // Marco
+                                                     entry.catalog_proc // Marco
                                                      );
                         }
                     } else {

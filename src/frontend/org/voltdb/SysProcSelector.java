@@ -38,4 +38,5 @@ public enum SysProcSelector {
     ANTICACHEEVICTIONS, // anti-cache eviction history
     ANTICACHEACCESS, // anti-cache evicted access history
     POOL,           // info about how object pools
+    TXNRESPONSETIME,	// transaction response time - Marco
 }

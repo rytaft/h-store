@@ -103,6 +103,7 @@ public class Statistics extends VoltSystemProcedure {
         addStatsFragments(SysProcSelector.PLANNERPROFILER, SysProcFragmentId.PF_plannerProfilerData, SysProcFragmentId.PF_plannerProfilerAggregator);
         addStatsFragments(SysProcSelector.ANTICACHE, SysProcFragmentId.PF_anticacheProfilerData, SysProcFragmentId.PF_anticacheProfilerAggregator);
         addStatsFragments(SysProcSelector.POOL, SysProcFragmentId.PF_poolData, SysProcFragmentId.PF_poolAggregator);
+        addStatsFragments(SysProcSelector.TXNRESPONSETIME, SysProcFragmentId.PF_txnRTData, SysProcFragmentId.PF_txnRTAggregator); // Marco
     } // STATIC
     
     @Override
@@ -116,6 +117,7 @@ public class Statistics extends VoltSystemProcedure {
         registerPlanFragment(SysProcFragmentId.PF_partitionCount);
         registerPlanFragment(SysProcFragmentId.PF_ioData);
         registerPlanFragment(SysProcFragmentId.PF_ioDataAggregator);
+        registerPlanFragment(SysProcFragmentId.PF_txnRTData); // Marco
         
         // Automatically register our STATS_DATA entries
         for (Integer id : STATS_DATA.keySet()) {
@@ -147,7 +149,9 @@ public class Statistics extends VoltSystemProcedure {
             case SysProcFragmentId.PF_siteProfilerData:
             case SysProcFragmentId.PF_plannerProfilerData:
             case SysProcFragmentId.PF_anticacheProfilerData:
-            case SysProcFragmentId.PF_poolData: {
+            case SysProcFragmentId.PF_poolData:
+            case SysProcFragmentId.PF_txnRTData: // Marco
+            {
                 assert(params.toArray().length == 2);
                 final boolean interval =
                     ((Byte)params.toArray()[0]).byteValue() == 0 ? false : true;
@@ -189,7 +193,9 @@ public class Statistics extends VoltSystemProcedure {
             case SysProcFragmentId.PF_siteProfilerAggregator:
             case SysProcFragmentId.PF_plannerProfilerAggregator:
             case SysProcFragmentId.PF_anticacheProfilerAggregator:
-            case SysProcFragmentId.PF_poolAggregator: {
+            case SysProcFragmentId.PF_poolAggregator:
+            case SysProcFragmentId.PF_txnRTAggregator: // Marco
+            {
                 // Do a reverse look up to find the input dependency id
                 int dataFragmentId = -1;
                 for (Integer id : STATS_DATA.keySet()) {
