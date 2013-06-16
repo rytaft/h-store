@@ -2509,6 +2509,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         if (debug.val)
             LOG.debug(String.format("Adding ClientResponse for %s from partition %d to processing queue [status=%s, size=%d]",
                       ts, ts.getBasePartition(), cresponse.getStatus(), this.postProcessorQueue.size()));
+        this.rtStats.addResponseTime(ts.getProcedure(), cresponse.getClusterRoundtrip()); // Marco
         this.postProcessorQueue.add(new Object[]{
                                             cresponse,
                                             ts.getClientCallback(),
@@ -2527,7 +2528,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     public void responseQueue(ClientResponseImpl cresponse,
                               RpcCallback<ClientResponseImpl> clientCallback,
                               long initiateTime,
-                              int restartCounter) {
+                              int restartCounter,
+                              Procedure catalog_proc) { // Marco
+        this.rtStats.addResponseTime(catalog_proc, cresponse.getClusterRoundtrip()); // Marco
         this.postProcessorQueue.add(new Object[]{
                                             cresponse,
                                             clientCallback,
@@ -2601,7 +2604,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
             EstTimeUpdater.update(now);
         }
         cresponse.setClusterRoundtrip((int)(now - initiateTime));
-        this.rtStats.addResponseTime(catalog_proc, now - initiateTime); // Marco
+        if (catalog_proc != null) this.rtStats.addResponseTime(catalog_proc, now - initiateTime); // Marco
         cresponse.setRestartCounter(restartCounter);
         try {
             clientCallback.run(cresponse);
@@ -2613,7 +2616,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                 LOG.warn("Failed to send back ClientResponse for txn #" + cresponse.getTransactionId(), ex);
         }
     }
-    
+
     // ----------------------------------------------------------------------------
     // DELETE TRANSACTION METHODS
     // ----------------------------------------------------------------------------

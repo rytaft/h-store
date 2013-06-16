@@ -50,8 +50,7 @@ public final class TransactionPostProcessor extends AbstractProcessingRunnable<O
                       cresponse.getTransactionId(), cresponse.getBasePartition(), cresponse.getStatus()));
         try {
             this.hstore_site.responseSend(cresponse, clientCallback, initiateTime, restartCounter,
-            		cresponse.getTransactionId() // Marco
-            		);
+            		null); // Marco
         } catch (Throwable ex) {
             if (this.isShuttingDown() == false) throw new RuntimeException(ex);
             this.shutdown();
