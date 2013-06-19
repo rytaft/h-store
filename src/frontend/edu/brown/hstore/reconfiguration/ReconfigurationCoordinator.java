@@ -749,8 +749,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
 
     public boolean scheduleAsyncPull() {
-        // TODO Auto-generated method stub
-        return true;
+        // TODO 06/18/2013- False for testing its priority, revert later
+        return false;
     }
 
     public void showReconfigurationProfiler() {
