@@ -2,6 +2,7 @@ package edu.brown.hashing;
 
 import java.io.File;
 import java.util.List;
+import java.util.Set;
 
 import org.json.JSONObject;
 
@@ -59,6 +60,13 @@ public class TestMultiTablePlannedPartitions extends BaseTestCase {
         FileUtil.writeStringToFile(json_path, tpcc_json);
     }
 
+    public void testExtractTableNames() throws Exception {
+        JSONObject test_json = new JSONObject(tpcc_json);
+        Set<String> tbls = PlannedPartitions.getExplicitPartitionedTables(test_json);
+        assertTrue(tbls.contains("warehouse"));
+        assertFalse(tbls.contains("district"));
+    }
+    
     public void testDefaultMappings() throws Exception {
         File f = new File(json_path.getAbsolutePath());
         assertNotNull(f);
@@ -87,7 +95,7 @@ public class TestMultiTablePlannedPartitions extends BaseTestCase {
         assertNotNull(plan);
         List<ReconfigurationRange<? extends Comparable<?>>> out_ranges = plan.getOutgoing_ranges().get(0);
         System.out.println(out_ranges);
-        assertEquals("Expected 2 outgoing ranges",2, out_ranges.size());
+        assertEquals("Expected 9 outgoing ranges",9, out_ranges.size());
     }
 
 }

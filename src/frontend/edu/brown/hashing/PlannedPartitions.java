@@ -9,12 +9,13 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -94,6 +95,7 @@ public class PlannedPartitions implements JSONSerializable {
         this.catalog_to_table_map = new HashMap<>();
         this.paramMappings = catalog_context.paramMappings;
 
+        Set<String> partitionedTables = getExplicitPartitionedTables(planned_partition_json);
         // TODO find catalogContext.getParameter mapping to find
         // statement_column
         // from project mapping (ae)
@@ -130,6 +132,51 @@ public class PlannedPartitions implements JSONSerializable {
 
             }
         }
+        // We need to track which tables are partitioned on another table in
+        // order to generate the reconfiguration ranges for those tables,
+        // because they are not explicitly partitioned in the plan.
+        DependencyUtil dependUtil = DependencyUtil.singleton(catalog_context.database);
+        Map<String, String> partitionedTablesByFK = new HashMap<>();
+
+        for (Table table : catalog_context.getDataTables()) {
+            String tableName = table.getName().toLowerCase();
+            // Making the assumption that the same tables are in all phases TODO
+            // verify this
+            if (partitionedTables.contains(tableName) == false) {
+
+                Column partitionCol = table.getPartitioncolumn();
+                if (partitionCol == null) {
+                    LOG.info(tableName + " is not partitioned and has no partition column. skipping");
+                    continue;
+                } else {
+                    LOG.info(tableName + " is not explicitly partitioned.");
+                }
+                List<Column> depCols = dependUtil.getAncestors(partitionCol);
+                boolean partitionedParentFound = false;
+                for (Column c : depCols) {
+                    CatalogType p = c.getParent();
+                    if (p instanceof Table) {
+                        // if in table then map to it
+                        String relatedTblName = p.getName().toLowerCase();
+                        if (partitionedTables.contains(relatedTblName)) {
+                            LOG.info("parent partitioned table : " + p + " : " + relatedTblName);
+                            partitionedTablesByFK.put(tableName, relatedTblName);
+                            partitionedParentFound = true;
+                            if (catalog_to_table_map.containsKey(table))
+                                LOG.error("ctm has table already : " + table);
+                            catalog_to_table_map.put(table, relatedTblName);
+                            if (catalog_to_table_map.containsKey(partitionCol)) {
+                                LOG.error("ctm has part col : " + partitionCol + " : " + catalog_to_table_map.get(partitionCol));
+                            }
+                            catalog_to_table_map.put(partitionCol, relatedTblName);
+                        }
+                    }
+                }
+                if (!partitionedParentFound) {
+                    throw new RuntimeException("No partitioned relationship found for table : " + tableName + " partitioned:" + partitionedTables.toString());
+                }
+            }
+        }
 
         if (planned_partition_json.has(PLANNED_PARTITIONS)) {
             JSONObject phases = planned_partition_json.getJSONObject(PLANNED_PARTITIONS);
@@ -139,8 +186,8 @@ public class PlannedPartitions implements JSONSerializable {
                 String key = keys.next();
 
                 JSONObject phase = phases.getJSONObject(key);
-                this.partition_phase_map.put(key, new PartitionPhase(catalog_context, this.table_vt_map, phase));
-                
+                this.partition_phase_map.put(key, new PartitionPhase(catalog_context, this.table_vt_map, phase, partitionedTablesByFK));
+
                 // Use the first phase by default
                 if (first_key == null) {
                     first_key = key;
@@ -151,47 +198,46 @@ public class PlannedPartitions implements JSONSerializable {
         } else {
             throw new JSONException(String.format("JSON file is missing key \"%s\". ", PLANNED_PARTITIONS));
         }
-        
-        Set<String> partitionedTables =  this.partition_phase_map.get(this.getCurrent_phase()).tables_map.keySet();
-        DependencyUtil dependUtil = DependencyUtil.singleton(catalog_context.database);
-        
-        for (Table table : catalog_context.getDataTables()) {
-            String tableName = table.getName().toLowerCase();
-            if(partitionedTables.contains(tableName)==false){
-                Column partitionCol = table.getPartitioncolumn(); 
-                if (partitionCol == null){
-                    LOG.info(tableName + " is not partitioned and has no partition column. skipping");
-                    continue;
-                } else {
-                    LOG.info(tableName + " is not explicitly partitioned.");    
-                }
-                List<Column> depCols = dependUtil.getAncestors(partitionCol);
-                boolean partitionedParentFound = false;
-                for(Column c : depCols) {
-                    CatalogType p = c.getParent();
-                    if(p instanceof Table){
-                        //if in table then map to it
-                        String tblName = p.getName().toLowerCase();
-                        if(partitionedTables.contains(tblName)){
-                            LOG.info("parent partitioned table table : " + p + " : "+ tblName);
-                            partitionedParentFound =true;
-                            if (catalog_to_table_map.containsKey(table))
-                                LOG.error("ctm has table already : " + table);
-                            catalog_to_table_map.put(table,tblName);
-                            if (catalog_to_table_map.containsKey(partitionCol)){
-                                LOG.error("ctm has part col : " + partitionCol + " : " + catalog_to_table_map.get(partitionCol));
-                            }
-                            catalog_to_table_map.put(partitionCol,tblName);
+
+        // TODO check to make sure partitions exist that are in the plan (ae)
+
+    }
+
+    /**
+     * Get the explicit partitioned tables and ensure that each phase has the
+     * same set of tables
+     * 
+     * @param planned_partition_json
+     * @return the set of tables in the partition plan
+     */
+    public static Set<String> getExplicitPartitionedTables(JSONObject planned_partition_json) {
+        try {
+            Set<String> tables = null;
+            if (planned_partition_json.has(PLANNED_PARTITIONS)) {
+                JSONObject phases = planned_partition_json.getJSONObject(PLANNED_PARTITIONS);
+                Iterator<String> keys = phases.keys();
+                while (keys.hasNext()) {
+                    JSONObject phase = phases.getJSONObject(keys.next());
+                    Set<String> phase_tables = new HashSet<>();
+                    Iterator<String> table_names = phase.getJSONObject(TABLES).keys();
+                    while (table_names.hasNext()) {
+                        phase_tables.add(table_names.next());
+                    }
+                    if (tables == null) {
+                        // First set of tables
+                        tables = phase_tables;
+                    } else {
+                        // check if equal
+                        if (tables.equals(phase_tables) == false) {
+                            throw new RuntimeException(String.format("Partition plan has mistmatched tables (%s) != (%s)", tables, phase_tables));
                         }
                     }
                 }
-                if (!partitionedParentFound){
-                    throw new RuntimeException("No partitioned relationship found for table : " + tableName + " partitioned:"+partitionedTables.toString());
-                }
             }
+            return tables;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
-        // TODO check to make sure partitions exist that are in the plan (ae)
-
     }
 
     /**
@@ -207,7 +253,8 @@ public class PlannedPartitions implements JSONSerializable {
         PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
         PartitionedTable<?> table = phase.getTable(table_name);
         if (table == null) {
-            if (debug.val) LOG.debug(String.format("Table not found: %s, using default:%s ", table_name, this.default_table));
+            if (debug.val)
+                LOG.debug(String.format("Table not found: %s, using default:%s ", table_name, this.default_table));
             table = phase.getTable(this.default_table);
             if (table == null) {
                 throw new RuntimeException(String.format("Default partition table is null. Lookup table:%s Default Table:%s", table_name, this.default_table));
@@ -275,8 +322,9 @@ public class PlannedPartitions implements JSONSerializable {
          *            mapping of table names to volt type of partition col
          * @param phase
          *            JSONObject
+         * @param partitionedTablesByFK
          */
-        public PartitionPhase(CatalogContext catalog_context, Map<String, VoltType> table_vt_map, JSONObject phase) throws Exception {
+        public PartitionPhase(CatalogContext catalog_context, Map<String, VoltType> table_vt_map, JSONObject phase, Map<String, String> partitionedTablesByFK) throws Exception {
             this.tables_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
             assert (phase.has(TABLES));
             JSONObject json_tables = phase.getJSONObject(TABLES);
@@ -296,6 +344,17 @@ public class PlannedPartitions implements JSONSerializable {
                 // TODO fix partitiontype
                 this.tables_map.put(table_name, new PartitionedTable<Long>(vt, table_name, table_json, catalog_context.getTableByName(table_name)));
             }
+
+            //Add entries for tables that are partitioned on other columns
+            for (Entry<String, String> partitionedFK : partitionedTablesByFK.entrySet()) {
+                String table_name = partitionedFK.getKey();
+                String fk_table_name = partitionedFK.getValue();
+                if (json_tables.has(fk_table_name) == false) {
+                    throw new RuntimeException(String.format("For table %s, the foreignkey partitioned table %s is not explicitly partitioned ", table_name,fk_table_name));
+                }
+                LOG.info(String.format("Adding FK partitioning %s->%s", table_name, fk_table_name));
+                this.tables_map.put(partitionedFK.getKey(), this.tables_map.get(partitionedFK.getValue()).clone(table_name, catalog_context.getTableByName(table_name)));
+            }
         }
 
         protected PartitionPhase(Map<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>> table_map) {
@@ -314,11 +373,13 @@ public class PlannedPartitions implements JSONSerializable {
         protected String table_name;
         private VoltType vt;
         private Table catalog_table;
+        private JSONObject table_json;
 
         public PartitionedTable(VoltType vt, String table_name, JSONObject table_json, Table catalog_table) throws Exception {
             this.catalog_table = catalog_table;
             this.partitions = new ArrayList<>();
             this.table_name = table_name;
+            this.table_json = table_json;
             this.vt = vt;
             assert (table_json.has(PARTITIONS));
             JSONObject partitions_json = table_json.getJSONObject(PARTITIONS);
@@ -332,6 +393,10 @@ public class PlannedPartitions implements JSONSerializable {
                 this.addPartitionRanges(partition_id, partitions_json.getString(partition));
             }
             Collections.sort(this.partitions);
+        }
+        
+        public PartitionedTable<T> clone(String new_table_name, Table new_catalog_table) throws Exception{
+            return new PartitionedTable<T>(this.vt,new_table_name, this.table_json,new_catalog_table);
         }
 
         public PartitionedTable(List<PartitionRange<T>> partitions, String table_name, VoltType vt) {
