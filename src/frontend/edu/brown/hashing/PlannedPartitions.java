@@ -12,9 +12,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
-import org.jfree.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
@@ -28,6 +29,7 @@ import org.voltdb.catalog.Statement;
 import org.voltdb.catalog.Table;
 import org.voltdb.utils.VoltTypeUtil;
 
+import edu.brown.catalog.DependencyUtil;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
@@ -117,7 +119,7 @@ public class PlannedPartitions implements JSONSerializable {
                     LOG.info(String.format("Using default table %s for procedure: %s ", this.default_table, proc.toString()));
                     table_name = this.default_table;
                 } else {
-                    LOG.debug(table_name + " adding procedure: " + proc.toString());
+                    LOG.info(table_name + " adding procedure: " + proc.toString());
                 }
                 this.catalog_to_table_map.put(proc, table_name);
                 for (Statement statement : proc.getStatements()) {
@@ -138,7 +140,7 @@ public class PlannedPartitions implements JSONSerializable {
 
                 JSONObject phase = phases.getJSONObject(key);
                 this.partition_phase_map.put(key, new PartitionPhase(catalog_context, this.table_vt_map, phase));
-
+                
                 // Use the first phase by default
                 if (first_key == null) {
                     first_key = key;
@@ -149,7 +151,45 @@ public class PlannedPartitions implements JSONSerializable {
         } else {
             throw new JSONException(String.format("JSON file is missing key \"%s\". ", PLANNED_PARTITIONS));
         }
-
+        
+        Set<String> partitionedTables =  this.partition_phase_map.get(this.getCurrent_phase()).tables_map.keySet();
+        DependencyUtil dependUtil = DependencyUtil.singleton(catalog_context.database);
+        
+        for (Table table : catalog_context.getDataTables()) {
+            String tableName = table.getName().toLowerCase();
+            if(partitionedTables.contains(tableName)==false){
+                Column partitionCol = table.getPartitioncolumn(); 
+                if (partitionCol == null){
+                    LOG.info(tableName + " is not partitioned and has no partition column. skipping");
+                    continue;
+                } else {
+                    LOG.info(tableName + " is not explicitly partitioned.");    
+                }
+                List<Column> depCols = dependUtil.getAncestors(partitionCol);
+                boolean partitionedParentFound = false;
+                for(Column c : depCols) {
+                    CatalogType p = c.getParent();
+                    if(p instanceof Table){
+                        //if in table then map to it
+                        String tblName = p.getName().toLowerCase();
+                        if(partitionedTables.contains(tblName)){
+                            LOG.info("parent partitioned table table : " + p + " : "+ tblName);
+                            partitionedParentFound =true;
+                            if (catalog_to_table_map.containsKey(table))
+                                LOG.error("ctm has table already : " + table);
+                            catalog_to_table_map.put(table,tblName);
+                            if (catalog_to_table_map.containsKey(partitionCol)){
+                                LOG.error("ctm has part col : " + partitionCol + " : " + catalog_to_table_map.get(partitionCol));
+                            }
+                            catalog_to_table_map.put(partitionCol,tblName);
+                        }
+                    }
+                }
+                if (!partitionedParentFound){
+                    throw new RuntimeException("No partitioned relationship found for table : " + tableName + " partitioned:"+partitionedTables.toString());
+                }
+            }
+        }
         // TODO check to make sure partitions exist that are in the plan (ae)
 
     }

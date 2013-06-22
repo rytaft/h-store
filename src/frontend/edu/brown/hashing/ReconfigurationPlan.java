@@ -49,6 +49,7 @@ public class ReconfigurationPlan {
             tables_map.put(table_name, new ReconfigurationTable(old_phase.getTable(table_name), new_phase.getTable(table_name)));
         }
         registerReconfigurationRanges();
+        LOG.info(String.format("Reconfiguration plan generated \n Out: %s \n In: %s",outgoing_ranges.toString(),incoming_ranges.toString()));
     }
     
     protected void registerReconfigurationRanges(){
@@ -240,7 +241,7 @@ public class ReconfigurationPlan {
         
         @Override
         public String toString(){
-          return String.format("ReconfigRange [%s,%s) id:%s->%s ",min_inclusive,max_exclusive,old_partition,new_partition);
+          return String.format("ReconfigRange (%s)  [%s,%s) id:%s->%s ",table_name,min_inclusive,max_exclusive,old_partition,new_partition);
         }
         
         //FIXME Ugh this needs to be fixed the generic comparable in these classes are a mess
