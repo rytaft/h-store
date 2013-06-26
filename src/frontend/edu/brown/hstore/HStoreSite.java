@@ -251,6 +251,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     private final StatsAgent statsAgent = new StatsAgent();
     private TransactionProfilerStats txnProfilerStats;
     private MemoryStats memoryStats;
+    private TransactionRTStats rtStats; // Marco
     
     // ----------------------------------------------------------------------------
     // NETWORKING STUFF
@@ -421,12 +422,6 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     // ----------------------------------------------------------------------------
     
     private final String REJECTION_MESSAGE;
-    
-    // ----------------------------------------------------------------------------
-    // TESTING - MARCO
-    // ----------------------------------------------------------------------------
-
-    private final TransactionRTStats rtStats; 
     
     // ----------------------------------------------------------------------------
     // CONSTRUCTOR
@@ -623,8 +618,8 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         this.status_monitor = new HStoreSiteStatus(this, hstore_conf);
         
         LoggerUtil.refreshLogging(hstore_conf.global.log_refresh);
+
         
-        this.rtStats = new TransactionRTStats(hstore_conf.global.nanosecond_latencies); // Marco
     }
     
     // ----------------------------------------------------------------------------
@@ -850,8 +845,10 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         this.statsAgent.registerStatsSource(SysProcSelector.POOL, 0, statsSource);
         
         // TRANSACTION RESPONSE TIME COUNTERS - Marco
-        statsSource = new TransactionRTStats(hstore_conf.global.nanosecond_latencies);
-        this.statsAgent.registerStatsSource(SysProcSelector.TXNRESPONSETIME, 0, statsSource);
+        LOG.info("Hi Before");
+        this.rtStats = new TransactionRTStats(hstore_conf.global.nanosecond_latencies);
+        LOG.info("Hi After");
+        this.statsAgent.registerStatsSource(SysProcSelector.TXNRESPONSETIME, 0, this.rtStats);
     }
     
     /**
@@ -1731,7 +1728,8 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         // SHUTDOWN
         // TODO: Execute as a regular sysproc transaction
         // -------------------------------
-        if (catalog_proc.getName().equalsIgnoreCase("@Shutdown")) {
+        if (catalog_proc.getName().equalsIgnoreCase("@Shutdown")) 
+        {
             ClientResponseImpl cresponse = new ClientResponseImpl(
                     -1,
                     client_handle,
@@ -1739,8 +1737,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                     Status.OK,
                     HStoreConstants.EMPTY_RESULT,
                     "");
-            this.responseSend(cresponse, clientCallback, EstTime.currentTimeMillis(), 0,
-            		null // Marco
+            
+            this.responseSend(cresponse, clientCallback, EstTime.currentTimeMillis(), 0
+            		,null // Marco
             		);
 
             // Non-blocking....
@@ -1774,8 +1773,8 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                     Status.OK,
                     HStoreConstants.EMPTY_RESULT,
                     "");
-            this.responseSend(cresponse, clientCallback, EstTime.currentTimeMillis(), 0,
-            		null // Marco
+            this.responseSend(cresponse, clientCallback, EstTime.currentTimeMillis(), 0
+            		,null // Marco
             		);
             return (true);
         }
@@ -2488,8 +2487,8 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                 this.responseSend(cresponse,
                                   ts.getClientCallback(),
                                   ts.getInitiateTime(),
-                                  ts.getRestartCounter(),
-                                  ts.getProcedure() // Marco
+                                  ts.getRestartCounter()
+                                  ,ts.getProcedure() // Marco
                                   );
             }
         } else if (debug.val) { 
@@ -2528,9 +2527,13 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     public void responseQueue(ClientResponseImpl cresponse,
                               RpcCallback<ClientResponseImpl> clientCallback,
                               long initiateTime,
-                              int restartCounter,
-                              Procedure catalog_proc) { // Marco
-        this.rtStats.addResponseTime(catalog_proc, cresponse.getClusterRoundtrip()); // Marco
+                              int restartCounter
+                              , Procedure catalog_proc
+                              ) 
+    { // Marco
+        
+    	this.rtStats.addResponseTime(catalog_proc, cresponse.getClusterRoundtrip()); // Marco
+        
         this.postProcessorQueue.add(new Object[]{
                                             cresponse,
                                             clientCallback,
@@ -2559,8 +2562,8 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                                             status,
                                             HStoreConstants.EMPTY_RESULT,
                                             message);
-        this.responseSend(cresponse, clientCallback, initiateTime, 0,
-        		null // Marco
+        this.responseSend(cresponse, clientCallback, initiateTime, 0
+        		,null // Marco
         		);
     }
     
@@ -2575,8 +2578,8 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     public void responseSend(ClientResponseImpl cresponse,
                              RpcCallback<ClientResponseImpl> clientCallback,
                              long initiateTime,
-                             int restartCounter,
-                             Procedure catalog_proc // Marco
+                             int restartCounter
+                             ,Procedure catalog_proc // Marco
                              ) {
         Status status = cresponse.getStatus();
  

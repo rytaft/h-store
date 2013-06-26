@@ -20,12 +20,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import org.apache.log4j.Logger;
+
+import edu.brown.hstore.stats.TransactionRTStats;
+import edu.brown.logging.LoggerUtil;
+import edu.brown.logging.LoggerUtil.LoggerBoolean;
+
 /**
  * Agent responsible for collecting stats on this host.
  *
  */
 public class StatsAgent {
-
+    public static final Logger LOG = Logger.getLogger(StatsAgent.class);
+    private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
+    private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
+    static {
+        LoggerUtil.setupLogging();
+        LoggerUtil.attachObserver(LOG, debug, trace);
+    }
     private final HashMap<SysProcSelector, HashMap<Integer, ArrayList<StatsSource>>> registeredStatsSources =
         new HashMap<SysProcSelector, HashMap<Integer, ArrayList<StatsSource>>>();
 
@@ -44,12 +56,14 @@ public class StatsAgent {
         assert source != null;
         final HashMap<Integer, ArrayList<StatsSource>> catalogIdToStatsSources = registeredStatsSources.get(selector);
         assert catalogIdToStatsSources != null;
+//        LOG.info("Registering");
         ArrayList<StatsSource> statsSources = catalogIdToStatsSources.get(catalogId);
         if (statsSources == null) {
             statsSources = new ArrayList<StatsSource>();
             catalogIdToStatsSources.put(catalogId, statsSources);
         }
         statsSources.add(source);
+//        LOG.info("Registered");
     }
 
     public synchronized VoltTable getStats(

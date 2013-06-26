@@ -5,12 +5,17 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.apache.log4j.Logger;
 import org.voltdb.StatsSource;
 import org.voltdb.SysProcSelector;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 import org.voltdb.VoltTable.ColumnInfo;
 import org.voltdb.catalog.Procedure;
+
+import edu.brown.hstore.HStoreSite;
+import edu.brown.logging.LoggerUtil;
+import edu.brown.logging.LoggerUtil.LoggerBoolean;
 
 /**
  * Counts response times for each transaction id, grouped into buckets.
@@ -20,22 +25,18 @@ import org.voltdb.catalog.Procedure;
  */
 
 public class TransactionRTStats extends StatsSource {
+    public static final Logger LOG = Logger.getLogger(TransactionRTStats.class);
+    private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
+    private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
+    static {
+        LoggerUtil.setupLogging();
+        LoggerUtil.attachObserver(LOG, debug, trace);
+    }
 	
 	private final Map <Procedure, Buckets> responseTimes = new TreeMap <Procedure, Buckets> ();
 	private final long[] boundaries;
 	private int column_offset;
 
-	/**
-	 * Creates profiler with custom boundaries
-	 * 
-	 * @param boundaries 
-	 */
-
-	public TransactionRTStats(long[] boundaries){
-		super(SysProcSelector.TXNRESPONSETIME.name(), false);
-		this.boundaries = boundaries;
-	}
-	
 	/**
 	 * Creates profiler with four default buckets:
 	 * - less than 100 ms
@@ -47,6 +48,7 @@ public class TransactionRTStats extends StatsSource {
 	 */
 	public TransactionRTStats(boolean nanosecond_latencies) {
 		super(SysProcSelector.TXNRESPONSETIME.name(), false);
+//		LOG.info("Hi I am in RT");
 		long multiplier = 1;
 		if (nanosecond_latencies) multiplier = 1000000;
 		this.boundaries = new long [3];
@@ -92,11 +94,10 @@ public class TransactionRTStats extends StatsSource {
         this.column_offset = columns.size();
 
 		columns.add(new VoltTable.ColumnInfo("PROCEDURE", VoltType.STRING));
-		for (int i = 0; i < this.boundaries.length; i++){
-			columns.add(new VoltTable.ColumnInfo("COUNT-" + i, VoltType.BIGINT));
-			columns.add(new VoltTable.ColumnInfo("BOUNDARY-" + i, VoltType.BIGINT));
-		}
-		columns.add(new VoltTable.ColumnInfo("COUNT-"+ this.boundaries.length, VoltType.BIGINT));
+		columns.add(new VoltTable.ColumnInfo("COUNT-100", VoltType.BIGINT));
+		columns.add(new VoltTable.ColumnInfo("COUNT-500", VoltType.BIGINT));
+		columns.add(new VoltTable.ColumnInfo("COUNT-1000", VoltType.BIGINT));
+		columns.add(new VoltTable.ColumnInfo("COUNT>1000", VoltType.BIGINT));
     }
 	
     @Override
@@ -125,11 +126,9 @@ public class TransactionRTStats extends StatsSource {
         rowValues[this.column_offset] = catalog_proc.getName();
 		long[] buckets = this.responseTimes.get(catalog_proc).getAndResetBuckets();
 		int currPos = this.column_offset + 1;
-		for (int i = 0; i < this.boundaries.length; i++){
+		for (int i = 0; i < buckets.length; i++){
 			rowValues[currPos] = buckets[i];
-			rowValues[currPos + 1] = this.boundaries[i];
-			currPos += 2;
+			currPos ++;
 		}
-		rowValues[currPos] = buckets[this.boundaries.length];
     }
 }

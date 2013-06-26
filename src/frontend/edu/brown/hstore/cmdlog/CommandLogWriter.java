@@ -506,15 +506,16 @@ public class CommandLogWriter extends ExceptionHandlingRunnable implements Shutd
                             hstore_site.responseQueue(entry.cresponse,
                                                       entry.clientCallback,
                                                       entry.initiateTime,
-                                                      entry.restartCounter,
-                                                      entry.catalog_proc); // Marco
+                                                      entry.restartCounter
+                                                      ,  entry.catalog_proc
+                                                      ); // Marco
                         }
                         else {
                             hstore_site.responseSend(entry.cresponse,
                                                      entry.clientCallback,
                                                      entry.initiateTime,
-                                                     entry.restartCounter,
-                                                     entry.catalog_proc // Marco
+                                                     entry.restartCounter
+                                                     ,entry.catalog_proc // Marco
                                                      );
                         }
                     } else {
