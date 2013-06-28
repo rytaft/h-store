@@ -156,10 +156,11 @@ public class ReconfigurationPlan {
             boolean modified = false;
             try{
                 
-                LOG.info(String.format("Trying to split on table : %s", catalog_table.fullName()));
                 long tupleBytes = MemoryEstimator.estimateTupleSize(catalog_table);
                 long currentMax = ReconfigurationConstants.MAX_TRANSFER_BYTES;
                 long maxRows = currentMax/tupleBytes;
+                LOG.info(String.format("Trying to split on table:%s  TupleBytes:%s  CurrentMax:%s  MaxRows:%s", catalog_table.fullName(),tupleBytes,currentMax,maxRows));
+                
                 List<ReconfigurationRange<T>> res = new ArrayList<>();
                 Comparable<?> sampleKey = reconfiguration_range.get(0).getMin_inclusive() ;
                 if (sampleKey instanceof Short || sampleKey instanceof Integer || sampleKey instanceof Long  ){
@@ -230,10 +231,15 @@ public class ReconfigurationPlan {
       public static class ReconfigurationRange<T extends Comparable<T>> extends PartitionRange<T> {
         public int old_partition;
         public int new_partition;
+        public Long min_long;
+        public Long max_long; 
         public String table_name;
 
         public ReconfigurationRange(String table_name, VoltType vt, T min_inclusive, T max_exclusive, int old_partition, int new_partition)  {
           super(vt, min_inclusive, max_exclusive);
+          //FIXME change to be type generic
+          min_long = ((Number)min_inclusive).longValue();
+          max_long = ((Number)max_exclusive).longValue();
           this.old_partition = old_partition;
           this.new_partition = new_partition;
           this.table_name = table_name;

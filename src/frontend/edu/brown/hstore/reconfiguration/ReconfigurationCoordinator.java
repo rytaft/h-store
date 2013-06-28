@@ -483,8 +483,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
         
         for(ReconfigurationRange range : pullRequests){       
             //FIXME change pullTuples to be generic comparable
+            
             pullTuples(livePullId, txnId, range.old_partition, range.new_partition, range.table_name, 
-                    (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive(), range.getVt());
+                    range.min_long, range.max_long, range.getVt());
             blockedRequests.put(livePullId, blockingSemaphore);
             //LOG.error("TODO temp removing sempahore for testing");
             //blockingSemaphore.release();         
@@ -750,7 +751,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     public boolean scheduleAsyncPull() {
         // TODO 06/18/2013- False for testing its priority, revert later
-        return false;
+        return true;
     }
 
     public void showReconfigurationProfiler() {

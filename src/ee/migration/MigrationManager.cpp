@@ -131,7 +131,8 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
                 table->deleteTuple(tuple,true);
             }
         }  // Else if hash index
-        else if (!partitionColumnIsIndexed || partitionIndex->getScheme().type == HASH_TABLE_INDEX){
+        else if (!partitionColumnIsIndexed || partitionIndex->getScheme().type == HASH_TABLE_INDEX
+	  ||  partitionIndex->getScheme().type == ARRAY_INDEX) {
             //find key
             
             //TODO ae andy -> assume we cannot leverage anything about hashing with ranges, correct?
