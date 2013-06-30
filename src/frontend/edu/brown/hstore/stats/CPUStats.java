@@ -177,7 +177,7 @@ public class CPUStats extends StatsSource {
         long time = getDurationFromPSString(values[1]);
         long etime = getDurationFromPSString(values[2]);
         
-        CPUUsage = (double) ((time - time_old)/(etime-etime_old)) * 100;
+        CPUUsage = (double) ((float)(time - time_old)/(float)(etime-etime_old)) * 100;
         
         time_old = time;
         etime_old =etime;
