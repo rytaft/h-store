@@ -104,6 +104,7 @@ public class Statistics extends VoltSystemProcedure {
         addStatsFragments(SysProcSelector.ANTICACHE, SysProcFragmentId.PF_anticacheProfilerData, SysProcFragmentId.PF_anticacheProfilerAggregator);
         addStatsFragments(SysProcSelector.POOL, SysProcFragmentId.PF_poolData, SysProcFragmentId.PF_poolAggregator);
         addStatsFragments(SysProcSelector.TXNRESPONSETIME, SysProcFragmentId.PF_txnRTData, SysProcFragmentId.PF_txnRTAggregator); // Marco
+        addStatsFragments(SysProcSelector.CPUUSAGE, SysProcFragmentId.PF_cpuUsageData, SysProcFragmentId.PF_cpuUsageAggregator); // Essam
     } // STATIC
     
     @Override
@@ -150,6 +151,11 @@ public class Statistics extends VoltSystemProcedure {
             case SysProcFragmentId.PF_plannerProfilerData:
             case SysProcFragmentId.PF_anticacheProfilerData:
             case SysProcFragmentId.PF_poolData:
+            // Essam
+            case SysProcFragmentId.PF_cpuUsageData: {
+                // Tell the PartitionExecutors to update their CPU stats
+                //this.executor.queueUtilityWork(new UpdateMemoryMessage());
+            }
             case SysProcFragmentId.PF_txnRTData: // Marco
             {
                 assert(params.toArray().length == 2);
@@ -184,6 +190,7 @@ public class Statistics extends VoltSystemProcedure {
             // PROFILER DATA AGGREGATION
             // ----------------------------------------------------------------------------
             case SysProcFragmentId.PF_nodeMemoryAggregator:
+            case SysProcFragmentId.PF_cpuUsageAggregator: // Essam
             case SysProcFragmentId.PF_txnCounterAggregator:
             case SysProcFragmentId.PF_txnProfilerAggregator:
             case SysProcFragmentId.PF_execProfilerAggregator:

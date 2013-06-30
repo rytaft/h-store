@@ -63,6 +63,8 @@ public class SysProcFragmentId {
     public static final int PF_anticacheProfilerAggregator = 39;
     public static final int PF_txnRTData = 40; // Marco
     public static final int PF_txnRTAggregator = 41; // Marco
+    public static final int PF_cpuUsageData = 42; // Essam
+    public static final int PF_cpuUsageAggregator = 43; // Essam
 
     // @Shutdown
     public static final int PF_shutdownCommand = 50;

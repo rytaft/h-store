@@ -108,6 +108,7 @@ import edu.brown.hstore.stats.TransactionCounterStats;
 import edu.brown.hstore.stats.TransactionProfilerStats;
 import edu.brown.hstore.stats.TransactionQueueManagerProfilerStats;
 import edu.brown.hstore.stats.TransactionRTStats;
+import edu.brown.hstore.stats.CPUStats; //Essam
 import edu.brown.hstore.txns.AbstractTransaction;
 import edu.brown.hstore.txns.DependencyTracker;
 import edu.brown.hstore.txns.LocalTransaction;
@@ -251,6 +252,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     private final StatsAgent statsAgent = new StatsAgent();
     private TransactionProfilerStats txnProfilerStats;
     private MemoryStats memoryStats;
+    private CPUStats cpuStats; // Essam
     private TransactionRTStats rtStats; // Marco
     
     // ----------------------------------------------------------------------------
@@ -808,6 +810,10 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         this.memoryStats = new MemoryStats();
         this.statsAgent.registerStatsSource(SysProcSelector.MEMORY, 0, this.memoryStats);
         
+       // CPU Usage by Essam
+        this.cpuStats = new CPUStats();
+        this.statsAgent.registerStatsSource(SysProcSelector.CPUUSAGE, 0, this.cpuStats);
+        
         // TXN COUNTERS
         statsSource = new TransactionCounterStats(this.catalogContext);
         this.statsAgent.registerStatsSource(SysProcSelector.TXNCOUNTER, 0, statsSource);
@@ -1178,6 +1184,11 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     
     public MemoryStats getMemoryStatsSource() {
         return (this.memoryStats);
+    }
+    
+    // Essam 
+    public CPUStats getCPUStatsSource() {
+        return (this.cpuStats);
     }
     
     public Collection<TransactionPreProcessor> getTransactionPreProcessors() {

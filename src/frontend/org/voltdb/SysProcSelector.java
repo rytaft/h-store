@@ -39,4 +39,5 @@ public enum SysProcSelector {
     ANTICACHEACCESS, // anti-cache evicted access history
     POOL,           // info about how object pools
     TXNRESPONSETIME,	// transaction response time - Marco
+    CPUUSAGE,	// cpu usage - Essam
 }
