@@ -33,6 +33,14 @@
 #include <string>
 #include <vector>
 
+#ifndef EXTRACT_STAT_ENABLED
+#define EXTRACT_STAT_ENABLED
+#endif
+
+#ifdef EXTRACT_STAT_ENABLED
+#include "boost/timer.hpp"
+#endif
+
 namespace voltdb
 {
             
@@ -43,7 +51,11 @@ namespace voltdb
 MigrationManager::MigrationManager(ExecutorContext *executorContext, catalog::Database *catalogDatabase) :
     m_executorContext(executorContext),
     m_catalogDatabase(catalogDatabase) {
-    
+    #ifdef EXTRACT_STAT_ENABLED
+    VOLT_INFO("EXTRACT_STAT_ENABLED");
+    m_timingResults.clear();
+    #endif
+
     // TODO: Precompute all of the stuff that we need for each table
     
     m_extractedTables.clear();
@@ -85,14 +97,19 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
     TableTuple searchkey(keySchema);
     searchkey.move(new char[searchkey.tupleLength()]);
     searchkey.setNValue(0, minKey);
-    
+    #ifdef EXTRACT_STAT_ENABLED
+    boost::timer timer;
+    int rowsExamined = 0;
+    #endif
     //Do we have a single key to pull
     if(minKey.compare(maxKey)==0 && partitionColumnIsIndexed){
         bool found = partitionIndex->moveToKey(&searchkey);    
         if(found){
             VOLT_DEBUG("Found");
             if(!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()){
-                //TODO check if not migrated                
+		#ifdef EXTRACT_STAT_ENABLED
+		rowsExamined++;
+		#endif
                 if (!outputTable->insertTuple(tuple))
                 {
                     VOLT_ERROR("Failed to insert tuple from table '%s' into"
@@ -101,7 +118,6 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
                             outputTable->name().c_str());
                     return NULL;
                 }                
-                //TODO set as migrated and delete later
                 table->deleteTuple(tuple,true);
             } else{
                 VOLT_ERROR("Tuple not found but index indicated it exists");
@@ -121,13 +137,14 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
             partitionIndex->moveToKeyOrGreater(&searchkey);    
             while(((!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()) ||
             (!(tuple = partitionIndex->nextValue()).isNullTuple())) && (maxKey.compare(tuple.getNValue(partitionColumn)) >0)){                
-                //TODO ae check if ! migrated
+                #ifdef EXTRACT_STAT_ENABLED
+		rowsExamined++;
+		#endif
                 if (!outputTable->insertTuple(tuple))
                 {
                     VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",table->name().c_str(),outputTable->name().c_str());
                     return NULL;
                 }
-                //TODO set as migrated and delete later
                 table->deleteTuple(tuple,true);
             }
         }  // Else if hash index
@@ -140,15 +157,17 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
             TableIterator iterator(table);           
             while (iterator.next(tuple))
             {
+		#ifdef EXTRACT_STAT_ENABLED
+		rowsExamined++;
+		#endif
                 //Is the partitionColumn in the range between min inclusive and max exclusive
                 if (minKey.compare(tuple.getNValue(partitionColumn)) <= 0 && maxKey.compare(tuple.getNValue(partitionColumn)) >0){
-                    //TODO ae check if ! migrated
-                    if (!outputTable->insertTuple(tuple))
+                   
+		  if (!outputTable->insertTuple(tuple))
                     {
                         VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",table->name().c_str(),outputTable->name().c_str());
                         return NULL;
                     }
-                    //TODO set as migrated and delete later
                     table->deleteTuple(tuple,true);
                 }
             }
@@ -157,12 +176,19 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
         }     
     } else {
         //Min key should never be greater than maxKey        
-        //TODO ae andy -> Appropriate exception to throw?
-        throwFatalException("Max key is smaller than min key");
+        throwFatalException("Max extract key is smaller than min key");
     } 
     VOLT_DEBUG("Output Table %s",outputTable->debug().c_str());
     m_extractedTables[requestToken] = outputTable;
     m_extractedTableNames[requestToken] = table->name();
+    #ifdef EXTRACT_STAT_ENABLED
+    VOLT_INFO("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );        
+    VOLT_INFO("Extraction Time: %.2f sec. Examined Tuples:%d Active Tuples: %d  Approximate Size to serialized: %d", timer.elapsed(), rowsExamined, outputTable->activeTupleCount(), outputTable->getApproximateSizeToSerialize());
+    
+    std::string extract_id = "Extract:"+table->name()+" Range:"+minKey.debug().c_str()+"-"+maxKey.debug().c_str();
+    m_timingResults[extract_id] = (int32_t)timer.elapsed();
+    timer.restart();	
+    #endif
     return outputTable;
 }
 

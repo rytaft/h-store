@@ -494,7 +494,7 @@ public class PlannedPartitions implements JSONSerializable {
             this.max_exclusive = max_exclusive;
             // TODO fix partitiontype
             assert (min_inclusive instanceof Number && max_exclusive instanceof Number);
-            LOG.info("Setting long values");
+            LOG.debug("Setting long values");
             this.min_inclusive_long = ((Number) min_inclusive).longValue();
             this.max_exclusive_long = ((Number) max_exclusive).longValue();
             this.partition = -1;

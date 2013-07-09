@@ -62,6 +62,7 @@ private:
     std::map<int32_t, Table*> m_extractedTables;
     // map catalog reconfig/migration requestTokenIds to TableIds. used to undo a migration
     std::map<int32_t, std::string> m_extractedTableNames;
+    std::map<std::string, int32_t> m_timingResults;
     
     
 }; // MigrationManager class
