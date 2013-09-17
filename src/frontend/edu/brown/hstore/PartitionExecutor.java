@@ -872,9 +872,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         assert(this.hstore_site == null) :
             String.format("Trying to initialize HStoreSite for PartitionExecutor #%d twice!", this.partitionId);
         this.hstore_site = hstore_site;
-        if (hstore_conf.global.reconfiguration_enable) {
-            this.reconfiguration_coordinator = hstore_site.getReconfigurationCoordinator();
-        }
         this.depTracker = hstore_site.getDependencyTracker(this.partitionId);
         this.thresholds = hstore_site.getThresholds();
         this.queueManager = hstore_site.getTransactionQueueManager();
@@ -5676,6 +5673,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.incoming_ranges = null;
             this.reconfiguration_tracker = null;
         }
+    }
+    
+    public void setReconfigurationCoordinator(ReconfigurationCoordinator rc) {
+        this.reconfiguration_coordinator = rc;
     }
 
     public void initReconfiguration(ReconfigurationPlan reconfig_plan, ReconfigurationProtocols reconfig_protocol, 

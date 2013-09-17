@@ -457,7 +457,16 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         this.depTrackers = new DependencyTracker[num_partitions];
         
         // Get the hasher we will use for this HStoreSite
-        LOG.info("Using hasher class: " + hstore_conf.global.hasher_class );
+        // check if reconfiguration is enabled and that plan is set
+        if(hstore_conf.global.reconfiguration_enable){
+            if(hstore_conf.global.hasher_plan == null){
+                LOG.warn("Reconfiguration enabled but no plan set. Disabling reconfiguration and using default hasher");
+                hstore_conf.global.reconfiguration_enable = false;
+                hstore_conf.global.hasher_class  = "edu.brown.hashing.DefaultHasher";                
+            }
+        }
+        
+        LOG.info("Using hasher class: " + hstore_conf.global.hasher_class );     
         this.hasher = ClassUtil.newInstance(hstore_conf.global.hasher_class,
                                              new Object[]{ this.catalogContext, num_partitions , this.hstore_conf },
                                              new Class<?>[]{ CatalogContext.class, int.class, HStoreConf.class });
@@ -631,7 +640,8 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         this.hstore_coordinator = this.initHStoreCoordinator();
         
         if(hstore_conf.global.reconfiguration_enable){
-          this.reconfiguration_coordinator = this.initReconfigCoordinator();
+            LOG.info("Initializing Reconfiguration Coordinator");
+            this.reconfiguration_coordinator = this.initReconfigCoordinator();
         }
         
         // First we need to tell the HStoreCoordinator to start-up and initialize its connections
@@ -693,7 +703,10 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                       this.local_partitions.size(), this.getSiteName()));
         for (int partition : this.local_partitions.values()) {
             PartitionExecutor executor = this.getPartitionExecutor(partition);
-            // executor.initHStoreSite(this);
+            if (hstore_conf.global.reconfiguration_enable) {
+                executor.setReconfigurationCoordinator(reconfiguration_coordinator);
+            }
+            //executor.initHStoreSite(this);
             
             t = new Thread(this.threadManager.getThreadGroup(ThreadGroupType.EXECUTION), executor);
             t.setDaemon(true);
