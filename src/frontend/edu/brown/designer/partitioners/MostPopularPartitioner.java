@@ -19,7 +19,6 @@ import edu.brown.catalog.CatalogKey;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.catalog.special.ReplicatedColumn;
 import edu.brown.designer.AccessGraph;
-import edu.brown.designer.ColumnSet;
 import edu.brown.designer.Designer;
 import edu.brown.designer.DesignerEdge;
 import edu.brown.designer.DesignerHints;
@@ -31,11 +30,13 @@ import edu.brown.designer.partitioners.plan.TableEntry;
 import edu.brown.gui.common.GraphVisualizationPanel;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import edu.brown.statistics.Histogram;
 import edu.brown.statistics.ObjectHistogram;
 import edu.brown.statistics.TableStatistics;
 import edu.brown.utils.CollectionUtil;
 import edu.brown.utils.EventObservable;
 import edu.brown.utils.EventObserver;
+import edu.brown.utils.PredicatePairs;
 import edu.brown.utils.StringUtil;
 
 /**
@@ -43,8 +44,8 @@ import edu.brown.utils.StringUtil;
  */
 public class MostPopularPartitioner extends AbstractPartitioner {
     private static final Logger LOG = Logger.getLogger(MostPopularPartitioner.class);
-    private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
-    private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
+    private static final LoggerBoolean debug = new LoggerBoolean();
+    private static final LoggerBoolean trace = new LoggerBoolean();
     static {
         LoggerUtil.attachObserver(LOG, debug, trace);
     }
@@ -151,11 +152,11 @@ public class MostPopularPartitioner extends AbstractPartitioner {
                     column_histogram = (self ? self_column_histogram : join_column_histogram);
 
                     double edge_weight = e.getTotalWeight();
-                    ColumnSet cset = e.getAttribute(AccessGraph.EdgeAttributes.COLUMNSET);
+                    PredicatePairs cset = e.getAttribute(AccessGraph.EdgeAttributes.COLUMNSET);
                     if (trace.val)
                         LOG.trace("Examining ColumnSet for " + e.toString(true));
 
-                    ObjectHistogram<Column> cset_histogram = cset.buildHistogramForType(Column.class);
+                    Histogram<Column> cset_histogram = cset.buildHistogramForType(Column.class);
                     Collection<Column> columns = cset_histogram.values();
                     if (trace.val)
                         LOG.trace("Constructed Histogram for " + catalog_tbl + " from ColumnSet:\n"
@@ -220,7 +221,7 @@ public class MostPopularPartitioner extends AbstractPartitioner {
                     StringUtil.formatSize(hints.max_memory_per_partition));
         } // FOR
 
-        for (Table catalog_tbl : info.catalog_db.getTables()) {
+        for (Table catalog_tbl : info.catalogContext.database.getTables()) {
             if (pplan.getTableEntry(catalog_tbl) == null) {
                 Column catalog_col = CollectionUtil.random(catalog_tbl.getColumns());
                 assert (catalog_col != null) : "Failed to randomly pick column for " + catalog_tbl;
@@ -232,20 +233,20 @@ public class MostPopularPartitioner extends AbstractPartitioner {
 
         if (hints.enable_procparameter_search) {
             if (debug.val)
-                LOG.debug("Selecting partitioning ProcParameter for " + this.info.catalog_db.getProcedures().size() + " Procedures");
-            pplan.apply(info.catalog_db);
+                LOG.debug("Selecting partitioning ProcParameter for " + this.info.catalogContext.database.getProcedures().size() + " Procedures");
+            pplan.apply(info.catalogContext.database);
 
             // Temporarily disable multi-attribute parameters
             boolean multiproc_orig = hints.enable_multi_partitioning;
             hints.enable_multi_partitioning = false;
 
-            for (Procedure catalog_proc : this.info.catalog_db.getProcedures()) {
+            for (Procedure catalog_proc : this.info.catalogContext.database.getProcedures()) {
                 if (PartitionerUtil.shouldIgnoreProcedure(hints, catalog_proc))
                     continue;
 
-                Set<String> param_order = PartitionerUtil.generateProcParameterOrder(info, info.catalog_db, catalog_proc, hints);
+                Set<String> param_order = PartitionerUtil.generateProcParameterOrder(info, info.catalogContext.database, catalog_proc, hints);
                 if (param_order.isEmpty() == false) {
-                    ProcParameter catalog_proc_param = CatalogKey.getFromKey(info.catalog_db, CollectionUtil.first(param_order), ProcParameter.class);
+                    ProcParameter catalog_proc_param = CatalogKey.getFromKey(info.catalogContext.database, CollectionUtil.first(param_order), ProcParameter.class);
                     if (debug.val)
                         LOG.debug(String.format("PARTITION %-25s%s", catalog_proc.getName(), CatalogUtil.getDisplayName(catalog_proc_param)));
 

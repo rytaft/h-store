@@ -71,7 +71,12 @@ public:
                                           const std::vector<uint16_t> secondSet);
     
 
-    static TupleSchema* createEvictedTupleSchema(); 
+    static TupleSchema* createEvictedTupleSchema();
+    
+    /**
+     * Static factory method to create a TupleSchema object for a ReadWriteTracker result
+     */
+    static TupleSchema* createTrackerTupleSchema();
 
     static TupleSchema* createMigrateTupleSchema();
     static std::string* createMigrateColumnNames();

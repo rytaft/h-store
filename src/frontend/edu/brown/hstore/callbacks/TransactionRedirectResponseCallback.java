@@ -25,8 +25,8 @@ import edu.brown.pools.Poolable;
  */
 public class TransactionRedirectResponseCallback implements RpcCallback<ClientResponseImpl>, Poolable {
     private static final Logger LOG = Logger.getLogger(TransactionRedirectResponseCallback.class);
-    private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
-    private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
+    private static final LoggerBoolean debug = new LoggerBoolean();
+    private static final LoggerBoolean trace = new LoggerBoolean();
     static {
         LoggerUtil.attachObserver(LOG, debug, trace);
     }
@@ -66,8 +66,9 @@ public class TransactionRedirectResponseCallback implements RpcCallback<ClientRe
     
     @Override
     public void run(ClientResponseImpl parameter) {
-        if (debug.val) LOG.debug(String.format("Got ClientResponse callback for txn #%d! Sending back to %s",
-                                   parameter.getTransactionId(), HStoreThreadManager.formatSiteName(this.destSiteId)));
+        if (debug.val)
+            LOG.debug(String.format("Got ClientResponse callback for txn #%d! Sending back to %s",
+                      parameter.getTransactionId(), HStoreThreadManager.formatSiteName(this.destSiteId)));
         FastSerializer fs = new FastSerializer();
         try {
             parameter.writeExternal(fs);
@@ -80,18 +81,19 @@ public class TransactionRedirectResponseCallback implements RpcCallback<ClientRe
                                                               .setOutput(bs)
                                                               .build();
         this.orig_callback.run(response);
-        if (debug.val) LOG.debug(String.format("Sent back ClientResponse for txn #%d to %s [bytes=%d]",
-                                   parameter.getTransactionId(), HStoreThreadManager.formatSiteName(this.destSiteId),
-                                   bs.size()));
+        if (debug.val)
+            LOG.debug(String.format("Sent back ClientResponse for txn #%d to %s [bytes=%d]",
+                      parameter.getTransactionId(), HStoreThreadManager.formatSiteName(this.destSiteId),
+                      bs.size()));
         
         // IMPORTANT: Since we're the only one that knows that we're finished (and actually even
         // cares), we need to be polite and clean-up after ourselves...
-        try {
-            this.finish();
-            hstore_site.getObjectPools().CALLBACKS_TXN_REDIRECT_RESPONSE.returnObject(this);
-        } catch (Exception ex) {
-            throw new RuntimeException("Funky failure", ex);
-        }
+//        try {
+//            this.finish();
+//            hstore_site.getObjectPools().CALLBACKS_TXN_REDIRECT_RESPONSE.returnObject(this);
+//        } catch (Exception ex) {
+//            throw new RuntimeException("Funky failure", ex);
+//        }
     }
     
 }

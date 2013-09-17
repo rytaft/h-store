@@ -55,7 +55,7 @@ import edu.brown.statistics.ObjectHistogram;
  */
 public class YCSBClient extends BenchmarkComponent {
     private static final Logger LOG = Logger.getLogger(YCSBClient.class);
-    private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
+    private static final LoggerBoolean debug = new LoggerBoolean();
     static {
         LoggerUtil.attachObserver(LOG, debug);
     }
@@ -90,8 +90,9 @@ public class YCSBClient extends BenchmarkComponent {
     private final FlatHistogram<Transaction> txnWeights;
     private final Random rand_gen;
     
+    int run_count = 0; 
+    
     // private ZipfianGenerator readRecord;
-    // private final double SIGMA = 1.4; 
     
     public static void main(String args[]) {
         BenchmarkComponent.main(YCSBClient.class, args, false);
@@ -207,12 +208,9 @@ public class YCSBClient extends BenchmarkComponent {
             Random rand = new Random();
             int key = -1; 
             int scan_count; 
-            
-            int run_count = 0; 
-            
             while (true) {
-                
-                runOnce(); 
+                runOnce();
+                this.run_count++; 
             } 
         } 
         catch (IOException e) {
