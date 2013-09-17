@@ -1093,9 +1093,12 @@ public class PartitionEstimator {
                              catalog_frag.fullName(), catalog_tbl.getName(), partition_col.fullName()));
                 // Do nothing?
             }
-            else if (partition_col != null && cache_entry.containsKey(partition_col)) {
-                for (int idx : cache_entry.get(partition_col)) {
-                    offsets.add(Pair.of(partition_col, idx));
+            else if (partition_col != null && cache_entry.predicates.containsKey(partition_col)) {
+                for (Pair<ExpressionType, CatalogType> pair : cache_entry.predicates.get(partition_col)) {
+                    if (pair.getFirst() == ExpressionType.COMPARE_EQUAL &&
+                            pair.getSecond() instanceof StmtParameter) {
+                        offsets.add(Pair.of(partition_col,((StmtParameter)pair.getSecond()).getIndex()));
+                    }
                 } // FOR
             }
         } // FOR

@@ -114,6 +114,7 @@ import org.voltdb.utils.DBBPool;
 import org.voltdb.utils.DBBPool.BBContainer;
 import org.voltdb.utils.Encoder;
 import org.voltdb.utils.EstTime;
+import org.voltdb.utils.Pair;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
@@ -174,6 +175,7 @@ import edu.brown.hstore.txns.AbstractTransaction;
 import edu.brown.hstore.txns.DependencyTracker;
 import edu.brown.hstore.txns.LocalTransaction;
 import edu.brown.hstore.txns.MapReduceTransaction;
+import edu.brown.hstore.txns.PrefetchState;
 import edu.brown.hstore.txns.RemoteTransaction;
 import edu.brown.hstore.util.ArrayCache.IntArrayCache;
 import edu.brown.hstore.util.ArrayCache.LongArrayCache;
@@ -2936,7 +2938,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 ((RemotePrepareCallback)callback).init((RemoteTransaction)ts, partitions, origCallback);
             }
             this.queuePrepare(ts, callback);
->>>>>>> upmaster
         }
     }
 
@@ -3218,7 +3219,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (debug.val) {
             StringBuilder sb = new StringBuilder();
             sb.append(String.format("%s - Executing %d fragments [lastTxnId=%d, undoToken=%d]", ts, batchSize, this.lastCommittedTxnId, undoToken));
-            if (trace.val) {
+            //if (trace.val) {
                 Map<String, Object> m = new LinkedHashMap<String, Object>();
                 m.put("Fragments", Arrays.toString(fragmentIds));
 
