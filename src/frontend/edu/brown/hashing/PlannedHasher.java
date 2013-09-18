@@ -24,6 +24,7 @@ import edu.brown.utils.FileUtil;
 public class PlannedHasher extends DefaultHasher {
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
+    public static final String YCSB_TEST = "YCSB_TEST";
 
     String ycsb_plan = "{"+
             "       \"default_table\":\"usertable\"," +        
@@ -81,7 +82,10 @@ public class PlannedHasher extends DefaultHasher {
         super(catalogContext, num_partitions,hstore_conf);
         try {
             JSONObject partition_json = null;
-            if(hstore_conf != null && hstore_conf.global.hasher_plan != null){
+            if(hstore_conf != null && hstore_conf.global.hasher_plan.equalsIgnoreCase(YCSB_TEST)){
+                LOG.info("Using YCSB test plan");
+                partition_json = new JSONObject(ycsb_plan);
+            } else if(hstore_conf != null && hstore_conf.global.hasher_plan != null){
                 LOG.info("Attempting to use partition plan at : " + hstore_conf.global.hasher_plan);
                 partition_json = new JSONObject(FileUtil.readFile(hstore_conf.global.hasher_plan));
             } else {

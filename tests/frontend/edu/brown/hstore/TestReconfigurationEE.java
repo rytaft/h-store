@@ -20,6 +20,7 @@ import org.voltdb.utils.VoltTableUtil;
 import edu.brown.BaseTestCase;
 import edu.brown.benchmark.ycsb.YCSBConstants;
 import edu.brown.catalog.CatalogUtil;
+import edu.brown.hashing.PlannedHasher;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
@@ -62,8 +63,14 @@ public class TestReconfigurationEE extends BaseTestCase {
         
         
         Site catalog_site = CollectionUtil.first(CatalogUtil.getCluster(catalog).getSites());
-        this.hstore_conf = HStoreConf.singleton();
-        this.hstore_conf.site.status_enable = false;
+        hstore_conf = HStoreConf.singleton();
+        
+        hstore_conf.site.coordinator_sync_time = false;
+        hstore_conf.global.reconfiguration_enable = true;
+        hstore_conf.global.hasher_class = "edu.brown.hashing.PlannedHasher";
+        hstore_conf.global.hasher_plan = PlannedHasher.YCSB_TEST;
+        
+        hstore_conf.site.status_enable = false;
 
         
         this.hstore_site = createHStoreSite(catalog_site, hstore_conf);
