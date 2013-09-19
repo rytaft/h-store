@@ -1032,9 +1032,9 @@ void VoltDBEngine::printReport() {
 
 bool VoltDBEngine::isLocalSite(const NValue& value)
 {
-    //int index = TheHashinator::hashinate(value, m_totalPartitions);
-    //return index == m_partitionId;
-    return true;
+    int index = TheHashinator::hashinate(value, m_totalPartitions);
+    return index == m_partitionId;
+    //return true;
 }
 
 /** Perform once per second, non-transactional work. */
