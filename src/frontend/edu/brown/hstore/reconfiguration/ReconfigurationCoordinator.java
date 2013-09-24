@@ -99,6 +99,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
     
     private Set<Integer> reconfigurationDonePartitionIds;
     private Set<Integer> reconfigurationDoneSites;
+    private int num_of_sites;
+    private int num_sites_complete;
+    private Set<Integer> sites_complete;
 
     public ReconfigurationCoordinator(HStoreSite hstore_site, HStoreConf hstore_conf) {        
         this.reconfigurationLeader = -1;
@@ -112,6 +115,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.hstore_conf = hstore_conf;
         
         int num_partitions = hstore_site.getCatalogContext().numberOfPartitions;
+        this.num_of_sites = hstore_site.getCatalogContext().numberOfSites;
         if(hstore_conf.site.reconfiguration_profiling) 
             this.profilers = new ReconfigurationProfiler[num_partitions];
         for (int p_id : hstore_site.getLocalPartitionIds().values()) {
@@ -187,6 +191,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     // sysProcedure
                 } else if (reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL) {
                     if (reconfig_plan != null) {
+                        if (this.hstore_site.getSiteId() == leaderId) {
+                            this.num_sites_complete = 0;
+                            this.sites_complete = new HashSet<Integer>();
+                        }
                         for (PartitionExecutor executor : this.local_executors) {
                             executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
                             this.partitionStates.put(partitionId, ReconfigurationState.PREPARE);
@@ -292,7 +300,29 @@ public class ReconfigurationCoordinator implements Shutdownable {
        
         //TODO : Can we get away with creating an instance each time
         ProtoRpcController controller = new ProtoRpcController();
-        this.channels[this.reconfigurationLeader].reconfigurationControlMsg(controller, leaderCallback, null);    
+        int destinationId = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(this.reconfigurationLeader);
+
+        if (this.channels == null) LOG.error("Channels are null");
+        if (this.channels[destinationId] == null) LOG.error("Reconfig Leader Channel is null. " +
+                destinationId + " : " + this.channels);
+        if (destinationId == this.localSiteId){
+            siteReconfigurationComplete(this.localSiteId);
+        } else{
+            this.channels[destinationId].reconfigurationControlMsg(controller, leaderCallback, null);            
+            throw new NotImplementedException("Recv on this function must be set up");
+        }
+    }
+    
+    private void siteReconfigurationComplete(int siteId){
+        LOG.info("Site reconfiguration complete : " + siteId);
+        boolean added = sites_complete.add(siteId);
+        if (added) {
+            num_sites_complete++;
+            if(num_sites_complete == num_of_sites){
+                LOG.info("SITES COMPLETE  TODO "); //TODO
+                //LEFTOFF
+            }
+        }
     }
     
     /**
