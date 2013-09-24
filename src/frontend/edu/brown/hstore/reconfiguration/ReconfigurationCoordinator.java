@@ -45,6 +45,7 @@ import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.profilers.ReconfigurationProfiler;
 import edu.brown.protorpc.ProtoRpcController;
+import edu.brown.utils.FileUtil;
 
 /**
  * @author vaibhav : Reconfiguration Coordinator at each site, responsible for
@@ -167,6 +168,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             if (this.hstore_site.getSiteId() == leaderId) {
                 LOG.error("TODO setting as leader");
                 // TODO : Check if more leader logic is needed
+                FileUtil.appendEventToFile("RECONFIG_INIT");
                 if (debug.val) {
                     LOG.debug("Setting site as reconfig leader");
                 }
@@ -236,6 +238,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // This node is the leader
         } else {
             // TODO send state notification to leader
+            
         }
 
     }
@@ -251,17 +254,22 @@ public class ReconfigurationCoordinator implements Shutdownable {
             this.partitionStates.remove(partitionId);
 
             if (allPartitionsFinished()) {
+                
                 LOG.info("Last PE finished reconfiguration");
+                if(partitionId == this.reconfigurationLeader){
+                    FileUtil.appendEventToFile("RECONFIGURATION_"+ReconfigurationState.END);
+                }
                 resetReconfigurationInProgress();
             }
         } else if (this.reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL){
             // send a message to the leader that the reconfiguration is done
-            
             this.reconfigurationDonePartitionIds.add(partitionId);
+            LOG.info(" ** Partition has finished : " + partitionId + " " + reconfigurationDonePartitionIds.size() + " / " + this.local_executors.size());
+            
             //Check all the partitions are done
             if(this.reconfigurationDonePartitionIds.size() == this.local_executors.size()){
                 // signal end of reconfiguration to leader
-                signalEndReconfigurationLeader(this.localSiteId);
+                signalEndReconfigurationLeader(this.localSiteId, partitionId);
             }
             
         }
@@ -272,10 +280,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * Signal the end of reconfiguration for a siteId to the leader
      * @param siteId
      */
-    public void signalEndReconfigurationLeader(int siteId) {
-        
-        ReconfigurationControlRequest leaderCallback = ReconfigurationControlRequest.newBuilder().setSrcPartition(-1)
-                .setDestPartition(-1)
+    public void signalEndReconfigurationLeader(int siteId, int callingPartition) {
+        LOG.info("Signalling endReconfigToLeader : " + siteId );
+        ReconfigurationControlRequest leaderCallback = ReconfigurationControlRequest.newBuilder().setSrcPartition(callingPartition)
+                .setDestPartition(this.reconfigurationLeader)
                 .setReconfigControlType(ReconfigurationControlType.RECONFIGURATION_DONE)
                 .setReceiverSite(this.reconfigurationLeader)
                 .setMessageIdentifier(-1).
@@ -302,6 +310,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
         
         if(reconfigurationDoneSites.size() == this.hstore_site.getCatalogContext().numberOfSites){
             // Now the leader can be sure that the reconfiguration is done as all sites have checked in
+            LOG.info("All sites haven reported reconfiguration is complete");
+            FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString());
         }
     }
 
@@ -431,7 +441,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
             if (executor.getPartitionId() == livePullRequest.getOldPartition()) {
                 // Queue the live Pull request to the work queue
                 // TODO : Change the input parameters for the senTuples function
-                LOG.info("Queue the live Pull Request");
+                if (debug.val)
+                    LOG.debug("Queue the live Pull Request");
                 executor.queueLivePullRequest(livePullRequest, livePullResponseCallback);
             }
         }
@@ -516,7 +527,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 .setNewPartition(newPartitionId).setVoltTableName(table_name).setMinInclusive(min_inclusive).setMaxExclusive(max_exclusive).setT0S(System.currentTimeMillis()).build();
 
         if (sourceID == localSiteId) {
-            LOG.info("pulling from localsite");
+            LOG.debug("pulling from localsite");
             // Just push the message through local receive Tuples to the PE'S
             // If the callback is null, it shows that the request is from a
             // partition in
@@ -740,8 +751,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     public void notifyAllRanges(int partitionId, ExceptionTypes allRangesMigratedType) {
         // TODO Auto-generated method stub
-        LOG.error("NOTIFY " + partitionId + " " + allRangesMigratedType);
-        
+        LOG.error(" ** NOTIFY " + partitionId + " " + allRangesMigratedType);
+        if( allRangesMigratedType == ExceptionTypes.ALL_RANGES_MIGRATED_OUT){
+            finishReconfiguration(partitionId);
+        }
     }
 
     public boolean scheduleAsyncPush() {

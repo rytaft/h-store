@@ -2996,7 +2996,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.stopIfStarted();
             }
             else{
-                final String msg = "Timeout on blokcing for pullrequest.";
+                final String msg = "Timeout on blocking for pullrequest.";
                 LOG.error(msg);
                 throw new RuntimeException(msg);
             }
@@ -5664,7 +5664,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             LOG.debug("Setting reconfiguration state to: " + reconfig_state.toString());
 
         this.reconfig_state = reconfig_state;
-        if (reconfig_state == ReconfigurationState.END) {
+        if (reconfig_state == ReconfigurationState.NORMAL) {
             if (debug.val)
                 LOG.debug("Cleaning up reconfiguration");
             // Reverting back to normal state clean up
@@ -5800,7 +5800,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
             }
         }
-        LOG.info("load table");
+        if (debug.val)
+            LOG.debug("load table");
         loadTableForReconfiguration(this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), table_name, vt);
     }
 

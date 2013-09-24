@@ -33,7 +33,9 @@ import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
@@ -49,6 +51,11 @@ public abstract class FileUtil {
 
     private static final Pattern EXT_SPLIT = Pattern.compile("\\.");
 
+    public static final File EVENT_LOG = join(System.getProperty("user.dir"),"hevent.log");
+    
+    private static final SimpleDateFormat EVENT_FORMAT = new SimpleDateFormat("yyyy.MM.dd-HH:mm:ss");
+
+   
     /**
      * Join path segments together into a single file
      * This is meant to mimic Python's os.path.join
@@ -192,6 +199,32 @@ public abstract class FileUtil {
         return (file);
     }
 
+    public static void appendEventToFile(String event){
+        try {
+            event = EVENT_FORMAT.format(new Date())+ "," + event;
+            
+            if (event.endsWith("\n") == false) {
+                event += "\n";
+            }
+            FileUtil.appendStringToFile(EVENT_LOG, event);
+        }
+        catch(IOException ex) {
+            LOG.error("Error on appending event to even log", ex);
+        }
+    }
+    
+    public static File appendStringToFile(String file_path, String content) throws IOException{
+       return (FileUtil.appendStringToFile(new File(file_path), content));
+    }
+    
+    public static File appendStringToFile(File file, String content) throws IOException {
+        FileWriter writer = new FileWriter(file, true);
+        writer.write(content);
+        writer.flush();
+        writer.close();
+        return (file);
+    }
+    
     /**
      * Write the given string to a temporary file Will not delete the file after
      * the JVM exits
