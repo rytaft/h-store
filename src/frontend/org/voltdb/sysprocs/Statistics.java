@@ -103,6 +103,8 @@ public class Statistics extends VoltSystemProcedure {
         addStatsFragments(SysProcSelector.SITEPROFILER, SysProcFragmentId.PF_siteProfilerData, SysProcFragmentId.PF_siteProfilerAggregator);
         addStatsFragments(SysProcSelector.PLANNERPROFILER, SysProcFragmentId.PF_plannerProfilerData, SysProcFragmentId.PF_plannerProfilerAggregator);
         addStatsFragments(SysProcSelector.ANTICACHE, SysProcFragmentId.PF_anticacheProfilerData, SysProcFragmentId.PF_anticacheProfilerAggregator);
+        addStatsFragments(SysProcSelector.TXNRESPONSETIME, SysProcFragmentId.PF_txnRTData, SysProcFragmentId.PF_txnRTAggregator); // Marco
+        addStatsFragments(SysProcSelector.CPUUSAGE, SysProcFragmentId.PF_cpuUsageData, SysProcFragmentId.PF_cpuUsageAggregator); // Essam
     } // STATIC
     
     @Override
@@ -116,6 +118,7 @@ public class Statistics extends VoltSystemProcedure {
         registerPlanFragment(SysProcFragmentId.PF_partitionCount);
         registerPlanFragment(SysProcFragmentId.PF_ioData);
         registerPlanFragment(SysProcFragmentId.PF_ioDataAggregator);
+        registerPlanFragment(SysProcFragmentId.PF_txnRTData); // Marco
         
         // Automatically register our STATS_DATA entries
         for (Integer id : STATS_DATA.keySet()) {
@@ -146,7 +149,16 @@ public class Statistics extends VoltSystemProcedure {
             case SysProcFragmentId.PF_specexecProfilerData:
             case SysProcFragmentId.PF_siteProfilerData:
             case SysProcFragmentId.PF_plannerProfilerData:
-            case SysProcFragmentId.PF_anticacheProfilerData: {
+            
+            // Essam
+            case SysProcFragmentId.PF_cpuUsageData: {
+                // Tell the PartitionExecutors to update their CPU stats
+                //this.executor.queueUtilityWork(new UpdateMemoryMessage());
+            }
+            case SysProcFragmentId.PF_anticacheProfilerData:
+            case SysProcFragmentId.PF_txnRTData: // Marco
+            {
+
                 assert(params.toArray().length == 2);
                 final boolean interval =
                     ((Byte)params.toArray()[0]).byteValue() == 0 ? false : true;
@@ -179,6 +191,7 @@ public class Statistics extends VoltSystemProcedure {
             // PROFILER DATA AGGREGATION
             // ----------------------------------------------------------------------------
             case SysProcFragmentId.PF_nodeMemoryAggregator:
+            case SysProcFragmentId.PF_cpuUsageAggregator: // Essam
             case SysProcFragmentId.PF_txnCounterAggregator:
             case SysProcFragmentId.PF_txnProfilerAggregator:
             case SysProcFragmentId.PF_execProfilerAggregator:
@@ -187,7 +200,11 @@ public class Statistics extends VoltSystemProcedure {
             case SysProcFragmentId.PF_specexecProfilerAggregator:
             case SysProcFragmentId.PF_siteProfilerAggregator:
             case SysProcFragmentId.PF_plannerProfilerAggregator:
-            case SysProcFragmentId.PF_anticacheProfilerAggregator: {
+
+            case SysProcFragmentId.PF_anticacheProfilerAggregator:
+            case SysProcFragmentId.PF_txnRTAggregator: // Marco
+            {
+
                 // Do a reverse look up to find the input dependency id
                 int dataFragmentId = -1;
                 for (Integer id : STATS_DATA.keySet()) {
