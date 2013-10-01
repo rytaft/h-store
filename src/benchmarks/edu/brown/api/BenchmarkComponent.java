@@ -1281,12 +1281,7 @@ public abstract class BenchmarkComponent {
         if(m_incrementsTxnRate!= null){
         	if(m_incrementsTxnRate.hasNextLine()){
 	        	double increment = Double.parseDouble(m_incrementsTxnRate.nextLine());
-	        	if(increment > 1.0) {
-	        		System.out.println("Increase load");
-	        	}
-	        	else if (increment < 1.0){
-	        		System.out.println("Reduce load");
-	        	}
+        		System.out.println("Modify load by factor of " + increment);
 	        	m_txnRate = (int) (m_txnRate * increment);
 	        	m_txnsPerMillisecond = (int) (m_txnsPerMillisecond * increment);
         	}

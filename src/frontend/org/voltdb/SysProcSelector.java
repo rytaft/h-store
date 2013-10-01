@@ -39,5 +39,5 @@ public enum SysProcSelector {
     ANTICACHEACCESS, // anti-cache evicted access history
     TXNRESPONSETIME,	// transaction response time - Marco
     CPUUSAGE,	// cpu usage - Essam
-
+    PARTITIONRATES  // access counters for partitions - Marco
 }

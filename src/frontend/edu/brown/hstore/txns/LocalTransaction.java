@@ -215,7 +215,7 @@ public class LocalTransaction extends AbstractTransaction {
         this.init_callback = new LocalInitQueueCallback(hstore_site);
         int numPartitions = hstore_site.getCatalogContext().numberOfPartitions;
         this.exec_touchedPartitions = new FastIntHistogram(false, numPartitions);
-    }
+      }
 
     /**
      * Main initialization method for LocalTransaction
