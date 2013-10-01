@@ -57,6 +57,7 @@ import edu.brown.interfaces.DebugContext;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.pools.Poolable;
+import edu.brown.statistics.FastIntHistogram;
 import edu.brown.utils.PartitionSet;
 import edu.brown.utils.StringUtil;
 
@@ -692,6 +693,9 @@ public abstract class AbstractTransaction implements Poolable, Comparable<Abstra
     public final void setAllowEarlyPrepare(boolean enable) {
         this.allow_early_prepare = enable;
     }
+    
+    // Marco - begin
+    public abstract FastIntHistogram getTouchedPartitions();
     
     // ----------------------------------------------------------------------------
     // CALLBACK METHODS

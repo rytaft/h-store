@@ -38,13 +38,15 @@ public class PartitionRates extends StatsSource {
 	private FastIntHistogram[] affinityMatrix = null;
 	private int column_offset;
 	private int numberOfPartitions;
-	private boolean testOnce = true; // TODO Remove
+	private long lastCall;
+	private long lastInterval;
 
 	public PartitionRates(int noOfPartitions){
 		super(SysProcSelector.PARTITIONRATES.name(), false);
 		LOG.info("Been in PartitionRates constructor");
 		numberOfPartitions = noOfPartitions;
 		affinityMatrix = new FastIntHistogram[numberOfPartitions];
+		lastCall = System.currentTimeMillis();
 	}
 	
 	/**
@@ -54,10 +56,6 @@ public class PartitionRates extends StatsSource {
 	 */
 
 	public void addAccesses(FastIntHistogram counts){
-//		if(testOnce){
-//			testOnce = false;
-//			LOG.info("Got histogram\n" + counts.toString());
-//		}
 		if(accessRates == null){
 			accessRates = counts;
 		}
@@ -85,6 +83,9 @@ public class PartitionRates extends StatsSource {
 	
     @Override
     protected Iterator<Object> getStatsRowKeyIterator(boolean interval) {
+    	long thisCall = System.currentTimeMillis();
+    	lastInterval = thisCall - lastCall;
+    	lastCall = thisCall;
         return new Iterator<Object>() {
         	int next = 0;
             @Override
@@ -117,7 +118,7 @@ public class PartitionRates extends StatsSource {
         StringBuffer str = new StringBuffer();
 		for (int i = 0; i < numberOfPartitions; i++){
 			if(affinityMatrix[(Integer) rowKey] != null){
-				str.append("\t"+ affinityMatrix[(Integer) rowKey].get(i));
+				str.append("\t"+ (affinityMatrix[(Integer) rowKey].get(i)/(lastInterval/1000)));
 			}
 			else{
 				str.append("\t-1");

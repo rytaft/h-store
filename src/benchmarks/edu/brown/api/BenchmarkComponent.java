@@ -1281,9 +1281,11 @@ public abstract class BenchmarkComponent {
         if(m_incrementsTxnRate!= null){
         	if(m_incrementsTxnRate.hasNextLine()){
 	        	double increment = Double.parseDouble(m_incrementsTxnRate.nextLine());
-        		System.out.println("Modify load by factor of " + increment);
-	        	m_txnRate = (int) (m_txnRate * increment);
-	        	m_txnsPerMillisecond = (int) (m_txnsPerMillisecond * increment);
+	        	if (increment != 1){
+	        		LOG.info("Modify load by factor of " + increment);
+		        	m_txnRate = (int) (m_txnRate * increment);
+		        	m_txnsPerMillisecond = (int) (m_txnsPerMillisecond * increment);
+	        	}
         	}
         	else{
         		System.out.println("Warning: no increment for tick number " + counter);

@@ -2695,6 +2695,8 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                      ts, ts.getClass().getSimpleName(), ts.hashCode()));
             this.deletable_last.add(String.format("%s :: %s", ts, status));
         }
+        
+        this.partStats.addAccesses(ts.getTouchedPartitions()); // Marco
         return;
     }
 

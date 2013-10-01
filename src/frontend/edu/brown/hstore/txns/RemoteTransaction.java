@@ -43,6 +43,7 @@ import edu.brown.hstore.callbacks.RemoteWorkCallback;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.protorpc.ProtoRpcController;
+import edu.brown.statistics.FastIntHistogram;
 import edu.brown.utils.PartitionSet;
 import edu.brown.utils.StringUtil;
 
@@ -58,6 +59,8 @@ public class RemoteTransaction extends AbstractTransaction {
     static {
         LoggerUtil.attachObserver(LOG, debug, trace);
     }
+    
+    FastIntHistogram touchedPartitions;     // Marco
     
     // ----------------------------------------------------------------------------
     // CALLBACKS
@@ -92,6 +95,7 @@ public class RemoteTransaction extends AbstractTransaction {
         
         CatalogContext catalogContext = hstore_site.getCatalogContext();
         this.rpc_transactionPrefetch = new ProtoRpcController[catalogContext.numberOfPartitions];
+        this.touchedPartitions = new FastIntHistogram (false, catalogContext.numberOfPartitions); // Marco
     }
     
     /**
@@ -156,6 +160,7 @@ public class RemoteTransaction extends AbstractTransaction {
         // one FragmentTaskMessage callback
         assert(this.work_callback != null) :
             "No FragmentTaskMessage callbacks available for txn #" + this.txn_id;
+        this.touchedPartitions.put(partition, 1); // Marco
         super.startRound(partition);
     }
     
@@ -182,6 +187,13 @@ public class RemoteTransaction extends AbstractTransaction {
         // XXX: Do we care about the TransactionWorkCallback?
         return (super.isDeletable());
     }
+    
+    // Marco - begin
+    @Override
+    public FastIntHistogram getTouchedPartitions(){
+    	return this.touchedPartitions;
+    }
+    // Marco - end
     
     // ----------------------------------------------------------------------------
     // CALLBACK METHODS
