@@ -14,6 +14,7 @@
 <arg value="global.hasher_plan=${global.hasher_plan}" />
 <arg value="global.log_refresh=${global.log_refresh}" />
 <arg value="global.nanosecond_latencies=${global.nanosecond_latencies}" />
+<arg value="global.reconfiguration_enable=${global.reconfiguration_enable}" />
 
 <!-- CLIENT -->
 <arg value="client.log_dir=${client.log_dir}" />
@@ -152,6 +153,7 @@
 <arg value="site.anticache_max_evicted_blocks=${site.anticache_max_evicted_blocks}" />
 <arg value="site.anticache_blocks_per_eviction=${site.anticache_blocks_per_eviction}" />
 <arg value="site.anticache_eviction_distribution=${site.anticache_eviction_distribution}" />
+<arg value="site.reconfiguration_profiling=${site.reconfiguration_profiling}" />
 <arg value="site.mr_map_blocking=${site.mr_map_blocking}" />
 <arg value="site.mr_reduce_blocking=${site.mr_reduce_blocking}" />
 <arg value="site.network_heartbeats_interval=${site.network_heartbeats_interval}" />
