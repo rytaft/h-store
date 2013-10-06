@@ -844,9 +844,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         this.statsAgent.registerStatsSource(SysProcSelector.TXNRESPONSETIME, 0, this.rtStats);
 
         // PARTITION COUNTERS - Marco
-        LOG.info("catalogContext: " + this.catalogContext.numberOfPartitions);
-        this.partStats = new PartitionRates(this.catalogContext.numberOfPartitions);
-        LOG.info("Done constructor");
+        this.partStats = new PartitionRates(this.catalogContext, getSiteId());
         this.statsAgent.registerStatsSource(SysProcSelector.PARTITIONRATES, 0, this.partStats);
     }
     

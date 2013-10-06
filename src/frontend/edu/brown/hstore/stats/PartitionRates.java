@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.apache.log4j.Logger;
+import org.voltdb.CatalogContext;
 import org.voltdb.StatsSource;
 import org.voltdb.SysProcSelector;
 import org.voltdb.VoltTable;
@@ -19,7 +20,7 @@ import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.statistics.FastIntHistogram;
 
 /**
- * Counts response times for each transaction id, grouped into buckets.
+ * Counts accesses to local partitions.
  * 
  * @author Marco
  * 
@@ -40,12 +41,27 @@ public class PartitionRates extends StatsSource {
 	private int numberOfPartitions;
 	private long lastCall;
 	private long lastInterval;
+	private int[] localPartitions;
+	private int numberOfLocalPartitions;
 
-	public PartitionRates(int noOfPartitions){
+	public PartitionRates(CatalogContext catalog, int siteId){
 		super(SysProcSelector.PARTITIONRATES.name(), false);
 		LOG.info("Been in PartitionRates constructor");
-		numberOfPartitions = noOfPartitions;
+		numberOfPartitions = catalog.numberOfPartitions;
+		accessRates = new FastIntHistogram(false,numberOfPartitions);
 		affinityMatrix = new FastIntHistogram[numberOfPartitions];
+		for (int i = 0; i < numberOfPartitions; i++){
+			affinityMatrix[i] = new FastIntHistogram(false,numberOfPartitions);
+		}
+		localPartitions = new int [numberOfPartitions];
+		int curr = 0;
+		numberOfLocalPartitions = 0;
+		for (int part = 0; part < numberOfPartitions; part++){
+			if(catalog.getSiteIdForPartitionId(part) == siteId){
+				localPartitions[curr++] = part;
+				numberOfLocalPartitions++;
+			}
+		}
 		lastCall = System.currentTimeMillis();
 	}
 	
@@ -56,23 +72,19 @@ public class PartitionRates extends StatsSource {
 	 */
 
 	public void addAccesses(FastIntHistogram counts){
-		if(accessRates == null){
-			accessRates = counts;
-		}
-		else{
-			accessRates.put(counts);
-		}
-		for (int row = 0; row < numberOfPartitions; row++){
-			if(counts.contains(row)){
-				if(affinityMatrix[row] == null){
-					affinityMatrix[row] = new FastIntHistogram(true, numberOfPartitions);
+		for (int i = 0; i < numberOfLocalPartitions; i++){
+			int part = localPartitions[i];
+			accessRates.put(part,counts.get(part));
+			if(counts.contains(part)){
+				for (int j = 0; j < numberOfLocalPartitions; j++){
+					int innerPart = localPartitions[j];
+					affinityMatrix[part].put(innerPart,counts.get(innerPart));
 				}
-				affinityMatrix[row].put(counts);
 			}
 		}
 	}
 	
-    @Override
+	@Override
     protected void populateColumnSchema(ArrayList<ColumnInfo> columns) {
         super.populateColumnSchema(columns);
         this.column_offset = columns.size();
