@@ -36,23 +36,24 @@ public class PartitionRates extends StatsSource {
     }
 	
 	private FastIntHistogram accessRates = null;
-	private FastIntHistogram[] affinityMatrix = null;
+//	private FastIntHistogram[] affinityMatrix = null;
 	private int column_offset;
 	private int numberOfPartitions;
 	private long lastCall;
 	private long lastInterval;
 	private int[] localPartitions;
 	private int numberOfLocalPartitions;
+	private boolean firstCall = false;
 
 	public PartitionRates(CatalogContext catalog, int siteId){
 		super(SysProcSelector.PARTITIONRATES.name(), false);
 		LOG.info("Been in PartitionRates constructor");
 		numberOfPartitions = catalog.numberOfPartitions;
 		accessRates = new FastIntHistogram(false,numberOfPartitions);
-		affinityMatrix = new FastIntHistogram[numberOfPartitions];
-		for (int i = 0; i < numberOfPartitions; i++){
-			affinityMatrix[i] = new FastIntHistogram(false,numberOfPartitions);
-		}
+//		affinityMatrix = new FastIntHistogram[numberOfPartitions];
+//		for (int i = 0; i < numberOfPartitions; i++){
+//			affinityMatrix[i] = new FastIntHistogram(false,numberOfPartitions);
+//		}
 		localPartitions = new int [numberOfPartitions];
 		int curr = 0;
 		numberOfLocalPartitions = 0;
@@ -62,7 +63,7 @@ public class PartitionRates extends StatsSource {
 				numberOfLocalPartitions++;
 			}
 		}
-		lastCall = System.currentTimeMillis();
+//		lastCall = System.currentTimeMillis();
 	}
 	
 	/**
@@ -72,15 +73,18 @@ public class PartitionRates extends StatsSource {
 	 */
 
 	public void addAccesses(FastIntHistogram counts){
+		if(firstCall){
+			lastCall = System.currentTimeMillis();
+		}
 		for (int i = 0; i < numberOfLocalPartitions; i++){
 			int part = localPartitions[i];
 			accessRates.put(part,counts.get(part));
-			if(counts.contains(part)){
-				for (int j = 0; j < numberOfLocalPartitions; j++){
-					int innerPart = localPartitions[j];
-					affinityMatrix[part].put(innerPart,counts.get(innerPart));
-				}
-			}
+//			if(counts.contains(part)){
+//				for (int j = 0; j < numberOfLocalPartitions; j++){
+//					int innerPart = localPartitions[j];
+//					affinityMatrix[part].put(innerPart,counts.get(innerPart));
+//				}
+//			}
 		}
 	}
 	
@@ -90,7 +94,9 @@ public class PartitionRates extends StatsSource {
         this.column_offset = columns.size();
 		columns.add(new VoltTable.ColumnInfo("PARTITION_ID", VoltType.BIGINT));
 		columns.add(new VoltTable.ColumnInfo("TOT_ACCESSES", VoltType.BIGINT));
-		columns.add(new VoltTable.ColumnInfo("AFFINITY", VoltType.STRING));
+		columns.add(new VoltTable.ColumnInfo("ELAPSED_TIME", VoltType.BIGINT));
+		columns.add(new VoltTable.ColumnInfo("TPS", VoltType.BIGINT));
+//		columns.add(new VoltTable.ColumnInfo("AFFINITY", VoltType.STRING));
     }
 	
     @Override
@@ -102,12 +108,11 @@ public class PartitionRates extends StatsSource {
         	int next = 0;
             @Override
             public boolean hasNext() {
-                return next < numberOfPartitions;
+                return next < numberOfLocalPartitions;
             }
             @Override
             public Object next() {
-            	next ++;
-                return next-1;
+                return localPartitions[next++];
             }
             @Override
             public void remove() {}
@@ -117,25 +122,22 @@ public class PartitionRates extends StatsSource {
     @Override
     protected synchronized void updateStatsRow(Object rowKey, Object[] rowValues) {
     	super.updateStatsRow(rowKey, rowValues);
-        LOG.info("Processing row: " + rowKey);    	
-        LOG.info("Row has : " + rowValues.length + " elements");    	
+//        LOG.info("Processing row: " + rowKey);    	
+//        LOG.info("Row has : " + rowValues.length + " elements");    	
         rowValues[this.column_offset] = rowKey;
-        if(accessRates != null){
-        	rowValues[this.column_offset+1] = accessRates.get((Integer) rowKey);
-        }
-        else{
-        	rowValues[this.column_offset+1] = -1;
-        }        	
-        LOG.info("Number of partitions: " + numberOfPartitions);
-        StringBuffer str = new StringBuffer();
-		for (int i = 0; i < numberOfPartitions; i++){
-			if(affinityMatrix[(Integer) rowKey] != null){
-				str.append("\t"+ (affinityMatrix[(Integer) rowKey].get(i)/(lastInterval/1000)));
-			}
-			else{
-				str.append("\t-1");
-			}
-		}
-		rowValues[this.column_offset+2] = str.toString();
+       	rowValues[this.column_offset+1] = accessRates.get((Integer) rowKey);
+       	rowValues[this.column_offset+2] = lastInterval;
+       	rowValues[this.column_offset+3] = accessRates.get((Integer) rowKey) / lastInterval / 1000;
+//        LOG.info("Number of partitions: " + numberOfPartitions);
+//        StringBuffer str = new StringBuffer();
+//		for (int i = 0; i < numberOfPartitions; i++){
+//			if(affinityMatrix[(Integer) rowKey] != null){
+//				str.append("\t"+ (affinityMatrix[(Integer) rowKey].get(i)/(lastInterval/1000)));
+//			}
+//			else{
+//				str.append("\t-1");
+//			}
+//		}
+//		rowValues[this.column_offset+2] = str.toString();
     }
 }
