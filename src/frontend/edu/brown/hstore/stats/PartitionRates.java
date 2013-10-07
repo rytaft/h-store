@@ -3,6 +3,8 @@ package edu.brown.hstore.stats;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.TreeMap;
 
 import org.apache.log4j.Logger;
@@ -43,7 +45,22 @@ public class PartitionRates extends StatsSource {
 	private long lastInterval;
 	private int[] localPartitions;
 	private int numberOfLocalPartitions;
-	private boolean firstCall = false;
+	private boolean firstCall = true;
+	private final int TABLE_SIZE = 300;
+	private final long TABLE_ROW_PERIOD = 1000;
+	
+	private Timer timer;
+	private FastIntHistogram[] accessesTable = new FastIntHistogram[TABLE_SIZE];
+	private int currPosTable = 0;
+	
+	class NewRow extends TimerTask{
+		@Override
+		public void run(){
+			LOG.info("Ping!");
+			accessesTable[currPosTable++] = accessRates;
+			accessRates = new FastIntHistogram(false,numberOfPartitions);
+		}
+	}
 
 	public PartitionRates(CatalogContext catalog, int siteId){
 		super(SysProcSelector.PARTITIONRATES.name(), false);
@@ -75,6 +92,9 @@ public class PartitionRates extends StatsSource {
 	public void addAccesses(FastIntHistogram counts){
 		if(firstCall){
 			lastCall = System.currentTimeMillis();
+			timer = new Timer();
+			timer.scheduleAtFixedRate(new NewRow(), TABLE_ROW_PERIOD, TABLE_ROW_PERIOD);
+			firstCall = false;
 		}
 		for (int i = 0; i < numberOfLocalPartitions; i++){
 			int part = localPartitions[i];
@@ -93,10 +113,7 @@ public class PartitionRates extends StatsSource {
         super.populateColumnSchema(columns);
         this.column_offset = columns.size();
 		columns.add(new VoltTable.ColumnInfo("PARTITION_ID", VoltType.BIGINT));
-		columns.add(new VoltTable.ColumnInfo("TOT_ACCESSES", VoltType.BIGINT));
-		columns.add(new VoltTable.ColumnInfo("ELAPSED_TIME", VoltType.BIGINT));
-		columns.add(new VoltTable.ColumnInfo("TPS", VoltType.BIGINT));
-//		columns.add(new VoltTable.ColumnInfo("AFFINITY", VoltType.STRING));
+		columns.add(new VoltTable.ColumnInfo("TOT_ACCESSES (PER TIME INTERVAL OF " + TABLE_ROW_PERIOD + " MS", VoltType.STRING));
     }
 	
     @Override
@@ -105,14 +122,14 @@ public class PartitionRates extends StatsSource {
     	lastInterval = thisCall - lastCall;
     	lastCall = thisCall;
         return new Iterator<Object>() {
-        	int next = 0;
+        	int nextPart = 0;
             @Override
             public boolean hasNext() {
-                return next < numberOfLocalPartitions;
+                return nextPart < numberOfLocalPartitions;
             }
             @Override
             public Object next() {
-                return localPartitions[next++];
+                return localPartitions[nextPart++];
             }
             @Override
             public void remove() {}
@@ -125,19 +142,11 @@ public class PartitionRates extends StatsSource {
 //        LOG.info("Processing row: " + rowKey);    	
 //        LOG.info("Row has : " + rowValues.length + " elements");    	
         rowValues[this.column_offset] = rowKey;
-       	rowValues[this.column_offset+1] = accessRates.get((Integer) rowKey);
-       	rowValues[this.column_offset+2] = lastInterval;
-       	rowValues[this.column_offset+3] = accessRates.get((Integer) rowKey) / lastInterval / 1000;
 //        LOG.info("Number of partitions: " + numberOfPartitions);
-//        StringBuffer str = new StringBuffer();
-//		for (int i = 0; i < numberOfPartitions; i++){
-//			if(affinityMatrix[(Integer) rowKey] != null){
-//				str.append("\t"+ (affinityMatrix[(Integer) rowKey].get(i)/(lastInterval/1000)));
-//			}
-//			else{
-//				str.append("\t-1");
-//			}
-//		}
-//		rowValues[this.column_offset+2] = str.toString();
+        StringBuffer str = new StringBuffer();
+		for (int i = 0; i < currPosTable; i++){
+			str.append(accessesTable[i].get((Integer) rowKey) + "\t");
+		}
+		rowValues[this.column_offset+2] = str.toString();
     }
 }
