@@ -105,6 +105,7 @@ public class Statistics extends VoltSystemProcedure {
         addStatsFragments(SysProcSelector.ANTICACHE, SysProcFragmentId.PF_anticacheProfilerData, SysProcFragmentId.PF_anticacheProfilerAggregator);
         addStatsFragments(SysProcSelector.TXNRESPONSETIME, SysProcFragmentId.PF_txnRTData, SysProcFragmentId.PF_txnRTAggregator); // Marco
         addStatsFragments(SysProcSelector.CPUUSAGE, SysProcFragmentId.PF_cpuUsageData, SysProcFragmentId.PF_cpuUsageAggregator); // Essam
+        addStatsFragments(SysProcSelector.TUPLE, SysProcFragmentId.PF_tupleData, SysProcFragmentId.PF_tupleAggregator); // Essam
     } // STATIC
     
     @Override
