@@ -41,27 +41,16 @@ public class PartitionRates extends StatsSource {
 //	private FastIntHistogram[] affinityMatrix = null;
 	private int column_offset;
 	private int numberOfPartitions;
-	private long lastCall;
-	private long lastInterval;
 	private int[] localPartitions;
 	private int numberOfLocalPartitions;
 	private boolean firstCall = true;
 	private final int TABLE_SIZE = 300;
-	private final long TABLE_ROW_PERIOD = 1000;
+	private final long TABLE_ROW_PERIOD = 150000;
 	
 	private Timer timer;
 	private FastIntHistogram[] accessesTable = new FastIntHistogram[TABLE_SIZE];
 	private int currPosTable = 0;
 	
-	class NewRow extends TimerTask{
-		@Override
-		public void run(){
-			LOG.info("Ping!");
-			accessesTable[currPosTable++] = accessRates;
-			accessRates = new FastIntHistogram(false,numberOfPartitions);
-		}
-	}
-
 	public PartitionRates(CatalogContext catalog, int siteId){
 		super(SysProcSelector.PARTITIONRATES.name(), false);
 		LOG.info("Been in PartitionRates constructor");
@@ -91,7 +80,6 @@ public class PartitionRates extends StatsSource {
 
 	public void addAccesses(FastIntHistogram counts){
 		if(firstCall){
-			lastCall = System.currentTimeMillis();
 			timer = new Timer();
 			timer.scheduleAtFixedRate(new NewRow(), TABLE_ROW_PERIOD, TABLE_ROW_PERIOD);
 			firstCall = false;
@@ -108,6 +96,15 @@ public class PartitionRates extends StatsSource {
 		}
 	}
 	
+	class NewRow extends TimerTask{
+		@Override
+		public void run(){
+			accessesTable[currPosTable++] = accessRates; //TODO must use circular buffer
+			accessRates = new FastIntHistogram(false,numberOfPartitions);
+		}
+	}
+
+
 	@Override
     protected void populateColumnSchema(ArrayList<ColumnInfo> columns) {
         super.populateColumnSchema(columns);
@@ -118,9 +115,6 @@ public class PartitionRates extends StatsSource {
 	
     @Override
     protected Iterator<Object> getStatsRowKeyIterator(boolean interval) {
-    	long thisCall = System.currentTimeMillis();
-    	lastInterval = thisCall - lastCall;
-    	lastCall = thisCall;
         return new Iterator<Object>() {
         	int nextPart = 0;
             @Override
