@@ -1100,6 +1100,25 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
 
     try {
         switch (selector) {
+        //Essam's code starts
+        case STATISTICS_SELECTOR_TYPE_TUPLE:
+                    for (int ii = 0; ii < numLocators; ii++) {
+                        CatalogId locator = static_cast<CatalogId>(locators[ii]);
+                        if (m_tables.find(locator) == m_tables.end()) {
+                            char message[256];
+                            snprintf(message, 256,  "getStats() called with selector %d, and"
+                                    " an invalid locator %d that does not correspond to"
+                                    " a table", selector, locator);
+                            throw SerializableEEException(VOLT_EE_EXCEPTION_TYPE_EEEXCEPTION,
+                                                          message);
+                        }
+                    }
+
+                    resultTable = m_statsManager.getStats(
+                        (StatisticsSelectorType) selector,
+                        locatorIds, interval, now);
+                    break;
+        //Essam's code ends
         case STATISTICS_SELECTOR_TYPE_TABLE:
             for (int ii = 0; ii < numLocators; ii++) {
                 CatalogId locator = static_cast<CatalogId>(locators[ii]);
