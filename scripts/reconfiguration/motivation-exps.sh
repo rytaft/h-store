@@ -10,7 +10,7 @@ function onexit() {
 
 # ---------------------------------------------------------------------
 
-DATA_DIR="/home/vagrant/out"
+DATA_DIR="/home/aelmore/out"
 FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=1
 
