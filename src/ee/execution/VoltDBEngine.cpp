@@ -100,6 +100,7 @@
 #include "stats/StatsAgent.h"
 #include "voltdbipc.h"
 #include "common/FailureInjection.h"
+#include "migration/MigrationManager.h"
 
 using namespace std;
 namespace voltdb {
@@ -117,7 +118,8 @@ VoltDBEngine::VoltDBEngine(Topend *topend, LogProxy *logProxy)
       m_numResultDependencies(0),
       m_logManager(logProxy),
       m_templateSingleLongTable(NULL),
-      m_topend(topend)
+      m_topend(topend),
+      m_migrationManager(NULL)
 {
     m_currentUndoQuantum = new DummyUndoQuantum();
 
@@ -165,6 +167,7 @@ bool VoltDBEngine::initialize(
                                             0, /* epoch not yet known */
                                             hostname,
                                             hostId);
+    
     return true;
 }
 
@@ -215,6 +218,10 @@ VoltDBEngine::~VoltDBEngine() {
         tidPair.second->decrementRefcount();
     }
     m_exportingTables.clear();
+    
+    if (m_migrationManager != NULL) {
+        delete m_migrationManager;
+    }
 
     delete m_topend;
     delete m_executorContext;
@@ -323,6 +330,13 @@ int VoltDBEngine::executeQuery(int64_t planfragmentId,
     assert (iter != m_executorMap.end());
     boost::shared_ptr<ExecutorVector> execsForFrag = iter->second;
 
+    // Read/Write Set Tracking
+    ReadWriteTracker *tracker = NULL;
+    if (m_executorContext->isTrackingEnabled()) {
+        ReadWriteTrackerManager *trackerMgr = m_executorContext->getTrackerManager();
+        tracker = trackerMgr->getTracker(txnId);
+    }
+    
     // PAVLO: If we see a SendPlanNode with the "fake" flag set to true,
     // then we won't really execute it and instead will send back the 
     // number of tuples that we modified
@@ -348,16 +362,14 @@ int VoltDBEngine::executeQuery(int64_t planfragmentId,
             VOLT_DEBUG("[PlanFragment %jd] Forcing tuple count at PlanNode #%02d for txn #%jd [OutputDep=%d]",
                        (intmax_t)planfragmentId, executor->getPlanNode()->getPlanNodeId(),
                        (intmax_t)txnId, m_currentOutputDepId);
-        } else 
-		{
-            VOLT_DEBUG("_[PlanFragment %jd] Executing PlanNode #%02d for txn #%jd [OutputDep=%d]",
+        } else {
+            VOLT_DEBUG("[PlanFragment %jd] Executing PlanNode #%02d for txn #%jd [OutputDep=%d]",
                        (intmax_t)planfragmentId, executor->getPlanNode()->getPlanNodeId(),
                        (intmax_t)txnId, m_currentOutputDepId);
             try {
                 // Now call the execute method to actually perform whatever action
                 // it is that the node is supposed to do...
-
-                if (!executor->execute(params)) {
+                if (!executor->execute(params, tracker)) {
                     VOLT_DEBUG("The Executor's execution at position '%d' failed for PlanFragment '%jd'",
                                ctr, (intmax_t)planfragmentId);
                     if (cleanUpTable != NULL)
@@ -367,12 +379,9 @@ int VoltDBEngine::executeQuery(int64_t planfragmentId,
                     m_currentInputDepId = -1;
                     return ENGINE_ERRORCODE_ERROR;
                 }
-            } 
-			catch (SerializableEEException &e) {
-								
+            } catch (SerializableEEException &e) {
                 VOLT_DEBUG("The Executor's execution at position '%d' failed for PlanFragment '%jd'",
                            ctr, (intmax_t)planfragmentId);
-				
                 VOLT_INFO("SerializableEEException: %s", e.message().c_str());
                 if (cleanUpTable != NULL)
                     cleanUpTable->deleteAllTuples(false);
@@ -566,6 +575,9 @@ bool VoltDBEngine::loadCatalog(const string &catalogPayload) {
     // load the plan fragments from the catalog
     if (!rebuildPlanFragmentCollections())
         return false;
+    
+    // Initialize MigrationManager
+    m_migrationManager = new MigrationManager(m_executorContext, m_database);
 
     VOLT_DEBUG("Loaded catalog...");
     return true;
@@ -692,7 +704,6 @@ VoltDBEngine::loadTable(bool allowExport, int32_t tableId,
     m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
                                              txnId,
                                              lastCommittedTxnId);
-
     Table* ret = getTable(tableId);
     if (ret == NULL) {
         VOLT_ERROR("Table ID %d doesn't exist. Could not load data",
@@ -1023,6 +1034,7 @@ bool VoltDBEngine::isLocalSite(const NValue& value)
 {
     int index = TheHashinator::hashinate(value, m_totalPartitions);
     return index == m_partitionId;
+    //return true;
 }
 
 /** Perform once per second, non-transactional work. */
@@ -1385,6 +1397,160 @@ size_t VoltDBEngine::tableHashCode(int32_t tableId) {
 }
 
 // -------------------------------------------------
+// RECONFIGURATION FUNCTIONS
+// -------------------------------------------------
+bool VoltDBEngine::updateExtractRequest(int32_t requestToken, bool confirmDelete){
+    VOLT_DEBUG("UpdateExtractRequest %d, %d",requestToken,confirmDelete);
+    if(confirmDelete == true)
+        return m_migrationManager->confirmExtractDelete(requestToken);
+    else
+        return m_migrationManager->undoExtractDelete(requestToken);            
+}
+
+bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken){
+    VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
+    m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
+                                            txnId,
+                                            lastCommittedTxnId);
+    Table* ret = getTable(tableId);
+    if (ret == NULL) {
+        VOLT_ERROR("Table ID %d doesn't exist. Could not load data", (int) tableId);
+        return false;
+    }
+
+    //TODO move some computation to external manager?
+    PersistentTable *table = dynamic_cast<PersistentTable*>(ret);
+    if (table == NULL) {
+        VOLT_ERROR("Table ID %d(name '%s') is not a persistent table."
+                " Could not load data",
+                (int) tableId, ret->name().c_str());
+        return false;
+    }
+
+    //TODO ae andy how to get databaseId?
+    std::string tableName = "EXTRACT_TABLE";
+    CatalogId databaseId = 1;
+
+    std::string* colNames = TupleSchema::createMigrateColumnNames();
+    TupleSchema *extractMigrateSchema = TupleSchema::createMigrateTupleSchema();
+
+    Table* tempExtractTable = reinterpret_cast<Table*>(TableFactory::getTempTable(
+            databaseId,
+            tableName,
+            extractMigrateSchema,
+            &colNames[0],
+            NULL));
+
+    VOLT_DEBUG("Extract table: %s", tempExtractTable->name().c_str());
+    try {
+        tempExtractTable->loadTuplesFrom(false, serialize_io);
+    } catch (SerializableEEException e) {
+        throwFatalException("%s", e.message().c_str());
+    }
+    TableIterator inputIterator = tempExtractTable->tableIterator();
+    TableTuple extractTuple(tempExtractTable->schema());
+    while (inputIterator.next(extractTuple)) {
+        //TODO ae more than 1 range -> into a single result?
+        VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
+        Table* outputTable = m_migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3),requestToken);
+        size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
+        if (outputTable != NULL) {
+            outputTable->serializeTo(m_resultOutput);
+            m_resultOutput.writeIntAt(lengthPosition,static_cast<int32_t>(m_resultOutput.size()- sizeof(int32_t)));        
+            //TODO delete keySchema,partitionIndex
+            //delete colNames;
+            
+            TupleSchema::freeTupleSchema(extractMigrateSchema);
+            return true;
+        } 
+        else{
+            return false;
+        }
+    }
+    return true;
+}
+
+
+// -------------------------------------------------
+// READ/WRITE SET TRACKING FUNCTIONS
+// -------------------------------------------------
+
+void VoltDBEngine::trackingEnable(int64_t txnId) {
+    // If this our first txn that wants tracking, then
+    // we need to setup the tracking manager
+    if (m_executorContext->isTrackingEnabled() == false) {
+        VOLT_INFO("Setting up Tracking Manager at Partition %d", m_partitionId);
+        m_executorContext->enableTracking();
+    }
+    VOLT_INFO("Creating ReadWriteTracker for txn #%ld at Partition %d", txnId, m_partitionId);
+    ReadWriteTrackerManager *trackerMgr = m_executorContext->getTrackerManager();
+    trackerMgr->enableTracking(txnId);
+}
+
+void VoltDBEngine::trackingFinish(int64_t txnId) {
+    if (m_executorContext->isTrackingEnabled() == false) {
+        VOLT_WARN("Tracking is not enable for txn #%ld at Partition %d", txnId, m_partitionId);
+        return;
+    }
+    ReadWriteTrackerManager *trackerMgr = m_executorContext->getTrackerManager();
+    VOLT_INFO("Deleting ReadWriteTracker for txn #%ld at Partition %d",
+              txnId, m_partitionId);
+    trackerMgr->removeTracker(txnId);
+    return;
+}
+
+int VoltDBEngine::trackingTupleSet(int64_t txnId, bool writes) {
+    if (m_executorContext->isTrackingEnabled() == false) {
+        return (ENGINE_ERRORCODE_NO_DATA);
+    }
+
+    ReadWriteTrackerManager *trackerMgr = m_executorContext->getTrackerManager();
+    ReadWriteTracker *tracker = trackerMgr->getTracker(txnId);
+    
+    Table *resultTable = NULL;
+    if (writes) {
+        VOLT_INFO("Getting WRITE tracking set for txn #%ld at Partition %d", txnId, m_partitionId);
+        resultTable = trackerMgr->getTuplesWritten(tracker);
+    } else {
+        VOLT_INFO("Getting READ tracking set for txn #%ld at Partition %d", txnId, m_partitionId);
+        resultTable = trackerMgr->getTuplesRead(tracker);
+    }
+    
+    // Serialize the output table so that we can read it up in Java
+    if (resultTable != NULL) {
+        VOLT_DEBUG("TRACKING TABLE TXN #%ld\n%s\n", txnId, resultTable->debug().c_str());
+        
+        size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
+        resultTable->serializeTo(m_resultOutput);
+        m_resultOutput.writeIntAt(lengthPosition,
+                                  static_cast<int32_t>(m_resultOutput.size() - sizeof(int32_t)));
+        VOLT_INFO("Returning tracking set for txn #%ld at Partition %d", txnId, m_partitionId);
+        return (ENGINE_ERRORCODE_SUCCESS);
+    }
+    return (ENGINE_ERRORCODE_ERROR);
+}
+
+// std::vector<std::string> VoltDBEngine::trackingTablesRead(int64_t txnId) {
+//     if (m_executorContext->isTrackingEnabled()) {
+//         ReadWriteTracker *tracker = m_executorContext->getTrackerManager(txnId);
+//         if (tracker != NULL) {
+//             return tracker->getTablesRead();
+//         }
+//     }
+//     return (NULL);
+// }
+// std::vector<std::string> VoltDBEngine::trackingTablesWritten(int64_t txnId) {
+//     if (m_executorContext->isTrackingEnabled()) {
+//         ReadWriteTracker *tracker = m_executorContext->getTrackerManager(txnId);
+//         if (tracker != NULL) {
+//             return tracker->getTablesWritten();
+//         }
+//     }
+//     return (NULL);
+// }
+    
+
+// -------------------------------------------------
 // ANTI-CACHE FUNCTIONS
 // -------------------------------------------------
 
@@ -1464,7 +1630,7 @@ int VoltDBEngine::antiCacheMergeBlocks(int32_t tableId) {
         throwFatalException("Invalid table id %d", tableId);
     }
     
-    VOLT_INFO("Merging unevicted blocks for table %d", tableId);
+    VOLT_DEBUG("Merging unevicted blocks for table %d", tableId);
     // Merge all the newly unevicted blocks back into our regular table data
     try {
         table->mergeUnevictedTuples();

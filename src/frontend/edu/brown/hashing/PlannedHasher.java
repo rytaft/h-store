@@ -13,11 +13,18 @@ import org.voltdb.catalog.Statement;
 import org.voltdb.catalog.Table;
 import org.voltdb.utils.NotImplementedException;
 
+import edu.brown.hstore.conf.HStoreConf;
+import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import edu.brown.utils.FileUtil;
+
 /**
  * @author aelmore Hasher that uses a planned partition plan, stored in the
  *         database catalog. This partition plan can change over time
  */
 public class PlannedHasher extends DefaultHasher {
+    private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
+    private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
+    public static final String YCSB_TEST = "YCSB_TEST";
 
     String ycsb_plan = "{"+
             "       \"default_table\":\"usertable\"," +        
@@ -40,7 +47,17 @@ public class PlannedHasher extends DefaultHasher {
             "                }     "+
             "              }"+
             "            }"+
-            "          }"+ 
+            "          },"+
+            "          \"3\" : {"+
+            "            \"tables\":{"+
+            "              \"usertable\":{"+
+            "                \"partitions\":{"+
+            "                  0 : \"0-95000\","+
+            "                  1 : \"95000-100000\""+
+            "                }     "+
+            "              }"+
+            "            }"+
+            "          }"+
             "        }"+
             "}";
     
@@ -61,10 +78,21 @@ public class PlannedHasher extends DefaultHasher {
      * @param catalog_db
      * @param num_partitions
      */
-    public PlannedHasher(CatalogContext catalogContext, int num_partitions) {
-        super(catalogContext, num_partitions);
+    public PlannedHasher(CatalogContext catalogContext, int num_partitions, HStoreConf hstore_conf) {
+        super(catalogContext, num_partitions,hstore_conf);
         try {
-            JSONObject partition_json = new JSONObject(ycsb_plan);
+            JSONObject partition_json = null;
+            if(hstore_conf != null && hstore_conf.global.hasher_plan.equalsIgnoreCase(YCSB_TEST)){
+                LOG.info("Using YCSB test plan");
+                partition_json = new JSONObject(ycsb_plan);
+            } else if(hstore_conf != null && hstore_conf.global.hasher_plan != null){
+                LOG.info("Attempting to use partition plan at : " + hstore_conf.global.hasher_plan);
+                partition_json = new JSONObject(FileUtil.readFile(hstore_conf.global.hasher_plan));
+            } else {
+                LOG.error(" *** Using a planned hasher without a specified partition plan. Using YCSB default *** ");
+                partition_json = new JSONObject(ycsb_plan);
+            }
+            
             planned_partitions = new PlannedPartitions(catalogContext, partition_json);
         } catch (Exception ex) {
             LOG.error("Error intializing planned partitions", ex);
@@ -88,7 +116,7 @@ public class PlannedHasher extends DefaultHasher {
     public int hash(Object value, CatalogType catalogItem) {
         if (catalogItem instanceof Column || catalogItem instanceof Procedure || catalogItem instanceof Statement) {
             try {
-                //LOG.info(String.format("\t Id:%s Partition:%s Phase:%s",value,planned_partitions.getPartitionId(catalogItem, value),planned_partitions.getCurrent_phase()));
+                if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s Phase:%s",catalogItem,value,planned_partitions.getPartitionId(catalogItem, value),planned_partitions.getCurrent_phase()));
                 return planned_partitions.getPartitionId(catalogItem, value);
             } catch (Exception e) {
                 LOG.error("Error on looking up partitionId from planned partition", e);
@@ -101,6 +129,10 @@ public class PlannedHasher extends DefaultHasher {
     @Override
     public int hash(Object value, int num_partitions) {
         throw new NotImplementedException("Hashing without Catalog not supported");
+    }
+
+    public synchronized PlannedPartitions getPlanned_partitions() {
+        return planned_partitions;
     }
 
 }

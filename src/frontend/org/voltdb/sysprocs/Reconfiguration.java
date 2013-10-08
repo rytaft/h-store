@@ -19,6 +19,7 @@ import org.voltdb.utils.VoltTableUtil;
 
 import edu.brown.hstore.PartitionExecutor.SystemProcedureExecutionContext;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
+import edu.brown.utils.FileUtil;
 
 /**
  * Initiate a reconfiguration
@@ -98,9 +99,10 @@ public class Reconfiguration extends VoltSystemProcedure {
   }
 
   public VoltTable[] run(int coordinator, String partition_plan, String protocol) {
-
-    LOG.info(String.format("RUN : Init reconfiguration. Coordinator:%s  Partition plan to %s. Protocol:%s", coordinator, partition_plan,
-        protocol));
+    String msg = String.format("Coordinator=%s, NewPartitionPlan=%s, Protocol=%s",coordinator, partition_plan,
+            protocol);
+    FileUtil.appendEventToFile(String.format("RECONFIGURATION_SYSPROC, %s",msg));
+    LOG.info(String.format("RUN : Init reconfiguration. %s",msg));
     ParameterSet params = new ParameterSet();
 
     params.setParameters(coordinator, partition_plan, protocol);

@@ -50,8 +50,8 @@ import edu.brown.utils.ProjectType;
 import edu.brown.utils.StringUtil;
 
 /**
+ * Partition Executor Tests
  * @author pavlo
- *
  */
 public class TestPartitionExecutor extends BaseTestCase {
 
@@ -246,6 +246,15 @@ public class TestPartitionExecutor extends BaseTestCase {
             assertEquals(vt.getColumnCount(), clone.getColumnCount());
         } // FOR
         
+    }
+    
+    public void testGetNextRequestToken() throws Exception{
+        executor.resetRequestCounter();
+        int counter = executor.getNextRequestToken();
+        int expectedCounter = 1<<24;
+        assertEquals(counter, expectedCounter);
+        counter = executor.getNextRequestToken();
+        assertEquals(counter, expectedCounter+1);
     }
     
 }

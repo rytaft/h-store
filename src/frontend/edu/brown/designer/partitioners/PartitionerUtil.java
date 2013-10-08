@@ -35,7 +35,6 @@ import edu.brown.catalog.special.MultiColumn;
 import edu.brown.catalog.special.MultiProcParameter;
 import edu.brown.catalog.special.ReplicatedColumn;
 import edu.brown.designer.AccessGraph;
-import edu.brown.designer.ColumnSet;
 import edu.brown.designer.DependencyGraph;
 import edu.brown.designer.DesignerEdge;
 import edu.brown.designer.DesignerHints;
@@ -52,11 +51,12 @@ import edu.brown.statistics.ObjectHistogram;
 import edu.brown.statistics.TableStatistics;
 import edu.brown.utils.CollectionUtil;
 import edu.brown.utils.MathUtil;
+import edu.brown.utils.PredicatePairs;
 
 public abstract class PartitionerUtil {
     private static final Logger LOG = Logger.getLogger(PartitionerUtil.class);
-    private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
-    private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
+    private static final LoggerBoolean debug = new LoggerBoolean();
+    private static final LoggerBoolean trace = new LoggerBoolean();
     static {
         LoggerUtil.attachObserver(LOG, debug, trace);
     }
@@ -267,8 +267,7 @@ public abstract class PartitionerUtil {
         final List<Table> table_visit_order = new ArrayList<Table>();
 
         // Put small read-only tables at the top of the list so that we can try
-        // everything with
-        // replicating them first
+        // everything with replicating them first
         if (hints.force_replication_size_limit != null) {
             final Map<Table, Double> replication_weights = new HashMap<Table, Double>();
             final TreeSet<Table> temp_list = new TreeSet<Table>(new PartitionerUtil.CatalogWeightComparator<Table>(replication_weights));
@@ -346,6 +345,17 @@ public abstract class PartitionerUtil {
                 }
             }.traverse(root);
         } // FOR
+        
+        // Remove ignored tables.
+        if (hints.ignore_tables.isEmpty() == false) {
+            Set<Table> toRemove = new HashSet<Table>();
+            for (Table tbl : table_visit_order) {
+                if (hints.ignore_tables.contains(tbl.getName())) {
+                    toRemove.add(tbl);
+                }
+            } // FOR
+            table_visit_order.removeAll(toRemove);
+        }
 
         // Add in any missing tables to the end of the list
         // This can occur if there are tables that do not appear in the
@@ -433,11 +443,11 @@ public abstract class PartitionerUtil {
                 LOG.warn("No edges were found for " + vertex + " in AccessGraph");
         } else {
             for (DesignerEdge edge : agraph.getIncidentEdges(vertex)) {
-                ColumnSet orig_cset = (ColumnSet) edge.getAttribute(AccessGraph.EdgeAttributes.COLUMNSET.name());
+                PredicatePairs orig_cset = (PredicatePairs) edge.getAttribute(AccessGraph.EdgeAttributes.COLUMNSET.name());
                 assert (orig_cset != null);
 
                 // Skip any ColumnSets that were used only for INSERTs
-                ColumnSet cset = new ColumnSet();
+                PredicatePairs cset = new PredicatePairs();
                 for (CatalogPair entry : orig_cset) {
                     if (!(entry.containsQueryType(QueryType.INSERT) && entry.getQueryTypeCount() == 1)) {
                         cset.add(entry);
@@ -508,7 +518,8 @@ public abstract class PartitionerUtil {
      * @throws Exception
      */
     public static ObjectHistogram<Column> generateProcedureColumnAccessHistogram(final DesignerInfo info, final DesignerHints hints, final AccessGraph agraph, final Procedure catalog_proc) throws Exception {
-        LOG.debug("Constructing column access histogram for " + catalog_proc.getName());
+        if (debug.val)
+            LOG.debug("Constructing column access histogram for " + catalog_proc.getName());
         ObjectHistogram<Column> column_histogram = new ObjectHistogram<Column>();
         for (Table catalog_tbl : CatalogUtil.getReferencedTables(catalog_proc)) {
             DesignerVertex v = agraph.getVertex(catalog_tbl);
@@ -522,8 +533,8 @@ public abstract class PartitionerUtil {
                 }
 
                 double edge_weight = e.getTotalWeight();
-                ColumnSet cset = e.getAttribute(AccessGraph.EdgeAttributes.COLUMNSET.name());
-                ObjectHistogram<Column> cset_histogram = cset.buildHistogramForType(Column.class);
+                PredicatePairs predicates = e.getAttribute(AccessGraph.EdgeAttributes.COLUMNSET.name());
+                Histogram<Column> cset_histogram = predicates.buildHistogramForType(Column.class);
                 for (Column catalog_col : cset_histogram.values()) {
                     if (!catalog_col.getParent().equals(catalog_tbl))
                         continue;

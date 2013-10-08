@@ -1,20 +1,16 @@
 package edu.brown.hstore.txns;
 
-import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.List;
 
 import org.voltdb.ParameterSet;
-import org.voltdb.catalog.Statement;
 
 import com.google.protobuf.ByteString;
 
 import edu.brown.hstore.HStoreSite;
 import edu.brown.hstore.Hstoreservice.WorkFragment;
-import edu.brown.hstore.Hstoreservice.WorkResult;
+import edu.brown.hstore.specexec.QueryTracker;
 import edu.brown.pools.Poolable;
-import edu.brown.statistics.Histogram;
-import edu.brown.statistics.ObjectHistogram;
+import edu.brown.utils.PartitionSet;
 
 /**
  * Special internal state information for when the txn requests prefetch queries
@@ -23,20 +19,15 @@ import edu.brown.statistics.ObjectHistogram;
 public class PrefetchState implements Poolable {
     
     /**
-     * Internal counter for the number of times that we've executed this query in the past.
+     * Keep track of every query invocation made by the transaction so that
+     * we can check whether we have already submitted the query as a prefetch
      */
-    protected final Histogram<Statement> stmtCounters = new ObjectHistogram<Statement>();
+    protected final QueryTracker queryTracker = new QueryTracker();
 
     /**
-     * Which partitions have received prefetch WorkFragments
+     * Which partitions have executed prefetch WorkFragments
      */
-    protected final BitSet partitions;
-    
-    /**
-     * The list of the FragmentIds that were sent out in a prefetch request
-     * This should only be access from LocalTransaction
-     */
-    protected final List<Integer> fragmentIds = new ArrayList<Integer>();
+    protected final PartitionSet partitions = new PartitionSet();
     
     /** 
      * The list of prefetchable WorkFragments that were sent for this transaction, if any
@@ -54,14 +45,12 @@ public class PrefetchState implements Poolable {
      */
     protected ParameterSet[] params = null;
     
-    /**
-     * 
-     */
-    protected final List<WorkResult> results = new ArrayList<WorkResult>();
+    // ----------------------------------------------------------------------------
+    // INITIALIZATION
+    // ----------------------------------------------------------------------------
     
     public PrefetchState(HStoreSite hstore_site) {
-        int num_partitions = hstore_site.getLocalPartitionIds().size();
-        this.partitions = new BitSet(num_partitions);
+        // int num_partitions = hstore_site.getLocalPartitionIds().size();
     }
     
     public void init(AbstractTransaction ts) {
@@ -76,12 +65,13 @@ public class PrefetchState implements Poolable {
     @Override
     public void finish() {
         this.partitions.clear();
-        this.fragmentIds.clear();
         this.fragments = null;
         this.paramsRaw = null;
         this.params = null;
-        this.results.clear();
     }
-
+    
+    public QueryTracker getExecQueryTracker() {
+        return (this.queryTracker);
+    }
     
 }

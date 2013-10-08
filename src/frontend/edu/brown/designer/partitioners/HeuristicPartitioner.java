@@ -30,7 +30,6 @@ import edu.brown.catalog.special.ReplicatedColumn;
 import edu.brown.costmodel.SingleSitedCostModel;
 import edu.brown.costmodel.TimeIntervalCostModel;
 import edu.brown.designer.AccessGraph;
-import edu.brown.designer.ColumnSet;
 import edu.brown.designer.Designer;
 import edu.brown.designer.DesignerEdge;
 import edu.brown.designer.DesignerHints;
@@ -44,8 +43,10 @@ import edu.brown.graphs.AbstractDirectedGraph;
 import edu.brown.graphs.IGraph;
 import edu.brown.graphs.VertexTreeWalker;
 import edu.brown.utils.CollectionUtil;
+import edu.brown.utils.PredicatePairs;
 import edu.brown.utils.ThreadUtil;
 
+@Deprecated
 public class HeuristicPartitioner extends AbstractPartitioner {
     protected static final Logger LOG = Logger.getLogger(HeuristicPartitioner.class);
 
@@ -253,7 +254,7 @@ public class HeuristicPartitioner extends AbstractPartitioner {
             //
             LOG.debug("Invoking replication tree generation...");
 
-            AbstractDirectedGraph<DesignerVertex, DesignerEdge> rtree = new AbstractDirectedGraph<DesignerVertex, DesignerEdge>(info.catalog_db) {
+            AbstractDirectedGraph<DesignerVertex, DesignerEdge> rtree = new AbstractDirectedGraph<DesignerVertex, DesignerEdge>(info.catalogContext.database) {
                 private static final long serialVersionUID = 1L;
             };
             rtree.setName("RepTree-Round" + round);
@@ -294,7 +295,7 @@ public class HeuristicPartitioner extends AbstractPartitioner {
                 Column max_column = null;
                 Column max_conflict_column = null;
                 for (DesignerEdge conflict_edge : rtree.getInEdges(conflict_vertex)) {
-                    ColumnSet cset = (ColumnSet) conflict_edge.getAttribute(AccessGraph.EdgeAttributes.COLUMNSET.name());
+                    PredicatePairs cset = (PredicatePairs) conflict_edge.getAttribute(AccessGraph.EdgeAttributes.COLUMNSET.name());
                     for (Column conflict_column : cset.findAllForParent(Column.class, conflict_tbl)) {
                         Column ancestor_column = CollectionUtil.last(info.dependencies.getAncestors(conflict_column));
                         Integer count = ancestors.get(ancestor_column);
@@ -369,7 +370,7 @@ public class HeuristicPartitioner extends AbstractPartitioner {
             for (Set<Table> replication_set : candidate_sets) {
                 cost_model.invalidateCache(candidates);
 
-                Catalog new_catalog = CatalogCloner.cloneBaseCatalog(info.catalog_db.getCatalog());
+                Catalog new_catalog = CatalogCloner.cloneBaseCatalog(info.catalogContext.database.getCatalog());
                 for (Table catalog_tbl : proc_tables) {
                     DesignerVertex vertex = ptree.getVertex(catalog_tbl);
                     assert (vertex != null) : "PartitionTree is missing a vertex for " + catalog_tbl + " " + ptree.getVertices();
@@ -395,7 +396,7 @@ public class HeuristicPartitioner extends AbstractPartitioner {
                     }
                 } // FOR
                 Database new_catalog_db = CatalogUtil.getDatabase(new_catalog);
-                CatalogCloner.cloneConstraints(info.catalog_db, new_catalog_db);
+                CatalogCloner.cloneConstraints(info.catalogContext.database, new_catalog_db);
                 CatalogContext newCatalogContext = new CatalogContext(new_catalog);
 
                 double cost = 0d;
@@ -508,7 +509,7 @@ public class HeuristicPartitioner extends AbstractPartitioner {
                 // is a descendant of the table that the child should be forced
                 // to
                 if (force_dependency != null) {
-                    Table force_tbl = CatalogKey.getFromKey(info.catalog_db, force_dependency, Table.class);
+                    Table force_tbl = CatalogKey.getFromKey(info.catalogContext.database, force_dependency, Table.class);
                     if (parent_table.equals(force_tbl)) {
                         force = true;
                         LOG.debug("Forcing dependency: " + parent_table + "->" + vertex_tbl);
@@ -635,7 +636,7 @@ public class HeuristicPartitioner extends AbstractPartitioner {
             // attribute
             //
             if (is_root) {
-                PartitionSets attributes = new PartitionSets((Table) parent.getCatalogItem());
+                TablePartitionSets attributes = new TablePartitionSets((Table) parent.getCatalogItem());
                 boolean debug = parent.getCatalogItem().getName().equals("STOCK");
                 for (DesignerVertex child : next) {
                     //
@@ -671,12 +672,12 @@ public class HeuristicPartitioner extends AbstractPartitioner {
                 // Now get the list of AttributeSets that have the highest
                 // weights
                 //
-                Set<PartitionSets.Entry> asets = attributes.getMaxWeightAttributes();
+                Set<TablePartitionSets.Entry> asets = attributes.getMaxWeightAttributes();
                 if (debug) {
                     System.out.println(asets);
                 }
 
-                PartitionSets.Entry aset = null;
+                TablePartitionSets.Entry aset = null;
                 if (asets.isEmpty()) {
                     LOG.debug("Skipping vertex " + parent + " because no attributes to its children were found");
                     return; // throw new
@@ -687,9 +688,9 @@ public class HeuristicPartitioner extends AbstractPartitioner {
                     // XXX: Pick the attribute with the longest path to a root
                     // in the dependency graph
                     //
-                    PartitionSets.Entry best_entry = null;
+                    TablePartitionSets.Entry best_entry = null;
                     int best_length = Integer.MIN_VALUE;
-                    for (PartitionSets.Entry entry : asets) {
+                    for (TablePartitionSets.Entry entry : asets) {
                         for (Column catalog_col : entry) {
                             List<Column> ancestors = info.dependencies.getAncestors(catalog_col);
                             int length = ancestors.size();
@@ -732,7 +733,7 @@ public class HeuristicPartitioner extends AbstractPartitioner {
                     // If no edge exists, then the child can't be linked to the
                     // parent
                     //
-                    ColumnSet cset = (ColumnSet) edge.getAttribute(AccessGraph.EdgeAttributes.COLUMNSET.name());
+                    PredicatePairs cset = (PredicatePairs) edge.getAttribute(AccessGraph.EdgeAttributes.COLUMNSET.name());
                     Collection<Column> entries = cset.findAllForOther(Column.class, parent_attribute);
                     if (!entries.isEmpty()) {
                         next_to_visit.add(child);
@@ -796,7 +797,7 @@ public class HeuristicPartitioner extends AbstractPartitioner {
                 }
             } // FOR
             if (partition_edge != null) {
-                ColumnSet cset = (ColumnSet) partition_edge.getAttribute(AccessGraph.EdgeAttributes.COLUMNSET.name());
+                PredicatePairs cset = (PredicatePairs) partition_edge.getAttribute(AccessGraph.EdgeAttributes.COLUMNSET.name());
                 Collection<Column> attributes = cset.findAllForParent(Column.class, parent_table);
                 parent.setAttribute(ptree, PartitionTree.VertexAttributes.ATTRIBUTE.name(), CollectionUtil.first(attributes));
                 parent.setAttribute(ptree, PartitionTree.VertexAttributes.METHOD.name(), PartitionMethodType.HASH);
@@ -899,7 +900,7 @@ public class HeuristicPartitioner extends AbstractPartitioner {
         // This will then be used to generate the final PartitionMapping
         //
         PartitionPlan pplan = new PartitionPlan();
-        for (Table catalog_tbl : info.catalog_db.getTables()) {
+        for (Table catalog_tbl : info.catalogContext.database.getTables()) {
             //
             // For each table, look at the PartitionPlan entries that we created
             // above and see
@@ -1023,7 +1024,7 @@ public class HeuristicPartitioner extends AbstractPartitioner {
         //
         // HACK: Add in any tables we missed as replicated
         //
-        for (Table catalog_tbl : info.catalog_db.getTables()) {
+        for (Table catalog_tbl : info.catalogContext.database.getTables()) {
             if (pplan.getTableEntries().get(catalog_tbl) == null) {
                 pplan.getTableEntries().put(catalog_tbl, new TableEntry(PartitionMethodType.REPLICATION, null, null, null));
             }

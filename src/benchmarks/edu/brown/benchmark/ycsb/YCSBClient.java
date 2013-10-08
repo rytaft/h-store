@@ -39,6 +39,8 @@ import org.voltdb.client.ProcedureCallback;
 
 import edu.brown.api.BenchmarkComponent;
 import edu.brown.benchmark.ycsb.distributions.CustomSkewGenerator;
+import edu.brown.benchmark.ycsb.distributions.IntegerGenerator;
+import edu.brown.benchmark.ycsb.distributions.UniformIntegerGenerator;
 import edu.brown.benchmark.ycsb.distributions.ZipfianGenerator;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
@@ -53,7 +55,7 @@ import edu.brown.statistics.ObjectHistogram;
  */
 public class YCSBClient extends BenchmarkComponent {
     private static final Logger LOG = Logger.getLogger(YCSBClient.class);
-    private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
+    private static final LoggerBoolean debug = new LoggerBoolean();
     static {
         LoggerUtil.attachObserver(LOG, debug);
     }
@@ -82,15 +84,15 @@ public class YCSBClient extends BenchmarkComponent {
     } // TRANSCTION ENUM
 
     private final long init_record_count;
-    private final CustomSkewGenerator readRecord; 
-    @SuppressWarnings("unused")
-    private final CustomSkewGenerator insertRecord;
-    private final ZipfianGenerator randScan;
+    private final IntegerGenerator keyGenerator;
+    
+    private final IntegerGenerator randScan;
     private final FlatHistogram<Transaction> txnWeights;
     private final Random rand_gen;
     
+    int run_count = 0; 
+    
     // private ZipfianGenerator readRecord;
-    // private final double SIGMA = 1.4; 
     
     public static void main(String args[]) {
         BenchmarkComponent.main(YCSBClient.class, args, false);
@@ -102,6 +104,7 @@ public class YCSBClient extends BenchmarkComponent {
         final CatalogContext catalogContext = this.getCatalogContext();
         boolean useFixedSize = false;
         long fixedSize = -1;
+        String requestDistribution = YCSBConstants.REQUEST_DISTRIBUTION_PROPERTY_DEFAULT; 
         for (String key : m_extraParams.keySet()) {
             String value = m_extraParams.get(key);
 
@@ -113,6 +116,13 @@ public class YCSBClient extends BenchmarkComponent {
             // Fixed Database Size
             else if (key.equalsIgnoreCase("num_records")) {
                 fixedSize = Long.valueOf(value);
+            }
+            //single key distribution
+            else if (key.equalsIgnoreCase(YCSBConstants.REQUEST_DISTRIBUTION_PROPERTY)){
+                requestDistribution = value;
+            }
+            else{
+                if(debug.val) LOG.debug("Unknown prop : "  + key);
             }
         } // FOR
         
@@ -127,29 +137,63 @@ public class YCSBClient extends BenchmarkComponent {
 //            
 //            this.init_record_count = YCSBConstants.NUM_RECORDS; 
 //        }
-        
-        this.init_record_count = YCSBConstants.NUM_RECORDS;
+        if(useFixedSize){
+            if(debug.val) LOG.debug("Using fixed number of records : " + fixedSize);
+            this.init_record_count = fixedSize;
+        } else{
+            this.init_record_count = YCSBConstants.NUM_RECORDS;            
+        }
         
         this.rand_gen = new Random(); 
         this.randScan = new ZipfianGenerator(YCSBConstants.MAX_SCAN);
                 
         // initialize distribution generators 
         // We must know where to start inserting
-        this.insertRecord = new CustomSkewGenerator(this.rand_gen, this.init_record_count, 
-                                            YCSBConstants.HOT_DATA_WORKLOAD_SKEW, YCSBConstants.HOT_DATA_SIZE, 
-                                            YCSBConstants.WARM_DATA_WORKLOAD_SKEW, YCSBConstants.WARM_DATA_SIZE);
+        if(requestDistribution.equals(YCSBConstants.CUSTOM_DISTRIBUTION)){
+            if(debug.val) LOG.debug("Using a custom key distribution");
+    
+            this.keyGenerator = new CustomSkewGenerator(this.rand_gen, this.init_record_count, 
+                                                YCSBConstants.HOT_DATA_WORKLOAD_SKEW, YCSBConstants.HOT_DATA_SIZE, 
+                                                YCSBConstants.WARM_DATA_WORKLOAD_SKEW, YCSBConstants.WARM_DATA_SIZE);
 
-        this.readRecord = new CustomSkewGenerator(this.rand_gen, this.init_record_count, 
-                                            YCSBConstants.HOT_DATA_WORKLOAD_SKEW, YCSBConstants.HOT_DATA_SIZE, 
-                                            YCSBConstants.WARM_DATA_WORKLOAD_SKEW, YCSBConstants.WARM_DATA_SIZE);
+        } 
+        else if(requestDistribution.equals(YCSBConstants.UNIFORM_DISTRIBUTION)){
+            if(debug.val) LOG.debug("Using a uniform key distribution");
+            //Ints are used for keyGens and longs are used for record counts.
+            this.keyGenerator = new UniformIntegerGenerator(this.rand_gen,0,(int)this.init_record_count);
+        }
+        else if(requestDistribution.equals(YCSBConstants.ZIPFIAN_DISTRIBUTION)){
+            if(debug.val) LOG.debug("Using a default zipfian key distribution");
+            //ints are used for keyGens and longs are used for record counts.            
+            //TODO check on other zipf params
+            this.keyGenerator = new ZipfianGenerator(init_record_count);
+        }
+        else{
+            String msg = "Unsupported YCSB key distribution type :" + requestDistribution;
+            LOG.error(msg);
+            throw new RuntimeException(msg);
+        }
         
         
         // Initialize the sampling table
         Histogram<Transaction> txns = new ObjectHistogram<Transaction>(); 
         for (Transaction t : Transaction.values()) {
-            Integer weight = this.getTransactionWeight(t.callName);
-            if (weight == null) weight = t.weight;
-            txns.put(t, weight);
+            String propOverride = t.callName+"Proportion";
+            propOverride = propOverride.toUpperCase();
+            if(m_extraParams.containsKey(propOverride)){
+                if(debug.val) LOG.debug("Using override for operation weight for " + propOverride);
+                Float weightFlt = Float.valueOf(m_extraParams.get(propOverride));
+                
+                if(weightFlt<1){
+                    weightFlt*=100;
+                }
+                txns.put(t,weightFlt.intValue());
+            }
+            else{
+                Integer weight = this.getTransactionWeight(t.callName);
+                if (weight == null) weight = t.weight;
+                txns.put(t, weight);
+            }
         } // FOR
         assert(txns.getSampleCount() == 100) : txns;
         this.txnWeights = new FlatHistogram<Transaction>(this.rand_gen, txns);
@@ -164,12 +208,9 @@ public class YCSBClient extends BenchmarkComponent {
             Random rand = new Random();
             int key = -1; 
             int scan_count; 
-            
-            int run_count = 0; 
-            
             while (true) {
-                
-                runOnce(); 
+                runOnce();
+                this.run_count++; 
             } 
         } 
         catch (IOException e) {
@@ -186,12 +227,12 @@ public class YCSBClient extends BenchmarkComponent {
         switch (target) {
             case DELETE_RECORD:
             case READ_RECORD: {
-                params = new Object[]{ this.readRecord.nextInt() };
+                params = new Object[]{ this.keyGenerator.nextInt() };
                 break;
             }
             case UPDATE_RECORD:
             case INSERT_RECORD: {
-                int key = this.readRecord.nextInt();
+                int key = this.keyGenerator.nextInt();
                 String fields[] = new String[YCSBConstants.NUM_COLUMNS];
                 for (int i = 0; i < fields.length; i++) {
                     fields[i] = YCSBUtil.astring(YCSBConstants.COLUMN_LENGTH, YCSBConstants.COLUMN_LENGTH);
@@ -200,7 +241,7 @@ public class YCSBClient extends BenchmarkComponent {
                 break;
             }
             case SCAN_RECORD:
-                params = new Object[]{ this.readRecord.nextInt(), this.randScan.nextInt() };
+                params = new Object[]{ this.keyGenerator.nextInt(), this.randScan.nextInt() };
                 break;
             default:
                 throw new RuntimeException("Unexpected txn '" + target + "'");

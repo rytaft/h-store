@@ -116,29 +116,9 @@ public class StopCopy extends VoltSystemProcedure {
                             Object row[] = null;
                             for (ReconfigurationRange<? extends Comparable<?>> range : outgoing_ranges) {
                                 catalog_tbl = this.catalogContext.getTableByName(range.table_name);
-                                table = org.voltdb.utils.CatalogUtil.getVoltTable(catalog_tbl);
-                                row = new Object[table.getColumnCount()];
-                                table.clearRowData();
-                                int sleep_sec = rand.nextInt(10);
-                                LOG.info(String.format("sleeping for %s seconds", sleep_sec));
-                                Thread.sleep(sleep_sec * 1000);
-                                // TODO range.table_name (ae)
-    
-                                // TODO (ae) how to iterate? or do we even need to
-                                // since
-                                // we will push down range
-                                // to ee to get table
-                                assert (range.getMin_inclusive() instanceof Long);
-                                for (Long i = (Long) range.getMin_inclusive(); i < (Long) range.getMax_exclusive(); i++) {
-                                    row[0] = i;
-    
-                                    // randomly generate strings for each column
-                                    for (int col = 2; col < row.length; col++) {
-                                        row[col] = StopCopy.astring(100, 100);
-                                    } // FOR
-                                    table.addRow(row);
-                                }
-                                rc.pushTuples(range.old_partition, range.new_partition, range.table_name, table);
+                                table = executor.extractTable(catalog_tbl, range);
+                                rc.pushTuples(range.old_partition, range.new_partition, range.table_name, table, 
+                                        (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive());
                             }
                         } else {
                             LOG.info("No outgoing ranges for this partition");

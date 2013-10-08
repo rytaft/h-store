@@ -12,6 +12,7 @@ import org.voltdb.catalog.Partition;
 import org.voltdb.catalog.Site;
 
 import edu.brown.BaseTestCase;
+import edu.brown.hashing.PlannedHasher;
 import edu.brown.hstore.HStoreCoordinator;
 import edu.brown.hstore.HStoreSite;
 import edu.brown.hstore.MockHStoreSite;
@@ -38,10 +39,14 @@ public class TestReconfigurationCoordinator extends BaseTestCase {
     
     @Before
     public void setUp() throws Exception {
-        super.setUp(ProjectType.TM1);
+        super.setUp(ProjectType.YCSB);
         
-        HStoreConf.singleton().site.coordinator_sync_time = false;
-        
+        HStoreConf hstore_conf = HStoreConf.singleton(); 
+        hstore_conf.site.coordinator_sync_time = false;
+        hstore_conf.global.reconfiguration_enable = true;
+        hstore_conf.global.hasher_class = "edu.brown.hashing.PlannedHasher";
+        hstore_conf.global.hasher_plan = PlannedHasher.YCSB_TEST;
+
         // Create a fake cluster of two HStoreSites, each with two partitions
         // This will allow us to test same site communication as well as cross-site communication
         this.initializeCatalog(NUM_HOSTS, NUM_SITES_PER_HOST, NUM_PARTITIONS_PER_SITE);
@@ -52,9 +57,9 @@ public class TestReconfigurationCoordinator extends BaseTestCase {
             
             // We have to make our fake ExecutionSites for each Partition at this site
             for (Partition catalog_part : catalog_site.getPartitions()) {
-                MockPartitionExecutor es = new MockPartitionExecutor(catalog_part.getId(), catalog, p_estimator);
+                MockPartitionExecutor es = new MockPartitionExecutor(catalog_part.getId(), catalogContext, p_estimator);
                 this.hstore_sites[i].addPartitionExecutor(catalog_part.getId(), es);
-                es.initHStoreSite(this.hstore_sites[i]);
+                //es.initHStoreSite(this.hstore_sites[i]);
             } // FOR
         } // FOR
 
