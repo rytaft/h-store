@@ -28,7 +28,7 @@
 using namespace voltdb;
 using namespace std;
 
-vector<string> TupleStats::generateTableStatsColumnNames() {
+vector<string> TupleStats::generateTupleStatsColumnNames() {
     vector<string> columnNames = StatsSource::generateBaseStatsColumnNames();
     columnNames.push_back("TABLE_NAME");
     columnNames.push_back("TABLE_TYPE");
@@ -58,7 +58,7 @@ vector<string> TupleStats::generateTableStatsColumnNames() {
     return columnNames;
 }
 
-void TupleStats::populateTableStatsSchema(
+void TupleStats::populateTupleStatsSchema(
         vector<ValueType> &types,
         vector<int32_t> &columnLengths,
         vector<bool> &allowNull) {
@@ -120,18 +120,18 @@ void TupleStats::populateTableStatsSchema(
 }
 
 Table*
-TupleStats::generateEmptyTableStatsTable()
+TupleStats::generateEmptyTupleStatsTable()
 {
     string name = "Persistent Table aggregated table stats temp table";
     // An empty stats table isn't clearly associated with any specific
     // database ID.  Just pick something that works for now (Yes,
     // abstractplannode::databaseId(), I'm looking in your direction)
     CatalogId databaseId = 1;
-    vector<string> columnNames = TableStats::generateTableStatsColumnNames();
+    vector<string> columnNames = TupleStats::generateTupleStatsColumnNames();
     vector<ValueType> columnTypes;
     vector<int32_t> columnLengths;
     vector<bool> columnAllowNull;
-    TableStats::populateTableStatsSchema(columnTypes, columnLengths,
+    TupleStats::populateTupleStatsSchema(columnTypes, columnLengths,
                                          columnAllowNull);
     TupleSchema *schema =
         TupleSchema::createTupleSchema(columnTypes, columnLengths,
@@ -148,7 +148,7 @@ TupleStats::generateEmptyTableStatsTable()
 /*
  * Constructor caches reference to the table that will be generating the statistics
  */
-TableStats::TableStats(Table* table)
+TupleStats::TupleStats(Table* table)
     : StatsSource(), m_table(table), m_lastTupleCount(0), m_lastTupleAccessCount(0),
       m_lastAllocatedTupleMemory(0), m_lastOccupiedTupleMemory(0),
       m_lastStringDataMemory(0)
@@ -178,7 +178,7 @@ TableStats::TableStats(Table* table)
  * @parameter partitionId this stat source is associated with
  * @parameter databaseId Database this source is associated with
  */
-void TableStats::configure(
+void TupleStats::configure(
         string name,
         CatalogId hostId,
         std::string hostname,
@@ -195,14 +195,14 @@ void TableStats::configure(
  * the parent class's version to obtain the list of columns contributed by ancestors and then append the columns they will be
  * contributing to the end of the list.
  */
-vector<string> TableStats::generateStatsColumnNames() {
-    return TableStats::generateTableStatsColumnNames();
+vector<string> TupleStats::generateStatsColumnNames() {
+    return TupleStats::generateTupleStatsColumnNames();
 }
 
 /**
  * Update the stats tuple with the latest statistics available to this StatsSource.
  */
-void TableStats::updateStatsTuple(TableTuple *tuple) {
+void TupleStats::updateStatsTuple(TableTuple *tuple) {
     tuple->setNValue( StatsSource::m_columnName2Index["TABLE_NAME"], m_tableName);
     tuple->setNValue( StatsSource::m_columnName2Index["TABLE_TYPE"], m_tableType);
     int64_t tupleCount = m_table->activeTupleCount();
@@ -346,14 +346,14 @@ void TableStats::updateStatsTuple(TableTuple *tuple) {
  * Same pattern as generateStatsColumnNames except the return value is used as an offset into the tuple schema instead of appending to
  * end of a list.
  */
-void TableStats::populateSchema(
+void TupleStats::populateSchema(
         vector<ValueType> &types,
         vector<int32_t> &columnLengths,
         vector<bool> &allowNull) {
-    TableStats::populateTableStatsSchema(types, columnLengths, allowNull);
+    TupleStats::populateTupleStatsSchema(types, columnLengths, allowNull);
 }
 
-TableStats::~TableStats() {
+TupleStats::~TupleStats() {
     m_tableName.free();
     m_tableType.free();
 }

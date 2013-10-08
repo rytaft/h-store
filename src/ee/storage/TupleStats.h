@@ -36,20 +36,20 @@ public:
      * Static method to generate the column names for the tables which
      * contain persistent table stats.
      */
-    static std::vector<std::string> generateTableStatsColumnNames();
+    static std::vector<std::string> generateTupleStatsColumnNames();
 
     /**
      * Static method to generate the remaining schema information for
      * the tables which contain persistent table stats.
      */
-    static void populateTableStatsSchema(std::vector<voltdb::ValueType>& types,
+    static void populateTupleStatsSchema(std::vector<voltdb::ValueType>& types,
                                          std::vector<int32_t>& columnLengths,
                                          std::vector<bool>& allowNull);
 
     /**
-     * Return an empty TableStats table
+     * Return an empty TupleStats table
      */
-    static Table* generateEmptyTableStatsTable();
+    static Table* generateEmptyTupleStatsTable();
 
     /*
      * Constructor caches reference to the table that will be generating the statistics
@@ -94,7 +94,7 @@ protected:
      */
     virtual void populateSchema(std::vector<voltdb::ValueType> &types, std::vector<int32_t> &columnLengths, std::vector<bool> &allowNull);
 
-    ~TableStats();
+    ~TupleStats();
 
 private:
     /**
