@@ -732,6 +732,9 @@ bool VoltDBEngine::rebuildTableCollections() {
     // need to re-map all the table ids.
     getStatsManager().unregisterStatsSource(STATISTICS_SELECTOR_TYPE_TABLE);
 
+    // Essam need to re-map all the tuples ids.
+        getStatsManager().unregisterStatsSource(STATISTICS_SELECTOR_TYPE_TUPLE);
+
     //map<string, catalog::Table*>::const_iterator it = m_database->tables().begin();
     map<string, CatalogDelegate*>::iterator cdIt = m_catalogDelegates.begin();
 
@@ -747,6 +750,11 @@ bool VoltDBEngine::rebuildTableCollections() {
                                                   catTable->relativeIndex(),
                                                   tcd->getTable()->getTableStats());
             
+            //Essam Tuple tracking
+            getStatsManager().registerStatsSource(STATISTICS_SELECTOR_TYPE_TUPLE,
+                                                              catTable->relativeIndex(),
+                                                              tcd->getTable()->getTableStats());
+
             // add all of the indexes to the stats source
             std::vector<TableIndex*> tindexes = tcd->getTable()->allIndexes();
             for (int i = 0; i < tindexes.size(); i++) {
@@ -1100,6 +1108,7 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
 
     try {
         switch (selector) {
+
         //Essam's code starts
         case STATISTICS_SELECTOR_TYPE_TUPLE:
                     for (int ii = 0; ii < numLocators; ii++) {
@@ -1119,6 +1128,7 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
                         locatorIds, interval, now);
                     break;
         //Essam's code ends
+
         case STATISTICS_SELECTOR_TYPE_TABLE:
             for (int ii = 0; ii < numLocators; ii++) {
                 CatalogId locator = static_cast<CatalogId>(locators[ii]);
