@@ -39,7 +39,7 @@ public enum SysProcSelector {
     ANTICACHEACCESS, // anti-cache evicted access history
     TXNRESPONSETIME,	// transaction response time - Marco
     CPUUSAGE,	// cpu usage - Essam
-    TUPLE,	// invoked as @stat ttracker - Essam
+    TUPLE	// invoked as @stat tuple - Essam
     
 
 }
