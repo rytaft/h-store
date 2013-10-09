@@ -312,9 +312,9 @@ enum TableStreamType {
 // Statistics Selector Types
 // ------------------------------------------------------------------
 enum StatisticsSelectorType {
-    STATISTICS_SELECTOR_TYPE_TABLE,
-    STATISTICS_SELECTOR_TYPE_INDEX,
-    STATISTICS_SELECTOR_TYPE_TUPLE
+    STATISTICS_SELECTOR_TYPE_TABLE=0,
+    STATISTICS_SELECTOR_TYPE_INDEX=1,
+    STATISTICS_SELECTOR_TYPE_TUPLE=22 //Essam tuple tracking
 };
 
 // ------------------------------------------------------------------
