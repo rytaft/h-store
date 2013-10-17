@@ -129,7 +129,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.blockedRequests = new ConcurrentHashMap<>();
         this.rcRequestId = 1;
         this.reconfigurationDonePartitionIds = new HashSet<Integer>();
-        reconfigurationDoneSites = new HashSet<Integer>();;
+        reconfigurationDoneSites = new HashSet<Integer>();
     }
 
     /**
@@ -170,7 +170,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
         if (this.reconfigurationInProgress.compareAndSet(false, true)) {
             LOG.info("Initializing reconfiguration. New reconfig plan.");
             if (this.hstore_site.getSiteId() == leaderId) {
-                LOG.error("TODO setting as leader");
                 // TODO : Check if more leader logic is needed
                 FileUtil.appendEventToFile("RECONFIG_INIT");
                 if (debug.val) {
@@ -182,6 +181,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
             this.currentPartitionPlan = partitionPlan;
             PlannedHasher hasher = (PlannedHasher) this.hstore_site.getHasher();
             ReconfigurationPlan reconfig_plan;
+            
+            //Used by the leader to track the reconfiguration state of each partition and each site respectively 
+            this.reconfigurationDonePartitionIds = new HashSet<Integer>();
+            reconfigurationDoneSites = new HashSet<Integer>();
+            
             try {
                 // Find reconfig plan
                 reconfig_plan = hasher.changePartitionPhase(partitionPlan);
@@ -302,26 +306,51 @@ public class ReconfigurationCoordinator implements Shutdownable {
         ProtoRpcController controller = new ProtoRpcController();
         int destinationId = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(this.reconfigurationLeader);
 
-        if (this.channels == null) LOG.error("Channels are null");
-        if (this.channels[destinationId] == null) LOG.error("Reconfig Leader Channel is null. " +
-                destinationId + " : " + this.channels);
+        if (this.channels == null){
+        	LOG.error("Communication Channels are null. Can't send "+ReconfigurationControlType.RECONFIGURATION_DONE +" message");
+        }
+      
         if (destinationId == this.localSiteId){
-            siteReconfigurationComplete(this.localSiteId);
+            leaderReconfigurationComplete(this.localSiteId);
         } else{
-            this.channels[destinationId].reconfigurationControlMsg(controller, leaderCallback, null);            
-            throw new NotImplementedException("Recv on this function must be set up");
+        	if (this.channels[destinationId] == null){
+        		  LOG.error("Reconfig Leader Channel is null. " +  destinationId + " : " + this.channels);
+        	} else{
+        		this.channels[destinationId].reconfigurationControlMsg(controller, leaderCallback, null);  
+        	}
         }
     }
     
-    private void siteReconfigurationComplete(int siteId){
-        LOG.info("Site reconfiguration complete : " + siteId);
-        boolean added = sites_complete.add(siteId);
-        if (added) {
-            num_sites_complete++;
-            if(num_sites_complete == num_of_sites){
-                LOG.info("SITES COMPLETE  TODO "); //TODO
-                //LEFTOFF
-            }
+    private void sendReconfigEndAcknowledgementToAllSites(){
+    	//Reconfiguration leader sends ack that reconfiguration has been done
+    	for(int i = 0;i < num_of_sites;i++){
+    		int dummySrcpartition = 0;
+    		int dummyDestPartition = 0;
+        	ProtoRpcController controller = new ProtoRpcController();
+        	ReconfigurationControlRequest reconfigEndAck = ReconfigurationControlRequest.newBuilder()
+                    .setSenderSite(this.reconfigurationLeader).setDestPartition(dummyDestPartition)
+                    .setSrcPartition(dummySrcpartition)
+                    .setReconfigControlType(ReconfigurationControlType.RECONFIGURATION_DONE_RECEIVED)
+                    .setReceiverSite(i)
+                    .setMessageIdentifier(-1).build();
+        	if(i != localSiteId) {
+        		this.channels[i].reconfigurationControlMsg(controller, reconfigEndAck, null);
+        	} else {
+        		markReconfigurationIsDoneLocally();
+        	}
+        	
+        }
+    }
+    
+    private void leaderReconfigurationComplete(int siteId){
+        LOG.info("Site reconfiguration complete for the leader : " + siteId);
+        reconfigurationDoneSites.add(siteId);
+        LOG.info("Reconfiguration is done for the leader");
+        if(reconfigurationDoneSites.size() == num_of_sites){
+            LOG.info("All sites have reported that reconfiguration is complete "); 
+            FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString());
+            LOG.info("Sending a message to notify all sites that reconfiguration has ended");
+            sendReconfigEndAcknowledgementToAllSites();
         }
     }
     
@@ -335,14 +364,22 @@ public class ReconfigurationCoordinator implements Shutdownable {
             LOG.error("This message should only go to reconfiguration leader");
             return;
         } 
-        
+        LOG.info("Got a message to end Reconfiguration from site Id :"+ siteId);
         this.reconfigurationDoneSites.add(siteId);
         
         if(reconfigurationDoneSites.size() == this.hstore_site.getCatalogContext().numberOfSites){
             // Now the leader can be sure that the reconfiguration is done as all sites have checked in
-            LOG.info("All sites haven reported reconfiguration is complete");
+            LOG.info("All sites have reported reconfiguration is complete");        
+            LOG.info("Sending a message to notify all sites that reconfiguration has ended");
+     
+            sendReconfigEndAcknowledgementToAllSites();
             FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString());
         }
+    }
+    
+    public void markReconfigurationIsDoneLocally() {
+    	LOG.info("Got a message from the reconfiguration leader to end the reconfiguration");
+    	endReconfiguration();
     }
 
     private boolean allPartitionsFinished() {
@@ -672,6 +709,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
      */
     public void endReconfiguration() {
         this.reconfigurationInProgress.set(false);
+        LOG.info("Clearing the reconfiguration state for each partition at the site");
+        for (PartitionExecutor executor : this.local_executors) {
+            executor.endReconfiguration();
+            this.partitionStates.put(executor.getPartitionId(), ReconfigurationState.END);
+        }
     }
 
     private final RpcCallback<ReconfigurationResponse> reconfigurationRequestCallback = new RpcCallback<ReconfigurationResponse>() {
@@ -780,8 +822,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
 
     public void notifyAllRanges(int partitionId, ExceptionTypes allRangesMigratedType) {
-        // TODO Auto-generated method stub
-        LOG.error(" ** NOTIFY " + partitionId + " " + allRangesMigratedType);
+        LOG.info(" ** NOTIFY " + partitionId + " " + allRangesMigratedType);
         if( allRangesMigratedType == ExceptionTypes.ALL_RANGES_MIGRATED_OUT){
             finishReconfiguration(partitionId);
         }

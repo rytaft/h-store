@@ -5760,6 +5760,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     /**
+     * Clear the reconfiguration state after reconfiguration ends
+     */
+    public void endReconfiguration() {
+    	this.reconfig_plan = null;
+    	this.reconfig_state = ReconfigurationState.END;
+    }
+    /**
      * Receiving tuples for the asynchronous pull operation made as well as the
      * Stop and Copy
      * 

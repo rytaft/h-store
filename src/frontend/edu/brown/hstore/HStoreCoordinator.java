@@ -888,6 +888,9 @@ public class HStoreCoordinator implements Shutdownable {
                     hstore_site.getReconfigurationCoordinator().deleteTuples(request);
                 } else if(request.getReconfigControlType() == ReconfigurationControlType.RECONFIGURATION_DONE) {
                     hstore_site.getReconfigurationCoordinator().markReconfigurationIsDone(request.getSenderSite());
+                }  else if(request.getReconfigControlType() == ReconfigurationControlType.
+                		RECONFIGURATION_DONE_RECEIVED) {
+                    hstore_site.getReconfigurationCoordinator().markReconfigurationIsDoneLocally();
                 }
                
             } catch (Exception e) {
