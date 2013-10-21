@@ -12,7 +12,7 @@ function onexit() {
 
 DATA_DIR="/home/aelmore/out"
 FABRIC_TYPE="ssh"
-FIRST_PARAM_OFFSET=1
+FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
     "motivation-singlepartition --partitions=1" \
@@ -31,6 +31,7 @@ for b in tpcc; do
         --stop-on-error \
         --exp-trials=1 \
         --no-json \
+	--sweep-reconfiguration \
 #         --client.duration=60000 \
     )
     
