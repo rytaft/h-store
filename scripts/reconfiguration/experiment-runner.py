@@ -784,8 +784,8 @@ if __name__ == '__main__':
     agroup.add_argument("--no-conf", action='store_true', help='Disable updating HStoreConf properties file')
     agroup.add_argument("--no-sync", action='store_true', help='Disable synching time between nodes')
     agroup.add_argument("--no-json", action='store_true', help='Disable JSON output results')
-    agroup.add_argument("--sweep-reconfiguration", action='store_true', help='Collect hevent.log from servers')
     agroup.add_argument("--reconfig", action="append", help="Configuration for an optional reconfig event [delayTimeMS]:[planId]:[optLeaderId]. Can accept multiple")
+    agroup.add_argument("--sweep-reconfiguration", action='store_true',default=False, help='Collect hevent.log from servers')
     agroup.add_argument("--no-profiling", action='store_true', help='Disable all profiling stats output files')
     agroup.add_argument("--no-shutdown", action='store_true', help='Disable shutting down cluster after a trial run')
     
@@ -1041,7 +1041,8 @@ if __name__ == '__main__':
                       LOG.info("Reconfiguration Events = %s" % reconfigs)
                       
                     try:
-                        cleanReconfiguration()
+                        if args["sweep_reconfiguration"]:
+                            cleanReconfiguration()
                         output, workloads = fabric.exec_benchmark(
                                                 client_inst, \
                                                 project=benchmark, \
@@ -1064,10 +1065,9 @@ if __name__ == '__main__':
                         # CSV RESULT FILES
                         getCSVOutput(client_inst, fabric, args, benchmark, partitions)
                         
-                        #sweep reconfiguration 
-                        if args["sweep-reconfiguration"]:
+                        #sweep reconfiguration
+                        if args["sweep_reconfiguration"]:
                             sweepReconfiguration()
-			 
                         # Only compile for the very first invocation
                         needCompile = False
                     except KeyboardInterrupt:
