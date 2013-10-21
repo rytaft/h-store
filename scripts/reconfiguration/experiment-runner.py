@@ -761,6 +761,7 @@ if __name__ == '__main__':
     agroup.add_argument("--no-sync", action='store_true', help='Disable synching time between nodes')
     agroup.add_argument("--no-json", action='store_true', help='Disable JSON output results')
     agroup.add_argument("--sweep-reconfiguration", action='store_true', help='Collect hevent.log from servers')
+    agroup.add_argument("--reconfig", action="append", help="Configuration for an optional reconfig event [delayTimeMS]:[planId]:[optLeaderId]. Can accept multiple")
     agroup.add_argument("--no-json", action='store_true', help='Disable JSON output results')
     agroup.add_argument("--no-profiling", action='store_true', help='Disable all profiling stats output files')
     agroup.add_argument("--no-shutdown", action='store_true', help='Disable shutting down cluster after a trial run')
@@ -1011,6 +1012,13 @@ if __name__ == '__main__':
                                 attempts,
                                 totalAttempts
                     )
+                    reconfigs = []
+                    if args["reconfig"]:
+                      reconfigs = extractReconfigEvents(args["reconfig"])
+                      LOG.info("%s" % reconfigs)
+                      from sys import exit
+                      exit()
+                      
                     try:
                         cleanReconfiguration()
                         output, workloads = fabric.exec_benchmark(
