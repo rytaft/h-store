@@ -95,6 +95,7 @@ public final class Hstoreservice {
       implements com.google.protobuf.ProtocolMessageEnum {
     PULL_RECEIVED(0, 0),
     RECONFIGURATION_DONE(1, 1),
+    RECONFIGURATION_DONE_RECEIVED(2, 2),
     ;
     
     
@@ -104,6 +105,7 @@ public final class Hstoreservice {
       switch (value) {
         case 0: return PULL_RECEIVED;
         case 1: return RECONFIGURATION_DONE;
+        case 2: return RECONFIGURATION_DONE_RECEIVED;
         default: return null;
       }
     }
@@ -134,7 +136,7 @@ public final class Hstoreservice {
     }
     
     private static final ReconfigurationControlType[] VALUES = {
-      PULL_RECEIVED, RECONFIGURATION_DONE, 
+      PULL_RECEIVED, RECONFIGURATION_DONE, RECONFIGURATION_DONE_RECEIVED, 
     };
     public static ReconfigurationControlType valueOf(
         com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
@@ -20958,57 +20960,58 @@ public final class Hstoreservice {
       "\031\n\025ABORT_CONNECTION_LOST\020\004\022\024\n\020ABORT_MISP" +
       "REDICT\020\005\022\021\n\rABORT_RESTART\020\006\022\020\n\014ABORT_REJ" +
       "ECT\020\007\022\027\n\023ABORT_EVICTEDACCESS\020\010\022\025\n\021ABORT_" +
-      "SPECULATIVE\020\t*I\n\032ReconfigurationControlT" +
+      "SPECULATIVE\020\t*l\n\032ReconfigurationControlT" +
       "ype\022\021\n\rPULL_RECEIVED\020\000\022\030\n\024RECONFIGURATIO" +
-      "N_DONE\020\0012\224\017\n\rHStoreService\022f\n\017Transactio" +
-      "nInit\022(.edu.brown.hstore.TransactionInit" +
-      "Request\032).edu.brown.hstore.TransactionIn",
-      "itResponse\022f\n\017TransactionWork\022(.edu.brow" +
-      "n.hstore.TransactionWorkRequest\032).edu.br" +
-      "own.hstore.TransactionWorkResponse\022x\n\023Tr" +
-      "ansactionPrefetch\022+.edu.brown.hstore.Tra" +
-      "nsactionPrefetchResult\0324.edu.brown.hstor" +
-      "e.TransactionPrefetchAcknowledgement\022c\n\016" +
-      "TransactionMap\022\'.edu.brown.hstore.Transa" +
-      "ctionMapRequest\032(.edu.brown.hstore.Trans" +
-      "actionMapResponse\022l\n\021TransactionReduce\022*" +
-      ".edu.brown.hstore.TransactionReduceReque",
-      "st\032+.edu.brown.hstore.TransactionReduceR" +
-      "esponse\022o\n\022TransactionPrepare\022+.edu.brow" +
-      "n.hstore.TransactionPrepareRequest\032,.edu" +
-      ".brown.hstore.TransactionPrepareResponse" +
-      "\022l\n\021TransactionFinish\022*.edu.brown.hstore" +
-      ".TransactionFinishRequest\032+.edu.brown.hs" +
-      "tore.TransactionFinishResponse\022r\n\023Transa" +
-      "ctionRedirect\022,.edu.brown.hstore.Transac" +
-      "tionRedirectRequest\032-.edu.brown.hstore.T" +
-      "ransactionRedirectResponse\022i\n\020Transactio",
-      "nDebug\022).edu.brown.hstore.TransactionDeb" +
-      "ugRequest\032*.edu.brown.hstore.Transaction" +
-      "DebugResponse\022Q\n\010SendData\022!.edu.brown.hs" +
-      "tore.SendDataRequest\032\".edu.brown.hstore." +
-      "SendDataResponse\022W\n\nInitialize\022#.edu.bro" +
-      "wn.hstore.InitializeRequest\032$.edu.brown." +
-      "hstore.InitializeResponse\022f\n\017ShutdownPre" +
-      "pare\022(.edu.brown.hstore.ShutdownPrepareR" +
-      "equest\032).edu.brown.hstore.ShutdownPrepar" +
-      "eResponse\022Q\n\010Shutdown\022!.edu.brown.hstore",
-      ".ShutdownRequest\032\".edu.brown.hstore.Shut" +
-      "downResponse\022T\n\tHeartbeat\022\".edu.brown.hs" +
-      "tore.HeartbeatRequest\032#.edu.brown.hstore" +
-      ".HeartbeatResponse\022Q\n\010TimeSync\022!.edu.bro" +
-      "wn.hstore.TimeSyncRequest\032\".edu.brown.hs" +
-      "tore.TimeSyncResponse\022f\n\017Reconfiguration" +
-      "\022(.edu.brown.hstore.ReconfigurationReque" +
-      "st\032).edu.brown.hstore.ReconfigurationRes" +
-      "ponse\022]\n\014DataTransfer\022%.edu.brown.hstore" +
-      ".DataTransferRequest\032&.edu.brown.hstore.",
-      "DataTransferResponse\022Q\n\010LivePull\022!.edu.b" +
-      "rown.hstore.LivePullRequest\032\".edu.brown." +
-      "hstore.LivePullResponse\022~\n\031Reconfigurati" +
-      "onControlMsg\022/.edu.brown.hstore.Reconfig" +
-      "urationControlRequest\0320.edu.brown.hstore" +
-      ".ReconfigurationControlResponse"
+      "N_DONE\020\001\022!\n\035RECONFIGURATION_DONE_RECEIVE" +
+      "D\020\0022\224\017\n\rHStoreService\022f\n\017TransactionInit" +
+      "\022(.edu.brown.hstore.TransactionInitReque",
+      "st\032).edu.brown.hstore.TransactionInitRes" +
+      "ponse\022f\n\017TransactionWork\022(.edu.brown.hst" +
+      "ore.TransactionWorkRequest\032).edu.brown.h" +
+      "store.TransactionWorkResponse\022x\n\023Transac" +
+      "tionPrefetch\022+.edu.brown.hstore.Transact" +
+      "ionPrefetchResult\0324.edu.brown.hstore.Tra" +
+      "nsactionPrefetchAcknowledgement\022c\n\016Trans" +
+      "actionMap\022\'.edu.brown.hstore.Transaction" +
+      "MapRequest\032(.edu.brown.hstore.Transactio" +
+      "nMapResponse\022l\n\021TransactionReduce\022*.edu.",
+      "brown.hstore.TransactionReduceRequest\032+." +
+      "edu.brown.hstore.TransactionReduceRespon" +
+      "se\022o\n\022TransactionPrepare\022+.edu.brown.hst" +
+      "ore.TransactionPrepareRequest\032,.edu.brow" +
+      "n.hstore.TransactionPrepareResponse\022l\n\021T" +
+      "ransactionFinish\022*.edu.brown.hstore.Tran" +
+      "sactionFinishRequest\032+.edu.brown.hstore." +
+      "TransactionFinishResponse\022r\n\023Transaction" +
+      "Redirect\022,.edu.brown.hstore.TransactionR" +
+      "edirectRequest\032-.edu.brown.hstore.Transa",
+      "ctionRedirectResponse\022i\n\020TransactionDebu" +
+      "g\022).edu.brown.hstore.TransactionDebugReq" +
+      "uest\032*.edu.brown.hstore.TransactionDebug" +
+      "Response\022Q\n\010SendData\022!.edu.brown.hstore." +
+      "SendDataRequest\032\".edu.brown.hstore.SendD" +
+      "ataResponse\022W\n\nInitialize\022#.edu.brown.hs" +
+      "tore.InitializeRequest\032$.edu.brown.hstor" +
+      "e.InitializeResponse\022f\n\017ShutdownPrepare\022" +
+      "(.edu.brown.hstore.ShutdownPrepareReques" +
+      "t\032).edu.brown.hstore.ShutdownPrepareResp",
+      "onse\022Q\n\010Shutdown\022!.edu.brown.hstore.Shut" +
+      "downRequest\032\".edu.brown.hstore.ShutdownR" +
+      "esponse\022T\n\tHeartbeat\022\".edu.brown.hstore." +
+      "HeartbeatRequest\032#.edu.brown.hstore.Hear" +
+      "tbeatResponse\022Q\n\010TimeSync\022!.edu.brown.hs" +
+      "tore.TimeSyncRequest\032\".edu.brown.hstore." +
+      "TimeSyncResponse\022f\n\017Reconfiguration\022(.ed" +
+      "u.brown.hstore.ReconfigurationRequest\032)." +
+      "edu.brown.hstore.ReconfigurationResponse" +
+      "\022]\n\014DataTransfer\022%.edu.brown.hstore.Data",
+      "TransferRequest\032&.edu.brown.hstore.DataT" +
+      "ransferResponse\022Q\n\010LivePull\022!.edu.brown." +
+      "hstore.LivePullRequest\032\".edu.brown.hstor" +
+      "e.LivePullResponse\022~\n\031ReconfigurationCon" +
+      "trolMsg\022/.edu.brown.hstore.Reconfigurati" +
+      "onControlRequest\0320.edu.brown.hstore.Reco" +
+      "nfigurationControlResponse"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {

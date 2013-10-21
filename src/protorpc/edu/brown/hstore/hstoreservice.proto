@@ -603,6 +603,9 @@ enum ReconfigurationControlType{
   // This is the message to signal the end of reconfiguration send by each site 
   // to the leader
   RECONFIGURATION_DONE = 1;
+  //A message to acknowledge that reconfiguration has been finished from the leader 
+  // so the nodes have the reconfiguration finished
+  RECONFIGURATION_DONE_RECEIVED = 2;
 }
 
 message ReconfigurationControlRequest {
