@@ -210,6 +210,9 @@ class AbstractFabric(object):
                              removals=[ ], json=False, build=True, trace=False, \
                              updateJar=True, updateConf=True, updateRepo=False, resetLog4j=False, \
                              extraParams={ }, reconfigEvents = [] ):
+        LOG.info(extraParams)
+        LOG.info("------")
+        LOG.info(project)
         ## Make sure we have enough instances
         if (self.hostCount + self.clientCount) > len(self.running_instances):
             raise Exception("Needed %d host + %d client instances but only %d are currently running" % (\

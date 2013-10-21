@@ -736,8 +736,9 @@ def cleanReconfiguration():
     LOG.info("TODO wipe")
 
 #Build a list of reconfiguration events.
-def extractReconfigEvents(rawReconfigs, expType):
+def extractReconfigEvents(rawReconfigs, expType, warmUp):
     res = []
+    warmUpApplied = False
     if "reconfig" in expType:
         reconfigType = "livepull"
     elif "stopcopy" in expType:
@@ -746,14 +747,19 @@ def extractReconfigEvents(rawReconfigs, expType):
         raise Exception("Unknown recongfiguration experiment type with --reconfig param set : %s " % expType)
     
     for rawReconfig in rawReconfigs:
-      vals = rawReconfig.split(":")
-      if len(vals) < 2:
-          LOG.error("Invalid reconfig param: %s. Have at least a delayTimeMS:planID")
-          raise Exception("Invalid reconfig param: %s. Have at least a delayTimeMS:planID")
-      reconfig = { "delayTimeMS": vals[0], "planID": vals[1], "leaderID": 0, "reconfigType": reconfigType }
-      if len(vals) == 3:
-          reconfig["leaderID"] = vals[2]
-      res.append(reconfig)
+        vals = rawReconfig.split(":")
+        if len(vals) < 2:
+            LOG.error("Invalid reconfig param: %s. Have at least a delayTimeMS:planID")
+            raise Exception("Invalid reconfig param: %s. Have at least a delayTimeMS:planID")
+
+        delayTimeMS = float(vals[0])
+        if not warmUpApplied:
+            delayTimeMS += warmUp
+            warmUpApplied = True
+        reconfig = { "delayTimeMS": delayTimeMS, "planID": vals[1], "leaderID": 0, "reconfigType": reconfigType }
+        if len(vals) == 3:
+            reconfig["leaderID"] = vals[2]
+        res.append(reconfig)
     return res
       
       
@@ -1037,7 +1043,7 @@ if __name__ == '__main__':
                     )
                     reconfigs = []
                     if args["reconfig"]:
-                      reconfigs = extractReconfigEvents(args["reconfig"], args["exp_type"])
+                      reconfigs = extractReconfigEvents(args["reconfig"], args["exp_type"], args["client.warmup"])
                       LOG.info("Reconfiguration Events = %s" % reconfigs)
                       
                     try:
