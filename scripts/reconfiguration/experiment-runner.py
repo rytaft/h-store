@@ -555,6 +555,25 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         if key in args and args[key] and args[key] != fabric.env[key]: 
             LOG.debug("OVERRIDE %s -> %s [orig=%s]", key, args[key], fabric.env[key])
             fabric.env[key] = args[key]
+            
+    ## ----------------------------------------------
+    ## RECONFIG 
+    ## ----------------------------------------------
+    _reconfig = False
+    if args['exp_type'].contains("reconfig"):
+        LOG.info("Reconfiguration experiment")
+        _reconfig = True
+    elif args['exp_type'].contains("stopcopy"):
+        LOG.info("StopCopy Experiment")
+        _reconfig = True
+    
+    if _reconfig:
+        fabric.env['global.hasher_class'] = 'edu.brown.hashing.PlannedHasher'
+        if benchmark == "tpcc":
+            fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/tpcc.json'
+        if benchmark == "ycsb":
+            fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/ycsb.json'
+
 ## DEF
 
 ## ==============================================
