@@ -2,7 +2,7 @@
 
 if [ -z "$2" ]
 then
-	echo "enter file with entries"
+	echo "enter file with entries and number of steps per interval"
 	exit
 fi
 
@@ -23,7 +23,6 @@ do
 		for i in `seq "$2"`
 		do 
 			echo $rate >> rates-$1
-			echo $i
 		done
 	fi
 done
