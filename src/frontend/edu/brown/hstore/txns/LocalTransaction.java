@@ -680,7 +680,6 @@ public class LocalTransaction extends AbstractTransaction {
         this.restart_ctr = val;
     }
     
-    @Override // Marco
     public FastIntHistogram getTouchedPartitions() {
         return (this.exec_touchedPartitions);
     }

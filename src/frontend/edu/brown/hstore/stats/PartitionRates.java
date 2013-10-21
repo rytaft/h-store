@@ -41,11 +41,12 @@ public class PartitionRates extends StatsSource {
 //	private FastIntHistogram[] affinityMatrix = null;
 	private int column_offset;
 	private int numberOfPartitions;
-	private int[] localPartitions;
-	private int numberOfLocalPartitions;
+//	private int[] localPartitions;
+//	private int numberOfLocalPartitions;
 	private boolean firstCall = true;
 	private final int TABLE_SIZE = 300;
-	private final long TABLE_ROW_PERIOD = 150000;
+//	private final long TABLE_ROW_PERIOD = 150000;
+	private final long TABLE_ROW_PERIOD = 10000;
 	
 	private Timer timer;
 	private FastIntHistogram[] accessesTable = new FastIntHistogram[TABLE_SIZE];
@@ -53,23 +54,25 @@ public class PartitionRates extends StatsSource {
 	
 	public PartitionRates(CatalogContext catalog, int siteId){
 		super(SysProcSelector.PARTITIONRATES.name(), false);
-		LOG.info("Been in PartitionRates constructor");
+//		LOG.info("Been in PartitionRates constructor");
 		numberOfPartitions = catalog.numberOfPartitions;
 		accessRates = new FastIntHistogram(false,numberOfPartitions);
 //		affinityMatrix = new FastIntHistogram[numberOfPartitions];
 //		for (int i = 0; i < numberOfPartitions; i++){
 //			affinityMatrix[i] = new FastIntHistogram(false,numberOfPartitions);
 //		}
-		localPartitions = new int [numberOfPartitions];
-		int curr = 0;
-		numberOfLocalPartitions = 0;
-		for (int part = 0; part < numberOfPartitions; part++){
-			if(catalog.getSiteIdForPartitionId(part) == siteId){
-				localPartitions[curr++] = part;
-				numberOfLocalPartitions++;
-			}
-		}
-//		lastCall = System.currentTimeMillis();
+
+//		localPartitions = new int [numberOfPartitions];
+//		int curr = 0;
+//		numberOfLocalPartitions = 0;
+//		for (int part = 0; part < numberOfPartitions; part++){
+//			if(catalog.getSiteIdForPartitionId(part) == siteId){
+//				localPartitions[curr++] = part;
+//				numberOfLocalPartitions++;
+//			}
+//		}
+
+		//		lastCall = System.currentTimeMillis();
 	}
 	
 	/**
@@ -84,9 +87,14 @@ public class PartitionRates extends StatsSource {
 			timer.scheduleAtFixedRate(new NewRow(), TABLE_ROW_PERIOD, TABLE_ROW_PERIOD);
 			firstCall = false;
 		}
-		for (int i = 0; i < numberOfLocalPartitions; i++){
-			int part = localPartitions[i];
-			accessRates.put(part,counts.get(part));
+		for (int part = 0; part < numberOfPartitions; part++){
+			if(counts.contains(part)){
+				accessRates.put(part);
+//				accessRates.put(part, accessRates.get(part)+1);
+			}
+			
+//			accessRates.put(part,counts.get(part));
+						
 //			if(counts.contains(part)){
 //				for (int j = 0; j < numberOfLocalPartitions; j++){
 //					int innerPart = localPartitions[j];
@@ -110,7 +118,7 @@ public class PartitionRates extends StatsSource {
         super.populateColumnSchema(columns);
         this.column_offset = columns.size();
 		columns.add(new VoltTable.ColumnInfo("PARTITION_ID", VoltType.BIGINT));
-		columns.add(new VoltTable.ColumnInfo("TOT_ACCESSES (PER TIME INTERVAL OF " + TABLE_ROW_PERIOD + " MS", VoltType.STRING));
+		columns.add(new VoltTable.ColumnInfo("TOT_ACCESSES (PER TIME INTERVAL OF " + TABLE_ROW_PERIOD + " MS)", VoltType.STRING));
     }
 	
     @Override
@@ -119,11 +127,11 @@ public class PartitionRates extends StatsSource {
         	int nextPart = 0;
             @Override
             public boolean hasNext() {
-                return nextPart < numberOfLocalPartitions;
+                return nextPart < numberOfPartitions;
             }
             @Override
             public Object next() {
-                return localPartitions[nextPart++];
+                return nextPart++;
             }
             @Override
             public void remove() {}
@@ -141,6 +149,6 @@ public class PartitionRates extends StatsSource {
 		for (int i = 0; i < currPosTable; i++){
 			str.append(accessesTable[i].get((Integer) rowKey) + "\t");
 		}
-		rowValues[this.column_offset+2] = str.toString();
+		rowValues[this.column_offset+1] = str.toString();
     }
 }

@@ -60,7 +60,7 @@ public class RemoteTransaction extends AbstractTransaction {
         LoggerUtil.attachObserver(LOG, debug, trace);
     }
     
-    FastIntHistogram touchedPartitions;     // Marco
+    private final FastIntHistogram touchedPartitions;     // Marco
     
     // ----------------------------------------------------------------------------
     // CALLBACKS
@@ -187,13 +187,6 @@ public class RemoteTransaction extends AbstractTransaction {
         // XXX: Do we care about the TransactionWorkCallback?
         return (super.isDeletable());
     }
-    
-    // Marco - begin
-    @Override
-    public FastIntHistogram getTouchedPartitions(){
-    	return this.touchedPartitions;
-    }
-    // Marco - end
     
     // ----------------------------------------------------------------------------
     // CALLBACK METHODS

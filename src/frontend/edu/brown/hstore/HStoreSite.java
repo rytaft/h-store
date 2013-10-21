@@ -2694,7 +2694,6 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
             this.deletable_last.add(String.format("%s :: %s", ts, status));
         }
         
-        this.partStats.addAccesses(ts.getTouchedPartitions()); // Marco
         return;
     }
 
@@ -2762,6 +2761,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                     if (hstore_conf.site.txn_counters || hstore_conf.site.status_kill_if_hung) {
                         TransactionCounter.COMPLETED.inc(catalog_proc);
                     }
+                    this.partStats.addAccesses(ts.getTouchedPartitions()); // Marco
                     break;
                 case ABORT_USER:
                     if (t_estimator != null) {
@@ -2895,8 +2895,6 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
             this.deletable_last.add(String.format("%s :: %s [SPECULATIVE=%s]",
                                     ts, status, ts.isSpeculative()));
         }
-        
-        this.partStats.addAccesses(ts.getTouchedPartitions()); // Marco
     }
 
     // ----------------------------------------------------------------------------

@@ -694,9 +694,6 @@ public abstract class AbstractTransaction implements Poolable, Comparable<Abstra
         this.allow_early_prepare = enable;
     }
     
-    // Marco - begin
-    public abstract FastIntHistogram getTouchedPartitions();
-    
     // ----------------------------------------------------------------------------
     // CALLBACK METHODS
     // ----------------------------------------------------------------------------
