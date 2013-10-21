@@ -39,6 +39,7 @@ import string
 from datetime import datetime
 from StringIO import StringIO
 from pprint import pformat
+from threading import Thread
 
 ## H-Store Third-Party Libraries
 realpath = os.path.realpath(__file__)
@@ -199,7 +200,10 @@ class AbstractFabric(object):
     ## INTERNAL API
     ## ---------------------------------------------------------------------
     def exec_reconfigs(self, inst, reconfigEvents):
-        LOG.info("Exec Reconfigs")
+        LOG.info("****  Starting Reconfigs")
+        for reconfig in reconfigEvents:
+            time.sleep(float(reconfig['delayTimeMS'])/1000)
+            LOG.info("**** Exec Reconfig %s " % str(reconfig))
 
 
     def exec_benchmark(self, inst, project, \
@@ -289,7 +293,10 @@ class AbstractFabric(object):
         
         if reconfigEvents:
             LOG.info("Reconfig events : %s" % reconfigEvents)
-            self.exec_reconfigs(inst, reconfigEvents)
+            t = Thread(target=self.exec_reconfigs, args=(inst, reconfigEvents))
+            t.setDaemon(True)
+            t.start()
+            LOG.info("**** started reconfig threads")
 
         ## Any other option not listed in the above dict should be written to 
         ## a properties file
