@@ -202,7 +202,7 @@ class AbstractFabric(object):
     def exec_benchmark(self, inst, project, \
                              removals=[ ], json=False, build=True, trace=False, \
                              updateJar=True, updateConf=True, updateRepo=False, resetLog4j=False, \
-                             extraParams={ } ):
+                             extraParams={ }, reconfigEvents = [] ):
         ## Make sure we have enough instances
         if (self.hostCount + self.clientCount) > len(self.running_instances):
             raise Exception("Needed %d host + %d client instances but only %d are currently running" % (\
@@ -283,6 +283,9 @@ class AbstractFabric(object):
         ## Extra Parameters
         if extraParams:
             hstore_options = dict(hstore_options.items() + extraParams.items())
+        
+        if reconfigEvents:
+            LOG.info("Reconfig events : %s" % reconfigEvents)
         
         ## Any other option not listed in the above dict should be written to 
         ## a properties file

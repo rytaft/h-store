@@ -209,6 +209,9 @@ EXPERIMENT_SETTINGS = [
     "aborts-60-occ",
     "aborts-80-occ",
     "aborts-100-occ",
+    
+    "motivation-reconfig",
+    "motivation-stopcopy",
 ]
 
 ## ==============================================
@@ -232,8 +235,8 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
     if targetType.startswith("motivation"):
         fabric.env["site.specexec_enable"] = False
         fabric.env["site.specexec_nonblocking"] = False
-        fabric.env["site.markov_enable"] = True
-        fabric.env["site.markov_fixed"] = True
+        fabric.env["site.markov_enable"] = False
+        fabric.env["site.markov_fixed"] = False
         fabric.env["site.exec_force_singlepartitioned"] = False
         fabric.env["client.count"] = 1
         fabric.env["client.txnrate"] = 100000
@@ -560,10 +563,10 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
     ## RECONFIG 
     ## ----------------------------------------------
     _reconfig = False
-    if args['exp_type'].contains("reconfig"):
+    if "reconfig" in args['exp_type']:
         LOG.info("Reconfiguration experiment")
         _reconfig = True
-    elif args['exp_type'].contains("stopcopy"):
+    elif "stopcopy" in args['exp_type']:
         LOG.info("StopCopy Experiment")
         _reconfig = True
     
@@ -732,7 +735,28 @@ def sweepReconfiguration():
 def cleanReconfiguration():
     LOG.info("TODO wipe")
 
-
+#Build a list of reconfiguration events.
+def extractReconfigEvents(rawReconfigs, expType):
+    res = []
+    if "reconfig" in expType:
+        reconfigType = "livepull"
+    elif "stopcopy" in expType:
+        reconfigType = "stopcopy"
+    else:
+        raise Exception("Unknown recongfiguration experiment type with --reconfig param set : %s " % expType)
+    
+    for rawReconfig in rawReconfigs:
+      vals = rawReconfig.split(":")
+      if len(vals) < 2:
+          LOG.error("Invalid reconfig param: %s. Have at least a delayTimeMS:planID")
+          raise Exception("Invalid reconfig param: %s. Have at least a delayTimeMS:planID")
+      reconfig = { "delayTimeMS": vals[0], "planID": vals[1], "leaderID": 0, "reconfigType": reconfigType }
+      if len(vals) == 3:
+          reconfig["leaderID"] = vals[2]
+      res.append(reconfig)
+    return res
+      
+      
 ## ==============================================
 ## main
 ## ==============================================
@@ -762,7 +786,6 @@ if __name__ == '__main__':
     agroup.add_argument("--no-json", action='store_true', help='Disable JSON output results')
     agroup.add_argument("--sweep-reconfiguration", action='store_true', help='Collect hevent.log from servers')
     agroup.add_argument("--reconfig", action="append", help="Configuration for an optional reconfig event [delayTimeMS]:[planId]:[optLeaderId]. Can accept multiple")
-    agroup.add_argument("--no-json", action='store_true', help='Disable JSON output results')
     agroup.add_argument("--no-profiling", action='store_true', help='Disable all profiling stats output files')
     agroup.add_argument("--no-shutdown", action='store_true', help='Disable shutting down cluster after a trial run')
     
@@ -1014,10 +1037,8 @@ if __name__ == '__main__':
                     )
                     reconfigs = []
                     if args["reconfig"]:
-                      reconfigs = extractReconfigEvents(args["reconfig"])
-                      LOG.info("%s" % reconfigs)
-                      from sys import exit
-                      exit()
+                      reconfigs = extractReconfigEvents(args["reconfig"], args["exp_type"])
+                      LOG.info("Reconfiguration Events = %s" % reconfigs)
                       
                     try:
                         cleanReconfiguration()
@@ -1032,7 +1053,8 @@ if __name__ == '__main__':
                                                 updateConf=updateConf, \
                                                 updateRepo=needUpdate, \
                                                 resetLog4j=needResetLog4j, \
-                                                extraParams=controllerParams)
+                                                extraParams=controllerParams, \
+                                                reconfigEvents=reconfigs)
                                                 
                         # Process JSON Output
                         if args['no_json'] == False:
