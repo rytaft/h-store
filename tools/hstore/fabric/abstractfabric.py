@@ -198,7 +198,10 @@ class AbstractFabric(object):
     ## ---------------------------------------------------------------------
     ## INTERNAL API
     ## ---------------------------------------------------------------------
-    
+    def exec_reconfigs(self, inst, reconfigEvents):
+        LOG.info("Exec Reconfigs")
+
+
     def exec_benchmark(self, inst, project, \
                              removals=[ ], json=False, build=True, trace=False, \
                              updateJar=True, updateConf=True, updateRepo=False, resetLog4j=False, \
@@ -286,7 +289,8 @@ class AbstractFabric(object):
         
         if reconfigEvents:
             LOG.info("Reconfig events : %s" % reconfigEvents)
-        
+            self.exec_reconfigs(inst, reconfigEvents)
+
         ## Any other option not listed in the above dict should be written to 
         ## a properties file
         workloads = None

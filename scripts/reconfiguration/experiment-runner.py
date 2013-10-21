@@ -993,7 +993,7 @@ if __name__ == '__main__':
                     ## FOR
                 
                 client_inst = fabric.getRunningInstances()[-1]
-                LOG.debug("Client Instance: " + client_inst.public_dns_name)
+                LOG.info("Client Instance: " + client_inst.public_dns_name)
                 
                 ## Synchronize Instance Times
                 if needSync: fabric.sync_time()
