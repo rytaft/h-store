@@ -68,9 +68,9 @@ LOG.setLevel(logging.INFO)
 ## DEPLOYMENT CONFIGURATION
 ## =====================================================================
 
+LOG.warn("Removed hstore.pem config")
 ENV_DEFAULT = {
     # Fabric Options
-    LOG.warn("Removed hstore.pem config")
     #"key_filename":                     os.path.join(os.environ["HOME"], ".ssh/hstore.pem"),
     "user":                             os.environ["USER"],
     "disable_known_hosts":              True,
