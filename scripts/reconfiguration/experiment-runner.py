@@ -753,8 +753,10 @@ def extractReconfigEvents(rawReconfigs, expType, warmUp):
             raise Exception("Invalid reconfig param: %s. Have at least a delayTimeMS:planID")
 
         delayTimeMS = float(vals[0])
-        if not warmUpApplied:
-            delayTimeMS += warmUp
+        if not warmUpApplied and warmUp > 0:
+            delayTimeMS += warmUp 
+            #add slight buffer
+            delayTimeMS += 1000
             warmUpApplied = True
         reconfig = { "delayTimeMS": delayTimeMS, "planID": vals[1], "leaderID": 0, "reconfigType": reconfigType }
         if len(vals) == 3:

@@ -199,20 +199,21 @@ class AbstractFabric(object):
     ## ---------------------------------------------------------------------
     ## INTERNAL API
     ## ---------------------------------------------------------------------
-    def exec_reconfigs(self, inst, reconfigEvents):
+    def exec_reconfigs(self, inst, reconfigEvents, project):
         LOG.info("****  Starting Reconfigs")
         for reconfig in reconfigEvents:
             time.sleep(float(reconfig['delayTimeMS'])/1000)
-            LOG.info("**** Exec Reconfig %s " % str(reconfig))
-
+            cmd = "ant hstore-invoke -Dproc='@Reconfiguration' -Dproject=%s -Dparam0=%s -Dparam1=%s -Dparam2=%s" % (project, reconfig['leaderID'], reconfig['planID'], reconfig['reconfigType'])
+            LOG.info("**** %s " % cmd)
+            run("touch hereIam.txt")
+            output = run(cmd, combine_stderr=True)
+            LOG.info("**** %s " % output)
+            
 
     def exec_benchmark(self, inst, project, \
                              removals=[ ], json=False, build=True, trace=False, \
                              updateJar=True, updateConf=True, updateRepo=False, resetLog4j=False, \
                              extraParams={ }, reconfigEvents = [] ):
-        LOG.info(extraParams)
-        LOG.info("------")
-        LOG.info(project)
         ## Make sure we have enough instances
         if (self.hostCount + self.clientCount) > len(self.running_instances):
             raise Exception("Needed %d host + %d client instances but only %d are currently running" % (\
@@ -296,10 +297,9 @@ class AbstractFabric(object):
         
         if reconfigEvents:
             LOG.info("Reconfig events : %s" % reconfigEvents)
-            t = Thread(target=self.exec_reconfigs, args=(inst, reconfigEvents))
+            t = Thread(target=self.exec_reconfigs, args=(inst, reconfigEvents, project))
             t.setDaemon(True)
             t.start()
-            LOG.info("**** started reconfig threads")
 
         ## Any other option not listed in the above dict should be written to 
         ## a properties file
