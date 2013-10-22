@@ -273,6 +273,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
             fabric.env["client.weights"] = ""
             
             if benchmark == "tpcc":
+                #fabric.env["site.exec_force_singlepartitioned"] = True
                 fabric.env["benchmark.neworder_multip"] = False
                 fabric.env["benchmark.neworder_multip_remote"] = False
                 fabric.env["benchmark.neworder_multip_mix"] = -1
