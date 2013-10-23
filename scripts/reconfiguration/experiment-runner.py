@@ -579,7 +579,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         if benchmark == "ycsb":
             fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/ycsb.json'
     if args['exp_type'] == 'reconfig-test':
-        fabric.env["site.markov_enable"] = True
+        fabric.env["site.markov_enable"] = False
         fabric.env["site.exec_force_singlepartitioned"] = True
         fabric.env["client.count"] = 1
         fabric.env["client.txnrate"] = 100000
