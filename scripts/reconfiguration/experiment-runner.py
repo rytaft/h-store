@@ -576,7 +576,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.txn_hints"] = False
         fabric.env["site.exec_force_singlepartitioned"] = True
         fabric.env['global.hasher_class'] = 'edu.brown.hashing.PlannedHasher'
-        if benchmark == "tpcc":
+        if benchmark == "tpcc":                        
             fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/tpcc-2b.json'
         if benchmark == "ycsb":
             fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/ycsb.json'
@@ -591,6 +591,11 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
+
+    if 'global.hasher_plan' in args and args['global.hasher_plan']:
+        LOG.info("overriding hasher plan %s " % args['global.hasher_plan']) 
+        fabric.env['global.hasher_plan'] = args['global.hasher_plan'] 
+    
 ## DEF
 
 ## ==============================================
