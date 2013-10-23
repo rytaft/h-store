@@ -729,8 +729,28 @@ def createFabricHandle(name, env):
 ## ==============================================
 ## reconfiguration
 ## ==============================================
-def sweepReconfiguration():
-    LOG.info("TODO sweep")
+def sweepReconfiguration(insts, fabric, args, benchmark, partitions):
+    LOG.info("Sweeping the reconfiguration events")
+    for inst in fabric.getRunningInstances():
+       sweepHevent(inst, fabric, args, benchmark, partitions)
+     
+def sweepHevent(inst, fabric, args, benchmark, partitions):
+    LOG.info("Sweeping the event file for inst %s" % inst)
+    filename = "hevent.log"
+    complete_filename = os.path.join(fabric.hstore_dir, filename)
+    LOG.info("Going to retrieve remote reconfiguration event file '%s'" % complete_filename)
+    contents = fabric.get_file(inst, complete_filename)
+    if len(contents) > 0:
+        # Prefix the name with the number of partitions
+        localName = "%s-%02dp-%s" % (benchmark, partitions, os.path.basename(filename))
+        resultsDir = os.path.join(args['results_dir'], args['exp_type'])
+        localFile = os.path.join(resultsDir, localName)
+        with open(localFile, "a") as f:
+            f.write(contents)
+        LOG.info("Saved reconfiguration events to '%s'" % os.path.realpath(localFile))
+    else:
+        LOG.warn("The reconfiguration event log file '%s' is empty" % filename)
+    return  
 
 def cleanReconfiguration():
     LOG.info("TODO wipe")
@@ -1075,7 +1095,7 @@ if __name__ == '__main__':
                         
                         #sweep reconfiguration
                         if args["sweep_reconfiguration"]:
-                            sweepReconfiguration()
+                            sweepReconfiguration(client_inst, fabric, args, benchmark, partitions)
                         # Only compile for the very first invocation
                         needCompile = False
                     except KeyboardInterrupt:
