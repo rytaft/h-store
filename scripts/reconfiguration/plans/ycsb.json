@@ -10,6 +10,16 @@
         } 
       }
     }, 
+    "1b": {
+      "tables": {
+        "usertable": {
+          "partitions": {
+            "0": "0-50000", 
+            "1": "50000-1000000"
+          }
+        } 
+      }
+    }, 
     "2": {
       "tables": {
         "usertable": {
@@ -18,7 +28,17 @@
           }
         }      
       }
-    }
+    },
+    "3": {
+      "tables": {
+        "usertable": {
+          "partitions": {
+            "0": "0-5000", 
+            "1": "5000-1000000"
+          }
+        } 
+      }
+    } 
   }, 
   "default_table": "usertable"
 }
