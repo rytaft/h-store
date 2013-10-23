@@ -41,6 +41,7 @@ vector<string> TupleStats::generateTupleStatsColumnNames() {
     columnNames.push_back("TUPLE_DATA_MEMORY");
     columnNames.push_back("STRING_DATA_MEMORY");
     
+    /*/
     #ifdef ANTICACHE
     // ACTIVE
     columnNames.push_back("ANTICACHE_TUPLES_EVICTED");
@@ -57,7 +58,7 @@ vector<string> TupleStats::generateTupleStatsColumnNames() {
     columnNames.push_back("ANTICACHE_BLOCKS_READ");
     columnNames.push_back("ANTICACHE_BYTES_READ");
     #endif
-    
+    //Essam*/
     return columnNames;
 }
 
@@ -74,6 +75,7 @@ void TupleStats::populateTupleStatsSchema(
     types.push_back(VALUE_TYPE_INTEGER); columnLengths.push_back(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER)); allowNull.push_back(false);
     types.push_back(VALUE_TYPE_INTEGER); columnLengths.push_back(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER)); allowNull.push_back(false);
     
+    /*/
     #ifdef ANTICACHE
     // ANTICACHE_TUPLES_EVICTED
     types.push_back(VALUE_TYPE_INTEGER);
@@ -120,6 +122,8 @@ void TupleStats::populateTupleStatsSchema(
     columnLengths.push_back(NValue::getTupleStorageSize(VALUE_TYPE_BIGINT));
     allowNull.push_back(false);
     #endif
+
+    //Essam*/
 }
 
 Table*
@@ -215,6 +219,7 @@ void TupleStats::updateStatsTuple(TableTuple *tuple) {
     int64_t occupied_tuple_mem_kb = m_table->occupiedTupleMemory() / 1024;
     int64_t string_data_mem_kb = m_table->nonInlinedMemorySize() / 1024;
     
+    /*/
     #ifdef ANTICACHE
     int32_t tuplesEvicted = m_table->getTuplesEvicted();
     int32_t blocksEvicted = m_table->getBlocksEvicted();
@@ -228,6 +233,8 @@ void TupleStats::updateStatsTuple(TableTuple *tuple) {
     int32_t blocksRead = m_table->getBlocksRead();
     int64_t bytesRead = m_table->getBytesRead();
     #endif
+
+	//Essam*/
 
     if (interval()) {
         tupleCount = tupleCount - m_lastTupleCount;
@@ -246,6 +253,8 @@ void TupleStats::updateStatsTuple(TableTuple *tuple) {
             string_data_mem_kb - (m_lastStringDataMemory / 1024);
         m_lastStringDataMemory = m_table->nonInlinedMemorySize();
         
+
+        /*/
         #ifdef ANTICACHE
         
         // ACTIVE
@@ -278,6 +287,7 @@ void TupleStats::updateStatsTuple(TableTuple *tuple) {
         bytesRead = bytesRead - m_lastBytesRead;
         m_lastBytesRead = m_table->getBytesRead();
         #endif
+        //Essam/*/
     }
 
     if (string_data_mem_kb > INT32_MAX)
@@ -309,7 +319,7 @@ void TupleStats::updateStatsTuple(TableTuple *tuple) {
     tuple->setNValue( StatsSource::m_columnName2Index["STRING_DATA_MEMORY"],
                       ValueFactory::
                       getIntegerValue(static_cast<int32_t>(string_data_mem_kb)));
-    
+    /*/
     #ifdef ANTICACHE
     tuple->setNValue( StatsSource::m_columnName2Index["ANTICACHE_TUPLES_EVICTED"],
                       ValueFactory::
@@ -343,6 +353,7 @@ void TupleStats::updateStatsTuple(TableTuple *tuple) {
                       ValueFactory::
                       getBigIntValue(static_cast<int64_t>(bytesRead)));
     #endif
+    //Essam/*/
 }
 
 /**
