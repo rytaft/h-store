@@ -211,6 +211,7 @@ EXPERIMENT_SETTINGS = [
     "aborts-100-occ",
     
     "motivation-reconfig",
+    "reconfig-test",
     "motivation-stopcopy",
 ]
 
@@ -235,7 +236,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
     if targetType.startswith("motivation"):
         fabric.env["site.specexec_enable"] = False
         fabric.env["site.specexec_nonblocking"] = False
-        fabric.env["site.markov_enable"] = False
+        fabric.env["site.markov_enable"] = True
         fabric.env["site.markov_fixed"] = False
         fabric.env["site.exec_force_singlepartitioned"] = False
         fabric.env["client.count"] = 1
@@ -577,7 +578,18 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
             fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/tpcc.json'
         if benchmark == "ycsb":
             fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/ycsb.json'
-
+    if args['exp_type'] == 'reconfig-test':
+        fabric.env["site.markov_enable"] = True
+        fabric.env["site.exec_force_singlepartitioned"] = True
+        fabric.env["client.count"] = 1
+        fabric.env["client.txnrate"] = 100000
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.output_exec_profiling"] = "execprofile.csv"
+        fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
+        fabric.env["client.output_txn_profiling_combine"] = True
+        fabric.env["client.output_txn_counters"] = "txncounters.csv"
+        fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
 ## DEF
 
 ## ==============================================
