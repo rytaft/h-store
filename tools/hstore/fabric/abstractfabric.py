@@ -196,6 +196,16 @@ class AbstractFabric(object):
         return sio.getvalue()
     ## DEF
 
+    #Cleanup Remote File
+    def cleanup_file(self, inst, filePath):
+      """Clean up the file from the cluster for the given path"""
+      
+      with settings(host_string=inst.public_dns_name):
+        run("touch %s" % filePath)
+        if run("rm '%s'" % filePath).failed:
+            LOG.info("Failed to clean up the remote file %s for instance %s" % (filePath, inst))
+      return 
+
     ## ---------------------------------------------------------------------
     ## INTERNAL API
     ## ---------------------------------------------------------------------
