@@ -201,7 +201,7 @@ public abstract class FileUtil {
 
     public static void appendEventToFile(String event){
         try {
-            event = EVENT_FORMAT.format(new Date())+ "," + event;
+            event = System.currentTimeMillis()+ "," + event;
             
             if (event.endsWith("\n") == false) {
                 event += "\n";

@@ -10,7 +10,7 @@ function onexit() {
 
 # ---------------------------------------------------------------------
 
-DATA_DIR="~/out"
+DATA_DIR="out"
 FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=1
 
@@ -28,13 +28,14 @@ for b in tpcc ycsb; do
         --benchmark=$b \
         --stop-on-error \
         --exp-trials=1 \
+        --exp-attempts=1 \        
         --no-json \
-	      --sweep-reconfiguration \
-#         --client.duration=60000 \
+	    --sweep-reconfiguration \
         --client.interval=1000 \
         --client.output_interval=true \
         --client.duration=120000 \
-        --client.warmup=5000
+        --client.warmup=10000 \
+        --client.output_results_csv=interval_res.csv
         --reconfig=95000:2:0
     )
     
