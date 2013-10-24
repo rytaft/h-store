@@ -206,6 +206,14 @@ class AbstractFabric(object):
             LOG.info("Failed to clean up the remote file %s for instance %s" % (filePath, inst))
       return 
 
+     #Touch Remote File
+    def touch_file(self, inst, filePath):
+      """Touch the file from the cluster for the given path"""
+      
+      with settings(host_string=inst.public_dns_name):
+        run("touch %s" % filePath)
+      return
+ 
     ## ---------------------------------------------------------------------
     ## INTERNAL API
     ## ---------------------------------------------------------------------

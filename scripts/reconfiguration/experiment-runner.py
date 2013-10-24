@@ -86,7 +86,7 @@ OPT_BASE_TXNRATE = 100000
 OPT_BASE_CLIENT_COUNT = 1
 OPT_BASE_CLIENT_THREADS_PER_HOST = 100
 OPT_BASE_SCALE_FACTOR = float(1.0)
-OPT_BASE_PARTITIONS_PER_SITE = 8
+OPT_BASE_PARTITIONS_PER_SITE = 2
 OPT_PARTITION_PLAN_DIR = "files/designplans"
 OPT_MARKOV_DIR = "files/markovs"
 OPT_GIT_BRANCH = subprocess.check_output("git rev-parse --abbrev-ref HEAD", shell=True).strip()
@@ -759,6 +759,7 @@ def sweepHevent(inst, client_inst, fabric, args, benchmark, partitions):
     complete_filename = os.path.join(fabric.hstore_dir, filename)
     LOG.info("Going to retrieve remote reconfiguration event file '%s'" % complete_filename)
     if inst != client_inst:
+        contents = fabric.touch_file(inst, complete_filename)
         contents = fabric.get_file(inst, complete_filename)
         if len(contents) > 0:
             # Prefix the name with the number of partitions
