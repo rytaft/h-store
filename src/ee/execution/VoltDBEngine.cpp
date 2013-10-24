@@ -1110,39 +1110,6 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
     try {
         switch (selector) {
 
-        //Essam's code starts
-        case STATISTICS_SELECTOR_TYPE_TUPLE:
-        {
-                    for (int ii = 0; ii < numLocators; ii++) {
-                        CatalogId locator = static_cast<CatalogId>(locators[ii]);
-                        if (m_tables.find(locator) == m_tables.end()) {
-                            char message[256];
-                            snprintf(message, 256,  "getStats() called with selector %d, and"
-                                    " an invalid locator %d that does not correspond to"
-                                    " a table", selector, locator);
-                            throw SerializableEEException(VOLT_EE_EXCEPTION_TYPE_EEEXCEPTION,
-                                                          message);
-                        }
-                    }
-
-
-                    ///Essam del
-                    //*
-                    	 	              ofstream myfile1;
-                    	 	             myfile1.open ("SELECTOR_TYPE_TUPLE.tupleStats");//Essam
-                    	 	            myfile1 << " selector ="<<selector;
-                    	 	           myfile1 << "\n";
-                    	 	           myfile1 << " SELECTOR_TYPE_TUPLE ="<<STATISTICS_SELECTOR_TYPE_TUPLE;
-                    	 	              myfile1.close();
-                    	 	              //*/
-
-                    resultTable = m_statsManager.getStats(
-                        (StatisticsSelectorType) selector,
-                        locatorIds, interval, now);
-        }
-                    break;
-        //Essam's code ends
-
         case STATISTICS_SELECTOR_TYPE_TABLE:
         {
             for (int ii = 0; ii < numLocators; ii++) {
@@ -1189,6 +1156,41 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
                 (StatisticsSelectorType) selector,
                 locatorIds, interval, now);
             break;
+
+            //Essam's code starts
+                    case STATISTICS_SELECTOR_TYPE_TUPLE:
+                    {
+                                for (int ii = 0; ii < numLocators; ii++) {
+                                    CatalogId locator = static_cast<CatalogId>(locators[ii]);
+                                    if (m_tables.find(locator) == m_tables.end()) {
+                                        char message[256];
+                                        snprintf(message, 256,  "getStats() called with selector %d, and"
+                                                " an invalid locator %d that does not correspond to"
+                                                " a table", selector, locator);
+                                        throw SerializableEEException(VOLT_EE_EXCEPTION_TYPE_EEEXCEPTION,
+                                                                      message);
+                                    }
+                                }
+
+
+                                ///Essam del
+                                //*
+                                	 	              ofstream myfile1;
+                                	 	             myfile1.open ("SELECTOR_TYPE_TUPLE.tupleStats");//Essam
+                                	 	            myfile1 << " selector ="<<selector;
+                                	 	           myfile1 << "\n";
+                                	 	           myfile1 << " SELECTOR_TYPE_TUPLE ="<<STATISTICS_SELECTOR_TYPE_TUPLE;
+                                	 	              myfile1.close();
+                                	 	              //*/
+
+                                resultTable = m_statsManager.getStats(
+                                    (StatisticsSelectorType) selector,
+                                    locatorIds, interval, now);
+                    }
+                                break;
+                    //Essam's code ends
+
+
         default:
             char message[256];
             snprintf(message, 256, "getStats() called with an unrecognized selector"
