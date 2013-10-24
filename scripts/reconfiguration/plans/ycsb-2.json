@@ -2,36 +2,34 @@
   "partition_plans": {
     "1": {
       "tables": {
-        "warehouse": {
+        "usertable": {
           "partitions": {
-            "0": "1-2",
-            "1": "2-3",
-            "2": "3-4",
-            "3": "4-5"
+            "0": "0-50000", 
+            "1": "50000-100000"
           }
-        }      
+        } 
       }
-    },
+    }, 
     "2": {
       "tables": {
-        "warehouse": {
+        "usertable": {
           "partitions": {
-            "0": "1-5"
+            "1": "0-1000000"
           }
         }      
       }
     },
     "3": {
       "tables": {
-        "warehouse": {
+        "usertable": {
           "partitions": {
-            "0": "1-2", 
-            "1": "2-5"
+            "0": "0-10000", 
+            "1": "10000-100000"
           }
         } 
       }
     } 
   }, 
-  "default_table": "warehouse"
+  "default_table": "usertable"
 }
 

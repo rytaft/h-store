@@ -4,6 +4,16 @@
       "tables": {
         "warehouse": {
           "partitions": {
+            "1": "1-2",
+            "2": "2-3"
+          }
+        }      
+      }
+    },
+    "2": {
+      "tables": {
+        "warehouse": {
+          "partitions": {
             "1": "1-3"
           }
         }      
