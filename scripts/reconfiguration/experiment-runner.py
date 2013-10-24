@@ -575,6 +575,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
     if _reconfig:
         fabric.env["client.txn_hints"] = False
         fabric.env["site.exec_force_singlepartitioned"] = True
+        fabric.env["site.specexec_enable"] = False
         fabric.env['global.hasher_class'] = 'edu.brown.hashing.PlannedHasher'
         if benchmark == "tpcc":
             plan_base = 'scripts/reconfiguration/plans/tpcc'
