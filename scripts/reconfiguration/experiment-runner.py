@@ -211,6 +211,7 @@ EXPERIMENT_SETTINGS = [
     "aborts-100-occ",
     
     "motivation-reconfig",
+    "reconfig-test",
     "motivation-stopcopy",
 ]
 
@@ -235,7 +236,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
     if targetType.startswith("motivation"):
         fabric.env["site.specexec_enable"] = False
         fabric.env["site.specexec_nonblocking"] = False
-        fabric.env["site.markov_enable"] = False
+        fabric.env["site.markov_enable"] = True
         fabric.env["site.markov_fixed"] = False
         fabric.env["site.exec_force_singlepartitioned"] = False
         fabric.env["client.count"] = 1
@@ -273,6 +274,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
             fabric.env["client.weights"] = ""
             
             if benchmark == "tpcc":
+                #fabric.env["site.exec_force_singlepartitioned"] = True
                 fabric.env["benchmark.neworder_multip"] = False
                 fabric.env["benchmark.neworder_multip_remote"] = False
                 fabric.env["benchmark.neworder_multip_mix"] = -1
@@ -571,12 +573,29 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         _reconfig = True
     
     if _reconfig:
+        fabric.env["client.txn_hints"] = False
+        fabric.env["site.exec_force_singlepartitioned"] = True
         fabric.env['global.hasher_class'] = 'edu.brown.hashing.PlannedHasher'
-        if benchmark == "tpcc":
-            fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/tpcc.json'
+        if benchmark == "tpcc":                        
+            fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/tpcc-2b.json'
         if benchmark == "ycsb":
             fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/ycsb.json'
+        
+    if args['exp_type'] == 'reconfig-test':
+        fabric.env["client.count"] = 1
+        fabric.env["client.txnrate"] = 100000
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.output_exec_profiling"] = "execprofile.csv"
+        fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
+        fabric.env["client.output_txn_profiling_combine"] = True
+        fabric.env["client.output_txn_counters"] = "txncounters.csv"
+        fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
 
+    if 'global.hasher_plan' in args and args['global.hasher_plan']:
+        LOG.info("overriding hasher plan %s " % args['global.hasher_plan']) 
+        fabric.env['global.hasher_plan'] = args['global.hasher_plan'] 
+    
 ## DEF
 
 ## ==============================================
