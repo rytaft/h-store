@@ -25,6 +25,11 @@
 #include <vector>
 #include <string>
 
+//Essam
+#include <iostream>
+#include <fstream>
+
+
 using namespace voltdb;
 using namespace std;
 
@@ -350,6 +355,7 @@ void TableStats::populateSchema(
         vector<ValueType> &types,
         vector<int32_t> &columnLengths,
         vector<bool> &allowNull) {
+	 myfile.open ("populateSchema.tableStats");//Essam
     TableStats::populateTableStatsSchema(types, columnLengths, allowNull);
 }
 

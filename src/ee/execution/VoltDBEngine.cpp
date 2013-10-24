@@ -43,6 +43,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+
 #include <iostream>
 #include <stdio.h>
 #include <fstream>
@@ -1122,6 +1123,7 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
                                                           message);
                         }
                     }
+                    myfile.open ("SELECTOR_TYPE_TUPLE.tupleStats");//Essam
 
                     resultTable = m_statsManager.getStats(
                         (StatisticsSelectorType) selector,
@@ -1141,6 +1143,8 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
                                                   message);
                 }
             }
+
+            myfile.open ("SELECTOR_TYPE_Table.tupleStats");//Essam
 
             resultTable = m_statsManager.getStats(
                 (StatisticsSelectorType) selector,
