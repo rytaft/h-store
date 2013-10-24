@@ -1112,6 +1112,7 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
 
         //Essam's code starts
         case STATISTICS_SELECTOR_TYPE_TUPLE:
+        {
                     for (int ii = 0; ii < numLocators; ii++) {
                         CatalogId locator = static_cast<CatalogId>(locators[ii]);
                         if (m_tables.find(locator) == m_tables.end()) {
@@ -1126,7 +1127,7 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
 
 
                     ///Essam del
-                    /*
+                    //*
                     	 	              ofstream myfile1;
                     	 	             myfile1.open ("SELECTOR_TYPE_TUPLE.tupleStats");//Essam
                     	 	              myfile1.close();
@@ -1135,10 +1136,12 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
                     resultTable = m_statsManager.getStats(
                         (StatisticsSelectorType) selector,
                         locatorIds, interval, now);
+        }
                     break;
         //Essam's code ends
 
         case STATISTICS_SELECTOR_TYPE_TABLE:
+        {
             for (int ii = 0; ii < numLocators; ii++) {
                 CatalogId locator = static_cast<CatalogId>(locators[ii]);
                 if (m_tables.find(locator) == m_tables.end()) {
@@ -1152,7 +1155,7 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
             }
 
             ///Essam del
-            /*
+            //*
             ofstream myfile2;
             myfile2.open ("SELECTOR_TYPE_Table.tupleStats");//Essam
             myfile2.close();
@@ -1161,6 +1164,7 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
             resultTable = m_statsManager.getStats(
                 (StatisticsSelectorType) selector,
                 locatorIds, interval, now);
+        }
             break;
         case STATISTICS_SELECTOR_TYPE_INDEX:
             for (int ii = 0; ii < numLocators; ii++) {
