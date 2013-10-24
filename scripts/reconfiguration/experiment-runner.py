@@ -575,12 +575,27 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
     if _reconfig:
         fabric.env["client.txn_hints"] = False
         fabric.env["site.exec_force_singlepartitioned"] = True
+        fabric.env["site.specexec_enable"] = False
         fabric.env['global.hasher_class'] = 'edu.brown.hashing.PlannedHasher'
-        if benchmark == "tpcc":                        
-            fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/tpcc-2b.json'
+        if benchmark == "tpcc":
+            plan_base = 'scripts/reconfiguration/plans/tpcc'
+            if "benchmark_size" in args and args["benchmark_size"]:
+                LOG.info("Updating the num of warehouses %s" % args["benchmark_size"])
+                fabric.env["benchmark.warehouses"] = args["benchmark_size"]
+                fabric.env["benchmark.warehouse_per_partition"] = False
+                plan_base = "%s-size%s" % (plan_base, args["benchmark_size"])
+
         if benchmark == "ycsb":
-            fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/ycsb.json'
-        
+            plan_base = 'scripts/reconfiguration/plans/ycsb'
+            if "benchmark_size" in args and args["benchmark_size"]:
+                LOG.info("Updating the num of records %s" % args["benchmark_size"])
+                fabric.env["benchmark.num_records"] = args["benchmark_size"]
+                plan_base = "%s-size%s" % (plan_base, args["benchmark_size"])
+
+        plan_path = '%s-%s.json' % (plan_base, partitions)
+        LOG.info("Using plan: %s" % plan_path)
+        fabric.env['global.hasher_plan'] = plan_path
+
     if args['exp_type'] == 'reconfig-test':
         fabric.env["client.count"] = 1
         fabric.env["client.txnrate"] = 100000
@@ -844,10 +859,13 @@ if __name__ == '__main__':
     agroup.add_argument("--no-conf", action='store_true', help='Disable updating HStoreConf properties file')
     agroup.add_argument("--no-sync", action='store_true', help='Disable synching time between nodes')
     agroup.add_argument("--no-json", action='store_true', help='Disable JSON output results')
-    agroup.add_argument("--reconfig", action="append", help="Configuration for an optional reconfig event [delayTimeMS]:[planId]:[optLeaderId]. Can accept multiple")
-    agroup.add_argument("--sweep-reconfiguration", action='store_true',default=False, help='Collect hevent.log from servers')
     agroup.add_argument("--no-profiling", action='store_true', help='Disable all profiling stats output files')
     agroup.add_argument("--no-shutdown", action='store_true', help='Disable shutting down cluster after a trial run')
+
+    #reconfig based
+    agroup.add_argument("--reconfig", action="append", help="Configuration for an optional reconfig event [delayTimeMS]:[planId]:[optLeaderId]. Can accept multiple")
+    agroup.add_argument("--sweep-reconfiguration", action='store_true',default=False, help='Collect hevent.log from servers')
+    agroup.add_argument("--benchmark-size", type=int, help="The size of a benchmark (usertable size, warehouses, etc)")
     
     ## Experiment Parameters
     agroup = aparser.add_argument_group('Experiment Parameters')
