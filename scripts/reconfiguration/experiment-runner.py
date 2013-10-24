@@ -576,11 +576,14 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.txn_hints"] = False
         fabric.env["site.exec_force_singlepartitioned"] = True
         fabric.env['global.hasher_class'] = 'edu.brown.hashing.PlannedHasher'
-        if benchmark == "tpcc":                        
-            fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/tpcc-2b.json'
+        if benchmark == "tpcc":
+            plan_base = 'scripts/reconfiguration/plans/tpcc'
         if benchmark == "ycsb":
-            fabric.env['global.hasher_plan'] = 'scripts/reconfiguration/plans/ycsb.json'
-        
+            plan_base = 'scripts/reconfiguration/plans/ycsb'
+        plan_path = '%s-%s.json' % (plan_base, partitions)
+        LOG.info("Using plan: %s" % plan_path)
+        fabric.env['global.hasher_plan'] = plan_path
+
     if args['exp_type'] == 'reconfig-test':
         fabric.env["client.count"] = 1
         fabric.env["client.txnrate"] = 100000
