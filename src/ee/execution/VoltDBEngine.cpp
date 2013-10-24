@@ -1126,9 +1126,9 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
 
 
                     ///Essam del
-                    	 	              ofstream myfile;
-                    	 	             myfile.open ("SELECTOR_TYPE_TUPLE.tupleStats");//Essam
-                    	 	              myfile.close();
+                    	 	              ofstream myfile1;
+                    	 	             myfile1.open ("SELECTOR_TYPE_TUPLE.tupleStats");//Essam
+                    	 	              myfile1.close();
 
                     resultTable = m_statsManager.getStats(
                         (StatisticsSelectorType) selector,
@@ -1150,9 +1150,9 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
             }
 
             ///Essam del
-            ofstream myfile;
-            myfile.open ("SELECTOR_TYPE_Table.tupleStats");//Essam
-            myfile.close();
+            ofstream myfile2;
+            myfile2.open ("SELECTOR_TYPE_Table.tupleStats");//Essam
+            myfile2.close();
 
 
             resultTable = m_statsManager.getStats(
