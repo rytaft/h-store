@@ -15,12 +15,12 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
-    "reconfig-test --partitions=2 --client.scalefactor=0.1" --results-dir=${DATA_DIR}\scale.1 \
-    "reconfig-test --partitions=2 --client.scalefactor=0.2" --results-dir=${DATA_DIR}\scale.2 \
-    "reconfig-test --partitions=2 --client.scalefactor=0.5" --results-dir=${DATA_DIR}\scale.5 \
-    "reconfig-test --partitions=2 --client.scalefactor=1" --results-dir=${DATA_DIR}\scale1 \
-    "reconfig-test --partitions=2 --client.scalefactor=2" --results-dir=${DATA_DIR}\scale2 \
-    "reconfig-test --partitions=2 --client.scalefactor=10" --results-dir=${DATA_DIR}\scale10 \
+    "reconfig-test --partitions=2 --client.scalefactor=0.1 --results-dir=${DATA_DIR}/scale.1" \
+    "reconfig-test --partitions=2 --client.scalefactor=0.2 --results-dir=${DATA_DIR}/scale.2" \
+    "reconfig-test --partitions=2 --client.scalefactor=0.5 --results-dir=${DATA_DIR}/scale.5" \
+    "reconfig-test --partitions=2 --client.scalefactor=1 --results-dir=${DATA_DIR}/scale1" \
+    "reconfig-test --partitions=2 --client.scalefactor=2 --results-dir=${DATA_DIR}/scale2" \
+    "reconfig-test --partitions=2 --client.scalefactor=4 --results-dir=${DATA_DIR}/scale4" \
 )
 
 #for b in smallbank tpcc seats; do
