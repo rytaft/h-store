@@ -20,6 +20,7 @@
 #include "common/tabletuple.h"
 #include "common/TupleSchema.h"
 #include "storage/PersistentTableStats.h"
+#include "storage/PersistentTupleStats.h"
 #include "storage/tablefactory.h"
 #include "storage/tableiterator.h"
 #include <cassert>
