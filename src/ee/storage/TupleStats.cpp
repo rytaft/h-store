@@ -369,7 +369,14 @@ void TupleStats::populateSchema(
         vector<int32_t> &columnLengths,
         vector<bool> &allowNull) {
 	ofstream myfile;
-	  myfile.open ("populateSchema.tupleStats");//Essam
+
+
+	  ///Essam del
+	              ofstream myfile;
+	              myfile.open ("populateSchema.tupleStats");//Essam
+	              myfile.close();
+
+
     TupleStats::populateTupleStatsSchema(types, columnLengths, allowNull);
 }
 
