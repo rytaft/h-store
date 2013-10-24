@@ -583,12 +583,15 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
                 LOG.info("Updating the num of warehouses %s" % args["benchmark_size"])
                 fabric.env["benchmark.warehouses"] = args["benchmark_size"]
                 fabric.env["benchmark.warehouse_per_partition"] = False
+                plan_base = "%s-size%s" % (plan_base, args["benchmark_size"])
 
         if benchmark == "ycsb":
             plan_base = 'scripts/reconfiguration/plans/ycsb'
             if "benchmark_size" in args and args["benchmark_size"]:
                 LOG.info("Updating the num of records %s" % args["benchmark_size"])
                 fabric.env["benchmark.num_records"] = args["benchmark_size"]
+                plan_base = "%s-size%s" % (plan_base, args["benchmark_size"])
+
         plan_path = '%s-%s.json' % (plan_base, partitions)
         LOG.info("Using plan: %s" % plan_path)
         fabric.env['global.hasher_plan'] = plan_path
