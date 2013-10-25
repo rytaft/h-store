@@ -781,7 +781,10 @@ def sweepHevent(inst, client_inst, fabric, args, benchmark, partitions):
         contents = fabric.get_file(inst, complete_filename)
         if len(contents) > 0:
             # Prefix the name with the number of partitions
-            localName = "%s-%02dp-%s" % (benchmark, partitions, os.path.basename(filename))
+            suffix =''            
+            if args['exp_suffix']:
+                suffix = "-%s" % (args['exp_suffix'])
+            localName = "%s-%02dp%s-%s" % (benchmark, partitions, suffix, os.path.basename(filename))
             resultsDir = os.path.join(args['results_dir'], args['exp_type'])
             localFile = os.path.join(resultsDir, localName)
             with open(localFile, "a") as f:
