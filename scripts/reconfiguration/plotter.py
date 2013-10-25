@@ -15,6 +15,10 @@ OPT_GRAPH_WIDTH = 1200
 OPT_GRAPH_HEIGHT = 600
 OPT_GRAPH_DPI = 100
 
+TYPE_MAP = {
+  "tps": "THROUGHPUT",
+  "lat": "LATENCY"
+}
 ## ==============================================
 ## LOGGING CONFIGURATION
 ## ==============================================
@@ -32,19 +36,16 @@ LOG.setLevel(logging.DEBUG)
 
 def getParser():
     parser = argparse.ArgumentParser()
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("-C", action="store_true", dest="cumfreq", help="Graph CumFreq")
-    group.add_argument("-B","--boxplot", action="store_true", dest="boxplot", help="Draw a box and whisker plot")
-    group.add_argument("-L","--line", action="store_true", dest="line", help="Draw a line plot")
+    parser.add_argument("-t","--type", dest="type", choices=["cfd","boxplot","bar","line"], required=True, help="The type of graph to plot")
     
-    parser.add_argument("-v","--save", dest="name",  help="filename to save the generated plot")
+    
+    parser.add_argument("--no-display", action="store_true", help="Do not display the graph")
+    parser.add_argument("-v","--save", dest="save",  help="filename to save the generated plot")
    
     parser.add_argument("--tsd", action="store_true", help="Plot Time Series Data (intervals)")
     parser.add_argument("-r","--recursive", dest="recursive", action="store_true", help="Check directories recursively")
      
-    group = parser.add_mutually_exclusive_group() 
-    group.add_argument("--tps", action="store_true", dest="tps", help="Plot TPS")            
-    group.add_argument("--lat", action="store_true", dest="lat", help="Plot Latency")   
+    parser.add_argument("-s","--show", dest="show", choices=["tps","lat"], required=True, help="Show this data type")            
     
     group = parser.add_mutually_exclusive_group() 
     group.add_argument("-d","--dir", dest="dir", help="The directory to load files from")            
@@ -53,6 +54,8 @@ def getParser():
     parser.add_argument("--title", dest="title", help="title for the figure")
     parser.add_argument("--ylabel", dest="ylabel", help="label for the y-axis")
     parser.add_argument("--xlabel", dest="xlabel", help="label for the x-axis")
+
+  
     return parser
 
 def oldMain():
@@ -81,31 +84,39 @@ def oldMain():
     plot.show()
 
 
+def plotGraph(args):
+    if args.ylabel != None:
+        plot.ylabel(args.ylabel)
+    else:
+        plot.ylabel(args.show)
+    plot.xlabel(args.xlabel)
+    plot.title(args.title)
+    plot.legend(loc="best")
+
+    if not args.no_display:
+        plot.show()
+    if args.save:
+        plot.savefig("%s.png" % args.save)
+
+
 ## ==============================================
 ## tsd
 ## ==============================================
 def plotTSD(args, files):
     dfs = [ (d, pandas.DataFrame.from_csv(d)) for d in files if "interval" in d]
-    attr = None
-    if args.tps:
-        attr = "THROUGHPUT"
-    else: #args.lat:
-        attr = "LATENCY"
-    
     data = {}
     LOG.error("CHECK AND ALIGN INTERVALS") #TODO
     for _file, df in dfs:    
-        data[os.path.basename(_file).split("-interval")[0]] = df[attr].values
+        data[os.path.basename(_file).split("-interval")[0]] = df[TYPE_MAP[args.show]].values
     plotFrame = pandas.DataFrame(data=data)
-    if args.line:
+    if args.type == "line":
         plotFrame.plot()
-    elif args.boxplot:
+    elif args.type == "boxplot":
         plotFrame.boxplot()
-    plot.xlabel(args.xlabel)
-    plot.ylabel(args.ylabel)
-    plot.title(args.title)
-    plot.show()
+    else:
+        raise Exception("unsupported plot type for tsd : " + args.type)  
 
+    plotGraph(args)
 ## ==============================================
 ## main
 ## ==============================================
