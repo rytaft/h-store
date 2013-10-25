@@ -93,10 +93,10 @@ def plotGraph(args):
     plot.title(args.title)
     plot.legend(loc="best")
 
-    if not args.no_display:
-        plot.show()
     if args.save:
         plot.savefig("%s.png" % args.save)
+    if not args.no_display:
+        plot.show()
 
 
 ## ==============================================
