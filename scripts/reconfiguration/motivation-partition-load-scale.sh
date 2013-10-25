@@ -15,10 +15,10 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
-    "reconfig-motivation  --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-1.json --partitions=2  --results-dir=${DATA_DIR}/warehouses.2" \
-    "reconfig-motivation --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-2.json --partitions=2  --results-dir=${DATA_DIR}/warehouses.4" \
-    "reconfig-motivation --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-3.json --partitions=2  --results-dir=${DATA_DIR}/warehouses.8" \
-    "reconfig-motivation --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-4.json --partitions=2  --results-dir=${DATA_DIR}/warehouses.16" \
+    "reconfig-motivation  --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-1.json --partitions=2  --results-dir=${DATA_DIR}/reconfig-motivation --exp-suffix w2" \
+    "reconfig-motivation --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-2.json --partitions=2  --results-dir=${DATA_DIR}/reconfig-motivation --exp-suffix w4" \
+    "reconfig-motivation --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-3.json --partitions=2  --results-dir=${DATA_DIR}/reconfig-motivation --exp-suffix w8" \
+    "reconfig-motivation --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-4.json --partitions=2  --results-dir=${DATA_DIR}/reconfig-motivation --exp-suffix w16" \
 )
 
 #for b in smallbank tpcc seats; do
@@ -34,6 +34,7 @@ for b in tpcc; do
         --client.output_interval=false \
         --client.duration=120000 \
         --client.warmup=3000 \
+	--overwrite \
         --client.output_results_csv=interval_res.csv
     )
     
