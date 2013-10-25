@@ -9,19 +9,57 @@ import pandas
 import pylab
 import logging
 import getopt
+import argparse
 
 OPT_GRAPH_WIDTH = 1200
 OPT_GRAPH_HEIGHT = 600
 OPT_GRAPH_DPI = 100
 
 ## ==============================================
-## main
+## LOGGING CONFIGURATION
 ## ==============================================
-if __name__ == '__main__':
+
+LOG = logging.getLogger(__name__)
+LOG_handler = logging.StreamHandler()
+LOG_formatter = logging.Formatter(fmt='%(asctime)s [%(funcName)s:%(lineno)03d] %(levelname)-5s: %(message)s',
+                                  datefmt='%m-%d-%Y %H:%M:%S')
+LOG_handler.setFormatter(LOG_formatter)
+LOG.addHandler(LOG_handler)
+LOG.setLevel(logging.DEBUG)
+
+
+
+
+def getParser():
+    parser = argparse.ArgumentParser()
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-C", action="store_true", dest="cumfreq", help="Graph CumFreq")
+    group.add_argument("-B","--boxplot", action="store_true", dest="boxplot", help="Draw a box and whisker plot")
+    group.add_argument("-L","--line", action="store_true", dest="line", help="Draw a line plot")
+    
+    parser.add_argument("-v","--save", dest="name",  help="filename to save the generated plot")
+   
+    parser.add_argument("--tsd", action="store_true", help="Plot Time Series Data (intervals)")
+    parser.add_argument("-r","--recursive", dest="recursive", action="store_true", help="Check directories recursively")
+     
+    group = parser.add_mutually_exclusive_group() 
+    group.add_argument("--tps", action="store_true", dest="tps", help="Plot TPS")            
+    group.add_argument("--lat", action="store_true", dest="lat", help="Plot Latency")   
+    
+    group = parser.add_mutually_exclusive_group() 
+    group.add_argument("-d","--dir", dest="dir", help="The directory to load files from")            
+    group.add_argument("-f","--file", dest="file", help="The file to graph")            
+    
+    parser.add_argument("--title", dest="title", help="title for the figure")
+    parser.add_argument("--ylabel", dest="ylabel", help="label for the y-axis")
+    parser.add_argument("--xlabel", dest="xlabel", help="label for the x-axis")
+    return parser
+
+def oldMain():
     base_dir = sys.argv[1]
-    print "base dir %s " % (base_dir)
+    LOG.debug("base dir %s " % (base_dir))
     input_files = [x for x in os.listdir(base_dir) if "-interval" in x]
-    print input_files
+    LOG.debug(input_files)
 
     latencies = { }
     tps = { }
@@ -41,8 +79,61 @@ if __name__ == '__main__':
     plot.title('')
     #df.boxplot() 
     plot.show()
-    
 
+
+## ==============================================
+## tsd
+## ==============================================
+def plotTSD(args, files):
+    dfs = [ (d, pandas.DataFrame.from_csv(d)) for d in files if "interval" in d]
+    attr = None
+    if args.tps:
+        attr = "THROUGHPUT"
+    else: #args.lat:
+        attr = "LATENCY"
+    
+    data = {}
+    LOG.error("CHECK AND ALIGN INTERVALS") #TODO
+    for _file, df in dfs:    
+        data[os.path.basename(_file).split("-interval")[0]] = df[attr].values
+    plotFrame = pandas.DataFrame(data=data)
+    if args.line:
+        plotFrame.plot()
+    elif args.boxplot:
+        plotFrame.boxplot()
+    plot.xlabel(args.xlabel)
+    plot.ylabel(args.ylabel)
+    plot.title(args.title)
+    plot.show()
+
+## ==============================================
+## main
+## ==============================================
+def plotter(args, files):    
+    if args.tsd:
+        plotTSD(args, files)   
+    #LOG.debug("Files to plot %s" % (files))
+
+    
+    
+if __name__=="__main__":
+    parser = getParser()
+    args = parser.parse_args()
+    
+    print args
+    files = []
+    if args.dir:
+        if args.recursive:
+            for _dir, _subdir, _files in os.walk(args.dir):
+                files = [os.path.join(_dir,x) for x in _files]
+                
+        else:
+            files = [os.path.join(args.dir,x) for x in os.listdir(args.dir)]
+    else:
+        files.append(args.file)
+    plotter(args, files)
+    
+    
 def f2():     
     for scale, color in input_files:
         warehouse_scale = "%s" % scale
