@@ -15,8 +15,8 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
-    "reconfig-test --partitions=2" \
-    "reconfig-test --partitions=4" \
+    "reconfig-test --partitions=2 --exp-suffix=testsuffix" \
+    "reconfig-test --partitions=4 --exp-suffix=testsuffix2" \
 )
 
 #for b in smallbank tpcc seats; do

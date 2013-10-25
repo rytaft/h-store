@@ -86,7 +86,7 @@ OPT_BASE_TXNRATE = 100000
 OPT_BASE_CLIENT_COUNT = 1
 OPT_BASE_CLIENT_THREADS_PER_HOST = 100
 OPT_BASE_SCALE_FACTOR = float(1.0)
-OPT_BASE_PARTITIONS_PER_SITE = 2
+OPT_BASE_PARTITIONS_PER_SITE = 8
 OPT_PARTITION_PLAN_DIR = "files/designplans"
 OPT_MARKOV_DIR = "files/markovs"
 OPT_GIT_BRANCH = subprocess.check_output("git rev-parse --abbrev-ref HEAD", shell=True).strip()
@@ -149,7 +149,7 @@ BASE_SETTINGS = {
     "client.warmup":                    60000,
     "client.txn_hints":                 True,
     "client.memory":                    6000,
-    
+    "client.txnrate":                   100000,
     "site.jvm_asserts":                         False,
     "site.log_backup":                          False,
     "site.status_enable":                       False,
@@ -598,7 +598,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
 
     if args['exp_type'] == 'reconfig-test':
         fabric.env["client.count"] = 1
-        fabric.env["client.txnrate"] = 100000
+        #fabric.env["client.txnrate"] = 100000
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
         fabric.env["client.output_exec_profiling"] = "execprofile.csv"
@@ -636,7 +636,10 @@ def saveCSVResults(inst, fabric, args, benchmark, partitions, filename):
     contents = fabric.get_file(inst, filename)
     if len(contents) > 0:
         # We'll prefix the name with the number of partitions
-        localName = "%s-%02dp-%s" % (benchmark, partitions, os.path.basename(filename))
+        suffix =''            
+        if args['exp_suffix']:
+            suffix = "-%s" % (args['exp_suffix'])
+        localName = "%s-%02dp%s-%s" % (benchmark, partitions, suffix, os.path.basename(filename))
         resultsDir = os.path.join(args['results_dir'], args['exp_type'])
         localFile = os.path.join(resultsDir, localName)
         with open(localFile, "w") as f:
@@ -872,6 +875,7 @@ if __name__ == '__main__':
     agroup.add_argument("--exp-type", type=str, choices=EXPERIMENT_SETTINGS, default=EXPERIMENT_SETTINGS[0])
     agroup.add_argument("--exp-trials", type=int, default=3, metavar='N')
     agroup.add_argument("--exp-attempts", type=int, default=3, metavar='N')
+    agroup.add_argument("--exp-suffix", type=str)
     
     ## Benchmark Parameters
     agroup = aparser.add_argument_group('Benchmark Configuration Parameters')

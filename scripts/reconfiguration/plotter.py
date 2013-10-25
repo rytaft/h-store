@@ -7,6 +7,8 @@ import logging
 import matplotlib.pyplot as plot
 import pandas
 import pylab
+import logging
+import getopt
 
 OPT_GRAPH_WIDTH = 1200
 OPT_GRAPH_HEIGHT = 600
@@ -37,6 +39,7 @@ if __name__ == '__main__':
     plot.xlabel('Elapsed Time (seconds)')
     plot.ylabel('Latency (seconds)')
     plot.title('')
+    #df.boxplot() 
     plot.show()
     
 

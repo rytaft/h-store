@@ -15,7 +15,7 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-    "reconfig-test --partitions=2 --client.scalefactor=0.1 --results-dir=${DATA_DIR}/scale.1" \
+    "reconfig-test --partitions=2 --client.scalefactor=0.1 --results-dir=${DATA_DIR}/scale.1"  \
     "reconfig-test --partitions=2 --client.scalefactor=0.2 --results-dir=${DATA_DIR}/scale.2" \
     "reconfig-test --partitions=2 --client.scalefactor=0.5 --results-dir=${DATA_DIR}/scale.5" \
     "reconfig-test --partitions=2 --client.scalefactor=1 --results-dir=${DATA_DIR}/scale1" \
