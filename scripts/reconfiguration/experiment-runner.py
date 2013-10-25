@@ -146,6 +146,7 @@ BASE_SETTINGS = {
     "client.interval":                  10000,
     "client.skewfactor":                -1,
     "client.duration":                  300000,
+    "client.txnrate":                   10000,
     "client.warmup":                    60000,
     "client.txn_hints":                 True,
     "client.memory":                    6000,
@@ -210,9 +211,8 @@ EXPERIMENT_SETTINGS = [
     "aborts-80-occ",
     "aborts-100-occ",
     
-    "motivation-reconfig",
     "reconfig-test",
-    "motivation-stopcopy",
+    "reconfig-motivation",
 ]
 
 ## ==============================================
@@ -598,7 +598,17 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
 
     if args['exp_type'] == 'reconfig-test':
         fabric.env["client.count"] = 1
-        fabric.env["client.txnrate"] = 100000
+        #fabric.env["client.txnrate"] = 100000
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.output_exec_profiling"] = "execprofile.csv"
+        fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
+        fabric.env["client.output_txn_profiling_combine"] = True
+        fabric.env["client.output_txn_counters"] = "txncounters.csv"
+        fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
+
+    if args['exp_type'] == 'reconfig-motivation':
+        fabric.env["client.count"] = 1
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
         fabric.env["client.output_exec_profiling"] = "execprofile.csv"
