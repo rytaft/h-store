@@ -5,6 +5,7 @@ import sys
 import csv
 import logging
 import matplotlib.pyplot as plot
+import pandas
 import pylab
 
 OPT_GRAPH_WIDTH = 1200
@@ -17,14 +18,31 @@ OPT_GRAPH_DPI = 100
 if __name__ == '__main__':
     
     input_files = [
-        (.1, "#D20040"),
-        (.2, "#01299F"),
-        (.5, "#EBBF00"),
-        (1, "#5A001B"),
-        (2, "#655200"),
+        ('.1', "#D20040"),
+        ('.2', "#01299F"),
+        ('.5', "#EBBF00"),
+        ('1', "#5A001B"),
+        ('2', "#655200"),
     ]
+    latencies = { }
+    tps = { }
+    for scale,color in input_files:
+        data = pandas.DataFrame.from_csv("out/scale%s/reconfig-test/tpcc-02p-interval_res.csv" % scale)
+        latencies[scale] = data.LATENCY.values
+        tps[scale] = data.LATENCY.values
+
+    #print latencies
+    data.ELAPSED = data.ELAPSED /1000
+    df = pandas.DataFrame(data=latencies, index=data.ELAPSED)
+    #print df
+    df[50:90].plot(style=['s--','o-','^-.','*-','-'],ms=5)
+    plot.xlabel('Elapsed Time (seconds)')
+    plot.ylabel('Latency (seconds)')
+    plot.title('TPC-C Scale Factor Impact')
+    plot.show()
     
 
+def f2():     
     for scale, color in input_files:
         warehouse_scale = "%s" % scale
         label = " %s)" % warehouse_scale
@@ -37,8 +55,9 @@ if __name__ == '__main__':
         evictions = { }
         y_max = None
 
-        first = True
-        
+
+
+           
         with open("out/scale%s/tpcc-02p-interval_res.csv" % warehouse_scale, "r") as f:
             reader = csv.reader(f)
             

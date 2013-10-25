@@ -12,7 +12,7 @@ function onexit() {
 
 DATA_DIR="out"
 FABRIC_TYPE="ssh"
-FIRST_PARAM_OFFSET=1
+FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
     "reconfig-test --partitions=2 --client.scalefactor=0.1 --results-dir=${DATA_DIR}/scale.1" \
@@ -20,7 +20,7 @@ EXP_TYPES=( \
     "reconfig-test --partitions=2 --client.scalefactor=0.5 --results-dir=${DATA_DIR}/scale.5" \
     "reconfig-test --partitions=2 --client.scalefactor=1 --results-dir=${DATA_DIR}/scale1" \
     "reconfig-test --partitions=2 --client.scalefactor=2 --results-dir=${DATA_DIR}/scale2" \
-    "reconfig-test --partitions=2 --client.scalefactor=4 --results-dir=${DATA_DIR}/scale4" \
+    "reconfig-test --partitions=2 --client.scalefactor=3 --results-dir=${DATA_DIR}/scale4" \
 )
 
 #for b in smallbank tpcc seats; do
@@ -38,7 +38,8 @@ for b in tpcc; do
         --client.output_interval=true \
         --client.duration=120000 \
         --client.warmup=10000 \
-        --client.output_results_csv=interval_res.csv
+        --client.output_results_csv=interval_res.csv \
+        --client.txnrate=5 \
         --reconfig=95000:2:0
     )
     
