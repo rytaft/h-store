@@ -606,6 +606,20 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
+    
+    if args['exp_type'] == 'reconfig-ycsb-zipf':
+        fabric.env["client.count"] = 4
+        #fabric.env["client.txnrate"] = 100000
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.output_exec_profiling"] = "execprofile.csv"
+        fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
+        fabric.env["client.output_txn_profiling_combine"] = True
+        fabric.env["client.output_txn_counters"] = "txncounters.csv"
+        fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
+        fabric.env["benchmark.requestdistribution"] = "zipfian"
+        fabric.env["benchmark.ReadRecordProportion"] = 0.95
+        fabric.env["benchmark.UpdateRecordProportion"] = 0.95
 
     if args['exp_type'] == 'reconfig-motivation':
         fabric.env["client.count"] = 4
