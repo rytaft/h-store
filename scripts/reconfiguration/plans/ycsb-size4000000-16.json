@@ -72,6 +72,6 @@
       }
     }
   }, 
-  "default_table": "USERTABLE"
+  "default_table": "usertable"
 }
 
