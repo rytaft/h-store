@@ -109,7 +109,7 @@ def plotGraph(args):
         #via http://stackoverflow.com/questions/2657693/insert-a-newline-character-every-64-characters-using-python
         title = re.sub("(.{128})", "\\1\n", str(args), 0, re.DOTALL) 
         plot.title(title, fontsize=12)
-    plot.legend(loc="best")
+    plot.legend(loc="best",prop={'size':12})
 
     if args.save:
         plot.savefig("%s.png" % args.save)
@@ -124,6 +124,8 @@ def plotTSD(args, files, ax):
     dfs = [ (d, pandas.DataFrame.from_csv(d)) for d in files if "interval" in d]
     data = {}
     colormap = {}
+    init_legend = "Reconfig Init"
+    end_legend = "Reconfig End"
     for x,(_file, df) in enumerate(dfs):
         name = os.path.basename(_file).split("-interval")[0] 
         color = COLORS[x % len(COLORS)]
@@ -133,9 +135,10 @@ def plotTSD(args, files, ax):
             reconfig_events = getReconfigEvents(_file.replace("interval_res.csv", "hevent.log"))
             addReconfigEvent(df, reconfig_events)
             if len(df[df.RECONFIG.str.contains('TXN')]) == 1:
-                ax.axvline(df[df.RECONFIG.str.contains('TXN')].index[0], color=color, lw=1.5, linestyle="--",label="%s INIT" % name)
-                ax.axvline(df[df.RECONFIG.str.contains('END')].index[0], color=color, lw=1.5, linestyle=":",label="%s END" % name)
-                
+                ax.axvline(df[df.RECONFIG.str.contains('TXN')].index[0], color=color, lw=1.5, linestyle="--",label=init_legend)
+                ax.axvline(df[df.RECONFIG.str.contains('END')].index[0], color=color, lw=1.5, linestyle=":",label=end_legend)
+                init_legend = None
+                end_legend = None
             else:
                 LOG.error("Multiple reconfig events not currently supported")
              
