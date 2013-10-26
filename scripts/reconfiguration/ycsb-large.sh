@@ -23,21 +23,21 @@ for b in ycsb; do
 # for b in seats; do
     PARAMS=( \
         --no-update \
-        --partitions=4 \
+        --partitions=8 \
         --results-dir=$DATA_DIR \
         --benchmark=$b \
         --stop-on-error \
         --exp-trials=1 \
         --exp-attempts=1 \          
         --no-json \
-#        --benchmark_size=4000000
+        --benchmark-size=4000000
         --sweep-reconfiguration \
         --client.interval=1000 \
         --client.output_interval=true \
         --client.duration=120000 \
-        --client.warmup=10000 \
+        --client.warmup=60000 \
         --client.output_results_csv=interval_res.csv \
-        --reconfig=95000:3:0
+        --reconfig=150000:3:0
     )
     
     i=0
