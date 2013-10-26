@@ -11,6 +11,7 @@ import logging
 import getopt
 import argparse
 import numpy as np
+import re
 from texGraphDefault import *
 
 OPT_GRAPH_WIDTH = 1200
@@ -57,34 +58,7 @@ def getParser():
     parser.add_argument("--title", dest="title", help="title for the figure")
     parser.add_argument("--ylabel", dest="ylabel", help="label for the y-axis")
     parser.add_argument("--xlabel", dest="xlabel", help="label for the x-axis")
-
     return parser
-
-def oldMain():
-    base_dir = sys.argv[1]
-    LOG.debug("base dir %s " % (base_dir))
-    input_files = [x for x in os.listdir(base_dir) if "-interval" in x]
-    LOG.debug(input_files)
-
-    latencies = { }
-    tps = { }
-    for f in input_files:
-        data = pandas.DataFrame.from_csv(os.path.join(base_dir,f))
-        name=f.split("-interval")[0]
-        latencies[name] = data.LATENCY.values
-        tps[name] = data.THROUGHPUT.values
-
-    #print latencies
-    data.ELAPSED = data.ELAPSED /1000
-    df = pandas.DataFrame(data=latencies, index=data.ELAPSED)
-    #print df
-    df.plot(style=['s--','o-','^-.','*-','-'],ms=5)
-    plot.xlabel('Elapsed Time (seconds)')
-    plot.ylabel('Latency (seconds)')
-    plot.title('')
-    #df.boxplot() 
-    plot.show()
-
 
 def getReconfigEvents(hevent_log):
     events = []
@@ -109,6 +83,8 @@ def addReconfigEvent(df, reconfig_events):
       ts = event[0]
       #find the index last row that has a smaller physical TS
       _i = df[(df['TIMESTAMP'] <= ts ) ][-1:].index
+
+      #if we have new event set, otherwise append      
       if df.RECONFIG[_i] == "":
          df.RECONFIG[_i] = event[1]
       else:
@@ -117,14 +93,22 @@ def addReconfigEvent(df, reconfig_events):
             
 def plotGraph(args):
 
-
-
     if args.ylabel != None:
         plot.ylabel(args.ylabel)
     else:
         plot.ylabel(args.show)
-    plot.xlabel(args.xlabel)
-    plot.title(args.title)
+    if args.xlabel != None:
+        plot.xlabel(args.xlabel)
+    else:
+        plot.xlabel("Elapsed Time (s)")
+    
+    if args.title != None:
+        plot.title(args.title)
+    else:
+        #add \n every 128 
+        #via http://stackoverflow.com/questions/2657693/insert-a-newline-character-every-64-characters-using-python
+        title = re.sub("(.{128})", "\\1\n", str(args), 0, re.DOTALL) 
+        plot.title(title, fontsize=12)
     plot.legend(loc="best")
 
     if args.save:
@@ -140,7 +124,6 @@ def plotTSD(args, files, ax):
     dfs = [ (d, pandas.DataFrame.from_csv(d)) for d in files if "interval" in d]
     data = {}
     colormap = {}
-    LOG.error("CHECK AND ALIGN INTERVALS") #TODO
     for x,(_file, df) in enumerate(dfs):
         name = os.path.basename(_file).split("-interval")[0] 
         color = COLORS[x % len(COLORS)]
@@ -150,11 +133,14 @@ def plotTSD(args, files, ax):
             reconfig_events = getReconfigEvents(_file.replace("interval_res.csv", "hevent.log"))
             addReconfigEvent(df, reconfig_events)
             if len(df[df.RECONFIG.str.contains('TXN')]) == 1:
-                ax.axvline(df[df.RECONFIG.str.contains('TXN')].index[0], color=color, lw=1.5, linestyle="--")
+                ax.axvline(df[df.RECONFIG.str.contains('TXN')].index[0], color=color, lw=1.5, linestyle="--",label="%s INIT" % name)
+                ax.axvline(df[df.RECONFIG.str.contains('END')].index[0], color=color, lw=1.5, linestyle=":",label="%s END" % name)
+                
             else:
                 LOG.error("Multiple reconfig events not currently supported")
+             
         if args.type == "line":
-            
+            #plot the line with the same color 
             ax.plot(df.index, df[TYPE_MAP[args.show]], color=color,label=name, lw=2.0)
     plotFrame = pandas.DataFrame(data=data)
     if args.type == "line":
@@ -201,78 +187,5 @@ if __name__=="__main__":
     
     plotter(args, files)
     
-    
-def f2():     
-    for scale, color in input_files:
-        warehouse_scale = "%s" % scale
-        label = " %s)" % warehouse_scale
-        
-        plot.clf()
-        plot.xlabel('time')
-        plot.ylabel('transactions per second')
-        #ax = plot.gca()
-        #ax.set_autoscaley_on(False)
-        evictions = { }
-        y_max = None
 
-
-
-           
-        with open("out/scale%s/tpcc-02p-interval_res.csv" % warehouse_scale, "r") as f:
-            reader = csv.reader(f)
-            
-            col_xref = None
-            x_values = [ ]
-            y_values = [ ]
-            row_idx = 0
-            for row in reader:
-                if col_xref is None:
-                    col_xref = { }
-                    for i in xrange(len(row)):
-                        col_xref[row[i]] = i
-                    continue
-                row_idx += 1
-                #if row_idx % 2 == 0: continue
-                x_values.append(float(row[col_xref['INTERVAL']]))
-                y_values.append(float(row[col_xref['LATENCY']]))
-                
-                y_max = max(y_max, y_values[-1])
-                #if first and int(row[col_xref["EVICTING"]]) != 0:
-                #    evictions[x_values[-1]] = int(row[col_xref["EVICTING"]]) / 1000.0
-            ## FOR
-            plot.plot(x_values, y_values, label=label, color=color)
-        ## WITH
-
-        '''
-        if len(evictions) > 0:
-            y_max = max(y_max, 120000)
-            for x,width in evictions.iteritems():
-                width = max(1, width)
-                plot.vlines(x, 0, y_max, color='black', linewidth=width, linestyles='dashed', alpha=1.0)
-        '''        
-        ## IF
-        
-        F = pylab.gcf()
-        #F.autofmt_xdate()
-
-        # Now check everything with the defaults:
-        size = F.get_size_inches()
-        dpi = F.get_dpi()
-        logging.debug("Current Size Inches: %s, DPI: %d" % (str(size), dpi))
-        
-        new_size = (OPT_GRAPH_WIDTH / float(dpi), OPT_GRAPH_HEIGHT / float(dpi))
-        F.set_size_inches(new_size)
-        F.set_dpi(OPT_GRAPH_DPI)
-        
-        # Now check everything with the defaults:
-        size = F.get_size_inches()
-        dpi = F.get_dpi()
-        logging.debug("Current Size Inches: %s, DPI: %d" % (str(size), dpi))
-        
-        new_size = (OPT_GRAPH_WIDTH / float(dpi), OPT_GRAPH_HEIGHT / float(dpi))
-        F.set_size_inches(new_size)
-        F.set_dpi(OPT_GRAPH_DPI)
-
-        plot.legend(loc='upper right')
-        plot.savefig("warehousescale-%s.png" % warehouse_scale)
 ## MAIN
