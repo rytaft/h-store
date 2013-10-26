@@ -622,7 +622,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
         fabric.env["benchmark.requestdistribution"] = "zipfian"
         fabric.env["benchmark.ReadRecordProportion"] = 0.95
-        fabric.env["benchmark.UpdateRecordProportion"] = 0.95
+        fabric.env["benchmark.UpdateRecordProportion"] = 0.05
 
     if args['exp_type'] == 'reconfig-motivation':
         fabric.env["client.count"] = 4

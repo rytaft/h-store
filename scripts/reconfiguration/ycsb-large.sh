@@ -15,12 +15,11 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
-    "reconfig-ycsb-zipf" \
-#    "reconfig-test " \
+    "reconfig-ycsb-zipf" 
 )
 
 #for b in smallbank tpcc seats; do
-for b in tpcc ycsb; do
+for b in ycsb; do
 # for b in seats; do
     PARAMS=( \
         --no-update \
