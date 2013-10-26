@@ -213,6 +213,9 @@ EXPERIMENT_SETTINGS = [
     
     "reconfig-test",
     "reconfig-motivation",
+    "reconfig-ycsb-zipf",
+    "reconfig-ycsb-hotspot",
+    "reconfig-ycsb-uniform",
 ]
 
 ## ==============================================
