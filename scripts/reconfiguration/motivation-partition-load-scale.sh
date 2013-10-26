@@ -17,7 +17,9 @@ FIRST_PARAM_OFFSET=1
 EXP_TYPES=( \
     "reconfig-motivation  --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-1.json --partitions=2  --results-dir=${DATA_DIR} --exp-suffix w2" \
     "reconfig-motivation --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-2.json --partitions=2  --results-dir=${DATA_DIR} --exp-suffix w4" \
+    "reconfig-motivation --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-6.json --partitions=2  --results-dir=${DATA_DIR} --exp-suffix w6" \
     "reconfig-motivation --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-3.json --partitions=2  --results-dir=${DATA_DIR} --exp-suffix w8" \
+    "reconfig-motivation --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-12.json --partitions=2  --results-dir=${DATA_DIR} --exp-suffix w12" \
     "reconfig-motivation --global.hasher_plan=scripts/reconfiguration/plans/tpcc-reconfig-motivation-4.json --partitions=2  --results-dir=${DATA_DIR} --exp-suffix w16" \
 )
 
@@ -30,10 +32,10 @@ for b in tpcc; do
         --exp-trials=1 \
         --exp-attempts=1 \        
         --no-json \
-        --client.interval=10000 \
+        --client.interval=20000 \
         --client.output_interval=false \
-        --client.duration=300000 \
-        --client.warmup=30000 \
+        --client.duration=600000 \
+        --client.warmup=200000 \
 	--overwrite \
         --client.output_results_csv=interval_res.csv
     )
