@@ -611,7 +611,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
     
     if args['exp_type'] == 'reconfig-ycsb-zipf':
-        fabric.env["client.count"] = 1
+        fabric.env["client.count"] = 4
         #fabric.env["client.txnrate"] = 100000
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
