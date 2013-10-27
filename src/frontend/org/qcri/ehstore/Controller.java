@@ -23,7 +23,8 @@ public class Controller {
         // connect to VoltDB server
         Client client = ClientFactory.createClient();
         HStoreConf hStoreConf = HStoreConf.singleton();
-        String host = hStoreConf.get("global.defaulthost").toString();
+//        String host = hStoreConf.get("global.defaulthost").toString();
+        String host = "da10";
         int j;
         
         System.out.println("Accessing host " + host + " at port " + HStoreConstants.DEFAULT_PORT);
@@ -33,8 +34,10 @@ public class Controller {
 		} catch (UnknownHostException e) {
 			System.out.println("Controller: tried to connect to unknown host");
 			e.printStackTrace();
+			System.exit(-1);
 		} catch (IOException e) {
 			System.out.println("Controller: IO Exception while connecting to host");
+			System.exit(-1);
 			e.printStackTrace();
 		}
         
@@ -48,12 +51,15 @@ public class Controller {
 			} catch (NoConnectionsException e) {
 				System.out.println("Controller: lost connection");
 				e.printStackTrace();
+				System.exit(-1);
 			} catch (IOException e) {
 				System.out.println("Controller: IO Exception while connecting to host");
 				e.printStackTrace();
+				System.exit(-1);
 			} catch (ProcCallException e) {
 				System.out.println("Controller: Error while invoking @Statistics");
 				e.printStackTrace();
+				System.exit(-1);
 			}
  
 			if(cresponse.getStatus() != Status.OK){
@@ -72,6 +78,7 @@ public class Controller {
 			} catch (InterruptedException e) {
 				System.out.println("Controller: Interrupted while sleeping");
 				e.printStackTrace();
+				System.exit(-1);
 			}
         }
 
