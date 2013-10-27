@@ -31,6 +31,8 @@ public final class TPCCConfig {
     public boolean neworder_only = false;
     public boolean neworder_multip = true;
     public boolean neworder_skew_warehouse = false;
+    public boolean neworder_hotspot = false;
+
     /** Percentage of neworder txns that will abort */
     public int neworder_abort = TPCCConstants.NEWORDER_ABORT;
     /** Prevent all distributed neworder txns from being aborted*/
@@ -54,6 +56,13 @@ public final class TPCCConfig {
     /** Percentage of warehouse ids that will be temporally skewed during the benchmark run */
     public int temporal_skew_mix = 0;
     public boolean temporal_skew_rotate = false;
+    
+    /** Percentage of operations to hit the hotspot **/
+    public double hotspot_ops_percent = 80;
+    
+    /** First N warehouses in the hotspot () **/
+    public int hotspot_size = 1;
+    
     
     /**
      * Scale the number of items based on the client scalefactor.
@@ -141,6 +150,26 @@ public final class TPCCConfig {
             // SKEW NEWORDERS W_IDS
             else if (key.equalsIgnoreCase("neworder_skew_warehouse") && !val.isEmpty()) {
                 neworder_skew_warehouse = Boolean.parseBoolean(val);
+            }
+            
+            // HOTSPOT NEWORDERS 
+            else if (key.equalsIgnoreCase("neworder_hotspot") && !val.isEmpty()) {
+                neworder_hotspot = Boolean.parseBoolean(val);
+            }
+            
+            // HOTSPOT NEWORDERS OPS PERCENT
+            else if (key.equalsIgnoreCase("hotspot_ops_percent") && !val.isEmpty()) {
+                hotspot_ops_percent = Double.parseDouble(val);
+                if (hotspot_ops_percent > 0 && hotspot_ops_percent < 1.0){
+                    hotspot_ops_percent *= 100;
+                }
+            }
+            
+            // HOTSPOT SIZE (First N warehouses) 
+            else if (key.equalsIgnoreCase("hotspot_size") && !val.isEmpty()) {
+                hotspot_size = Integer.parseInt(val);
+                if (hotspot_size <1)
+                    hotspot_size = 1;
             }
             
             // ONLY PAYMENT
