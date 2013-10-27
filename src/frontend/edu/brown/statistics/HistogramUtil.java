@@ -2,6 +2,7 @@ package edu.brown.statistics;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.apache.commons.collections.SortedBag;
 import org.apache.log4j.Logger;
 
 import edu.brown.logging.LoggerUtil;
@@ -150,6 +152,44 @@ public abstract class HistogramUtil {
         return (total);
     }
 
+    /**
+     * Return the percentile of the values within the histogram
+     * @param h
+     * @return
+     */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public static <T extends Number> double percentile(Histogram<T> h, int percentile) {
+        List list = new ArrayList(h.values());
+        Collections.sort(list);
+        List<T> typedList = new ArrayList<T>(list);  
+        List<T> values = new ArrayList<T>();
+        for(T t : typedList){
+            Long count = h.get(t);
+            for (int i = 0; i< count; i++) {
+                values.add(t);
+            }
+        }
+        if (percentile > 100) {
+            percentile = 100;
+        }
+        if (percentile < 0) {
+            percentile = 0;
+        }
+        double per = (double)percentile/100.0;
+        Double index = values.size() * per;
+        Double indexFloor = Math.floor(index);
+        if ((index.equals(indexFloor)) && !Double.isInfinite(index)){
+            //We have a whole number, take this index
+            return (values.get(index.intValue())).doubleValue();
+        }
+        else {
+            T v1 = (values.get(index.intValue()));
+            T v2 = (values.get(index.intValue()+1));
+            double res = (v1.doubleValue()+v2.doubleValue())/2.0;
+            return res;
+        }
+    }
+    
     public static <T extends Number> double stdev(Histogram<T> h) {
         double values[] = new double[h.getSampleCount()];
         int idx = 0;

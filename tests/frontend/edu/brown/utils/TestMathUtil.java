@@ -33,6 +33,10 @@ public class TestMathUtil extends TestCase {
         0.011432267059707457
     };
 
+    private static final int TEST_INT_VALUES[] = {
+        14, 24, 6, 1224, 4548787, 50, 77, 98, 10, 4
+    };
+    
     /**
      * testFudgeyEquals
      */
@@ -128,6 +132,25 @@ public class TestMathUtil extends TestCase {
         double expected = MathUtil.stdev(CollectionUtil.toDoubleArray(values));
         assertEquals(expected, HistogramUtil.stdev(h0), 0.001);
         assertEquals(expected, HistogramUtil.stdev(h1), 0.001);
+    }
+    /**
+     * testStandardDeviationHistogram
+     */
+    @Test
+    public void testPercentile() {
+        FastIntHistogram h0 = new FastIntHistogram(110);
+        for (int i = 0; i < TEST_INT_VALUES.length; i++) {
+            h0.put(TEST_INT_VALUES[i]);
+        } // FOR
+        for (int i = 0; i < 90; i++) {
+            h0.put(1);
+        } // FOR
+        assertEquals(4.0, HistogramUtil.percentile(h0, 90));
+        assertEquals(1.0, HistogramUtil.percentile(h0, 85));
+        assertEquals(1.0, HistogramUtil.percentile(h0, 50));
+        assertEquals(50.0, HistogramUtil.percentile(h0, 95));
+        assertEquals(4548787.0, HistogramUtil.percentile(h0, 99));
+
     }
 
 }
