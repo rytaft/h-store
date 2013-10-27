@@ -15,10 +15,10 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
-    "reconfig-tpcc-hotspot --partitions=4 --exp-suffix=hot20 --benchmark.hotspot_ops_percent=20" \
-    "reconfig-tpcc-hotspot --partitions=4 --exp-suffix=hot50  --benchmark.hotspot_ops_percent=50" \
-    "reconfig-tpcc-hotspot --partitions=4 --exp-suffix=hot80  --benchmark.hotspot_ops_percent=80" \
-    "reconfig-tpcc-hotspot --partitions=4 --exp-suffix=hot100  --benchmark.hotspot_ops_percent=100" \
+    "reconfig-tpcc-hotspot-20 --partitions=4" \
+    "reconfig-tpcc-hotspot-50 --partitions=4" \
+    "reconfig-tpcc-hotspot-80 --partitions=4" \
+    "reconfig-tpcc-hotspot-100 --partitions=4" \
 )
 
 #for b in smallbank tpcc seats; do
