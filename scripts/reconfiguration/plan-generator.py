@@ -71,8 +71,8 @@ if __name__ == "__main__":
   args = parser.parse_args()
   
   TABLE_MAP = {
-    "ycsb": "USERTABLE",
-    "tpcc": "WAREHOUSE"
+    "ycsb": "usertable",
+    "tpcc": "warehouse"
   }
   print args
   if args.change_type == "scale-down":

@@ -1,6 +1,6 @@
 {
   "partition_plans": {
-    "1": {
+    "0": {
       "tables": {
         "usertable": {
           "partitions": {
@@ -13,7 +13,7 @@
         } 
       }
     }, 
-    "2": {
+    "1": {
       "tables": {
         "usertable": {
           "partitions": {
@@ -22,7 +22,7 @@
         }      
       }
     },
-    "3": {
+    "2": {
       "tables": {
         "usertable": {
           "partitions": {
