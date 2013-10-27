@@ -625,14 +625,14 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["benchmark.UpdateRecordProportion"] = 0.05
 
     if args['exp_type'] == 'reconfig-motivation':
-        fabric.env["client.count"] = 4
-        fabric.env["client.blocking"] = False
+        fabric.env["client.count"] = 7
+        fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
         fabric.env["client.output_exec_profiling"] = "execprofile.csv"
         fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
-        fabric.env["client.threads_per_host"] = partitions * 5  # max(1, int(partitions/2))
+        fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
 
     if 'global.hasher_plan' in args and args['global.hasher_plan']:
         LOG.info("overriding hasher plan %s " % args['global.hasher_plan']) 
