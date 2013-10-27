@@ -129,6 +129,7 @@ def plotTSD(args, files, ax):
     for x,(_file, df) in enumerate(dfs):
         name = os.path.basename(_file).split("-interval")[0] 
         color = COLORS[x % len(COLORS)]
+	linestyle = LINE_STYLES[x % len(LINE_STYLES)]
         colormap[name] = color   
         data[name] = df[TYPE_MAP[args.show]].values
         if args.reconfig:
@@ -144,7 +145,7 @@ def plotTSD(args, files, ax):
              
         if args.type == "line":
             #plot the line with the same color 
-            ax.plot(df.index, df[TYPE_MAP[args.show]], color=color,label=name, lw=2.0)
+            ax.plot(df.index, df[TYPE_MAP[args.show]], color=color,label=name,ls=linestyle, lw=2.0)
     plotFrame = pandas.DataFrame(data=data)
     if args.type == "line":
         pass
