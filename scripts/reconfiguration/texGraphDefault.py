@@ -4,8 +4,9 @@ import matplotlib.cm as cm
 from numpy import mod
 
 GRAPH_COLOR = cm.summer
-COLORS = [GRAPH_COLOR(64), GRAPH_COLOR(192), GRAPH_COLOR(128) ,GRAPH_COLOR(256)] 
 LINE_STYLES = ['-','-','-','-','--','--','--','--',':',':',':',':']
+COLORS = [GRAPH_COLOR(0), cm.bone(196), GRAPH_COLOR(156) ,GRAPH_COLOR(256)] 
+
 def calcShortFigSize(fig_width_pt=240.0):
   #fig_width_pt = 240.0  # Get this from LaTeX using \showthe\columnwidth
   inches_per_pt = 1.0/72.27               # Convert pt to inch

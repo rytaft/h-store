@@ -211,11 +211,17 @@ EXPERIMENT_SETTINGS = [
     "aborts-80-occ",
     "aborts-100-occ",
     
+    # Reconfiguration Experiments
     "reconfig-test",
     "reconfig-motivation",
     "reconfig-ycsb-zipf",
     "reconfig-ycsb-hotspot",
     "reconfig-ycsb-uniform",
+
+    "reconfig-tpcc-hotspot-20",
+    "reconfig-tpcc-hotspot-50",
+    "reconfig-tpcc-hotspot-80",
+    "reconfig-tpcc-hotspot-100",
 ]
 
 ## ==============================================
@@ -662,10 +668,25 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
 
+    if 'reconfig-tpcc-hotspot' in args['exp_type']:
+        fabric.env["client.count"] = 4
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.output_exec_profiling"] = "execprofile.csv"
+        fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
+        fabric.env["client.output_txn_profiling_combine"] = True
+        fabric.env["client.output_txn_counters"] = "txncounters.csv"
+        fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
+        fabric.env["benchmark.neworder_hotspot"] = True
+        fabric.env["benchmark.hotspot_size"] = 1
+        fabric.env["hstore.partitions_per_site"] = 2 
+        fabric.env["benchmark.hotspot_ops_percent"] = args['exp_type'].rsplit("-",1)[1]
+
     if 'global.hasher_plan' in args and args['global.hasher_plan']:
         LOG.info("overriding hasher plan %s " % args['global.hasher_plan']) 
         fabric.env['global.hasher_plan'] = args['global.hasher_plan'] 
     
+
 ## DEF
 
 ## ==============================================
