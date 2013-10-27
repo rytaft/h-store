@@ -218,6 +218,7 @@ EXPERIMENT_SETTINGS = [
     "reconfig-ycsb-hotspot",
     "reconfig-ycsb-uniform",
 
+    "reconfig-tpcc-hotspot-0",
     "reconfig-tpcc-hotspot-20",
     "reconfig-tpcc-hotspot-50",
     "reconfig-tpcc-hotspot-80",
@@ -676,7 +677,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
-        fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
+        fabric.env["client.threads_per_host"] = partitions * 2.2  # max(1, int(partitions/2))
         fabric.env["benchmark.neworder_hotspot"] = True
         fabric.env["benchmark.hotspot_size"] = 1
         fabric.env["hstore.partitions_per_site"] = 2 

@@ -15,6 +15,7 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
+    "reconfig-tpcc-hotspot-0 --partitions=4" \
     "reconfig-tpcc-hotspot-20 --partitions=4" \
     "reconfig-tpcc-hotspot-50 --partitions=4" \
     "reconfig-tpcc-hotspot-80 --partitions=4" \
