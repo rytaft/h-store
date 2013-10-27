@@ -676,6 +676,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
         fabric.env["benchmark.neworder_hotspot"] = True
         fabric.env["benchmark.hotspot_size"] = 1
+        fabric.env["hstore.partitions_per_site"] = 2 
 
 
     if 'global.hasher_plan' in args and args['global.hasher_plan']:
