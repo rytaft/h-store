@@ -32,8 +32,7 @@ for b in tpcc ycsb; do
         --stop-on-error \
         --exp-trials=1 \
         --exp-attempts=1 \        
-	--sweep-reconfiguration \
-        --client.interval=1000 \
+        --client.interval=5000 \
         --client.output_interval=true \
         --client.duration=120000 \
         --client.warmup=60000 \
