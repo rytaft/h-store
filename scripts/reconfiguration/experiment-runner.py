@@ -217,6 +217,8 @@ EXPERIMENT_SETTINGS = [
     "reconfig-perf2",
     "reconfig-perf3",
     "reconfig-perf4",
+    "reconfig-perf5",
+    "reconfig-perf6",
     "reconfig-motivation",
     "reconfig-ycsb-zipf",
     "reconfig-ycsb-hotspot",
@@ -654,14 +656,53 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
         fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
-    if args['exp_type'] == 'reconfig-perf5':
+    if args['exp_type'] == 'reconfig-perf6':
         fabric.env["client.blocking_concurrent"] = 4 # * int(partitions/8)
         fabric.env["client.count"] = 6
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
         fabric.env["client.threads_per_host"] = partitions * 6  # max(1, int(partitions/2))
-        #if partitions > 16: fabric.env["client.blocking_concurrent"] *= int(partitions/8)
-        #fabric.env["client.output_clients"] = False
+	
+
+
+    if args['exp_type'] == 'reconfig-perf7':
+        fabric.env["client.blocking_concurrent"] = 6  # * int(partitions/8)
+        fabric.env["client.count"] = 1
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.threads_per_host"] = 6  # max(1, int(partitions/2))
+    if args['exp_type'] == 'reconfig-perf8':
+        fabric.env["client.blocking_concurrent"] = 6  # * int(partitions/8)
+        fabric.env["client.count"] = 6
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.threads_per_host"] = 1  # max(1, int(partitions/2))
+    
+    if args['exp_type'] == 'reconfig-perf9':
+        fabric.env["client.blocking_concurrent"] = 4 # * int(partitions/8)
+        fabric.env["client.count"] = 4
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
+        fabric.env["site.anticache_enable"] = False
+
+
+    if args['exp_type'] == 'reconfig-perf10':
+        fabric.env["client.blocking_concurrent"] = 4 # * int(partitions/8)
+        fabric.env["client.count"] = 4
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
+        fabric.env["site.commandlog_enable"] = False
+
+    if args['exp_type'] == 'reconfig-perf11':
+        fabric.env["client.blocking_concurrent"] = 1 # * int(partitions/8)
+        fabric.env["client.count"] = 4
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
+        fabric.env["site.anticache_enable"] = False
+        fabric.env["site.commandlog_enable"] = False
 
     if args['exp_type'] == 'reconfig-ycsb-zipf':
         fabric.env["client.count"] = 4
