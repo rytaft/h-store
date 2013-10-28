@@ -181,6 +181,10 @@ public class TestMathUtil extends TestCase {
         assertEquals(3.0, r4[0]);
         assertEquals(4.0, r4[1]);
         assertEquals(10000.0, r4[2]); 
+        
+        h0 = new FastIntHistogram(110);
+        double[] r5 = HistogramUtil.percentile(h0,pers3);
+        assertEquals(r5[0],Double.NaN);
     }
 
 }

@@ -178,7 +178,10 @@ public abstract class HistogramUtil {
             if (percentile < 1) {
                 percentile = 1;
             }
-            if (values.size()==1){
+            if (values.size()==0) {
+                res[i] = Double.NaN;
+            }
+            else if (values.size()==1){
                 res[i] = values.get(0).doubleValue();
             }
             else{
