@@ -16,13 +16,10 @@ FIRST_PARAM_OFFSET=0
 
 
 EXP_TYPES=( \
-    "reconfig-perf"  \
-    "reconfig-perf7"  \
-    "reconfig-perf8"  \
-    "reconfig-perf9"  \
-    "reconfig-perf10"  \
-    "reconfig-perf11"  \
+    "reconfig-perf12"  \
+    "reconfig-perf13"  \
 )
+
 OLD_EXP_TYPES=( \
     "reconfig-perf --client.threads_per_host=8 --client.count=4 --exp-suffix=conc-c4t8 "  \
     "reconfig-perf --client.threads_per_host=12 --client.count=4 --exp-suffix=conc-c4t12 "  \
@@ -34,7 +31,11 @@ OLD_EXP_TYPES=( \
     "reconfig-perf --client.threads_per_host=2 --client.count=6 --exp-suffix=conc-c6t2 "  \
     "reconfig-perf --client.threads_per_host=4 --client.count=6 --exp-suffix=conc-c6t4 "  \
     "reconfig-perf --client.threads_per_host=8 --client.count=6 --exp-suffix=conc-c6t8 "  \
-
+    "reconfig-perf7"  \
+    "reconfig-perf8"  \
+    "reconfig-perf9"  \
+    "reconfig-perf10"  \
+    "reconfig-perf11"  \
 )
 
 #for b in smallbank tpcc seats; do
