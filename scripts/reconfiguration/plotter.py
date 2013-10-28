@@ -20,7 +20,10 @@ OPT_GRAPH_DPI = 100
 
 TYPE_MAP = {
   "tps": "THROUGHPUT",
-  "lat": "LATENCY"
+  "lat": "LATENCY",
+  "lat50": "LATENCY_50",
+  "lat95": "LATENCY_95",
+  "lat99": "LATENCY_99",
 }
 ## ==============================================
 ## LOGGING CONFIGURATION
@@ -47,7 +50,7 @@ def getParser():
     parser.add_argument("-r","--recursive", dest="recursive", action="store_true", help="Check directories recursively")
     parser.add_argument("--reconfig", dest="reconfig", action="store_true", help="Plot reconfig bars") 
      
-    parser.add_argument("-s","--show", dest="show", choices=["tps","lat"], required=True, help="Show this data type")            
+    parser.add_argument("-s","--show", dest="show", choices=["tps","lat","lat50","lat95","lat99","latall"], required=True, help="Show this data type")            
     
     group = parser.add_mutually_exclusive_group() 
     group.add_argument("-d","--dir", dest="dir", help="The directory to load files from")            
@@ -165,7 +168,8 @@ def plotTSD(args, files, ax):
 def plotter(args, files):
     plot.figure()
     ax = plot.subplot(111)
-    
+    if args.show == "latall" and len(files) > 1:
+        raise Exception("Cannot show all lats for multiple files")
     if args.tsd:
         plotTSD(args, files, ax)   
     else:
