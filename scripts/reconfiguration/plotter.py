@@ -210,7 +210,7 @@ def plotTSD(args, files, ax):
                     end_legend = None
                 else:
                     LOG.error("Multiple reconfig events not currently supported")
-                 
+            print name     
             print df
             if args.type == "line":
                 #plot the line with the same color 

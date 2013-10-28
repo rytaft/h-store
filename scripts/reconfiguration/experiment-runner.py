@@ -44,6 +44,7 @@ import csv
 from datetime import datetime
 from pprint import pprint, pformat
 from types import *
+from reconfiguration_experiments import *
 
 ## H-Store Third-Party Libraries
 realpath = os.path.realpath(__file__)
@@ -237,6 +238,8 @@ EXPERIMENT_SETTINGS = [
     "reconfig-tpcc-hotspot-80",
     "reconfig-tpcc-hotspot-100",
 ]
+
+EXPERIMENT_SETTINGS.extend(RECONFIG_EXPERIMENTS)
 
 ## ==============================================
 ## updateExperimentEnv
@@ -790,6 +793,10 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["benchmark.hotspot_size"] = 1
         fabric.env["hstore.partitions_per_site"] = 2 
         fabric.env["benchmark.hotspot_ops_percent"] = args['exp_type'].rsplit("-",1)[1]
+
+
+
+    updateReconfigurationExperimentEnv(fabric,args,benchmark,partitions)
 
     if 'global.hasher_plan' in args and args['global.hasher_plan']:
         LOG.info("overriding hasher plan %s " % args['global.hasher_plan']) 
