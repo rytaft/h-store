@@ -171,7 +171,10 @@ def plotter(args, files):
     if args.show == "latall" and len(files) > 1:
         raise Exception("Cannot show all lats for multiple files")
     if args.tsd:
-        plotTSD(args, files, ax)   
+        if args.show == "latall":
+            raise Exception("TODO")
+        else:
+            plotTSD(args, files, ax)   
     else:
         raise Exception("Only TSD supported")
     #LOG.debug("Files to plot %s" % (files))
