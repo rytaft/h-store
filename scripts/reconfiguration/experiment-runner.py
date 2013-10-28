@@ -219,6 +219,11 @@ EXPERIMENT_SETTINGS = [
     "reconfig-perf4",
     "reconfig-perf5",
     "reconfig-perf6",
+    "reconfig-perf7",
+    "reconfig-perf8",
+    "reconfig-perf9",
+    "reconfig-perf10",
+    "reconfig-perf11",
     "reconfig-motivation",
     "reconfig-ycsb-zipf",
     "reconfig-ycsb-hotspot",
@@ -666,14 +671,14 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
 
 
     if args['exp_type'] == 'reconfig-perf7':
-        fabric.env["client.blocking_concurrent"] = 6  # * int(partitions/8)
+        fabric.env["client.blocking_concurrent"] = 3  # * int(partitions/8)
         fabric.env["client.count"] = 1
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = 6  # max(1, int(partitions/2))
+        fabric.env["client.threads_per_host"] = 3  # max(1, int(partitions/2))
     if args['exp_type'] == 'reconfig-perf8':
-        fabric.env["client.blocking_concurrent"] = 6  # * int(partitions/8)
-        fabric.env["client.count"] = 6
+        fabric.env["client.blocking_concurrent"] = 3  # * int(partitions/8)
+        fabric.env["client.count"] = 3
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
         fabric.env["client.threads_per_host"] = 1  # max(1, int(partitions/2))
