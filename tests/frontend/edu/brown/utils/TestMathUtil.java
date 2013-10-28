@@ -145,11 +145,14 @@ public class TestMathUtil extends TestCase {
         for (int i = 0; i < 90; i++) {
             h0.put(1);
         } // FOR
-        assertEquals(4.0, HistogramUtil.percentile(h0, 90));
-        assertEquals(1.0, HistogramUtil.percentile(h0, 85));
-        assertEquals(1.0, HistogramUtil.percentile(h0, 50));
-        assertEquals(50.0, HistogramUtil.percentile(h0, 95));
-        assertEquals(4548787.0, HistogramUtil.percentile(h0, 99));
+        int[] pers = { 90,85,50,95,99};
+        double[] r= HistogramUtil.percentile(h0,pers);
+        
+        assertEquals(4.0, r[0]);
+        assertEquals(1.0, r[1]);
+        assertEquals(1.0, r[2]);
+        assertEquals(50.0, r[3]);
+        assertEquals(4548787.0, r[4]);
 
     }
 

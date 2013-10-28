@@ -158,7 +158,7 @@ public abstract class HistogramUtil {
      * @return
      */
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    public static <T extends Number> double percentile(Histogram<T> h, int percentile) {
+    public static <T extends Number> double[] percentile(Histogram<T> h, int[] percentiles) {
         List list = new ArrayList(h.values());
         Collections.sort(list);
         List<T> typedList = new ArrayList<T>(list);  
@@ -169,25 +169,29 @@ public abstract class HistogramUtil {
                 values.add(t);
             }
         }
-        if (percentile > 100) {
-            percentile = 100;
+        double[] res = new double[percentiles.length]; 
+        for(int i =0 ; i < percentiles.length; i++){
+            int percentile = percentiles[i];
+            if (percentile > 100) {
+                percentile = 100;
+            }
+            if (percentile < 0) {
+                percentile = 0;
+            }
+            double per = (double)percentile/100.0;
+            Double index = values.size() * per;
+            Double indexFloor = Math.floor(index);
+            if ((index.equals(indexFloor)) && !Double.isInfinite(index)){
+                //We have a whole number, take this index
+                res[i] = (values.get(index.intValue())).doubleValue();
+            }
+            else {
+                T v1 = (values.get(index.intValue()));
+                T v2 = (values.get(index.intValue()+1));
+                res[i] = (v1.doubleValue()+v2.doubleValue())/2.0;
+            }
         }
-        if (percentile < 0) {
-            percentile = 0;
-        }
-        double per = (double)percentile/100.0;
-        Double index = values.size() * per;
-        Double indexFloor = Math.floor(index);
-        if ((index.equals(indexFloor)) && !Double.isInfinite(index)){
-            //We have a whole number, take this index
-            return (values.get(index.intValue())).doubleValue();
-        }
-        else {
-            T v1 = (values.get(index.intValue()));
-            T v2 = (values.get(index.intValue()+1));
-            double res = (v1.doubleValue()+v2.doubleValue())/2.0;
-            return res;
-        }
+        return res;
     }
     
     public static <T extends Number> double stdev(Histogram<T> h) {
