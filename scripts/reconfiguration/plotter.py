@@ -103,7 +103,10 @@ def plotGraph(args):
     if args.ylabel != None:
         plot.ylabel(args.ylabel)
     else:
-        plot.ylabel(args.show)
+        if "lat" in args.show:
+            plot.ylabel("Latency(ms)")
+        else:
+            plot.ylabel(args.show)
     if args.xlabel != None:
         plot.xlabel(args.xlabel)
     else:
@@ -128,7 +131,7 @@ def plotGraph(args):
 ## tsd
 ## ==============================================
 def plotTSD(args, files, ax):
-    dfs = [ (d, pandas.DataFrame.from_csv(d)) for d in files if "interval" in d]
+    dfs = [ (d, pandas.DataFrame.from_csv(d,index_col=1)) for d in files if "interval" in d]
     data = {}
     init_legend = "Reconfig Init"
     end_legend = "Reconfig End"
@@ -156,6 +159,7 @@ def plotTSD(args, files, ax):
                 else:
                     LOG.error("Multiple reconfig events not currently supported")
                  
+            print df
             if args.type == "line":
                 #plot the line with the same color 
                 ax.plot(df.index, data[name], color=color,label=name,ls=linestyle, lw=2.0)
