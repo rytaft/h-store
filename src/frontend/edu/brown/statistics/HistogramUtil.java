@@ -175,20 +175,27 @@ public abstract class HistogramUtil {
             if (percentile > 100) {
                 percentile = 100;
             }
-            if (percentile < 0) {
-                percentile = 0;
+            if (percentile < 1) {
+                percentile = 1;
             }
-            double per = (double)percentile/100.0;
-            Double index = values.size() * per;
-            Double indexFloor = Math.floor(index);
-            if ((index.equals(indexFloor)) && !Double.isInfinite(index)){
-                //We have a whole number, take this index
-                res[i] = (values.get(index.intValue())).doubleValue();
+            if (values.size()==1){
+                res[i] = values.get(0).doubleValue();
             }
-            else {
-                T v1 = (values.get(index.intValue()));
-                T v2 = (values.get(index.intValue()+1));
-                res[i] = (v1.doubleValue()+v2.doubleValue())/2.0;
+            else{
+                double position = percentile * (values.size()-1)/ 100.0;
+                if (position < 1){
+                    res[i] = values.get(0).doubleValue();
+                }
+                else if(position >= values.size()-1){
+                    res[i] = values.get(values.size()-1).doubleValue();
+                }
+                else{
+                    Double floor = Math.floor(position);
+                    double d = position - floor;
+                    double v1 = (values.get(floor.intValue())).doubleValue();
+                    double v2 = (values.get(floor.intValue()+1)).doubleValue();
+                    res[i] = (v1 + d * (v2-v1));
+                }                
             }
         }
         return res;
