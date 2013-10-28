@@ -14,20 +14,25 @@ DATA_DIR="out"
 FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
+
 EXP_TYPES=( \
-    "reconfig-test --client.threads_per_host=1 --client.count=4 --exp-suffix=c4t1 "  \
-    "reconfig-test --client.threads_per_host=2 --client.count=4 --exp-suffix=c4t2 "  \
-    "reconfig-test --client.threads_per_host=4 --client.count=4 --exp-suffix=c4t4 "  \
-    "reconfig-test --client.threads_per_host=8 --client.count=4 --exp-suffix=c4t8 "  \
-    "reconfig-test --client.threads_per_host=12 --client.count=4 --exp-suffix=c4t12 "  \
-    "reconfig-test --client.threads_per_host=2 --client.count=2 --exp-suffix=c2t2 "  \
-    "reconfig-test --client.threads_per_host=4 --client.count=2 --exp-suffix=c2t4 "  \
-    "reconfig-test --client.threads_per_host=8 --client.count=2 --exp-suffix=c2t8 "  \
-    "reconfig-test --client.threads_per_host=16 --client.count=2 --exp-suffix=c2t16 "  \
-    "reconfig-test --client.threads_per_host=1 --client.count=6 --exp-suffix=c6t1 "  \
-    "reconfig-test --client.threads_per_host=2 --client.count=6 --exp-suffix=c6t2 "  \
-    "reconfig-test --client.threads_per_host=4 --client.count=6 --exp-suffix=c6t4 "  \
-    "reconfig-test --client.threads_per_host=8 --client.count=6 --exp-suffix=c6t8 "  \
+    "reconfig-perf --client.threads_per_host=1 --client.count=4 --exp-suffix=conc-c4t1 "  \
+    "reconfig-perf --client.threads_per_host=2 --client.count=4 --exp-suffix=conc-c4t2 "  \
+    "reconfig-perf --client.threads_per_host=4 --client.count=4 --exp-suffix=conc-c4t4 "  \
+#    "reconfig-perf --client.threads_per_host=8 --client.count=4 --exp-suffix=conc-c4t8 "  \
+)
+OLD_EXP_TYPES=( \
+    "reconfig-perf --client.threads_per_host=8 --client.count=4 --exp-suffix=conc-c4t8 "  \
+    "reconfig-perf --client.threads_per_host=12 --client.count=4 --exp-suffix=conc-c4t12 "  \
+    "reconfig-perf --client.threads_per_host=2 --client.count=2 --exp-suffix=conc-c2t2 "  \
+    "reconfig-perf --client.threads_per_host=4 --client.count=2 --exp-suffix=conc-c2t4 "  \
+    "reconfig-perf --client.threads_per_host=8 --client.count=2 --exp-suffix=conc-c2t8 "  \
+    "reconfig-perf --client.threads_per_host=16 --client.count=2 --exp-suffix=conc-c2t16 "  \
+    "reconfig-perf --client.threads_per_host=1 --client.count=6 --exp-suffix=conc-c6t1 "  \
+    "reconfig-perf --client.threads_per_host=2 --client.count=6 --exp-suffix=conc-c6t2 "  \
+    "reconfig-perf --client.threads_per_host=4 --client.count=6 --exp-suffix=conc-c6t4 "  \
+    "reconfig-perf --client.threads_per_host=8 --client.count=6 --exp-suffix=conc-c6t8 "  \
+
 )
 
 #for b in smallbank tpcc seats; do
@@ -40,11 +45,12 @@ for b in tpcc ycsb; do
         --exp-trials=1 \
         --exp-attempts=1 \        
         --partitions=1 \
-        --client.interval=5000 \
+        --client.interval=30000 \
         --client.output_interval=true \
-        --client.duration=60000 \
+        --client.duration=300000 \
         --client.warmup=60000 \
         --client.output_results_csv=interval_res.csv \
+	--overwrite \
     )
     
     i=0

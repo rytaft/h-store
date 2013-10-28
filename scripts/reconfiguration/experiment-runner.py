@@ -213,6 +213,7 @@ EXPERIMENT_SETTINGS = [
     
     # Reconfiguration Experiments
     "reconfig-test",
+    "reconfig-perf",
     "reconfig-motivation",
     "reconfig-ycsb-zipf",
     "reconfig-ycsb-hotspot",
@@ -616,7 +617,15 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
-    
+    if args['exp_type'] == 'reconfig-perf':
+        fabric.env["client.blocking_concurrent"] = 4 # * int(partitions/8)
+        fabric.env["client.count"] = 4
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
+        #if partitions > 16: fabric.env["client.blocking_concurrent"] *= int(partitions/8)
+        #fabric.env["client.output_clients"] = False
+
     if args['exp_type'] == 'reconfig-ycsb-zipf':
         fabric.env["client.count"] = 4
         #fabric.env["client.txnrate"] = 100000
@@ -677,7 +686,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
-        fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
+        fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
         fabric.env["benchmark.neworder_hotspot"] = True
         fabric.env["benchmark.hotspot_size"] = 1
         fabric.env["hstore.partitions_per_site"] = 2 
@@ -824,7 +833,10 @@ def writeResultsCSV(args, benchmark, finalResults, partitions):
 ## getResultsFilename
 ## ==============================================
 def getResultsFilename(args, benchmark, partitions):
-    baseName = "%s-%02dp-results.csv" % (benchmark, partitions)
+    suffix =''
+    if args['exp_suffix']:
+        suffix = "-%s" % (args['exp_suffix'])
+    baseName = "%s-%02dp%s-results.csv" % (benchmark, partitions,suffix)
     output = os.path.join(args['results_dir'], args['exp_type'], baseName)
     return output
 ## DEF
