@@ -8,7 +8,7 @@ RECONFIG_EXPERIMENTS = [
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
     if args['exp_type'] == 'reconfig-baseline':
-        fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
+        fabric.env["client.blocking_concurrent"] = 4 # * int(partitions/8)
         fabric.env["client.count"] = 8
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
