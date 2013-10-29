@@ -1,4 +1,3 @@
-Namespace(change_type=None, partitions='8', phases=4, size=20, type='tpcc')
 {
   "partition_plans": {
     "0": {

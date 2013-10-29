@@ -48,7 +48,7 @@ def genPlanJSON(tables,phases,default_table, onebased=False):
         if filler != 0:
            range_max+=1
            filler-=1
-        if onebase:   
+        if onebased:   
             partitionranges[cur_partition] = "%s-%s"% (keyscovered+1,range_max+1)
         else:
             partitionranges[cur_partition] = "%s-%s"% (keyscovered,range_max)
@@ -78,7 +78,6 @@ if __name__ == "__main__":
     "ycsb": "usertable",
     "tpcc": "warehouse"
   }
-  print args
   if args.change_type == "scale-down":
     raise Exception("not implemented")
   if "," in args.partitions or args.partitions != None:  
