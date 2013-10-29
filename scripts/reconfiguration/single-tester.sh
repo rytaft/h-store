@@ -16,10 +16,12 @@ FIRST_PARAM_OFFSET=0
 
 
 EXP_TYPES=( \
-    "reconfig-perf --client.threads_per_host=1 --client.count=4 --exp-suffix=conc-c4t1 "  \
-    "reconfig-perf --client.threads_per_host=2 --client.count=4 --exp-suffix=conc-c4t2 "  \
-    "reconfig-perf --client.threads_per_host=4 --client.count=4 --exp-suffix=conc-c4t4 "  \
-#    "reconfig-perf --client.threads_per_host=8 --client.count=4 --exp-suffix=conc-c4t8 "  \
+    "reconfig-perf6"  \
+    "reconfig-perf12"  \
+    "reconfig-perf11"  \
+#    "reconfig-perf3"  \
+#    "reconfig-perf4"  \
+#    "reconfig-perf5"  \
 )
 OLD_EXP_TYPES=( \
     "reconfig-perf --client.threads_per_host=8 --client.count=4 --exp-suffix=conc-c4t8 "  \
@@ -47,7 +49,7 @@ for b in tpcc ycsb; do
         --partitions=1 \
         --client.interval=30000 \
         --client.output_interval=true \
-        --client.duration=300000 \
+        --client.duration=150000 \
         --client.warmup=60000 \
         --client.output_results_csv=interval_res.csv \
 	--overwrite \
