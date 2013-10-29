@@ -1,0 +1,22 @@
+Namespace(change_type=None, partitions='8', phases=4, size=24, type='tpcc')
+{
+  "partition_plans": {
+    "0": {
+      "tables": {
+        "warehouse": {
+          "partitions": {
+            "0": "1-4", 
+            "1": "4-7", 
+            "2": "7-10", 
+            "3": "10-13", 
+            "4": "13-16", 
+            "5": "16-19", 
+            "6": "19-22", 
+            "7": "22-25"
+          }
+        }
+      }
+    }
+  }, 
+  "default_table": "warehouse"
+}
