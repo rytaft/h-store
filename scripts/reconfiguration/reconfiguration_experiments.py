@@ -1,8 +1,8 @@
 RECONFIG_EXPERIMENTS = [
-    "reconfig-baseline"
-    "warehouse-baseline-2"
-    "warehouse-baseline-3"
-    "warehouse-baseline-4"
+    "reconfig-baseline",
+    "warehouse-baseline-2",
+    "warehouse-baseline-3",
+    "warehouse-baseline-4",
 ]
 
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
