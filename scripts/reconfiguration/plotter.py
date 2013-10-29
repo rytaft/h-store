@@ -173,7 +173,8 @@ def plotResults(args, files, ax):
         pass
         #plotFrame.plot(ax=ax )
     elif args.type == "boxplot":
-        plotFrame.boxplot(ax=ax)
+        plotFrame.boxplot(ax=ax, notch=1, sym='', vert=1, whis=1.5, 
+              positions=None, widths=None, patch_artist=False, bootstrap = 5000)
     else:
         raise Exception("unsupported plot type : " + args.type)  
 

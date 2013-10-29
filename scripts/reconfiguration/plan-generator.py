@@ -4,7 +4,8 @@ import json
 import argparse
  
 
-def genPlanJSON(tables,phases,default_table):
+def genPlanJSON(tables,phases,default_table, onebased=False):
+
   """
     A function to generate a partition plan json by evenly
     dividing up a the number of keys for a table by 
@@ -47,7 +48,10 @@ def genPlanJSON(tables,phases,default_table):
         if filler != 0:
            range_max+=1
            filler-=1
-        partitionranges[cur_partition] = "%s-%s"% (keyscovered,range_max)
+        if onebase:   
+            partitionranges[cur_partition] = "%s-%s"% (keyscovered+1,range_max+1)
+        else:
+            partitionranges[cur_partition] = "%s-%s"% (keyscovered,range_max)
         cur_partition+=1
         keyscovered=range_max
       plan_out[tablename] = {} 
@@ -77,7 +81,7 @@ if __name__ == "__main__":
   print args
   if args.change_type == "scale-down":
     raise Exception("not implemented")
-  elif "," in args.partitions:  
+  if "," in args.partitions or args.partitions != None:  
     tables = { TABLE_MAP[args.type]: args.size }
     default_table = TABLE_MAP[args.type]
     phases = {  }
@@ -85,5 +89,8 @@ if __name__ == "__main__":
       phases[x] = int(parts)
   else:
     raise Exception("not implemented yet")
-  plan_json = genPlanJSON(tables, phases, default_table)
+  onebased = False
+  if args.type == "tpcc":
+      onebased = True
+  plan_json = genPlanJSON(tables, phases, default_table, onebased)
   print str(plan_json)
