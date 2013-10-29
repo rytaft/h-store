@@ -71,7 +71,7 @@ def getParser():
 
 def getReconfigEvents(hevent_log):
     events = []
-    if not os.path.exists:
+    if not os.path.exists(hevent_log):
         return None
     with open(hevent_log, "r") as f:
         protocol = ''
@@ -203,14 +203,23 @@ def plotTSD(args, files, ax):
             data[name] = df[INTERVAL_TYPE_MAP[show_var]].values
             if args.reconfig:
                 reconfig_events = getReconfigEvents(_file.replace("interval_res.csv", "hevent.log"))
-                addReconfigEvent(df, reconfig_events)
-                if len(df[df.RECONFIG.str.contains('TXN')]) == 1:
-                    ax.axvline(df[df.RECONFIG.str.contains('TXN')].index[0], color=color, lw=1.5, linestyle="--",label=init_legend)
-                    ax.axvline(df[df.RECONFIG.str.contains('END')].index[0], color=color, lw=1.5, linestyle=":",label=end_legend)
-                    init_legend = None
-                    end_legend = None
-                else:
-                    LOG.error("Multiple reconfig events not currently supported")
+                if reconfig_events:
+                    addReconfigEvent(df, reconfig_events)
+                    if len(df[df.RECONFIG.str.contains('TXN')]) == 1:
+                        ax.axvline(df[df.RECONFIG.str.contains('TXN')].index[0], color=color, lw=1.5, linestyle="--",label=init_legend)
+                        if any(df.RECONFIG.str.contains('END')):
+                            ax.axvline(df[df.RECONFIG.str.contains('END')].index[0], color=color, lw=1.5, linestyle=":",label=end_legend)
+                            end_legend = None
+                        else:
+                            LOG.error("*****************************************")
+                            LOG.error("*****************************************")
+                            LOG.error(" NO END FOUND %s " % name)
+                            LOG.error("*****************************************")
+                            LOG.error("*****************************************")
+            
+                        init_legend = None
+                    else:
+                        LOG.error("Multiple reconfig events not currently supported")
             print name     
             print df
             if args.type == "line":
