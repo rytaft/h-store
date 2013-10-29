@@ -16,23 +16,23 @@ FIRST_PARAM_OFFSET=1
 
 
 EXP_TYPES=( \
-    "warehouse-baseline-2 --partitions=8 --benchmark.size=8"  \
-    "warehouse-baseline-2 --partitions=8 --benchmark.size=12"  \
-    "warehouse-baseline-2 --partitions=8 --benchmark.size=16"  \
-    "warehouse-baseline-2 --partitions=8 --benchmark.size=20"  \
-    "warehouse-baseline-2 --partitions=8 --benchmark.size=24"  \
-    "warehouse-baseline-3 --partitions=12 --benchmark.size=12"  \
-    "warehouse-baseline-3 --partitions=12 --benchmark.size=16"  \
-    "warehouse-baseline-3 --partitions=12 --benchmark.size=20"  \
-    "warehouse-baseline-3 --partitions=12 --benchmark.size=24"  \
-    "warehouse-baseline-4 --partitions=16 --benchmark.size=16"  \
-    "warehouse-baseline-4 --partitions=16 --benchmark.size=20"  \
-    "warehouse-baseline-4 --partitions=16 --benchmark.size=24"  \
+    "reconfig-wh-baseline-2 --partitions=8 --exp-suffix=size8 --benchmark-size=8"  \
+    "reconfig-wh-baseline-2 --partitions=8 --exp-suffix=size12 --benchmark-size=12"  \
+    "reconfig-wh-baseline-2 --partitions=8 --exp-suffix=size16 --benchmark-size=16"  \
+    "reconfig-wh-baseline-2 --partitions=8 --exp-suffix=size20 --benchmark-size=20"  \
+    "reconfig-wh-baseline-2 --partitions=8 --exp-suffix=size24 --benchmark-size=24"  \
+    "reconfig-wh-baseline-3 --partitions=12 --exp-suffix=size12 --benchmark-size=12"  \
+    "reconfig-wh-baseline-3 --partitions=12 --exp-suffix=size16 --benchmark-size=16"  \
+    "reconfig-wh-baseline-3 --partitions=12 --exp-suffix=size20 --benchmark-size=20"  \
+    "reconfig-wh-baseline-3 --partitions=12 --exp-suffix=size24 --benchmark-size=24"  \
+    "reconfig-wh-baseline-4 --partitions=16 --exp-suffix=size16 --benchmark-size=16"  \
+    "reconfig-wh-baseline-4 --partitions=16 --exp-suffix=size20 --benchmark-size=20"  \
+    "reconfig-wh-baseline-4 --partitions=16 --exp-suffix=size24 --benchmark-size=24"  \
 )
 
 
 #for b in smallbank tpcc seats; do
-for b in tpcc ycsb; do
+for b in tpcc ; do
 # for b in seats; do
     PARAMS=( \
         --no-update \
