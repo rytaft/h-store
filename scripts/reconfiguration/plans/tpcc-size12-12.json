@@ -1,0 +1,15 @@
+Namespace(change_type=None, partitions='12', phases=4, size=1, type='tpcc')
+{
+  "partition_plans": {
+    "0": {
+      "tables": {
+        "warehouse": {
+          "partitions": {
+            "0": "1-2"
+          }
+        }
+      }
+    }
+  }, 
+  "default_table": "warehouse"
+}
