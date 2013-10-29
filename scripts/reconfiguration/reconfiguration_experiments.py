@@ -45,3 +45,4 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
         fabric.env["client.threads_per_host"] = min(50, int(partitions * 4))
+	args["reconfig"] = None
