@@ -860,7 +860,7 @@ public class HStoreCoordinator implements Shutdownable {
           
           LivePullResponse response = null;
           try {
-              hstore_site.getReconfigurationCoordinator().sendTuples(
+              hstore_site.getReconfigurationCoordinator().dataPullRequest(
                 request, done);
           } catch (Exception e) {
             // TODO Auto-generated catch block

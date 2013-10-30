@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +59,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private static final Logger LOG = Logger.getLogger(ReconfigurationCoordinator.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
-
+    public static final boolean DETAILED_TIMING = true;
+    
     // Cached list of local executors
     private List<PartitionExecutor> local_executors;
     static {
@@ -102,6 +104,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private int num_of_sites;
     private int num_sites_complete;
     private Set<Integer> sites_complete;
+    
+    //some tracking
+    private Map<Integer,Long> dataPullResponseTimes;
 
     public ReconfigurationCoordinator(HStoreSite hstore_site, HStoreConf hstore_conf) {        
         this.reconfigurationLeader = -1;
@@ -130,6 +135,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.rcRequestId = 1;
         this.reconfigurationDonePartitionIds = new HashSet<Integer>();
         reconfigurationDoneSites = new HashSet<Integer>();
+        
+        dataPullResponseTimes = new HashMap<>(); 
     }
 
     /**
@@ -528,10 +535,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
      *            - if its null the request was from a partition on a local site
      * @return
      */
-    public void sendTuples(LivePullRequest livePullRequest, RpcCallback<LivePullResponse> livePullResponseCallback) {
-        LOG.info(String.format("sendTuples livePullId %s  keys %s->%s for %s  partIds %s->%s", livePullRequest.getLivePullIdentifier(), livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), livePullRequest.getVoltTableName(),
+    public void dataPullRequest(LivePullRequest livePullRequest, RpcCallback<LivePullResponse> livePullResponseCallback) {
+        LOG.info(String.format("dataPullRequest received livePullId %s  keys %s->%s for %s  partIds %s->%s", livePullRequest.getLivePullIdentifier(), livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), livePullRequest.getVoltTableName(),
                 livePullRequest.getOldPartition(), livePullRequest.getNewPartition()));
-
+        long now;
+        if(DETAILED_TIMING){
+            now = System.currentTimeMillis();
+            dataPullResponseTimes.put(livePullRequest.getLivePullIdentifier(), now);
+        }
         VoltTable vt = null;
         for (PartitionExecutor executor : this.local_executors) {
             // TODO : check if we can be more efficient here
@@ -539,10 +550,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 // Queue the live Pull request to the work queue
                 // TODO : Change the input parameters for the senTuples function
                 if (debug.val)
-                    LOG.debug("Queue the live Pull Request");
+                    LOG.debug("Queue the live data Pull Request");
                 executor.queueLivePullRequest(livePullRequest, livePullResponseCallback);
             }
         }
+        if(DETAILED_TIMING){
+            this.profilers[livePullRequest.getOldPartition()].src_data_pull_req_init_time.appendTime(now, System.currentTimeMillis());
+        }
+        
 
         // TODO : Remove
         /*
@@ -629,7 +644,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // If the callback is null, it shows that the request is from a
             // partition in
             // the local site itself.
-            sendTuples(livePullRequest, null);
+            dataPullRequest(livePullRequest, null);
             return;
         }
 
@@ -880,11 +895,18 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         this.profilers[p_id].on_demand_pull_time.getInvocations(), p_id);
                 LOG.info(avgPull);
                 FileUtil.appendEventToFile(avgPull);
+                
                 String avgAsync = String.format("REPORT_AVG_ASYNC_PULL_TIME, MS=%s, Count=%s, PartitionId=%s ",
                         this.profilers[p_id].async_pull_time.getAverageThinkTimeMS(),
                         this.profilers[p_id].async_pull_time.getInvocations(), p_id);
                 LOG.info(avgAsync);
                 FileUtil.appendEventToFile(avgAsync);
+ 
+                String avgAsyncQ = String.format("REPORT_AVG_ASYNC_DEST_QUEUE_TIME, MS=%s, Count=%s, PartitionId=%s ",
+                        this.profilers[p_id].async_dest_queue_time.getAverageThinkTimeMS(),
+                        this.profilers[p_id].async_dest_queue_time.getInvocations(), p_id);
+                LOG.info(avgAsyncQ);
+                FileUtil.appendEventToFile(avgAsyncQ);
                 
                 String pullResponse = String.format("REPORT_AVG_LIVE_PULL_RESONSE_QUEUE_TIME, MS=%s, Count=%s, PartitionId=%s ",
                         this.profilers[p_id].on_demand_pull_response_queue.getAverageThinkTimeMS(),
@@ -892,6 +914,30 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 LOG.info(pullResponse);
                 FileUtil.appendEventToFile(pullResponse);
                 
+                if (DETAILED_TIMING) {
+                    String dataPullInit = String.format("REPORT_AVG_SRC_DATA_PULL_INIT, MS=%s, Count=%s, PartitionId=%s ",
+                            this.profilers[p_id].src_data_pull_req_init_time.getAverageThinkTimeMS(),
+                            this.profilers[p_id].src_data_pull_req_init_time.getInvocations(), p_id);
+                    LOG.info(dataPullInit);
+                    FileUtil.appendEventToFile(dataPullInit);
+                    
+                    String dataPullProc = String.format("REPORT_AVG_SRC_DATA_PULL_PROC, MS=%s, Count=%s, PartitionId=%s ",
+                            this.profilers[p_id].src_data_pull_req_proc_time.getAverageThinkTimeMS(),
+                            this.profilers[p_id].src_data_pull_req_proc_time.getInvocations(), p_id);
+                    LOG.info(dataPullProc);
+                    FileUtil.appendEventToFile(dataPullProc);
+                }
+                
+            }
+        }
+    }
+
+    public void notifyPullResponse(int livePullIdentifier, int partitionId) {
+        if (DETAILED_TIMING){
+            try{
+                this.profilers[partitionId].src_data_pull_req_proc_time.appendTime(dataPullResponseTimes.get(livePullIdentifier),System.currentTimeMillis());
+            } catch(Exception ex) {
+                LOG.info("Exception getting profiler timing", ex);
             }
         }
     }

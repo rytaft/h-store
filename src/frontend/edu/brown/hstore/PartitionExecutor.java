@@ -2966,6 +2966,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.hstore_site.getReconfigurationCoordinator().receiveLivePullTuples(livePullRequest.getLivePullIdentifier(), livePullRequest.getTransactionID(), livePullRequest.getOldPartition(),
                     livePullRequest.getNewPartition(), livePullRequest.getVoltTableName(), livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), voltTable);
         }
+        if (ReconfigurationCoordinator.DETAILED_TIMING){
+            reconfiguration_coordinator.notifyPullResponse(livePullRequest.getLivePullIdentifier(), this.partitionId);
+        }
         LOG.info("sent response to live pull : " + livePullRequest.getLivePullIdentifier());
     }
     
@@ -2976,8 +2979,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // source lying around
         
         ReconfigurationRange<? extends Comparable<?>> pullRange = asyncPullRequestMessage.getPullRange();
-        LOG.info("Asynch pull message being scheduled for range " + pullRange.toString());
-        
+        LOG.debug("Asynch pull message being scheduled for range " + pullRange.toString());
+        //How long did it sit in the queue for
+        this.reconfiguration_coordinator.profilers[this.partitionId].async_dest_queue_time.appendTime(asyncPullRequestMessage.getQueueTime());
         //TODO : For now the function is called for each range being pulled, check if we should move the logic of breaking the requests here
         int requestSize = 1;
         Semaphore pullBlockSemaphore = new Semaphore(requestSize);
@@ -2988,7 +2992,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.start();
 
         this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), -1, this.partitionId, pullRequests, pullBlockSemaphore);
-        LOG.info("Blocking on ranges " + requestSize);
+        LOG.info("Blocking PE for ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
         try {
             boolean acquired = pullBlockSemaphore.tryAcquire(requestSize,30, TimeUnit.SECONDS);
             if(acquired){
