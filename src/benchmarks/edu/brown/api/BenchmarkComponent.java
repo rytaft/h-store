@@ -69,6 +69,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.collections15.map.ListOrderedMap;
 import org.apache.log4j.Logger;
+import org.jfree.util.Log;
 import org.voltdb.CatalogContext;
 import org.voltdb.ClientResponseImpl;
 import org.voltdb.VoltSystemProcedure;
@@ -446,8 +447,11 @@ public abstract class BenchmarkComponent {
         try {
 			m_incrementsTxnRate = new Scanner(Paths.get("txnrates.txt"));
 		} catch (IOException e) {
-			System.out.println("Warning: File txnrates.txt not found");
+			Log.debug("Warning: File txnrates.txt not found");
 		}
+        if (m_incrementsTxnRate != null){
+        	System.out.println("Using variable request rates"); 
+        }
         
         // Marco - end
         

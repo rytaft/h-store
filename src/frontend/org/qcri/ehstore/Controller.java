@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
+import org.qcri.ehstore.placement.Placement;
+import org.qcri.ehstore.placement.Plan;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
 import org.voltdb.client.Client;
@@ -19,25 +22,63 @@ import org.voltdb.processtools.ShellTools;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.Hstoreservice.Status;
+import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.ArgumentsParser;
 import edu.brown.utils.CollectionUtil;
 
 public class Controller implements Runnable {
 	
-	private static Client client;
-	private static String connectedHost;
-	private static Catalog catalog;
-	private static Collection<Site> sites;
-	private static final double CPU_THRESHOLD = 400;
+	private Client client;
+	private String connectedHost;
+	private Collection<Site> sites;
+	
+	private Placement algo;
+	private Plan currentPlan;
+	private String planFile;
 		
+	private static final double CPU_THRESHOLD = 0.8;
+	private static final int PARTITIONS_PER_HOST = 8;
+	private static final int POLL_FREQUENCY = 3000;
+
 	// used HStoreTerminal as model to handle the catalog
-	public Controller (Catalog cat){
+	public Controller (Catalog catalog){
+		algo = new Placement();
 		// connect to VoltDB server
         client = ClientFactory.createClient();
         client.configureBlocking(false);
-        catalog = cat;
         sites = CatalogUtil.getAllSites(catalog);
-        Site catalog_site = CollectionUtil.random(CatalogUtil.getAllSites(catalog));
+        
+        HStoreConf hStoreConf = HStoreConf.singleton();
+        if(hStoreConf.get("global.hasher_plan") == null){
+        	System.out.println("Must set global.hasher_plan to specify plan file!");
+        	System.out.println("Going on (for testing)");
+	        currentPlan = new Plan();
+        }
+        else{
+	        planFile = hStoreConf.get("global.hasher_plan").toString();
+	        currentPlan = new Plan(planFile);
+        }
+	}
+
+	@Override
+	public void run () {
+    	while(true){
+			try {
+				List<Site> overloaded = getOverloadedSites();
+				if (overloaded != null && !overloaded.isEmpty()){
+					currentPlan = algo.computePlan(overloaded, currentPlan);
+					currentPlan.toJSON(planFile);
+				}
+				Thread.sleep(POLL_FREQUENCY);
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+				return;
+			}
+		}
+	}
+	
+	private void connectToHost(){
+        Site catalog_site = CollectionUtil.random(sites);
         connectedHost= catalog_site.getHost().getIpaddr();
 
         try {
@@ -51,64 +92,40 @@ public class Controller implements Runnable {
 			e.printStackTrace();
 			return;
 		}
+        System.out.println("Connected to host " + connectedHost);
 	}
 
-	@Override
-	public void run () {
-        System.out.println("Accessing host " + connectedHost + " at port " + HStoreConstants.DEFAULT_PORT);
-    	
-		try {
-
-	        String statsType = "TXNRESPONSETIME";
-	        int interval = 0;
-	        System.out.println("Connected, gettings stats!");
-	        ClientResponse cresponse = null;
-	        while(true) {
-				try {
-					cresponse = client.callProcedure("@Statistics", statsType, interval);
-				} catch (NoConnectionsException e) {
-					System.out.println("Controller: lost connection");
-					e.printStackTrace();
-					getOverloadedSites(); // TODO call the bin packer here and pass it the list of sites
-					continue;
-				} catch (IOException e) {
-					System.out.println("Controller: IO Exception while connecting to host");
-					e.printStackTrace();
-					getOverloadedSites();
-					continue;
-				} catch (ProcCallException e) {
-					System.out.println("Controller: @Statistics transaction rejected (backpressure?)");
-					e.printStackTrace();
-					getOverloadedSites();
-					continue;
-				}
-	 
-				if(cresponse.getStatus() != Status.OK){
-					System.out.println("@Statistics transaction aborted");
-					getOverloadedSites();
-					continue;
-				}
-				
-	        	System.out.println("Received stats, parsing...");
-	        	VoltTable stats = cresponse.getResults()[0];
-	        	
-	        	if(isRegular(stats)){
-	        		System.out.println("Everything allright");
-	        	}
-	        	else{
-	        		System.out.println("Problem detected");
-	        		getOverloadedSites();
-	        	}
-	        
-				Thread.sleep(1000);
-	        }
-		} catch (InterruptedException e1) {
-			e1.printStackTrace();
-			return;
+	private boolean checkLatencies(){
+		if(connectedHost == null){
+			connectToHost();
 		}
-	}
-	
-	private boolean isRegular(VoltTable stats){
+        String statsType = "TXNRESPONSETIME";
+        int interval = 0;
+        ClientResponse cresponse = null;
+		try {
+			cresponse = client.callProcedure("@Statistics", statsType, interval);
+		} catch (NoConnectionsException e) {
+			System.out.println("Controller: lost connection");
+			e.printStackTrace();
+			return false;
+		} catch (IOException e) {
+			System.out.println("Controller: IO Exception while connecting to host");
+			e.printStackTrace();
+			return false;
+		} catch (ProcCallException e) {
+			System.out.println("Controller: @Statistics transaction rejected (backpressure?)");
+			e.printStackTrace();
+			return false;
+		}
+ 
+		if(cresponse.getStatus() != Status.OK){
+			System.out.println("@Statistics transaction aborted");
+			return false;
+		}
+		
+    	System.out.println("Received stats, parsing...");
+    	VoltTable stats = cresponse.getResults()[0];
+    	
 		String prevHost = stats.fetchRow(0).getString(2);
 		long goodTxns = 0;
 		long badTxns = 0;
@@ -141,28 +158,33 @@ public class Controller implements Runnable {
 		return true;
 	}
 	
-	private static Collection<Site> getOverloadedSites() throws InterruptedException{
-		System.out.println("Controller: detecting overloaded sites");
+	public List<Site> getOverloadedSites() throws InterruptedException{
 		ArrayList<Site> res = new ArrayList<Site> (sites.size());
 		for(Site s : sites){
 			String ip = s.getHost().getIpaddr();
-	        String command = String.format("ssh " + ip + " 'ps -o pcpu' ");
-	        String results = ShellTools.cmd(command);
-	        Thread.sleep(1000);
-	        String[] lines = results.split("\n");
-	        if (lines.length < 2){
-	        	System.out.println("Controller: Problem while polling CPU usage for host");
-	        	System.exit(-1);
-	        }
-	        double cpuUsage = 0;
-	        for (int i = 1; i < lines.length; ++i){
-	        	cpuUsage += Double.parseDouble(lines[i]);
-	        }
-	        if (cpuUsage > CPU_THRESHOLD){
+			double cpuUsage = getCPUUtil(ip);
+	        if (cpuUsage > CPU_THRESHOLD * PARTITIONS_PER_HOST){
 	        	res.add(s);
 	        }
 		}
 		return res;
+	}
+	
+	public static double getCPUUtil(String ip){
+        System.out.println("Polling " + ip);
+        String results = ShellTools.cmd("ssh " + ip + " ps -eo pcpu");
+//        String results = ShellTools.cmd("ssh " + ip + " ls -l");
+        String[] lines = results.split("\n");
+        if (lines.length < 2){
+        	System.out.println("Controller: Problem while polling CPU usage for host " + ip);
+        	System.exit(-1);
+        }
+        double cpuUsage = 0;
+        for (int i = 1; i < lines.length; ++i){
+        	cpuUsage += Double.parseDouble(lines[i]);
+        }
+        System.out.println("CPU usage of host " + ip + ": " + cpuUsage);
+        return cpuUsage;
 	}
 	
 	/**
