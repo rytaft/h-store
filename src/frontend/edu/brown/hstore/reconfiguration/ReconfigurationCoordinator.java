@@ -652,7 +652,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
 
     public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, Long max_exclusive, VoltTable voltTable) {
-
+        
+        long start, receive, done;
+        if (DETAILED_TIMING){
+            start = System.currentTimeMillis();
+        }
         LOG.info(String.format("Received tuples for %s %s (%s) (from:%s to:%s) for range, " + "(from:%s to:%s)", livePullId, txnId, table_name, newPartitionId, oldPartitionId, min_inclusive,
                 max_exclusive));
         for (PartitionExecutor executor : local_executors) {
@@ -660,10 +664,18 @@ public class ReconfigurationCoordinator implements Shutdownable {
             if (executor.getPartitionId() == newPartitionId) {
                 try {
                     executor.receiveTuples(txnId, oldPartitionId, newPartitionId, table_name, min_inclusive, max_exclusive, voltTable);
+                    if (DETAILED_TIMING) {
+                        receive = System.currentTimeMillis();
+                    }
                     // Unblock the semaphore for a blocking request
                     if (blockedRequests.containsKey(livePullId) && blockedRequests.get(livePullId) != null) {
                         LOG.info("Unblocking the PE for the pulles request " + livePullId);
                         blockedRequests.get(livePullId).release();
+                        if (DETAILED_TIMING) {
+                            done = System.currentTimeMillis()-start;
+                            receive-=start;
+                            LOG.info(String.format("(%s) Receive took: %s Receive + Unblock took :%s",newPartitionId, receive, done));
+                        }
                     }
                 } catch (Exception e) {
                     LOG.error("Error in partition executors receiving tuples for their pull " + "request", e);

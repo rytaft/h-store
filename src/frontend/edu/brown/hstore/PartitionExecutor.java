@@ -2992,7 +2992,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.start();
 
         this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), -1, this.partitionId, pullRequests, pullBlockSemaphore);
-        LOG.info("Blocking PE for ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
+        LOG.info("("+ this.partitionId + ") Blocking PE for ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
         try {
             boolean acquired = pullBlockSemaphore.tryAcquire(requestSize,30, TimeUnit.SECONDS);
             if(acquired){
@@ -3519,8 +3519,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         if (data == null)
             throw new VoltAbortException("data i s null");
-
+        long start;
+        if (ReconfigurationCoordinator.DETAILED_TIMING) {
+            start = System.currentTimeMillis();
+        }
         this.ee.loadTable(table.getRelativeIndex(), data, -1, lastCommitted, getNextUndoToken(), allowExport);
+        if (ReconfigurationCoordinator.DETAILED_TIMING) {
+            LOG.info(String.format("(%s) Load table[%s] for %s records of size %s took %s ms ",this.partitionId, tableName, 
+                    data.getRowCount(), data.getRowCount() * data.getRowSize() ,System.currentTimeMillis()-start )); 
+        }
 
     }
 
