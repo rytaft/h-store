@@ -377,6 +377,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             LOG.info("Sending a message to notify all sites that reconfiguration has ended");
             FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+", siteId="+this.hstore_site.getSiteId());
             sendReconfigEndAcknowledgementToAllSites();
+            showReconfigurationProfiler();
         }
     }
     
@@ -401,6 +402,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      
             sendReconfigEndAcknowledgementToAllSites();
             FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+" , siteId="+this.hstore_site.getSiteId());
+            showReconfigurationProfiler();
         }
     }
     
@@ -873,18 +875,22 @@ public class ReconfigurationCoordinator implements Shutdownable {
             for (int p_id : hstore_site.getLocalPartitionIds().values()) {
                 LOG.info("Showing reconfig stats");
                 LOG.info(this.profilers[p_id].toString());
-                LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
+                String avgPull = String.format("REPORT_AVG_DEMAND_PULL_TIME, MS=%s, Count=%s",
                         this.profilers[p_id].on_demand_pull_time.getAverageThinkTimeMS(),
-                        this.profilers[p_id].on_demand_pull_time.getInvocations()));
-    
-                LOG.info(String.format("Avg async pull Time MS %s Count:%s ",
+                        this.profilers[p_id].on_demand_pull_time.getInvocations());
+                LOG.info(avgPull);
+                FileUtil.appendEventToFile(avgPull);
+                String avgAsync = String.format("REPORT_AVG_ASYNC_PULL_TIME, MS=%s, Count=%s ",
                         this.profilers[p_id].async_pull_time.getAverageThinkTimeMS(),
-                        this.profilers[p_id].async_pull_time.getInvocations()));
+                        this.profilers[p_id].async_pull_time.getInvocations());
+                LOG.info(avgAsync);
+                FileUtil.appendEventToFile(avgAsync);
                 
-                
-                LOG.info(String.format("Avg live pull response queue Time MS %s Count:%s ",
+                String pullResponse = String.format("REPORT_AVG_LIVE_PULL_RESONSE_QUEUE_TIME, MS=%s, Count=%s ",
                         this.profilers[p_id].on_demand_pull_response_queue.getAverageThinkTimeMS(),
-                        this.profilers[p_id].on_demand_pull_response_queue.getInvocations()));
+                        this.profilers[p_id].on_demand_pull_response_queue.getInvocations());
+                LOG.info(pullResponse);
+                FileUtil.appendEventToFile(pullResponse);
                 
             }
         }
