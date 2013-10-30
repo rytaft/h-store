@@ -1356,8 +1356,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
                 // RC push tuples
                 reconfiguration_coordinator.pushTuples(pushRange.old_partition, pushRange.new_partition, pushRange.table_name, 
-                        vt, (Long) pushRange.getMin_inclusive(),
-                        (Long) pushRange.getMax_exclusive());
+                        vt, pushRange.min_long, pushRange.max_long);
                 this.reconfiguration_tracker.markRangeAsMigratedOut(pushRange);
             } catch (ReconfigurationException re) {
                 if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_OUT)

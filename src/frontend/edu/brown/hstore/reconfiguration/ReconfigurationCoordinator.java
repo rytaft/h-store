@@ -202,7 +202,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                                 for (ReconfigurationRange<? extends Comparable<?>> range : outgoing_ranges) {                            
                                     VoltTable table = executor.extractPushRequst(range);
                                     pushTuples(range.old_partition, range.new_partition, range.table_name, table, 
-                                            (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive());
+                                            range.min_long,  range.max_long);
                                 }
                             } else {
                                 LOG.info("no outgoing ranges for PE : " + executor.getPartitionId());
@@ -875,20 +875,20 @@ public class ReconfigurationCoordinator implements Shutdownable {
             for (int p_id : hstore_site.getLocalPartitionIds().values()) {
                 LOG.info("Showing reconfig stats");
                 LOG.info(this.profilers[p_id].toString());
-                String avgPull = String.format("REPORT_AVG_DEMAND_PULL_TIME, MS=%s, Count=%s",
+                String avgPull = String.format("REPORT_AVG_DEMAND_PULL_TIME, MS=%s, Count=%s, PartitionId=%s",
                         this.profilers[p_id].on_demand_pull_time.getAverageThinkTimeMS(),
-                        this.profilers[p_id].on_demand_pull_time.getInvocations());
+                        this.profilers[p_id].on_demand_pull_time.getInvocations(), p_id);
                 LOG.info(avgPull);
                 FileUtil.appendEventToFile(avgPull);
-                String avgAsync = String.format("REPORT_AVG_ASYNC_PULL_TIME, MS=%s, Count=%s ",
+                String avgAsync = String.format("REPORT_AVG_ASYNC_PULL_TIME, MS=%s, Count=%s, PartitionId=%s ",
                         this.profilers[p_id].async_pull_time.getAverageThinkTimeMS(),
-                        this.profilers[p_id].async_pull_time.getInvocations());
+                        this.profilers[p_id].async_pull_time.getInvocations(), p_id);
                 LOG.info(avgAsync);
                 FileUtil.appendEventToFile(avgAsync);
                 
-                String pullResponse = String.format("REPORT_AVG_LIVE_PULL_RESONSE_QUEUE_TIME, MS=%s, Count=%s ",
+                String pullResponse = String.format("REPORT_AVG_LIVE_PULL_RESONSE_QUEUE_TIME, MS=%s, Count=%s, PartitionId=%s ",
                         this.profilers[p_id].on_demand_pull_response_queue.getAverageThinkTimeMS(),
-                        this.profilers[p_id].on_demand_pull_response_queue.getInvocations());
+                        this.profilers[p_id].on_demand_pull_response_queue.getInvocations(), p_id);
                 LOG.info(pullResponse);
                 FileUtil.appendEventToFile(pullResponse);
                 
