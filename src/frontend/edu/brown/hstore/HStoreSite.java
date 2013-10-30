@@ -1541,7 +1541,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
             this.clientInterface.shutdown();
         }
         
-        if(hstore_conf.site.reconfiguration_profiling && hstore_conf.global.reconfiguration_enable) {
+        if(hstore_conf.site.reconfig_profiling && hstore_conf.global.reconfiguration_enable) {
             this.reconfiguration_coordinator.showReconfigurationProfiler();
         }
         LOG.info(String.format("Completed shutdown process at %s [instanceId=%d]",

@@ -708,11 +708,40 @@ public final class HStoreConf {
                 
         
         @ConfigProperty(
-                description="Enable the reconfiguration profiling.",
+                description="Enable reconfiguration profiling.",
                 defaultBoolean=true,
                 experimental=true
         )
-        public boolean reconfiguration_profiling;
+        public boolean reconfig_profiling;
+        
+        @ConfigProperty(
+                description="Enable detailed reconfiguration profiling.",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_detailed_profiling;
+        
+        @ConfigProperty(
+                description="Have livepull reconfiguration use asynchronous pull of migrating data items.",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_async_pull;
+        
+        @ConfigProperty(
+                description="Have livepull reconfiguration use asynchronous push of migrating data items."
+                        + "If set with async pull, pull will override and be used.",
+                defaultBoolean=false,
+                experimental=true
+        )
+        public boolean reconfig_async_push;
+        
+        @ConfigProperty(
+                description="The default reconfig plan ID to use. If not set use the first one found. ",
+                defaultNull=true,
+                experimental=true
+        )
+        public String reconfig_initial_plan;
         
         // ----------------------------------------------------------------------------
         // MapReduce Options

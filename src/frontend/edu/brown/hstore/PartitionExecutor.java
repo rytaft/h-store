@@ -1515,7 +1515,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         else if (work instanceof LivePullRequestMessage) {
             // Process the pull request
             LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
-            if(hstore_conf.site.reconfiguration_profiling){
+            if(hstore_conf.site.reconfig_profiling){
                 this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.appendTime(livePullRequestMessage.getStartTime(), ProfileMeasurement.getTime());
                 if(tempPullResponseCounter++%100==0)
                     LOG.info(String.format("Avg live pull response queue Time MS %s Count:%s ",
@@ -2253,7 +2253,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         ParameterSet parameterSet = new ParameterSet();
         RpcCallback<ClientResponseImpl> dummyCallback = null;
         localTransaction.init(transactionId, initiateTime, clientHandle, 0, partitionSet, false, false, procedure, parameterSet, dummyCallback);
-        LivePullRequestMessage livePullRequestMessage = new LivePullRequestMessage(localTransaction, livePullRequest, livePullResponseCallback, hstore_conf.site.reconfiguration_profiling);
+        LivePullRequestMessage livePullRequestMessage = new LivePullRequestMessage(localTransaction, livePullRequest, livePullResponseCallback, hstore_conf.site.reconfig_profiling);
         // TODO : Remove log statement : for Testing
         LOG.info("Adding reconfiguration work to the queue");
         boolean success = this.work_queue.offer(livePullRequestMessage); // ,
@@ -2966,7 +2966,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.hstore_site.getReconfigurationCoordinator().receiveLivePullTuples(livePullRequest.getLivePullIdentifier(), livePullRequest.getTransactionID(), livePullRequest.getOldPartition(),
                     livePullRequest.getNewPartition(), livePullRequest.getVoltTableName(), livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), voltTable);
         }
-        if (ReconfigurationCoordinator.DETAILED_TIMING){
+        if (ReconfigurationCoordinator.detailed_timing){
             reconfiguration_coordinator.notifyPullResponse(livePullRequest.getLivePullIdentifier(), this.partitionId);
         }
         LOG.info("sent response to live pull : " + livePullRequest.getLivePullIdentifier());
@@ -2989,14 +2989,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         pullRequests.add(pullRange);
         // transaction id is a dummy here
         // Calling the RC to generates a Live Pull Request for a range and blocking. When the reply comes back the RC will unblock the semaphore
-        if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.start();
+        if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.start();
 
         this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), -1, this.partitionId, pullRequests, pullBlockSemaphore);
         LOG.info("("+ this.partitionId + ") Blocking PE for ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
         try {
             boolean acquired = pullBlockSemaphore.tryAcquire(requestSize,30, TimeUnit.SECONDS);
             if(acquired){
-                if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.stopIfStarted();
+                if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.stopIfStarted();
             }
             else{
                 final String msg = "Timeout on blocking for pullrequest.";
@@ -3422,14 +3422,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // block on the pull request
                 Semaphore pullBlockSemaphore = new Semaphore(pullRequestsNeeded.size());
                 LOG.info("Pulling ranges " + pullRequestsNeeded.size());
-                if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.start();
+                if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.start();
                 this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), this.currentTxnId, this.partitionId, pullRequestsNeeded, pullBlockSemaphore);
                 LOG.info("Blocking on ranges " + pullRequestsNeeded.size());
                 try {
                     pullBlockSemaphore.acquire(pullRequestsNeeded.size());
 
-                    if(hstore_conf.site.reconfiguration_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.stopIfStarted();
-                    if(hstore_conf.site.reconfiguration_profiling && tempPullCounter % 500 == 0) LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
+                    if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.stopIfStarted();
+                    if(hstore_conf.site.reconfig_profiling && tempPullCounter % 500 == 0) LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
                             this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getAverageThinkTimeMS(),
                             this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getInvocations()));
                     LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId));
@@ -3519,12 +3519,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         if (data == null)
             throw new VoltAbortException("data i s null");
-        long start;
-        if (ReconfigurationCoordinator.DETAILED_TIMING) {
+        long start=0;
+        if (ReconfigurationCoordinator.detailed_timing) {
             start = System.currentTimeMillis();
         }
         this.ee.loadTable(table.getRelativeIndex(), data, -1, lastCommitted, getNextUndoToken(), allowExport);
-        if (ReconfigurationCoordinator.DETAILED_TIMING) {
+        if (ReconfigurationCoordinator.detailed_timing) {
             LOG.info(String.format("(%s) Load table[%s] for %s records of size %s took %s ms ",this.partitionId, tableName, 
                     data.getRowCount(), data.getRowCount() * data.getRowSize() ,System.currentTimeMillis()-start )); 
         }

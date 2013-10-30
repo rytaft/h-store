@@ -59,7 +59,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private static final Logger LOG = Logger.getLogger(ReconfigurationCoordinator.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
-    public static final boolean DETAILED_TIMING = true;
+    public static boolean detailed_timing = true;
+    private static boolean async_push = false;
+    private static boolean async_pull = false;
     
     // Cached list of local executors
     private List<PartitionExecutor> local_executors;
@@ -121,12 +123,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
         
         int num_partitions = hstore_site.getCatalogContext().numberOfPartitions;
         this.num_of_sites = hstore_site.getCatalogContext().numberOfSites;
-        if(hstore_conf.site.reconfiguration_profiling) 
+        if(hstore_conf.site.reconfig_profiling) 
             this.profilers = new ReconfigurationProfiler[num_partitions];
         for (int p_id : hstore_site.getLocalPartitionIds().values()) {
             this.local_executors.add(hstore_site.getPartitionExecutor(p_id));
             this.partitionStates.put(p_id, ReconfigurationState.NORMAL);
-            if(hstore_conf.site.reconfiguration_profiling) 
+            if(hstore_conf.site.reconfig_profiling) 
                 this.profilers[p_id] = new ReconfigurationProfiler();
         }
         this.initialPartitionStates = Collections.unmodifiableMap(partitionStates);
@@ -137,6 +139,20 @@ public class ReconfigurationCoordinator implements Shutdownable {
         reconfigurationDoneSites = new HashSet<Integer>();
         
         dataPullResponseTimes = new HashMap<>(); 
+        
+        detailed_timing = hstore_conf.site.reconfig_detailed_profiling;
+        async_push = hstore_conf.site.reconfig_async_push;
+        async_pull = hstore_conf.site.reconfig_async_pull;
+        
+        //We only want one to be set
+        if (async_pull && async_push) {
+            LOG.warn("Async push and pull both set. Disabling async_push");
+            async_push = false;
+        }
+        
+        LOG.info(String.format("Reconfig configuration. DetailedTiming: %s AsyncPush:%s AysncPull:%s", 
+                detailed_timing, async_push, async_pull));
+        
     }
 
     /**
@@ -538,8 +554,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public void dataPullRequest(LivePullRequest livePullRequest, RpcCallback<LivePullResponse> livePullResponseCallback) {
         LOG.info(String.format("dataPullRequest received livePullId %s  keys %s->%s for %s  partIds %s->%s", livePullRequest.getLivePullIdentifier(), livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), livePullRequest.getVoltTableName(),
                 livePullRequest.getOldPartition(), livePullRequest.getNewPartition()));
-        long now;
-        if(DETAILED_TIMING){
+        long now=0;
+        if(detailed_timing){
             now = System.currentTimeMillis();
             dataPullResponseTimes.put(livePullRequest.getLivePullIdentifier(), now);
         }
@@ -554,7 +570,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 executor.queueLivePullRequest(livePullRequest, livePullResponseCallback);
             }
         }
-        if(DETAILED_TIMING){
+        if(detailed_timing){
             this.profilers[livePullRequest.getOldPartition()].src_data_pull_req_init_time.appendTime(now, System.currentTimeMillis());
         }
         
@@ -653,8 +669,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, Long max_exclusive, VoltTable voltTable) {
         
-        long start, receive, done;
-        if (DETAILED_TIMING){
+        long start=0, receive=0, done=0;
+        if (detailed_timing){
             start = System.currentTimeMillis();
         }
         LOG.info(String.format("Received tuples for %s %s (%s) (from:%s to:%s) for range, " + "(from:%s to:%s)", livePullId, txnId, table_name, newPartitionId, oldPartitionId, min_inclusive,
@@ -664,14 +680,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
             if (executor.getPartitionId() == newPartitionId) {
                 try {
                     executor.receiveTuples(txnId, oldPartitionId, newPartitionId, table_name, min_inclusive, max_exclusive, voltTable);
-                    if (DETAILED_TIMING) {
+                    if (detailed_timing) {
                         receive = System.currentTimeMillis();
                     }
                     // Unblock the semaphore for a blocking request
                     if (blockedRequests.containsKey(livePullId) && blockedRequests.get(livePullId) != null) {
                         LOG.info("Unblocking the PE for the pulles request " + livePullId);
                         blockedRequests.get(livePullId).release();
-                        if (DETAILED_TIMING) {
+                        if (detailed_timing) {
                             done = System.currentTimeMillis()-start;
                             receive-=start;
                             LOG.info(String.format("(%s) Receive took: %s Receive + Unblock took :%s",newPartitionId, receive, done));
@@ -888,17 +904,15 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
 
     public boolean scheduleAsyncPush() {
-        // TODO Auto-generated method stub
-        return false;
+        return this.async_push;
     }
 
     public boolean scheduleAsyncPull() {
-        // TODO 06/18/2013- False for testing its priority, revert later
-        return true;
+        return this.async_pull;
     }
 
     public void showReconfigurationProfiler() {
-        if(hstore_conf.site.reconfiguration_profiling) {
+        if(hstore_conf.site.reconfig_profiling) {
             for (int p_id : hstore_site.getLocalPartitionIds().values()) {
                 LOG.info("Showing reconfig stats");
                 LOG.info(this.profilers[p_id].toString());
@@ -926,7 +940,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 LOG.info(pullResponse);
                 FileUtil.appendEventToFile(pullResponse);
                 
-                if (DETAILED_TIMING) {
+                if (detailed_timing) {
                     String dataPullInit = String.format("REPORT_AVG_SRC_DATA_PULL_INIT, MS=%s, Count=%s, PartitionId=%s ",
                             this.profilers[p_id].src_data_pull_req_init_time.getAverageThinkTimeMS(),
                             this.profilers[p_id].src_data_pull_req_init_time.getInvocations(), p_id);
@@ -945,7 +959,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
 
     public void notifyPullResponse(int livePullIdentifier, int partitionId) {
-        if (DETAILED_TIMING){
+        if (detailed_timing){
             try{
                 this.profilers[partitionId].src_data_pull_req_proc_time.appendTime(dataPullResponseTimes.get(livePullIdentifier),System.currentTimeMillis());
             } catch(Exception ex) {
