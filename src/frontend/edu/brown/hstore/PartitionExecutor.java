@@ -5738,12 +5738,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         queueAsyncPullRequests(incoming_ranges);
     }
 
+    public List<ReconfigurationRange<? extends Comparable<?>>> getOutgoingRanges() throws Exception {
+        return this.outgoing_ranges;
+    }
+
     public void startReconfiguration() throws Exception {
         // TODO : Check if this function is even called / needed, remove if it
         // is not
         // because STOP and COPY procedure handles it directly
         LOG.info(String.format("Starting reconfiguration"));
         if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY) {
+            LOG.info("starting stopcopy");
             Table catalog_tbl = null;
             VoltTable table = null;
             for (ReconfigurationRange out_range : outgoing_ranges) {
@@ -5830,6 +5835,19 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         return extractTable(catalog_tbl, new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
     }
 
+    
+    public VoltTable extractPushRequst(ReconfigurationRange<? extends Comparable<?>> pushRange) {
+        // TODO ae leftoff FIXME
+        long _txnid = -1;
+        // TODO Check that this range still needs to be pushed
+        Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
+        int table_id = catalog_tbl.getRelativeIndex();
+        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(pushRange);
+        VoltTable vt = this.ee.extractTable(table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
+        return vt;
+        
+    }
+    
     /**
      * Extract the table from the underlying EE engine
      * 

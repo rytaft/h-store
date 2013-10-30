@@ -19,6 +19,7 @@ import org.voltdb.utils.VoltTableUtil;
 
 import edu.brown.hstore.PartitionExecutor.SystemProcedureExecutionContext;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
+import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator.ReconfigurationState;
 import edu.brown.utils.FileUtil;
 
 /**
@@ -56,15 +57,15 @@ public class Reconfiguration extends VoltSystemProcedure {
   public DependencySet executePlanFragment(Long txn_id, Map<Integer, List<VoltTable>> dependencies, int fragmentId, ParameterSet params,
       SystemProcedureExecutionContext context) {
     DependencySet result = null;
+    int coordinator = (int) params.toArray()[0];
+    String partition_plan = (String) params.toArray()[1];
+    String reconfiguration_protocol_string = (String) params.toArray()[2];        
+    ReconfigurationProtocols reconfig_protocol = ReconfigurationProtocols.valueOf(reconfiguration_protocol_string.toUpperCase());
+
     switch (fragmentId) {
+
     case SysProcFragmentId.PF_reconfigurationDistribute: {
-      int coordinator = (int) params.toArray()[0];
-      String partition_plan = (String) params.toArray()[1];
-      String reconfiguration_protocol_string = (String) params.toArray()[2];
-
-
       try {
-        ReconfigurationProtocols reconfig_protocol = ReconfigurationProtocols.valueOf(reconfiguration_protocol_string.toUpperCase());
         hstore_site.getReconfigurationCoordinator().initReconfiguration(coordinator, reconfig_protocol, partition_plan, -1);
       } catch (Exception ex) {
         throw new ServerFaultException(ex.getMessage(), txn_id);
@@ -86,6 +87,9 @@ public class Reconfiguration extends VoltSystemProcedure {
       }
 
       VoltTable vt = VoltTableUtil.union(siteResults);
+      if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY){
+          FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString());
+      }
       result = new DependencySet(SysProcFragmentId.PF_reconfigurationAggregate, vt);
       break;
     }

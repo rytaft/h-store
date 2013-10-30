@@ -151,14 +151,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
             return null;
         }
         if (reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
-            if (partitionId != -1) {
-                this.partitionStates.put(partitionId, ReconfigurationState.DATA_TRANSFER);
-                this.reconfigurationState = ReconfigurationState.DATA_TRANSFER;
-            } else {
-                String msg = "No PARTITION ID set on init for stop and copy";
-                LOG.error(msg);
-                throw new RuntimeException(msg);
-            }
         } else if (reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL) {
 
         } else {
@@ -171,12 +163,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
             LOG.info("Initializing reconfiguration. New reconfig plan.");
             if (this.hstore_site.getSiteId() == leaderId) {
                 // TODO : Check if more leader logic is needed
-                FileUtil.appendEventToFile(this.hstore_site.getSiteId() + " LEADER_RECONFIG_INIT");
+                FileUtil.appendEventToFile("LEADER_RECONFIG_INIT, siteId="+this.hstore_site.getSiteId());
                 if (debug.val) {
                     LOG.debug("Setting site as reconfig leader");
                 }
             } else {
-            	FileUtil.appendEventToFile(this.hstore_site.getSiteId()+ " RECONFIG_INIT ");
+            	FileUtil.appendEventToFile("RECONFIG_INIT, siteId="+this.hstore_site.getSiteId());
             }
             this.reconfigurationLeader = leaderId;
             this.reconfigurationProtocol = reconfigurationProtocol;
@@ -193,8 +185,39 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 reconfig_plan = hasher.changePartitionPhase(partitionPlan);
                 this.planned_partitions = hasher.getPlanned_partitions();
                 if (reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
-                    // Nothing to do for S&C. PE's directly notified by
-                    // sysProcedure
+                    if (reconfig_plan != null){
+                        LOG.info("initReconfig for STOPCOPY");
+                        this.partitionStates.put(partitionId, ReconfigurationState.DATA_TRANSFER);
+                        this.reconfigurationState = ReconfigurationState.DATA_TRANSFER;
+                        //turn off local executions
+                        for (PartitionExecutor executor : this.local_executors) {
+                            executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
+                            this.partitionStates.put(partitionId, ReconfigurationState.PREPARE);
+                        }
+                        //push outgoing ranges for all local PEs
+                        for (PartitionExecutor executor : this.local_executors) {
+                            LOG.info("Pushing ranges for local PE : " + executor.getPartitionId());
+                            List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges = executor.getOutgoingRanges();
+                            if (outgoing_ranges != null && outgoing_ranges.size()>0) {
+                                for (ReconfigurationRange<? extends Comparable<?>> range : outgoing_ranges) {                            
+                                    VoltTable table = executor.extractPushRequst(range);
+                                    pushTuples(range.old_partition, range.new_partition, range.table_name, table, 
+                                            (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive());
+                                }
+                            } else {
+                                LOG.info("no outgoing ranges for PE : " + executor.getPartitionId());
+                            }
+                        }
+                        //TODO this file is horrible and needs refactoring....
+                        //we have an end, reset and finish reconfiguration...
+                        endReconfiguration();
+                        resetReconfigurationInProgress();
+                    } else {
+                        LOG.info("No reconfig plan, nothing to do");
+                    }
+
+
+
                 } else if (reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL) {
                     if (reconfig_plan != null) {
                         if (this.hstore_site.getSiteId() == leaderId) {
@@ -269,10 +292,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
             if (allPartitionsFinished()) {
                 
-                LOG.info("Last PE finished reconfiguration");
-                if(partitionId == this.reconfigurationLeader){
-                    FileUtil.appendEventToFile(this.hstore_site.getSiteId() + " LEADER_RECONFIGURATION_"+ReconfigurationState.END);
-                }
+                LOG.info("Last PE finished reconfiguration for STOPCOPY");
                 resetReconfigurationInProgress();
             }
         } else if (this.reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL){
@@ -283,7 +303,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             //Check all the partitions are done
             if(this.reconfigurationDonePartitionIds.size() == this.local_executors.size()){
                 // signal end of reconfiguration to leader
-                signalEndReconfigurationLeader(this.localSiteId, partitionId);
+                signalEndReconfigurationToLeader(this.localSiteId, partitionId);
             }
             
         }
@@ -294,7 +314,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * Signal the end of reconfiguration for a siteId to the leader
      * @param siteId
      */
-    public void signalEndReconfigurationLeader(int siteId, int callingPartition) {
+    public void signalEndReconfigurationToLeader(int siteId, int callingPartition) {
         LOG.info("Signalling endReconfigToLeader : " + siteId );
         ReconfigurationControlRequest leaderCallback = ReconfigurationControlRequest.newBuilder().setSrcPartition(callingPartition)
                 .setDestPartition(this.reconfigurationLeader)
@@ -313,13 +333,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
       
         if (destinationId == this.localSiteId){
-            leaderReconfigurationComplete(this.localSiteId);
+            leaderLocalSiteReconfigurationComplete(this.localSiteId);
         } else{
         	if (this.channels[destinationId] == null){
         		  LOG.error("Reconfig Leader Channel is null. " +  destinationId + " : " + this.channels);
         	} else{
         		this.channels[destinationId].reconfigurationControlMsg(controller, leaderCallback, null);
-        		FileUtil.appendEventToFile(this.hstore_site.getSiteId()+" RECONFIGURATION_" + ReconfigurationState.END.toString());
+        		FileUtil.appendEventToFile("RECONFIGURATION_SITE_DONE, siteId="+this.hstore_site.getSiteId());
         	}
         }
     }
@@ -339,20 +359,23 @@ public class ReconfigurationCoordinator implements Shutdownable {
         	if(i != localSiteId) {
         		this.channels[i].reconfigurationControlMsg(controller, reconfigEndAck, null);
         	} else {
-        		markReconfigurationIsDoneLocally();
+        		receiveReconfigurationCompleteFromLeader();
         	}
         	
         }
     }
     
-    private void leaderReconfigurationComplete(int siteId){
+    private void leaderLocalSiteReconfigurationComplete(int siteId){
         LOG.info("Site reconfiguration complete for the leader : " + siteId);
         reconfigurationDoneSites.add(siteId);
+        FileUtil.appendEventToFile("LEADER_RECONFIGURATION_SITE_DONE, siteId="+this.hstore_site.getSiteId());
+
         LOG.info("Reconfiguration is done for the leader");
+        //Leader was the last one to complete
         if(reconfigurationDoneSites.size() == num_of_sites){
             LOG.info("All sites have reported that reconfiguration is complete "); 
-            FileUtil.appendEventToFile(this.hstore_site.getSiteId()+" LEADER_RECONFIGURATION_" + ReconfigurationState.END.toString());
             LOG.info("Sending a message to notify all sites that reconfiguration has ended");
+            FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+", siteId="+this.hstore_site.getSiteId());
             sendReconfigEndAcknowledgementToAllSites();
         }
     }
@@ -362,7 +385,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @siteId is done with reconfiguration
      * @param siteId
      */
-    public void markReconfigurationIsDone(int siteId) {
+    public void leaderReceiveRemoteReconfigComplete(int siteId) {
         if(this.localSiteId != this.reconfigurationLeader){
             LOG.error("This message should only go to reconfiguration leader");
             return;
@@ -370,17 +393,18 @@ public class ReconfigurationCoordinator implements Shutdownable {
         LOG.info("Got a message to end Reconfiguration from site Id :"+ siteId);
         this.reconfigurationDoneSites.add(siteId);
         
+        //All sites have checked in, including leader previously
         if(reconfigurationDoneSites.size() == this.hstore_site.getCatalogContext().numberOfSites){
             // Now the leader can be sure that the reconfiguration is done as all sites have checked in
-            LOG.info("All sites have reported reconfiguration is complete");        
-            LOG.info("Sending a message to notify all sites that reconfiguration has ended");
+            LOG.info("All sites have reported reconfiguration is complete. " +
+                    "Sending a message to notify all sites that reconfiguration has ended");
      
             sendReconfigEndAcknowledgementToAllSites();
-            FileUtil.appendEventToFile(this.hstore_site.getSiteId() + " LEADER_RECONFIGURATION_" + ReconfigurationState.END.toString());
+            FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+" , siteId="+this.hstore_site.getSiteId());
         }
     }
     
-    public void markReconfigurationIsDoneLocally() {
+    public void receiveReconfigurationCompleteFromLeader() {
     	LOG.info("Got a message from the reconfiguration leader to end the reconfiguration");
     	endReconfiguration();
     }
@@ -415,6 +439,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 this.reconfigurationState = ReconfigurationState.DATA_TRANSFER;
             } else if (this.reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
                 // First set the state to send control messages
+                LOG.info("Preparing STOPCOPY reconfiguration");
                 this.reconfigurationState = ReconfigurationState.PREPARE;
                 this.sendPrepare(this.findDestinationSites());
             }
@@ -662,6 +687,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      */
     public void sendPrepare(ArrayList<Integer> destinationSites) {
         if (this.reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
+            LOG.info("Send prepare for STOPCOPY");
             for (Integer destinationId : destinationSites) {
                 // Send a control message to start the reconfiguration
 
@@ -697,6 +723,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      */
     public void bulkDataTransfer() {
         if (this.reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
+            LOG.error("Empty bulk data transfer for STOPCOPY");
             // bulk transfer the table data
             // by calling on transfer for each partition of the site
         }
