@@ -66,8 +66,10 @@ void ReadWriteTracker::insertTuple(boost::unordered_map<std::string, RowOffsets*
     }
     
     uint32_t tupleId = tuple->getTupleID();
+
     offsets->insert(tupleId);
     VOLT_INFO("*** TXN #%ld -> %s / %d", this->txnId, tableName.c_str(), tupleId);
+    VOLT_INFO("*** Table %s : Tuple ID %d has Freq %ld", tableName.c_str(), tupleId, tuple->getTupleAccessFreq());//Essam
 }
 
 void ReadWriteTracker::markTupleRead(const std::string tableName, TableTuple *tuple) {

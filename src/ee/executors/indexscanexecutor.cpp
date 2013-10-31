@@ -536,6 +536,7 @@ bool IndexScanExecutor::p_execute(const NValueArray &params, ReadWriteTracker *t
             !(m_tuple = m_index->nextValue()).isNullTuple()))
     {
         m_targetTable->updateTupleAccessCount();
+        m_tuple.updateTupleAccessFreq() ; //Essam Tuple
         
         // Read/Write Set Tracking
         if (tracker != NULL) {

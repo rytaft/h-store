@@ -317,6 +317,7 @@ bool NestLoopIndexExecutor::p_execute(const NValueArray &params, ReadWriteTracke
         {
             match = true;
             inner_table->updateTupleAccessCount();
+            inner_tuple.updateTupleAccessFreq() ; //Essam Tuple
 
             VOLT_TRACE("inner_tuple:%s",
                        inner_tuple.debug(inner_table->name()).c_str());

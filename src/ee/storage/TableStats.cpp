@@ -37,12 +37,14 @@ vector<string> TableStats::generateTableStatsColumnNames() {
     vector<string> columnNames = StatsSource::generateBaseStatsColumnNames();
     columnNames.push_back("TABLE_NAME");
     columnNames.push_back("TABLE_TYPE");
+    columnNames.push_back("TUPLE_ID");//Essam
     columnNames.push_back("TUPLE_COUNT");
     columnNames.push_back("TUPLE_ACCESSES");
     columnNames.push_back("TUPLE_ALLOCATED_MEMORY");
     columnNames.push_back("TUPLE_DATA_MEMORY");
     columnNames.push_back("STRING_DATA_MEMORY");
     
+    /*
     #ifdef ANTICACHE
     // ACTIVE
     columnNames.push_back("ANTICACHE_TUPLES_EVICTED");
@@ -59,6 +61,7 @@ vector<string> TableStats::generateTableStatsColumnNames() {
     columnNames.push_back("ANTICACHE_BLOCKS_READ");
     columnNames.push_back("ANTICACHE_BYTES_READ");
     #endif
+    //*/
     
     return columnNames;
 }
@@ -75,7 +78,9 @@ void TableStats::populateTableStatsSchema(
     types.push_back(VALUE_TYPE_INTEGER); columnLengths.push_back(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER)); allowNull.push_back(false);
     types.push_back(VALUE_TYPE_INTEGER); columnLengths.push_back(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER)); allowNull.push_back(false);
     types.push_back(VALUE_TYPE_INTEGER); columnLengths.push_back(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER)); allowNull.push_back(false);
+    types.push_back(VALUE_TYPE_INTEGER); columnLengths.push_back(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER)); allowNull.push_back(false);//Essam Tuple tracking
     
+    /*
     #ifdef ANTICACHE
     // ANTICACHE_TUPLES_EVICTED
     types.push_back(VALUE_TYPE_INTEGER);
@@ -122,6 +127,7 @@ void TableStats::populateTableStatsSchema(
     columnLengths.push_back(NValue::getTupleStorageSize(VALUE_TYPE_BIGINT));
     allowNull.push_back(false);
     #endif
+    //*/
 }
 
 Table*
@@ -158,6 +164,7 @@ TableStats::TableStats(Table* table)
       m_lastAllocatedTupleMemory(0), m_lastOccupiedTupleMemory(0),
       m_lastStringDataMemory(0)
 {
+	/*/
     #ifdef ANTICACHE
     m_lastTuplesEvicted = 0;
     m_lastBlocksEvicted = 0;
@@ -171,6 +178,7 @@ TableStats::TableStats(Table* table)
     m_lastBlocksRead = 0;
     m_lastBytesRead = 0;
     #endif
+    //*/
 }
 
 /**
@@ -208,6 +216,13 @@ vector<string> TableStats::generateStatsColumnNames() {
  * Update the stats tuple with the latest statistics available to this StatsSource.
  */
 void TableStats::updateStatsTuple(TableTuple *tuple) {
+
+	//voltdb::TableTuple *statsTuple = tuple;//Essam
+	//m_table->insertTuple(*statsTuple); //Essam
+
+
+
+	///////////////////////
     tuple->setNValue( StatsSource::m_columnName2Index["TABLE_NAME"], m_tableName);
     tuple->setNValue( StatsSource::m_columnName2Index["TABLE_TYPE"], m_tableType);
     int64_t tupleCount = m_table->activeTupleCount();
@@ -295,6 +310,16 @@ void TableStats::updateStatsTuple(TableTuple *tuple) {
         occupied_tuple_mem_kb = -1;
     }
 
+
+    ///Essam
+
+    m_tupleID = 1;
+    tuple->setNValue(
+                StatsSource::m_columnName2Index["TUPLE_ID"],
+                ValueFactory::getBigIntValue(m_tupleID));
+
+    /////////
+
     tuple->setNValue(
             StatsSource::m_columnName2Index["TUPLE_COUNT"],
             ValueFactory::getBigIntValue(tupleCount));
@@ -311,7 +336,7 @@ void TableStats::updateStatsTuple(TableTuple *tuple) {
     tuple->setNValue( StatsSource::m_columnName2Index["STRING_DATA_MEMORY"],
                       ValueFactory::
                       getIntegerValue(static_cast<int32_t>(string_data_mem_kb)));
-    
+
     #ifdef ANTICACHE
     tuple->setNValue( StatsSource::m_columnName2Index["ANTICACHE_TUPLES_EVICTED"],
                       ValueFactory::
