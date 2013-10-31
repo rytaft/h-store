@@ -153,7 +153,11 @@
 <arg value="site.anticache_max_evicted_blocks=${site.anticache_max_evicted_blocks}" />
 <arg value="site.anticache_blocks_per_eviction=${site.anticache_blocks_per_eviction}" />
 <arg value="site.anticache_eviction_distribution=${site.anticache_eviction_distribution}" />
-<arg value="site.reconfiguration_profiling=${site.reconfiguration_profiling}" />
+<arg value="site.reconfig_profiling=${site.reconfig_profiling}" />
+<arg value="site.reconfig_detailed_profiling=${site.reconfig_detailed_profiling}" />
+<arg value="site.reconfig_async_pull=${site.reconfig_async_pull}" />
+<arg value="site.reconfig_async_push=${site.reconfig_async_push}" />
+<arg value="site.reconfig_initial_plan=${site.reconfig_initial_plan}" />
 <arg value="site.mr_map_blocking=${site.mr_map_blocking}" />
 <arg value="site.mr_reduce_blocking=${site.mr_reduce_blocking}" />
 <arg value="site.network_heartbeats_interval=${site.network_heartbeats_interval}" />
