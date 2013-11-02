@@ -53,6 +53,9 @@ ReadWriteTracker::~ReadWriteTracker() {
         delete iter->second;
         iter++;
     } // WHILE
+
+    delete tupleTrackerInfo;//Essam
+
 }
 
 void ReadWriteTracker::insertTuple(boost::unordered_map<std::string, RowOffsets*> *map, const std::string tableName, TableTuple *tuple) {
@@ -69,7 +72,11 @@ void ReadWriteTracker::insertTuple(boost::unordered_map<std::string, RowOffsets*
 
     offsets->insert(tupleId);
     VOLT_INFO("*** TXN #%ld -> %s / %d", this->txnId, tableName.c_str(), tupleId);
-    VOLT_INFO("*** Table %s : Tuple ID %d has Freq %ld", tableName.c_str(), tupleId, tuple->getTupleAccessFreq());//Essam
+
+
+    tupleTrackerInfo->incrementAccesses(0,tableName.c_str(),tupleId,1); //Essam
+
+    //VOLT_INFO("*** Table %s : Tuple ID %d has Freq %ld", tableName.c_str(), tupleId, tuple->getTupleAccessFreq());//Essam
 }
 
 void ReadWriteTracker::markTupleRead(const std::string tableName, TableTuple *tuple) {

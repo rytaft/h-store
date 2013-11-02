@@ -33,14 +33,169 @@
 #include "common/TupleSchema.h"
 #include "storage/table.h"
 
+#include "storage/tablefactory.h" //Essam
+#include <iostream>
+#include <stdio.h>
+#include <fstream>
+using namespace std;
+//#include "storage/TupleTrackerInfo.h"//Essam
+
+
 typedef boost::unordered_set<uint32_t> RowOffsets;
 
+
+/////////////////////////////////////////////////////////
 namespace voltdb {
-    
+
 class ExecutorContext;
 class TableTuple;
 class TupleSchema;
 class Table;
+
+
+/**
+ * Tuple Tracker for all transactions
+ */
+/////////////////////////////////////////////////
+////Essam tuple tracker class
+typedef struct {
+    	//int hostID;
+    	//int siteID;
+    	int partitionId;
+    	std::string tableName;
+    	int64_t tupleID;
+    	int64_t accesses;
+    	//int64_t txnId;
+    	} TrackingInfo;
+
+
+class TupleTrackerInfo {
+
+private:
+    /*
+     * trackingInfo are hashed by (tableName+TupleID) as a string Key.
+     */
+   boost::unordered_map<std::string, TrackingInfo*> m_trackingInfo;
+
+   ExecutorContext *executorContext;
+   TupleSchema *resultTupleTrackerSchema;
+   Table *resultTupleTrackerTable;
+
+
+public:
+    TupleTrackerInfo(){
+
+    	CatalogId databaseId = 1;
+
+    	this->resultTupleTrackerSchema = TupleSchema::createTrackerTupleSchema();
+
+
+
+    	    std::string *resultColumnNames = new std::string[this->resultTupleTrackerSchema->columnCount()];
+    	    resultColumnNames[0] = std::string("Partition_ID");
+    	    resultColumnNames[0] = std::string("TABLE_NAME");
+    	    resultColumnNames[1] = std::string("TUPLE_ID");
+    	    resultColumnNames[0] = std::string("Accesses");
+
+    	    //*
+    	    this->resultTupleTrackerTable = reinterpret_cast<Table*>(voltdb::TableFactory::getTempTable(
+    	                databaseId,
+    	                std::string("TupleTrackerInfo"),
+    	                this->resultTupleTrackerSchema,
+    	                resultColumnNames,
+    	                NULL));
+    	    //*/
+
+    }
+   ~TupleTrackerInfo(){
+	   //*
+
+	boost::unordered_map<std::string, TrackingInfo*>::const_iterator ite;
+   	for (ite = m_trackingInfo.begin(); ite != m_trackingInfo.end(); ++ite)
+   	    delete ite->second;
+
+   	   //*/
+
+   }
+
+
+   void incrementAccesses(int partitionId,std::string tableName, int64_t tupleID, int64_t accesses){
+
+	   std::stringstream ss ;
+	   ss << tupleID ;
+
+	   std::string key = tableName + ss.str();
+
+	   boost::unordered_map<std::string, TrackingInfo*>::const_iterator lookup = m_trackingInfo.find(key);
+
+	           	if(lookup != m_trackingInfo.end())
+	           	{
+	           	    // key already exists
+	           		lookup->second->accesses = lookup->second->accesses + accesses;
+	           	}
+	           	else
+	           	{
+	           	    // the key does not exist in the map
+	           	    // add it to the map
+
+	           		TrackingInfo* tupleInfo= new TrackingInfo();
+
+	           		tupleInfo->partitionId= partitionId;
+	           		tupleInfo->tableName= tableName;
+	           		tupleInfo->tupleID= tupleID;
+	           		tupleInfo->accesses= accesses;
+
+	           	    m_trackingInfo.insert(std::make_pair(key, tupleInfo));
+
+	           	}
+
+
+	           	printInfo();
+
+    }
+
+   void printInfo() {
+
+       ///Essam del
+	   ofstream myfile1;
+	   myfile1.open ("TupleInfo.del");
+       myfile1 << " |Partition ID |";
+       myfile1 << " |Table Name |";
+       myfile1 << " |Tuple ID |";
+       myfile1 << " |Accesses |";
+ 	   myfile1 << "\n";
+ 	   //*/
+
+ 	  boost::unordered_map<std::string, TrackingInfo*>::const_iterator iter = m_trackingInfo.begin();
+
+	   int k=0;
+       while (iter != m_trackingInfo.end()) {
+
+           myfile1 << iter->second->partitionId;
+           myfile1 << iter->second->tableName;
+           myfile1 << iter->second->tupleID;
+           myfile1 << iter->second->accesses;
+           myfile1 << "\n";
+
+           k++;
+           if(k>10)
+        	   break;
+
+           iter++;
+       } // WHILE
+
+
+       myfile1.close();
+     	                                 	 	              //*/
+       return;
+   }
+
+
+
+
+
+
+};//Class
     
 /**
  * Read/Write Tuple Tracker for a single transaction
@@ -71,6 +226,9 @@ class ReadWriteTracker {
         boost::unordered_map<std::string, RowOffsets*> reads;
         boost::unordered_map<std::string, RowOffsets*> writes;
         
+        //Essam
+        TupleTrackerInfo* tupleTrackerInfo;
+
 }; // CLASS
 
 /**
@@ -96,6 +254,9 @@ class ReadWriteTrackerManager {
         Table *resultTable;
         boost::unordered_map<int64_t, ReadWriteTracker*> trackers;
 }; // CLASS
+
+
+
 
 }
 #endif
