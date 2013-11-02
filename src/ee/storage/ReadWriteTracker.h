@@ -37,6 +37,8 @@
 #include <iostream>
 #include <stdio.h>
 #include <fstream>
+#include <algorithm>
+#include <cassert>
 using namespace std;
 //#include "storage/TupleTrackerInfo.h"//Essam
 
@@ -185,7 +187,7 @@ public:
            myfile1 << iter->second->accesses<<"\n";
 
            k++;
-           if(k>20)
+           if(k>100)
         	   break;
 
            iter++;
@@ -196,6 +198,60 @@ public:
      	                                 	 	              //*/
        return;
    }
+
+   static bool myFunction(std::pair<std::string, TrackingInfo*> first, std::pair<std::string, TrackingInfo*> second){
+
+	    return (first.second->accesses > second.second->accesses);
+
+   }
+
+   void printSortedInfo() {
+
+	   std::vector<std::pair<std::string, TrackingInfo*> > myVec(m_trackingInfo.begin(), m_trackingInfo.end());
+
+
+	   std::sort(myVec.begin(), myVec.end() , myFunction);
+
+
+	   std::vector< std::pair<std::string, TrackingInfo*> >::iterator iter = myVec.begin();
+
+	   //*
+   	 ///Essam del
+   	 	   ofstream myfile1;
+   	 	   std::stringstream ss ;
+   	 	   ss << "TupleInfo"<<iter->second->partitionId<<".del" ;
+
+   	 	 std::string fileName=ss.str();
+   	 	   myfile1.open (fileName.c_str());
+   	 	   myfile1 << " The Map Info of "<<iter->second->partitionId<<"its size is "<<m_trackingInfo.size()<<"\n";
+
+   	        myfile1 << " |Partition ID";
+   	        myfile1 << " |Table Name";
+   	        myfile1 << " |Tuple ID";
+   	        myfile1 << " |Accesses|";
+   	  	   myfile1 << "\n";
+
+
+  	   int k=0;
+         while (iter != myVec.end()) {
+
+             myfile1 << iter->second->partitionId<<"\t";
+             myfile1 << iter->second->tableName<<"\t";
+             myfile1 << iter->second->tupleID<<"\t";
+             myfile1 << iter->second->accesses<<"\n";
+
+             k++;
+             if(k>100)
+          	   break;
+
+             iter++;
+         } // WHILE
+
+
+         myfile1.close();
+       	//*/
+         return;
+     }
 
 
 
