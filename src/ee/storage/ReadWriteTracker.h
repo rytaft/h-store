@@ -156,18 +156,24 @@ public:
 
    void printInfo() {
 
-       ///Essam del
-	   ofstream myfile1;
-	   myfile1.open ("TupleInfo.del");
-	   myfile1 << " The Map Info Size is "<<m_trackingInfo.size()<<"\n";
-       myfile1 << " |Partition ID |"<<"\t";
-       myfile1 << " |Table Name |"<<"\t";
-       myfile1 << " |Tuple ID |"<<"\t";
-       myfile1 << " |Accesses |"<<"\t";
- 	   myfile1 << "\n";
- 	   //*/
+
 
  	  boost::unordered_map<std::string, TrackingInfo*>::const_iterator iter = m_trackingInfo.begin();
+
+ 	 ///Essam del
+ 	 	   ofstream myfile1;
+ 	 	   std::stringstream ss ;
+ 	 	   ss << "TupleInfo"<<iter->second->partitionId<<".del" ;
+
+ 	 	 std::string fileName=ss.str();
+ 	 	   myfile1.open (fileName.c_str());
+ 	 	   myfile1 << " The Map Info Size is "<<m_trackingInfo.size()<<"\n";
+ 	        myfile1 << " |Partition ID |"<<"\t";
+ 	        myfile1 << " |Table Name |"<<"\t";
+ 	        myfile1 << " |Tuple ID |"<<"\t";
+ 	        myfile1 << " |Accesses |"<<"\t";
+ 	  	   myfile1 << "\n";
+ 	  	   //*/
 
 	   int k=0;
        while (iter != m_trackingInfo.end()) {
@@ -206,7 +212,7 @@ class ReadWriteTracker {
     friend class ReadWriteTrackerManager;
     
     public:
-        ReadWriteTracker(int64_t txnId, TupleTrackerInfo* tupleTrackerInfo);
+        ReadWriteTracker(int64_t txnId, TupleTrackerInfo* tupleTrackerInfo,int32_t partId);
         ~ReadWriteTracker();
         
         void markTupleRead(const std::string tableName, TableTuple *tuple);
@@ -229,6 +235,7 @@ class ReadWriteTracker {
         
         //Essam
           TupleTrackerInfo* tupleTrackerInfo;
+          int32_t partitionId;
 
 
 
@@ -242,7 +249,7 @@ class ReadWriteTrackerManager {
         ReadWriteTrackerManager(ExecutorContext *ctx);
         ~ReadWriteTrackerManager();
     
-        ReadWriteTracker* enableTracking(int64_t txnId,TupleTrackerInfo* tupleTracker);
+        ReadWriteTracker* enableTracking(int64_t txnId,TupleTrackerInfo* tupleTracker,int32_t partId);
         ReadWriteTracker* getTracker(int64_t txnId);
         void removeTracker(int64_t txnId);
         
@@ -251,6 +258,7 @@ class ReadWriteTrackerManager {
         
         //Essam
                         TupleTrackerInfo* tupleTrackerInfo;
+                        int32_t partitionId;
 
     private:
         void getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const;

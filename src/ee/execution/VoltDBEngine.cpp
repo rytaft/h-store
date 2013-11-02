@@ -1456,7 +1456,7 @@ void VoltDBEngine::trackingEnable(int64_t txnId) {
     }
     VOLT_INFO("Creating ReadWriteTracker for txn #%ld at Partition %d", txnId, m_partitionId);
     ReadWriteTrackerManager *trackerMgr = m_executorContext->getTrackerManager();
-    trackerMgr->enableTracking(txnId, trackerMgr->tupleTrackerInfo);//Essam Tuple Tracking
+    trackerMgr->enableTracking(txnId, trackerMgr->tupleTrackerInfo,m_partitionId);//Essam Tuple Tracking
 }
 
 void VoltDBEngine::trackingFinish(int64_t txnId) {

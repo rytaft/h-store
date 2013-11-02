@@ -33,11 +33,12 @@ using namespace std;
 
 namespace voltdb {
 
-ReadWriteTracker::ReadWriteTracker(int64_t txnId,TupleTrackerInfo* tupleTracker) :
+ReadWriteTracker::ReadWriteTracker(int64_t txnId,TupleTrackerInfo* tupleTracker,int32_t partId) :
         txnId(txnId) {
     
     // Let's get it on!
 	tupleTrackerInfo = tupleTracker;
+	partitionId = partId;
 
 }
 
@@ -76,7 +77,7 @@ void ReadWriteTracker::insertTuple(boost::unordered_map<std::string, RowOffsets*
     VOLT_INFO("*** TXN #%ld -> %s / %d", this->txnId, tableName.c_str(), tupleId);
 
 
-    tupleTrackerInfo->incrementAccesses(0,tableName.c_str(),tupleId,1); //Essam
+    tupleTrackerInfo->incrementAccesses(partitionId,tableName.c_str(),tupleId,1); //Essam
 
     //VOLT_INFO("*** Table %s : Tuple ID %d has Freq %ld", tableName.c_str(), tupleId, tuple->getTupleAccessFreq());//Essam
 }
@@ -130,6 +131,8 @@ ReadWriteTrackerManager::ReadWriteTrackerManager(ExecutorContext *ctx) : executo
                 NULL));
 
     tupleTrackerInfo = new TupleTrackerInfo(); //Essam
+
+
 }
 
 ReadWriteTrackerManager::~ReadWriteTrackerManager() {
@@ -145,8 +148,9 @@ ReadWriteTrackerManager::~ReadWriteTrackerManager() {
     delete tupleTrackerInfo;//Essam
 }
 
-ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,TupleTrackerInfo* tupleTracker) {
-    ReadWriteTracker *tracker = new ReadWriteTracker(txnId,tupleTracker);
+ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,TupleTrackerInfo* tupleTracker,int32_t partId) {
+	partitionId = partId;
+    ReadWriteTracker *tracker = new ReadWriteTracker(txnId,tupleTracker,partId);
     trackers[txnId] = tracker;
     return (tracker);
 }
