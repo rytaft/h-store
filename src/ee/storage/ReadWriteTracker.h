@@ -167,11 +167,12 @@ public:
 
  	 	 std::string fileName=ss.str();
  	 	   myfile1.open (fileName.c_str());
- 	 	   myfile1 << " The Map Info Size is "<<m_trackingInfo.size()<<"\n";
- 	        myfile1 << " |Partition ID |"<<"\t";
- 	        myfile1 << " |Table Name |"<<"\t";
- 	        myfile1 << " |Tuple ID |"<<"\t";
- 	        myfile1 << " |Accesses |"<<"\t";
+ 	 	   myfile1 << " The Map Info of %d its size is "<<iter->second->partitionId<<m_trackingInfo.size()<<"\n";
+
+ 	        myfile1 << " |Partition ID";
+ 	        myfile1 << " |Table Name";
+ 	        myfile1 << " |Tuple ID";
+ 	        myfile1 << " |Accesses|";
  	  	   myfile1 << "\n";
  	  	   //*/
 
@@ -181,8 +182,7 @@ public:
            myfile1 << iter->second->partitionId<<"\t";
            myfile1 << iter->second->tableName<<"\t";
            myfile1 << iter->second->tupleID<<"\t";
-           myfile1 << iter->second->accesses<<"\t";
-           myfile1 << "\n";
+           myfile1 << iter->second->accesses<<"\n";
 
            k++;
            if(k>10)
