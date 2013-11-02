@@ -213,7 +213,7 @@ public:
 	   std::sort(myVec.begin(), myVec.end() , myFunction);
 
 
-	   std::vector< std::pair<std::string, TrackingInfo*> >::iterator iter = myVec.begin();
+	   std::vector< std::pair<std::string, TrackingInfo*> >::const_iterator iter = myVec.begin();
 
 	   //*
    	 ///Essam del
