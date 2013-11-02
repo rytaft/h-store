@@ -159,10 +159,11 @@ public:
        ///Essam del
 	   ofstream myfile1;
 	   myfile1.open ("TupleInfo.del");
-       myfile1 << " |Partition ID |";
-       myfile1 << " |Table Name |";
-       myfile1 << " |Tuple ID |";
-       myfile1 << " |Accesses |";
+	   myfile1 << " The Map Info Size is "<<m_trackingInfo.size()<<"\n";
+       myfile1 << " |Partition ID |"<<"\t";
+       myfile1 << " |Table Name |"<<"\t";
+       myfile1 << " |Tuple ID |"<<"\t";
+       myfile1 << " |Accesses |"<<"\t";
  	   myfile1 << "\n";
  	   //*/
 
@@ -171,10 +172,10 @@ public:
 	   int k=0;
        while (iter != m_trackingInfo.end()) {
 
-           myfile1 << iter->second->partitionId;
-           myfile1 << iter->second->tableName;
-           myfile1 << iter->second->tupleID;
-           myfile1 << iter->second->accesses;
+           myfile1 << iter->second->partitionId<<"\t";
+           myfile1 << iter->second->tableName<<"\t";
+           myfile1 << iter->second->tupleID<<"\t";
+           myfile1 << iter->second->accesses<<"\t";
            myfile1 << "\n";
 
            k++;
@@ -205,7 +206,7 @@ class ReadWriteTracker {
     friend class ReadWriteTrackerManager;
     
     public:
-        ReadWriteTracker(int64_t txnId);
+        ReadWriteTracker(int64_t txnId, TupleTrackerInfo* tupleTrackerInfo);
         ~ReadWriteTracker();
         
         void markTupleRead(const std::string tableName, TableTuple *tuple);
@@ -227,7 +228,9 @@ class ReadWriteTracker {
         boost::unordered_map<std::string, RowOffsets*> writes;
         
         //Essam
-        TupleTrackerInfo* tupleTrackerInfo;
+          TupleTrackerInfo* tupleTrackerInfo;
+
+
 
 }; // CLASS
 
@@ -239,13 +242,16 @@ class ReadWriteTrackerManager {
         ReadWriteTrackerManager(ExecutorContext *ctx);
         ~ReadWriteTrackerManager();
     
-        ReadWriteTracker* enableTracking(int64_t txnId);
+        ReadWriteTracker* enableTracking(int64_t txnId,TupleTrackerInfo* tupleTracker);
         ReadWriteTracker* getTracker(int64_t txnId);
         void removeTracker(int64_t txnId);
         
         Table* getTuplesRead(ReadWriteTracker *tracker);
         Table* getTuplesWritten(ReadWriteTracker *tracker);
         
+        //Essam
+                        TupleTrackerInfo* tupleTrackerInfo;
+
     private:
         void getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const;
         
@@ -253,6 +259,9 @@ class ReadWriteTrackerManager {
         TupleSchema *resultSchema;
         Table *resultTable;
         boost::unordered_map<int64_t, ReadWriteTracker*> trackers;
+
+
+
 }; // CLASS
 
 

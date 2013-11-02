@@ -33,11 +33,12 @@ using namespace std;
 
 namespace voltdb {
 
-ReadWriteTracker::ReadWriteTracker(int64_t txnId) :
+ReadWriteTracker::ReadWriteTracker(int64_t txnId,TupleTrackerInfo* tupleTracker) :
         txnId(txnId) {
     
     // Let's get it on!
-	tupleTrackerInfo = new TupleTrackerInfo();
+	tupleTrackerInfo = tupleTracker;
+
 }
 
 ReadWriteTracker::~ReadWriteTracker() {
@@ -55,7 +56,7 @@ ReadWriteTracker::~ReadWriteTracker() {
         iter++;
     } // WHILE
 
-    delete tupleTrackerInfo;//Essam
+
 
 }
 
@@ -127,6 +128,8 @@ ReadWriteTrackerManager::ReadWriteTrackerManager(ExecutorContext *ctx) : executo
                 this->resultSchema,
                 resultColumnNames,
                 NULL));
+
+    tupleTrackerInfo = new TupleTrackerInfo(); //Essam
 }
 
 ReadWriteTrackerManager::~ReadWriteTrackerManager() {
@@ -138,10 +141,12 @@ ReadWriteTrackerManager::~ReadWriteTrackerManager() {
         delete iter->second;
         iter++;
     } // FOR
+
+    delete tupleTrackerInfo;//Essam
 }
 
-ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId) {
-    ReadWriteTracker *tracker = new ReadWriteTracker(txnId);
+ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,TupleTrackerInfo* tupleTracker) {
+    ReadWriteTracker *tracker = new ReadWriteTracker(txnId,tupleTracker);
     trackers[txnId] = tracker;
     return (tracker);
 }
