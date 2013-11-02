@@ -37,6 +37,7 @@ ReadWriteTracker::ReadWriteTracker(int64_t txnId) :
         txnId(txnId) {
     
     // Let's get it on!
+	tupleTrackerInfo = new TupleTrackerInfo();
 }
 
 ReadWriteTracker::~ReadWriteTracker() {
