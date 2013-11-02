@@ -167,7 +167,7 @@ public:
 
  	 	 std::string fileName=ss.str();
  	 	   myfile1.open (fileName.c_str());
- 	 	   myfile1 << " The Map Info of %d its size is "<<iter->second->partitionId<<m_trackingInfo.size()<<"\n";
+ 	 	   myfile1 << " The Map Info of "<<iter->second->partitionId<<"its size is "<<m_trackingInfo.size()<<"\n";
 
  	        myfile1 << " |Partition ID";
  	        myfile1 << " |Table Name";
@@ -185,7 +185,7 @@ public:
            myfile1 << iter->second->accesses<<"\n";
 
            k++;
-           if(k>10)
+           if(k>20)
         	   break;
 
            iter++;
