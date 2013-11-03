@@ -154,6 +154,11 @@ ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,int32_t 
 	partitionId = partId;
 
 	TupleTrackerInfo* tupleTrackerInfo = NULL;
+	//*
+	tupleTrackerInfo = new TupleTrackerInfo(); //Essam
+	tupleTrackers[partId] = tupleTrackerInfo;//Essam
+	//*/
+	/*
 	// create a tupleTracker for the partition if it does not have
 	boost::unordered_map<int32_t, TupleTrackerInfo*>::const_iterator iter;
 	    iter = tupleTrackers.find(partId);
@@ -162,7 +167,7 @@ ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,int32_t 
 	    	//tupleTrackers[partId] = tupleTrackerInfo;//Essam
 	    	tupleTrackers.insert(std::make_pair(partId,tupleTrackerInfo));
 	    }
-
+    //*/
 
 
     ReadWriteTracker *tracker = new ReadWriteTracker(txnId,tupleTrackerInfo,partId);
