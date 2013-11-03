@@ -182,11 +182,32 @@ ReadWriteTracker* ReadWriteTrackerManager::getTracker(int64_t txnId) {
 
 //Essam
 void ReadWriteTrackerManager::printTupleTrackers(){
+
+	///Essam del
+	                                //*
+	                                	 	              ofstream myfile1;
+	                                	 	             myfile1.open ("printTupleTrackers.del");//Essam
+	                                	 	            myfile1 << " TupleTrackers.size ="<<tupleTrackers.size();
+	                                	 	           myfile1 << "\n";
+
+
+	                                	 	              //*/
+
+
 	boost::unordered_map<int32_t, TupleTrackerInfo*>::const_iterator iter;
 	iter == tupleTrackers.begin();
+	int i =0;
 	while(iter == tupleTrackers.end()){
-		iter->second->printSortedInfo();//Essam print
+		if(iter->second!=NULL){
+		//iter->second->printSortedInfo();//Essam print
+			myfile1 << " TupleTracker["<<i<<"}\n";
+			i++;
+
+		}
+
 	}
+
+	 myfile1.close();
 }
 
 //Essam
