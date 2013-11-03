@@ -5866,12 +5866,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @return
      */
     public VoltTable extractTable(Table table, ReconfigurationRange<? extends Comparable<?>> range) {
-        LOG.info(String.format("Extract table %s Range:%s", table.toString(), range.toString()));
+        LOG.debug(String.format("Extract table %s Range:%s", table.toString(), range.toString()));
         int table_id = table.getRelativeIndex();
+        long start=0;
+        if(ReconfigurationCoordinator.detailed_timing){
+            start = System.currentTimeMillis();
+        }
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         VoltTable res = this.getExecutionEngine().extractTable(table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
         if (res != null) {
-
+            if(ReconfigurationCoordinator.detailed_timing){
+                long diff  = System.currentTimeMillis() - start;
+                LOG.info(String.format("(%s) Extract table[%s] for %s records of size %s took %s ms ",this.partitionId, table.getName(), 
+                        res.getRowCount(), res.getRowCount() * res.getRowSize() , diff)); 
+            }
+            
             LOG.info(String.format("PE (%s) marking range as migrated out %s  ", this.partitionId, range.toString()));
             if (this.reconfiguration_tracker != null) {
                 try {
