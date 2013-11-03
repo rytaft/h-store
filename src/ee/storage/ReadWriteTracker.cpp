@@ -201,6 +201,8 @@ TupleTrackerInfo* ReadWriteTrackerManager::getTupleTracker(int32_t partId) {
 
 //Essam
 void ReadWriteTrackerManager::removeTupleTracker(int32_t partId) {
+
+	/*
 	TupleTrackerInfo *tupleTracker = this->getTupleTracker(partId);
 
 	tupleTracker->printSortedInfo();//Essam print
@@ -208,6 +210,7 @@ void ReadWriteTrackerManager::removeTupleTracker(int32_t partId) {
     if (tupleTracker != NULL) {
     	delete tupleTracker;
     }
+    //*/
 }
 
 ///////////////////////
