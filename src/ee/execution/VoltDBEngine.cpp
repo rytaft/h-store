@@ -1467,7 +1467,7 @@ void VoltDBEngine::trackingFinish(int64_t txnId) {
     ReadWriteTrackerManager *trackerMgr = m_executorContext->getTrackerManager();
     VOLT_INFO("Deleting ReadWriteTracker for txn #%ld at Partition %d",txnId, m_partitionId);
     trackerMgr->removeTracker(txnId);
-    trackerMgr->removeTupleTracker(m_partitionId);//Essam
+    //trackerMgr->removeTupleTracker(m_partitionId);//Essam
     return;
 }
 
