@@ -77,7 +77,7 @@ void ReadWriteTracker::insertTuple(boost::unordered_map<std::string, RowOffsets*
     VOLT_INFO("*** TXN #%ld -> %s / %d", this->txnId, tableName.c_str(), tupleId);
 
 
-    tupleTrackerInfo->incrementAccesses(partitionId,tableName.c_str(),tupleId,1); //Essam
+    tupleTrackerInfo->incrementAccessesPerTrans(partitionId,this->txnId,tableName.c_str(),tupleId,1); //Essam
 
     //VOLT_INFO("*** Table %s : Tuple ID %d has Freq %ld", tableName.c_str(), tupleId, tuple->getTupleAccessFreq());//Essam
 }
@@ -115,7 +115,7 @@ void ReadWriteTracker::clear() {
 
 // -------------------------------------------------------------------------
 
-//boost::unordered_map<int32_t, TupleTrackerInfo*> ReadWriteTrackerManager::tupleTrackers;
+boost::unordered_map<int64_t, TupleTrackerInfo*> ReadWriteTrackerManager::tupleTrackers;
 
 ReadWriteTrackerManager::ReadWriteTrackerManager(ExecutorContext *ctx) : executorContext(ctx) {
     CatalogId databaseId = 1;
@@ -154,18 +154,18 @@ ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,int32_t 
 	partitionId = partId;
 
 	TupleTrackerInfo* tupleTrackerInfo = NULL;
-	///*
+	/*
 	tupleTrackerInfo = new TupleTrackerInfo(); //Essam
 	tupleTrackers[partId] = tupleTrackerInfo;//Essam
 	//*/
-	/*
-	// create a tupleTracker for the partition if it does not have
-	boost::unordered_map<int32_t, TupleTrackerInfo*>::const_iterator iter;
-	    iter = tupleTrackers.find(partId);
+	//*
+	// create a tupleTracker for each transaction if it does not have
+	boost::unordered_map<int64_t, TupleTrackerInfo*>::const_iterator iter;
+	    iter = tupleTrackers.find(txnId);
 	    if (iter == tupleTrackers.end()) {
 	    	tupleTrackerInfo = new TupleTrackerInfo(); //Essam
 	    	//tupleTrackers[partId] = tupleTrackerInfo;//Essam
-	    	tupleTrackers.insert(std::make_pair(partId,tupleTrackerInfo));
+	    	tupleTrackers.insert(std::make_pair(txnId,tupleTrackerInfo));
 	    }
     //*/
 
@@ -203,7 +203,8 @@ void ReadWriteTrackerManager::printTupleTrackers(){
 	myfile1 << " TupleTrackers.size ="<<tupleTrackers.size();
 	myfile1 << "\n";
 
-   boost::unordered_map<int32_t, TupleTrackerInfo*>::const_iterator iter= tupleTrackers.begin();
+   /*
+	boost::unordered_map<int64_t, TupleTrackerInfo*>::const_iterator iter= tupleTrackers.begin();
 
 	int i =0;
 	while(iter != tupleTrackers.end()){
@@ -216,14 +217,14 @@ void ReadWriteTrackerManager::printTupleTrackers(){
 		iter++;
 
 	}
-
+  //*/
 	 myfile1.close();
 }
 
 //Essam
-TupleTrackerInfo* ReadWriteTrackerManager::getTupleTracker(int32_t partId) {
-    boost::unordered_map<int32_t, TupleTrackerInfo*>::const_iterator iter;
-    iter = tupleTrackers.find(partId);
+TupleTrackerInfo* ReadWriteTrackerManager::getTupleTracker(int64_t txnId) {
+    boost::unordered_map<int64_t, TupleTrackerInfo*>::const_iterator iter;
+    iter = tupleTrackers.find(txnId);
     if (iter != tupleTrackers.end()) {
         return iter->second;
     }
@@ -231,7 +232,7 @@ TupleTrackerInfo* ReadWriteTrackerManager::getTupleTracker(int32_t partId) {
 }
 
 //Essam
-void ReadWriteTrackerManager::removeTupleTracker(int32_t partId) {
+void ReadWriteTrackerManager::removeTupleTracker(int64_t txnId) {
 
 	/*
 	TupleTrackerInfo *tupleTracker = this->getTupleTracker(partId);

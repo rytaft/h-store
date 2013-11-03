@@ -64,18 +64,26 @@ typedef struct {
     	//int hostID;
     	//int siteID;
     	int partitionId;
+    	int64_t txnId;
     	std::string tableName;
     	uint32_t tupleID;
     	int64_t accesses;
-    	//int64_t txnId;
     	} TrackingInfo;
+
+ typedef  boost::unordered_map<std::string, TrackingInfo*> map_accesses;
 
 
 class TupleTrackerInfo {
 
 private:
     /*
-     * trackingInfo are hashed by (tableName+TupleID) as a string Key.
+     * trackingInfo per partition are hashed by (tableName+TupleID) as a string Key.
+     */
+    boost::unordered_map<int64_t, map_accesses> m_transTrackingInfo;
+
+
+    /*
+     * trackingInfo per partition are hashed by (tableName+TupleID) as a string Key.
      */
    boost::unordered_map<std::string, TrackingInfo*> m_trackingInfo;
 
@@ -121,7 +129,72 @@ public:
    }
 
 
-   void incrementAccesses(int partitionId,std::string tableName, uint32_t tupleID, int64_t accesses){
+
+   void incrementAccessesPerTrans(int partitionId,int64_t txnId,std::string tableName, uint32_t tupleId, int64_t accesses){
+
+   	    boost::unordered_map<int64_t, map_accesses>::const_iterator lookup = m_transTrackingInfo.find(txnId); // map <table+tuple, trackingInfo > per trans
+
+   	           	if(lookup != m_transTrackingInfo.end())
+   	           	{
+
+   	           		//This transaction has a map lookup->second
+
+   	           	incrementAccessesPerTableTuple(lookup->second,partitionId,txnId,tableName.c_str(),tupleId,accesses);
+
+
+   	           	}
+   	           	else
+   	           	{
+
+   	           	m_transTrackingInfo.insert ( std::make_pair (txnId, map_accesses() ) );
+   	            incrementAccessesPerTableTuple(m_transTrackingInfo[txnId],partitionId,txnId,tableName.c_str(),tupleId,accesses);
+
+   	           	}
+
+
+   	  }
+
+
+
+   void incrementAccessesPerTableTuple(map_accesses map,int partitionId,int64_t txnId,std::string tableName, uint32_t tupleId, int64_t accesses){
+
+   	   std::stringstream ss ;
+   	   ss << tupleId ;
+
+   	   std::string key = tableName + ss.str();
+
+   	   boost::unordered_map<std::string, TrackingInfo*>::const_iterator lookup = map.find(key);
+
+   	           	if(lookup != map.end())
+   	           	{
+   	           	    // key already exists
+   	           		lookup->second->accesses = lookup->second->accesses + accesses;
+   	           	}
+   	           	else
+   	           	{
+   	           	    // the key does not exist in the map
+   	           	    // add it to the map
+
+   	           		TrackingInfo* tupleInfo= new TrackingInfo();
+
+   	           		tupleInfo->partitionId= partitionId;
+   	           	    tupleInfo->txnId= txnId;
+   	           		tupleInfo->tableName= tableName;
+   	           		tupleInfo->tupleID= tupleId;
+   	           		tupleInfo->accesses= accesses;
+
+
+   	           	    map.insert(std::make_pair(key, tupleInfo));
+
+   	           	}
+
+
+   	           //	printInfo();
+
+       }
+
+
+   void incrementAccesses(int partitionId,int64_t txnId,std::string tableName, uint32_t tupleID, int64_t accesses){
 
 	   std::stringstream ss ;
 	   ss << tupleID ;
@@ -315,8 +388,8 @@ class ReadWriteTrackerManager {
         
         //Essam tuple tracker
         int32_t partitionId;
-        TupleTrackerInfo* getTupleTracker(int32_t partId);
-        void removeTupleTracker(int32_t partId);//Essam
+        TupleTrackerInfo* getTupleTracker(int64_t txnId);
+        void removeTupleTracker(int64_t txnId);//Essam
         void printTupleTrackers();//Essam
 
     private:
@@ -330,7 +403,7 @@ class ReadWriteTrackerManager {
         boost::unordered_map<int64_t, ReadWriteTracker*> trackers;
 
         //Essam
-        boost::unordered_map<int32_t, TupleTrackerInfo*> tupleTrackers;
+        static boost::unordered_map<int64_t, TupleTrackerInfo*> tupleTrackers; //per transaction
 
 
 
