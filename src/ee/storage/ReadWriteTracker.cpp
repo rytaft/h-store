@@ -195,11 +195,11 @@ void ReadWriteTrackerManager::printTupleTrackers(){
 
 
 	boost::unordered_map<int32_t, TupleTrackerInfo*>::const_iterator iter;
-	iter == tupleTrackers.begin();
+	iter = tupleTrackers.begin();
 	int i =0;
 	while(iter == tupleTrackers.end()){
 		if(iter->second!=NULL){
-		//iter->second->printSortedInfo();//Essam print
+		iter->second->printSortedInfo();//Essam print
 			myfile1 << " TupleTracker["<<i<<"}\n";
 			i++;
 
