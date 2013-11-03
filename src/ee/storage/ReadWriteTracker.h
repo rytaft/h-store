@@ -65,7 +65,7 @@ typedef struct {
     	//int siteID;
     	int partitionId;
     	std::string tableName;
-    	int64_t tupleID;
+    	uint32_t tupleID;
     	int64_t accesses;
     	//int64_t txnId;
     	} TrackingInfo;
@@ -121,7 +121,7 @@ public:
    }
 
 
-   void incrementAccesses(int partitionId,std::string tableName, int64_t tupleID, int64_t accesses){
+   void incrementAccesses(int partitionId,std::string tableName, uint32_t tupleID, int64_t accesses){
 
 	   std::stringstream ss ;
 	   ss << tupleID ;
@@ -305,24 +305,31 @@ class ReadWriteTrackerManager {
         ReadWriteTrackerManager(ExecutorContext *ctx);
         ~ReadWriteTrackerManager();
     
-        ReadWriteTracker* enableTracking(int64_t txnId,TupleTrackerInfo* tupleTracker,int32_t partId);
+        ReadWriteTracker* enableTracking(int64_t txnId, int32_t partId);
+
         ReadWriteTracker* getTracker(int64_t txnId);
         void removeTracker(int64_t txnId);
         
-        Table* getTuplesRead(ReadWriteTracker *tracker);
+       Table* getTuplesRead(ReadWriteTracker *tracker);
         Table* getTuplesWritten(ReadWriteTracker *tracker);
         
-        //Essam
-                        TupleTrackerInfo* tupleTrackerInfo;
-                        int32_t partitionId;
+        //Essam tuple tracker
+        int32_t partitionId;
+        TupleTrackerInfo* getTupleTracker(int32_t partId);
+        void removeTupleTracker(int32_t partId);//Essam
 
     private:
         void getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const;
         
+
+
         ExecutorContext *executorContext;
         TupleSchema *resultSchema;
         Table *resultTable;
         boost::unordered_map<int64_t, ReadWriteTracker*> trackers;
+
+        //Essam
+        boost::unordered_map<int32_t, TupleTrackerInfo*> tupleTrackers;
 
 
 

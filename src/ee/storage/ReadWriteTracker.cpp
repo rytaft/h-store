@@ -130,7 +130,7 @@ ReadWriteTrackerManager::ReadWriteTrackerManager(ExecutorContext *ctx) : executo
                 resultColumnNames,
                 NULL));
 
-    tupleTrackerInfo = new TupleTrackerInfo(); //Essam
+
 
 
 }
@@ -145,13 +145,18 @@ ReadWriteTrackerManager::~ReadWriteTrackerManager() {
         iter++;
     } // FOR
 
-    delete tupleTrackerInfo;//Essam
+    //delete tupleTrackerInfo;//Essam
 }
 
-ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,TupleTrackerInfo* tupleTracker,int32_t partId) {
+ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,int32_t partId) {
 	partitionId = partId;
-    ReadWriteTracker *tracker = new ReadWriteTracker(txnId,tupleTracker,partId);
+
+	TupleTrackerInfo* tupleTrackerInfo = new TupleTrackerInfo(); //Essam
+	tupleTrackers[partId] = tupleTrackerInfo;//Essam
+
+    ReadWriteTracker *tracker = new ReadWriteTracker(txnId,tupleTrackerInfo,partId);
     trackers[txnId] = tracker;
+
     return (tracker);
 }
 
@@ -164,9 +169,31 @@ ReadWriteTracker* ReadWriteTrackerManager::getTracker(int64_t txnId) {
     return (NULL);
 }
 
+//Essam
+TupleTrackerInfo* ReadWriteTrackerManager::getTupleTracker(int32_t partId) {
+    boost::unordered_map<int32_t, TupleTrackerInfo*>::const_iterator iter;
+    iter = tupleTrackers.find(partId);
+    if (iter != tupleTrackers.end()) {
+        return iter->second;
+    }
+    return (NULL);
+}
+
+//Essam
+void ReadWriteTrackerManager::removeTupleTracker(int32_t partId) {
+	TupleTrackerInfo *tupleTracker = this->getTupleTracker(partId);
+
+	tupleTracker->printSortedInfo();//Essam print
+
+    if (tupleTracker != NULL) {
+    	delete tupleTracker;
+    }
+}
+
+///////////////////////
 void ReadWriteTrackerManager::removeTracker(int64_t txnId) {
     ReadWriteTracker *tracker = this->getTracker(txnId);
-    tupleTrackerInfo->printSortedInfo();//Essam
+
     if (tracker != NULL) {
         trackers.erase(txnId);
         delete tracker;
