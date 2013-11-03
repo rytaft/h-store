@@ -115,6 +115,8 @@ void ReadWriteTracker::clear() {
 
 // -------------------------------------------------------------------------
 
+boost::unordered_map<int32_t, TupleTrackerInfo*> ReadWriteTrackerManager::tupleTrackers;
+
 ReadWriteTrackerManager::ReadWriteTrackerManager(ExecutorContext *ctx) : executorContext(ctx) {
     CatalogId databaseId = 1;
     this->resultSchema = TupleSchema::createTrackerTupleSchema();
@@ -151,8 +153,17 @@ ReadWriteTrackerManager::~ReadWriteTrackerManager() {
 ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,int32_t partId) {
 	partitionId = partId;
 
-	TupleTrackerInfo* tupleTrackerInfo = new TupleTrackerInfo(); //Essam
-	tupleTrackers[partId] = tupleTrackerInfo;//Essam
+	TupleTrackerInfo* tupleTrackerInfo = NULL;
+	// create a tupleTracker for the partition if it does not have
+	boost::unordered_map<int32_t, TupleTrackerInfo*>::const_iterator iter;
+	    iter = tupleTrackers.find(partId);
+	    if (iter == tupleTrackers.end()) {
+	    	tupleTrackerInfo = new TupleTrackerInfo(); //Essam
+	    	//tupleTrackers[partId] = tupleTrackerInfo;//Essam
+	    	tupleTrackers.insert(std::make_pair(partId,tupleTrackerInfo));
+	    }
+
+
 
     ReadWriteTracker *tracker = new ReadWriteTracker(txnId,tupleTrackerInfo,partId);
     trackers[txnId] = tracker;
@@ -167,6 +178,15 @@ ReadWriteTracker* ReadWriteTrackerManager::getTracker(int64_t txnId) {
         return iter->second;
     }
     return (NULL);
+}
+
+//Essam
+void ReadWriteTrackerManager::printTupleTrackers(){
+	boost::unordered_map<int32_t, TupleTrackerInfo*>::const_iterator iter;
+	iter == tupleTrackers.begin();
+	while(iter == tupleTrackers.end()){
+		iter->second->printSortedInfo();//Essam print
+	}
 }
 
 //Essam
@@ -193,6 +213,8 @@ void ReadWriteTrackerManager::removeTupleTracker(int32_t partId) {
 ///////////////////////
 void ReadWriteTrackerManager::removeTracker(int64_t txnId) {
     ReadWriteTracker *tracker = this->getTracker(txnId);
+
+    printTupleTrackers();//Essam
 
     if (tracker != NULL) {
         trackers.erase(txnId);

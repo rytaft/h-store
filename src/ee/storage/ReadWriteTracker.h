@@ -317,6 +317,7 @@ class ReadWriteTrackerManager {
         int32_t partitionId;
         TupleTrackerInfo* getTupleTracker(int32_t partId);
         void removeTupleTracker(int32_t partId);//Essam
+        void printTupleTrackers();//Essam
 
     private:
         void getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const;
@@ -329,7 +330,7 @@ class ReadWriteTrackerManager {
         boost::unordered_map<int64_t, ReadWriteTracker*> trackers;
 
         //Essam
-        boost::unordered_map<int32_t, TupleTrackerInfo*> tupleTrackers;
+       static boost::unordered_map<int32_t, TupleTrackerInfo*> tupleTrackers;
 
 
 
