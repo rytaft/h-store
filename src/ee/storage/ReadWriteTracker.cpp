@@ -154,7 +154,7 @@ ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,int32_t 
 	partitionId = partId;
 
 	TupleTrackerInfo* tupleTrackerInfo = NULL;
-	//*
+	///*
 	tupleTrackerInfo = new TupleTrackerInfo(); //Essam
 	tupleTrackers[partId] = tupleTrackerInfo;//Essam
 	//*/
