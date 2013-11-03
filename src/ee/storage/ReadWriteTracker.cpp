@@ -243,7 +243,7 @@ void ReadWriteTrackerManager::removeTupleTracker(int32_t partId) {
 void ReadWriteTrackerManager::removeTracker(int64_t txnId) {
     ReadWriteTracker *tracker = this->getTracker(txnId);
 
-    printTupleTrackers();//Essam
+    //printTupleTrackers();//Essam
 
     if (tracker != NULL) {
         trackers.erase(txnId);
