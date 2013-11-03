@@ -330,7 +330,7 @@ class ReadWriteTrackerManager {
         boost::unordered_map<int64_t, ReadWriteTracker*> trackers;
 
         //Essam
-       static boost::unordered_map<int32_t, TupleTrackerInfo*> tupleTrackers;
+        boost::unordered_map<int32_t, TupleTrackerInfo*> tupleTrackers;
 
 
 

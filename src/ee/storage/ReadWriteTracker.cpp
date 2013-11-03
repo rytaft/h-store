@@ -115,7 +115,7 @@ void ReadWriteTracker::clear() {
 
 // -------------------------------------------------------------------------
 
-boost::unordered_map<int32_t, TupleTrackerInfo*> ReadWriteTrackerManager::tupleTrackers;
+//boost::unordered_map<int32_t, TupleTrackerInfo*> ReadWriteTrackerManager::tupleTrackers;
 
 ReadWriteTrackerManager::ReadWriteTrackerManager(ExecutorContext *ctx) : executorContext(ctx) {
     CatalogId databaseId = 1;
@@ -203,7 +203,7 @@ void ReadWriteTrackerManager::printTupleTrackers(){
 	int i =0;
 	while(iter != tupleTrackers.end()){
 		if(iter->second!=NULL){
-		 //iter->second->printSortedInfo();//Essam print
+		 iter->second->printSortedInfo();//Essam print
 			myfile1 << " TupleTracker["<<i<<"]\n";
 			i++;
 		}
@@ -243,7 +243,7 @@ void ReadWriteTrackerManager::removeTupleTracker(int32_t partId) {
 void ReadWriteTrackerManager::removeTracker(int64_t txnId) {
     ReadWriteTracker *tracker = this->getTracker(txnId);
 
-    //printTupleTrackers();//Essam
+    printTupleTrackers();//Essam
 
     if (tracker != NULL) {
         trackers.erase(txnId);
