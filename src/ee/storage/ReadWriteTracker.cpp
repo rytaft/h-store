@@ -37,7 +37,7 @@ ReadWriteTracker::ReadWriteTracker(int64_t txnId,TupleTrackerInfo* tupleTracker,
         txnId(txnId) {
     
     // Let's get it on!
-	tupleTrackerInfo = tupleTracker;
+	rw_tupleTrackerInfo = tupleTracker;
 	partitionId = partId;
 
 }
@@ -77,8 +77,9 @@ void ReadWriteTracker::insertTuple(boost::unordered_map<std::string, RowOffsets*
     VOLT_INFO("*** TXN #%ld -> %s / %d", this->txnId, tableName.c_str(), tupleId);
 
 
-   if(tupleTrackerInfo !=NULL)
-    tupleTrackerInfo->incrementAccessesPerTrans(partitionId,this->txnId,tableName.c_str(),tupleId,1); //Essam
+   if(rw_tupleTrackerInfo !=NULL)
+    rw_tupleTrackerInfo->incrementAccessesPerTrans(partitionId,this->txnId,tableName.c_str(),tupleId,1); //Essam
+
 
     //VOLT_INFO("*** Table %s : Tuple ID %d has Freq %ld", tableName.c_str(), tupleId, tuple->getTupleAccessFreq());//Essam
 }
