@@ -382,12 +382,7 @@ void TableStats::populateSchema(
         vector<bool> &allowNull) {
 
 
-	 ///Essam del
-	 	              ofstream myfile;
-	 	             myfile.open ("populateSchema.tableStats");//Essam
-	 	              myfile.close();
-
-    TableStats::populateTableStatsSchema(types, columnLengths, allowNull);
+	 TableStats::populateTableStatsSchema(types, columnLengths, allowNull);
 }
 
 TableStats::~TableStats() {
