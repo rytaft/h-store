@@ -293,6 +293,14 @@ void ReadWriteTrackerManager::aggregateTupleTrackingPerPart(){
 
 			if(iter->second!=NULL){
 				insertIntoTupleTrackingPerPart (iter->second->m_transTrackingInfo);
+				///Essam del
+				   	         	            //*
+				   	         	            ofstream myfile2;
+				   	         	            myfile2.open ("aggregateTupleTrackingPerPart.del");//Essam
+				   	         	            myfile2 << " aggregateTupleTrackingPerPart "<<1;
+				   	         	            myfile2 << "\n";
+				   	         	            myfile2.close();
+				   	         				//*/
 			}
 
 			iter++;
