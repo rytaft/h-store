@@ -254,6 +254,11 @@ public:
     	  boost::unordered_map<std::string, TrackingInfo*>::const_iterator iter = m_trackingInfo.begin();
 
     	 ///Essam del
+    	  ofstream myfile1;
+    	  myfile1.open ("printInfoTransMap.del");
+    	  myfile1 << " The Map Info size is "<<m_trackingInfo.size()<<"\n";
+
+    	  /*/
     	 	   ofstream myfile1;
     	 	   std::stringstream ss ;
     	 	   ss << "TupleInfo_Trans"<<iter->second->txnId<<".del" ;
