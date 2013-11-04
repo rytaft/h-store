@@ -161,7 +161,7 @@ ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,int32_t 
 
 	TupleTrackerInfo* tupleTrackerInfo = NULL;
 
-	if (totalMonitoredTrans < 10)
+	if (totalMonitoredTrans < 1000)
 	{
 		totalMonitoredTrans++;
 
