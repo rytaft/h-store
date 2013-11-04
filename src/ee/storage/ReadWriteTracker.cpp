@@ -294,6 +294,8 @@ void ReadWriteTrackerManager::aggregateTupleTrackingPerPart(){
 
 void ReadWriteTrackerManager::printTupleTrackers(){
 
+	aggregateTupleTrackingPerPart();
+
 	ofstream myfile1;
 	myfile1.open ("printTupleTrackers.del");//Essam
 
@@ -306,7 +308,7 @@ void ReadWriteTrackerManager::printTupleTrackers(){
 
 	}
 
-	myfile1 << " TupleTrackers.size ="<<tupleTrackers.size();
+	myfile1 << " TupleTrackers.size ="<<tupleTrackersPerPart.size();
 	myfile1 << "\n";
 
    /*
