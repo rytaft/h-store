@@ -392,8 +392,8 @@ void ReadWriteTrackerManager::removeTracker(int64_t txnId) {
     if(transMap != NULL)
     	transMap->printInfoTransMap();
 
-    if(txnId > 30000)
-    printTupleTrackers();//Essam
+    //if(txnId > 30000)
+   // printTupleTrackers();//Essam
 
     if (tracker != NULL) {
         trackers.erase(txnId);
