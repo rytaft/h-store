@@ -152,14 +152,7 @@ public:
    	           	m_transTrackingInfo.insert ( std::make_pair (txnId, map_accesses() ) );
    	            incrementAccessesPerTableTuple(m_transTrackingInfo[txnId],partitionId,txnId,tableName.c_str(),tupleId,accesses);
 
-   	         ///Essam del
-   	                     //*
-   	                     ofstream myfile5;
-   	                     myfile5.open ("ElseincrementAccessesPerTrans.del");//Essam
-   	                     myfile5 << " trans ="<<txnId<<"Table = "<<tableName;
-   	                     myfile5 << "\n";
-   	                     myfile5.close();
-   	         			//*/
+
 
    	           	}
 
@@ -197,6 +190,16 @@ public:
 
 
    	           	    map.insert(std::make_pair(key, tupleInfo));
+
+   	           	///Essam del
+   	           	   	                     //*
+   	           	   	                     ofstream myfile5;
+   	           	   	                     myfile5.open ("incrementAccessesPerTableTuple.del");//Essam
+   	           	   	                     myfile5 << " trans ="<<txnId<<" Table = "<<tableName;
+   	           	   	                     myfile5 << " tupleId ="<<tupleId<<" accesses = "<<accesses;
+   	           	   	                     myfile5 << "\n";
+   	           	   	                     myfile5.close();
+   	           	   	         			//*/
 
    	           	}
 
