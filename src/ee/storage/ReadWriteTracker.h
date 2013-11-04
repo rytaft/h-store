@@ -256,11 +256,11 @@ public:
     	 ///Essam del
     	 	   ofstream myfile1;
     	 	   std::stringstream ss ;
-    	 	   ss << "TupleInfo"<<iter->second->txnId<<".del" ;
+    	 	   ss << "TupleInfo_Trans"<<iter->second->txnId<<".del" ;
 
     	 	 std::string fileName=ss.str();
     	 	   myfile1.open (fileName.c_str());
-    	 	   myfile1 << " The Map Info of "<<iter->second->partitionId<<"its size is "<<m_trackingInfo.size()<<"\n";
+    	 	   myfile1 << " The Map Info of Trans: "<<iter->second->txnId<<"its size is "<<m_trackingInfo.size()<<"\n";
 
     	        myfile1 << " |Partition ID";
     	        myfile1 << " |Trans ID";
