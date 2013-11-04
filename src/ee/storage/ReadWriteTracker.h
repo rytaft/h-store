@@ -80,7 +80,7 @@ private:
 
 
     /*
-     * trackingInfo per partition are hashed by (tableName+TupleID) as a string Key.
+     * trackingInfo per transaction are hashed by (tableName+TupleID) as a string Key.
      */
    boost::unordered_map<std::string, TrackingInfo*> m_trackingInfo;
 
@@ -258,6 +258,7 @@ public:
     	  	   myfile1 << "\n";
     	  	   //*/
 
+       /*
    	   int k=0;
           while (iter != m_trackingInfo.end()) {
 
@@ -273,10 +274,10 @@ public:
 
               iter++;
           } // WHILE
-
+          //*/
 
           myfile1.close();
-        	                                 	 	              //*/
+
           return;
       }
 

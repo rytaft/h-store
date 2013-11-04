@@ -1125,7 +1125,7 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
             }
 
             ///Essam del
-            //*
+            /*
             ofstream myfile2;
             myfile2.open ("SELECTOR_TYPE_Table.del");//Essam
             myfile2 << " selector ="<<selector;
