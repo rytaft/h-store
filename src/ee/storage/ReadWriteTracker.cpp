@@ -77,6 +77,7 @@ void ReadWriteTracker::insertTuple(boost::unordered_map<std::string, RowOffsets*
     VOLT_INFO("*** TXN #%ld -> %s / %d", this->txnId, tableName.c_str(), tupleId);
 
 
+   if(tupleTrackerInfo !=NULL)
     tupleTrackerInfo->incrementAccessesPerTrans(partitionId,this->txnId,tableName.c_str(),tupleId,1); //Essam
 
     //VOLT_INFO("*** Table %s : Tuple ID %d has Freq %ld", tableName.c_str(), tupleId, tuple->getTupleAccessFreq());//Essam
@@ -117,6 +118,7 @@ void ReadWriteTracker::clear() {
 
 boost::unordered_map<int64_t, TupleTrackerInfo*> ReadWriteTrackerManager::tupleTrackers;
 boost::unordered_map<int32_t, map_accesses> ReadWriteTrackerManager::tupleTrackersPerPart; //per partition
+int ReadWriteTrackerManager::totalMonitoredTrans;
 
 ReadWriteTrackerManager::ReadWriteTrackerManager(ExecutorContext *ctx) : executorContext(ctx) {
     CatalogId databaseId = 1;
@@ -133,6 +135,8 @@ ReadWriteTrackerManager::ReadWriteTrackerManager(ExecutorContext *ctx) : executo
                 resultColumnNames,
                 NULL));
 
+
+    totalMonitoredTrans = 0;
 
 
 
@@ -155,6 +159,11 @@ ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,int32_t 
 	partitionId = partId;
 
 	TupleTrackerInfo* tupleTrackerInfo = NULL;
+
+	if (totalMonitoredTrans < 100)
+	{
+		totalMonitoredTrans++;
+
 	/*
 	tupleTrackerInfo = new TupleTrackerInfo(); //Essam
 	tupleTrackers[partId] = tupleTrackerInfo;//Essam
@@ -169,7 +178,7 @@ ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,int32_t 
 	    	tupleTrackers.insert(std::make_pair(txnId,tupleTrackerInfo));
 	    }
     //*/
-
+	}
 
     ReadWriteTracker *tracker = new ReadWriteTracker(txnId,tupleTrackerInfo,partId);
     trackers[txnId] = tracker;
@@ -272,6 +281,16 @@ void ReadWriteTrackerManager::insertIntoTupleTrackingPerPart(boost::unordered_ma
 
 		map_accesses_iter = iter->second.begin();
 
+		///Essam del
+						   	         	            //*
+						   	         	            ofstream myfile2;
+						   	         	            myfile2.open ("insertIntoTupleTrackingPerPart.del");//Essam
+						   	         	            myfile2 << " aggregate in trans: "<<iter->first;
+						   	         	            myfile2 << " trans map size is: "<<iter->second.size();
+						   	         	            myfile2 << "\n";
+						   	         	            myfile2.close();
+						   	         				//*/
+
 		while(map_accesses_iter != iter->second.end()){
 
 		incrementAccessesPerPart (map_accesses_iter->second->partitionId,map_accesses_iter->second->tableName, map_accesses_iter->second->tupleID, map_accesses_iter->second->accesses);
@@ -293,14 +312,7 @@ void ReadWriteTrackerManager::aggregateTupleTrackingPerPart(){
 
 			if(iter->second!=NULL){
 				insertIntoTupleTrackingPerPart (iter->second->m_transTrackingInfo);
-				///Essam del
-				   	         	            //*
-				   	         	            ofstream myfile2;
-				   	         	            myfile2.open ("aggregateTupleTrackingPerPart.del");//Essam
-				   	         	            myfile2 << " aggregateTupleTrackingPerPart "<<1;
-				   	         	            myfile2 << "\n";
-				   	         	            myfile2.close();
-				   	         				//*/
+
 			}
 
 			iter++;
@@ -313,7 +325,7 @@ void ReadWriteTrackerManager::aggregateTupleTrackingPerPart(){
 
 void ReadWriteTrackerManager::printTupleTrackers(){
 
-	aggregateTupleTrackingPerPart();
+	//aggregateTupleTrackingPerPart();
 
 	ofstream myfile1;
 	myfile1.open ("printTupleTrackers.del");//Essam

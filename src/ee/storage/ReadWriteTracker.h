@@ -417,6 +417,7 @@ class ReadWriteTrackerManager {
         //Essam
         static boost::unordered_map<int64_t, TupleTrackerInfo*> tupleTrackers; //per transaction
         static boost::unordered_map<int32_t, map_accesses> tupleTrackersPerPart; //per partition
+        static int totalMonitoredTrans;
 
 
 
