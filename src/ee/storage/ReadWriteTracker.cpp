@@ -388,7 +388,7 @@ void ReadWriteTrackerManager::removeTupleTracker(int64_t txnId) {
 void ReadWriteTrackerManager::removeTracker(int64_t txnId) {
     ReadWriteTracker *tracker = this->getTracker(txnId);
 
-    if(txnId == 25000)
+    if(txnId > 30000)
     printTupleTrackers();//Essam
 
     if (tracker != NULL) {
