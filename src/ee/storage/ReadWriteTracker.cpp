@@ -189,7 +189,10 @@ ReadWriteTracker* ReadWriteTrackerManager::getTracker(int64_t txnId) {
 
 void ReadWriteTrackerManager::incrementAccessesPerPart(int partitionId, std::string tableName, uint32_t tupleId, int64_t accesses){
 
-   	    boost::unordered_map<int32_t, map_accesses>::const_iterator lookup = tupleTrackersPerPart.find(partitionId);
+
+
+
+	boost::unordered_map<int32_t, map_accesses>::const_iterator lookup = tupleTrackersPerPart.find(partitionId);
 
    	           	if(lookup != tupleTrackersPerPart.end())
    	           	{
@@ -204,6 +207,14 @@ void ReadWriteTrackerManager::incrementAccessesPerPart(int partitionId, std::str
    	           	{
 
    	           	tupleTrackersPerPart.insert ( std::make_pair (partitionId, map_accesses() ) );
+   	         ///Essam del
+   	         	            //*
+   	         	            ofstream myfile2;
+   	         	            myfile2.open ("incrementAccessesPerPart.del");//Essam
+   	         	            myfile2 << " partitionId ="<<partitionId;
+   	         	            myfile2 << "\n";
+   	         	            myfile2.close();
+   	         				//*/
    	            insertTrackingInfoPerPart(tupleTrackersPerPart[partitionId],partitionId,tableName.c_str(),tupleId,accesses);
 
    	           	}
@@ -242,7 +253,7 @@ void ReadWriteTrackerManager::insertTrackingInfoPerPart(map_accesses map,int par
 	           	}
 
 
-	           //	printInfo();
+
 
  }
 
@@ -308,7 +319,7 @@ void ReadWriteTrackerManager::printTupleTrackers(){
 
 	}
 
-	myfile1 << " TupleTrackers.size ="<<tupleTrackersPerPart.size();
+	myfile1 << " tupleTrackersPerPart.size ="<<tupleTrackersPerPart.size();
 	myfile1 << "\n";
 
    /*
