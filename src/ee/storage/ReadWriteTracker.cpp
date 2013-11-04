@@ -116,6 +116,7 @@ void ReadWriteTracker::clear() {
 // -------------------------------------------------------------------------
 
 boost::unordered_map<int64_t, TupleTrackerInfo*> ReadWriteTrackerManager::tupleTrackers;
+boost::unordered_map<int32_t, map_accesses> ReadWriteTrackerManager::tupleTrackersPerPart; //per partition
 
 ReadWriteTrackerManager::ReadWriteTrackerManager(ExecutorContext *ctx) : executorContext(ctx) {
     CatalogId databaseId = 1;
@@ -184,8 +185,113 @@ ReadWriteTracker* ReadWriteTrackerManager::getTracker(int64_t txnId) {
     }
     return (NULL);
 }
+///////////////////////////////////////////////////////////////////////////
+
+void ReadWriteTrackerManager::incrementAccessesPerPart(int partitionId, std::string tableName, uint32_t tupleId, int64_t accesses){
+
+   	    boost::unordered_map<int32_t, map_accesses>::const_iterator lookup = tupleTrackersPerPart.find(partitionId);
+
+   	           	if(lookup != tupleTrackersPerPart.end())
+   	           	{
+   	           	     // map <table+tuple, trackingInfo > per part
+   	           		//This part has a map lookup->second
+
+   	           	insertTrackingInfoPerPart(lookup->second,partitionId,tableName.c_str(),tupleId,accesses);
+
+
+   	           	}
+   	           	else
+   	           	{
+
+   	           	tupleTrackersPerPart.insert ( std::make_pair (partitionId, map_accesses() ) );
+   	            insertTrackingInfoPerPart(tupleTrackersPerPart[partitionId],partitionId,tableName.c_str(),tupleId,accesses);
+
+   	           	}
+
+
+   	  }
+
+void ReadWriteTrackerManager::insertTrackingInfoPerPart(map_accesses map,int partitionId, std::string tableName, uint32_t tupleID, int64_t accesses){
+
+	   std::stringstream ss ;
+	   ss << tupleID ;
+
+	   std::string key = tableName + ss.str();
+
+	   boost::unordered_map<std::string, TrackingInfo*>::const_iterator lookup = map.find(key);
+
+	           	if(lookup != map.end())
+	           	{
+	           	    // key already exists
+	           		lookup->second->accesses = lookup->second->accesses + accesses;
+	           	}
+	           	else
+	           	{
+	           	    // the key does not exist in the map
+	           	    // add it to the map
+
+	           		TrackingInfo* tupleInfo= new TrackingInfo();
+
+	           		tupleInfo->partitionId= partitionId;
+	           		tupleInfo->tableName= tableName;
+	           		tupleInfo->tupleID= tupleID;
+	           		tupleInfo->accesses= accesses;
+
+	           		map.insert(std::make_pair(key, tupleInfo));
+
+	           	}
+
+
+	           //	printInfo();
+
+ }
+
 
 //Essam
+void ReadWriteTrackerManager::insertIntoTupleTrackingPerPart(boost::unordered_map<int64_t, map_accesses> map){
+
+
+	//insert them into related partition and aggregate tuple accesses.
+	//map_accesses: map of <(table+tuple),tracking info) per transaction
+
+	boost::unordered_map<std::string, TrackingInfo*>::const_iterator map_accesses_iter;
+
+	boost::unordered_map<int64_t, map_accesses>::const_iterator iter = map.begin();
+	while(iter != map.end()){
+
+		map_accesses_iter = iter->second.begin();
+
+		while(map_accesses_iter != iter->second.end()){
+
+		incrementAccessesPerPart (map_accesses_iter->second->partitionId,map_accesses_iter->second->tableName, map_accesses_iter->second->tupleID, map_accesses_iter->second->accesses);
+		map_accesses_iter++;
+		}
+
+		iter++;
+
+		}
+
+}
+
+void ReadWriteTrackerManager::aggregateTupleTrackingPerPart(){
+
+	//go through all tupleTrackers, which is per transaction, and insert into tupleTrackersPerPart
+
+	boost::unordered_map<int64_t, TupleTrackerInfo*>::const_iterator iter= tupleTrackers.begin();
+    while(iter != tupleTrackers.end()){
+
+			if(iter->second!=NULL){
+				insertIntoTupleTrackingPerPart (iter->second->m_transTrackingInfo);
+			}
+
+			iter++;
+
+		}
+
+
+}
+
+
 void ReadWriteTrackerManager::printTupleTrackers(){
 
 	ofstream myfile1;

@@ -76,10 +76,7 @@ typedef struct {
 class TupleTrackerInfo {
 
 private:
-    /*
-     * trackingInfo per partition are hashed by (tableName+TupleID) as a string Key.
-     */
-    boost::unordered_map<int64_t, map_accesses> m_transTrackingInfo;
+
 
 
     /*
@@ -93,6 +90,12 @@ private:
 
 
 public:
+
+   /*
+        * trackingInfo per partition are hashed by (tableName+TupleID) as a string Key.
+        */
+       boost::unordered_map<int64_t, map_accesses> m_transTrackingInfo;
+
     TupleTrackerInfo(){
 
     	CatalogId databaseId = 1;
@@ -228,6 +231,10 @@ public:
 	           //	printInfo();
 
     }
+
+
+
+
 
    void printInfo() {
 
@@ -395,6 +402,11 @@ class ReadWriteTrackerManager {
     private:
         void getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const;
         
+        void aggregateTupleTrackingPerPart();
+        void insertIntoTupleTrackingPerPart(boost::unordered_map<int64_t, map_accesses> map);
+        void insertTrackingInfoPerPart(map_accesses map,int partitionId, std::string tableName, uint32_t tupleID, int64_t accesses);
+        void incrementAccessesPerPart(int partitionId, std::string tableName, uint32_t tupleId, int64_t accesses);
+
 
 
         ExecutorContext *executorContext;
@@ -404,6 +416,7 @@ class ReadWriteTrackerManager {
 
         //Essam
         static boost::unordered_map<int64_t, TupleTrackerInfo*> tupleTrackers; //per transaction
+        static boost::unordered_map<int32_t, map_accesses> tupleTrackersPerPart; //per partition
 
 
 
