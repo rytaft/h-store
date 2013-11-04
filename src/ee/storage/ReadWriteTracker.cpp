@@ -389,7 +389,7 @@ void ReadWriteTrackerManager::removeTupleTracker(int64_t txnId) {
 void ReadWriteTrackerManager::removeTracker(int64_t txnId) {
 
 
-    /*
+    //*
     TupleTrackerInfo* transMap= getTupleTracker(txnId);
     if(transMap != NULL)
     	transMap->printInfoTransMap();
