@@ -235,6 +235,51 @@ public:
 
 
 
+   void printInfoTransMap() {
+
+
+
+    	  boost::unordered_map<std::string, TrackingInfo*>::const_iterator iter = m_trackingInfo.begin();
+
+    	 ///Essam del
+    	 	   ofstream myfile1;
+    	 	   std::stringstream ss ;
+    	 	   ss << "TupleInfo"<<iter->second->txnId<<".del" ;
+
+    	 	 std::string fileName=ss.str();
+    	 	   myfile1.open (fileName.c_str());
+    	 	   myfile1 << " The Map Info of "<<iter->second->partitionId<<"its size is "<<m_trackingInfo.size()<<"\n";
+
+    	        myfile1 << " |Partition ID";
+    	        myfile1 << " |Trans ID";
+    	        myfile1 << " |Table Name";
+    	        myfile1 << " |Tuple ID";
+    	        myfile1 << " |Accesses|";
+    	  	   myfile1 << "\n";
+    	  	   //*/
+
+   	   int k=0;
+          while (iter != m_trackingInfo.end()) {
+
+              myfile1 << iter->second->partitionId<<"\t";
+              myfile1 << iter->second->txnId<<"\t";
+              myfile1 << iter->second->tableName<<"\t";
+              myfile1 << iter->second->tupleID<<"\t";
+              myfile1 << iter->second->accesses<<"\n";
+
+              k++;
+              if(k>100)
+           	   break;
+
+              iter++;
+          } // WHILE
+
+
+          myfile1.close();
+        	                                 	 	              //*/
+          return;
+      }
+
 
    void printInfo() {
 

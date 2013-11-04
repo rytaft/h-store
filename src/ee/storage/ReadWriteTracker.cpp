@@ -160,7 +160,7 @@ ReadWriteTracker* ReadWriteTrackerManager::enableTracking(int64_t txnId,int32_t 
 
 	TupleTrackerInfo* tupleTrackerInfo = NULL;
 
-	if (totalMonitoredTrans < 100)
+	if (totalMonitoredTrans < 10)
 	{
 		totalMonitoredTrans++;
 
@@ -387,6 +387,10 @@ void ReadWriteTrackerManager::removeTupleTracker(int64_t txnId) {
 ///////////////////////
 void ReadWriteTrackerManager::removeTracker(int64_t txnId) {
     ReadWriteTracker *tracker = this->getTracker(txnId);
+
+    TupleTrackerInfo* transMap= getTupleTracker(txnId);
+    if(transMap != NULL)
+    	transMap->printInfoTransMap();
 
     if(txnId > 30000)
     printTupleTrackers();//Essam
