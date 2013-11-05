@@ -35,7 +35,8 @@ import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
 
 import edu.brown.catalog.CatalogUtil;
-import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
+import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
 import edu.brown.hstore.Hstoreservice.DataTransferRequest;
 import edu.brown.hstore.Hstoreservice.DataTransferResponse;
 import edu.brown.hstore.Hstoreservice.HStoreService;
@@ -78,7 +79,6 @@ import edu.brown.hstore.Hstoreservice.TransactionReduceResponse;
 import edu.brown.hstore.Hstoreservice.TransactionWorkRequest;
 import edu.brown.hstore.Hstoreservice.TransactionWorkResponse;
 import edu.brown.hstore.Hstoreservice.WorkFragment;
-import edu.brown.hstore.callbacks.ShutdownPrepareCallback;
 import edu.brown.hstore.callbacks.LocalFinishCallback;
 import edu.brown.hstore.callbacks.LocalPrepareCallback;
 import edu.brown.hstore.callbacks.ShutdownPrepareCallback;
@@ -898,6 +898,22 @@ public class HStoreCoordinator implements Shutdownable {
                 LOG.error("Exception incurred while deleting tuples (not just marking)", e);
               }
             
+        }
+        
+        @Override
+        public void asyncPull(RpcController controller, AsyncPullRequest request,
+            RpcCallback<AsyncPullResponse> done) {
+        	
+        	// This is an async data pull request which will be sent to RC and
+        	// processed asynchronously
+        	 try {
+                 hstore_site.getReconfigurationCoordinator().asyncPullRequest (
+                   request, done);
+             } catch (Exception e) {
+               // TODO Auto-generated catch block
+               LOG.error("Exception occured while processing async pull request", e);
+             }
+        	
         }
 
     } // END CLASS

@@ -29,6 +29,8 @@ import edu.brown.hashing.PlannedPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.HStoreSite;
+import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
+import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
 import edu.brown.hstore.Hstoreservice.DataTransferRequest;
 import edu.brown.hstore.Hstoreservice.DataTransferResponse;
 import edu.brown.hstore.Hstoreservice.HStoreService;
@@ -592,6 +594,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
          */
         return;
     }
+    
+    public void asyncPullRequest(AsyncPullRequest asyncPullRequest, RpcCallback<AsyncPullResponse> 
+        asyncPullResponseCallback) {
+    	
+    }
+        
+    	
 
     /**
      * Non-blocking call to pull reconfiguration ranges. Wrapper for pullRanges
@@ -853,6 +862,16 @@ public class ReconfigurationCoordinator implements Shutdownable {
             //TODO : Can we get away with creating an instance each time
             ProtoRpcController controller = new ProtoRpcController();
             channels[msg.getSenderSite()].reconfigurationControlMsg(controller, acknowledgingCallback, null);
+        }
+    };
+    
+    /*
+     * Handling callbacks for async pulls that were issued
+     */
+    private final RpcCallback<AsyncPullResponse> asyncPullRequestCallback = new RpcCallback<AsyncPullResponse>() {
+        @Override
+        public void run(AsyncPullResponse msg) {
+        	
         }
     };
 
