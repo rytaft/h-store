@@ -21,7 +21,7 @@
 #include "Topend.h"
 #include "common/UndoQuantum.h"
 #include "storage/ReadWriteTracker.h"
-//#include "storage/TupleTracker.h"//Essam
+#include "storage/TupleTracker.h"//Essam
 
 #ifdef ANTICACHE
 #include "anticache/AntiCacheDB.h"
