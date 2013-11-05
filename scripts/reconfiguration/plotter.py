@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-
+import matplotlib
+matplotlib.use('Agg')
 import os
 import sys
 import csv
