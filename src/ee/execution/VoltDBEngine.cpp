@@ -129,7 +129,7 @@ VoltDBEngine::VoltDBEngine(Topend *topend, LogProxy *logProxy)
     m_executorContext = NULL;
 
     //Essam Tuple Tracker Manager have a tracker per partition
-    tupletrackerMgr = NULL;
+    //tupletrackerMgr = NULL;
 }
 
 bool VoltDBEngine::initialize(
@@ -173,14 +173,18 @@ bool VoltDBEngine::initialize(
 
 
     //Essam enable tuple tracker per partition
-    //m_executorContext->enableTupleTracking();
+    //*/
+    // tupletrackerMgr =  new TupleTrackerManager(m_executorContext);
+    m_executorContext->enableTupleTracking();
     //tupletrackerMgr = m_executorContext->getTupleTrackerManager();
     //tupletrackerMgr->enableTupleTracking(partitionId);
-
+    //*/
     return true;
 }
 
 VoltDBEngine::~VoltDBEngine() {
+
+
     // WARNING WARNING WARNING
     // The sequence below in which objects are cleaned up/deleted is
     // fragile.  Reordering or adding additional destruction below
@@ -191,9 +195,10 @@ VoltDBEngine::~VoltDBEngine() {
 
 
 	//Essam Print Tuple Tracker Per Partition
-	//if(tupletrackerMgr!=NULL)
-	 //tupletrackerMgr->print();
-
+	/*/
+	if(tupletrackerMgr!=NULL)
+	 tupletrackerMgr->print();
+    //*/
 
     // Get rid of any dummy undo quantum first so m_undoLog.clear()
     // doesn't wipe this out before we do it.

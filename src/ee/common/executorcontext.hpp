@@ -21,7 +21,7 @@
 #include "Topend.h"
 #include "common/UndoQuantum.h"
 #include "storage/ReadWriteTracker.h"
-#include "storage/TupleTracker.h"//Essam
+//#include "storage/TupleTracker.h"//Essam
 
 #ifdef ANTICACHE
 #include "anticache/AntiCacheDB.h"
@@ -32,6 +32,8 @@ namespace voltdb {
     
     class ReadWriteTrackerManager;
     
+    class TupleTrackerManager;//Essam
+
     #ifdef ANTICACHE
     class AntiCacheDB;
     class AntiCacheEvictionManager; 
@@ -83,6 +85,9 @@ namespace voltdb {
             m_lastTickTime = 0;
             m_antiCacheEnabled = false;
             m_trackingEnabled = false;
+
+
+            //enableTupleTracking();//Essam
         }
         
         // not always known at initial construction

@@ -68,7 +68,7 @@
 #include "logging/StdoutLogProxy.h"
 #include "stats/StatsAgent.h"
 
-#include "storage/TupleTracker.h" //Essam
+//#include "storage/TupleTracker.h" //Essam
 
 #ifdef ANTICACHE
 #include "anticache/EvictedTupleAccessException.h"
@@ -570,7 +570,7 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         // other components. (Components MUST NOT depend on VoltDBEngine.h).
         ExecutorContext *m_executorContext;
 
-        TupleTrackerManager *tupletrackerMgr;//Essam
+        //TupleTrackerManager *tupletrackerMgr;//Essam
 
         DefaultTupleSerializer m_tupleSerializer;
 };
