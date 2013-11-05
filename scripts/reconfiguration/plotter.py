@@ -19,13 +19,19 @@ OPT_GRAPH_WIDTH = 1200
 OPT_GRAPH_HEIGHT = 600
 OPT_GRAPH_DPI = 100
 
-TYPE_MAP = {
+INTERVAL_TYPE_MAP = {
   "tps": "THROUGHPUT",
   "lat": "LATENCY",
   "lat50": "LATENCY_50",
   "lat95": "LATENCY_95",
   "lat99": "LATENCY_99",
 }
+
+RESULTS_TYPE_MAP = {
+  "tps": "TXNTOTALPERSECOND",
+  "lat": "TOTALAVGLATENCY",
+}
+
 ## ==============================================
 ## LOGGING CONFIGURATION
 ## ==============================================
@@ -66,7 +72,7 @@ def getParser():
 
 def getReconfigEvents(hevent_log):
     events = []
-    if not os.path.exists:
+    if not os.path.exists(hevent_log):
         return None
     with open(hevent_log, "r") as f:
         protocol = ''
@@ -128,6 +134,53 @@ def plotGraph(args):
         plot.show()
 
 
+
+## ==============================================
+## plot aggregate results 
+## ==============================================
+def plotResults(args, files, ax):
+    dfs = [ (d, pandas.DataFrame.from_csv(d,index_col=1)) for d in files if "results" in d]
+    data = {}
+    x = 0
+    for (_file, df) in dfs:
+        name = os.path.basename(_file).split("-results")[0] 
+        base_name = name
+        if args.recursive:
+            name = "%s-%s" % (name, os.path.dirname(_file).rsplit(os.path.sep,1)[1])   
+            base_name = name
+        for show_var in args.show_vars:
+            color = COLORS[x % len(COLORS)]
+            linestyle = LINE_STYLES[x % len(LINE_STYLES)]
+            if len(args.show_vars) > 1:
+                name = "%s-%s" % (base_name,show_var)
+            data[name] = df[RESULTS_TYPE_MAP[show_var]].values
+            if args.reconfig:
+                reconfig_events = getReconfigEvents(_file.replace("interval_res.csv", "hevent.log"))
+                addReconfigEvent(df, reconfig_events)
+                if len(df[df.RECONFIG.str.contains('TXN')]) == 1:
+                    LOG.error("TODO annotate this has reconfig")
+                else:
+                    LOG.error("Multiple reconfig events not currently supported")
+                 
+            print df
+            if args.type == "line":
+                #plot the line with the same color 
+                ax.plot(df.index, data[name], color=color,label=name,ls=linestyle, lw=2.0)
+            elif args.type == "bar":
+                ax.bar(x, data[name], color=color, label=name)
+            x+=1 # FOR
+    plotFrame = pandas.DataFrame(data=data)
+    if args.type == "line" or args.type == "bar":
+        pass
+        #plotFrame.plot(ax=ax )
+    elif args.type == "boxplot":
+        plotFrame.boxplot(ax=ax, notch=1, sym='', vert=1, whis=1.5, 
+              positions=None, widths=None, patch_artist=False, bootstrap = 5000)
+    else:
+        raise Exception("unsupported plot type : " + args.type)  
+
+    plotGraph(args)
+
 ## ==============================================
 ## tsd
 ## ==============================================
@@ -148,18 +201,27 @@ def plotTSD(args, files, ax):
             linestyle = LINE_STYLES[x % len(LINE_STYLES)]
             if len(args.show_vars) > 1:
                 name = "%s-%s" % (base_name,show_var)
-            data[name] = df[TYPE_MAP[show_var]].values
+            data[name] = df[INTERVAL_TYPE_MAP[show_var]].values
             if args.reconfig:
                 reconfig_events = getReconfigEvents(_file.replace("interval_res.csv", "hevent.log"))
-                addReconfigEvent(df, reconfig_events)
-                if len(df[df.RECONFIG.str.contains('TXN')]) == 1:
-                    ax.axvline(df[df.RECONFIG.str.contains('TXN')].index[0], color=color, lw=1.5, linestyle="--",label=init_legend)
-                    ax.axvline(df[df.RECONFIG.str.contains('END')].index[0], color=color, lw=1.5, linestyle=":",label=end_legend)
-                    init_legend = None
-                    end_legend = None
-                else:
-                    LOG.error("Multiple reconfig events not currently supported")
-                 
+                if reconfig_events:
+                    addReconfigEvent(df, reconfig_events)
+                    if len(df[df.RECONFIG.str.contains('TXN')]) == 1:
+                        ax.axvline(df[df.RECONFIG.str.contains('TXN')].index[0], color=color, lw=1.5, linestyle="--",label=init_legend)
+                        if any(df.RECONFIG.str.contains('END')):
+                            ax.axvline(df[df.RECONFIG.str.contains('END')].index[0], color=color, lw=1.5, linestyle=":",label=end_legend)
+                            end_legend = None
+                        else:
+                            LOG.error("*****************************************")
+                            LOG.error("*****************************************")
+                            LOG.error(" NO END FOUND %s " % name)
+                            LOG.error("*****************************************")
+                            LOG.error("*****************************************")
+            
+                        init_legend = None
+                    else:
+                        LOG.error("Multiple reconfig events not currently supported")
+            print name     
             print df
             if args.type == "line":
                 #plot the line with the same color 
@@ -182,15 +244,20 @@ def plotter(args, files):
     plot.figure()
     ax = plot.subplot(111)
     
-
+    print args
     if args.show == "latall":
-        args.show_vars = [x for x in TYPE_MAP if "lat" in x] 
+        if args.tsd:
+            keymap = INTERVAL_TYPE_MAP
+        else:
+            keymap = RESULTS_TYPE_MAP
+
+        args.show_vars = [x for x in keymap if "lat" in x] 
     else:
-        args.show_vars = [TYPE_MAP[args.show]]
+        args.show_vars = [args.show]
     if args.tsd:
         plotTSD(args, files, ax)   
     else:
-        raise Exception("Only TSD supported")
+        plotResults(args, files, ax)
     #LOG.debug("Files to plot %s" % (files))
 
     

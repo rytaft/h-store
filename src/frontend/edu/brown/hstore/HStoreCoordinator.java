@@ -860,7 +860,7 @@ public class HStoreCoordinator implements Shutdownable {
           
           LivePullResponse response = null;
           try {
-              hstore_site.getReconfigurationCoordinator().sendTuples(
+              hstore_site.getReconfigurationCoordinator().dataPullRequest(
                 request, done);
           } catch (Exception e) {
             // TODO Auto-generated catch block
@@ -887,10 +887,10 @@ public class HStoreCoordinator implements Shutdownable {
                 if(request.getReconfigControlType() == ReconfigurationControlType.PULL_RECEIVED){
                     hstore_site.getReconfigurationCoordinator().deleteTuples(request);
                 } else if(request.getReconfigControlType() == ReconfigurationControlType.RECONFIGURATION_DONE) {
-                    hstore_site.getReconfigurationCoordinator().markReconfigurationIsDone(request.getSenderSite());
+                    hstore_site.getReconfigurationCoordinator().leaderReceiveRemoteReconfigComplete(request.getSenderSite());
                 }  else if(request.getReconfigControlType() == ReconfigurationControlType.
                 		RECONFIGURATION_DONE_RECEIVED) {
-                    hstore_site.getReconfigurationCoordinator().markReconfigurationIsDoneLocally();
+                    hstore_site.getReconfigurationCoordinator().receiveReconfigurationCompleteFromLeader();
                 }
                
             } catch (Exception e) {

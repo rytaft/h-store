@@ -49,6 +49,7 @@ import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.messaging.FastSerializer;
 import org.voltdb.utils.DBBPool.BBContainer;
 import org.voltdb.utils.NotImplementedException;
+import org.voltdb.utils.Pair;
 
 import edu.brown.hstore.HStore;
 import edu.brown.hstore.PartitionExecutor;
@@ -1500,7 +1501,7 @@ public class ExecutionEngineIPC extends ExecutionEngine {
     
     
     @Override
-    public VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
+    public Pair<VoltTable,Boolean> extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
     {
       throw new NotImplementedException("Reconfiguration is disabled for IPC EE");
     }

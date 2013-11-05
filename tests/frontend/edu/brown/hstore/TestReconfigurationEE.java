@@ -15,6 +15,7 @@ import org.voltdb.catalog.Site;
 import org.voltdb.catalog.Table;
 import org.voltdb.client.Client;
 import org.voltdb.jni.ExecutionEngine;
+import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTableUtil;
 
 import edu.brown.BaseTestCase;
@@ -124,8 +125,9 @@ public class TestReconfigurationEE extends BaseTestCase {
             
             // ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(0), tuples, 1, 2);
             VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
-            VoltTable resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken()) ;
-            rowCount+=resTable.getRowCount();
+            Pair<VoltTable,Boolean> resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken()) ;
+            rowCount+=resTable.getFirst().getRowCount();
+            assertEquals(false, resTable.getSecond().booleanValue());
         }
         assertEquals(tuples,rowCount);
     }
@@ -138,8 +140,8 @@ public class TestReconfigurationEE extends BaseTestCase {
         ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(102), 1, 2);
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);     
         int deleteToken  = 47;
-        VoltTable resTable = this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken);
-        assertTrue(resTable.getRowCount()==2);
+        Pair<VoltTable,Boolean> resTable = this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken);
+        assertTrue(resTable.getFirst().getRowCount()==2);
         LOG.info("confirming extract request" );
         boolean success = this.ee.updateExtractRequest(deleteToken, true);
         assertTrue(success);
@@ -152,7 +154,7 @@ public class TestReconfigurationEE extends BaseTestCase {
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         
         resTable = this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, ++deleteToken);
-        assertTrue(resTable.getRowCount()==10);
+        assertTrue(resTable.getFirst().getRowCount()==10);
 
         //TODO undo migration
         //LOG.info("undo  extract request" );
@@ -170,36 +172,36 @@ public class TestReconfigurationEE extends BaseTestCase {
     	assertTrue(true);
     	ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(102), 1, 2);
     	VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
-    	VoltTable resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1,executor.getNextRequestToken());    	
-        assertTrue(resTable.getRowCount()==2);
-    	LOG.info("Results : " + resTable.toString(true));  	
+    	Pair<VoltTable,Boolean> resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1,executor.getNextRequestToken());    	
+        assertTrue(resTable.getFirst().getRowCount()==2);
+    	LOG.info("Results : " + resTable.getFirst().toString(true));  	
     	resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());
-    	assertTrue(resTable.getRowCount()==0);
+    	assertTrue(resTable.getFirst().getRowCount()==0);
     	
     	range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(998), new Long(1002), 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
         resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
-        assertTrue(resTable.getRowCount()==2);
+        assertTrue(resTable.getFirst().getRowCount()==2);
         
         range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(995), new Long(998), 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
         resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
-        assertTrue(resTable.getRowCount()==3);
+        assertTrue(resTable.getFirst().getRowCount()==3);
         
         range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(200), new Long(300), 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
         resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
-        assertTrue(resTable.getRowCount()==100);
+        assertTrue(resTable.getFirst().getRowCount()==100);
         
         range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(300), new Long(300), 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
         resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
-        assertTrue(resTable.getRowCount()==1);
+        assertTrue(resTable.getFirst().getRowCount()==1);
         
         range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(301), new Long(302), 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
         resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
-        assertTrue(resTable.getRowCount()==1);
+        assertTrue(resTable.getFirst().getRowCount()==1);
         
         //TODO ae andy we don't want to crash the system. need to find right exception
         /*
