@@ -88,7 +88,7 @@ namespace voltdb {
 
             m_tupleTrackingEnabled = false;
 
-            //enableTupleTracking();//Essam
+            m_tupleTrackingManager = NULL;
         }
         
         // not always known at initial construction
