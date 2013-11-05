@@ -86,6 +86,7 @@ namespace voltdb {
             m_antiCacheEnabled = false;
             m_trackingEnabled = false;
 
+            m_tupleTrackingEnabled = false;
 
             //enableTupleTracking();//Essam
         }
