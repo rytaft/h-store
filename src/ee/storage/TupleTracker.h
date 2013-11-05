@@ -113,6 +113,8 @@ class TupleTrackerManager {
         TupleTracker* getTupleTracker(int32_t partitionId);
         void removeTupleTracker(int32_t partitionId);
         
+        void print();
+
         Table* getTuplesRead(TupleTracker *tracker);
         Table* getTuplesWritten(TupleTracker *tracker);
         

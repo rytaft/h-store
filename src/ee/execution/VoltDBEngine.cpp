@@ -188,6 +188,12 @@ VoltDBEngine::~VoltDBEngine() {
     // object multiple times.  Change at your own risk.
     // --izzy 8/19/2009
 
+
+
+	//Essam Print Tuple Tracker Per Partition
+	tupletrackerMgr->print();
+
+
     // Get rid of any dummy undo quantum first so m_undoLog.clear()
     // doesn't wipe this out before we do it.
     if (m_currentUndoQuantum != NULL && m_currentUndoQuantum->isDummy()) {
@@ -227,6 +233,9 @@ VoltDBEngine::~VoltDBEngine() {
         tidPair.second->decrementRefcount();
     }
     m_exportingTables.clear();
+
+
+
 
     delete m_topend;
     delete m_executorContext;

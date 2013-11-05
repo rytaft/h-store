@@ -123,7 +123,7 @@ TupleTrackerManager::~TupleTrackerManager() {
     TupleSchema::freeTupleSchema(this->resultSchema);
     delete this->resultTable;
     
-    boost::unordered_map<int64_t, TupleTracker*>::const_iterator iter = this->trackers.begin();
+    boost::unordered_map<int32_t, TupleTracker*>::const_iterator iter = this->trackers.begin();
     while (iter != this->trackers.end()) {
         delete iter->second;
         iter++;
@@ -144,6 +144,24 @@ TupleTracker* TupleTrackerManager::getTupleTracker(int32_t partitionId) {
     }
     return (NULL);
 }
+
+
+void TupleTrackerManager::print() {
+	ofstream myfile1;
+	std::stringstream ss ;
+	boost::unordered_map<int32_t, TupleTracker*>::const_iterator iter;
+	    iter = trackers.begin();
+	    while (iter != trackers.end()) {
+
+	    	ss << "TupleTrackerPID"<<iter->first<<".del" ;
+	    	std::string fileName=ss.str();
+	    	myfile1 << " welcome partition: "<<iter->first<<"\n";
+
+	    	iter++;
+	    }
+
+ }
+
 
 void TupleTrackerManager::removeTupleTracker(int32_t partitionId) {
     TupleTracker *tracker = this->getTupleTracker(partitionId);
