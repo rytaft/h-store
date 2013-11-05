@@ -40,6 +40,7 @@ import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.messaging.FastSerializer;
 import org.voltdb.messaging.FastSerializer.BufferGrowCallback;
 import org.voltdb.utils.DBBPool.BBContainer;
+import org.voltdb.utils.Pair;
 
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.PartitionExecutor;
@@ -491,7 +492,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
     }
     
     @Override
-    public VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
+    public Pair<VoltTable, Boolean> extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
     {
         if (debug.val) LOG.debug("Extract table");
         deserializer.clear();
@@ -503,9 +504,9 @@ public class ExecutionEngineJNI extends ExecutionEngine {
             if (trace.val) LOG.trace("Results :"+results);
             final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table, txnId, lastCommittedTxnId, undoToken,requestToken);
             checkErrorCode(errorCode);
+            boolean moreData = checkIfMoreDataOrError(errorCode);
             
-            
-            return deserializer.readObject(VoltTable.class);
+            return new Pair<VoltTable, Boolean>(deserializer.readObject(VoltTable.class), moreData, false);
         } catch (IOException e) {
             LOG.error("Failed to deserialze result dependencies" + e);
             throw new EEException(ERRORCODE_WRONG_SERIALIZED_BYTES);

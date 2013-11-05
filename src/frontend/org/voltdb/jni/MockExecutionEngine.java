@@ -30,6 +30,7 @@ import org.voltdb.catalog.Table;
 import org.voltdb.exceptions.EEException;
 import org.voltdb.export.ExportProtoMessage;
 import org.voltdb.utils.DBBPool.BBContainer;
+import org.voltdb.utils.Pair;
 
 public class MockExecutionEngine extends ExecutionEngine {
 
@@ -227,7 +228,7 @@ public class MockExecutionEngine extends ExecutionEngine {
     }
     
     @Override
-    public VoltTable extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
+    public Pair<VoltTable,Boolean> extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
     {
     	return null;
     }

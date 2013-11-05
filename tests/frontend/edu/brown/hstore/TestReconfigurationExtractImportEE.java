@@ -16,6 +16,7 @@ import org.voltdb.catalog.Site;
 import org.voltdb.catalog.Table;
 import org.voltdb.client.Client;
 import org.voltdb.jni.ExecutionEngine;
+import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTableUtil;
 
 import edu.brown.BaseTestCase;
@@ -145,8 +146,8 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
     	ReconfigurationRange<Long> range; 
     	VoltTable extractTable;
     	long start, extract, load;
-    	VoltTable resTable;
-    	VoltTable resTableVerify;
+    	Pair<VoltTable,Boolean> resTable;
+    	Pair<VoltTable,Boolean> resTableVerify;
         
     	
     	for (int i=0; i< scales.length; i++) {
@@ -158,21 +159,21 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
             start = System.currentTimeMillis();
             resTable= this.ee.extractTable(this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
             extract = System.currentTimeMillis()-start; 
-            assertTrue(resTable.getRowCount()==NUM_TUPLES *scale);
+            assertTrue(resTable.getFirst().getRowCount()==NUM_TUPLES *scale);
             
             //assert empty     
             resTableVerify= this.ee.extractTable(this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
-            assertTrue(resTableVerify.getRowCount()==0);
+            assertTrue(resTableVerify.getFirst().getRowCount()==0);
             
             //load
             start = System.currentTimeMillis();
-            this.executor.loadTable(2000L, this.customer_tbl, resTable, false);
+            this.executor.loadTable(2000L, this.customer_tbl, resTable.getFirst(), false);
             load = System.currentTimeMillis() - start;
             LOG.info(String.format("size=%s Extract=%s Load=%s Diff:%s", NUM_TUPLES*scale, extract, load, load-extract));
 
             //re extract and check its there
             resTableVerify= this.ee.extractTable(this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
-            assertTrue(resTableVerify.getRowCount()==NUM_TUPLES *scale);
+            assertTrue(resTableVerify.getFirst().getRowCount()==NUM_TUPLES *scale);
 
             
             

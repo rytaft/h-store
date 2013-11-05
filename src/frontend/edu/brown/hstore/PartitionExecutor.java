@@ -1351,12 +1351,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
             int table_id = catalog_tbl.getRelativeIndex();
             VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(pushRange);
-            VoltTable vt = this.ee.extractTable(table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
+            Pair<VoltTable,Boolean> vt = this.ee.extractTable(table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
             try {
 
                 // RC push tuples
                 reconfiguration_coordinator.pushTuples(pushRange.old_partition, pushRange.new_partition, pushRange.table_name, 
-                        vt, pushRange.min_long, pushRange.max_long);
+                        vt.getFirst(), pushRange.min_long, pushRange.max_long);
                 this.reconfiguration_tracker.markRangeAsMigratedOut(pushRange);
             } catch (ReconfigurationException re) {
                 if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_OUT)
@@ -5853,8 +5853,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
         int table_id = catalog_tbl.getRelativeIndex();
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(pushRange);
-        VoltTable vt = this.ee.extractTable(table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
-        return vt;
+        Pair<VoltTable,Boolean> vt = this.ee.extractTable(table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
+        return vt.getFirst();
         
     }
     
@@ -5873,12 +5873,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             start = System.currentTimeMillis();
         }
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
-        VoltTable res = this.getExecutionEngine().extractTable(table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
+        Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
         if (res != null) {
             if(ReconfigurationCoordinator.detailed_timing){
                 long diff  = System.currentTimeMillis() - start;
                 LOG.info(String.format("(%s) Extract table[%s] for %s records of size %s took %s ms ",this.partitionId, table.getName(), 
-                        res.getRowCount(), res.getRowCount() * res.getRowSize() , diff)); 
+                        res.getFirst().getRowCount(), res.getFirst().getRowCount() * res.getFirst().getRowSize() , diff)); 
             }
             
             LOG.info(String.format("PE (%s) marking range as migrated out %s  ", this.partitionId, range.toString()));
@@ -5894,7 +5894,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 }
             }
         }
-        return res;
+        return res.getFirst();
 
     }
 
