@@ -68,6 +68,8 @@
 #include "logging/StdoutLogProxy.h"
 #include "stats/StatsAgent.h"
 
+#include "storage/TupleTracker.h" //Essam
+
 #ifdef ANTICACHE
 #include "anticache/EvictedTupleAccessException.h"
 #endif
@@ -106,6 +108,7 @@ class ReferenceSerializeInput;
 class ReferenceSerializeOutput;
 class PlanNodeFragment;
 class ExecutorContext;
+//class TupleTrackerManager; //Essam
 class RecoveryProtoMsg;
 
 /**
@@ -566,6 +569,8 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         // For data from engine that must be shared/distributed to
         // other components. (Components MUST NOT depend on VoltDBEngine.h).
         ExecutorContext *m_executorContext;
+
+        TupleTrackerManager *tupletrackerMgr;//Essam
 
         DefaultTupleSerializer m_tupleSerializer;
 };

@@ -127,6 +127,9 @@ VoltDBEngine::VoltDBEngine(Topend *topend, LogProxy *logProxy)
 
     // require a site id, at least, to inititalize.
     m_executorContext = NULL;
+
+    //Essam Tuple Tracker Manager have a tracker per partition
+    tupletrackerMgr = NULL;
 }
 
 bool VoltDBEngine::initialize(
@@ -166,6 +169,14 @@ bool VoltDBEngine::initialize(
                                             0, /* epoch not yet known */
                                             hostname,
                                             hostId);
+
+
+
+    //Essam enable tuple tracker per partition
+    m_executorContext->enableTupleTracking();
+    //tupletrackerMgr = m_executorContext->getTupleTrackerManager();
+    //tupletrackerMgr->enableTupleTracking(partitionId);
+
     return true;
 }
 
@@ -1463,6 +1474,8 @@ void VoltDBEngine::trackingEnable(int64_t txnId) {
 void VoltDBEngine::trackingFinish(int64_t txnId) {
     if (m_executorContext->isTrackingEnabled() == false) {
         VOLT_WARN("Tracking is not enable for txn #%ld at Partition %d", txnId, m_partitionId);
+
+
         return;
     }
     ReadWriteTrackerManager *trackerMgr = m_executorContext->getTrackerManager();

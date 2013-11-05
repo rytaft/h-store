@@ -21,6 +21,7 @@
 #include "Topend.h"
 #include "common/UndoQuantum.h"
 #include "storage/ReadWriteTracker.h"
+#include "storage/TupleTracker.h"//Essam
 
 #ifdef ANTICACHE
 #include "anticache/AntiCacheDB.h"
@@ -205,6 +206,30 @@ namespace voltdb {
             m_trackingManager = new ReadWriteTrackerManager(this);
         }
         
+        // ------------------------------------------------------------------
+        // Essam Tuple TRACKERS
+        // ------------------------------------------------------------------
+
+                inline bool isTupleTrackingEnabled() const {
+                    return (m_tupleTrackingEnabled);
+                }
+
+                inline TupleTrackerManager* getTupleTrackerManager() const {
+                    return (m_tupleTrackingManager);
+                }
+
+                /**
+                 * Essam Enable the tuple tracking feature in the EE.
+                 */
+                void enableTupleTracking() {
+                    assert(m_tupleTrackingEnabled == false);
+                    m_tupleTrackingEnabled = true;
+                    m_tupleTrackingManager = new TupleTrackerManager(this);
+                }
+
+
+
+
     private:
         Topend *m_topEnd;
         UndoQuantum *m_undoQuantum;
@@ -219,6 +244,11 @@ namespace voltdb {
         bool m_trackingEnabled;
         ReadWriteTrackerManager *m_trackingManager;
         
+        /** Essam Tuple Trackers */
+        bool m_tupleTrackingEnabled;
+        TupleTrackerManager *m_tupleTrackingManager;
+
+
     public:
         int64_t m_lastCommittedTxnId;
         int64_t m_lastTickTime;
