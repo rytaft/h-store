@@ -10,6 +10,7 @@
 #include "common/tabletuple.h"
 #include "common/TupleSchema.h"
 #include "storage/table.h"
+#include "storage/ReadWriteTracker.h"
 
 ////del me later
 #include <iostream>
@@ -36,9 +37,7 @@ typedef struct {
 typedef  boost::unordered_map<uint32_t, Accesses*> Map_TupleIdAccesses;
 
 //tableName -> <tupleID, Accesses>
-typedef  boost::unordered_map<std::string, Map_TupleIdAccesses> Map_TableAccesses;
-
-
+//typedef  boost::unordered_map<std::string, Map_TupleIdAccesses> Map_TableAccesses;
 
 
 namespace voltdb {
@@ -49,60 +48,33 @@ class TupleSchema;
 class Table;
     
 /**
- * Tuple Tracker for a single partition
- */
-class TupleTracker {
-    
-    friend class TupleTrackerManager;
-    
-    public:
-        TupleTracker(int32_t partId);
-        ~TupleTracker();
-        
-        void markTupleRead(const std::string tableName, TableTuple *tuple);
-        void markTupleWritten(const std::string tableName, TableTuple *tuple);
-        
-        void clear();
-        
-        std::vector<std::string> getTablesRead();
-        std::vector<std::string> getTablesWritten();
-        
-    private:
-        void insertTuple(boost::unordered_map<std::string, RowOffsets*> *map, const std::string tableName, TableTuple *tuple);
-        std::vector<std::string> getTableNames(boost::unordered_map<std::string, RowOffsets*> *map) const;
-        
-        int32_t partitionId;
-        
-        // TableName -> RowOffsets
-        boost::unordered_map<std::string, RowOffsets*> reads;
-        boost::unordered_map<std::string, RowOffsets*> writes;
-        
-}; // CLASS
-
-/**
- * TupleTracker Manager
+ * TupleTracker Manager for a single partition
  */
 class TupleTrackerManager {
     public:
 	     TupleTrackerManager(ExecutorContext *ctx,int32_t partId);
         ~TupleTrackerManager();
     
-        TupleTracker* getTupleTracker();
-        void removeTupleTracker();
+        void insertReadWriteTracker(ReadWriteTracker* rwtracker);
+        void clear();
         
         void print();
 
-        Table* getTuplesRead(TupleTracker *tracker);
-        Table* getTuplesWritten(TupleTracker *tracker);
-        
+
     private:
+
+        void insertTupleAccesses(boost::unordered_map<std::string, RowOffsets*> accesses);
+        void insertTuple(int64_t txnId, const std::string tableName, uint32_t tupleId);
+        
         void getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const;
         
         ExecutorContext *executorContext;
         TupleSchema *resultSchema;
         Table *resultTable;
-        //boost::unordered_map<int32_t, TupleTracker*> trackers;
-        TupleTracker* tracker;
+
+        //tableName -> Map_TupleIdAccesses{<tupleID, Accesses>}
+        boost::unordered_map<std::string, Map_TupleIdAccesses> m_tupleAccesses;
+
         int32_t partitionId;
 
 }; // CLASS

@@ -11,74 +11,6 @@ using namespace std;
 
 namespace voltdb {
 
-TupleTracker::TupleTracker(int32_t partId) :
-		partitionId(partId) {
-    
-    // Let's get it on!
-}
-
-TupleTracker::~TupleTracker() {
-    boost::unordered_map<std::string, RowOffsets*>::const_iterator iter;
-    
-    iter = this->reads.begin();
-    while (iter != this->reads.end()) {
-        delete iter->second;
-        iter++;
-    } // WHILE
-    
-    iter = this->writes.begin();
-    while (iter != this->writes.end()) {
-        delete iter->second;
-        iter++;
-    } // WHILE
-}
-
-void TupleTracker::insertTuple(boost::unordered_map<std::string, RowOffsets*> *map, const std::string tableName, TableTuple *tuple) {
-    RowOffsets *offsets = NULL;
-    boost::unordered_map<std::string, RowOffsets*>::const_iterator iter = map->find(tableName);
-    if (iter != map->end()) {
-        offsets = iter->second;
-    } else {
-        offsets = new RowOffsets();
-        map->insert(std::make_pair(tableName, offsets));
-    }
-    
-    uint32_t tupleId = tuple->getTupleID();
-    offsets->insert(tupleId);
-    VOLT_INFO("*** TXN #%ld -> %s / %d", this->partitionId, tableName.c_str(), tupleId);
-}
-
-void TupleTracker::markTupleRead(const std::string tableName, TableTuple *tuple) {
-    this->insertTuple(&this->reads, tableName, tuple);
-}
-
-void TupleTracker::markTupleWritten(const std::string tableName, TableTuple *tuple) {
-    this->insertTuple(&this->writes, tableName, tuple);
-}
-
-std::vector<std::string> TupleTracker::getTableNames(boost::unordered_map<std::string, RowOffsets*> *map) const {
-    std::vector<std::string> tableNames;
-    tableNames.reserve(map->size());
-    boost::unordered_map<std::string, RowOffsets*>::const_iterator iter = map->begin();
-    while (iter != map->end()) {
-        tableNames.push_back(iter->first);
-        iter++;
-    } // FOR
-    return (tableNames);
-}
-
-std::vector<std::string> TupleTracker::getTablesRead() {
-    return this->getTableNames(&this->reads);
-}    
-std::vector<std::string> TupleTracker::getTablesWritten() {
-    return this->getTableNames(&this->writes);
-}
-
-void TupleTracker::clear() {
-    this->reads.clear();
-    this->writes.clear();
-}
-
 // -------------------------------------------------------------------------
 
 TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx,int32_t partId) :
@@ -97,24 +29,28 @@ TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx,int32_t partId) :
                 resultColumnNames,
                 NULL));
 
-
-    tracker = new TupleTracker(partitionId);
 }
 
 TupleTrackerManager::~TupleTrackerManager() {
     TupleSchema::freeTupleSchema(this->resultSchema);
     delete this->resultTable;
-    
-    delete tracker;
+}
+
+void TupleTrackerManager::insertReadWriteTracker(ReadWriteTracker* rwtracker){
+
+}
+
+void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, RowOffsets*> accesses){
+
 }
 
 
-TupleTracker* TupleTrackerManager::getTupleTracker() {
-    return tracker;
+
+void TupleTrackerManager::insertTuple(int64_t txnId, const std::string tableName, uint32_t tupleId){
+
 }
 
-
-void TupleTrackerManager::print() {
+void TupleTrackerManager::TupleTrackerManager::print() {
 	ofstream myfile1;
 	std::stringstream ss ;
 	ss << "TupleTrackerPID_"<<partitionId<<".del" ;
@@ -124,10 +60,6 @@ void TupleTrackerManager::print() {
 	myfile1.close();
 }
 
-
-void TupleTrackerManager::removeTupleTracker() {
-      delete tracker;
-}
 
 void TupleTrackerManager::getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const {
     this->resultTable->deleteAllTuples(false);
@@ -147,14 +79,9 @@ void TupleTrackerManager::getTuples(boost::unordered_map<std::string, RowOffsets
     return;
 }
 
-Table* TupleTrackerManager::getTuplesRead(TupleTracker *tracker) {
-    this->getTuples(&tracker->reads);
-    return (this->resultTable);
-}
 
-Table* TupleTrackerManager::getTuplesWritten(TupleTracker *tracker) {
-    this->getTuples(&tracker->writes);
-    return (this->resultTable);
-}
+
+
+// -------------------------------------------------------------------------
 
 }

@@ -1479,14 +1479,16 @@ void VoltDBEngine::trackingEnable(int64_t txnId) {
 void VoltDBEngine::trackingFinish(int64_t txnId) {
     if (m_executorContext->isTrackingEnabled() == false) {
         VOLT_WARN("Tracking is not enable for txn #%ld at Partition %d", txnId, m_partitionId);
-
-
-        return;
+      return;
     }
     ReadWriteTrackerManager *trackerMgr = m_executorContext->getTrackerManager();
     VOLT_INFO("Deleting ReadWriteTracker for txn #%ld at Partition %d",txnId, m_partitionId);
+
+    //Essam Tuple Tracker
+    m_executorContext->getTupleTrackerManager()->insertReadWriteTracker(trackerMgr->getTracker(txnId));
+
     trackerMgr->removeTracker(txnId);
-    //trackerMgr->removeTupleTracker(m_partitionId);//Essam
+
     return;
 }
 
