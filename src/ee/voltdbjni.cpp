@@ -414,7 +414,7 @@ Java_org_voltdb_jni_ExecutionEngine_nativeExtractTable(JNIEnv *env,
     jlong lastCommittedTxnId,
     jlong undoToken,
     jint request_token, 
-    jint extract_size_limit)
+    jint extract_tuple_limit)
 {
     VOLT_DEBUG("Calling ee extract Table");
     VoltDBEngine *engine = castToEngine(engine_ptr);
@@ -424,7 +424,7 @@ Java_org_voltdb_jni_ExecutionEngine_nativeExtractTable(JNIEnv *env,
     }
 
     try{
-	    int extractSizeLimit = extract_size_limit;
+	    int extractTupleLimit = extract_tuple_limit;
             updateJNILogProxy(engine);
             engine->resetReusedResultOutputBuffer();
             engine->setUndoToken(undoToken);
@@ -433,7 +433,7 @@ Java_org_voltdb_jni_ExecutionEngine_nativeExtractTable(JNIEnv *env,
             jbyte *bytes = env->GetByteArrayElements(serialized_table, NULL);
             ReferenceSerializeInput serialize_in(bytes, length);
             int requestToken = request_token;
-            int result = engine->extractTable( table_id, serialize_in, txnId, lastCommittedTxnId, requestToken, extractSizeLimit );
+            int result = engine->extractTable( table_id, serialize_in, txnId, lastCommittedTxnId, requestToken, extractTupleLimit );
             return result;
 	    //if (results == org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS)
               //      return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;

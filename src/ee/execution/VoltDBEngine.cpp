@@ -1407,7 +1407,7 @@ bool VoltDBEngine::updateExtractRequest(int32_t requestToken, bool confirmDelete
         return m_migrationManager->undoExtractDelete(requestToken);            
 }
 
-int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken, int32_t extractSizeLimit){
+int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken, int32_t extractTupleLimit){
     VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
     m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
                                             txnId,
@@ -1453,7 +1453,7 @@ int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &seriali
         //TODO ae more than 1 range -> into a single result?
         VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
 	bool moreData = false;
-        Table* outputTable = m_migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3),requestToken, extractSizeLimit, moreData);
+        Table* outputTable = m_migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3),requestToken, extractTupleLimit, moreData);
         size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
         if (outputTable != NULL) {
             outputTable->serializeTo(m_resultOutput);
@@ -1462,12 +1462,16 @@ int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &seriali
             //delete colNames;
             
             TupleSchema::freeTupleSchema(extractMigrateSchema);
-            return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
+	    if (moreData == true)
+	      return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS_MORE_DATA;
+	    else
+	      return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
         } 
         else{
             return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
         }
     }
+    
     return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
 }
 

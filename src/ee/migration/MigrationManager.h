@@ -48,7 +48,7 @@ public:
      * Extract a range from the given table
      * TODO: This is just a proposal and not what the real API should be...
      */
-    Table* extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey, int32_t requestTokenId, int32_t extractSizeLimit, bool& moreData);
+    Table* extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey, int32_t requestTokenId, int32_t extractTupleLimit, bool& moreData);
     TableIndex* getPartitionColumnIndex(PersistentTable *table);
     
     bool confirmExtractDelete(int32_t requestTokenId);

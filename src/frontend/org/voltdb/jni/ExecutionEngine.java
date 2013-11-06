@@ -868,9 +868,9 @@ public abstract class ExecutionEngine implements FastDeserializer.Deserializatio
     // ----------------------------------------------------------------------------
     // Reconfiguration
     // ----------------------------------------------------------------------------
-    public abstract Pair<VoltTable, Boolean> extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken) throws EEException;
+    public abstract Pair<VoltTable, Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken) throws EEException;
     
-    protected native int nativeExtractTable(long pointer, int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int extractSizeLimit);
+    protected native int nativeExtractTable(long pointer, int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int extractTupleLimit);
     
     public abstract boolean updateExtractRequest(int requestToken, boolean deleteRequestedData);
     

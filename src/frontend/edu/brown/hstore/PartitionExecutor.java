@@ -122,6 +122,7 @@ import com.google.protobuf.RpcCallback;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.catalog.PlanFragmentIdGenerator;
 import edu.brown.catalog.special.CountedStatement;
+import edu.brown.designer.MemoryEstimator;
 import edu.brown.hashing.PlannedPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
@@ -1351,7 +1352,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
             int table_id = catalog_tbl.getRelativeIndex();
             VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(pushRange);
-            Pair<VoltTable,Boolean> vt = this.ee.extractTable(table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
+            Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
             try {
 
                 // RC push tuples
@@ -5853,7 +5854,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
         int table_id = catalog_tbl.getRelativeIndex();
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(pushRange);
-        Pair<VoltTable,Boolean> vt = this.ee.extractTable(table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
+        Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
         return vt.getFirst();
         
     }
@@ -5873,7 +5874,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             start = System.currentTimeMillis();
         }
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
-        Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
+        
+        Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table, table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
         if (res != null) {
             if(ReconfigurationCoordinator.detailed_timing){
                 long diff  = System.currentTimeMillis() - start;

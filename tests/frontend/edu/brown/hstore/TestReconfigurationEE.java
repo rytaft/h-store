@@ -125,7 +125,7 @@ public class TestReconfigurationEE extends BaseTestCase {
             
             // ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(0), tuples, 1, 2);
             VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
-            Pair<VoltTable,Boolean> resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken()) ;
+            Pair<VoltTable,Boolean> resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken()) ;
             rowCount+=resTable.getFirst().getRowCount();
             assertEquals(false, resTable.getSecond().booleanValue());
         }
@@ -140,7 +140,7 @@ public class TestReconfigurationEE extends BaseTestCase {
         ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(102), 1, 2);
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);     
         int deleteToken  = 47;
-        Pair<VoltTable,Boolean> resTable = this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken);
+        Pair<VoltTable,Boolean> resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken);
         assertTrue(resTable.getFirst().getRowCount()==2);
         LOG.info("confirming extract request" );
         boolean success = this.ee.updateExtractRequest(deleteToken, true);
@@ -153,7 +153,7 @@ public class TestReconfigurationEE extends BaseTestCase {
         range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(110), new Long(120), 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         
-        resTable = this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, ++deleteToken);
+        resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, ++deleteToken);
         assertTrue(resTable.getFirst().getRowCount()==10);
 
         //TODO undo migration
@@ -172,35 +172,35 @@ public class TestReconfigurationEE extends BaseTestCase {
     	assertTrue(true);
     	ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(102), 1, 2);
     	VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
-    	Pair<VoltTable,Boolean> resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1,executor.getNextRequestToken());    	
+    	Pair<VoltTable,Boolean> resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1,executor.getNextRequestToken());    	
         assertTrue(resTable.getFirst().getRowCount()==2);
     	LOG.info("Results : " + resTable.getFirst().toString(true));  	
-    	resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());
+    	resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());
     	assertTrue(resTable.getFirst().getRowCount()==0);
     	
     	range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(998), new Long(1002), 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
-        resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
+        resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
         assertTrue(resTable.getFirst().getRowCount()==2);
         
         range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(995), new Long(998), 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
-        resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
+        resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
         assertTrue(resTable.getFirst().getRowCount()==3);
         
         range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(200), new Long(300), 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
-        resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
+        resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
         assertTrue(resTable.getFirst().getRowCount()==100);
         
         range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(300), new Long(300), 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
-        resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
+        resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
         assertTrue(resTable.getFirst().getRowCount()==1);
         
         range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(301), new Long(302), 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
-        resTable= this.ee.extractTable(this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
+        resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
         assertTrue(resTable.getFirst().getRowCount()==1);
         
         //TODO ae andy we don't want to crash the system. need to find right exception

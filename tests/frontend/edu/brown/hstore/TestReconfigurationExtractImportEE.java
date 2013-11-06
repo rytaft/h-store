@@ -157,12 +157,12 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
             range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale+1), 1, 2);
             extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
             start = System.currentTimeMillis();
-            resTable= this.ee.extractTable(this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
+            resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
             extract = System.currentTimeMillis()-start; 
             assertTrue(resTable.getFirst().getRowCount()==NUM_TUPLES *scale);
             
             //assert empty     
-            resTableVerify= this.ee.extractTable(this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
+            resTableVerify= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
             assertTrue(resTableVerify.getFirst().getRowCount()==0);
             
             //load
@@ -172,7 +172,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
             LOG.info(String.format("size=%s Extract=%s Load=%s Diff:%s", NUM_TUPLES*scale, extract, load, load-extract));
 
             //re extract and check its there
-            resTableVerify= this.ee.extractTable(this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
+            resTableVerify= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
             assertTrue(resTableVerify.getFirst().getRowCount()==NUM_TUPLES *scale);
 
             
