@@ -125,7 +125,7 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
                 }                
                 table->deleteTuple(tuple,true);
 		//Count if we have taken the max tuples
-		if (tuplesExtracted++ > extractTupleLimit){
+		if (++tuplesExtracted >= extractTupleLimit){
 		  dataLimitReach = true;
 		}		
             }           
@@ -149,8 +149,9 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
 		
 		//Have we reached our datalimit and found another tuple
 		if (dataLimitReach == true){
-		  moreData = true;
-		  break;
+		    VOLT_DEBUG("more tuples with limit");
+		    moreData = true;
+		    break;
 		}
 		
                 if (!outputTable->insertTuple(tuple))
@@ -160,8 +161,9 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
                 }
                 table->deleteTuple(tuple,true);
 		//Count if we have taken the max tuples
-		if (tuplesExtracted++ > extractTupleLimit){
-		  dataLimitReach = true;
+		if (++tuplesExtracted >= extractTupleLimit){
+		      VOLT_DEBUG("tuple limit reached b-tree");
+		      dataLimitReach = true;
 		}
             }
         }  // Else if hash index
@@ -182,8 +184,9 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
                   
 		  //Have we reached our datalimit and found another tuple
 		  if (dataLimitReach == true){
-		    moreData = true;
-		    break;
+		      VOLT_DEBUG("more tuples with limit");
+		      moreData = true;
+		      break;
 		  }		  
 		  
 		  if (!outputTable->insertTuple(tuple))
@@ -193,8 +196,9 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
                     }
                     table->deleteTuple(tuple,true);
 		    //Count if we have taken the max tuples
-		    if (tuplesExtracted++ > extractTupleLimit){
-		      dataLimitReach = true;
+		    if (++tuplesExtracted >= extractTupleLimit){
+			VOLT_DEBUG("tuple limit reached - hash table %d", tuplesExtracted);
+			dataLimitReach = true;
 		    }
                 }
             }
