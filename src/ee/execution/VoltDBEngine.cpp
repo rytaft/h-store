@@ -1156,14 +1156,6 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
                 }
             }
 
-                //Essam Print Tuple Tracker Per Partition
-            	//*/
-            	 m_executorContext->getTupleTrackerManager()->print();
-            	 ofstream myfile1;
-            	 myfile1.open ("_VoltDBEngine.del");
-            	 myfile1 << " end of _VoltDBEngine \n";
-            	 myfile1.close();
-                //*/
 
             resultTable = m_statsManager.getStats(
                 (StatisticsSelectorType) selector,
@@ -1204,15 +1196,14 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
                                 }
 
 
-                                ///Essam del
-                                /*
-                                	 	              ofstream myfile1;
-                                	 	             myfile1.open ("SELECTOR_TYPE_TUPLE.tupleStats");//Essam
-                                	 	            myfile1 << " selector ="<<selector;
-                                	 	           myfile1 << "\n";
-                                	 	           myfile1 << " SELECTOR_TYPE_TUPLE ="<<STATISTICS_SELECTOR_TYPE_TUPLE;
-                                	 	              myfile1.close();
-                                	 	              //*/
+                                //Essam Print Tuple Tracker Per Partition
+                                            	//*/
+                                            	 m_executorContext->getTupleTrackerManager()->print();
+                                            	 ofstream myfile1;
+                                            	 myfile1.open ("_VoltDBEngine.del");
+                                            	 myfile1 << " end of _VoltDBEngine \n";
+                                            	 myfile1.close();
+                                                //*/
 
                                 resultTable = m_statsManager.getStats(
                                     (StatisticsSelectorType) selector,
