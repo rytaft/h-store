@@ -32,6 +32,7 @@ public:
     // must match ERRORCODE_SUCCESS|ERROR in ExecutionEngine.java
     enum {
         kErrorCode_None = -1, kErrorCode_Success = 0, kErrorCode_Error = 1,
+	kErrorCode_SuccesMoreData = 3,
         /*
          * The following are not error codes but requests for information or functionality
          * from Java. These do not exist in ExecutionEngine.java since they are IPC specific.

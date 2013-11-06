@@ -66,8 +66,7 @@ MigrationManager::~MigrationManager() {
     // TODO
 }
 
-
-Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minKey, const NValue maxKey, int32_t requestToken) {
+Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey, int32_t requestToken, int32_t extractSizeLimit, bool& moreData) {
     VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );        
     //Get the right index to use
     //TODO andy ae this should be cached on initialization. do tables exists? when should migration mgr be created? should it exist in dbcontext
@@ -235,4 +234,3 @@ bool MigrationManager::undoExtractDelete(int32_t requestTokenId) {
 
 
 }
-

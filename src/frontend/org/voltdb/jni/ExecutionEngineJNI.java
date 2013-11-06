@@ -83,7 +83,10 @@ public class ExecutionEngineJNI extends ExecutionEngine {
      * that rely on being able to serialize large results sets will get the same amount of storage
      * when using the IPC backend.
      **/
-    private final BBContainer deserializerBufferOrigin = org.voltdb.utils.DBBPool.allocateDirect(1024 * 1024 * 50);
+    public static final int BUFFER_SIZE = 1024 * 1024 * 50;
+    private final BBContainer deserializerBufferOrigin = org.voltdb.utils.DBBPool.allocateDirect(BUFFER_SIZE);
+
+    public static final int DEFAULT_EXTRACT_LIMIT = BUFFER_SIZE-256;
     private FastDeserializer deserializer = new FastDeserializer(deserializerBufferOrigin.b);
 
     private final BBContainer exceptionBufferOrigin = org.voltdb.utils.DBBPool.allocateDirect(1024 * 1024 * 20);
@@ -502,7 +505,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
         try {
             results = deserializer.readInt();
             if (trace.val) LOG.trace("Results :"+results);
-            final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table, txnId, lastCommittedTxnId, undoToken,requestToken);
+            final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table, txnId, lastCommittedTxnId, undoToken, requestToken, DEFAULT_EXTRACT_LIMIT);
             checkErrorCode(errorCode);
             boolean moreData = checkIfMoreDataOrError(errorCode);
             
