@@ -49,6 +49,7 @@ void TupleTrackerManager::insertReadWriteTracker(ReadWriteTracker* rwtracker){
 }
 
 void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, RowOffsets*> *map, int64_t txnId){
+	/*/
 	RowOffsets *offsets = NULL;
 	std::string tableName= NULL;
 	uint32_t tupleId;
@@ -66,7 +67,7 @@ void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, 
 
 		iter++;
      }
-
+   //*/
 }
 
 
