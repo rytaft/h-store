@@ -1191,13 +1191,9 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
 
 
                                 //Essam Print Tuple Tracker Per Partition
-                                            	//*/
-                                            	 m_executorContext->getTupleTrackerManager()->print();
-                                            	 ofstream myfile1;
-                                            	 myfile1.open ("_VoltDBEngine.del");
-                                            	 myfile1 << " end of _VoltDBEngine \n";
-                                            	 myfile1.close();
-                                                //*/
+                                //*/
+                                 m_executorContext->getTupleTrackerManager()->print();
+                                //*/
 
                                 resultTable = m_statsManager.getStats(
                                     (StatisticsSelectorType) selector,
