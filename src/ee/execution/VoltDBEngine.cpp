@@ -175,7 +175,7 @@ bool VoltDBEngine::initialize(
     //Essam enable tuple tracker per partition
     //*/
     // tupletrackerMgr =  new TupleTrackerManager(m_executorContext);
-    m_executorContext->enableTupleTracking(partitionId);
+    m_executorContext->enableTupleTracking();
     m_executorContext->getTupleTrackerManager()->enableTupleTracking(partitionId);
 
     //tupletrackerMgr = m_executorContext->getTupleTrackerManager();

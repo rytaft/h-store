@@ -81,8 +81,8 @@ void TupleTracker::clear() {
 
 // -------------------------------------------------------------------------
 
-TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx, , int32_t partId) :
-		executorContext(ctx), partitionId(partId) {
+TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx) :
+		executorContext(ctx) {
     CatalogId databaseId = 1;
     this->resultSchema = TupleSchema::createTrackerTupleSchema();
     
