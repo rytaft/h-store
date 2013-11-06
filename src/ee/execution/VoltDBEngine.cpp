@@ -177,7 +177,7 @@ bool VoltDBEngine::initialize(
     // tupletrackerMgr =  new TupleTrackerManager(m_executorContext);
     m_executorContext->enableTupleTracking();
     m_executorContext->getTupleTrackerManager()->enableTupleTracking(partitionId);
-    m_executorContext->getTupleTrackerManager()->print();
+    //m_executorContext->getTupleTrackerManager()->print();
 
     //tupletrackerMgr = m_executorContext->getTupleTrackerManager();
     //tupletrackerMgr->enableTupleTracking(partitionId);
@@ -198,8 +198,12 @@ VoltDBEngine::~VoltDBEngine() {
 
 
 	//Essam Print Tuple Tracker Per Partition
-	/*/
+	//*/
 	 m_executorContext->getTupleTrackerManager()->print();
+	 ofstream myfile1;
+	 myfile1.open ("_VoltDBEngine.del");
+	 myfile1 << " end of _VoltDBEngine \n";
+	 myfile1.close();
     //*/
 
     // Get rid of any dummy undo quantum first so m_undoLog.clear()
