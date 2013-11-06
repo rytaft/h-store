@@ -907,7 +907,7 @@ public class HStoreCoordinator implements Shutdownable {
         	// This is an async data pull request which will be sent to RC and
         	// processed asynchronously
         	 try {
-                 hstore_site.getReconfigurationCoordinator().asyncPullRequest (
+                 hstore_site.getReconfigurationCoordinator().asyncPullRequestFromRC (
                    request, done);
              } catch (Exception e) {
                // TODO Auto-generated catch block
