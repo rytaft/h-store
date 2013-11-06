@@ -37,10 +37,35 @@ TupleTrackerManager::~TupleTrackerManager() {
 }
 
 void TupleTrackerManager::insertReadWriteTracker(ReadWriteTracker* rwtracker){
+	int64_t txnId = rwtracker->getTxnId();
+	boost::unordered_map<std::string, RowOffsets*> *reads = rwtracker->getReads();
+	boost::unordered_map<std::string, RowOffsets*> *writes = rwtracker->getWrites();
 
+	if(reads->empty()==false)
+		insertTupleAccesses(reads,txnId);
+
+	if(writes->empty()==false)
+			insertTupleAccesses(writes,txnId);
 }
 
-void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, RowOffsets*> accesses){
+void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, RowOffsets*> *map, int64_t txnId){
+	RowOffsets *offsets = NULL;
+	std::string tableName= NULL;
+	uint32_t tupleId;
+
+	boost::unordered_map<std::string, RowOffsets*>::const_iterator iter = map->begin();
+	while (iter != map->end()) {
+		tableName = iter->first;
+		offsets = iter->second;
+		RowOffsets::const_iterator tupleIdIter = offsets->begin();
+		while (tupleIdIter != offsets->end()) {
+			tupleId = *tupleIdIter;
+			insertTuple(txnId, tableName, tupleId);
+			tupleIdIter++;
+		}
+
+		iter++;
+     }
 
 }
 

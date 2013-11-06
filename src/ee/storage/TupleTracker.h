@@ -63,7 +63,7 @@ class TupleTrackerManager {
 
     private:
 
-        void insertTupleAccesses(boost::unordered_map<std::string, RowOffsets*> accesses);
+        void insertTupleAccesses(boost::unordered_map<std::string, RowOffsets*> *map, int64_t txnId);
         void insertTuple(int64_t txnId, const std::string tableName, uint32_t tupleId);
         
         void getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const;
