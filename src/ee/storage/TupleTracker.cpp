@@ -81,7 +81,8 @@ void TupleTracker::clear() {
 
 // -------------------------------------------------------------------------
 
-TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx) : executorContext(ctx) {
+TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx, , int32_t partId) :
+		executorContext(ctx), partitionId(partId) {
     CatalogId databaseId = 1;
     this->resultSchema = TupleSchema::createTrackerTupleSchema();
     
@@ -133,8 +134,9 @@ void TupleTrackerManager::print() {
 
 	    	ss << "TupleTrackerPID_"<<iter->first<<".del" ;
 	    	std::string fileName=ss.str();
+	    	myfile1.open (fileName.c_str());
 	    	myfile1 << " welcome partition: "<<iter->first<<"\n";
-
+	    	myfile1.close();
 	    	iter++;
 	    }
 

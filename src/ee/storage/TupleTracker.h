@@ -84,7 +84,7 @@ class TupleTracker {
  */
 class TupleTrackerManager {
     public:
-	     TupleTrackerManager(ExecutorContext *ctx);
+	     TupleTrackerManager(ExecutorContext *ctx, int32_t partId);
         ~TupleTrackerManager();
     
         TupleTracker* enableTupleTracking(int32_t partitionId);
@@ -99,6 +99,7 @@ class TupleTrackerManager {
     private:
         void getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const;
         
+        int32_t partitionId;
         ExecutorContext *executorContext;
         TupleSchema *resultSchema;
         Table *resultTable;
