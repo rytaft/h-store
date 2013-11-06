@@ -197,7 +197,14 @@ VoltDBEngine::~VoltDBEngine() {
 
 
 
-
+	//Essam Print Tuple Tracker Per Partition
+	/*/
+	 m_executorContext->getTupleTrackerManager()->print();
+	 ofstream myfile1;
+	 myfile1.open ("_VoltDBEngine.del");
+	 myfile1 << " end of _VoltDBEngine \n";
+	 myfile1.close();
+    //*/
 
     // Get rid of any dummy undo quantum first so m_undoLog.clear()
     // doesn't wipe this out before we do it.
@@ -296,17 +303,7 @@ int VoltDBEngine::executeQuery(int64_t planfragmentId,
                                int64_t txnId, int64_t lastCommittedTxnId,
                                bool first, bool last)
 {
-	//Essam Print Tuple Tracker Per Partition
-		//*/
-		 m_executorContext->getTupleTrackerManager()->print();
-		 ofstream myfile1;
-		 myfile1.open ("_VoltDBEngine.del");
-		 myfile1 << " end of _VoltDBEngine \n";
-		 myfile1.close();
-	    //*/
-
-
-	Table *cleanUpTable = NULL;
+    Table *cleanUpTable = NULL;
     m_currentOutputDepId = outputDependencyId;
     m_currentInputDepId = inputDependencyId;
 
@@ -1159,15 +1156,14 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
                 }
             }
 
-            ///Essam del
-            /*
-            ofstream myfile2;
-            myfile2.open ("SELECTOR_TYPE_Table.del");//Essam
-            myfile2 << " selector ="<<selector;
-            myfile2 << "\n";
-            myfile2 << " STATISTICS_SELECTOR_TYPE_TABLE ="<<STATISTICS_SELECTOR_TYPE_TABLE;
-            myfile2.close();
-			//*/
+                //Essam Print Tuple Tracker Per Partition
+            	//*/
+            	 m_executorContext->getTupleTrackerManager()->print();
+            	 ofstream myfile1;
+            	 myfile1.open ("_VoltDBEngine.del");
+            	 myfile1 << " end of _VoltDBEngine \n";
+            	 myfile1.close();
+                //*/
 
             resultTable = m_statsManager.getStats(
                 (StatisticsSelectorType) selector,
