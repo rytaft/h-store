@@ -595,12 +595,25 @@ public class ReconfigurationCoordinator implements Shutdownable {
         return;
     }
     
-    public void asyncPullRequest(AsyncPullRequest asyncPullRequest, RpcCallback<AsyncPullResponse> 
+    /**
+     * Called when a RC requests to another RC to initiate a pull
+     * @param asyncPullRequest
+     * @param asyncPullResponseCallback
+     */
+    public void asyncPullRequestFromRC(AsyncPullRequest asyncPullRequest, RpcCallback<AsyncPullResponse> 
         asyncPullResponseCallback) {
     	
     }
         
+    /**
+     * Called when a PE requests RC to initiate a pull from another RC
+     * @param asyncPullRequest
+     * @param asyncPullResponseCallback
+     */
+    public void asyncPullRequestFromPE(AsyncPullRequest asyncPullRequest, RpcCallback<AsyncPullResponse> 
+        asyncPullResponseCallback) {
     	
+    }
 
     /**
      * Non-blocking call to pull reconfiguration ranges. Wrapper for pullRanges
