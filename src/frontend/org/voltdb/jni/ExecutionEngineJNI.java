@@ -42,6 +42,7 @@ import org.voltdb.messaging.FastSerializer.BufferGrowCallback;
 import org.voltdb.utils.DBBPool.BBContainer;
 import org.voltdb.utils.Pair;
 
+import edu.brown.designer.MemoryEstimator;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.PartitionExecutor;
 import edu.brown.logging.LoggerUtil;
@@ -83,7 +84,10 @@ public class ExecutionEngineJNI extends ExecutionEngine {
      * that rely on being able to serialize large results sets will get the same amount of storage
      * when using the IPC backend.
      **/
-    private final BBContainer deserializerBufferOrigin = org.voltdb.utils.DBBPool.allocateDirect(1024 * 1024 * 50);
+    public static final int BUFFER_SIZE = 1024 * 1024 * 50;
+    private final BBContainer deserializerBufferOrigin = org.voltdb.utils.DBBPool.allocateDirect(BUFFER_SIZE);
+
+    public static int DEFAULT_EXTRACT_LIMIT = BUFFER_SIZE-256;
     private FastDeserializer deserializer = new FastDeserializer(deserializerBufferOrigin.b);
 
     private final BBContainer exceptionBufferOrigin = org.voltdb.utils.DBBPool.allocateDirect(1024 * 1024 * 20);
@@ -492,7 +496,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
     }
     
     @Override
-    public Pair<VoltTable, Boolean> extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
+    public Pair<VoltTable, Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
     {
         if (debug.val) LOG.debug("Extract table");
         deserializer.clear();
@@ -500,9 +504,11 @@ public class ExecutionEngineJNI extends ExecutionEngine {
         if (trace.val) LOG.trace(String.format("Passing extract table into EE  [id=%d, bytes=%s]", tableId, serialized_table.length));
         int results;
         try {
+            long tupleBytes = MemoryEstimator.estimateTupleSize(targetTable);
+            int tupleExtractLimit = (int)(DEFAULT_EXTRACT_LIMIT/tupleBytes);
             results = deserializer.readInt();
             if (trace.val) LOG.trace("Results :"+results);
-            final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table, txnId, lastCommittedTxnId, undoToken,requestToken);
+            final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table, txnId, lastCommittedTxnId, undoToken, requestToken, tupleExtractLimit);
             checkErrorCode(errorCode);
             boolean moreData = checkIfMoreDataOrError(errorCode);
             

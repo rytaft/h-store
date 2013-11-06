@@ -228,7 +228,7 @@ public class MockExecutionEngine extends ExecutionEngine {
     }
     
     @Override
-    public Pair<VoltTable,Boolean> extractTable(int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
+    public Pair<VoltTable,Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
     {
     	return null;
     }

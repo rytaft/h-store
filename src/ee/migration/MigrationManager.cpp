@@ -66,8 +66,7 @@ MigrationManager::~MigrationManager() {
     // TODO
 }
 
-
-Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minKey, const NValue maxKey, int32_t requestToken) {
+Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey, int32_t requestToken, int32_t extractTupleLimit, bool& moreData) {
     VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );        
     //Get the right index to use
     //TODO andy ae this should be cached on initialization. do tables exists? when should migration mgr be created? should it exist in dbcontext
@@ -79,16 +78,18 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
         //TODO ae what do we do when we have no index for the partition colum?
         partitionColumnIsIndexed = false;
     }       
-    
     TableTuple tuple(table->schema());
     //TODO ae andy -> How many byes should we set this to? Below is just a silly guess
     int outTableSizeInBytes = 1024; 
     //int outTableSizeInBytes = (maxKey.op_subtract(minKey)).castAs(VALUE_TYPE_INTEGER).getInteger() *tuple.maxExportSerializationSize();
-    
+
     //output table
     Table* outputTable = reinterpret_cast<Table*>(TableFactory::getCopiedTempTable(table->databaseId(),
             table->name(),table,&outTableSizeInBytes));
     
+    //Extract Limit 
+    bool dataLimitReach = false;
+    int tuplesExtracted = 0;
     
     std::vector<ValueType> keyColumnTypes(1, minKey.getValueType());
     std::vector<int32_t> keyColumnLengths(1, NValue::getTupleStorageSize(minKey.getValueType()));
@@ -106,10 +107,14 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
         bool found = partitionIndex->moveToKey(&searchkey);    
         if(found){
             VOLT_DEBUG("Found");
-            if(!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()){
+            while(!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()){
 		#ifdef EXTRACT_STAT_ENABLED
 		rowsExamined++;
 		#endif
+		if (dataLimitReach == true){
+		  moreData = true;
+		  break;
+		}		
                 if (!outputTable->insertTuple(tuple))
                 {
                     VOLT_ERROR("Failed to insert tuple from table '%s' into"
@@ -119,10 +124,11 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
                     return NULL;
                 }                
                 table->deleteTuple(tuple,true);
-            } else{
-                VOLT_ERROR("Tuple not found but index indicated it exists");
-                return NULL;
-            }            
+		//Count if we have taken the max tuples
+		if (++tuplesExtracted >= extractTupleLimit){
+		  dataLimitReach = true;
+		}		
+            }           
         }
         else{
             VOLT_DEBUG("key not found for single key extract");       
@@ -140,12 +146,25 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
                 #ifdef EXTRACT_STAT_ENABLED
 		rowsExamined++;
 		#endif
+		
+		//Have we reached our datalimit and found another tuple
+		if (dataLimitReach == true){
+		    VOLT_DEBUG("more tuples with limit");
+		    moreData = true;
+		    break;
+		}
+		
                 if (!outputTable->insertTuple(tuple))
                 {
                     VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",table->name().c_str(),outputTable->name().c_str());
                     return NULL;
                 }
                 table->deleteTuple(tuple,true);
+		//Count if we have taken the max tuples
+		if (++tuplesExtracted >= extractTupleLimit){
+		      VOLT_DEBUG("tuple limit reached b-tree");
+		      dataLimitReach = true;
+		}
             }
         }  // Else if hash index
         else if (!partitionColumnIsIndexed || partitionIndex->getScheme().type == HASH_TABLE_INDEX
@@ -162,13 +181,25 @@ Table* MigrationManager::extractRange(PersistentTable *table,  const NValue minK
 		#endif
                 //Is the partitionColumn in the range between min inclusive and max exclusive
                 if (minKey.compare(tuple.getNValue(partitionColumn)) <= 0 && maxKey.compare(tuple.getNValue(partitionColumn)) >0){
-                   
+                  
+		  //Have we reached our datalimit and found another tuple
+		  if (dataLimitReach == true){
+		      VOLT_DEBUG("more tuples with limit");
+		      moreData = true;
+		      break;
+		  }		  
+		  
 		  if (!outputTable->insertTuple(tuple))
                     {
                         VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",table->name().c_str(),outputTable->name().c_str());
                         return NULL;
                     }
                     table->deleteTuple(tuple,true);
+		    //Count if we have taken the max tuples
+		    if (++tuplesExtracted >= extractTupleLimit){
+			VOLT_DEBUG("tuple limit reached - hash table %d", tuplesExtracted);
+			dataLimitReach = true;
+		    }
                 }
             }
         } else {            
@@ -235,4 +266,3 @@ bool MigrationManager::undoExtractDelete(int32_t requestTokenId) {
 
 
 }
-

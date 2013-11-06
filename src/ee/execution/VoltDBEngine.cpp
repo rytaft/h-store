@@ -1407,7 +1407,7 @@ bool VoltDBEngine::updateExtractRequest(int32_t requestToken, bool confirmDelete
         return m_migrationManager->undoExtractDelete(requestToken);            
 }
 
-bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken){
+int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken, int32_t extractTupleLimit){
     VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
     m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
                                             txnId,
@@ -1415,7 +1415,7 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
     Table* ret = getTable(tableId);
     if (ret == NULL) {
         VOLT_ERROR("Table ID %d doesn't exist. Could not load data", (int) tableId);
-        return false;
+        return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
     }
 
     //TODO move some computation to external manager?
@@ -1424,7 +1424,7 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
         VOLT_ERROR("Table ID %d(name '%s') is not a persistent table."
                 " Could not load data",
                 (int) tableId, ret->name().c_str());
-        return false;
+        return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
     }
 
     //TODO ae andy how to get databaseId?
@@ -1452,7 +1452,8 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
     while (inputIterator.next(extractTuple)) {
         //TODO ae more than 1 range -> into a single result?
         VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
-        Table* outputTable = m_migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3),requestToken);
+	bool moreData = false;
+        Table* outputTable = m_migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3),requestToken, extractTupleLimit, moreData);
         size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
         if (outputTable != NULL) {
             outputTable->serializeTo(m_resultOutput);
@@ -1461,13 +1462,17 @@ bool VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serial
             //delete colNames;
             
             TupleSchema::freeTupleSchema(extractMigrateSchema);
-            return true;
+	    if (moreData == true)
+	      return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS_MORE_DATA;
+	    else
+	      return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
         } 
         else{
-            return false;
+            return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
         }
     }
-    return true;
+    
+    return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
 }
 
 

@@ -16,12 +16,14 @@ import org.voltdb.catalog.Site;
 import org.voltdb.catalog.Table;
 import org.voltdb.client.Client;
 import org.voltdb.jni.ExecutionEngine;
+import org.voltdb.jni.ExecutionEngineJNI;
 import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTableUtil;
 
 import edu.brown.BaseTestCase;
 import edu.brown.benchmark.ycsb.YCSBConstants;
 import edu.brown.catalog.CatalogUtil;
+import edu.brown.designer.MemoryEstimator;
 import edu.brown.hashing.PlannedHasher;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
@@ -43,7 +45,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
     private static final long NUM_TUPLES = 1000;
     private static final String CUSTOMER_TABLE_NAME = TPCCConstants.TABLENAME_CUSTOMER;
     private static final String NEW_ORDER_TABLE_NAME = TPCCConstants.TABLENAME_NEW_ORDER;
-
+    private static final int DEFAULT_LIMIT = ExecutionEngineJNI.DEFAULT_EXTRACT_LIMIT;
     
     private HStoreSite hstore_site;
     private HStoreConf hstore_conf;
@@ -62,6 +64,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
     @Before
     public void setUp() throws Exception {
         super.setUp(ProjectType.TPCC);
+        
         initializeCatalog(1, 1, NUM_PARTITIONS);
         
         // Just make sure that the Table has the evictable flag set to true
@@ -110,12 +113,43 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
 
     }
     
-    int[] scales = { 1,3,5,11,29,51,97 };
+    int[] scales = { 1,3,5};//,11,29,51,97 };
     int[] scales2 = { 2 };
 
+    @Test 
+    public void testMultiExtract() throws Exception {
+        int wid = 2;
+        ReconfigurationRange<Long> range; 
+        VoltTable extractTable;
+        range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2);
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
+        this.loadTPCCData(NUM_TUPLES * 10, this.customer_tbl,this.cust_p_index, wid);
+        int EXTRACT_LIMIT = 2048;
+        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT = EXTRACT_LIMIT;
+        
+        long tupleBytes = MemoryEstimator.estimateTupleSize(this.customer_tbl);
+        int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
+        int expectedChunks = ((int)(NUM_TUPLES * 10)/tuplesInChunk);
+        int resCount = 0;
+        int chunks = 0;
+        Pair<VoltTable,Boolean> resTable = 
+                this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
+        assertTrue(resTable.getSecond());
+        resCount += resTable.getFirst().getRowCount();
+        chunks++;
+        while(resTable.getSecond()){
+            resTable = 
+                    this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
+            resCount += resTable.getFirst().getRowCount();
+            chunks++;
+        }
+        assertEquals(expectedChunks, chunks);
+        assertEquals(NUM_TUPLES*10, resCount);
+    }
     
     @Test
     public void testExtractData() throws Exception {
+        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT = DEFAULT_LIMIT;
 
         for (int i=0; i< scales.length; i++) {
             this.loadTPCCData(NUM_TUPLES * scales[i], this.customer_tbl,this.cust_p_index,scales[i]);
@@ -142,7 +176,6 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
         
     	assertTrue(true);
     	
-    	
     	ReconfigurationRange<Long> range; 
     	VoltTable extractTable;
     	long start, extract, load;
@@ -157,12 +190,12 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
             range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale+1), 1, 2);
             extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
             start = System.currentTimeMillis();
-            resTable= this.ee.extractTable(this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
+            resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
             extract = System.currentTimeMillis()-start; 
             assertTrue(resTable.getFirst().getRowCount()==NUM_TUPLES *scale);
             
             //assert empty     
-            resTableVerify= this.ee.extractTable(this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
+            resTableVerify= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
             assertTrue(resTableVerify.getFirst().getRowCount()==0);
             
             //load
@@ -172,7 +205,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
             LOG.info(String.format("size=%s Extract=%s Load=%s Diff:%s", NUM_TUPLES*scale, extract, load, load-extract));
 
             //re extract and check its there
-            resTableVerify= this.ee.extractTable(this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
+            resTableVerify= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
             assertTrue(resTableVerify.getFirst().getRowCount()==NUM_TUPLES *scale);
 
             
