@@ -49,21 +49,23 @@ void TupleTrackerManager::insertReadWriteTracker(ReadWriteTracker* rwtracker){
 }
 
 void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, RowOffsets*> *map, int64_t txnId){
-	/*/
+	//*/
 	RowOffsets *offsets = NULL;
-	std::string tableName= NULL;
-	uint32_t tupleId;
+	std::string tableName;
 
+	//tablename -> set of tuple ids
 	boost::unordered_map<std::string, RowOffsets*>::const_iterator iter = map->begin();
+
 	while (iter != map->end()) {
 		tableName = iter->first;
 		offsets = iter->second;
+        /*/
 		RowOffsets::const_iterator tupleIdIter = offsets->begin();
 		while (tupleIdIter != offsets->end()) {
-			tupleId = *tupleIdIter;
-			insertTuple(txnId, tableName, tupleId);
+			insertTuple(txnId, tableName, *tupleIdIter);
 			tupleIdIter++;
 		}
+		//*/
 
 		iter++;
      }
@@ -72,7 +74,7 @@ void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, 
 
 
 
-void TupleTrackerManager::insertTuple(int64_t txnId, const std::string tableName, uint32_t tupleId){
+void TupleTrackerManager::insertTuple(int64_t txnId, std::string tableName, uint32_t tupleId){
 
 }
 
