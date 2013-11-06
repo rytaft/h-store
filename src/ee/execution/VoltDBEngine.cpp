@@ -198,7 +198,7 @@ VoltDBEngine::~VoltDBEngine() {
 
 
 	//Essam Print Tuple Tracker Per Partition
-	//*/
+	/*/
 	 m_executorContext->getTupleTrackerManager()->print();
 	 ofstream myfile1;
 	 myfile1.open ("_VoltDBEngine.del");
