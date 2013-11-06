@@ -53,6 +53,11 @@ namespace voltdb {
     class ExecutorContext {
     public:
         ~ExecutorContext() {
+
+        	if (m_tupleTrackingEnabled) {
+        	  m_tupleTrackingManager->print();
+        	  delete m_tupleTrackingManager;
+        	 }
             
             if (m_trackingEnabled) {
                 delete m_trackingManager;
