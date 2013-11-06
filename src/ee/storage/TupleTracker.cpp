@@ -60,14 +60,14 @@ void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, 
 		tableName = iter->first;
 		offsets = iter->second;
         //*/
-		if(iter->second->empty()==false)
-		{
+		//if(iter->second->empty()==false)
+		//{
 		  boost::unordered_set<uint32_t>::iterator tupleIdIter = offsets->begin();
 		  while (tupleIdIter != offsets->end()) {
 			insertTuple(txnId, tableName, *tupleIdIter);
 			tupleIdIter++;
 		  }
-		}
+		//}
 		//*/
 
 		iter++;
