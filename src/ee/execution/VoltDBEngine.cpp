@@ -175,7 +175,8 @@ bool VoltDBEngine::initialize(
     //Essam enable tuple tracker per partition
     //*/
     // tupletrackerMgr =  new TupleTrackerManager(m_executorContext);
-    //m_executorContext->enableTupleTracking();
+    m_executorContext->enableTupleTracking();
+    m_executorContext->getTupleTrackerManager()->enableTupleTracking(partitionId);
     //tupletrackerMgr = m_executorContext->getTupleTrackerManager();
     //tupletrackerMgr->enableTupleTracking(partitionId);
     //*/
@@ -195,9 +196,8 @@ VoltDBEngine::~VoltDBEngine() {
 
 
 	//Essam Print Tuple Tracker Per Partition
-	/*/
-	if(tupletrackerMgr!=NULL)
-	 tupletrackerMgr->print();
+	//*/
+	 m_executorContext->getTupleTrackerManager()->print();
     //*/
 
     // Get rid of any dummy undo quantum first so m_undoLog.clear()
@@ -1482,11 +1482,8 @@ void VoltDBEngine::trackingEnable(int64_t txnId) {
     }
     VOLT_INFO("Creating ReadWriteTracker for txn #%ld at Partition %d", txnId, m_partitionId);
     ReadWriteTrackerManager *trackerMgr = m_executorContext->getTrackerManager();
+    //trackerMgr->enableTracking(txnId, m_partitionId);//Essam Tuple Tracking
     trackerMgr->enableTracking(txnId);
-
-    //Essam Tuple Tracker
-    if (m_executorContext->getTupleTrackerManager()== NULL)
-      m_executorContext->enableTupleTracking();
 }
 
 void VoltDBEngine::trackingFinish(int64_t txnId) {

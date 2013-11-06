@@ -56,7 +56,7 @@ class TupleTracker {
     friend class TupleTrackerManager;
     
     public:
-    TupleTracker(int32_t partId);
+        TupleTracker(int32_t partId);
         ~TupleTracker();
         
         void markTupleRead(const std::string tableName, TableTuple *tuple);

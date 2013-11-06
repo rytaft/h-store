@@ -131,7 +131,7 @@ void TupleTrackerManager::print() {
 	    iter = trackers.begin();
 	    while (iter != trackers.end()) {
 
-	    	ss << "TupleTrackerPID"<<iter->first<<".del" ;
+	    	ss << "TupleTrackerPID_"<<iter->first<<".del" ;
 	    	std::string fileName=ss.str();
 	    	myfile1 << " welcome partition: "<<iter->first<<"\n";
 
