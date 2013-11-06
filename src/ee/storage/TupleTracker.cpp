@@ -81,8 +81,8 @@ void TupleTracker::clear() {
 
 // -------------------------------------------------------------------------
 
-TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx) :
-		executorContext(ctx) {
+TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx,int32_t partId) :
+		executorContext(ctx),partitionId(partId) {
     CatalogId databaseId = 1;
     this->resultSchema = TupleSchema::createTrackerTupleSchema();
     
@@ -96,59 +96,37 @@ TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx) :
                 this->resultSchema,
                 resultColumnNames,
                 NULL));
+
+
+    tracker = new TupleTracker(partitionId);
 }
 
 TupleTrackerManager::~TupleTrackerManager() {
     TupleSchema::freeTupleSchema(this->resultSchema);
     delete this->resultTable;
     
-    boost::unordered_map<int32_t, TupleTracker*>::const_iterator iter = this->trackers.begin();
-    while (iter != this->trackers.end()) {
-        delete iter->second;
-        iter++;
-    } // FOR
+    delete tracker;
 }
 
-TupleTracker* TupleTrackerManager::enableTupleTracking(int32_t partitionId) {
-    TupleTracker *tracker = new TupleTracker(partitionId);
-    trackers[partitionId] = tracker;
-    return (tracker);
-}
 
-TupleTracker* TupleTrackerManager::getTupleTracker(int32_t partitionId) {
-    boost::unordered_map<int32_t, TupleTracker*>::const_iterator iter;
-    iter = trackers.find(partitionId);
-    if (iter != trackers.end()) {
-        return iter->second;
-    }
-    return (NULL);
+TupleTracker* TupleTrackerManager::getTupleTracker() {
+    return tracker;
 }
 
 
 void TupleTrackerManager::print() {
 	ofstream myfile1;
 	std::stringstream ss ;
-	boost::unordered_map<int32_t, TupleTracker*>::const_iterator iter;
-	    iter = trackers.begin();
-	    while (iter != trackers.end()) {
-
-	    	ss << "TupleTrackerPID_"<<iter->first<<".del" ;
-	    	std::string fileName=ss.str();
-	    	myfile1.open (fileName.c_str());
-	    	myfile1 << " welcome partition: "<<iter->first<<"\n";
-	    	myfile1.close();
-	    	iter++;
-	    }
-
- }
+	ss << "TupleTrackerPID_"<<partitionId<<".del" ;
+	std::string fileName=ss.str();
+	myfile1.open (fileName.c_str());
+	myfile1 << " welcome partition: "<<partitionId<<"\n";
+	myfile1.close();
+}
 
 
-void TupleTrackerManager::removeTupleTracker(int32_t partitionId) {
-    TupleTracker *tracker = this->getTupleTracker(partitionId);
-    if (tracker != NULL) {
-        trackers.erase(partitionId);
-        delete tracker;
-    }
+void TupleTrackerManager::removeTupleTracker() {
+      delete tracker;
 }
 
 void TupleTrackerManager::getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const {

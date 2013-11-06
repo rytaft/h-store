@@ -84,12 +84,11 @@ class TupleTracker {
  */
 class TupleTrackerManager {
     public:
-	     TupleTrackerManager(ExecutorContext *ctx);
+	     TupleTrackerManager(ExecutorContext *ctx,int32_t partId);
         ~TupleTrackerManager();
     
-        TupleTracker* enableTupleTracking(int32_t partitionId);
-        TupleTracker* getTupleTracker(int32_t partitionId);
-        void removeTupleTracker(int32_t partitionId);
+        TupleTracker* getTupleTracker();
+        void removeTupleTracker();
         
         void print();
 
@@ -102,7 +101,10 @@ class TupleTrackerManager {
         ExecutorContext *executorContext;
         TupleSchema *resultSchema;
         Table *resultTable;
-        boost::unordered_map<int32_t, TupleTracker*> trackers;
+        //boost::unordered_map<int32_t, TupleTracker*> trackers;
+        TupleTracker* tracker;
+        int32_t partitionId;
+
 }; // CLASS
 
 }
