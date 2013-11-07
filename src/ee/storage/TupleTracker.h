@@ -29,8 +29,8 @@ typedef struct {
     	//int64_t txnId;
     	//std::string tableName;
     	//uint32_t tupleID;
-    	int64_t accesses; // access frequency for a tuple
-    	TxnIDs by; //set of txn accessed this tuple
+    	int64_t frequency; // access frequency for a tuple
+    	TxnIDs* by; //set of txn accessed this tuple
     	} Accesses;
 
 // tupleID > Accesses
@@ -73,7 +73,7 @@ class TupleTrackerManager {
         Table *resultTable;
 
         //tableName -> Map_TupleIdAccesses{<tupleID, Accesses>}
-        boost::unordered_map<std::string, Map_TupleIdAccesses> m_tupleAccesses;
+        boost::unordered_map<std::string, Map_TupleIdAccesses*> m_tableAccesses;
 
         int32_t partitionId;
 

@@ -49,7 +49,7 @@ void TupleTrackerManager::insertReadWriteTracker(ReadWriteTracker* rwtracker){
 }
 
 void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, RowOffsets*> *map, int64_t txnId){
-	//*/
+
 	RowOffsets *offsets = NULL;
 	std::string tableName;
 
@@ -59,26 +59,54 @@ void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, 
 	while (iter != map->end()) {
 		tableName = iter->first;
 		offsets = iter->second;
-        //*/
-		//if(iter->second->empty()==false)
-		//{
-		  boost::unordered_set<uint32_t>::iterator tupleIdIter = offsets->begin();
-		  while (tupleIdIter != offsets->end()) {
+        boost::unordered_set<uint32_t>::iterator tupleIdIter = offsets->begin();
+		while (tupleIdIter != offsets->end()) {
 			insertTuple(txnId, tableName, *tupleIdIter);
 			tupleIdIter++;
-		  }
-		//}
-		//*/
+		}
 
 		iter++;
      }
-   //*/
+
 }
 
 
 
 void TupleTrackerManager::insertTuple(int64_t txnId, std::string tableName, uint32_t tupleId){
+	   //*/
+	    Accesses* access = NULL;
 
+	    Map_TupleIdAccesses *m_tupIdAccesses = NULL;
+	    boost::unordered_map<uint32_t, Accesses*>::const_iterator tupIter;
+
+	    boost::unordered_map<std::string, Map_TupleIdAccesses*>::const_iterator tabIter = m_tableAccesses.find(tableName);
+
+	    if (tabIter != m_tableAccesses.end()) {//this table has accessed tuples
+	    	m_tupIdAccesses = tabIter->second;
+	    	tupIter = m_tupIdAccesses->find(tupleId);
+	    	if (tupIter != m_tupIdAccesses->end()) { //tuple ID has a record of accesses
+	    		access = tupIter->second;
+
+	    	}
+	    	else { // tuple ID does not exist: 1)create access struct 2) insert pair <tuplID,access>
+	    		access = new Accesses();
+	    		access->frequency = 0;
+	    		access->by = new TxnIDs();
+	    		m_tupIdAccesses->insert(std::make_pair(tupleId, access));
+	    	}
+	    } else {//this table does not exist: 1) create access struct 2) insert <tableName, Map_TupleIdAccesses()> 3) insert <tupleID, access>
+	    	access = new Accesses();
+	    	access->frequency = 0;
+	    	access->by = new TxnIDs();
+	    	m_tupIdAccesses = new Map_TupleIdAccesses();
+	    	m_tableAccesses.insert(std::make_pair(tableName, m_tupIdAccesses));
+	    	m_tupIdAccesses->insert(std::make_pair(tupleId, access));
+	    }
+
+	    access->frequency = access->frequency + 1;
+	    access->by->insert(txnId);
+
+	    //*/
 }
 
 void TupleTrackerManager::TupleTrackerManager::print() {
@@ -87,7 +115,7 @@ void TupleTrackerManager::TupleTrackerManager::print() {
 	ss << "TupleTrackerPID_"<<partitionId<<".del" ;
 	std::string fileName=ss.str();
 	myfile1.open (fileName.c_str());
-	myfile1 << " welcome partition: "<<partitionId<<"\n";
+	myfile1 << " partition "<<partitionId<<" has "<<m_tableAccesses.size()<<" accessed tables.\n";
 	myfile1.close();
 }
 
