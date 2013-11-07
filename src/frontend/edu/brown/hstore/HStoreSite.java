@@ -1107,6 +1107,11 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         this.instanceId = instanceId;
     }
     
+    /**
+     * Return the HStoreCoordinator instance for this site.
+     * <B>Note:</b> The init() method for this site must be called before this can be called. 
+     * @return
+     */
     public HStoreCoordinator getCoordinator() {
         return (this.hstore_coordinator);
     }
