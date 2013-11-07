@@ -1,0 +1,20 @@
+package org.qcri.PartitioningPlanner.placement;
+
+import java.util.Collection;
+import java.util.Map;
+
+import org.voltdb.catalog.Site;
+
+public class GreedyPlacement {
+	Collection<Site> allSites;
+	Map<Site,Collection<Integer>> siteToPartitions;	
+	Map<Integer, Site> partitionToSite;
+	
+	public GreedyPlacement(){
+		
+	}
+	
+	public Plan computePlan(Collection<Site> hotSites, Plan currentPlan){
+		return currentPlan;
+	}
+}
