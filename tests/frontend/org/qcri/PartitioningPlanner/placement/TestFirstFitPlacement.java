@@ -1,7 +1,7 @@
-package org.qcri.ehstore.placement;
+package org.qcri.PartitioningPlanner.placement;
 
-import org.qcri.ehstore.placement.Plan;
-import org.qcri.ehstore.placement.FirstFitPlacement;
+import org.qcri.PartitioningPlanner.placement.Plan;
+import org.qcri.PartitioningPlanner.placement.FirstFitPlacement;
 
 import edu.brown.BaseTestCase;
 import java.util.HashMap;
