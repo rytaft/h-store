@@ -14,6 +14,7 @@ public class TupleTrackerExecutor {
 		
 	}
 	
+	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
 	

@@ -3,6 +3,7 @@ package org.qcri.PartitioningPlanner.placement;
 import org.qcri.PartitioningPlanner.placement.Plan;
 import org.qcri.PartitioningPlanner.placement.FirstFitPlacement;
 
+
 import edu.brown.BaseTestCase;
 import java.util.HashMap;
 import java.util.Map;
