@@ -42,6 +42,8 @@ import edu.brown.hstore.Hstoreservice.ReconfigurationRequest;
 import edu.brown.hstore.Hstoreservice.ReconfigurationResponse;
 import edu.brown.hstore.PartitionExecutor;
 import edu.brown.hstore.conf.HStoreConf;
+import edu.brown.hstore.internal.AsyncDataPullRequestMessage;
+import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
 import edu.brown.interfaces.Shutdownable;
 import edu.brown.logging.LoggerUtil;
@@ -528,7 +530,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
             if (executor.getPartitionId() == newPartitionId) {
                 // Transaction Id is not needed to be tracked for Stop and Copy
                 // so just set it to 0 for now
-                executor.receiveTuples(0L, partitionId, newPartitionId, table_name, minInclusive, maxExclusive, vt);
+                LOG.error("TODO add check for moreData"); //TODO fix this
+                boolean moreData = false;
+                executor.receiveTuples(0L, partitionId, newPartitionId, table_name, minInclusive, maxExclusive, vt, moreData, false);
             }
         }
 
@@ -595,15 +599,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         return;
     }
     
-    /**
-     * Called when a RC requests to another RC to initiate a pull
-     * @param asyncPullRequest
-     * @param asyncPullResponseCallback
-     */
-    public void asyncPullRequestFromRC(AsyncPullRequest asyncPullRequest, RpcCallback<AsyncPullResponse> 
-        asyncPullResponseCallback) {
-    	
-    }
+
         
     
     /**
@@ -617,6 +613,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public void asyncPullRequestFromPE(int livePullId, long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests, 
             Semaphore pullBlockSemaphore) {
         try {
+            LOG.info("TODO remove semaphore from async");
             pullBlockSemaphore.acquire(pullRequests.size());
         } catch (InterruptedException e) {
             LOG.error("Exception acquiring locks for pull request",e);
@@ -733,16 +730,42 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // partition in
             // the local site itself.
             
-            //TODO LEFTOFF add extract msg and schedule. callback needs to schedule more if more data
-            asyncDataPullRequest(asyncPullRequest, null);
+            queueAsyncDataPullRequest(asyncPullRequest, asyncPullRequestCallback);
             return;
         }
 
         this.channels[sourceID].asyncPull(controller, asyncPullRequest, asyncPullRequestCallback); 
     }
     
+    
+    /**
+     * Schedule the pull request locally
+     * @param asyncPullRequest
+     * @param asyncPullRequestCallback2
+     */
+    private void queueAsyncDataPullRequest(AsyncPullRequest asyncPullRequest, RpcCallback<AsyncPullResponse> asyncPullRequestCallback2) {
+        AsyncDataPullRequestMessage asyncPullRequestMsg = new AsyncDataPullRequestMessage(asyncPullRequest, asyncPullRequestCallback2);
+        for (PartitionExecutor executor : this.local_executors) {
+            if (executor.getPartitionId() == asyncPullRequest.getOldPartition()) {
+                LOG.info("Queue the async data pull request");
+                executor.queueAsyncPullRequest(asyncPullRequestMsg);
+            }
+        }
+    }
 
-    public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, Long max_exclusive, VoltTable voltTable) {
+    
+    /**
+     * Called when a RC requests to another RC to initiate a pull
+     * @param asyncPullRequest
+     * @param asyncPullResponseCallback
+     */
+    public void asyncPullRequestFromRC(AsyncPullRequest asyncPullRequest, RpcCallback<AsyncPullResponse> asyncPullResponseCallback) {
+        queueAsyncDataPullRequest(asyncPullRequest,asyncPullResponseCallback);
+        
+    }
+    
+    public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, 
+            Long max_exclusive, VoltTable voltTable, boolean moreDataNeeded) {
         
         long start=0, receive=0, done=0;
         if (detailed_timing){
@@ -754,7 +777,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // TODO : check if we can more efficient here
             if (executor.getPartitionId() == newPartitionId) {
                 try {
-                    executor.receiveTuples(txnId, oldPartitionId, newPartitionId, table_name, min_inclusive, max_exclusive, voltTable);
+                    executor.receiveTuples(txnId, oldPartitionId, newPartitionId, table_name, min_inclusive, max_exclusive, voltTable, moreDataNeeded, false);
                     if (detailed_timing) {
                         receive = System.currentTimeMillis();
                     }
@@ -876,13 +899,16 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private final RpcCallback<DataTransferResponse> dataTransferRequestCallback = new RpcCallback<DataTransferResponse>() {
         @Override
         public void run(DataTransferResponse msg) {
+            LOG.error("Not used...");
             // TODO : Do the book keeping of received messages
+            /*
             int senderId = msg.getSenderSite();
             int oldPartition = msg.getOldPartition();
             int newPartition = msg.getNewPartition();
             long timeStamp = msg.getT0S();
             Long minInclusive = msg.getMinInclusive();
             Long maxExlusive = msg.getMaxExclusive();
+            */
             // We can track the data Transfer progress using these fields
         }
     };
@@ -906,7 +932,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // LOG.info("Volt table Received in callback is "+vt.toString());
 
             receiveLivePullTuples(msg.getLivePullIdentifier(), msg.getTransactionID(), msg.getOldPartition(), msg.getNewPartition(), msg.getVoltTableName(), msg.getMinInclusive(),
-                    msg.getMaxExclusive(), vt);
+                    msg.getMaxExclusive(), vt, msg.getMoreDataNeeded());
             
             // send Acknowledgement 
 
@@ -929,10 +955,30 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private final RpcCallback<AsyncPullResponse> asyncPullRequestCallback = new RpcCallback<AsyncPullResponse>() {
         @Override
         public void run(AsyncPullResponse msg) {
-        	
+        	LOG.info(String.format("Scheduling async pull response for partition %s ", msg.getNewPartition()));
+            for (PartitionExecutor executor : local_executors) {
+                if(msg.getNewPartition() == executor.getPartitionId()){
+                    LOG.info("Queue the pull response");
+                    ReconfigurationControlRequest acknowledgingCallback = ReconfigurationControlRequest.newBuilder().setSrcPartition(msg.getOldPartition())
+                            .setDestPartition(msg.getNewPartition())
+                            .setReconfigControlType(ReconfigurationControlType.PULL_RECEIVED)
+                            .setReceiverSite(msg.getSenderSite())
+                            .setMessageIdentifier(msg.getAsyncPullIdentifier()).                         
+                            setSenderSite(localSiteId).build();    
+                    LOG.error("TODO add chunk ID to response and add new reconfig control type for asyn pull response received"); //TODO
+                    AsyncDataPullResponseMessage pullResponseMsg = new AsyncDataPullResponseMessage(msg, acknowledgingCallback);
+                    executor.queueAsyncPullResponse(pullResponseMsg);
+                    
+                }
+            }
         }
     };
 
+    public void sendAcknowledgement(ReconfigurationControlRequest acknowledgingCallback){
+        ProtoRpcController controller = new ProtoRpcController();
+        LOG.error("TODO send ack if not local");//TODO
+        //channels[acknowledgingCallback.getReceiverSite()].reconfigurationControlMsg(controller, acknowledgingCallback, null);       
+    };
     /**
      * Deletes the tuples associated with the live Pull Id of the request processed before
      * @param request

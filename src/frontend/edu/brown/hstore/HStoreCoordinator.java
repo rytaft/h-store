@@ -874,6 +874,23 @@ public class HStoreCoordinator implements Shutdownable {
         }
 
         @Override
+        public void asyncPull(RpcController controller, AsyncPullRequest request,
+            RpcCallback<AsyncPullResponse> done) {
+            
+            // This is an async data pull request which will be sent to RC and
+            // processed asynchronously
+             try {
+                 hstore_site.getReconfigurationCoordinator().asyncPullRequestFromRC (
+                   request, done);
+             } catch (Exception e) {
+               // TODO Auto-generated catch block
+               LOG.error("Exception occured while processing async pull request", e);
+             }
+            
+        }
+        
+        
+        @Override
         public void reconfigurationControlMsg(RpcController controller, 
                 ReconfigurationControlRequest request, RpcCallback<ReconfigurationControlResponse> done) {
 
@@ -900,21 +917,7 @@ public class HStoreCoordinator implements Shutdownable {
             
         }
         
-        @Override
-        public void asyncPull(RpcController controller, AsyncPullRequest request,
-            RpcCallback<AsyncPullResponse> done) {
-        	
-        	// This is an async data pull request which will be sent to RC and
-        	// processed asynchronously
-        	 try {
-                 hstore_site.getReconfigurationCoordinator().asyncPullRequestFromRC (
-                   request, done);
-             } catch (Exception e) {
-               // TODO Auto-generated catch block
-               LOG.error("Exception occured while processing async pull request", e);
-             }
-        	
-        }
+
 
     } // END CLASS
     

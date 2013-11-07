@@ -17,6 +17,7 @@ import org.voltdb.VoltTable.ColumnInfo;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.Table;
 import org.voltdb.exceptions.ServerFaultException;
+import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTableUtil;
 
 import edu.brown.hashing.ReconfigurationPlan;
@@ -28,6 +29,7 @@ import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator;
 /**
  * @author aelmore
  */
+@Deprecated
 @ProcInfo(singlePartition = false)
 public class StopCopy extends VoltSystemProcedure {
 
@@ -116,7 +118,11 @@ public class StopCopy extends VoltSystemProcedure {
                             Object row[] = null;
                             for (ReconfigurationRange<? extends Comparable<?>> range : outgoing_ranges) {
                                 catalog_tbl = this.catalogContext.getTableByName(range.table_name);
-                                table = executor.extractTable(catalog_tbl, range);
+                                Pair<VoltTable, Boolean> res = executor.extractTable(catalog_tbl, range);
+                                table = res.getFirst();
+                                if (res.getSecond().booleanValue()){
+                                    LOG.error("More data coming in stop and copy. This is deprecated");
+                                }
                                 rc.pushTuples(range.old_partition, range.new_partition, range.table_name, table, 
                                         (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive());
                             }
