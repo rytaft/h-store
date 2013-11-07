@@ -6,6 +6,8 @@
 #include "common/ValueFactory.hpp"
 #include "storage/TupleTracker.h"
 #include "storage/tablefactory.h"
+#include <algorithm>
+#include <cassert>
 
 using namespace std;
 
@@ -29,6 +31,7 @@ TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx,int32_t partId) :
                 resultColumnNames,
                 NULL));
 
+    isTupleTrackingInfoExtracted = false;
 }
 
 TupleTrackerManager::~TupleTrackerManager() {
@@ -109,7 +112,108 @@ void TupleTrackerManager::insertTuple(int64_t txnId, std::string tableName, uint
 	    //*/
 }
 
+void TupleTrackerManager::eraseTupleTrackingInfo(){
+	/*/
+	std::vector<TupleTrackingInfo>::iterator myIter=v_tupleTrackingInfo.begin();
+	    while(myIter!=v_tupleTrackingInfo.end()) {
+		delete *myIter;
+		++myIter;
+	    }
+	//*/
+
+	    v_tupleTrackingInfo.clear();
+
+	    isTupleTrackingInfoExtracted = false;
+}
+
+bool TupleTrackerManager::sortPerPartition(const TupleTrackingInfo& first, const TupleTrackingInfo& second){
+
+	    return (first.frequency > second.frequency);
+
+
+   }
+
+
+void TupleTrackerManager::sortTupleTrackingInfo(){
+
+	std::sort(v_tupleTrackingInfo.begin(), v_tupleTrackingInfo.end() , sortPerPartition);
+
+}
+void TupleTrackerManager::extractTupleTrackingInfo(){
+
+	if (isTupleTrackingInfoExtracted == true)
+		eraseTupleTrackingInfo();
+
+	TupleTrackingInfo *info = NULL;
+	Map_TupleIdAccesses *m_tupIdAccesses = NULL;
+	boost::unordered_map<uint32_t, Accesses*>::const_iterator tupIter;
+	boost::unordered_map<std::string, Map_TupleIdAccesses*>::const_iterator tabIter = m_tableAccesses.begin();
+	while (tabIter != m_tableAccesses.end()){
+		m_tupIdAccesses = tabIter->second;
+		tupIter = m_tupIdAccesses->begin();
+
+		while (tupIter != m_tupIdAccesses->end()){
+		info = new TupleTrackingInfo();
+		info->tableName = tabIter->first;
+		info->tupleID   = tupIter->first;
+		info->frequency = tupIter->second->frequency;
+		v_tupleTrackingInfo.push_back(*info);
+		tupIter++;
+		}//inner while
+
+	  tabIter++;
+	}//outer while
+
+	isTupleTrackingInfoExtracted = true;
+
+	sortTupleTrackingInfo();
+
+}
+
+
+void TupleTrackerManager::getTopKPerPart(int k){
+
+	if (isTupleTrackingInfoExtracted == false)
+		extractTupleTrackingInfo(); // extract and sort per partition
+
+	ofstream myfile1;
+	std::stringstream ss ;
+	ss << "TupleTrackerPID_"<<partitionId<<".del" ;
+	std::string fileName=ss.str();
+	myfile1.open (fileName.c_str());
+
+	myfile1 << "INFO: Partition "<<partitionId<<"has "<<v_tupleTrackingInfo.size()<<" accessed tuples.\n\n";
+    myfile1 << " |Table Name";
+	myfile1 << " |Tuple ID";
+	myfile1 << " |Frequency|";
+	myfile1 << "\n";
+
+
+	std::vector<TupleTrackingInfo>::const_iterator iter = v_tupleTrackingInfo.begin();
+
+	// print top k in myfile1
+	int i = 0;
+	while (iter != v_tupleTrackingInfo.end() && i < k) {
+
+		myfile1 << iter->tableName<<"\t";
+		myfile1 << iter->tupleID<<"\t";
+		myfile1 << iter->frequency<<"\n";
+		i++;
+		iter++;
+	}
+
+	myfile1.close();
+
+}
+
 void TupleTrackerManager::TupleTrackerManager::print() {
+
+	//simplePrint();
+	getTopKPerPart(100);
+}
+
+
+void TupleTrackerManager::TupleTrackerManager::simplePrint() {
 	ofstream myfile1;
 	std::stringstream ss ;
 	ss << "TupleTrackerPID_"<<partitionId<<".del" ;
@@ -118,6 +222,7 @@ void TupleTrackerManager::TupleTrackerManager::print() {
 	myfile1 << " partition "<<partitionId<<" has "<<m_tableAccesses.size()<<" accessed tables.\n";
 	myfile1.close();
 }
+
 
 
 void TupleTrackerManager::getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const {

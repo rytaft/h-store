@@ -16,13 +16,21 @@
 #include <iostream>
 #include <stdio.h>
 #include <fstream>
-#include <algorithm>
-#include <cassert>
+
 //using namespace std;
 
 typedef boost::unordered_set<uint32_t> RowOffsets; //remove later
 
 typedef boost::unordered_set<int64_t> TxnIDs;
+
+typedef struct {
+    	//int partitionId;
+    	//int64_t txnId;
+    	std::string tableName;
+    	uint32_t tupleID;
+    	int64_t frequency; // access frequency for a tuple
+    	//TxnIDs* by; //set of txn accessed this tuple
+    	} TupleTrackingInfo;
 
 typedef struct {
     	//int partitionId;
@@ -62,18 +70,31 @@ class TupleTrackerManager {
 
 
     private:
-
+        void simplePrint();
+        void getTopKPerPart(int k);
+        void eraseTupleTrackingInfo();
+        void extractTupleTrackingInfo();
+        void sortTupleTrackingInfo();
         void insertTupleAccesses(boost::unordered_map<std::string, RowOffsets*> *map, int64_t txnId);
         void insertTuple(int64_t txnId, const std::string tableName, uint32_t tupleId);
         
         void getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const;
+
         
+		static bool sortPerPartition(const TupleTrackingInfo& first, const TupleTrackingInfo& second);
+       //static bool sortPerPartition(std::vector<TupleTrackingInfo>::iterator first, std::vector<TupleTrackingInfo>::iterator second);
+
         ExecutorContext *executorContext;
         TupleSchema *resultSchema;
         Table *resultTable;
 
+        bool isTupleTrackingInfoExtracted;
+
         //tableName -> Map_TupleIdAccesses{<tupleID, Accesses>}
         boost::unordered_map<std::string, Map_TupleIdAccesses*> m_tableAccesses;
+
+        //
+        std::vector<TupleTrackingInfo> v_tupleTrackingInfo ; // tuple tracking info per partition
 
         int32_t partitionId;
 
