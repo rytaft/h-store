@@ -56,11 +56,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Iterator;
 
 import org.apache.commons.collections15.map.ListOrderedMap;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 import org.voltdb.benchmark.Clock;
+import org.voltdb.catalog.CatalogMap;
 import org.voltdb.catalog.Partition;
 import org.voltdb.catalog.Site;
 import org.voltdb.types.TimestampType;
@@ -109,6 +111,7 @@ public class TPCCSimulation {
      * W_ID -> List of W_IDs on Remote Sites
      */
     public static HashMap <Integer, List<Integer>> remoteWarehouseIds = null;
+    public static HashMap <Integer, List<Integer>> localWarehouseIds = null;
     
     protected static long lastAssignedWarehouseId = 1;
     
@@ -131,6 +134,42 @@ public class TPCCSimulation {
         this.affineWarehouse = lastAssignedWarehouseId;
         this.skewFactor = skewFactor;
         this.config = config;
+        
+        // Marco begin
+        // FIXME misuses previous parameter warehouse_pairing
+        if(config.warehouse_pairing){
+            synchronized (TPCCSimulation.class) {
+                if (localWarehouseIds == null) {
+                	localWarehouseIds = new HashMap<Integer, List<Integer>>();
+                	HashMap <Integer, Integer> partitionToSite = new HashMap<Integer, Integer>();
+                	
+                	DefaultHasher hasher = new DefaultHasher(catalogContext);
+            		for (Site s: catalogContext.sites) {
+            			for (Partition p: s.getPartitions())
+            				partitionToSite.put(p.getId(), s.getId());
+            		} // FOR
+                		
+            		for (int w_id0 = parameters.starting_warehouse; w_id0 <= parameters.last_warehouse; w_id0++) {
+            		    final int partition0 = hasher.hash(w_id0);
+            			final int site0 = partitionToSite.get(partition0);
+            			final List<Integer> lList = new ArrayList<Integer>();	
+            			
+            			for (int w_id1 = parameters.starting_warehouse; w_id1 <= parameters.last_warehouse; w_id1++) {
+            			    // Figure out what partition this W_ID maps to
+            			    int partition1 = hasher.hash(w_id1);
+            			    
+            			    // Check whether this partition is on our same local site
+            			    int site1 = partitionToSite.get(partition1);
+            			    if (site0 == site1) lList.add(w_id1);
+            			} // FOR
+            			localWarehouseIds.put(w_id0, lList);
+                	} // FOR
+            		
+            		LOG.debug("NewOrder Remote W_ID Mapping\n" + StringUtil.formatMaps(remoteWarehouseIds));
+                }
+            } // SYNCH	
+        }
+        // Marco end
 
         if (config.neworder_skew_warehouse) {
             if (debug.val) LOG.debug("Enabling W_ID Zipfian Skew: " + skewFactor);
@@ -285,11 +324,14 @@ public class TPCCSimulation {
     // REMOTE WAREHOUSE SELECTION METHODS
     // ----------------------------------------------------------------------------
 
-    public static short generatePairedWarehouse(int w_id, int starting_warehouse, int last_warehouse) {
+    public short generatePairedWarehouse(int w_id, int starting_warehouse, int last_warehouse) {
+    	/* Marco
         int remote_w_id = (w_id % 2 == 0 ? w_id-1 : w_id+1);
         if (remote_w_id < starting_warehouse) remote_w_id = last_warehouse;
         else if (remote_w_id > last_warehouse) remote_w_id = starting_warehouse;
         return (short)remote_w_id;
+        */
+    	return (short) generator.numberLocalWarehouseId(starting_warehouse, last_warehouse, (int) w_id);
     }
     
     // ----------------------------------------------------------------------------

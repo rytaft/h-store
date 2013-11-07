@@ -146,6 +146,28 @@ public abstract class RandomGenerator {
     	return remoteList.get(ith);
     }
 
+    // Marco begin
+    /**
+     * Return a WAREHOUSE id that is on the same site than the given localPartition.
+     * If there is only one site, then this just returns a different random W_ID that is
+     * different than the local partition.
+     * @param minimum
+     * @param maximum
+     * @param localPartition
+     * @return
+     */
+    public int numberLocalWarehouseId(int minimum, int maximum, int localWarehouseId) {
+    	assert(TPCCSimulation.localWarehouseIds != null);
+    	List<Integer> localList = TPCCSimulation.localWarehouseIds.get(localWarehouseId);
+    	if (localList == null || localList.size() < 1)
+    	    return numberExcluding(minimum, maximum,localWarehouseId);
+    	// Generate 1 less number than the range
+        
+    	int ith = number(0, localList.size()-1);
+    	return localList.get(ith);
+    }
+    // Marco end
+
     public double fixedPoint(int decimal_places, double minimum, double maximum) {
         assert decimal_places > 0;
         assert minimum < maximum;
