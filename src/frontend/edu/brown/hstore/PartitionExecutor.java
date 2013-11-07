@@ -73,13 +73,13 @@ import org.voltdb.MemoryStats;
 import org.voltdb.ParameterSet;
 import org.voltdb.SQLStmt;
 import org.voltdb.SnapshotSiteProcessor;
-import org.voltdb.VoltType;
 import org.voltdb.SnapshotSiteProcessor.SnapshotTableTask;
 import org.voltdb.SysProcSelector;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltProcedure.VoltAbortException;
 import org.voltdb.VoltSystemProcedure;
 import org.voltdb.VoltTable;
+import org.voltdb.VoltType;
 import org.voltdb.catalog.Catalog;
 import org.voltdb.catalog.Cluster;
 import org.voltdb.catalog.Column;
@@ -106,7 +106,6 @@ import org.voltdb.jni.ExecutionEngineJNI;
 import org.voltdb.jni.MockExecutionEngine;
 import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.messaging.FastSerializer;
-import org.voltdb.sysprocs.StopCopy;
 import org.voltdb.types.SpecExecSchedulerPolicyType;
 import org.voltdb.types.SpeculationConflictCheckerType;
 import org.voltdb.types.SpeculationType;
@@ -122,10 +121,10 @@ import com.google.protobuf.RpcCallback;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.catalog.PlanFragmentIdGenerator;
 import edu.brown.catalog.special.CountedStatement;
-import edu.brown.designer.MemoryEstimator;
 import edu.brown.hashing.PlannedPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
 import edu.brown.hstore.Hstoreservice.LivePullRequest;
 import edu.brown.hstore.Hstoreservice.LivePullResponse;
 import edu.brown.hstore.Hstoreservice.QueryEstimate;
@@ -145,6 +144,7 @@ import edu.brown.hstore.estimators.Estimate;
 import edu.brown.hstore.estimators.EstimatorState;
 import edu.brown.hstore.estimators.EstimatorUtil;
 import edu.brown.hstore.estimators.TransactionEstimator;
+import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
 import edu.brown.hstore.internal.AsyncLivePullRequestMessage;
 import edu.brown.hstore.internal.AsyncLivePushRequestMessage;
 import edu.brown.hstore.internal.DeferredQueryMessage;
@@ -192,9 +192,9 @@ import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.markov.EstimationThresholds;
 import edu.brown.profilers.PartitionExecutorProfiler;
 import edu.brown.profilers.ProfileMeasurement;
+import edu.brown.protorpc.NullCallback;
 import edu.brown.statistics.FastIntHistogram;
 import edu.brown.statistics.Histogram;
-import edu.brown.protorpc.NullCallback;
 import edu.brown.utils.ClassUtil;
 import edu.brown.utils.CollectionUtil;
 import edu.brown.utils.EventObservable;
@@ -1371,11 +1371,16 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
         } 
         else if (work instanceof AsyncLivePullRequestMessage) {
-            
+            //We have a scheduled async pull to initiate
 
             AsyncLivePullRequestMessage asyncLivePullRequestMessage = (AsyncLivePullRequestMessage)work;
             processAsyncLivePullRequestMessage(asyncLivePullRequestMessage);
             //throw new NotImplementedException();
+        }  else if (work instanceof AsyncDataPullResponseMessage) {
+            AsyncPullResponse asyncPullResponse = ((AsyncDataPullResponseMessage) work).getAsyncPullResponse();
+            //TODO : Process async pull using chunk id 
+            receiveAsyncPullTuples(((AsyncDataPullResponseMessage) work));
+            
         }
         // -------------------------------
         // BAD MOJO!
@@ -2203,6 +2208,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info("Scheduling async pull requests : " + incomingRanges.size());
             boolean res = true;
+            LOG.info("TODO schedule one at a time?");//TODO
             for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
                 AsyncLivePullRequestMessage pullMessage = new AsyncLivePullRequestMessage(range);
                 boolean success = this.work_queue.offer(pullMessage); // ,
@@ -2973,6 +2979,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         LOG.info("sent response to live pull : " + livePullRequest.getLivePullIdentifier());
     }
     
+    /**
+     * Process a scheduled request to init an async data pull
+     * @param asyncPullRequestMessage
+     */
     public void processAsyncLivePullRequestMessage(AsyncLivePullRequestMessage asyncPullRequestMessage){
         //This is executing at the intended destination of the tuples -  
         // We can just fire off a live Pull request here and the source of the tuples / destination of Async Request
@@ -2993,6 +3003,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.start();
 
         this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), -1, this.partitionId, pullRequests, pullBlockSemaphore);
+        this.reconfiguration_coordinator.asyncPullRequestFromPE(getNextRequestToken(), -1L, this.partitionId, pullRequests, pullBlockSemaphore);
         LOG.info("("+ this.partitionId + ") Blocking PE for ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
         try {
             boolean acquired = pullBlockSemaphore.tryAcquire(requestSize,30, TimeUnit.SECONDS);
@@ -5744,10 +5755,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
     }
     
-    public void scheduleAsyncPullRequests(){
-        LOG.info("Scheduling asynch pushes");
-        queueAsyncPullRequests(incoming_ranges);
-    }
 
     public List<ReconfigurationRange<? extends Comparable<?>>> getOutgoingRanges() throws Exception {
         return this.outgoing_ranges;

@@ -17598,6 +17598,13 @@ public final class Hstoreservice {
     public boolean hasLivePullIdentifier() { return hasLivePullIdentifier; }
     public int getLivePullIdentifier() { return livePullIdentifier_; }
     
+    // optional int32 chunk_id = 12;
+    public static final int CHUNK_ID_FIELD_NUMBER = 12;
+    private boolean hasChunkId;
+    private int chunkId_ = 0;
+    public boolean hasChunkId() { return hasChunkId; }
+    public int getChunkId() { return chunkId_; }
+    
     // required int32 sender_site = 2;
     public static final int SENDER_SITE_FIELD_NUMBER = 2;
     private boolean hasSenderSite;
@@ -17720,6 +17727,9 @@ public final class Hstoreservice {
       if (hasMoreDataNeeded()) {
         output.writeBool(11, getMoreDataNeeded());
       }
+      if (hasChunkId()) {
+        output.writeInt32(12, getChunkId());
+      }
       getUnknownFields().writeTo(output);
     }
     
@@ -17772,6 +17782,10 @@ public final class Hstoreservice {
       if (hasMoreDataNeeded()) {
         size += com.google.protobuf.CodedOutputStream
           .computeBoolSize(11, getMoreDataNeeded());
+      }
+      if (hasChunkId()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt32Size(12, getChunkId());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -17934,6 +17948,9 @@ public final class Hstoreservice {
         if (other.hasLivePullIdentifier()) {
           setLivePullIdentifier(other.getLivePullIdentifier());
         }
+        if (other.hasChunkId()) {
+          setChunkId(other.getChunkId());
+        }
         if (other.hasSenderSite()) {
           setSenderSite(other.getSenderSite());
         }
@@ -18033,6 +18050,10 @@ public final class Hstoreservice {
               setMoreDataNeeded(input.readBool());
               break;
             }
+            case 96: {
+              setChunkId(input.readInt32());
+              break;
+            }
           }
         }
       }
@@ -18053,6 +18074,24 @@ public final class Hstoreservice {
       public Builder clearLivePullIdentifier() {
         result.hasLivePullIdentifier = false;
         result.livePullIdentifier_ = 0;
+        return this;
+      }
+      
+      // optional int32 chunk_id = 12;
+      public boolean hasChunkId() {
+        return result.hasChunkId();
+      }
+      public int getChunkId() {
+        return result.getChunkId();
+      }
+      public Builder setChunkId(int value) {
+        result.hasChunkId = true;
+        result.chunkId_ = value;
+        return this;
+      }
+      public Builder clearChunkId() {
+        result.hasChunkId = false;
+        result.chunkId_ = 0;
         return this;
       }
       
@@ -18896,6 +18935,13 @@ public final class Hstoreservice {
     public boolean hasAsyncPullIdentifier() { return hasAsyncPullIdentifier; }
     public int getAsyncPullIdentifier() { return asyncPullIdentifier_; }
     
+    // required int32 chunk_id = 12;
+    public static final int CHUNK_ID_FIELD_NUMBER = 12;
+    private boolean hasChunkId;
+    private int chunkId_ = 0;
+    public boolean hasChunkId() { return hasChunkId; }
+    public int getChunkId() { return chunkId_; }
+    
     // required int32 sender_site = 2;
     public static final int SENDER_SITE_FIELD_NUMBER = 2;
     private boolean hasSenderSite;
@@ -18970,6 +19016,7 @@ public final class Hstoreservice {
     }
     public final boolean isInitialized() {
       if (!hasAsyncPullIdentifier) return false;
+      if (!hasChunkId) return false;
       if (!hasSenderSite) return false;
       if (!hasT0S) return false;
       if (!hasTransactionID) return false;
@@ -19018,6 +19065,9 @@ public final class Hstoreservice {
       }
       if (hasMoreDataNeeded()) {
         output.writeBool(11, getMoreDataNeeded());
+      }
+      if (hasChunkId()) {
+        output.writeInt32(12, getChunkId());
       }
       getUnknownFields().writeTo(output);
     }
@@ -19071,6 +19121,10 @@ public final class Hstoreservice {
       if (hasMoreDataNeeded()) {
         size += com.google.protobuf.CodedOutputStream
           .computeBoolSize(11, getMoreDataNeeded());
+      }
+      if (hasChunkId()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt32Size(12, getChunkId());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -19233,6 +19287,9 @@ public final class Hstoreservice {
         if (other.hasAsyncPullIdentifier()) {
           setAsyncPullIdentifier(other.getAsyncPullIdentifier());
         }
+        if (other.hasChunkId()) {
+          setChunkId(other.getChunkId());
+        }
         if (other.hasSenderSite()) {
           setSenderSite(other.getSenderSite());
         }
@@ -19332,6 +19389,10 @@ public final class Hstoreservice {
               setMoreDataNeeded(input.readBool());
               break;
             }
+            case 96: {
+              setChunkId(input.readInt32());
+              break;
+            }
           }
         }
       }
@@ -19352,6 +19413,24 @@ public final class Hstoreservice {
       public Builder clearAsyncPullIdentifier() {
         result.hasAsyncPullIdentifier = false;
         result.asyncPullIdentifier_ = 0;
+        return this;
+      }
+      
+      // required int32 chunk_id = 12;
+      public boolean hasChunkId() {
+        return result.hasChunkId();
+      }
+      public int getChunkId() {
+        return result.getChunkId();
+      }
+      public Builder setChunkId(int value) {
+        result.hasChunkId = true;
+        result.chunkId_ = value;
+        return this;
+      }
+      public Builder clearChunkId() {
+        result.hasChunkId = false;
+        result.chunkId_ = 0;
         return this;
       }
       
@@ -22350,97 +22429,97 @@ public final class Hstoreservice {
       "ansactionID\030\004 \002(\003\022\025\n\rold_partition\030\005 \002(\005",
       "\022\025\n\rnew_partition\030\006 \002(\005\022\027\n\017volt_table_na" +
       "me\030\007 \002(\t\022\025\n\rmin_inclusive\030\010 \002(\003\022\025\n\rmax_e" +
-      "xclusive\030\t \002(\003\"\222\002\n\020LivePullResponse\022\034\n\024l" +
-      "ive_pull_identifier\030\001 \002(\005\022\023\n\013sender_site" +
-      "\030\002 \002(\005\022\014\n\004t0_s\030\003 \002(\003\022\025\n\rtransactionID\030\004 " +
-      "\002(\003\022\025\n\rold_partition\030\005 \002(\005\022\025\n\rnew_partit" +
-      "ion\030\006 \002(\005\022\027\n\017volt_table_name\030\007 \002(\t\022\025\n\rmi" +
-      "n_inclusive\030\010 \002(\003\022\025\n\rmax_exclusive\030\t \002(\003" +
-      "\022\027\n\017volt_table_data\030\n \002(\014\022\030\n\020more_data_n" +
-      "eeded\030\013 \001(\010\"\340\001\n\020AsyncPullRequest\022\035\n\025asyn",
-      "c_pull_identifier\030\001 \002(\005\022\023\n\013sender_site\030\002" +
-      " \002(\005\022\014\n\004t0_s\030\003 \002(\003\022\025\n\rtransactionID\030\004 \002(" +
-      "\003\022\025\n\rold_partition\030\005 \002(\005\022\025\n\rnew_partitio" +
-      "n\030\006 \002(\005\022\027\n\017volt_table_name\030\007 \002(\t\022\025\n\rmin_" +
-      "inclusive\030\010 \002(\003\022\025\n\rmax_exclusive\030\t \002(\003\"\224" +
-      "\002\n\021AsyncPullResponse\022\035\n\025async_pull_ident" +
-      "ifier\030\001 \002(\005\022\023\n\013sender_site\030\002 \002(\005\022\014\n\004t0_s" +
-      "\030\003 \002(\003\022\025\n\rtransactionID\030\004 \002(\003\022\025\n\rold_par" +
-      "tition\030\005 \002(\005\022\025\n\rnew_partition\030\006 \002(\005\022\027\n\017v" +
-      "olt_table_name\030\007 \002(\t\022\025\n\rmin_inclusive\030\010 ",
-      "\002(\003\022\025\n\rmax_exclusive\030\t \002(\003\022\027\n\017volt_table" +
-      "_data\030\n \002(\014\022\030\n\020more_data_needed\030\013 \002(\010\"\341\001" +
-      "\n\035ReconfigurationControlRequest\022\032\n\022messa" +
-      "ge_identifier\030\001 \002(\005\022\023\n\013sender_site\030\002 \002(\005" +
-      "\022\025\n\rreceiver_site\030\003 \002(\005\022\025\n\rsrc_partition" +
-      "\030\004 \002(\005\022\026\n\016dest_partition\030\005 \002(\005\022I\n\023reconf" +
-      "igControlType\030\006 \002(\0162,.edu.brown.hstore.R" +
-      "econfigurationControlType\"\342\001\n\036Reconfigur" +
-      "ationControlResponse\022\032\n\022message_identifi" +
-      "er\030\001 \002(\005\022\023\n\013sender_site\030\002 \002(\005\022\025\n\rreceive",
-      "r_site\030\003 \002(\005\022\025\n\rsrc_partition\030\004 \002(\005\022\026\n\016d" +
-      "est_partition\030\005 \002(\005\022I\n\023reconfigControlTy" +
-      "pe\030\006 \002(\0162,.edu.brown.hstore.Reconfigurat" +
-      "ionControlType*\320\001\n\006Status\022\006\n\002OK\020\000\022\016\n\nABO" +
-      "RT_USER\020\001\022\022\n\016ABORT_GRACEFUL\020\002\022\024\n\020ABORT_U" +
-      "NEXPECTED\020\003\022\031\n\025ABORT_CONNECTION_LOST\020\004\022\024" +
-      "\n\020ABORT_MISPREDICT\020\005\022\021\n\rABORT_RESTART\020\006\022" +
-      "\020\n\014ABORT_REJECT\020\007\022\027\n\023ABORT_EVICTEDACCESS" +
-      "\020\010\022\025\n\021ABORT_SPECULATIVE\020\t*l\n\032Reconfigura" +
-      "tionControlType\022\021\n\rPULL_RECEIVED\020\000\022\030\n\024RE",
-      "CONFIGURATION_DONE\020\001\022!\n\035RECONFIGURATION_" +
-      "DONE_RECEIVED\020\0022\352\017\n\rHStoreService\022f\n\017Tra" +
-      "nsactionInit\022(.edu.brown.hstore.Transact" +
-      "ionInitRequest\032).edu.brown.hstore.Transa" +
-      "ctionInitResponse\022f\n\017TransactionWork\022(.e" +
-      "du.brown.hstore.TransactionWorkRequest\032)" +
-      ".edu.brown.hstore.TransactionWorkRespons" +
-      "e\022x\n\023TransactionPrefetch\022+.edu.brown.hst" +
-      "ore.TransactionPrefetchResult\0324.edu.brow" +
-      "n.hstore.TransactionPrefetchAcknowledgem",
-      "ent\022c\n\016TransactionMap\022\'.edu.brown.hstore" +
-      ".TransactionMapRequest\032(.edu.brown.hstor" +
-      "e.TransactionMapResponse\022l\n\021TransactionR" +
-      "educe\022*.edu.brown.hstore.TransactionRedu" +
-      "ceRequest\032+.edu.brown.hstore.Transaction" +
-      "ReduceResponse\022o\n\022TransactionPrepare\022+.e" +
-      "du.brown.hstore.TransactionPrepareReques" +
-      "t\032,.edu.brown.hstore.TransactionPrepareR" +
-      "esponse\022l\n\021TransactionFinish\022*.edu.brown" +
-      ".hstore.TransactionFinishRequest\032+.edu.b",
-      "rown.hstore.TransactionFinishResponse\022r\n" +
-      "\023TransactionRedirect\022,.edu.brown.hstore." +
-      "TransactionRedirectRequest\032-.edu.brown.h" +
-      "store.TransactionRedirectResponse\022i\n\020Tra" +
-      "nsactionDebug\022).edu.brown.hstore.Transac" +
-      "tionDebugRequest\032*.edu.brown.hstore.Tran" +
-      "sactionDebugResponse\022Q\n\010SendData\022!.edu.b" +
-      "rown.hstore.SendDataRequest\032\".edu.brown." +
-      "hstore.SendDataResponse\022W\n\nInitialize\022#." +
-      "edu.brown.hstore.InitializeRequest\032$.edu",
-      ".brown.hstore.InitializeResponse\022f\n\017Shut" +
-      "downPrepare\022(.edu.brown.hstore.ShutdownP" +
-      "repareRequest\032).edu.brown.hstore.Shutdow" +
-      "nPrepareResponse\022Q\n\010Shutdown\022!.edu.brown" +
-      ".hstore.ShutdownRequest\032\".edu.brown.hsto" +
-      "re.ShutdownResponse\022T\n\tHeartbeat\022\".edu.b" +
-      "rown.hstore.HeartbeatRequest\032#.edu.brown" +
-      ".hstore.HeartbeatResponse\022Q\n\010TimeSync\022!." +
-      "edu.brown.hstore.TimeSyncRequest\032\".edu.b" +
-      "rown.hstore.TimeSyncResponse\022f\n\017Reconfig",
-      "uration\022(.edu.brown.hstore.Reconfigurati" +
-      "onRequest\032).edu.brown.hstore.Reconfigura" +
-      "tionResponse\022]\n\014DataTransfer\022%.edu.brown" +
-      ".hstore.DataTransferRequest\032&.edu.brown." +
-      "hstore.DataTransferResponse\022Q\n\010LivePull\022" +
-      "!.edu.brown.hstore.LivePullRequest\032\".edu" +
-      ".brown.hstore.LivePullResponse\022T\n\tAsyncP" +
-      "ull\022\".edu.brown.hstore.AsyncPullRequest\032" +
-      "#.edu.brown.hstore.AsyncPullResponse\022~\n\031" +
-      "ReconfigurationControlMsg\022/.edu.brown.hs",
-      "tore.ReconfigurationControlRequest\0320.edu" +
-      ".brown.hstore.ReconfigurationControlResp" +
-      "onse"
+      "xclusive\030\t \002(\003\"\244\002\n\020LivePullResponse\022\034\n\024l" +
+      "ive_pull_identifier\030\001 \002(\005\022\020\n\010chunk_id\030\014 " +
+      "\001(\005\022\023\n\013sender_site\030\002 \002(\005\022\014\n\004t0_s\030\003 \002(\003\022\025" +
+      "\n\rtransactionID\030\004 \002(\003\022\025\n\rold_partition\030\005" +
+      " \002(\005\022\025\n\rnew_partition\030\006 \002(\005\022\027\n\017volt_tabl" +
+      "e_name\030\007 \002(\t\022\025\n\rmin_inclusive\030\010 \002(\003\022\025\n\rm" +
+      "ax_exclusive\030\t \002(\003\022\027\n\017volt_table_data\030\n " +
+      "\002(\014\022\030\n\020more_data_needed\030\013 \001(\010\"\340\001\n\020AsyncP",
+      "ullRequest\022\035\n\025async_pull_identifier\030\001 \002(" +
+      "\005\022\023\n\013sender_site\030\002 \002(\005\022\014\n\004t0_s\030\003 \002(\003\022\025\n\r" +
+      "transactionID\030\004 \002(\003\022\025\n\rold_partition\030\005 \002" +
+      "(\005\022\025\n\rnew_partition\030\006 \002(\005\022\027\n\017volt_table_" +
+      "name\030\007 \002(\t\022\025\n\rmin_inclusive\030\010 \002(\003\022\025\n\rmax" +
+      "_exclusive\030\t \002(\003\"\246\002\n\021AsyncPullResponse\022\035" +
+      "\n\025async_pull_identifier\030\001 \002(\005\022\020\n\010chunk_i" +
+      "d\030\014 \002(\005\022\023\n\013sender_site\030\002 \002(\005\022\014\n\004t0_s\030\003 \002" +
+      "(\003\022\025\n\rtransactionID\030\004 \002(\003\022\025\n\rold_partiti" +
+      "on\030\005 \002(\005\022\025\n\rnew_partition\030\006 \002(\005\022\027\n\017volt_",
+      "table_name\030\007 \002(\t\022\025\n\rmin_inclusive\030\010 \002(\003\022" +
+      "\025\n\rmax_exclusive\030\t \002(\003\022\027\n\017volt_table_dat" +
+      "a\030\n \002(\014\022\030\n\020more_data_needed\030\013 \002(\010\"\341\001\n\035Re" +
+      "configurationControlRequest\022\032\n\022message_i" +
+      "dentifier\030\001 \002(\005\022\023\n\013sender_site\030\002 \002(\005\022\025\n\r" +
+      "receiver_site\030\003 \002(\005\022\025\n\rsrc_partition\030\004 \002" +
+      "(\005\022\026\n\016dest_partition\030\005 \002(\005\022I\n\023reconfigCo" +
+      "ntrolType\030\006 \002(\0162,.edu.brown.hstore.Recon" +
+      "figurationControlType\"\342\001\n\036Reconfiguratio" +
+      "nControlResponse\022\032\n\022message_identifier\030\001",
+      " \002(\005\022\023\n\013sender_site\030\002 \002(\005\022\025\n\rreceiver_si" +
+      "te\030\003 \002(\005\022\025\n\rsrc_partition\030\004 \002(\005\022\026\n\016dest_" +
+      "partition\030\005 \002(\005\022I\n\023reconfigControlType\030\006" +
+      " \002(\0162,.edu.brown.hstore.ReconfigurationC" +
+      "ontrolType*\320\001\n\006Status\022\006\n\002OK\020\000\022\016\n\nABORT_U" +
+      "SER\020\001\022\022\n\016ABORT_GRACEFUL\020\002\022\024\n\020ABORT_UNEXP" +
+      "ECTED\020\003\022\031\n\025ABORT_CONNECTION_LOST\020\004\022\024\n\020AB" +
+      "ORT_MISPREDICT\020\005\022\021\n\rABORT_RESTART\020\006\022\020\n\014A" +
+      "BORT_REJECT\020\007\022\027\n\023ABORT_EVICTEDACCESS\020\010\022\025" +
+      "\n\021ABORT_SPECULATIVE\020\t*l\n\032Reconfiguration",
+      "ControlType\022\021\n\rPULL_RECEIVED\020\000\022\030\n\024RECONF" +
+      "IGURATION_DONE\020\001\022!\n\035RECONFIGURATION_DONE" +
+      "_RECEIVED\020\0022\352\017\n\rHStoreService\022f\n\017Transac" +
+      "tionInit\022(.edu.brown.hstore.TransactionI" +
+      "nitRequest\032).edu.brown.hstore.Transactio" +
+      "nInitResponse\022f\n\017TransactionWork\022(.edu.b" +
+      "rown.hstore.TransactionWorkRequest\032).edu" +
+      ".brown.hstore.TransactionWorkResponse\022x\n" +
+      "\023TransactionPrefetch\022+.edu.brown.hstore." +
+      "TransactionPrefetchResult\0324.edu.brown.hs",
+      "tore.TransactionPrefetchAcknowledgement\022" +
+      "c\n\016TransactionMap\022\'.edu.brown.hstore.Tra" +
+      "nsactionMapRequest\032(.edu.brown.hstore.Tr" +
+      "ansactionMapResponse\022l\n\021TransactionReduc" +
+      "e\022*.edu.brown.hstore.TransactionReduceRe" +
+      "quest\032+.edu.brown.hstore.TransactionRedu" +
+      "ceResponse\022o\n\022TransactionPrepare\022+.edu.b" +
+      "rown.hstore.TransactionPrepareRequest\032,." +
+      "edu.brown.hstore.TransactionPrepareRespo" +
+      "nse\022l\n\021TransactionFinish\022*.edu.brown.hst",
+      "ore.TransactionFinishRequest\032+.edu.brown" +
+      ".hstore.TransactionFinishResponse\022r\n\023Tra" +
+      "nsactionRedirect\022,.edu.brown.hstore.Tran" +
+      "sactionRedirectRequest\032-.edu.brown.hstor" +
+      "e.TransactionRedirectResponse\022i\n\020Transac" +
+      "tionDebug\022).edu.brown.hstore.Transaction" +
+      "DebugRequest\032*.edu.brown.hstore.Transact" +
+      "ionDebugResponse\022Q\n\010SendData\022!.edu.brown" +
+      ".hstore.SendDataRequest\032\".edu.brown.hsto" +
+      "re.SendDataResponse\022W\n\nInitialize\022#.edu.",
+      "brown.hstore.InitializeRequest\032$.edu.bro" +
+      "wn.hstore.InitializeResponse\022f\n\017Shutdown" +
+      "Prepare\022(.edu.brown.hstore.ShutdownPrepa" +
+      "reRequest\032).edu.brown.hstore.ShutdownPre" +
+      "pareResponse\022Q\n\010Shutdown\022!.edu.brown.hst" +
+      "ore.ShutdownRequest\032\".edu.brown.hstore.S" +
+      "hutdownResponse\022T\n\tHeartbeat\022\".edu.brown" +
+      ".hstore.HeartbeatRequest\032#.edu.brown.hst" +
+      "ore.HeartbeatResponse\022Q\n\010TimeSync\022!.edu." +
+      "brown.hstore.TimeSyncRequest\032\".edu.brown",
+      ".hstore.TimeSyncResponse\022f\n\017Reconfigurat" +
+      "ion\022(.edu.brown.hstore.ReconfigurationRe" +
+      "quest\032).edu.brown.hstore.Reconfiguration" +
+      "Response\022]\n\014DataTransfer\022%.edu.brown.hst" +
+      "ore.DataTransferRequest\032&.edu.brown.hsto" +
+      "re.DataTransferResponse\022Q\n\010LivePull\022!.ed" +
+      "u.brown.hstore.LivePullRequest\032\".edu.bro" +
+      "wn.hstore.LivePullResponse\022T\n\tAsyncPull\022" +
+      "\".edu.brown.hstore.AsyncPullRequest\032#.ed" +
+      "u.brown.hstore.AsyncPullResponse\022~\n\031Reco",
+      "nfigurationControlMsg\022/.edu.brown.hstore" +
+      ".ReconfigurationControlRequest\0320.edu.bro" +
+      "wn.hstore.ReconfigurationControlResponse"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -22764,7 +22843,7 @@ public final class Hstoreservice {
           internal_static_edu_brown_hstore_LivePullResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_edu_brown_hstore_LivePullResponse_descriptor,
-              new java.lang.String[] { "LivePullIdentifier", "SenderSite", "T0S", "TransactionID", "OldPartition", "NewPartition", "VoltTableName", "MinInclusive", "MaxExclusive", "VoltTableData", "MoreDataNeeded", },
+              new java.lang.String[] { "LivePullIdentifier", "ChunkId", "SenderSite", "T0S", "TransactionID", "OldPartition", "NewPartition", "VoltTableName", "MinInclusive", "MaxExclusive", "VoltTableData", "MoreDataNeeded", },
               edu.brown.hstore.Hstoreservice.LivePullResponse.class,
               edu.brown.hstore.Hstoreservice.LivePullResponse.Builder.class);
           internal_static_edu_brown_hstore_AsyncPullRequest_descriptor =
@@ -22780,7 +22859,7 @@ public final class Hstoreservice {
           internal_static_edu_brown_hstore_AsyncPullResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_edu_brown_hstore_AsyncPullResponse_descriptor,
-              new java.lang.String[] { "AsyncPullIdentifier", "SenderSite", "T0S", "TransactionID", "OldPartition", "NewPartition", "VoltTableName", "MinInclusive", "MaxExclusive", "VoltTableData", "MoreDataNeeded", },
+              new java.lang.String[] { "AsyncPullIdentifier", "ChunkId", "SenderSite", "T0S", "TransactionID", "OldPartition", "NewPartition", "VoltTableName", "MinInclusive", "MaxExclusive", "VoltTableData", "MoreDataNeeded", },
               edu.brown.hstore.Hstoreservice.AsyncPullResponse.class,
               edu.brown.hstore.Hstoreservice.AsyncPullResponse.Builder.class);
           internal_static_edu_brown_hstore_ReconfigurationControlRequest_descriptor =

@@ -141,11 +141,13 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     
     @Override
     public boolean markKeyAsMigratedOut(String table_name, Comparable<?> key) {
+        LOG.error("TODO dirty range");//TODO
         return markAsMigrated(migratedKeyOut, table_name, key);
     }
 
     @Override
     public boolean markKeyAsReceived(String table_name, Comparable<?> key) {
+        LOG.error("TODO dirty range");//TODO
         return markAsMigrated(migratedKeyIn, table_name, key);
     }
 
@@ -185,6 +187,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 if (checkMigratedMapSet(migratedKeyIn,table_name,key)== true){
                     return true;
                 } else {                       
+                    LOG.error("TODO check dirty range");//TODO
                     //check if the key was received out in a range        
                     for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedIn){
                         if(range.inRange(key)){
@@ -205,6 +208,9 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                     ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table_name, previousPartition,expectedPartition, key);
                     throw ex;
                 }
+                
+                LOG.error("TODO check dirty range");//TODO
+                
                 //check to see if this key was migrated in a range
                 for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedOut){
                     if(range.inRange(key)){

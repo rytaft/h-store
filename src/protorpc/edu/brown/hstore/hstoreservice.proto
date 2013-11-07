@@ -571,6 +571,8 @@ message LivePullRequest {
 message LivePullResponse {
      // The unique id associated with the pull
     required int32 live_pull_identifier = 1;
+     // The chunk id of the message
+    optional int32 chunk_id = 12;
     // The id of the HStoreSite responding to live pull message
     required int32 sender_site = 2;
     // The time when the remote HStoreSite sent this request
@@ -624,6 +626,8 @@ message AsyncPullRequest {
 message AsyncPullResponse {
      // The unique id associated with the pull
     required int32 async_pull_identifier = 1;
+    // The chunk id of the message
+    required int32 chunk_id = 12;
     // The id of the HStoreSite responding to live pull message
     required int32 sender_site = 2;
     // The time when the remote HStoreSite sent this request

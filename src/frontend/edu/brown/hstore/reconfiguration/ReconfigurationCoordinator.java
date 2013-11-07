@@ -605,14 +605,30 @@ public class ReconfigurationCoordinator implements Shutdownable {
     	
     }
         
+    
     /**
      * Called when a PE requests RC to initiate a pull from another RC
-     * @param asyncPullRequest
-     * @param asyncPullResponseCallback
+     * @param nextRequestToken
+     * @param txnId
+     * @param partitionId
+     * @param pullRequests
+     * @param pullBlockSemaphore
      */
-    public void asyncPullRequestFromPE(AsyncPullRequest asyncPullRequest, RpcCallback<AsyncPullResponse> 
-        asyncPullResponseCallback) {
-    	
+    public void asyncPullRequestFromPE(int livePullId, long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests, 
+            Semaphore pullBlockSemaphore) {
+        try {
+            pullBlockSemaphore.acquire(pullRequests.size());
+        } catch (InterruptedException e) {
+            LOG.error("Exception acquiring locks for pull request",e);
+        }
+        
+        for(ReconfigurationRange range : pullRequests){       
+            
+            asyncPullTuples(livePullId, txnId, range.old_partition, range.new_partition, range.table_name, 
+                    range.min_long, range.max_long, range.getVt());
+            blockedRequests.put(livePullId, pullBlockSemaphore);   
+        }
+        
     }
 
     /**
@@ -670,7 +686,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         // TODO : Check if volt type makes can be used here for generic values
         // or remove it
         int sourceID = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(oldPartitionId);
-
+        LOG.error("TODO after chunking : must check if async pull has been issued and is queued");
         ProtoRpcController controller = new ProtoRpcController();
 
         LivePullRequest livePullRequest = LivePullRequest.newBuilder().setLivePullIdentifier(livePullId).setSenderSite(this.localSiteId).setTransactionID(txnId).setOldPartition(oldPartitionId)
@@ -688,6 +704,43 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
         this.channels[sourceID].livePull(controller, livePullRequest, livePullRequestCallback);
     }
+    
+    /**
+     * Live Pull the tuples for a reconfiguration range by generating a live
+     * pull request
+     * 
+     * @param txnId
+     * @param oldPartitionId
+     * @param newPartitionId
+     * @param table_name
+     * @param min_inclusive
+     * @param max_exclusive
+     * @param voltType
+     */
+    public void asyncPullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, Long max_exclusive, VoltType voltType) {
+        LOG.info(String.format("pullTuples with Live Pull ID %s, keys %s->%s for %s  partIds %s->%s", livePullId, min_inclusive, max_exclusive, table_name, oldPartitionId, newPartitionId));
+        int sourceID = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(oldPartitionId);
+
+        ProtoRpcController controller = new ProtoRpcController();
+
+        AsyncPullRequest asyncPullRequest = AsyncPullRequest.newBuilder().setAsyncPullIdentifier(livePullId).setSenderSite(this.localSiteId).setTransactionID(txnId).setOldPartition(oldPartitionId)
+                .setNewPartition(newPartitionId).setVoltTableName(table_name).setMinInclusive(min_inclusive).setMaxExclusive(max_exclusive).setT0S(System.currentTimeMillis()).build();
+
+        if (sourceID == localSiteId) {
+            LOG.debug("pulling from localsite");
+            // Just push the message through local receive Tuples to the PE'S
+            // If the callback is null, it shows that the request is from a
+            // partition in
+            // the local site itself.
+            
+            //TODO LEFTOFF add extract msg and schedule. callback needs to schedule more if more data
+            asyncDataPullRequest(asyncPullRequest, null);
+            return;
+        }
+
+        this.channels[sourceID].asyncPull(controller, asyncPullRequest, asyncPullRequestCallback); 
+    }
+    
 
     public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, Long max_exclusive, VoltTable voltTable) {
         
@@ -723,15 +776,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     }
 
-    /**
-     * Fire off Async pull requests in the executors 
-     * This is called when state turns to Bulk Data Transfer
-     */
-    public void scheduleAsyncPullRequests(){
-        for (PartitionExecutor executor : local_executors) {
-            executor.scheduleAsyncPullRequests();
-        }
-    }
+
     
     /**
      * Parse the partition plan and figure out the destination sites and
@@ -999,5 +1044,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             }
         }
     }
+
+
 
 }
