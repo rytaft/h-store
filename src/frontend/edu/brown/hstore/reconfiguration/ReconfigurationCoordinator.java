@@ -64,7 +64,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
     public static boolean detailed_timing = true;
-    private static boolean async_push = false;
+    private static boolean async_nonchunk_push = false;
+    private static boolean async_nonchunk_pull = false;
     private static boolean async_pull = false;
     
     // Cached list of local executors
@@ -145,17 +146,23 @@ public class ReconfigurationCoordinator implements Shutdownable {
         dataPullResponseTimes = new HashMap<>(); 
         
         detailed_timing = hstore_conf.site.reconfig_detailed_profiling;
-        async_push = hstore_conf.site.reconfig_async_push;
+        async_nonchunk_push = hstore_conf.site.reconfig_async_nonchunk_push;
+        async_nonchunk_pull = hstore_conf.site.reconfig_async_nonchunk_pull;
         async_pull = hstore_conf.site.reconfig_async_pull;
         
-        //We only want one to be set
-        if (async_pull && async_push) {
-            LOG.warn("Async push and pull both set. Disabling async_push");
-            async_push = false;
-        }
+        
+        if (async_pull) {
+            LOG.debug("Disabling nonchunked push and pull, since chunked pull is enabled");
+            async_nonchunk_push = false;
+            async_nonchunk_pull = false;
+        } else //We only want one to be set
+            if (async_nonchunk_pull && async_nonchunk_push) {
+                LOG.warn("Async push and pull both set. Disabling async_push");
+                async_nonchunk_push = false;
+            }
         
         LOG.info(String.format("Reconfig configuration. DetailedTiming: %s AsyncPush:%s AysncPull:%s", 
-                detailed_timing, async_push, async_pull));
+                detailed_timing, async_nonchunk_push, async_nonchunk_pull));
         
     }
 
@@ -729,7 +736,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // If the callback is null, it shows that the request is from a
             // partition in
             // the local site itself.
-            
+            LOG.info("TODO verify passing callback locally works"); //TODO
             queueAsyncDataPullRequest(asyncPullRequest, asyncPullRequestCallback);
             return;
         }
@@ -1026,14 +1033,18 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
     }
 
-    public boolean scheduleAsyncPush() {
-        return this.async_push;
+    public boolean scheduleAsyncNonChunkPush() {
+        return async_nonchunk_push;
+    }
+
+    public boolean scheduleAsyncNonChunkPull() {
+        return async_nonchunk_pull;
     }
 
     public boolean scheduleAsyncPull() {
-        return this.async_pull;
+        return async_pull;
     }
-
+    
     public void showReconfigurationProfiler() {
         if(hstore_conf.site.reconfig_profiling) {
             for (int p_id : hstore_site.getLocalPartitionIds().values()) {
@@ -1089,6 +1100,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 LOG.info("Exception getting profiler timing", ex);
             }
         }
+    }
+
+    public void acknowledgePullComplete(int pullID, boolean isAsyncRequest) {
+        blockedRequests.get(pullID).release();
     }
 
 

@@ -156,7 +156,8 @@
 <arg value="site.reconfig_profiling=${site.reconfig_profiling}" />
 <arg value="site.reconfig_detailed_profiling=${site.reconfig_detailed_profiling}" />
 <arg value="site.reconfig_async_pull=${site.reconfig_async_pull}" />
-<arg value="site.reconfig_async_push=${site.reconfig_async_push}" />
+<arg value="site.reconfig_async_nonchunk_pull=${site.reconfig_async_nonchunk_pull}" />
+<arg value="site.reconfig_async_nonchunk_push=${site.reconfig_async_nonchunk_push}" />
 <arg value="site.reconfig_initial_plan=${site.reconfig_initial_plan}" />
 <arg value="site.mr_map_blocking=${site.mr_map_blocking}" />
 <arg value="site.mr_reduce_blocking=${site.mr_reduce_blocking}" />

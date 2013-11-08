@@ -11,10 +11,10 @@ import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
  * 
  * @author aelmore
  */
-public class AsyncLivePushRequestMessage extends InternalMessage {
+public class AsyncNonChunkPushRequestMessage extends InternalMessage {
     private ReconfigurationRange<? extends Comparable<?>> pushRange;
 
-    public AsyncLivePushRequestMessage(ReconfigurationRange<? extends Comparable<?>> pushRange) {
+    public AsyncNonChunkPushRequestMessage(ReconfigurationRange<? extends Comparable<?>> pushRange) {
         super();
         this.pushRange = pushRange;
     }

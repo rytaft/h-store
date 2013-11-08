@@ -147,8 +147,8 @@ import edu.brown.hstore.estimators.EstimatorUtil;
 import edu.brown.hstore.estimators.TransactionEstimator;
 import edu.brown.hstore.internal.AsyncDataPullRequestMessage;
 import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
-import edu.brown.hstore.internal.AsyncLivePullRequestMessage;
-import edu.brown.hstore.internal.AsyncLivePushRequestMessage;
+import edu.brown.hstore.internal.AsyncNonChunkPullRequestMessage;
+import edu.brown.hstore.internal.AsyncNonChunkPushRequestMessage;
 import edu.brown.hstore.internal.DeferredQueryMessage;
 import edu.brown.hstore.internal.FinishTxnMessage;
 import edu.brown.hstore.internal.InternalMessage;
@@ -156,6 +156,7 @@ import edu.brown.hstore.internal.InternalTxnMessage;
 import edu.brown.hstore.internal.LivePullRequestMessage;
 import edu.brown.hstore.internal.PotentialSnapshotWorkMessage;
 import edu.brown.hstore.internal.PrepareTxnMessage;
+import edu.brown.hstore.internal.ScheduleAsyncPullRequestMessage;
 import edu.brown.hstore.internal.SetDistributedTxnMessage;
 import edu.brown.hstore.internal.StartTxnMessage;
 import edu.brown.hstore.internal.UtilityWorkMessage;
@@ -1344,8 +1345,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // -------------------------------
         // RECONFIGURATION PUSH WORK
         // -------------------------------
-        else if (work instanceof AsyncLivePushRequestMessage) {
-            ReconfigurationRange<? extends Comparable<?>> pushRange = ((AsyncLivePushRequestMessage) work).getPushRange();
+        else if (work instanceof AsyncNonChunkPushRequestMessage) {
+            ReconfigurationRange<? extends Comparable<?>> pushRange = ((AsyncNonChunkPushRequestMessage) work).getPushRange();
             LOG.info("Asynch push message scheduled " + pushRange.toString());
 
             // TODO ae leftoff FIXME
@@ -1372,12 +1373,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
 
         } 
-        else if (work instanceof AsyncLivePullRequestMessage) {
+        else if (work instanceof AsyncNonChunkPullRequestMessage) {
             //We have a scheduled async pull to initiate
 
-            AsyncLivePullRequestMessage asyncLivePullRequestMessage = (AsyncLivePullRequestMessage)work;
-            processAsyncLivePullRequestMessage(asyncLivePullRequestMessage);
+            AsyncNonChunkPullRequestMessage asyncLivePullRequestMessage = (AsyncNonChunkPullRequestMessage)work;
+            processAsyncNonChunkPullRequestMessage(asyncLivePullRequestMessage);
             //throw new NotImplementedException();
+        }  
+        else if (work instanceof ScheduleAsyncPullRequestMessage) {
+            //We have a scheduled async pull to initiate
+            //this.reconfiguration_coordinator.asyncPullRequestFromPE(livePullId, txnId, callingPartition, pullRequests, pullBlockSemaphore);
+            processScheduleAsyncPullRequestMessage((ScheduleAsyncPullRequestMessage)work);
         }  
         else if (work instanceof AsyncDataPullResponseMessage) {
             //We have received and are processing a data pull response
@@ -1389,7 +1395,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.info("TODO verify chunk id order");
                 receiveTuples(pull.getTransactionID(), pull.getOldPartition(), pull.getNewPartition(), pull.getVoltTableName(), 
                         pull.getMinInclusive(), pull.getMaxExclusive(), vt, pull.getMoreDataNeeded(), true);
-                
+                if(pull.getMoreDataNeeded() == false){
+                    this.reconfiguration_coordinator.acknowledgePullComplete(pull.getAsyncPullIdentifier(), true);
+                }
                 this.reconfiguration_coordinator.sendAcknowledgement(((AsyncDataPullResponseMessage) work).getAcknowledgingCallback());
             } catch (Exception e) {
                 LOG.error("Exception when processing async data pull response", e);
@@ -1397,7 +1405,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             
         }
         else if (work instanceof AsyncDataPullRequestMessage) {
-            //We have received and are processing a data pull response
+            //We have received and are processing a data pull request
             AsyncDataPullRequestMessage pullMsg = (AsyncDataPullRequestMessage)work;
             AsyncPullRequest pull = pullMsg.getAsyncPullRequest();
             try {                
@@ -2262,13 +2270,32 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         return (success);
     }
 
-    public boolean queueAsyncPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+    
+    public boolean queueInitialAsyncPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info("Scheduling async pull requests : " + incomingRanges.size());
             boolean res = true;
             LOG.info("TODO schedule one at a time?");//TODO
             for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
-                AsyncLivePullRequestMessage pullMessage = new AsyncLivePullRequestMessage(range);
+                ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
+                boolean success = this.work_queue.offer(scheduleAsyncPull); // ,
+                if (!success)
+                    res = false;
+            }
+            return res;
+        } else {
+            if (debug.val)
+                LOG.debug("No incoming ranges to request");
+            return true;
+        }
+    }
+    
+    public boolean queueInitialAsyncNonChunkPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+        if (incomingRanges != null && !incomingRanges.isEmpty()) {
+            LOG.info("Scheduling async pull requests : " + incomingRanges.size());
+            boolean res = true;
+            for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
+                AsyncNonChunkPullRequestMessage pullMessage = new AsyncNonChunkPullRequestMessage(range);
                 boolean success = this.work_queue.offer(pullMessage); // ,
                 if (!success)
                     res = false;
@@ -2281,12 +2308,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
     }
 
-    public boolean queueAsyncPushRequests(List<ReconfigurationRange<? extends Comparable<?>>> outgoingRanges) {
+    public boolean queueInitialAsyncNonChunkPushRequests(List<ReconfigurationRange<? extends Comparable<?>>> outgoingRanges) {
         if (outgoingRanges != null && !outgoingRanges.isEmpty()) {
             LOG.info("Scheduling async push requests : " + outgoingRanges.size());
             boolean res = true;
             for (ReconfigurationRange<? extends Comparable<?>> range : outgoingRanges) {
-                AsyncLivePushRequestMessage pushMessage = new AsyncLivePushRequestMessage(range);
+                AsyncNonChunkPushRequestMessage pushMessage = new AsyncNonChunkPushRequestMessage(range);
                 boolean success = this.work_queue.offer(pushMessage); // ,
                 if (!success)
                     res = false;
@@ -3050,12 +3077,58 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         LOG.info("sent response to live pull : " + livePullRequest.getLivePullIdentifier());
     }
+ 
+    
+    /**
+     * Process a scheduled request to init an async data pull
+     * @param scheduleAsyncPullMsg
+     */
+    public void processScheduleAsyncPullRequestMessage(ScheduleAsyncPullRequestMessage scheduleAsyncPullMsg){
+        //This is executing at the intended destination of the tuples -  
+        // We can just fire off a live Pull request here and the source of the tuples / destination of Async Request
+        // can just return the tuples. Because we are blocking the destination we might not want to have low priority messages at the 
+        // source lying around
+        
+        ReconfigurationRange<? extends Comparable<?>> pullRange = scheduleAsyncPullMsg.getPullRange();
+        LOG.debug("Asynch pull message being scheduled for range " + pullRange.toString());
+        //How long did it sit in the queue for
+        this.reconfiguration_coordinator.profilers[this.partitionId].async_dest_queue_time.appendTime(scheduleAsyncPullMsg.getQueueTime());
+        //TODO : For now the function is called for each range being pulled, check if we should move the logic of breaking the requests here
+        int requestSize = 1;
+        Semaphore pullBlockSemaphore = new Semaphore(requestSize);
+        List<ReconfigurationRange<? extends Comparable<?>>> pullRequests = new  ArrayList<ReconfigurationRange<? extends Comparable<?>>>();
+        pullRequests.add(pullRange);
+        // transaction id is a dummy here
+        // Calling the RC to generates a Live Pull Request for a range and blocking. When the reply comes back the RC will unblock the semaphore
+        if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.start();
+        this.reconfiguration_coordinator.asyncPullRequestFromPE(getNextRequestToken(), -1L, this.partitionId, pullRequests, pullBlockSemaphore);
+
+        LOG.info("("+ this.partitionId + ") Blocking PE for ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
+        try {
+            boolean acquired = pullBlockSemaphore.tryAcquire(requestSize,30, TimeUnit.SECONDS);
+            if(acquired){
+                if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.stopIfStarted();
+            }
+            else{
+                final String msg = "Timeout on blocking for pullrequest.";
+                LOG.error(msg);
+                throw new RuntimeException(msg);
+            }
+
+            LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId)); 
+        } catch (InterruptedException ex) {
+            LOG.error("Waiting for pull was interuppted. ", ex);
+            // TODO ae restart txn?
+        }
+    }
+    
+    
     
     /**
      * Process a scheduled request to init an async data pull
      * @param asyncPullRequestMessage
      */
-    public void processAsyncLivePullRequestMessage(AsyncLivePullRequestMessage asyncPullRequestMessage){
+    public void processAsyncNonChunkPullRequestMessage(AsyncNonChunkPullRequestMessage asyncPullRequestMessage){
         //This is executing at the intended destination of the tuples -  
         // We can just fire off a live Pull request here and the source of the tuples / destination of Async Request
         // can just return the tuples. Because we are blocking the destination we might not want to have low priority messages at the 
@@ -3075,7 +3148,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.start();
 
         this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), -1, this.partitionId, pullRequests, pullBlockSemaphore);
-        this.reconfiguration_coordinator.asyncPullRequestFromPE(getNextRequestToken(), -1L, this.partitionId, pullRequests, pullBlockSemaphore);
         LOG.info("("+ this.partitionId + ") Blocking PE for ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
         try {
             boolean acquired = pullBlockSemaphore.tryAcquire(requestSize,30, TimeUnit.SECONDS);
@@ -5806,13 +5878,18 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             //or after a stage in recofiguration
             this.to_pull = new HashMap<>();
             this.pulled_tuples = new HashMap<>();
-            if(this.reconfiguration_coordinator.scheduleAsyncPush()){
-                LOG.info("Scheduling asynch pushes");
-                queueAsyncPushRequests(outgoing_ranges);
+            if(this.reconfiguration_coordinator.scheduleAsyncNonChunkPush()){
+                LOG.info("Scheduling nonchunked asynch pushes");
+                queueInitialAsyncNonChunkPushRequests(outgoing_ranges);
             }
-            else if(this.reconfiguration_coordinator.scheduleAsyncPull()){
-                LOG.info("Scheduling asynch pulls");
-                queueAsyncPullRequests(incoming_ranges);
+            else if(this.reconfiguration_coordinator.scheduleAsyncNonChunkPull()){
+                LOG.info("Scheduling nonchunked asynch pulls");
+                queueInitialAsyncNonChunkPullRequests(incoming_ranges);
+            }
+            else if (this.reconfiguration_coordinator.scheduleAsyncPull()){
+                LOG.info("Scheduling chunked asynch pulls");
+           
+                queueInitialAsyncNonChunkPullRequests(incoming_ranges);
             }
             else {
                 LOG.info("Scheduling no asyn msgs");

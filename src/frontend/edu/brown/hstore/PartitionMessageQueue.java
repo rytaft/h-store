@@ -5,13 +5,14 @@ import java.util.concurrent.PriorityBlockingQueue;
 
 import edu.brown.hstore.internal.AsyncDataPullRequestMessage;
 import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
-import edu.brown.hstore.internal.AsyncLivePullRequestMessage;
-import edu.brown.hstore.internal.AsyncLivePushRequestMessage;
+import edu.brown.hstore.internal.AsyncNonChunkPullRequestMessage;
+import edu.brown.hstore.internal.AsyncNonChunkPushRequestMessage;
 import edu.brown.hstore.internal.FinishTxnMessage;
 import edu.brown.hstore.internal.InternalMessage;
 import edu.brown.hstore.internal.InternalTxnMessage;
 import edu.brown.hstore.internal.LivePullRequestMessage;
 import edu.brown.hstore.internal.PrepareTxnMessage;
+import edu.brown.hstore.internal.ScheduleAsyncPullRequestMessage;
 import edu.brown.hstore.internal.SetDistributedTxnMessage;
 import edu.brown.hstore.internal.WorkFragmentMessage;
 
@@ -60,8 +61,9 @@ public class PartitionMessageQueue extends PriorityBlockingQueue<InternalMessage
             WorkFragmentMessage.class,
             AsyncDataPullResponseMessage.class,
             AsyncDataPullRequestMessage.class,
-            AsyncLivePushRequestMessage.class,
-            AsyncLivePullRequestMessage.class
+            AsyncNonChunkPushRequestMessage.class,
+            AsyncNonChunkPullRequestMessage.class,
+            ScheduleAsyncPullRequestMessage.class
         };
         
         @Override
