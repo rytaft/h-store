@@ -2273,7 +2273,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     
     public boolean queueInitialAsyncPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
-            LOG.info("Scheduling async pull requests : " + incomingRanges.size());
+            LOG.info(String.format("(%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
             boolean res = true;
             LOG.info("TODO schedule one at a time?");//TODO
             for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
@@ -3090,7 +3090,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // source lying around
         
         ReconfigurationRange<? extends Comparable<?>> pullRange = scheduleAsyncPullMsg.getPullRange();
-        LOG.debug("Asynch pull message being scheduled for range " + pullRange.toString());
+        LOG.info("A chunked asynch pull message being scheduled for range " + pullRange.toString());
         //How long did it sit in the queue for
         this.reconfiguration_coordinator.profilers[this.partitionId].async_dest_queue_time.appendTime(scheduleAsyncPullMsg.getQueueTime());
         //TODO : For now the function is called for each range being pulled, check if we should move the logic of breaking the requests here
