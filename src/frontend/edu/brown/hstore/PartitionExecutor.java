@@ -1387,6 +1387,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }  
         else if (work instanceof AsyncDataPullResponseMessage) {
             //We have received and are processing a data pull response
+        	LOG.info("Processing the pull response message received");
             AsyncPullResponse pull = ((AsyncDataPullResponseMessage) work).getAsyncPullResponse();
             try {                
                 VoltTable vt = FastDeserializer.deserialize(pull.getVoltTableData().toByteArray(), VoltTable.class);
@@ -1395,9 +1396,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.info("TODO verify chunk id order");
                 receiveTuples(pull.getTransactionID(), pull.getOldPartition(), pull.getNewPartition(), pull.getVoltTableName(), 
                         pull.getMinInclusive(), pull.getMaxExclusive(), vt, pull.getMoreDataNeeded(), true);
-                if(pull.getMoreDataNeeded() == false){
-                    this.reconfiguration_coordinator.acknowledgePullComplete(pull.getAsyncPullIdentifier(), true);
-                }
+                
+                //Commenting these lines as we have to unblock the semaphore when we get a callback because otherwise the queued job is never unblocked 
+                
+                //if(pull.getMoreDataNeeded() == false){
+                //    this.reconfiguration_coordinator.unblockingPullRequestSemaphore(pull.getAsyncPullIdentifier(), true);
+                //}
                 this.reconfiguration_coordinator.sendAcknowledgement(((AsyncDataPullResponseMessage) work).getAcknowledgingCallback());
             } catch (Exception e) {
                 LOG.error("Exception when processing async data pull response", e);
