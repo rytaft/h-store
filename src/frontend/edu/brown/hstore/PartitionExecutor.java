@@ -1406,6 +1406,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         else if (work instanceof AsyncDataPullRequestMessage) {
             //We have received and are processing a data pull request
+        	LOG.info("Extracting data for a async data pull request at partition " + this.partitionId);
             AsyncDataPullRequestMessage pullMsg = (AsyncDataPullRequestMessage)work;
             AsyncPullRequest pull = pullMsg.getAsyncPullRequest();
             try {                
