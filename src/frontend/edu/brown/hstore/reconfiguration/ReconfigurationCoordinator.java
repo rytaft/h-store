@@ -1105,7 +1105,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     public void unblockingPullRequestSemaphore(int pullID, int partitionId, boolean isAsyncRequest) {
     	LOG.info("Callback of the semaphore has been received. Unblocking the semaphore we are blocked on" +
-    			"for partitionId : " );
+    			"for partitionId : " + partitionId);
         blockedRequests.get(pullID).release();
     }
 
