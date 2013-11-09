@@ -1439,7 +1439,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         setSenderSite(this.hstore_site.getSiteId()).  
                         setOldPartition(pull.getOldPartition()).setNewPartition(pull.getNewPartition()).setVoltTableName(pull.getVoltTableName())
                         .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(pull.getMinInclusive()).setMaxExclusive(pull.getMaxExclusive())
-                        .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId).build();
+                        .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
                 
                 LOG.error("TODO do we need to invoke something different if local? Right now both remote / local put in with callback");
                 pullMsg.getAsyncPullRequestCallback().run(pullResponse);
@@ -3120,7 +3120,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 throw new RuntimeException(msg);
             }
 
-            LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId)); 
+            LOG.info(String.format("PE (%s) has received a pull request response and has ublocked : ", this.partitionId)); 
         } catch (InterruptedException ex) {
             LOG.error("Waiting for pull was interuppted. ", ex);
             // TODO ae restart txn?

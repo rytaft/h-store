@@ -974,7 +974,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             setSenderSite(localSiteId).build();    
                     LOG.error("TODO add chunk ID to response and add new reconfig control type for asyn pull response received"); //TODO
                     AsyncDataPullResponseMessage pullResponseMsg = new AsyncDataPullResponseMessage(msg, acknowledgingCallback);
-                    unblockingPullRequestSemaphore(msg.getAsyncPullIdentifier(), true);
+                    unblockingPullRequestSemaphore(msg.getAsyncPullIdentifier(), msg.getNewPartition(),
+                    		true);
                     executor.queueAsyncPullResponse(pullResponseMsg);                
                 }
             }
@@ -1102,8 +1103,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
     }
 
-    public void unblockingPullRequestSemaphore(int pullID, boolean isAsyncRequest) {
-    	LOG.info("Callback of the semaphore has been received. Unblocking the semaphore we are blocked on");
+    public void unblockingPullRequestSemaphore(int pullID, int partitionId, boolean isAsyncRequest) {
+    	LOG.info("Callback of the semaphore has been received. Unblocking the semaphore we are blocked on" +
+    			"for partitionId : " );
         blockedRequests.get(pullID).release();
     }
 
