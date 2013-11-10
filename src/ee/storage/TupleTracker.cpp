@@ -188,7 +188,7 @@ void TupleTrackerManager::getTopKPerPart(int k){
 	ss << "siteLoadPID_"<<partitionId<<".del" ;
 	std::string fileName=ss.str();
 	SLfile.open (fileName.c_str());
-	SLfile <<partitionId<<"\t"+summedAccessFreq;
+	SLfile <<partitionId<< "\t" << summedAccessFreq;
 	SLfile.close();
 
 	ofstream HTfile; // hot tuples file
