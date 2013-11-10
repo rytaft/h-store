@@ -39,14 +39,22 @@ public class Controller implements Runnable {
 	private Placement algo;
 	private Plan currentPlan;
 	private String planFile;
-		
+	
+	
+	private TupleTrackerExecutor ttExecutor;
+	
+	
 	private static final double CPU_THRESHOLD = 0.8;
 	private static final int PARTITIONS_PER_HOST = 8;
 	private static final int POLL_FREQUENCY = 3000;
+	
+	private static int no_of_partitions = 2;
 
 	// used HStoreTerminal as model to handle the catalog
 	public Controller (Catalog catalog){
 		algo = new Placement();
+		
+		ttExecutor = new TupleTrackerExecutor();
 		// connect to VoltDB server
         client = ClientFactory.createClient();
         client.configureBlocking(false);
@@ -72,10 +80,17 @@ public class Controller implements Runnable {
 				if (overloaded != null && !overloaded.isEmpty()){
 
 					//Jennie temp for now
-					Map<Integer, Integer> hotTuples, siteLoad;
-					hotTuples = new HashMap<Integer, Integer>();
-					siteLoad = new HashMap<Integer, Integer>();
-					currentPlan = algo.computePlan(hotTuples, siteLoad, currentPlan);
+					Map<Integer, Integer> mSiteLoad = new HashMap<Integer, Integer>();
+					
+					ArrayList<Map<Integer, Integer>> hotTuplesList = new ArrayList<Map<Integer, Integer>> (no_of_partitions);
+					
+					
+					
+					
+					ttExecutor.getTopKPerPart(hotTuplesList);
+					ttExecutor.getSiteLoadPerPart(mSiteLoad);
+					
+					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, currentPlan);
 					try {
 						currentPlan.toJSON(planFile);
 					} catch(Exception e) {

@@ -1,6 +1,7 @@
 package org.qcri.PartitioningPlanner;
 
 //import java.util.Collection;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.io.*;
@@ -21,7 +22,17 @@ public class TupleTrackerExecutor {
 		
 	}
 	
-   public void getTopKPerPart(int k){
+   
+	public void getTopKPerPart(ArrayList<Map<Integer, Integer>> htList){
+	   
+	   
+		
+	}
+	
+	
+    public void getSiteLoadPerPart(Map<Integer, Integer> mSLoad){
+	   
+	   
 		
 	}
 	

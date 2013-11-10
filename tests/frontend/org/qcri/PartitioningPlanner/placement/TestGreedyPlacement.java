@@ -5,6 +5,8 @@ import org.qcri.PartitioningPlanner.placement.Plan;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
 
 import edu.brown.BaseTestCase;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -71,8 +73,11 @@ public class TestGreedyPlacement extends BaseTestCase {
 		for(Integer i : partitionTotals.keySet()) {
 			System.out.println("Partition " + i + ": " + partitionTotals.get(i));
 		}
+		
+		ArrayList<Map<Integer, Integer>> hotTuplesList = new ArrayList<Map<Integer, Integer>>();
+		hotTuplesList.add(hotTuples);
 
-		aPlan = aPlacement.computePlan(hotTuples, partitionTotals,  aPlan);
+		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  aPlan);
 
 		System.out.println("Ending with plan:");
 		aPlan.printPlan();

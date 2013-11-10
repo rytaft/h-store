@@ -1,9 +1,11 @@
 package org.qcri.PartitioningPlanner.placement;
 
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
+
 import org.qcri.PartitioningPlanner.placement.Plan;
 
 
@@ -32,8 +34,11 @@ public class FirstFitPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(Map<Integer, Integer> hotTuples, Map<Integer, Integer> partitionTotals, Plan aPlan){
+	public Plan computePlan(ArrayList<Map<Integer, Integer>> hotTuplesList, Map<Integer, Integer> partitionTotals, Plan aPlan){
 		
+        Map<Integer, Integer> hotTuples;
+		int no_of_partitions = hotTuplesList.size();
+		hotTuples = hotTuplesList.get(0); //hot tuples at partition 0;
 
 		Integer srcPartition, dstPartition = -1;
 		Integer totalAccesses = 0;

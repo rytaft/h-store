@@ -3,8 +3,9 @@ package org.qcri.PartitioningPlanner.placement;
 import org.qcri.PartitioningPlanner.placement.Plan;
 import org.qcri.PartitioningPlanner.placement.FirstFitPlacement;
 
-
 import edu.brown.BaseTestCase;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -78,7 +79,10 @@ public class TestFirstFitPlacement extends BaseTestCase {
 			System.out.println("Partition " + i + ": " + partitionTotals.get(i));
 		}
 
-		aPlan = aPlacement.computePlan(hotTuples, partitionTotals,  aPlan);
+		ArrayList<Map<Integer, Integer>> hotTuplesList = new ArrayList<Map<Integer, Integer>>();
+		hotTuplesList.add(hotTuples);
+		
+		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  aPlan);
 
 		System.out.println("Ending with plan:");
 		aPlan.printPlan();

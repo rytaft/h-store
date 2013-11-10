@@ -1,6 +1,7 @@
 package org.qcri.PartitioningPlanner.placement;
 
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 
@@ -17,7 +18,7 @@ public class Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(Map<Integer, Integer> hotTuples, Map<Integer, Integer> siteLoads, Plan currentPlan){
+	public Plan computePlan(ArrayList<Map<Integer, Integer>> hotTuplesList, Map<Integer, Integer> siteLoads, Plan currentPlan){
 		return currentPlan;
 	}
 }
