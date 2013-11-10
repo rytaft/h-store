@@ -87,11 +87,12 @@ public class Controller implements Runnable {
 					
 					
 					
+					try {
 					ttExecutor.getTopKPerPart(hotTuplesList);
-					ttExecutor.getSiteLoadPerPart(mSiteLoad);
+					ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
 					
 					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, currentPlan);
-					try {
+					
 						currentPlan.toJSON(planFile);
 					} catch(Exception e) {
 						System.out.println("Caught on exception " + e.toString());
