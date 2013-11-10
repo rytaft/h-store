@@ -14,6 +14,8 @@ using namespace std;
 
 namespace voltdb {
 
+
+int64_t TupleTrackerManager::summedAccessFreq;
 // -------------------------------------------------------------------------
 
 TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx,int32_t partId) :
@@ -33,6 +35,8 @@ TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx,int32_t partId) :
                 NULL));
 
     isTupleTrackingInfoExtracted = false;
+
+    summedAccessFreq = 0;
 }
 
 TupleTrackerManager::~TupleTrackerManager() {
@@ -107,6 +111,7 @@ void TupleTrackerManager::insertTuple(int64_t txnId, std::string tableName, uint
 	    	m_tupIdAccesses->insert(std::make_pair(tupleId, access));
 	    }
 
+	    summedAccessFreq = summedAccessFreq + 1; // to report total access count per partition
 	    access->frequency = access->frequency + 1;
 	    access->by->insert(txnId);
 
@@ -177,17 +182,26 @@ void TupleTrackerManager::getTopKPerPart(int k){
 	if (isTupleTrackingInfoExtracted == false)
 		extractTupleTrackingInfo(); // extract and sort per partition
 
-	ofstream myfile1;
-	std::stringstream ss ;
-	ss << "TupleTrackerPID_"<<partitionId<<".del" ;
-	std::string fileName=ss.str();
-	myfile1.open (fileName.c_str());
 
-	myfile1 << "INFO: Partition "<<partitionId<<"has "<<v_tupleTrackingInfo.size()<<" accessed tuples.\n\n";
-    myfile1 << " |Table Name";
-	myfile1 << " |Tuple ID";
-	myfile1 << " |Frequency|";
-	myfile1 << "\n";
+	ofstream SLfile; // site load file
+	std::stringstream ss ;
+	ss << "siteLoadPID_"<<partitionId<<".del" ;
+	std::string fileName=ss.str();
+	SLfile.open (fileName.c_str());
+	SLfile << "Partition: "<<partitionId<<"has "<<summedAccessFreq<<" total accesses.\n";
+	SLfile.close();
+
+	ofstream HTfile; // hot tuples file
+	std::stringstream ss2 ;
+	ss2 << "hotTuplesPID_"<<partitionId<<".del" ;
+	fileName=ss2.str();
+	HTfile.open (fileName.c_str());
+
+    //header first line
+	HTfile << " |Table Name";
+	HTfile << " |Tuple ID";
+	HTfile << " |Frequency|";
+	HTfile << "\n";
 
 
 	std::vector<TupleTrackingInfo>::const_iterator iter = v_tupleTrackingInfo.begin();
@@ -196,14 +210,14 @@ void TupleTrackerManager::getTopKPerPart(int k){
 	int i = 0;
 	while (iter != v_tupleTrackingInfo.end() && i < k) {
 
-		myfile1 << iter->tableName<<"\t";
-		myfile1 << iter->tupleID<<"\t";
-		myfile1 << iter->frequency<<"\n";
+		HTfile << iter->tableName<<"\t";
+		HTfile << iter->tupleID<<"\t";
+		HTfile << iter->frequency<<"\n";
 		i++;
 		iter++;
 	}
 
-	myfile1.close();
+	HTfile.close();
 
 }
 
