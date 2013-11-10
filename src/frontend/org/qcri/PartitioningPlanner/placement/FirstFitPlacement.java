@@ -36,11 +36,8 @@ public class FirstFitPlacement extends Placement {
 	// siteLoads: partitionId --> total access count
 	public Plan computePlan(ArrayList<Map<Integer, Integer>> hotTuplesList, Map<Integer, Integer> partitionTotals, Plan aPlan){
 		
-        Map<Integer, Integer> hotTuples;
-		int no_of_partitions = hotTuplesList.size();
-		hotTuples = hotTuplesList.get(0); //hot tuples at partition 0;
 
-		Integer srcPartition, dstPartition = -1;
+		Integer srcPartition = 0, dstPartition = -1;
 		Integer totalAccesses = 0;
 		Integer targetCapacity;
 		Map<Integer, Integer> oldLoad = new HashMap<Integer, Integer> ();
@@ -63,28 +60,30 @@ public class FirstFitPlacement extends Placement {
 		}
 		
 		// pack the hot tuples first
-		for(Integer i : hotTuples.keySet()) {
-			srcPartition = aPlan.getTuplePartition(i);
-			Boolean placed = false;
-			for(Integer j : partitionTotals.keySet()) {
-				if(partitionTotals.get(j) + hotTuples.get(i) <= targetCapacity) {
-					dstPartition = j;
-					placed = true;
-					break;
-				}
+		for(Map<Integer, Integer> hotTuples : hotTuplesList) {
 			
-			} // end inner-for
+			for(Integer i : hotTuples.keySet()) {
+				Boolean placed = false;
+				for(Integer j : partitionTotals.keySet()) {
+					if(partitionTotals.get(j) + hotTuples.get(i) <= targetCapacity) {
+						dstPartition = j;
+						placed = true;
+						break;
+					}
 			
-			if(!placed) {
-				dstPartition = getMostUnderloadedPartitionId(partitionTotals);
-			}
+				} // end inner-for
 			
-			partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + hotTuples.get(i));
-			oldLoad.put(srcPartition, oldLoad.get(srcPartition) - hotTuples.get(i));
-			aPlan.removeTupleId(srcPartition, i);
-			newPlan.addRange(dstPartition, i, i);
-		} // end outer-for
-
+				if(!placed) {
+					dstPartition = getMostUnderloadedPartitionId(partitionTotals);
+				}		
+			
+				partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + hotTuples.get(i));
+				oldLoad.put(srcPartition, oldLoad.get(srcPartition) - hotTuples.get(i));
+				aPlan.removeTupleId(srcPartition, i);
+				newPlan.addRange(dstPartition, i, i);
+			} // end outer-for
+			++srcPartition;
+		} // end partition-for
 		
 		
 		

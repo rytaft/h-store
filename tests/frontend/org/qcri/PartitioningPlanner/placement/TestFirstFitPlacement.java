@@ -30,7 +30,8 @@ public class TestFirstFitPlacement extends BaseTestCase {
 		FirstFitPlacement aPlacement = new FirstFitPlacement();
 
 		Map<Integer, Integer> partitionTotals = new HashMap<Integer, Integer>();  // partitionID --> summed access count
-		Map<Integer, Integer> hotTuples = new HashMap<Integer, Integer>();  // tupleId --> summed access count
+		ArrayList<Map<Integer, Integer>> hotTuplesList = new ArrayList<Map<Integer, Integer>>();
+
 		
 		Integer tuplesPerInstance = tupleCount / partitionCount;
 		Integer modulusCount = tupleCount % partitionCount;
@@ -50,6 +51,8 @@ public class TestFirstFitPlacement extends BaseTestCase {
 			}
 			startRange = endRange + 1;
 			endRange = startRange + tuplesPerInstance - 1;
+			hotTuplesList.add(new HashMap<Integer, Integer>());  // tupleId --> summed access count
+			
 		}
 
 		System.out.println("Starting with plan:");
@@ -67,10 +70,12 @@ public class TestFirstFitPlacement extends BaseTestCase {
 		
 		for(Integer i = 0; i < hotTupleCount; ++i) {
 			Integer tupleId = generator.nextInt(tupleCount);
-			hotTuples.put(tupleId, generator.nextInt(hotTupleRange));
 			Integer tupleLocation = aPlan.getTuplePartition(tupleId);
+			Integer accessCount =  generator.nextInt(hotTupleRange);
+			hotTuplesList.get(tupleLocation).put(tupleId, accessCount);
+
 			//add capacity for partitionTotals
-			partitionTotals.put(tupleLocation, hotTuples.get(tupleId) + partitionTotals.get(tupleLocation)); 		
+			partitionTotals.put(tupleLocation, accessCount + partitionTotals.get(tupleLocation)); 		
 				
 		}
 
@@ -79,8 +84,6 @@ public class TestFirstFitPlacement extends BaseTestCase {
 			System.out.println("Partition " + i + ": " + partitionTotals.get(i));
 		}
 
-		ArrayList<Map<Integer, Integer>> hotTuplesList = new ArrayList<Map<Integer, Integer>>();
-		hotTuplesList.add(hotTuples);
 		
 		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  aPlan);
 
