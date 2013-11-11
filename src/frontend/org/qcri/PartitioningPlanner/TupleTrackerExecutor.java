@@ -22,9 +22,9 @@ public class TupleTrackerExecutor {
 	}
 	
    
-	public void getTopKPerPart(int noPartitions, ArrayList<Map<Integer, Integer>> htList) throws Exception {
+	public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Long>> htList) throws Exception {
 		
-		Map<Integer, Integer> hotTuples;
+		Map<Long, Long> hotTuples;
 		BufferedReader reader;
 		String fNPrefix ="./hotTuplesPID_";
 		String line;
@@ -34,12 +34,12 @@ public class TupleTrackerExecutor {
 		for (int i = 0; i < noPartitions; i++) {
 			
 			reader = new BufferedReader(new FileReader(fNPrefix+i+".del"));
-			hotTuples = new HashMap<Integer, Integer>();
+			hotTuples = new HashMap<Long, Long>();
 			line = reader.readLine(); // escape first line
 			
 			while ((line = reader.readLine()) != null) {
 	            String parts[] = line.split("\t");
-	            hotTuples.put(Integer.parseInt(parts[1]), Integer.parseInt(parts[2]));
+	            hotTuples.put(Long.parseLong(parts[1]), Long.parseLong(parts[2]));
 	        }
 			reader.close();
 			htList.add(hotTuples);
@@ -53,7 +53,7 @@ public class TupleTrackerExecutor {
 	}
 	
 	
-    public void getSiteLoadPerPart(int noPartitions, Map<Integer, Integer> mSLoad) throws Exception  {
+    public void getSiteLoadPerPart(int noPartitions, Map<Integer, Long> mSLoad) throws Exception  {
     	
     	BufferedReader reader;
 		String fNPrefix ="./siteLoadPID_";
@@ -66,7 +66,7 @@ public class TupleTrackerExecutor {
 			reader = new BufferedReader(new FileReader(fNPrefix+i+".del"));
 			if ((line = reader.readLine()) != null) {
 	            String parts[] = line.split("\t");
-	            mSLoad.put(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+	            mSLoad.put(Integer.parseInt(parts[0]), Long.parseLong(parts[1]));
 	        }
 			reader.close();
 			

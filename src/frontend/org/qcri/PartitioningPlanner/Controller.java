@@ -80,9 +80,9 @@ public class Controller implements Runnable {
 				if (overloaded != null && !overloaded.isEmpty()){
 
 					//Jennie temp for now
-					Map<Integer, Integer> mSiteLoad = new HashMap<Integer, Integer>();
+					Map<Integer, Long> mSiteLoad = new HashMap<Integer, Integer>();
 					
-					ArrayList<Map<Integer, Integer>> hotTuplesList = new ArrayList<Map<Integer, Integer>> (no_of_partitions);
+					ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>> (no_of_partitions);
 					
 					
 					
@@ -92,9 +92,9 @@ public class Controller implements Runnable {
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
 					ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
 					System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
-					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, currentPlan);
+					//currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, currentPlan);
 					
-						currentPlan.toJSON(planFile);
+					//	currentPlan.toJSON(planFile);
 					} catch(Exception e) {
 						System.out.println("Caught on exception " + e.toString());
 					}
