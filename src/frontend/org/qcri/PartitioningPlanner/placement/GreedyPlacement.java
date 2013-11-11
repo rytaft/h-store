@@ -13,8 +13,8 @@ public class GreedyPlacement extends Placement {
 		
 	}
 	
-	static Integer getMostUnderloadedPartitionId(Map<Integer, Integer> partitionTotals) {
-		Integer minTotal = java.lang.Integer.MAX_VALUE; 
+	static Integer getMostUnderloadedPartitionId(Map<Integer, Long> partitionTotals) {
+		Long minTotal = java.lang.Long.MAX_VALUE; 
 		Integer minPartition = -1;
 
 		for(Integer i : partitionTotals.keySet()) {
@@ -30,15 +30,15 @@ public class GreedyPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Integer, Integer>> hotTuplesList, Map<Integer, Integer> partitionTotals, Plan aPlan){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan){
 		
 		
 		
 			
 		
 		Integer srcPartition, dstPartition;
-		Integer totalAccesses = 0;
-		Integer meanAccesses;
+		Long totalAccesses = 0L;
+		Long meanAccesses;
 		Integer partitionId = 0;
 		
 
@@ -50,9 +50,9 @@ public class GreedyPlacement extends Placement {
 
 		System.out.println("Mean access count: " + meanAccesses);
 		
-		for(Map<Integer, Integer>  hotTuples : hotTuplesList) {
+		for(Map<Long, Long>  hotTuples : hotTuplesList) {
 			srcPartition = partitionId;
-			for(Integer i : hotTuples.keySet()) {
+			for(Long i : hotTuples.keySet()) {
 				if(partitionTotals.get(srcPartition) > meanAccesses) {
 					dstPartition = getMostUnderloadedPartitionId(partitionTotals);
 
