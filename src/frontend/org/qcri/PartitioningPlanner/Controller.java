@@ -80,7 +80,7 @@ public class Controller implements Runnable {
 				if (overloaded != null && !overloaded.isEmpty()){
 
 					//Jennie temp for now
-					Map<Integer, Long> mSiteLoad = new HashMap<Integer, Integer>();
+					Map<Integer, Long> mSiteLoad = new HashMap<Integer, Long>();
 					
 					ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>> (no_of_partitions);
 					
