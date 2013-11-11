@@ -22,7 +22,7 @@ public class TupleTrackerExecutor {
 	}
 	
    
-	public void getTopKPerPart(ArrayList<Map<Integer, Integer>> htList) throws Exception {
+	public void getTopKPerPart(int noPartitions, ArrayList<Map<Integer, Integer>> htList) throws Exception {
 		
 		Map<Integer, Integer> hotTuples;
 		BufferedReader reader;
@@ -31,7 +31,7 @@ public class TupleTrackerExecutor {
 		
 		
 		
-		for (int i = 0; i < htList.size(); i++) {
+		for (int i = 0; i < noPartitions; i++) {
 			
 			reader = new BufferedReader(new FileReader(fNPrefix+i+".del"));
 			hotTuples = new HashMap<Integer, Integer>();
