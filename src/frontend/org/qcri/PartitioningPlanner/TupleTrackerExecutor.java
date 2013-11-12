@@ -44,7 +44,7 @@ public class TupleTrackerExecutor {
         client.createConnection(host,port);
 		
 		String query = "SELECT COUNT(*) FROM WAREHOUSE WHERE W_ID = 1";
-		String qInvoke = "EXEC @Statistics TUPLE 0"; 
+		String qInvoke = "@Statistics TUPLE 0"; 
 		ClientResponse cresponse = client.callProcedure("@AdHoc", query);
 		VoltTable[] count = cresponse.getResults(); 
 		System.out.printf("Found WAREHOUSE no %d.\n", count[0].fetchRow(0).getLong(0));
