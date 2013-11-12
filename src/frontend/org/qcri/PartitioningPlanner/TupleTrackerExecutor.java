@@ -33,6 +33,8 @@ public class TupleTrackerExecutor {
 		
 		int port = 21212;
 		String host = "localhost";
+		String statsType = "TUPLE";
+		int interval = 0;
 		
 		//ClientConfig clientConfig = new ClientConfig("program", "none");
         org.voltdb.client.Client client =
@@ -44,12 +46,11 @@ public class TupleTrackerExecutor {
         client.createConnection(host,port);
 		
 		String query = "SELECT COUNT(*) FROM WAREHOUSE WHERE W_ID = 1";
-		String qInvoke = "@Statistics TUPLE 0"; 
 		ClientResponse cresponse = client.callProcedure("@AdHoc", query);
 		VoltTable[] count = cresponse.getResults(); 
 		System.out.printf("Found WAREHOUSE no %d.\n", count[0].fetchRow(0).getLong(0));
 		
-		client.callProcedure("@AdHoc", qInvoke);
+		client.callProcedure("@Statistics", statsType, interval);
 		
 		
 		
