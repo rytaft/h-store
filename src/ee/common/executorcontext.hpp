@@ -217,7 +217,6 @@ namespace voltdb {
          */
         void enableTracking() {
             assert(m_trackingEnabled == false);
-
             m_trackingEnabled = true;
             m_trackingManager = new ReadWriteTrackerManager(this);
         }
@@ -239,7 +238,7 @@ namespace voltdb {
                  */
                 void enableTupleTracking(int32_t partId) {
                     assert(m_tupleTrackingEnabled == false);
-                    enableTracking();
+                    // enableTracking();
                     m_tupleTrackingEnabled = true;
                     m_tupleTrackingManager = new TupleTrackerManager(this,partId);
                 }
