@@ -100,8 +100,7 @@ public class TPCCSimulation {
 
 
     private final TPCCSimulation.ProcCaller client;
-    private static RandomGenerator generator; // Marco
-//    private final RandomGenerator generator;
+    private final RandomGenerator generator;
     private final Clock clock;
     public ScaleParameters parameters;
     private final long affineWarehouse;
@@ -325,7 +324,7 @@ public class TPCCSimulation {
     // REMOTE WAREHOUSE SELECTION METHODS
     // ----------------------------------------------------------------------------
 
-    public static short generatePairedWarehouse(int w_id, int starting_warehouse, int last_warehouse) {
+    public short generatePairedWarehouse(int w_id, int starting_warehouse, int last_warehouse) {
     	/* Marco
         int remote_w_id = (w_id % 2 == 0 ? w_id-1 : w_id+1);
         if (remote_w_id < starting_warehouse) remote_w_id = last_warehouse;
