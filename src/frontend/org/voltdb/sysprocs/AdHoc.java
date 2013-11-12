@@ -49,12 +49,17 @@ public class AdHoc extends VoltSystemProcedure {
 
     @Override
     public DependencySet executePlanFragment(Long txn_id, Map<Integer, List<VoltTable>> dependencies, int fragmentId, ParameterSet params, SystemProcedureExecutionContext context) {
-        // get the three params (depId, json plan, sql stmt)
+        
+    	// Essam Enable read/write set tracking 
+    	this.hstore_conf.site.exec_readwrite_tracking = true; //Essam
+    	   	
+    	
+    	// get the three params (depId, json plan, sql stmt)
         int outputDepId = (Integer) params.toArray()[0];
         String plan = (String) params.toArray()[1];
         String sql = (String) params.toArray()[2];
         int inputDepId = -1;
-
+        
         // make dependency ids available to the execution engine
         if ((dependencies != null) && (dependencies.size() > 00)) {
             assert(dependencies.size() <= 1);
