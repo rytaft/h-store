@@ -89,9 +89,9 @@ public class AdHoc extends VoltSystemProcedure {
             
             
          // Essam Enable read/write set tracking
-            if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
+           // if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
                 this.executor.getExecutionEngine().trackingEnable(txn_id);
-            }
+           // }
             
             table = context.getExecutionEngine().
                 executeCustomPlanFragment(plan, outputDepId, inputDepId, txn_id,
@@ -101,7 +101,7 @@ public class AdHoc extends VoltSystemProcedure {
 
         
       //Essam readwrite tracking
-        if (hstore_conf.site.exec_readwrite_tracking)
+       // if (hstore_conf.site.exec_readwrite_tracking)
         	this.executor.getExecutionEngine().trackingFinish(txn_id);  
         
         return new DependencySet(new int[]{ outputDepId }, new VoltTable[]{ table });
