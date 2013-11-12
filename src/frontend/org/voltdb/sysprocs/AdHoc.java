@@ -86,12 +86,24 @@ public class AdHoc extends VoltSystemProcedure {
             ts.markExecNotReadOnly(this.partitionId);
             ts.markExecutedWork(this.partitionId);
             
+            
+            
+         // Essam Enable read/write set tracking
+            if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
+                this.executor.getExecutionEngine().trackingEnable(txn_id);
+            }
+            
             table = context.getExecutionEngine().
                 executeCustomPlanFragment(plan, outputDepId, inputDepId, txn_id,
                                           context.getLastCommittedTxnId(),
                                           ts.getLastUndoToken(this.partitionId));
         }
 
+        
+      //Essam readwrite tracking
+        if (hstore_conf.site.exec_readwrite_tracking)
+        	this.executor.getExecutionEngine().trackingFinish(txn_id);  
+        
         return new DependencySet(new int[]{ outputDepId }, new VoltTable[]{ table });
     }
 
@@ -185,6 +197,8 @@ public class AdHoc extends VoltSystemProcedure {
 //            retval.addRow(changedTuples);
 //            results[0] = retval;
 //        }
+        
+        
 
         return results;
     }
