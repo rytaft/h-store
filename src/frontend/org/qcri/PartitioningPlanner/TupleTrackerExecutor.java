@@ -50,7 +50,7 @@ public class TupleTrackerExecutor {
 		VoltTable[] count = cresponse.getResults(); 
 		System.out.printf("Found WAREHOUSE no %d.\n", count[0].fetchRow(0).getLong(0));
 		
-		client.callProcedure("@Statistics", statsType, interval);
+		ClientResponse results = client.callProcedure("@Statistics", statsType, interval);
 		
 		
 		

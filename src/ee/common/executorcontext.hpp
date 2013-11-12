@@ -55,8 +55,7 @@ namespace voltdb {
         ~ExecutorContext() {
 
         	if (m_tupleTrackingEnabled) {
-        	  m_tupleTrackingManager->print();
-        	  delete m_tupleTrackingManager;
+        	    delete m_tupleTrackingManager;
         	 }
             
             if (m_trackingEnabled) {
@@ -89,6 +88,7 @@ namespace voltdb {
             m_lastCommittedTxnId = 0;
             m_lastTickTime = 0;
             m_antiCacheEnabled = false;
+
             m_trackingEnabled = false;
 
             m_tupleTrackingEnabled = false;
@@ -217,6 +217,7 @@ namespace voltdb {
          */
         void enableTracking() {
             assert(m_trackingEnabled == false);
+
             m_trackingEnabled = true;
             m_trackingManager = new ReadWriteTrackerManager(this);
         }
@@ -238,6 +239,7 @@ namespace voltdb {
                  */
                 void enableTupleTracking(int32_t partId) {
                     assert(m_tupleTrackingEnabled == false);
+                    enableTracking();
                     m_tupleTrackingEnabled = true;
                     m_tupleTrackingManager = new TupleTrackerManager(this,partId);
                 }
