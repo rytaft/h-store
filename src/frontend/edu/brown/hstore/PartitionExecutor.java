@@ -5892,14 +5892,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 queueInitialAsyncNonChunkPullRequests(incoming_ranges);
             }
             else if (this.reconfiguration_coordinator.scheduleAsyncPull()){
-                LOG.info("Scheduling chunked asynch pulls");
-           
+                LOG.info("Scheduling chunked asynch pulls");           
                 queueInitialAsyncPullRequests(incoming_ranges);
             }
             else {
                 LOG.info("Scheduling no asyn msgs");
             }
-            if (this.incoming_ranges != null && this.incoming_ranges.isEmpty()) {
+            if (this.incoming_ranges == null || this.incoming_ranges.isEmpty()) {
                 this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
             }
             

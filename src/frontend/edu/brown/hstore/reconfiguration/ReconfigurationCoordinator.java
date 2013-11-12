@@ -1029,7 +1029,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     public void notifyAllRanges(int partitionId, ExceptionTypes allRangesMigratedType) {
         LOG.info(" ** NOTIFY " + partitionId + " " + allRangesMigratedType);
-        if( allRangesMigratedType == ExceptionTypes.ALL_RANGES_MIGRATED_OUT){
+        if( allRangesMigratedType == ExceptionTypes.ALL_RANGES_MIGRATED_IN){
             finishReconfiguration(partitionId);
         }
     }
