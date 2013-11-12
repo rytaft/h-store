@@ -11,14 +11,14 @@ import org.qcri.PartitioningPlanner.placement.Plan;
 
 public class FirstFitPlacement extends Placement {
 	
-	Integer coldPartitionWidth = 1000; // redistribute cold tuples in chunks of 1000
+	Long coldPartitionWidth = 1000L; // redistribute cold tuples in chunks of 1000
 	
 	public FirstFitPlacement(){
 		
 	}
 	
-	static Integer getMostUnderloadedPartitionId(Map<Integer, Integer> partitionTotals) {
-		Integer minTotal = java.lang.Integer.MAX_VALUE; 
+	static Integer getMostUnderloadedPartitionId(Map<Integer, Long> partitionTotals) {
+		Long minTotal = java.lang.Long.MAX_VALUE; 
 		Integer minPartition = -1;
 
 		for(Integer i : partitionTotals.keySet()) {
@@ -34,16 +34,13 @@ public class FirstFitPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Integer, Integer>> hotTuplesList, Map<Integer, Integer> partitionTotals, Plan aPlan){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan){
 		
-        Map<Integer, Integer> hotTuples;
-		int no_of_partitions = hotTuplesList.size();
-		hotTuples = hotTuplesList.get(0); //hot tuples at partition 0;
 
-		Integer srcPartition, dstPartition = -1;
-		Integer totalAccesses = 0;
-		Integer targetCapacity;
-		Map<Integer, Integer> oldLoad = new HashMap<Integer, Integer> ();
+		Integer srcPartition = 0, dstPartition = -1;
+		Long totalAccesses = 0L;
+		Long targetCapacity;
+		Map<Integer, Long> oldLoad = new HashMap<Integer, Long> ();
 		Plan newPlan = new Plan();
 		
 
@@ -51,7 +48,7 @@ public class FirstFitPlacement extends Placement {
 			totalAccesses = totalAccesses + partitionTotals.get(i);			
 			oldLoad.put(i,  partitionTotals.get(i));
 			// zero out the load for a plan
-			partitionTotals.put(i, 0);
+			partitionTotals.put(i, 0L);
 		}
 
 		
@@ -63,28 +60,30 @@ public class FirstFitPlacement extends Placement {
 		}
 		
 		// pack the hot tuples first
-		for(Integer i : hotTuples.keySet()) {
-			srcPartition = aPlan.getTuplePartition(i);
-			Boolean placed = false;
-			for(Integer j : partitionTotals.keySet()) {
-				if(partitionTotals.get(j) + hotTuples.get(i) <= targetCapacity) {
-					dstPartition = j;
-					placed = true;
-					break;
-				}
+		for(Map<Long, Long> hotTuples : hotTuplesList) {
 			
-			} // end inner-for
+			for(Long i : hotTuples.keySet()) {
+				Boolean placed = false;
+				for(Integer j : partitionTotals.keySet()) {
+					if(partitionTotals.get(j) + hotTuples.get(i) <= targetCapacity) {
+						dstPartition = j;
+						placed = true;
+						break;
+					}
 			
-			if(!placed) {
-				dstPartition = getMostUnderloadedPartitionId(partitionTotals);
-			}
+				} // end inner-for
 			
-			partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + hotTuples.get(i));
-			oldLoad.put(srcPartition, oldLoad.get(srcPartition) - hotTuples.get(i));
-			aPlan.removeTupleId(srcPartition, i);
-			newPlan.addRange(dstPartition, i, i);
-		} // end outer-for
-
+				if(!placed) {
+					dstPartition = getMostUnderloadedPartitionId(partitionTotals);
+				}		
+			
+				partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + hotTuples.get(i));
+				oldLoad.put(srcPartition, oldLoad.get(srcPartition) - hotTuples.get(i));
+				aPlan.removeTupleId(srcPartition, i);
+				newPlan.addRange(dstPartition, i, i);
+			} // end outer-for
+			++srcPartition;
+		} // end partition-for
 		
 		
 		

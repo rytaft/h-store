@@ -17,10 +17,10 @@ import java.io.FileWriter;
 public class Plan {
 	
 	// the TreeMap is a range. The key is the beginning of interval, the value is the end.
-	private Map<Integer, TreeMap<Integer, Integer>> partitionToRanges = new HashMap<Integer, TreeMap<Integer, Integer>>();
+	private Map<Integer, TreeMap<Long, Long>> partitionToRanges = new HashMap<Integer, TreeMap<Long, Long>>();
 	public class Range{
-		Integer from;
-		Integer to;
+		Long from;
+		Long to;
 		
 		public String toString() {
 			String rangeStr = new String();
@@ -38,7 +38,7 @@ public class Plan {
 	
 	// creates empty plan
 	public Plan (Collection<Integer> partitions){
-		TreeMap<Integer, Integer> emptyRange = new TreeMap<Integer,Integer>();
+		TreeMap<Long, Long> emptyRange = new TreeMap<Long,Long>();
 		for (Integer partition: partitions){
 			partitionToRanges.put(partition, emptyRange);
 		}
@@ -53,15 +53,15 @@ public class Plan {
 	}
 
 	public void addPartition(Integer partitionId) {
-		TreeMap<Integer, Integer> emptyRange = new TreeMap<Integer,Integer>();
+		TreeMap<Long, Long> emptyRange = new TreeMap<Long,Long>();
 		partitionToRanges.put(partitionId, emptyRange);
 
 	}
 	
-	public void addRange(Integer partition, Integer from, Integer to){
-		TreeMap<Integer, Integer> ranges = partitionToRanges.get(partition);
-		Map.Entry<Integer, Integer> precedingFrom = ranges.floorEntry(from);
-		Map.Entry<Integer, Integer> precedingTo = ranges.floorEntry(to);
+	public void addRange(Integer partition, Long from, Long to){
+		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
+		Map.Entry<Long, Long> precedingFrom = ranges.floorEntry(from);
+		Map.Entry<Long, Long> precedingTo = ranges.floorEntry(to);
 
 		if (precedingFrom == null){
 			// from is smaller than any previous range
@@ -94,13 +94,13 @@ public class Plan {
 		return (partitionToRanges.get(partition).remove(from) == null);
 	}
 	
-	public boolean removeTupleId(Integer partition, Integer tupleId) {
-		Map.Entry<Integer,Integer> precedingRange = partitionToRanges.get(partition).floorEntry(tupleId);
+	public boolean removeTupleId(Integer partition, Long tupleId) {
+		Map.Entry<Long,Long> precedingRange = partitionToRanges.get(partition).floorEntry(tupleId);
 		if(precedingRange == null) return false;
 		if(precedingRange.getValue() > tupleId && precedingRange.getKey() < tupleId){ // split into two ranges
 			//System.out.println("Splitting up range " + precedingRange.getKey() + "-" + precedingRange.getValue() + " at " + tupleId);
-			Integer upperBound = precedingRange.getValue();
-			Integer lowerBound = precedingRange.getKey();
+			Long upperBound = precedingRange.getValue();
+			Long lowerBound = precedingRange.getKey();
 			partitionToRanges.get(partition).remove(lowerBound);
 			partitionToRanges.get(partition).put(lowerBound, tupleId - 1);
 			partitionToRanges.get(partition).put(tupleId + 1, upperBound);
@@ -110,13 +110,13 @@ public class Plan {
 			partitionToRanges.remove(tupleId);
 		}
 		else if(precedingRange.getValue() == tupleId) {
-			Integer lowerBound = precedingRange.getKey();
+			Long lowerBound = precedingRange.getKey();
 			partitionToRanges.get(partition).remove(lowerBound);
 			partitionToRanges.get(partition).put(lowerBound, tupleId - 1);
 
 		}
 		else if(precedingRange.getKey() == tupleId) {
-			Integer upperBound = precedingRange.getValue();
+			Long upperBound = precedingRange.getValue();
 			partitionToRanges.remove(tupleId);
 			partitionToRanges.get(partition).put(tupleId + 1, upperBound);
 		}
@@ -125,7 +125,7 @@ public class Plan {
 	}
 	
 	
-	Integer getTuplePartition(Integer tupleId) {
+	Integer getTuplePartition(Long tupleId) {
 		for(Integer partition : partitionToRanges.keySet()) {
 			if(getRangeValue(partition, tupleId) != null) {
 				return partition;
@@ -138,8 +138,8 @@ public class Plan {
 		String output = new String();
 		Boolean first = true;
 		
-		TreeMap<Integer, Integer> ranges = partitionToRanges.get(partition);
-		for(Map.Entry<Integer, Integer> range : ranges.entrySet()){
+		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
+		for(Map.Entry<Long, Long> range : ranges.entrySet()){
 			if(range.getKey() == range.getValue()) {
 				if(first) {
 					output = range.getKey().toString();
@@ -166,21 +166,21 @@ public class Plan {
 		
 	}
 	
-	private TreeMap<Integer, Integer> parseRanges(String srcRanges) {
-		TreeMap<Integer, Integer> ranges = new TreeMap<Integer, Integer>();
+	private TreeMap<Long, Long> parseRanges(String srcRanges) {
+		TreeMap<Long, Long> ranges = new TreeMap<Long, Long>();
 		StringTokenizer st = new StringTokenizer(srcRanges, ",");
-		Integer lhs, rhs;
+		Long lhs, rhs;
 		
 		while (st.hasMoreTokens()) { 
 			 String rangeStr = st.nextToken();
 			 if(rangeStr.contains("-")) {
 				 StringTokenizer inner = new StringTokenizer(rangeStr, "-");
-				 lhs = Integer.getInteger(inner.nextToken());
-				 rhs = Integer.getInteger(inner.nextToken());
+				 lhs = Long.getLong(inner.nextToken());
+				 rhs = Long.getLong(inner.nextToken());
 				 ranges.put(lhs, rhs);
 			 }
 			 else {
-				 lhs = Integer.getInteger(rangeStr);
+				 lhs = Long.getLong(rangeStr);
 				 ranges.put(lhs, lhs); // range of size 1
 			 }
 		 }
@@ -202,8 +202,8 @@ public class Plan {
 	
 
 	
-	public Range getRangeValue(Integer partition, Integer value){
-		Map.Entry<Integer,Integer> precedingRange = partitionToRanges.get(partition).floorEntry(value);
+	public Range getRangeValue(Integer partition, Long value){
+		Map.Entry<Long,Long> precedingRange = partitionToRanges.get(partition).floorEntry(value);
 		if(precedingRange == null) return null;
 		if(precedingRange.getValue() >= value){
 			Range res = new Range();
@@ -216,8 +216,8 @@ public class Plan {
 	
 	public List<Range> getAllRanges(Integer partition){
 		List<Range> res = new ArrayList<Range>();
-		TreeMap<Integer, Integer> ranges = partitionToRanges.get(partition);
-		for(Map.Entry<Integer, Integer> range : ranges.entrySet()){
+		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
+		for(Map.Entry<Long, Long> range : ranges.entrySet()){
 			Range tmp = new Range();
 			tmp.from = range.getKey();
 			tmp.to = range.getValue();
@@ -234,16 +234,16 @@ public class Plan {
 		return res;
 	}
 	
-	public Integer getTupleCount(Integer partition) {
-		TreeMap<Integer, Integer> ranges = partitionToRanges.get(partition);
-		Integer sum = 0;
-		for(Integer k : ranges.keySet()) {
+	public Long getTupleCount(Integer partition) {
+		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
+		Long sum = 0L;
+		for(Long k : ranges.keySet()) {
 			sum += ranges.get(k) - k + 1; // inclusive
 		}
 		return sum;
 	}
 
-	static Integer getRangeWidth(Range r) {
+	static Long getRangeWidth(Range r) {
 		return r.to - r.from + 1; // inclusive
 	}
 	
@@ -265,8 +265,8 @@ public class Plan {
 		}
 	}
 	
-	static Integer getRangeListWidth(List<Range> ranges) {
-		Integer sum = 0;
+	static Long getRangeListWidth(List<Range> ranges) {
+		Long sum = 0L;
 		
 		for(Range r : ranges) {
 			sum = sum + getRangeWidth(r);
@@ -275,15 +275,15 @@ public class Plan {
 	}
 	// for algos such as the first fit, bin packer, subdivide cold tuples
 	// into sets of equal size from pre-existing ranges
-	List<List<Range>> getRangeSlices(Integer partition, Integer sliceWidth) {
-		TreeMap<Integer, Integer> ranges = partitionToRanges.get(partition);
+	List<List<Range>> getRangeSlices(Integer partition, Long sliceWidth) {
+		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
 		List<List<Range>> slices = new ArrayList<List<Range>>();
 
-		Integer accumulatedSum = 0;
+		Long accumulatedSum = 0L;
 		List<Range> partialList = new ArrayList<Range>();
-		Integer rangeLength = 0;
+		Long rangeLength = 0L;
 		
-		for(Integer i : ranges.keySet()) {
+		for(Long i : ranges.keySet()) {
 			rangeLength = ranges.get(i) - i + 1; // inclusive
 			if(accumulatedSum + rangeLength < sliceWidth) {
 				Range tmp = new Range();
@@ -296,7 +296,7 @@ public class Plan {
 				// emit
 				slices.add(partialList);
 				partialList = new ArrayList<Range>();
-				accumulatedSum = 0;
+				accumulatedSum = 0L;
 			}
 			// selection intersects range
 			else {
@@ -309,7 +309,7 @@ public class Plan {
 
 				
 				partialList = new ArrayList<Range>();
-				accumulatedSum = 0;
+				accumulatedSum = 0L;
 				
 				Range tmp2 = new Range();
 				tmp2.from = tmp1.to + 1;

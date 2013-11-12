@@ -15,11 +15,11 @@ import java.util.Random;
 
 public class TestGreedyPlacement extends BaseTestCase {
 	static Integer partitionCount = 4;
-	static Integer tupleCount = 10000; // 10k tuples in a table
+	static Long tupleCount = 10000L; // 10k tuples in a table
 	static int seed = 1024;
-	static Integer hotTupleCount = 30;
-	static Integer accessRange = 1024; 
-	static Integer hotTupleRange = 128;
+	static Long hotTupleCount = 30L;
+	static Long accessRange = 1024L; 
+	static Long hotTupleRange = 128L;
 
 	
     
@@ -30,26 +30,30 @@ public class TestGreedyPlacement extends BaseTestCase {
 		Random generator = new Random(seed);
 		GreedyPlacement aPlacement = new GreedyPlacement();
 
-		Map<Integer, Integer> partitionTotals = new HashMap<Integer, Integer>();  // partitionID --> summed access count
-		Map<Integer, Integer> hotTuples = new HashMap<Integer, Integer>();  // tupleId --> summed access count
+		Map<Integer, Long> partitionTotals = new HashMap<Integer, Long>();  // partitionID --> summed access count
+		ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>>();
 		
-		Integer tuplesPerInstance = tupleCount / partitionCount;
-		Integer modulusCount = tupleCount % partitionCount;
+		Long tuplesPerInstance = tupleCount / partitionCount;
+		Long modulusCount = tupleCount % partitionCount;
 		if(modulusCount > 0) {
 			++tuplesPerInstance;
 		}
 		
-		Integer startRange = 0;
-		Integer endRange = tuplesPerInstance - 1; // inclusive
+		Long startRange = 0L;
+		Long endRange = tuplesPerInstance - 1; // inclusive
 		
 		for(Integer i = 0; i < partitionCount; ++i) {
 			aPlan.addPartition(i);
 			aPlan.addRange(i, startRange, endRange);
-			if(i == modulusCount && modulusCount > 0) {
+			Long iTmp = Long.parseLong(String.valueOf(i));
+
+			if(iTmp == modulusCount && modulusCount > 0) {
 				--tuplesPerInstance;
 			}
 			startRange = endRange + 1;
 			endRange = startRange + tuplesPerInstance - 1;
+			hotTuplesList.add(new HashMap<Long, Long>());  // tupleId --> summed access count
+
 		}
 
 		System.out.println("Started with plan:");
@@ -57,15 +61,17 @@ public class TestGreedyPlacement extends BaseTestCase {
 		
 
 		for(Integer i = 0; i < partitionCount; ++i) {
-			partitionTotals.put(i, generator.nextInt(accessRange));			
+			partitionTotals.put(i, Math.abs(generator.nextLong()) % accessRange);			
 		}
 		
 		for(Integer i = 0; i < hotTupleCount; ++i) {
-			Integer tupleId = generator.nextInt(tupleCount);
-			hotTuples.put(tupleId, generator.nextInt(hotTupleRange));
+			Long tupleId = Math.abs(generator.nextLong()) % tupleCount;
 			Integer tupleLocation = aPlan.getTuplePartition(tupleId);
+			Long accessCount =  Math.abs(generator.nextLong()) % hotTupleRange;
+			hotTuplesList.get(tupleLocation).put(tupleId, accessCount);
+
 			//add capacity for partitionTotals
-			partitionTotals.put(tupleLocation, hotTuples.get(tupleId) + partitionTotals.get(tupleLocation)); 		
+			partitionTotals.put(tupleLocation, accessCount + partitionTotals.get(tupleLocation)); 		
 				
 		}
 
@@ -74,8 +80,6 @@ public class TestGreedyPlacement extends BaseTestCase {
 			System.out.println("Partition " + i + ": " + partitionTotals.get(i));
 		}
 		
-		ArrayList<Map<Integer, Integer>> hotTuplesList = new ArrayList<Map<Integer, Integer>>();
-		hotTuplesList.add(hotTuples);
 
 		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  aPlan);
 
