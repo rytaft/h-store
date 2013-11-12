@@ -94,9 +94,9 @@ public class Controller implements Runnable {
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
 					ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
 					System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
-					//currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, currentPlan);
+					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, currentPlan);
 					
-					//	currentPlan.toJSON(planFile);
+						currentPlan.toJSON(planFile);
 					} catch(Exception e) {
 						System.out.println("Caught on exception " + e.toString());
 					}
