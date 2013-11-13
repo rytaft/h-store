@@ -94,8 +94,8 @@ public class AdHoc extends VoltSystemProcedure {
             AbstractTransaction ts = this.hstore_site.getTransaction(txn_id);
             
             // Enable read/write set tracking
-            //if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
-            if (hstore_conf.site.exec_readwrite_tracking) {
+            if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
+            //if (hstore_conf.site.exec_readwrite_tracking) {
                 if (debug.val)
                     LOG.trace(String.format("%s - Enabling read/write set tracking in EE at partition %d",
                               ts, this.partitionId));
