@@ -599,6 +599,8 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         _reconfig = True
     
     if _reconfig:
+        LOG.info("Disabling command logging for reconfig experiments ******")
+        fabric.env["site.commandlog_enable"] = False
         fabric.env["client.txn_hints"] = False
         fabric.env["site.exec_force_singlepartitioned"] = True
         fabric.env["site.specexec_enable"] = False
