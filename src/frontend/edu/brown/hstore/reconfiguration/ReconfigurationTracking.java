@@ -35,6 +35,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     private List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges;
     private List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges;
     public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut;
+    public List<ReconfigurationRange<? extends Comparable<?>>> dataPartiallyMigratedOut;
     public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedIn;
     private int rangesMigratedInCount = 0;
     private int rangesMigratedOutCount = 0;
@@ -62,6 +63,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         this.migratedKeyOut = new HashMap<String, Set<Comparable>>();
         this.dataMigratedIn = new ArrayList<>();
         this.dataMigratedOut = new ArrayList<>();
+        this.dataPartiallyMigratedOut = new ArrayList<>();
     }
     
     public ReconfigurationTracking(PlannedPartitions partitionPlan, ReconfigurationPlan plan, int partition_id){
@@ -90,14 +92,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     
     @Override 
     public boolean markRangeAsPartiallyMigratedOut(ReconfigurationRange<? extends Comparable<?>> range ) throws ReconfigurationException{
-        boolean added =  this.dataMigratedOut.add(range);
-        if(added){
-            rangesMigratedOutCount++;
-            if(rangesMigratedOutCount==this.outgoing_ranges.size()){
-                throw new ReconfigurationException(ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
-            }
-        }
-        return added;
+        return this.dataPartiallyMigratedOut.add(range);
     }
     
     
@@ -137,14 +132,8 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     
     @Override
     public boolean markRangeAsPartiallyReceived(ReconfigurationRange<? extends Comparable<?>> range ){
-        boolean added =  this.dataMigratedIn.add(range);
-        if(added){
-            rangesMigratedInCount++;
-            if(rangesMigratedInCount==this.incoming_ranges.size()){
-                throw new ReconfigurationException(ExceptionTypes.ALL_RANGES_MIGRATED_IN);
-            }
-        }
-        return added;
+        LOG.info("TODO - do we need to track partially received ranges?");
+        return true;
     }
     
 
@@ -211,7 +200,6 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 if (checkMigratedMapSet(migratedKeyIn,table_name,key)== true){
                     return true;
                 } else {                       
-                    LOG.error("TODO check dirty range");//TODO
                     //check if the key was received out in a range        
                     for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedIn){
                         if(range.inRange(key)){
@@ -219,6 +207,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                         }
                     }
                     // The key has not been received. Throw an exception to notify
+                    //It could be in a partial range, but that doesn't matter to us. Still need to pull the full range.
                     ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED,table_name, previousPartition,expectedPartition,key);
                     throw ex;
                 }
@@ -233,10 +222,18 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                     throw ex;
                 }
                 
-                LOG.error("TODO check dirty range");//TODO
+                
                 
                 //check to see if this key was migrated in a range
                 for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedOut){
+                    if(range.inRange(key)){
+                        ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table_name, previousPartition,expectedPartition, key);
+                        throw ex;
+                    }
+                }
+                
+              //check to see if this key was migrated in a range
+                for(ReconfigurationRange<? extends Comparable<?>> range : this.dataPartiallyMigratedOut){
                     if(range.inRange(key)){
                         ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table_name, previousPartition,expectedPartition, key);
                         throw ex;

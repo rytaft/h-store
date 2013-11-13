@@ -5981,22 +5981,29 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if(hstore_conf.site.reconfig_replication_delay){
             replicationDelay();
         }
-        LOG.error("TODO if moreDataComing need to dirty range");
         // Currently we don't have any tracking for Stop and Copy.
         // Sanity checks can be added to make sure all data is added. But
         // tracker during the
         // executions is not required as Stop and Copy -> "Stops"
         if (this.reconfig_protocol != ReconfigurationProtocols.STOPCOPY && this.reconfiguration_tracker != null) {
-            if (minInclusive.compareTo(maxExclusive) == 0 || minInclusive.compareTo(maxExclusive + 1) == 0) {
+            if (minInclusive.compareTo(maxExclusive) == 0) {
                 // We have received a single key
                 LOG.info(String.format("PE (%s) marking key as received %s %s ", this.partitionId, table_name, minInclusive));
                 this.reconfiguration_tracker.markKeyAsReceived(table_name, minInclusive);
+                this.reconfiguration_tracker.markRangeAsPartiallyReceived(new ReconfigurationRange<Long>
+                            (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
             } else {
                 // TODO ae can we just receive range?
                 LOG.info(String.format("PE (%s) marking range as received %s %s-%s ", this.partitionId, table_name, minInclusive, maxExclusive));
                 try {
-                    this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>
-                    (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
+                    if (moreDataComing) {
+                        this.reconfiguration_tracker.markRangeAsPartiallyReceived(new ReconfigurationRange<Long>
+                            (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));                        
+                    } else {
+                        this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>
+                            (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));                        
+                    }
+                    
                     if(this.reconfiguration_tracker.checkIfAllRangesAreMigratedIn()){
                         // Now reconfiguration resposnibilty of a destination of Live Pull is done,
                         // so it tells the leader it is done
