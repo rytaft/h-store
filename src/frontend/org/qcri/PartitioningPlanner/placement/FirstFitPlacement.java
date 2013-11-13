@@ -17,32 +17,18 @@ public class FirstFitPlacement extends Placement {
 		
 	}
 	
-	static Integer getMostUnderloadedPartitionId(Map<Integer, Long> partitionTotals) {
-		Long minTotal = java.lang.Long.MAX_VALUE; 
-		Integer minPartition = -1;
-
-		for(Integer i : partitionTotals.keySet()) {
-			if(partitionTotals.get(i) < minTotal) {
-				minPartition = i;
-				minTotal = partitionTotals.get(i);
-			}
-			
-		}
-		
-		return minPartition;
-	}
-	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
 	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename){
 		
 
-		Integer srcPartition = 0, dstPartition = -1;
+		Integer dstPartition = -1;
 		Long totalAccesses = 0L;
 		Long targetCapacity;
 		Map<Integer, Long> oldLoad = new HashMap<Integer, Long> ();
 		Plan aPlan = new Plan(planFilename);
 		Plan newPlan = new Plan();
+		Long hotTupleCount = 0L;
 		
 
 		for(Integer i : partitionTotals.keySet()) {
@@ -53,20 +39,26 @@ public class FirstFitPlacement extends Placement {
 		}
 
 		
+		
 		targetCapacity = totalAccesses / partitionTotals.size();		
-
+		//System.out.println("Target capacity " + targetCapacity);
+		
 		Map<Integer, List<Plan.Range>> ranges = aPlan.getAllRanges();
 		for(Integer i : ranges.keySet()) {
 			newPlan.addPartition(i);
 		}
 		
-		// pack the hot tuples first
 		for(Map<Long, Long> hotTuples : hotTuplesList) {
-			
-			for(Long i : hotTuples.keySet()) {
+			hotTupleCount = hotTupleCount + hotTuples.size();
+		}
+		
+		// pack the hot tuples first
+		for(Integer i = 0; i < hotTupleCount; ++i) {
+				getHottestTuple(hotTuplesList);
+
 				Boolean placed = false;
 				for(Integer j : partitionTotals.keySet()) {
-					if(partitionTotals.get(j) + hotTuples.get(i) <= targetCapacity) {
+					if(partitionTotals.get(j) + _hotAccessCount <= targetCapacity) {
 						dstPartition = j;
 						placed = true;
 						break;
@@ -78,13 +70,15 @@ public class FirstFitPlacement extends Placement {
 					dstPartition = getMostUnderloadedPartitionId(partitionTotals);
 				}		
 			
-				partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + hotTuples.get(i));
-				oldLoad.put(srcPartition, oldLoad.get(srcPartition) - hotTuples.get(i));
-				aPlan.removeTupleId(srcPartition, i);
-				newPlan.addRange(dstPartition, i, i);
+				//System.out.println("Processing hot tuple id " + _hotTupleId + " with access count " + _hotAccessCount + " sending it to " + dstPartition);
+
+				partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + _hotAccessCount);
+				oldLoad.put(_srcPartition, oldLoad.get(_srcPartition) - _hotAccessCount);
+
+				hotTuplesList.get(_srcPartition).remove(_hotTupleId);
+				aPlan.removeTupleId(_srcPartition, _hotTupleId);
+				newPlan.addRange(dstPartition, _hotTupleId, _hotTupleId);
 			} // end outer-for
-			++srcPartition;
-		} // end partition-for
 		
 		
 		
