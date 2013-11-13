@@ -4842,8 +4842,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param ts
      */
     private void markTransactionFinished(AbstractTransaction ts) {
-        //if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId)) {
-    	if (hstore_conf.site.exec_readwrite_tracking ) {//Essam
+        if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId)) {
+    	//if (hstore_conf.site.exec_readwrite_tracking ) {//Essam
             this.ee.trackingFinish(ts.getTransactionId());
         }
         ts.markFinished(this.partitionId);
