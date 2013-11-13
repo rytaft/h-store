@@ -1367,7 +1367,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // RC push tuples
                 reconfiguration_coordinator.pushTuples(pushRange.old_partition, pushRange.new_partition, pushRange.table_name, 
                         vt.getFirst(), pushRange.min_long, pushRange.max_long);
-                this.reconfiguration_tracker.markRangeAsMigratedOut(pushRange);
+                if(vt.getSecond()){
+                    this.reconfiguration_tracker.markRangeAsPartiallyMigratedOut(pushRange);
+                } else {
+                    this.reconfiguration_tracker.markRangeAsMigratedOut(pushRange);
+                }
             } catch (ReconfigurationException re) {
                 if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_OUT)
                     this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
@@ -6085,7 +6089,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             LOG.info(String.format("PE (%s) marking range as migrated out %s  ", this.partitionId, range.toString()));
             if (this.reconfiguration_tracker != null) {
                 try {
-                    this.reconfiguration_tracker.markRangeAsMigratedOut(range);
+                    if (res.getSecond()){
+                        this.reconfiguration_tracker.markRangeAsPartiallyMigratedOut(range);                       
+                    } else{
+                        this.reconfiguration_tracker.markRangeAsMigratedOut(range);                        
+                    }
                 } catch (ReconfigurationException re) {
                     if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_OUT)
                         this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
