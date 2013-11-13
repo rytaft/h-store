@@ -44,6 +44,17 @@ public interface ReconfigurationTrackingInterface {
      * @return
      */
     public boolean markRangeAsMigratedOut(ReconfigurationRange<? extends Comparable<?>> range ) throws ReconfigurationException;
+   
+    
+    /**
+     * Mark a key range as partially migrated away from this partition
+     * Does not verify that this range was expected
+     * Throws a reconfigurationException if the entire set of ranges
+     * was completed with this request
+     * @param range
+     * @return
+     */
+    public boolean markRangeAsPartiallyMigratedOut(ReconfigurationRange<? extends Comparable<?>> range ) throws ReconfigurationException;
     
     /**
      * Mark a key received by this partition
@@ -73,6 +84,17 @@ public interface ReconfigurationTrackingInterface {
      * @return
      */
     public boolean markRangeAsReceived(ReconfigurationRange<? extends Comparable<?>> range )  throws ReconfigurationException;
+  
+    
+    /**
+     * Mark a range as partially received (dirtied) by this partition
+     * Does not verify that this range was expected
+     * Throws a reconfigurationException if the entire set of ranges
+     * was completed with this request
+     * @param range
+     * @return
+     */
+    public boolean markRangeAsPartiallyReceived(ReconfigurationRange<? extends Comparable<?>> range )  throws ReconfigurationException;
     
     /**
      * Check if a key is owned and currently present

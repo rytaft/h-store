@@ -615,22 +615,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param txnId
      * @param partitionId
      * @param pullRequests
-     * @param pullBlockSemaphore
      */
-    public void asyncPullRequestFromPE(int livePullId, long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests, 
-            Semaphore pullBlockSemaphore) {
-        try {
-            LOG.info("TODO remove semaphore from async");
-            pullBlockSemaphore.acquire(pullRequests.size());
-        } catch (InterruptedException e) {
-            LOG.error("Exception acquiring locks for pull request",e);
-        }
-        
+    public void asyncPullRequestFromPE(int livePullId, long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests) {
+
         for(ReconfigurationRange range : pullRequests){       
             
             asyncPullTuples(livePullId, txnId, range.old_partition, range.new_partition, range.table_name, 
                     range.min_long, range.max_long, range.getVt());
-            blockedRequests.put(livePullId, pullBlockSemaphore);   
         }
         
     }
@@ -1106,7 +1097,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public void unblockingPullRequestSemaphore(int pullID, int partitionId, boolean isAsyncRequest) {
     	LOG.info("Callback of the semaphore has been received. Unblocking the semaphore we are blocked on" +
     			"for partitionId : " + partitionId);
-        blockedRequests.get(pullID).release();
+    	if(blockedRequests != null && blockedRequests.containsKey(pullID)){
+    	    blockedRequests.get(pullID).release();
+    	}
     }
 
 

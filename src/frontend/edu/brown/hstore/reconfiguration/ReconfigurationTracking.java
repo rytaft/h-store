@@ -88,6 +88,18 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         return added;
     }
     
+    @Override 
+    public boolean markRangeAsPartiallyMigratedOut(ReconfigurationRange<? extends Comparable<?>> range ) throws ReconfigurationException{
+        boolean added =  this.dataMigratedOut.add(range);
+        if(added){
+            rangesMigratedOutCount++;
+            if(rangesMigratedOutCount==this.outgoing_ranges.size()){
+                throw new ReconfigurationException(ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
+            }
+        }
+        return added;
+    }
+    
     
     @Override 
     public boolean markRangeAsMigratedOut(List<ReconfigurationRange<? extends Comparable<?>>> ranges ){
@@ -113,6 +125,18 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     
     @Override
     public boolean markRangeAsReceived(ReconfigurationRange<? extends Comparable<?>> range ){
+        boolean added =  this.dataMigratedIn.add(range);
+        if(added){
+            rangesMigratedInCount++;
+            if(rangesMigratedInCount==this.incoming_ranges.size()){
+                throw new ReconfigurationException(ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+            }
+        }
+        return added;
+    }
+    
+    @Override
+    public boolean markRangeAsPartiallyReceived(ReconfigurationRange<? extends Comparable<?>> range ){
         boolean added =  this.dataMigratedIn.add(range);
         if(added){
             rangesMigratedInCount++;

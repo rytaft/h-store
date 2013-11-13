@@ -213,6 +213,10 @@ import edu.brown.utils.StringUtil;
  * of plan fragments. Interacts with the DTXN system to get work to do. The
  * thread might do other things, but this is where the good stuff happens.
  */
+/**
+ * @author aelmore
+ *
+ */
 public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private static final Logger LOG = Logger.getLogger(PartitionExecutor.class);
     private static final LoggerBoolean debug = new LoggerBoolean();
@@ -1349,12 +1353,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             ReconfigurationRange<? extends Comparable<?>> pushRange = ((AsyncNonChunkPushRequestMessage) work).getPushRange();
             LOG.info("Asynch push message scheduled " + pushRange.toString());
 
-            // TODO ae leftoff FIXME
             long _txnid = -1;
             // TODO Check that this range still needs to be pushed
             Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
             int table_id = catalog_tbl.getRelativeIndex();
             VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(pushRange);
+            if(hstore_conf.site.reconfig_replication_delay){
+                replicationDelay();
+            }
             Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
             try {
 
@@ -1421,6 +1427,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         new ReconfigurationRange<Long>(tableName, VoltType.BIGINT, pull.getMinInclusive(), pull.getMaxExclusive(), 
                                 pull.getOldPartition(), pull.getNewPartition())
                         );
+                if(hstore_conf.site.reconfig_replication_delay){
+                    replicationDelay();
+                }
                 Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, pull.getTransactionID(), lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
                 VoltTable voltTable = vt.getFirst();
 
@@ -2276,11 +2285,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     
+    /**
+     * Schedule this initial list of async pull ranges that will be chunked
+     * @param incomingRanges
+     * @return success bool
+     */
     public boolean queueInitialAsyncPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info(String.format("(%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
-            boolean res = true;
-            LOG.info("TODO schedule one at a time?");//TODO
+            boolean res = true;            
             for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
                 ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
                 boolean success = this.work_queue.offer(scheduleAsyncPull); // ,
@@ -2295,6 +2308,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
     }
     
+    /**
+     * Schedule this initial list of async pull ranges that will NOT be  chunked
+     * @param incomingRanges
+     * @return success bool
+     */
     public boolean queueInitialAsyncNonChunkPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info("Scheduling async pull requests : " + incomingRanges.size());
@@ -2313,6 +2331,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
     }
 
+    /**
+     * Schedule this initial list of async push ranges that will NOT be chunked
+     * @param outgoingRanges
+     * @return
+     */
     public boolean queueInitialAsyncNonChunkPushRequests(List<ReconfigurationRange<? extends Comparable<?>>> outgoingRanges) {
         if (outgoingRanges != null && !outgoingRanges.isEmpty()) {
             LOG.info("Scheduling async push requests : " + outgoingRanges.size());
@@ -2339,8 +2362,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         return this.work_queue.offer(response);
     }
     
-    //TODO AE refactor, can we embed the livepull request into the msg and process then? 
+    /**
+     * Enqueue a live pull request from the local RC.
+     * @param livePullRequest
+     * @param livePullResponseCallback
+     * @return
+     */
     public boolean queueLivePullRequest(LivePullRequest livePullRequest, RpcCallback<LivePullResponse> livePullResponseCallback) {
+        //TODO AE refactor, can we embed the livepull request into the msg and process then? 
+
         assert (livePullRequest.isInitialized()) : "Unexpected uninitialized live Pull Request";
         // Make a dummy transaction with dummy parameters and only transaction
         // Id initiated and
@@ -2360,8 +2390,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         RpcCallback<ClientResponseImpl> dummyCallback = null;
         localTransaction.init(transactionId, initiateTime, clientHandle, 0, partitionSet, false, false, procedure, parameterSet, dummyCallback);
         LivePullRequestMessage livePullRequestMessage = new LivePullRequestMessage(localTransaction, livePullRequest, livePullResponseCallback, hstore_conf.site.reconfig_profiling);
-        // TODO : Remove log statement : for Testing
-        LOG.info("Adding reconfiguration work to the queue");
         boolean success = this.work_queue.offer(livePullRequestMessage); // ,
                                                                          // true);
         assert (success) : String.format("Failed to queue %s at partition %d for %s", livePullRequestMessage, this.partitionId, livePullRequestMessage.getTransactionId());
@@ -3043,6 +3071,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
     }
 
+    /**
+     * We are processing a scheduled live pull request to extract out data
+     * @param livePullRequestMessage
+     */
     public void processLivePullRequestMessage(LivePullRequestMessage livePullRequestMessage) {
         LivePullRequest livePullRequest = livePullRequestMessage.getLivePullRequest();
         LOG.info("Processing Live pull request :" + livePullRequest.getLivePullIdentifier() );
@@ -3061,7 +3093,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         
         if (res.getSecond().booleanValue()){
-            LOG.error("TODO more data needed on dataPull request.");
+            //TODO if there is more data to send, send subsequent messages to 
+            LOG.error("****************\n***************\n\n TODO more data needed on dataPull request.\n****************\n***************\n");
         }
 
         LivePullResponse livePullResponse = LivePullResponse.newBuilder().setLivePullIdentifier(livePullRequest.getLivePullIdentifier()).setSenderSite(this.hstore_site.getSiteId())
@@ -3100,31 +3133,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.reconfiguration_coordinator.profilers[this.partitionId].async_dest_queue_time.appendTime(scheduleAsyncPullMsg.getQueueTime());
         //TODO : For now the function is called for each range being pulled, check if we should move the logic of breaking the requests here
         int requestSize = 1;
-        Semaphore pullBlockSemaphore = new Semaphore(requestSize);
         List<ReconfigurationRange<? extends Comparable<?>>> pullRequests = new  ArrayList<ReconfigurationRange<? extends Comparable<?>>>();
         pullRequests.add(pullRange);
         // transaction id is a dummy here
         // Calling the RC to generates a Live Pull Request for a range and blocking. When the reply comes back the RC will unblock the semaphore
-        if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.start();
-        this.reconfiguration_coordinator.asyncPullRequestFromPE(getNextRequestToken(), -1L, this.partitionId, pullRequests, pullBlockSemaphore);
+        this.reconfiguration_coordinator.asyncPullRequestFromPE(getNextRequestToken(), -1L, this.partitionId, pullRequests);
 
-        LOG.info("("+ this.partitionId + ") Blocking PE for ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
-        try {
-            boolean acquired = pullBlockSemaphore.tryAcquire(requestSize,30, TimeUnit.SECONDS);
-            if(acquired){
-                if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.stopIfStarted();
-            }
-            else{
-                final String msg = "Timeout on blocking for pullrequest.";
-                LOG.error(msg);
-                throw new RuntimeException(msg);
-            }
-
-            LOG.info(String.format("PE (%s) has received a pull request response and has ublocked : ", this.partitionId)); 
-        } catch (InterruptedException ex) {
-            LOG.error("Waiting for pull was interuppted. ", ex);
-            // TODO ae restart txn?
-        }
+        LOG.info("("+ this.partitionId + ") ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
+       
     }
     
     
@@ -3172,6 +3188,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
     }
 
+    
+    /**
+     * Introduce simulated replication delay for extract and load
+     */
+    public void replicationDelay(){
+        throw new NotImplementedException();
+    }
+    
+    
     /**
      * Executes a WorkFragment on behalf of some remote site and returns the
      * resulting DependencySet
@@ -5876,11 +5901,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             LOG.info("Stopping exeuction");
             this.currentExecMode = ExecutionMode.DISABLED_REJECT;
         } else if (reconfig_protocol == ReconfigurationProtocols.LIVEPULL) {
-            LOG.info("Creating reconfiguration tracker");
+            LOG.debug("Creating reconfiguration tracker");
 
-            // TODO remove the following
-            //TODO : May be check when should we schedule the pull requests, right away with low priority
-            //or after a stage in recofiguration
             this.to_pull = new HashMap<>();
             this.pulled_tuples = new HashMap<>();
             if(this.reconfiguration_coordinator.scheduleAsyncNonChunkPush()){
@@ -5956,6 +5978,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         
         LOG.info(String.format("PE (%s) Received tuples for txnId:%s Rows(%s) pIds(from:%s to:%s) for range, " + "(from:%s to:%s)", this.partitionId, txnId, vt.getRowCount(), 
                 newPartitionId, oldPartitionId, minInclusive, maxExclusive));
+        if(hstore_conf.site.reconfig_replication_delay){
+            replicationDelay();
+        }
         LOG.error("TODO if moreDataComing need to dirty range");
         // Currently we don't have any tracking for Stop and Copy.
         // Sanity checks can be added to make sure all data is added. But
@@ -6010,12 +6035,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     
     public VoltTable extractPushRequst(ReconfigurationRange<? extends Comparable<?>> pushRange) {
-        // TODO ae leftoff FIXME
         long _txnid = -1;
         // TODO Check that this range still needs to be pushed
         Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
         int table_id = catalog_tbl.getRelativeIndex();
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(pushRange);
+        if(hstore_conf.site.reconfig_replication_delay){
+            replicationDelay();
+        }
         Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
         return vt.getFirst();
         
@@ -6031,6 +6058,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public Pair<VoltTable,Boolean> extractTable(Table table, ReconfigurationRange<? extends Comparable<?>> range) {
         LOG.debug(String.format("Extract table %s Range:%s", table.toString(), range.toString()));
         int table_id = table.getRelativeIndex();
+        if(hstore_conf.site.reconfig_replication_delay){
+            replicationDelay();
+        }
         long start=0;
         if(ReconfigurationCoordinator.detailed_timing){
             start = System.currentTimeMillis();

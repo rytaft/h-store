@@ -750,6 +750,13 @@ public final class HStoreConf {
         )
         public String reconfig_initial_plan;
         
+        @ConfigProperty(
+                description="The introduce delay to inject replication latency into reconfiguraiton. ",
+                defaultBoolean=false,
+                experimental=true
+        )
+        public boolean reconfig_replication_delay;
+        
         // ----------------------------------------------------------------------------
         // MapReduce Options
         // ----------------------------------------------------------------------------
