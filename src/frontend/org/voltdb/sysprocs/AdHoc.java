@@ -20,21 +20,16 @@ package org.voltdb.sysprocs;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.log4j.Logger;
 import org.voltdb.BackendTarget;
 import org.voltdb.DependencySet;
 import org.voltdb.ParameterSet;
 import org.voltdb.ProcInfo;
 import org.voltdb.VoltSystemProcedure;
 import org.voltdb.VoltTable;
-import org.voltdb.jni.ExecutionEngine;
 
 import edu.brown.hstore.HStoreConstants;
-import edu.brown.hstore.PartitionExecutor;
 import edu.brown.hstore.PartitionExecutor.SystemProcedureExecutionContext;
 import edu.brown.hstore.txns.AbstractTransaction;
-import edu.brown.logging.LoggerUtil;
-import edu.brown.logging.LoggerUtil.LoggerBoolean;
 
 /**
  * Execute a user-provided SQL statement. This code coordinates the execution of
@@ -42,11 +37,7 @@ import edu.brown.logging.LoggerUtil.LoggerBoolean;
  */
 @ProcInfo(singlePartition = false)
 public class AdHoc extends VoltSystemProcedure {
-    private static final Logger LOG = Logger.getLogger(AdHoc.class);
-    private static final LoggerBoolean debug = new LoggerBoolean();
-    static {
-        LoggerUtil.attachObserver(LOG, debug);
-    }
+
 
     final int AGG_DEPID = 1;
     final int COLLECT_DEPID = 2 | HStoreConstants.MULTIPARTITION_DEPENDENCY;
@@ -58,12 +49,17 @@ public class AdHoc extends VoltSystemProcedure {
 
     @Override
     public DependencySet executePlanFragment(Long txn_id, Map<Integer, List<VoltTable>> dependencies, int fragmentId, ParameterSet params, SystemProcedureExecutionContext context) {
-        // get the three params (depId, json plan, sql stmt)
+        
+    	// Essam Enable read/write set tracking 
+    	this.hstore_conf.site.exec_readwrite_tracking = true; //Essam
+    	   	
+    	
+    	// get the three params (depId, json plan, sql stmt)
         int outputDepId = (Integer) params.toArray()[0];
         String plan = (String) params.toArray()[1];
         String sql = (String) params.toArray()[2];
         int inputDepId = -1;
-
+        
         // make dependency ids available to the execution engine
         if ((dependencies != null) && (dependencies.size() > 00)) {
             assert(dependencies.size() <= 1);
@@ -80,30 +76,34 @@ public class AdHoc extends VoltSystemProcedure {
             assert(sql != null);
             // table = m_hsql.runDML(sql);
         }
-        else {
+        else
+        {
             assert(plan != null);
-            
-            ExecutionEngine ee = context.getExecutionEngine();
-            AbstractTransaction ts = this.hstore_site.getTransaction(txn_id);
-            
-            // Enable read/write set tracking
-            if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
-                if (debug.val)
-                    LOG.trace(String.format("%s - Enabling read/write set tracking in EE at partition %d",
-                              ts, this.partitionId));
-                ee.trackingEnable(txn_id);
-            }
             
             // Always mark this information for the txn so that we can
             // rollback anything that it may do
+            AbstractTransaction ts = this.hstore_site.getTransaction(txn_id);
             ts.markExecNotReadOnly(this.partitionId);
             ts.markExecutedWork(this.partitionId);
             
-            table = ee.executeCustomPlanFragment(plan, outputDepId, inputDepId, txn_id,
+            
+            
+         // Essam Enable read/write set tracking
+           // if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
+                this.executor.getExecutionEngine().trackingEnable(txn_id);
+           // }
+            
+            table = context.getExecutionEngine().
+                executeCustomPlanFragment(plan, outputDepId, inputDepId, txn_id,
                                           context.getLastCommittedTxnId(),
                                           ts.getLastUndoToken(this.partitionId));
         }
 
+        
+      //Essam readwrite tracking
+       // if (hstore_conf.site.exec_readwrite_tracking)
+        	//this.executor.getExecutionEngine().trackingFinish(txn_id);  
+        
         return new DependencySet(new int[]{ outputDepId }, new VoltTable[]{ table });
     }
 
@@ -197,6 +197,8 @@ public class AdHoc extends VoltSystemProcedure {
 //            retval.addRow(changedTuples);
 //            results[0] = retval;
 //        }
+        
+        
 
         return results;
     }
