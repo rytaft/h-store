@@ -42,6 +42,11 @@ import edu.brown.logging.LoggerUtil.LoggerBoolean;
  */
 @ProcInfo(singlePartition = false)
 public class AdHoc extends VoltSystemProcedure {
+    private static final Logger LOG = Logger.getLogger(AdHoc.class);
+    private static final LoggerBoolean debug = new LoggerBoolean();
+    static {
+        LoggerUtil.attachObserver(LOG, debug);
+    }
 
 
     final int AGG_DEPID = 1;
@@ -89,7 +94,8 @@ public class AdHoc extends VoltSystemProcedure {
             AbstractTransaction ts = this.hstore_site.getTransaction(txn_id);
             
             // Enable read/write set tracking
-            if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
+            //if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
+            if (hstore_conf.site.exec_readwrite_tracking) {
                 if (debug.val)
                     LOG.trace(String.format("%s - Enabling read/write set tracking in EE at partition %d",
                               ts, this.partitionId));
@@ -98,7 +104,7 @@ public class AdHoc extends VoltSystemProcedure {
             
             // Essam Enable read/write set tracking
             // if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
-            //     this.executor.getExecutionEngine().trackingEnable(txn_id);
+           //     this.executor.getExecutionEngine().trackingEnable(txn_id);
             // }
             
             // Always mark this information for the txn so that we can
