@@ -58,7 +58,8 @@ public class TestGreedyPlacement extends BaseTestCase {
 
 		System.out.println("Started with plan:");
 		aPlan.printPlan();
-		
+		aPlan.toJSON("test.txt");
+
 
 		for(Integer i = 0; i < partitionCount; ++i) {
 			partitionTotals.put(i, Math.abs(generator.nextLong()) % accessRange);			
@@ -81,7 +82,7 @@ public class TestGreedyPlacement extends BaseTestCase {
 		}
 		
 
-		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  aPlan);
+		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  "test.txt");
 
 		System.out.println("Ending with plan:");
 		aPlan.printPlan();

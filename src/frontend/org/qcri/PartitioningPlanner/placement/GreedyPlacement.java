@@ -30,17 +30,14 @@ public class GreedyPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan){
-		
-		
-		
-			
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename){
 		
 		Integer srcPartition, dstPartition;
 		Long totalAccesses = 0L;
 		Long meanAccesses;
 		Integer partitionId = 0;
 		
+		Plan aPlan = new Plan(planFilename);
 
 		for(Integer i : partitionTotals.keySet()) {
 			totalAccesses = totalAccesses + partitionTotals.get(i);			

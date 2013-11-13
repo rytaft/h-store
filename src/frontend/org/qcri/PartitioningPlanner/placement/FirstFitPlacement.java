@@ -34,13 +34,14 @@ public class FirstFitPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename){
 		
 
 		Integer srcPartition = 0, dstPartition = -1;
 		Long totalAccesses = 0L;
 		Long targetCapacity;
 		Map<Integer, Long> oldLoad = new HashMap<Integer, Long> ();
+		Plan aPlan = new Plan(planFilename);
 		Plan newPlan = new Plan();
 		
 

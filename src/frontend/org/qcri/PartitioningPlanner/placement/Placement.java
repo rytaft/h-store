@@ -18,7 +18,7 @@ public class Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> siteLoads, Plan currentPlan){
-		return currentPlan;
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> siteLoads, String planFile){
+		return new Plan(planFile);
 	}
 }

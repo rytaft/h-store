@@ -58,7 +58,8 @@ public class TestFirstFitPlacement extends BaseTestCase {
 
 		System.out.println("Starting with plan:");
 		aPlan.printPlan();
-		
+		aPlan.toJSON("test.txt");
+		System.out.println("That's all, folks!");
 
 		for(Integer i = 0; i < partitionCount; ++i) {
 			partitionTotals.put(i, Math.abs(generator.nextLong()) % accessRange);			
@@ -86,7 +87,7 @@ public class TestFirstFitPlacement extends BaseTestCase {
 		}
 
 		
-		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  aPlan);
+		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  "test.txt");
 
 		System.out.println("Ending with plan:");
 		aPlan.printPlan();
@@ -95,8 +96,11 @@ public class TestFirstFitPlacement extends BaseTestCase {
 		for(Integer i : partitionTotals.keySet()) {
 			System.out.println("Partition " + i + ": " + partitionTotals.get(i));
 		}
+		System.out.println("Writing to file.");
 		aPlan.toJSON("test.txt");
 
 	}
+	
+
 	
 }
