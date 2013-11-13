@@ -51,7 +51,7 @@ public class AdHoc extends VoltSystemProcedure {
     public DependencySet executePlanFragment(Long txn_id, Map<Integer, List<VoltTable>> dependencies, int fragmentId, ParameterSet params, SystemProcedureExecutionContext context) {
         
     	// Essam Enable read/write set tracking 
-    	this.hstore_conf.site.exec_readwrite_tracking = true; //Essam
+    	//this.hstore_conf.site.exec_readwrite_tracking = true; //Essam
     	   	
     	
     	// get the three params (depId, json plan, sql stmt)
@@ -80,18 +80,26 @@ public class AdHoc extends VoltSystemProcedure {
         {
             assert(plan != null);
             
+            ExecutionEngine ee = context.getExecutionEngine();
+            AbstractTransaction ts = this.hstore_site.getTransaction(txn_id);
+            
+            // Enable read/write set tracking
+            if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
+                if (debug.val)
+                    LOG.trace(String.format("%s - Enabling read/write set tracking in EE at partition %d",
+                              ts, this.partitionId));
+                ee.trackingEnable(txn_id);
+            }
+            
+            // Essam Enable read/write set tracking
+            // if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
+            //     this.executor.getExecutionEngine().trackingEnable(txn_id);
+            // }
+            
             // Always mark this information for the txn so that we can
             // rollback anything that it may do
-            AbstractTransaction ts = this.hstore_site.getTransaction(txn_id);
             ts.markExecNotReadOnly(this.partitionId);
             ts.markExecutedWork(this.partitionId);
-            
-            
-            
-         // Essam Enable read/write set tracking
-           // if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
-                this.executor.getExecutionEngine().trackingEnable(txn_id);
-           // }
             
             table = context.getExecutionEngine().
                 executeCustomPlanFragment(plan, outputDepId, inputDepId, txn_id,
@@ -100,11 +108,7 @@ public class AdHoc extends VoltSystemProcedure {
         }
 
         
-      //Essam readwrite tracking
-       // if (hstore_conf.site.exec_readwrite_tracking)
-        	//this.executor.getExecutionEngine().trackingFinish(txn_id);  
-        
-        return new DependencySet(new int[]{ outputDepId }, new VoltTable[]{ table });
+      return new DependencySet(new int[]{ outputDepId }, new VoltTable[]{ table });
     }
 
     /**
