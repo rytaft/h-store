@@ -103,7 +103,7 @@ public class AdHoc extends VoltSystemProcedure {
         
       //Essam readwrite tracking
        // if (hstore_conf.site.exec_readwrite_tracking)
-        	this.executor.getExecutionEngine().trackingFinish(ts.getTransactionId());  
+        	//this.executor.getExecutionEngine().trackingFinish(ts.getTransactionId());  
         
         return new DependencySet(new int[]{ outputDepId }, new VoltTable[]{ table });
     }
