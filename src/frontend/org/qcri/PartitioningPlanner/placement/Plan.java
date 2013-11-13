@@ -60,8 +60,9 @@ public class Plan {
 	
 	public void addRange(Integer partition, Long from, Long to){
 		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
-		Map.Entry<Long, Long> precedingFrom = ranges.floorEntry(from);
-		Map.Entry<Long, Long> precedingTo = ranges.floorEntry(to);
+		// find plans that intersect or are adjacent to the new range
+		Map.Entry<Long, Long> precedingFrom = ranges.floorEntry(from - 1);
+		Map.Entry<Long, Long> precedingTo = ranges.floorEntry(to + 1);
 
 		if (precedingFrom == null){
 			// from is smaller than any previous range
@@ -346,8 +347,97 @@ public class Plan {
 		
 	}
 	
-	// first cut - just parses first partition table
 	private void fromJSON(String filename)  {
+		readInFile(filename);
+	}
+	
+	public void toJSON (String filename)  {
+		JSONObject srcData, planList, newPlan;
+		try {
+			srcData = new JSONObject(FileUtil.readFile(filename));	
+			planList = srcData.getJSONObject("partition_plans");
+			
+		} catch(JSONException e) {
+			System.out.println("Failed to read in " + filename);
+			// set up for the empty case
+			srcData = new JSONObject();
+			planList = new JSONObject();
+		}
+
+		if(srcData.isNull("partition_plans")) {
+			try {
+				srcData.put("partition_plans", planList);
+			}
+			catch(JSONException e) {
+				System.out.println("Init of JSONObject in toJSON failed!");
+				return;
+			}
+		}
+		
+		String[]  partitionKeys = JSONObject.getNames(planList);
+		Integer planNo = partitionKeys.length + 1;
+		
+		
+		try {
+			newPlan = constructNewJSON(planNo);
+			planList.put(planNo.toString(), newPlan);
+
+		}
+		catch(JSONException e) {
+			System.out.println("Failed to construct or insert new plan!");
+			return;
+		}
+
+		
+		try {
+    		BufferedWriter output = new BufferedWriter(new FileWriter(filename));    	 
+    		output.write(srcData.toString(2));
+    		output.close();
+    	}
+    	catch (Exception e) {
+    		System.out.println("Failed to write partitioning plan to " + filename);
+    		return;
+    	}
+	}
+	
+	// build a JSON object using the current contents of this Plan object
+	private JSONObject constructNewJSON(Integer planNo)  throws JSONException {
+		JSONObject jsonPlan = new JSONObject();
+		JSONObject tablesObject = new JSONObject();		
+		JSONObject tableNameObject = new JSONObject();
+		JSONObject partitionDelimiter = new JSONObject();
+		JSONObject tableObject = new JSONObject();
+		
+		jsonPlan.put(planNo.toString(), tablesObject);
+		tablesObject.put("tables", tableNameObject);
+		tableNameObject.put("usertable", partitionDelimiter);
+		partitionDelimiter.put("partitions", tableObject);
+		
+		
+    	for(Integer partition : partitionToRanges.keySet()) {
+    		tableObject.put(partition.toString(), printPartition(partition));
+    	}
+    	
+    	return jsonPlan;
+
+	}
+	
+	private void traverseLevel(JSONObject srcData, String key) {
+		try {
+			srcData = srcData.getJSONObject(key);
+		}
+		catch (JSONException e) {
+			System.out.println("Failed to recurse down JSON tree for key " + key);
+			return;
+		}
+	}
+	
+	private void traverseLevelSingle(JSONObject srcData) {
+		String[] keys = JSONObject.getNames(srcData);
+		traverseLevel(srcData, keys[0]);
+	}
+	
+	public void readInFile(String filename) {
 		JSONObject srcData;
 		try {
 			srcData = new JSONObject(FileUtil.readFile(filename));	
@@ -356,31 +446,23 @@ public class Plan {
 			return;
 		}
 		
-		// read in the first plan
+		// read in the last plan
 		partitionToRanges.clear();
-		
-		while(!srcData.has("partition")) {
-			// has exactly one key - recurse down
-			String[] keys = JSONObject.getNames(srcData);
-			try {
-				srcData = srcData.getJSONObject(keys[0]);
-			}
-			catch (JSONException e) {
-				System.out.println("Failed to recurse down JSON tree for key " + keys[0]);
-				return;
-			}
-		}
-		
-
-		// want "partition" object
-		String[] keys = JSONObject.getNames(srcData);
-		try {
-			srcData = srcData.getJSONObject(keys[0]);
-		}	catch (JSONException e) {
-			System.out.println("Failed to recurse down JSON tree for key " + keys[0]);
-			return;
-		}
 	
+		
+		// traverse "partition_plans" object
+		traverseLevelSingle(srcData);
+		
+		
+		// have a list of plans - get the last one
+		String[] keys = JSONObject.getNames(srcData);
+		traverseLevel(srcData, keys[keys.length - 1]);
+		
+		
+		for(Integer i = 0; i < 4; ++i) {
+			traverseLevelSingle(srcData);			
+		}
+
 		String[]  partitionKeys = JSONObject.getNames(srcData);
 		for(Integer i = 0; i < partitionKeys.length; ++i) {
 			Integer partitionNo = Integer.parseInt(partitionKeys[i]);
@@ -394,36 +476,6 @@ public class Plan {
 			partitionToRanges.put(partitionNo, parseRanges(partitionRanges));
 		}
 		
-	}
 	
-	public void toJSON (String filename) throws JSONException {
-		JSONObject partitionTable = new JSONObject();
-		JSONObject planNo = new JSONObject();
-		JSONObject tablesObject = new JSONObject();		
-		JSONObject tableNameObject = new JSONObject();
-		JSONObject partitionDelimiter = new JSONObject();
-		JSONObject tableObject = new JSONObject();
-		
-		partitionTable.put("partition_plans", planNo);
-		planNo.put("1", tablesObject);
-		tablesObject.put("tables", tableNameObject);
-		tableNameObject.put("usertable", partitionDelimiter);
-		partitionDelimiter.put("partitions", tableObject);
-		
-		
-    	for(Integer partition : partitionToRanges.keySet()) {
-    		tableObject.put(partition.toString(), printPartition(partition));
-    	}
-
-    	System.out.println(partitionTable.toString(2));
-    	try {
-    		BufferedWriter output = new BufferedWriter(new FileWriter(filename));    	 
-    		output.write(partitionTable.toString(2));
-    		output.close();
-    	}
-    	catch (Exception e) {
-    		System.out.println("Failed to write partitioning plan to " + filename);
-    		return;
-    	}
 	}
 }
