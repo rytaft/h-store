@@ -60,12 +60,33 @@ public class Plan {
 
 	}
 	
-	public void addRange(Integer partition, Long from, Long to){
+	/*public void addRange(Integer partition, Long from, Long to){
+		
+		boolean suspect = false;
+		
+		if(from != to) {
+			System.out.println("Adding range " + from + "-" + to + " to " + partition);
+		}
+		else {
+			System.out.println("Adding range " + to + " to " + partition);
+		}
+		
+		if(from == 2001) {
+			suspect = true;
+		}
+		
+		
 		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
 		// find plans that intersect or are adjacent to the new range
 		Map.Entry<Long, Long> precedingFrom = ranges.floorEntry(from - 1);
 		Map.Entry<Long, Long> precedingTo = ranges.floorEntry(to + 1);
 
+		if(suspect) {
+			System.out.println("Suspect has neighbors " + precedingFrom.toString() + " and " + precedingTo.toString());
+		}
+
+		
+		
 		if (precedingFrom == null){
 			// from is smaller than any previous range
 			if (precedingTo == null){
@@ -75,8 +96,9 @@ public class Plan {
 			else{
 				// merge the two ranges
 				// first remove all ranges before precedingTo
-				ranges.headMap(precedingTo.getKey(),true).clear();
+				removeRange(partition, precedingTo.getKey());
 				ranges.put(from, Math.max(to,precedingTo.getValue()));
+				
 			}
 		}
 		else{
@@ -84,20 +106,83 @@ public class Plan {
 				// no range intersecting with this range, create a new range
 				ranges.put(from,to);
 			}
-			else{
-				// remove all ranges intersecting with (from,to) except the one preceding it 
-				ranges.subMap(precedingFrom.getKey(),false,precedingTo.getKey(),true).clear();
-				// merge
-				Long lowerBound = precedingFrom.getKey();
+			// if rhs linked with a range, lhs untouched
+			else if(from > precedingFrom.getValue() && precedingTo.getKey() < to){
+				ranges.subMap(precedingFrom.getKey(),false,precedingTo.getValue(),false).clear();
+
+				Long lowerBound = from;
 				Long upperBound = Math.max(precedingTo.getValue(), to);
-				
-				// object is immutable - replace it
-				removeRange(partition, lowerBound);
 				ranges.put(lowerBound, upperBound);
 				
 			}
-		}
-	}
+			// lhs linked w/range, rhs not
+			else if(precedingFrom.getValue() > from){
+				
+				
+			}
+			// intersects on both sides
+			else {
+				ranges.subMap(precedingFrom.getKey(),true,precedingTo.getKey(),true).clear();
+				Long lowerBound = precedingFrom.getKey();
+				Long upperBound = Math.max(precedingTo.getValue(), to);
+				ranges.put(lowerBound, upperBound);
+
+			}
+								
+		} 
+	} */
+	
+	 public void addRange(Integer partition, Long from, Long to){
+		 
+		 // temporarily expand bounds s.t. it merges with adjacent ranges
+		 Long fromTest = from - 1;
+		 Long toTest = to + 1;
+
+         TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
+         Map.Entry<Long, Long> precedingFrom = ranges.floorEntry(fromTest);
+         Map.Entry<Long, Long> precedingTo = ranges.floorEntry(toTest);
+
+          		 
+         
+         if (precedingFrom == null){
+                 // from is smaller than any previous range
+                 if (precedingTo == null){
+                         // no range intersecting with this range, create a new range
+                         ranges.put(from,to);
+                 }
+                 else{
+                         // merge the two ranges
+                         // first remove all ranges before precedingTo
+                         ranges.headMap(precedingTo.getKey(),true).clear();
+                         ranges.put(from, Math.max(to,precedingTo.getValue()));
+                 }
+         }
+         else{
+                 if(precedingTo.equals(precedingFrom) && fromTest > precedingFrom.getValue()){
+                         // no range intersecting with this range, create a new range
+                         ranges.put(from,to);
+                 }
+                 else {
+                	 
+                	 	Long lowerBound = from;
+                	 	Long upperBound = to;
+                	 	
+                	 	if(precedingFrom.getValue() >= fromTest) {
+                	 		lowerBound = Math.min(from, precedingFrom.getKey());
+                	 	}
+                	 	
+                	 	if(precedingTo.getKey() <= toTest) {
+                	 		upperBound = Math.max(to, precedingTo.getValue());
+                	 	}
+                	 	                	 	
+                     // remove all ranges intersecting with (from,to)
+                     ranges.subMap(lowerBound,true,upperBound,true).clear();
+                     // merge
+                     ranges.put(lowerBound, upperBound);                	 
+                 }
+         }
+         
+	 }
 	
 	public boolean removeRange(Integer partition, Long from){
 		return (partitionToRanges.get(partition).remove(from) == null);
@@ -146,29 +231,25 @@ public class Plan {
 	public String printPartition(Integer partition) {
 		String output = new String();
 		Boolean first = true;
+		String rangeStr = new String();
 		
 		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
 		for(Map.Entry<Long, Long> range : ranges.entrySet()){
 			if(range.getKey() == range.getValue()) {
-				if(first) {
-					output = range.getKey().toString();
-					first = false;
-				}
-				else {
-				output = output + "," + range.getKey();
-				}
+				rangeStr = range.getKey().toString();
 			}
 			else {
-				if(first) {
- 				 output = range.getKey() + "-" + range.getValue();
- 				 first = false;
-				}
-				else {
-					output = output + "," + range.getKey() + "-" + range.getValue();
-				}
+				rangeStr = range.getKey() + "-" + range.getValue();
 			}
-		
 			
+			if(!first) {
+				output = output + ",";
+			}
+			else {
+				first = false;
+			}
+			
+			output = output + rangeStr;
 		}
 
 		return output;
@@ -191,7 +272,6 @@ public class Plan {
 			 value = Long.parseLong(src);
 			 parsed.from = parsed.to = value;
 		 }
-		System.out.println("Parsed internal " + parsed.toString());
 		return parsed;
 
 	
