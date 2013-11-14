@@ -2983,8 +2983,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         
         // Enable read/write set tracking
-        //if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
-      if (hstore_conf.site.exec_readwrite_tracking ) {// Essam
+        if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
+      //if (hstore_conf.site.exec_readwrite_tracking ) {// Essam
             if (trace.val)
                 LOG.trace(String.format("%s - Enabling read/write set tracking in EE at partition %d",
                           ts, this.partitionId));
