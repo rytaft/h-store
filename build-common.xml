@@ -159,6 +159,8 @@
 <arg value="site.reconfig_async_nonchunk_pull=${site.reconfig_async_nonchunk_pull}" />
 <arg value="site.reconfig_async_nonchunk_push=${site.reconfig_async_nonchunk_push}" />
 <arg value="site.reconfig_initial_plan=${site.reconfig_initial_plan}" />
+<arg value="site.reconfig_replication_delay=${site.reconfig_replication_delay}" />
+<arg value="site.reconfig_chunk_size=${site.reconfig_chunk_size}" />
 <arg value="site.mr_map_blocking=${site.mr_map_blocking}" />
 <arg value="site.mr_reduce_blocking=${site.mr_reduce_blocking}" />
 <arg value="site.network_heartbeats_interval=${site.network_heartbeats_interval}" />

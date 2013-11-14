@@ -87,7 +87,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
     public static final int BUFFER_SIZE = 1024 * 1024 * 50;
     private final BBContainer deserializerBufferOrigin = org.voltdb.utils.DBBPool.allocateDirect(BUFFER_SIZE);
 
-    public static int DEFAULT_EXTRACT_LIMIT = BUFFER_SIZE-256;
+    public static int DEFAULT_EXTRACT_LIMIT = 1024*1024*2;
     private FastDeserializer deserializer = new FastDeserializer(deserializerBufferOrigin.b);
 
     private final BBContainer exceptionBufferOrigin = org.voltdb.utils.DBBPool.allocateDirect(1024 * 1024 * 20);
@@ -146,6 +146,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
                 deserializer.buffer(), deserializer.buffer().capacity(),
                 exceptionBuffer, exceptionBuffer.capacity());
         checkErrorCode(errorCode);
+        DEFAULT_EXTRACT_LIMIT = executor.getHStoreConf().site.reconfig_chunk_size;
         
         //LOG.info("Initialized Execution Engine");
     }
