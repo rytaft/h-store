@@ -38,6 +38,26 @@ public class Plan {
 
 	}
 	
+	boolean isEqual(Plan other) {
+		for(Integer i : partitionToRanges.keySet()) {
+			if(other.partitionToRanges.containsKey(i)) {
+				Map<Long, Long> myPartition = partitionToRanges.get(i);
+				Map<Long, Long> otherPartition = partitionToRanges.get(i);
+				for(Long l : myPartition.keySet()) {
+					if(myPartition.get(l) != otherPartition.get(l)) {
+						return false;
+					}
+				}
+			}
+			else {
+				return false;
+			}
+		}
+		
+		return true;
+	}
+	
+	
 	// creates empty plan
 	public Plan (Collection<Integer> partitions){
 		TreeMap<Long, Long> emptyRange = new TreeMap<Long,Long>();
@@ -495,7 +515,19 @@ public class Plan {
 			System.out.println("Constructing plan #" + planNo + " from " + oldPlan);
 		
 			newPlan = constructNewJSON();
-			planList.put(planNo.toString(), newPlan);
+			if(partitionKeys != null) {
+				Integer lastPlanNo = planNo - 1;
+				JSONObject lastPlan = planList.getJSONObject(lastPlanNo.toString());
+				System.out.println("Comparing " + lastPlan.toString() + " to " + newPlan.toString());
+				if(!lastPlan.toString().equals(newPlan.toString())) {
+					System.out.println("Not a duplicate!");
+					planList.put(planNo.toString(), newPlan);
+				}
+			}
+			else {
+				planList.put(planNo.toString(), newPlan);
+
+			}
 
 			partitionKeys = JSONObject.getNames(srcData.getJSONObject(PLANNED_PARTITIONS));
 			System.out.println("Concluding with " + partitionKeys.length + " entries.");
