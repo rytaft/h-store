@@ -15,10 +15,13 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
-    "reconfig-2 --partitions=2 --exp-suffix=reconfig-chunk2" \
-    "reconfig-2 --partitions=4 --exp-suffix=reconfig-chunk4" \
-    "stopcopy-2 --partitions=2 --exp-suffix=stopCopy4" \
-    "stopcopy-2 --partitions=4 --exp-suffix=stopcopy4" \
+    "reconfig-.5 --partitions=2" \
+    "reconfig-1 --partitions=2" \
+    "reconfig-2 --partitions=2" \
+    "reconfig-4 --partitions=2" \
+#    "reconfig-2 --partitions=4" \
+    "stopcopy-2 --partitions=2" \
+#    "stopcopy-2 --partitions=4" \
 )
 
 #for b in smallbank tpcc seats; do
@@ -32,7 +35,7 @@ for b in tpcc ycsb; do
         --exp-trials=1 \
         --exp-attempts=1 \        
         --no-json \
-	    --sweep-reconfiguration \
+	--sweep-reconfiguration \
         --client.interval=1000 \
         --client.output_interval=true \
         --client.duration=120000 \
