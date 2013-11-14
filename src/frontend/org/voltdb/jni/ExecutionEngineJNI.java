@@ -146,6 +146,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
                 deserializer.buffer(), deserializer.buffer().capacity(),
                 exceptionBuffer, exceptionBuffer.capacity());
         checkErrorCode(errorCode);
+        DEFAULT_EXTRACT_LIMIT = executor.getHStoreConf().site.reconfig_chunk_size;
         
         //LOG.info("Initialized Execution Engine");
     }

@@ -756,6 +756,13 @@ public final class HStoreConf {
                 experimental=true
         )
         public boolean reconfig_replication_delay;
+
+        @ConfigProperty(
+                description="The chunk size for reconfiguration ",
+                defaultInt=1024*1024*2,
+                experimental=true
+        )
+        public int reconfig_chunk_size;
         
         // ----------------------------------------------------------------------------
         // MapReduce Options
