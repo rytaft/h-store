@@ -6045,7 +6045,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     
-    public VoltTable extractPushRequst(ReconfigurationRange<? extends Comparable<?>> pushRange) {
+    public Pair<VoltTable,Boolean> extractPushRequst(ReconfigurationRange<? extends Comparable<?>> pushRange) {
         long _txnid = -1;
         // TODO Check that this range still needs to be pushed
         Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
@@ -6055,7 +6055,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             replicationDelay();
         }
         Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
-        return vt.getFirst();
+        return vt;
         
     }
     

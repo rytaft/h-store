@@ -20,6 +20,7 @@ import org.voltdb.VoltType;
 import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.messaging.FastSerializer;
+import org.voltdb.utils.Pair;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
@@ -233,10 +234,15 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             LOG.info("Pushing ranges for local PE : " + executor.getPartitionId());
                             List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges = executor.getOutgoingRanges();
                             if (outgoing_ranges != null && outgoing_ranges.size()>0) {
-                                for (ReconfigurationRange<? extends Comparable<?>> range : outgoing_ranges) {                            
-                                    VoltTable table = executor.extractPushRequst(range);
-                                    pushTuples(range.old_partition, range.new_partition, range.table_name, table, 
-                                            range.min_long,  range.max_long);
+                                for (ReconfigurationRange<? extends Comparable<?>> range : outgoing_ranges) {
+                                    boolean hasMoreData = true;
+                                    while(hasMoreData){
+                                        Pair<VoltTable,Boolean> res = executor.extractPushRequst(range);
+                                        
+                                        pushTuples(range.old_partition, range.new_partition, range.table_name, res.getFirst(), 
+                                                range.min_long,  range.max_long);
+                                        hasMoreData = res.getSecond();
+                                    }
                                 }
                             } else {
                                 LOG.info("no outgoing ranges for PE : " + executor.getPartitionId());
