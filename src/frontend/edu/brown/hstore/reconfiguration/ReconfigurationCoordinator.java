@@ -787,12 +787,17 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     }
                     // Unblock the semaphore for a blocking request
                     if (blockedRequests.containsKey(livePullId) && blockedRequests.get(livePullId) != null) {
-                        LOG.info("Unblocking the PE for the pulles request " + livePullId);
-                        blockedRequests.get(livePullId).release();
-                        if (detailed_timing) {
-                            done = System.currentTimeMillis()-start;
-                            receive-=start;
-                            LOG.info(String.format("(%s) Receive took: %s Receive + Unblock took :%s",newPartitionId, receive, done));
+                        if (moreDataNeeded){
+                            LOG.info("keeping PE blocked as more data is needed");
+                        }
+                        else { 
+                            LOG.info("Unblocking the PE for the pulles request " + livePullId);
+                            blockedRequests.get(livePullId).release();
+                            if (detailed_timing) {
+                                done = System.currentTimeMillis()-start;
+                                receive-=start;
+                                LOG.info(String.format("(%s) Receive took: %s Receive + Unblock took :%s",newPartitionId, receive, done));
+                            }
                         }
                     }
                 } catch (Exception e) {
