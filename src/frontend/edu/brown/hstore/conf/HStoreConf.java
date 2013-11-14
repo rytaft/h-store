@@ -759,10 +759,10 @@ public final class HStoreConf {
 
         @ConfigProperty(
                 description="The chunk size for reconfiguration ",
-                defaultInt=1024*1024*2,
+                defaultInt=2048,
                 experimental=true
         )
-        public int reconfig_chunk_size;
+        public int reconfig_chunk_size_kb;
         
         // ----------------------------------------------------------------------------
         // MapReduce Options

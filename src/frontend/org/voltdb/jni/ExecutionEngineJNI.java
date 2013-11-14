@@ -146,7 +146,16 @@ public class ExecutionEngineJNI extends ExecutionEngine {
                 deserializer.buffer(), deserializer.buffer().capacity(),
                 exceptionBuffer, exceptionBuffer.capacity());
         checkErrorCode(errorCode);
-        DEFAULT_EXTRACT_LIMIT = executor.getHStoreConf().site.reconfig_chunk_size;
+        DEFAULT_EXTRACT_LIMIT = executor.getHStoreConf().site.reconfig_chunk_size_kb*1024;
+        if (executor.getHStoreConf().global.reconfiguration_enable){
+            LOG.info(String.format("EE Reconfiguration enabled. Settings. "
+                    + "ChunkSize=%s (kb) ReconfigReplicationDelay=%s ChunkedAsyncPulls=%s NonChunkAsyncPull=%s NonChunkAsyncPush=%s",
+                    executor.getHStoreConf().site.reconfig_chunk_size_kb, 
+                    executor.getHStoreConf().site.reconfig_replication_delay,
+                    executor.getHStoreConf().site.reconfig_async_pull,
+                    executor.getHStoreConf().site.reconfig_async_nonchunk_pull,
+                    executor.getHStoreConf().site.reconfig_async_nonchunk_push));
+        }
         
         //LOG.info("Initialized Execution Engine");
     }
