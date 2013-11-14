@@ -781,6 +781,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
 
     if 'reconfig-tpcc-hotspot' in args['exp_type']:
+        fabric.env["client.blocking_concurrent"] = 5  # * int(partitions/8)
         fabric.env["client.count"] = 4
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
@@ -788,10 +789,10 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
-        fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
+        fabric.env["client.threads_per_host"] = partitions * 4  # max(1, int(partitions/2))
         fabric.env["benchmark.neworder_hotspot"] = True
         fabric.env["benchmark.hotspot_size"] = 1
-        fabric.env["hstore.partitions_per_site"] = 2 
+        fabric.env["hstore.partitions_per_site"] = 4 
         fabric.env["benchmark.hotspot_ops_percent"] = args['exp_type'].rsplit("-",1)[1]
 
 
