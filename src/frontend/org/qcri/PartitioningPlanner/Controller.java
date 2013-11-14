@@ -11,6 +11,7 @@ import java.util.HashMap;
 
 
 import org.qcri.PartitioningPlanner.placement.Placement;
+import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
 import org.qcri.PartitioningPlanner.placement.Plan;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
@@ -52,7 +53,8 @@ public class Controller implements Runnable {
 
 	// used HStoreTerminal as model to handle the catalog
 	public Controller (Catalog catalog){
-		algo = new Placement();
+		//algo = new Placement();
+		algo = new GreedyPlacement();
 		
 		ttExecutor = new TupleTrackerExecutor();
 		// connect to VoltDB server
