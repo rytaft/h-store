@@ -5,6 +5,7 @@ import org.qcri.PartitioningPlanner.placement.FirstFitPlacement;
 
 import edu.brown.BaseTestCase;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,6 +33,8 @@ public class TestFirstFitPlacement extends BaseTestCase {
 		Map<Integer, Long> partitionTotals = new HashMap<Integer, Long>();  // partitionID --> summed access count
 		ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>>();
 
+		File file = new File("test.txt");
+		file.delete();
 		
 		Long tuplesPerInstance = tupleCount / partitionCount;
 		Long modulusCount = tupleCount % partitionCount;
@@ -58,8 +61,8 @@ public class TestFirstFitPlacement extends BaseTestCase {
 
 		System.out.println("Starting with plan:");
 		aPlan.printPlan();
-		
-
+		aPlan.toJSON("test.txt");
+	
 		for(Integer i = 0; i < partitionCount; ++i) {
 			partitionTotals.put(i, Math.abs(generator.nextLong()) % accessRange);			
 		}
@@ -75,6 +78,7 @@ public class TestFirstFitPlacement extends BaseTestCase {
 			Long accessCount =  Math.abs(generator.nextLong()) % hotTupleRange;
 			hotTuplesList.get(tupleLocation).put(tupleId, accessCount);
 
+			System.out.println("Adding hot tuple " + tupleId + " at " + tupleLocation + " with access count " + accessCount);
 			//add capacity for partitionTotals
 			partitionTotals.put(tupleLocation, accessCount + partitionTotals.get(tupleLocation)); 		
 				
@@ -86,7 +90,7 @@ public class TestFirstFitPlacement extends BaseTestCase {
 		}
 
 		
-		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  aPlan);
+		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  "test.txt");
 
 		System.out.println("Ending with plan:");
 		aPlan.printPlan();
@@ -95,8 +99,11 @@ public class TestFirstFitPlacement extends BaseTestCase {
 		for(Integer i : partitionTotals.keySet()) {
 			System.out.println("Partition " + i + ": " + partitionTotals.get(i));
 		}
+		System.out.println("Writing to file.");
 		aPlan.toJSON("test.txt");
 
 	}
+	
+
 	
 }

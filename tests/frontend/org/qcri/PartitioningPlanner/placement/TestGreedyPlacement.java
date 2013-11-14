@@ -6,6 +6,7 @@ import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
 
 import edu.brown.BaseTestCase;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,7 +20,7 @@ public class TestGreedyPlacement extends BaseTestCase {
 	static int seed = 1024;
 	static Long hotTupleCount = 30L;
 	static Long accessRange = 1024L; 
-	static Long hotTupleRange = 128L;
+	static Long hotTupleRange = 1024L;
 
 	
     
@@ -30,6 +31,9 @@ public class TestGreedyPlacement extends BaseTestCase {
 		Random generator = new Random(seed);
 		GreedyPlacement aPlacement = new GreedyPlacement();
 
+		File file = new File("test.txt");
+		file.delete();
+	
 		Map<Integer, Long> partitionTotals = new HashMap<Integer, Long>();  // partitionID --> summed access count
 		ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>>();
 		
@@ -58,7 +62,8 @@ public class TestGreedyPlacement extends BaseTestCase {
 
 		System.out.println("Started with plan:");
 		aPlan.printPlan();
-		
+		aPlan.toJSON("test.txt");
+
 
 		for(Integer i = 0; i < partitionCount; ++i) {
 			partitionTotals.put(i, Math.abs(generator.nextLong()) % accessRange);			
@@ -72,7 +77,8 @@ public class TestGreedyPlacement extends BaseTestCase {
 
 			//add capacity for partitionTotals
 			partitionTotals.put(tupleLocation, accessCount + partitionTotals.get(tupleLocation)); 		
-				
+			System.out.println("Adding hot tuple " + tupleId + " at " + tupleLocation + " with access count " + accessCount);
+							
 		}
 
 		System.out.println("Starting with load:");
@@ -81,7 +87,7 @@ public class TestGreedyPlacement extends BaseTestCase {
 		}
 		
 
-		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  aPlan);
+		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  "test.txt");
 
 		System.out.println("Ending with plan:");
 		aPlan.printPlan();
