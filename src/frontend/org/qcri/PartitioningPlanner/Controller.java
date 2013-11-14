@@ -96,7 +96,7 @@ public class Controller implements Runnable {
 					System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
 					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt");
 					
-						currentPlan.toJSON(planFile);
+						currentPlan.toJSON("test.txt");
 					} catch(Exception e) {
 						System.out.println("Caught on exception " + e.toString());
 					}
