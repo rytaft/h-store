@@ -59,7 +59,6 @@ ReadWriteTracker::~ReadWriteTracker() {
     } // WHILE
 }
 
-<<<<<<< HEAD
 //------------------Essam Tuple Tracker
 boost::unordered_map<std::string, RowOffsets*>* ReadWriteTracker::getReads(){
 	return &reads;
