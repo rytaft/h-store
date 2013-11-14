@@ -89,14 +89,14 @@ public class Controller implements Runnable {
 					
 					try {
 						
-					ttExecutor.runTestCase(); 	
+					//ttExecutor.runTestCase(); 	
 					System.out.println("Essam Before: hotTuplesList size is " + hotTuplesList.size());	
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
 					ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
 					System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
 					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt");
 					
-						currentPlan.toJSON(planFile);
+						currentPlan.toJSON("test.txt");
 					} catch(Exception e) {
 						System.out.println("Caught on exception " + e.toString());
 					}
