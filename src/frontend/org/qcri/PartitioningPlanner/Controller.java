@@ -89,7 +89,7 @@ public class Controller implements Runnable {
 					
 					try {
 						
-					ttExecutor.runTestCase(); 	
+					//ttExecutor.runTestCase(); 	
 					System.out.println("Essam Before: hotTuplesList size is " + hotTuplesList.size());	
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
 					ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
