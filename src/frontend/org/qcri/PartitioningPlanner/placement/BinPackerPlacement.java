@@ -14,6 +14,7 @@ import java.util.Map;
 import org.qcri.PartitioningPlanner.placement.Plan;
 
 
+
 public class BinPackerPlacement extends Placement {
 
 	Long coldPartitionWidth = 1000L; // redistribute cold tuples in chunks of 1000

@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import org.gnu.glpk.GLPK;
 
 
 public class TestBinPackerPlacement extends BaseTestCase {
@@ -27,6 +26,8 @@ public class TestBinPackerPlacement extends BaseTestCase {
 	public void testBinPackerPlacement() throws Exception {
 
 		// start with an evenly distributed plan
+		System.out.println("Starting bin packer test");
+		
 		Plan aPlan = new Plan(); // start with uniform case
 		Random generator = new Random(seed);
 		BinPackerPlacement aPlacement = new BinPackerPlacement();
