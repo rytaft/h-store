@@ -155,7 +155,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
         LOG.error("TODO aysnc queue"); //TODO
         async_queue_pulls = true;
         
-        if (async_pull) {
+        if (async_queue_pulls) {
+          LOG.info("Using async queue. Disabling other async methods");
+          async_pull = false;
+          async_nonchunk_push = false;
+          async_nonchunk_pull = false;          
+        } else if (async_pull) {
             LOG.debug("Disabling nonchunked push and pull, since chunked pull is enabled");
             async_nonchunk_push = false;
             async_nonchunk_pull = false;
