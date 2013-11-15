@@ -48,7 +48,7 @@ LOG.setLevel(logging.DEBUG)
 
 def getParser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-t","--type", dest="type", choices=["cfd","boxplot","bar","line"], required=True, help="The type of graph to plot")
+    parser.add_argument("-t","--type", dest="type", choices=["cfd","boxplot","bar","line","aborts"], required=True, help="The type of graph to plot")
     
     parser.add_argument("--no-display", action="store_true", help="Do not display the graph")
     parser.add_argument("-v","--save", dest="save",  help="filename to save the generated plot")
@@ -69,6 +69,13 @@ def getParser():
     parser.add_argument("--ylabel", dest="ylabel", help="label for the y-axis")
     parser.add_argument("--xlabel", dest="xlabel", help="label for the x-axis")
     return parser
+
+def getTxnStats(txncounter_log):
+    df = pandas.DataFrame.from_csv(txncounter_log)
+    return df.sum()
+
+def getAbortedTxns(df):
+    return sum(df[['REJECTED','ABORTED','ABORT_UNEXPECTED','ABORT_GRACEFUL','ABORT_SPECULATIVE']])
 
 def getReconfigEvents(hevent_log):
     events = []
@@ -148,6 +155,15 @@ def plotResults(args, files, ax):
         if args.recursive:
             name = "%s-%s" % (name, os.path.dirname(_file).rsplit(os.path.sep,1)[1])   
             base_name = name
+	    if args.type == "aborts":
+                txnstats = getTxnStats(_file.replace("interval_res.csv", "txncounters.csv"))
+                print txnstats
+                if len(txnstats) > 0:
+                    aborts = getAbortedTxns(txnstats)
+                else:
+                    aborts = 0
+                print "aborts", name, aborts
+                color = COLORS[x % len(COLORS)]
         for show_var in args.show_vars:
             color = COLORS[x % len(COLORS)]
             linestyle = LINE_STYLES[x % len(LINE_STYLES)]
@@ -162,15 +178,17 @@ def plotResults(args, files, ax):
                 else:
                     LOG.error("Multiple reconfig events not currently supported")
                  
-            print df
+            #print df
             if args.type == "line":
                 #plot the line with the same color 
                 ax.plot(df.index, data[name], color=color,label=name,ls=linestyle, lw=2.0)
             elif args.type == "bar":
                 ax.bar(x, data[name], color=color, label=name)
+            elif args.type == "aborts":
+                ax.bar(x, aborts, color=color, label=name)
             x+=1 # FOR
     plotFrame = pandas.DataFrame(data=data)
-    if args.type == "line" or args.type == "bar":
+    if args.type == "line" or args.type == "bar" or args.type == "aborts":
         pass
         #plotFrame.plot(ax=ax )
     elif args.type == "boxplot":
