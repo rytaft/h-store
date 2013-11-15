@@ -232,6 +232,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private static final UpdateMemoryMessage STATS_WORK_MSG = new UpdateMemoryMessage();
 
     private ReconfigurationState reconfig_state;
+    
+    private Queue<ScheduleAsyncPullRequestMessage> pullQueue = new LinkedList<>();
 
     private int tempPullCounter=0;
     private int tempPullResponseCounter=0;
@@ -2294,7 +2296,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param incomingRanges
      * @return success bool
      */
-    public boolean queueInitialAsyncPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+    public boolean scheduleInitialAsyncPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info(String.format("(%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
             boolean res = true;            
@@ -2311,13 +2313,39 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             return true;
         }
     }
+
+    /**
+     * Schedule this initial list of async pull ranges that will be chunked
+     * @param incomingRanges
+     * @return success bool
+     */
+    public boolean queueInitialAsyncPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+        if (incomingRanges != null && !incomingRanges.isEmpty()) {
+            LOG.info(String.format("(%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
+            boolean res = true;            
+            for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
+                ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
+
+                pullQueue.add(scheduleAsyncPull);
+            }
+            //Schedule the first request
+            boolean success = this.work_queue.offer(pullQueue.remove()); // ,
+            if (!success)
+                res = false;
+            return res;
+        } else {
+            if (debug.val)
+                LOG.debug("No incoming ranges to request");
+            return true;
+        }
+    }
     
     /**
      * Schedule this initial list of async pull ranges that will NOT be  chunked
      * @param incomingRanges
      * @return success bool
      */
-    public boolean queueInitialAsyncNonChunkPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+    public boolean scheduleInitialAsyncNonChunkPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info("Scheduling async pull requests : " + incomingRanges.size());
             boolean res = true;
@@ -2340,7 +2368,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param outgoingRanges
      * @return
      */
-    public boolean queueInitialAsyncNonChunkPushRequests(List<ReconfigurationRange<? extends Comparable<?>>> outgoingRanges) {
+    public boolean scheduleInitialAsyncNonChunkPushRequests(List<ReconfigurationRange<? extends Comparable<?>>> outgoingRanges) {
         if (outgoingRanges != null && !outgoingRanges.isEmpty()) {
             LOG.info("Scheduling async push requests : " + outgoingRanges.size());
             boolean res = true;
@@ -5918,13 +5946,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.pulled_tuples = new HashMap<>();
             if(this.reconfiguration_coordinator.scheduleAsyncNonChunkPush()){
                 LOG.info("Scheduling nonchunked asynch pushes");
-                queueInitialAsyncNonChunkPushRequests(outgoing_ranges);
+                scheduleInitialAsyncNonChunkPushRequests(outgoing_ranges);
             }
             else if(this.reconfiguration_coordinator.scheduleAsyncNonChunkPull()){
                 LOG.info("Scheduling nonchunked asynch pulls");
-                queueInitialAsyncNonChunkPullRequests(incoming_ranges);
+                scheduleInitialAsyncNonChunkPullRequests(incoming_ranges);
             }
             else if (this.reconfiguration_coordinator.scheduleAsyncPull()){
+                LOG.info("Scheduling chunked asynch pulls");           
+                scheduleInitialAsyncPullRequests(incoming_ranges);
+            }
+            else if (this.reconfiguration_coordinator.queueAsyncPull()){
                 LOG.info("Scheduling chunked asynch pulls");           
                 queueInitialAsyncPullRequests(incoming_ranges);
             }
@@ -6012,7 +6044,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));                        
                     } else {
                         this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>
-                            (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));                        
+                            (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId)); 
+                        if (reconfiguration_coordinator.queueAsyncPull()){
+                            if (!pullQueue.isEmpty()){
+                                LOG.info("Pulling the next async live pull from the pullQueue");
+                                this.work_queue.offer(pullQueue.remove());
+                            }
+                        }
                     }
                     
                     if(this.reconfiguration_tracker.checkIfAllRangesAreMigratedIn()){

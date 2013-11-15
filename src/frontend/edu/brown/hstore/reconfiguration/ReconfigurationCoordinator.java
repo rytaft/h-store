@@ -68,6 +68,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private static boolean async_nonchunk_push = false;
     private static boolean async_nonchunk_pull = false;
     private static boolean async_pull = false;
+    private static boolean async_queue_pulls = false;
     
     // Cached list of local executors
     private List<PartitionExecutor> local_executors;
@@ -151,6 +152,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
         async_nonchunk_pull = hstore_conf.site.reconfig_async_nonchunk_pull;
         async_pull = hstore_conf.site.reconfig_async_pull;
         
+        LOG.error("TODO aysnc queue"); //TODO
+        async_queue_pulls = true;
         
         if (async_pull) {
             LOG.debug("Disabling nonchunked push and pull, since chunked pull is enabled");
@@ -1046,6 +1049,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     public boolean scheduleAsyncPull() {
         return async_pull;
+    }
+    
+    public boolean queueAsyncPull() {
+        return async_queue_pulls;
     }
     
     public void showReconfigurationProfiler() {
