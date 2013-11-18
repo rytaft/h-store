@@ -129,6 +129,8 @@ import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
 import edu.brown.hstore.Hstoreservice.LivePullRequest;
 import edu.brown.hstore.Hstoreservice.LivePullResponse;
 import edu.brown.hstore.Hstoreservice.QueryEstimate;
+import edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest;
+import edu.brown.hstore.Hstoreservice.ReconfigurationControlType;
 import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.hstore.Hstoreservice.TransactionPrefetchResult;
 import edu.brown.hstore.Hstoreservice.TransactionPrepareResponse;
@@ -234,6 +236,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private ReconfigurationState reconfig_state;
     
     private Queue<ScheduleAsyncPullRequestMessage> pullQueue = new LinkedList<>();
+    
+    private Queue<AsyncDataPullRequestMessage> requestPullQueue = new LinkedList<>();
 
     private int tempPullCounter=0;
     private int tempPullResponseCounter=0;
@@ -1414,7 +1418,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 //if(pull.getMoreDataNeeded() == false){
                 //    this.reconfiguration_coordinator.unblockingPullRequestSemaphore(pull.getAsyncPullIdentifier(), true);
                 //}
-                this.reconfiguration_coordinator.sendAcknowledgement(((AsyncDataPullResponseMessage) work).getAcknowledgingCallback());
+                ReconfigurationControlRequest acknowledgingCallback = ReconfigurationControlRequest.newBuilder().
+                		setSrcPartition(pull.getOldPartition())
+                        .setDestPartition(pull.getNewPartition())
+                        .setReconfigControlType(ReconfigurationControlType.CHUNK_RECEIVED)
+                        .setReceiverSite(pull.getSenderSite())
+                        .setMessageIdentifier(pull.getAsyncPullIdentifier()).
+                        setSenderSite(this.siteId).build();
+                this.reconfiguration_coordinator.sendAcknowledgement(acknowledgingCallback);
             } catch (Exception e) {
                 LOG.error("Exception when processing async data pull response", e);
             }
@@ -1460,8 +1471,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 pullMsg.getAsyncPullRequestCallback().run(pullResponse);
                         
                 if(moreDataNeeded){
-                    LOG.info("We have more data in the async pull to schedule");
-                    this.work_queue.offer(pullMsg);
+                    LOG.info("We have more data in the async pull to schedule. Queue the" +
+                    		"job to local  Async Queue");
+                    requestPullQueue.add(pullMsg);
+                    //this.work_queue.offer(pullMsg);
                 }
             } catch (Exception e) {
                 LOG.error("Exception when processing async data pull response", e);
@@ -3183,6 +3196,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
     
     
+    public void queueAsyncDataRequestMessageToWorkQueue(){
+    	if(!requestPullQueue.isEmpty()){
+    		LOG.info("Queuing the async data pull request into work queue");
+    		this.work_queue.offer(requestPullQueue.remove());
+    	}
+    }
     
     /**
      * Process a scheduled request to init an async data pull

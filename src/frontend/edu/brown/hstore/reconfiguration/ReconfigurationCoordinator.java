@@ -995,7 +995,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public void sendAcknowledgement(ReconfigurationControlRequest acknowledgingCallback){
         ProtoRpcController controller = new ProtoRpcController();
         LOG.error("TODO send ack if not local");//TODO
-        //channels[acknowledgingCallback.getReceiverSite()].reconfigurationControlMsg(controller, acknowledgingCallback, null);       
+        channels[acknowledgingCallback.getReceiverSite()].reconfigurationControlMsg(controller, acknowledgingCallback, null);       
+        
+    
     };
     /**
      * Deletes the tuples associated with the live Pull Id of the request processed before
@@ -1015,6 +1017,17 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 break;
             }
         }
+    }
+    
+    public void queueAsyncDataRequestMessageToWorkQueue(ReconfigurationControlRequest request){
+    	LOG.info("Chunk has been received and acknowledged. Now queue the job for extracting next chunk");
+    	for (PartitionExecutor executor : local_executors) {
+            if(request.getSrcPartition() == executor.getPartitionId()){
+            	// Call PE to get the message from the queue
+            	executor.queueAsyncDataRequestMessageToWorkQueue();
+            }
+    	}
+    	
     }
     
     public ReconfigurationState getState() {
