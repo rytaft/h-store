@@ -995,8 +995,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public void sendAcknowledgement(ReconfigurationControlRequest acknowledgingCallback){
         ProtoRpcController controller = new ProtoRpcController();
         LOG.error("TODO send ack if not local");//TODO
-        channels[acknowledgingCallback.getReceiverSite()].reconfigurationControlMsg(controller, acknowledgingCallback, null);       
-        
+        int receiverId = acknowledgingCallback.getReceiverSite();
+        if(localSiteId != receiverId){
+        	channels[receiverId].reconfigurationControlMsg(controller, acknowledgingCallback, null); 
+        } else {
+        	queueAsyncDataRequestMessageToWorkQueue(acknowledgingCallback);
+        }
     
     };
     /**
