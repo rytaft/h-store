@@ -155,7 +155,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
         LOG.error("TODO aysnc queue"); //TODO
         async_queue_pulls = true;
         
-        if (async_pull) {
+        if (async_queue_pulls) {
+          LOG.info("Using async queue. Disabling other async methods");
+          async_pull = false;
+          async_nonchunk_push = false;
+          async_nonchunk_pull = false;          
+        } else if (async_pull) {
             LOG.debug("Disabling nonchunked push and pull, since chunked pull is enabled");
             async_nonchunk_push = false;
             async_nonchunk_pull = false;
@@ -990,7 +995,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public void sendAcknowledgement(ReconfigurationControlRequest acknowledgingCallback){
         ProtoRpcController controller = new ProtoRpcController();
         LOG.error("TODO send ack if not local");//TODO
-        //channels[acknowledgingCallback.getReceiverSite()].reconfigurationControlMsg(controller, acknowledgingCallback, null);       
+        int receiverId = acknowledgingCallback.getReceiverSite();
+        if(localSiteId != receiverId){
+        	channels[receiverId].reconfigurationControlMsg(controller, acknowledgingCallback, null); 
+        } else {
+        	queueAsyncDataRequestMessageToWorkQueue(acknowledgingCallback);
+        }
+    
     };
     /**
      * Deletes the tuples associated with the live Pull Id of the request processed before
@@ -1010,6 +1021,17 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 break;
             }
         }
+    }
+    
+    public void queueAsyncDataRequestMessageToWorkQueue(ReconfigurationControlRequest request){
+    	LOG.info("Chunk has been received and acknowledged. Now queue the job for extracting next chunk");
+    	for (PartitionExecutor executor : local_executors) {
+            if(request.getSrcPartition() == executor.getPartitionId()){
+            	// Call PE to get the message from the queue
+            	executor.queueAsyncDataRequestMessageToWorkQueue();
+            }
+    	}
+    	
     }
     
     public ReconfigurationState getState() {

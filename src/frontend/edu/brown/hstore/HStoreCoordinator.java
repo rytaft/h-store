@@ -903,6 +903,10 @@ public class HStoreCoordinator implements Shutdownable {
             try{
                 if(request.getReconfigControlType() == ReconfigurationControlType.PULL_RECEIVED){
                     hstore_site.getReconfigurationCoordinator().deleteTuples(request);
+                } else if(request.getReconfigControlType() == ReconfigurationControlType.CHUNK_RECEIVED){
+                	hstore_site.getReconfigurationCoordinator().queueAsyncDataRequestMessageToWorkQueue(request);
+                	//TODO : Have to delete tuples for the chunk received messages as well
+                    //hstore_site.getReconfigurationCoordinator().deleteTuples(request);
                 } else if(request.getReconfigControlType() == ReconfigurationControlType.RECONFIGURATION_DONE) {
                     hstore_site.getReconfigurationCoordinator().leaderReceiveRemoteReconfigComplete(request.getSenderSite());
                 }  else if(request.getReconfigControlType() == ReconfigurationControlType.

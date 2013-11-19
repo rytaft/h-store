@@ -665,6 +665,10 @@ enum ReconfigurationControlType{
   //A message to acknowledge that reconfiguration has been finished from the leader 
   // so the nodes have the reconfiguration finished
   RECONFIGURATION_DONE_RECEIVED = 2;
+  // This is for the acknowledgment of the callback of the pull so
+  // that the source of the tuple can delete the chunk, it saves it 
+  // in temp buffer upto that point
+  CHUNK_RECEIVED = 3;
 }
 
 message ReconfigurationControlRequest {
