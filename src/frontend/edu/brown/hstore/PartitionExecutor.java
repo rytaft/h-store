@@ -1532,6 +1532,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // Execute Query Plan Fragments
         // -------------------------------
         else if (work instanceof WorkFragmentMessage) {
+            LOG.info(" ## WorkFragmentMessage  "); //TODO remove
             WorkFragment fragment = ((WorkFragmentMessage) work).getFragment();
             assert (fragment != null);
 
@@ -2067,6 +2068,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // If the Transaction is on the same HStoreSite, then all the 
         // input dependencies will be internal and can be retrieved locally
         if (ts instanceof LocalTransaction) {
+            LOG.info(" ## LocalTransaction  "); //TODO remove
+
             DependencyTracker txnTracker = null;
             if (ts.getBasePartition() != this.partitionId) {
                 txnTracker = hstore_site.getDependencyTracker(ts.getBasePartition());
