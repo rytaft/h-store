@@ -1397,6 +1397,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             //throw new NotImplementedException();
         }  
         else if (work instanceof ScheduleAsyncPullRequestMessage) {
+            LOG.info(String.format("(%s) Schedule async pull. Work Queue Size: %s", this.partitionId, this.work_queue.size()));
             //We have a scheduled async pull to initiate
             //this.reconfiguration_coordinator.asyncPullRequestFromPE(livePullId, txnId, callingPartition, pullRequests, pullBlockSemaphore);
             processScheduleAsyncPullRequestMessage((ScheduleAsyncPullRequestMessage)work);
