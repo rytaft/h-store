@@ -6047,7 +6047,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId)); 
                         if (reconfiguration_coordinator.queueAsyncPull()){
                             if (!pullQueue.isEmpty()){
-                                LOG.info("Pulling the next async live pull from the pullQueue");
+                                LOG.info("Pulling the next async pull from the pullQueue");
                                 this.work_queue.offer(pullQueue.remove());
                             }
                         }
