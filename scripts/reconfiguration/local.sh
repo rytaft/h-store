@@ -1,4 +1,4 @@
-confi#!/bin/bash
+#!/bin/bash
 
 # ---------------------------------------------------------------------
 
@@ -12,20 +12,14 @@ function onexit() {
 
 DATA_DIR="out"
 FABRIC_TYPE="ssh"
-FIRST_PARAM_OFFSET=1
+FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-    "reconfig-.5 --partitions=2" \
-    "reconfig-1 --partitions=2" \
-    "reconfig-2 --partitions=2" \
-    "reconfig-4 --partitions=2" \
-#    "reconfig-2 --partitions=4" \
-    "stopcopy-2 --partitions=2" \
-#    "stopcopy-2 --partitions=4" \
+    "reconfig-localhost --partitions=2" 
 )
 
 #for b in smallbank tpcc seats; do
-for b in tpcc ycsb; do
+for b in tpcc; do
 # for b in seats; do
     PARAMS=( \
         --no-update \
@@ -38,10 +32,10 @@ for b in tpcc ycsb; do
 	--sweep-reconfiguration \
         --client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=120000 \
+        --client.duration=60000 \
         --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv
-        --reconfig=95000:2:0
+        --reconfig=65000:2:0
     )
     
     i=0

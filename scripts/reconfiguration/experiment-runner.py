@@ -605,6 +605,11 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["site.exec_force_singlepartitioned"] = True
         fabric.env["site.specexec_enable"] = False
         fabric.env['global.hasher_class'] = 'edu.brown.hashing.PlannedHasher'
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.output_exec_profiling"] = "execprofile.csv"
+        fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
+        fabric.env["client.output_txn_profiling_combine"] = True
+        fabric.env["client.output_txn_counters"] = "txncounters.csv"
         if benchmark == "tpcc":
             plan_base = 'scripts/reconfiguration/plans/tpcc'
             if "benchmark_size" in args and args["benchmark_size"]:

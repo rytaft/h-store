@@ -75,7 +75,8 @@ def getTxnStats(txncounter_log):
     return df.sum()
 
 def getAbortedTxns(df):
-    return sum(df[['REJECTED','ABORTED','ABORT_UNEXPECTED','ABORT_GRACEFUL','ABORT_SPECULATIVE']])
+    #ABORTED is user
+    return sum(df[['REJECTED','ABORT_UNEXPECTED','ABORT_GRACEFUL','ABORT_SPECULATIVE']])
 
 def getReconfigEvents(hevent_log):
     events = []
@@ -117,12 +118,16 @@ def plotGraph(args):
     if args.ylabel != None:
         plot.ylabel(args.ylabel)
     else:
-        if "lat" in args.show:
+        if args.type == "aborts":
+            plot.ylabel("Aborts")
+        elif "lat" in args.show:
             plot.ylabel("Latency(ms)")
         else:
             plot.ylabel(args.show)
     if args.xlabel != None:
         plot.xlabel(args.xlabel)
+    elif args.type =="aborts":
+        plot.xlabel("")
     else:
         plot.xlabel("Elapsed Time (s)")
     
@@ -141,21 +146,71 @@ def plotGraph(args):
         plot.show()
 
 
+def plotCompare(args, files, ax):
+    LOG.info("Plot results : %s \n\n" % args)
+    dfs = [ (d, pandas.DataFrame.from_csv(d,index_col=1)) for d in files if "interval_res" in d]
+    data = {}
+    x = 0
+    if len(dfs) == 0:
+        raise Exception("No files with 'results' in name : \n %s " % ('\n  '.join(files))) 
+    for (_file, df) in dfs:
+        name = os.path.basename(_file).split("-results")[0] 
+        base_name = name
+        LOG.info("Examining file : %s with name %s "  % (_file,base_name))
+        if args.recursive:
+            name = "%s-%s" % (name, os.path.dirname(_file).rsplit(os.path.sep,1)[1])   
+            base_name = name
+	    if args.type == "aborts":
+                LOG.info("Plotting Aborts")
+                txnstats = getTxnStats(_file.replace("interval_res.csv", "txncounters.csv"))
+                print txnstats
+                if len(txnstats) > 0:
+                    aborts = getAbortedTxns(txnstats)
+                else:
+                    aborts = 0
+                print "aborts", name, aborts
+                color = COLORS[x % len(COLORS)]
+            #print df
+            if args.type == "line":
+                #plot the line with the same color 
+                ax.plot(df.index, data[name], color=color,label=name,ls=linestyle, lw=2.0)
+            elif args.type == "bar":
+                ax.bar(x, data[name], color=color, label=name)
+            elif args.type == "aborts":
+                ax.bar(x, aborts, color=color, label=name)
+            x+=1 # FOR
+    plotFrame = pandas.DataFrame(data=data)
+    if args.type == "line" or args.type == "bar" or args.type == "aborts":
+        pass
+        #plotFrame.plot(ax=ax )
+    elif args.type == "boxplot":
+        plotFrame.boxplot(ax=ax, notch=1, sym='', vert=1, whis=1.5, 
+              positions=None, widths=None, patch_artist=False, bootstrap = 5000)
+    else:
+        raise Exception("unsupported plot type : " + args.type)  
+
+    plotGraph(args)
+
 
 ## ==============================================
 ## plot aggregate results 
 ## ==============================================
 def plotResults(args, files, ax):
+    LOG.info("Plot results : %s \n\n" % args)
     dfs = [ (d, pandas.DataFrame.from_csv(d,index_col=1)) for d in files if "results" in d]
     data = {}
     x = 0
+    if len(dfs) == 0:
+        raise Exception("No files with 'results' in name : \n %s " % ('\n  '.join(files))) 
     for (_file, df) in dfs:
         name = os.path.basename(_file).split("-results")[0] 
         base_name = name
+        LOG.info("Examining file : %s with name %s "  % (_file,base_name))
         if args.recursive:
             name = "%s-%s" % (name, os.path.dirname(_file).rsplit(os.path.sep,1)[1])   
             base_name = name
 	    if args.type == "aborts":
+                LOG.info("Plotting Aborts")
                 txnstats = getTxnStats(_file.replace("interval_res.csv", "txncounters.csv"))
                 print txnstats
                 if len(txnstats) > 0:
@@ -273,7 +328,9 @@ def plotter(args, files):
     else:
         args.show_vars = [args.show]
     if args.tsd:
-        plotTSD(args, files, ax)   
+        plotTSD(args, files, ax) 
+    elif args.type == "aborts":
+        plotCompare(args, files, ax)  
     else:
         plotResults(args, files, ax)
     #LOG.debug("Files to plot %s" % (files))
