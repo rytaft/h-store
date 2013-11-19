@@ -235,9 +235,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     private ReconfigurationState reconfig_state;
     
-    private Queue<ScheduleAsyncPullRequestMessage> pullQueue = new LinkedList<>();
+    //Queue to schedule an async pull at the destination's work_queue when there is no work 
+    private Queue<ScheduleAsyncPullRequestMessage> scheduleAsyncPullQueue = new LinkedList<>();
     
-    private Queue<AsyncDataPullRequestMessage> requestPullQueue = new LinkedList<>();
+    //Queue to schedule an async pull request at the source's work_queue when there is no work 
+    private Queue<AsyncDataPullRequestMessage> asyncRequestPullQueue = new LinkedList<>();
 
     private int tempPullCounter=0;
     private int tempPullResponseCounter=0;
@@ -1106,7 +1108,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     try {
                         // If we're allowed to speculatively execute txns, then we don't want to have
                         // to wait to see if anything will show up in our work queue.
-                        if (hstore_conf.site.specexec_enable && this.lockQueue.approximateIsEmpty() == false) {
+                        if (reconfiguration_coordinator.queueAsyncPull() && this.scheduleAsyncPullQueue.isEmpty() == false) {
+                            LOG.info(" ### Pulling the next async live pull from the pullQueue. Items :  " + scheduleAsyncPullQueue.size());
+                            nextWork = scheduleAsyncPullQueue.remove();
+                        } else if (hstore_conf.site.specexec_enable && this.lockQueue.approximateIsEmpty() == false) {
                             nextWork = this.work_queue.poll();
                         } else {
                             nextWork = this.work_queue.poll(WORK_QUEUE_POLL_TIME, WORK_QUEUE_POLL_TIMEUNIT);    
@@ -1473,8 +1478,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         
                 if(moreDataNeeded){
                     LOG.info(" ### We have more data in the async pull to schedule. Queue the" +
-                    		"job to local requestPullQueue. Size : " + requestPullQueue.size());
-                    requestPullQueue.add(pullMsg);
+                    		"job to local requestPullQueue. Size : " + asyncRequestPullQueue.size());
+                    asyncRequestPullQueue.add(pullMsg);
                     //this.work_queue.offer(pullMsg);
                 }
             } catch (Exception e) {
@@ -2342,20 +2347,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             boolean res = true;            
             for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
                 ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
-
-                pullQueue.add(scheduleAsyncPull);
+                scheduleAsyncPullQueue.add(scheduleAsyncPull);
             }
-            //Schedule the first request
-            LOG.info(" ### Scheduling the first pullQueue request into the work queue");
-            boolean success = this.work_queue.offer(pullQueue.remove()); // ,
-            if (!success)
-                res = false;
-            return res;
         } else {
             if (debug.val)
                 LOG.debug("No incoming ranges to request");
-            return true;
         }
+        return true;
     }
     
     /**
@@ -3202,9 +3200,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     
     
     public void queueAsyncDataRequestMessageToWorkQueue(){
-        if(!requestPullQueue.isEmpty()){
-            LOG.info(" ### Adding the next asynch pull from requestPullQueue to the work queue. size : " + requestPullQueue.size());
-    		this.work_queue.offer(requestPullQueue.remove());
+        if(!asyncRequestPullQueue.isEmpty()){
+            LOG.info(" ### Adding the next asynch pull from requestPullQueue to the work queue. size : " + asyncRequestPullQueue.size());
+    		this.work_queue.offer(asyncRequestPullQueue.remove());
     	} else {
     	    LOG.info(" ### RequestPullQueue is empty");
     	}
@@ -6071,14 +6069,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     } else {
                         this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>
                             (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId)); 
-                        if (reconfiguration_coordinator.queueAsyncPull()){
-                            if (!pullQueue.isEmpty()){
-                                LOG.info(" ### Pulling the next async live pull from the pullQueue. Items :  " + pullQueue.size());
-                                this.work_queue.offer(pullQueue.remove());
-                            } else {
-                                LOG.info(" ### pullQueue is empty");
-                            }
-                        }
                     }
                     
                     if(this.reconfiguration_tracker.checkIfAllRangesAreMigratedIn()){
