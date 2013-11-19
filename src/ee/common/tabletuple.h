@@ -117,10 +117,11 @@ class TableTuple {
     template<std::size_t keySize> friend class GenericKey;
 
     ///Essam Tuple tracking
-     int64_t m_tupleAccessFreq;
+    // int64_t m_tupleAccessFreq;
 
 public:
     //Essam
+    /*
     inline int64_t getTupleAccessFreq() const {
             return m_tupleAccessFreq;
         }
@@ -128,6 +129,8 @@ public:
     	m_tupleAccessFreq++;
         }
     /////////////End/////////////
+    //*/
+
     /** Initialize a tuple unassociated with a table (bad idea... dangerous) */
     explicit TableTuple();
 
@@ -440,23 +443,23 @@ private:
 
 inline TableTuple::TableTuple() :
     m_schema(NULL), m_data(NULL) {
-	m_tupleAccessFreq = 0; //Essam
+
 }
 
 inline TableTuple::TableTuple(const TableTuple &rhs) :
     m_schema(rhs.m_schema), m_data(rhs.m_data) {
-	m_tupleAccessFreq = 0; //Essam
+
 }
 
 inline TableTuple::TableTuple(const TupleSchema *schema) :
     m_schema(schema), m_data(NULL) {
-	m_tupleAccessFreq = 0; //Essam
+
     assert (m_schema);
 }
 
 /** Setup the tuple given the specified data location and schema **/
 inline TableTuple::TableTuple(char *data, const voltdb::TupleSchema *schema) {
-	m_tupleAccessFreq = 0; //Essam
+	//m_tupleAccessFreq = 0; //Essam
     assert(data);
     assert(schema);
     m_data = data;
