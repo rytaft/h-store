@@ -50,7 +50,8 @@ typedef  boost::unordered_map<uint32_t, Accesses*> Map_TupleIdAccesses;
 
 
 namespace voltdb {
-    
+
+class VoltDBEngine;
 class ExecutorContext;
 class TableTuple;
 class TupleSchema;
@@ -61,7 +62,7 @@ class Table;
  */
 class TupleTrackerManager {
     public:
-	     TupleTrackerManager(ExecutorContext *ctx,int32_t partId);
+	     TupleTrackerManager(ExecutorContext *ctx,int32_t partId, VoltDBEngine* vEng);
         ~TupleTrackerManager();
     
         void insertReadWriteTracker(ReadWriteTracker* rwtracker);
@@ -76,6 +77,7 @@ class TupleTrackerManager {
         void eraseTupleTrackingInfo();
         void extractTupleTrackingInfo();
         void sortTupleTrackingInfo();
+        int getPrimaryKey(std::string tableName,uint32_t tupleId);
         void insertTupleAccesses(boost::unordered_map<std::string, RowOffsets*> *map, int64_t txnId);
         void insertTuple(int64_t txnId, const std::string tableName, uint32_t tupleId);
         
@@ -100,6 +102,7 @@ class TupleTrackerManager {
         std::vector<TupleTrackingInfo> v_tupleTrackingInfo ; // tuple tracking info per partition
 
         int32_t partitionId;
+        VoltDBEngine* voltDBEngine;
 
 }; // CLASS
 

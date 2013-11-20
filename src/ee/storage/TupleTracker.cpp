@@ -7,6 +7,8 @@
 #include "common/ValueFactory.hpp"
 #include "storage/TupleTracker.h"
 #include "storage/tablefactory.h"
+#include "storage/table.h"
+#include "execution/VoltDBEngine.h"
 #include <algorithm>
 #include <cassert>
 
@@ -18,8 +20,8 @@ namespace voltdb {
 int64_t TupleTrackerManager::summedAccessFreq;
 // -------------------------------------------------------------------------
 
-TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx,int32_t partId) :
-		executorContext(ctx),partitionId(partId) {
+TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx,int32_t partId,VoltDBEngine* vEng) :
+		executorContext(ctx),partitionId(partId),voltDBEngine(vEng) {
     CatalogId databaseId = 1;
     this->resultSchema = TupleSchema::createTrackerTupleSchema();
     
@@ -78,7 +80,27 @@ void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, 
 
 }
 
+int TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tupleId){
 
+	Table* table = voltDBEngine->getTable(tableName);
+
+	//TableTuple tuple = TableTuple(table->schema());
+
+	//tuple.move(table->dataPtrForTuple(tupleId));
+
+	TableIndex *m_index = table->primaryKeyIndex();
+
+	std::vector<int> column_indices_vector = m_index->getColumnIndices();
+
+	int colCount = (int)column_indices_vector.size();
+
+	if (colCount < tupleId)
+		return -1;
+
+
+	return column_indices_vector[tupleId];
+
+}
 
 void TupleTrackerManager::insertTuple(int64_t txnId, std::string tableName, uint32_t tupleId){
 	   //*/
@@ -211,7 +233,7 @@ void TupleTrackerManager::getTopKPerPart(int k){
 	while (iter != v_tupleTrackingInfo.end() && i < k) {
 
 		HTfile << iter->tableName<<"\t";
-		HTfile << iter->tupleID<<"\t";
+		HTfile << iter->tupleID<<"("<<getPrimaryKey(iter->tableName,iter->tupleID)<<")"<<"\t";
 		HTfile << iter->frequency<<"\n";
 		i++;
 		iter++;

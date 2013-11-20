@@ -236,11 +236,11 @@ namespace voltdb {
                 /**
                  * Essam Enable the tuple tracking feature in the EE.
                  */
-                void enableTupleTracking(int32_t partId) {
+                void enableTupleTracking(int32_t partId, VoltDBEngine* vEng) {
                     assert(m_tupleTrackingEnabled == false);
                     // enableTracking();
                     m_tupleTrackingEnabled = true;
-                    m_tupleTrackingManager = new TupleTrackerManager(this,partId);
+                    m_tupleTrackingManager = new TupleTrackerManager(this,partId,vEng);
                 }
 
 
