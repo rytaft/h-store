@@ -61,6 +61,7 @@ import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
@@ -240,6 +241,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     
     //Queue to schedule an async pull request at the source's work_queue when there is no work 
     private Queue<AsyncDataPullRequestMessage> asyncRequestPullQueue = new LinkedList<>();
+    
+    //Only schedule on async pull at a time
+    private AtomicBoolean asyncOutstanding = new AtomicBoolean(false);
 
     private int tempPullCounter=0;
     private int tempPullResponseCounter=0;
@@ -1109,12 +1113,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     try {
                         // If we're allowed to speculatively execute txns, then we don't want to have
                         // to wait to see if anything will show up in our work queue.
-                        if (reconfiguration_coordinator.queueAsyncPull() && this.scheduleAsyncPullQueue.isEmpty() == false) {
-                            nextWork = this.work_queue.poll(WORK_QUEUE_POLL_TIME, WORK_QUEUE_POLL_TIMEUNIT);    
-                            if (nextWork == null){
+                        if (reconfiguration_coordinator.getReconfigurationInProgress() && asyncOutstanding.get() == false && 
+                                reconfiguration_coordinator.queueAsyncPull() && this.scheduleAsyncPullQueue.isEmpty() == false) {
+                            //nextWork = this.work_queue.poll(WORK_QUEUE_POLL_TIME, WORK_QUEUE_POLL_TIMEUNIT);    
+                            //if (nextWork == null){
                                 LOG.info(" ### Pulling the next async pull from the scheduleAsyncPullQueue. Items :  " + scheduleAsyncPullQueue.size());
                                 nextWork = scheduleAsyncPullQueue.remove();
-                            }
+                                asyncOutstanding.set(true);
+                            //}
                         } else if (hstore_conf.site.specexec_enable && this.lockQueue.approximateIsEmpty() == false) {
                             nextWork = this.work_queue.poll();
                         } else {
@@ -6072,7 +6078,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));                        
                     } else {
                         this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>
-                            (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId)); 
+                            (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
+                        if(isAsyncRequest){
+                            LOG.info("Last chunk received for async request, unsetting async in progress");
+                            asyncOutstanding.set(false);
+                        }
                     }
                     
                     if(this.reconfiguration_tracker.checkIfAllRangesAreMigratedIn()){
