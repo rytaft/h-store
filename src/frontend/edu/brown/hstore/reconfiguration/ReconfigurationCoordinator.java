@@ -148,13 +148,16 @@ public class ReconfigurationCoordinator implements Shutdownable {
         dataPullResponseTimes = new HashMap<>(); 
         
         detailed_timing = hstore_conf.site.reconfig_detailed_profiling;
+        /*
         async_nonchunk_push = hstore_conf.site.reconfig_async_nonchunk_push;
         async_nonchunk_pull = hstore_conf.site.reconfig_async_nonchunk_pull;
         async_pull = hstore_conf.site.reconfig_async_pull;
         
         LOG.error("TODO aysnc queue"); //TODO
-        async_queue_pulls = true;
         
+     
+        async_queue_pulls = true;
+
         if (async_queue_pulls) {
           LOG.info("Using async queue. Disabling other async methods");
           async_pull = false;
@@ -169,7 +172,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 LOG.warn("Async push and pull both set. Disabling async_push");
                 async_nonchunk_push = false;
             }
-        
+        */
         LOG.info(String.format("Reconfig configuration. DetailedTiming: %s AsyncPush:%s AysncPull:%s", 
                 detailed_timing, async_nonchunk_push, async_nonchunk_pull));
         

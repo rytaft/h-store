@@ -3474,6 +3474,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                                int input_depIds[],
                                                Map<Integer, List<VoltTable>> input_deps) {
         assert(this.ee != null) : "The EE object is null. This is bad!";
+
+        if (this.hstore_site.getReconfigurationCoordinator().getReconfigurationInProgress()) {
+            checkReconfigurationTracking(fragmentIds, parameterSets);
+        }
+
+        
         Long txn_id = ts.getTransactionId();
 
         // *********************************** DEBUG ***********************************
