@@ -228,18 +228,25 @@ void TupleTrackerManager::getTopKPerPart(int k){
 	fileName=ss2.str();
 	HTfile.open (fileName.c_str());
 
+	std::vector<TupleTrackingInfo>::const_iterator iter = v_tupleTrackingInfo.begin();
+	int ratio = 100; // %1
+	long int kk = (v_tupleTrackingInfo.size()/ratio + (v_tupleTrackingInfo.size() % ratio != 0));
+
     //header first line
+	HTfile << " k = " << kk<<"\n";
 	HTfile << " |Table Name";
 	HTfile << " |Tuple ID";
 	HTfile << " |Frequency|";
 	HTfile << "\n";
 
 
-	std::vector<TupleTrackingInfo>::const_iterator iter = v_tupleTrackingInfo.begin();
+
+
+
 
 	// print top k in myfile1
 	int i = 0;
-	while (iter != v_tupleTrackingInfo.end() && i < k) {
+	while (iter != v_tupleTrackingInfo.end() && i < kk) {
 
 		HTfile << iter->tableName<<"\t";
 		HTfile << iter->tupleID<<"("<<getPrimaryKey(iter->tableName,iter->tupleID)<<")"<<"\t";
