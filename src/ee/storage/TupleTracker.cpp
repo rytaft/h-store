@@ -92,14 +92,23 @@ int TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tupleId){
 
 	std::vector<int> column_indices_vector = m_index->getColumnIndices();
 
+	std::vector<int>::iterator it;
+
+	it = std::find(column_indices_vector.begin(), column_indices_vector.end(), tupleId);
+
+	return (int) std:: distance(column_indices_vector.begin(), it);
+
+	/*
 	int colCount = (int)column_indices_vector.size();
+
+
 
 	if (colCount < tupleId)
 		return -1;
 
 
 	return column_indices_vector[tupleId];
-
+   //*/
 }
 
 void TupleTrackerManager::insertTuple(int64_t txnId, std::string tableName, uint32_t tupleId){
