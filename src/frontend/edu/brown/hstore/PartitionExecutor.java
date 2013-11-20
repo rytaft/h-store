@@ -1078,6 +1078,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     // If we get something back here, then it should become our
                     // current transaction.
                     if (nextTxn != null) {
+                        LOG.info("nextTxn != null");
                         // If this a single-partition txn, then we'll want to
                         // execute it right away
                         if (nextTxn.isPredictSinglePartition()) {
@@ -1109,8 +1110,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         // If we're allowed to speculatively execute txns, then we don't want to have
                         // to wait to see if anything will show up in our work queue.
                         if (reconfiguration_coordinator.queueAsyncPull() && this.scheduleAsyncPullQueue.isEmpty() == false) {
-                            LOG.info(" ### Pulling the next async live pull from the pullQueue. Items :  " + scheduleAsyncPullQueue.size());
-                            nextWork = scheduleAsyncPullQueue.remove();
+                            nextWork = this.work_queue.poll(WORK_QUEUE_POLL_TIME, WORK_QUEUE_POLL_TIMEUNIT);    
+                            if (nextWork == null){
+                                LOG.info(" ### Pulling the next async pull from the scheduleAsyncPullQueue. Items :  " + scheduleAsyncPullQueue.size());
+                                nextWork = scheduleAsyncPullQueue.remove();
+                            }
                         } else if (hstore_conf.site.specexec_enable && this.lockQueue.approximateIsEmpty() == false) {
                             nextWork = this.work_queue.poll();
                         } else {
