@@ -3,6 +3,7 @@ package edu.brown.hstore.reconfiguration;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -649,7 +650,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param callingPartition
      * @param pullRequests
      */
-    public void pullRangesNonBlocking(int livePullId, long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests) {
+    public void pullRangesNonBlocking(int livePullId, long txnId, int callingPartition, Collection<ReconfigurationRange<? extends Comparable<?>>> pullRequests) {
         pullRanges(livePullId, txnId, callingPartition, pullRequests, null);
     }
 
@@ -663,7 +664,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param blockingSemaphore
      */
     public void pullRanges(int livePullId, 
-            long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests, Semaphore blockingSemaphore){
+            long txnId, int callingPartition, Collection<ReconfigurationRange<? extends Comparable<?>>> pullRequests, Semaphore blockingSemaphore){
         try {
             blockingSemaphore.acquire(pullRequests.size());
         } catch (InterruptedException e) {

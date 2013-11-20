@@ -9,20 +9,15 @@ import edu.brown.hstore.Hstoreservice.LivePullResponse;
 import edu.brown.hstore.txns.AbstractTransaction;
 import edu.brown.profilers.ProfileMeasurement;
 
-public class LivePullRequestMessage extends InternalTxnMessage {
+public class LivePullRequestMessage extends InternalMessage {
 
     LivePullRequest livePullRequest;
     RpcCallback<LivePullResponse> livePullResponseCallback;
     private long startTime;
-    private boolean recordTime;
 
-    public LivePullRequestMessage(AbstractTransaction ts, LivePullRequest livePullRequest, RpcCallback<LivePullResponse> livePullResponseCallback, boolean recordTime) {
-        // TODO : Check whether null can be passed
-        super(ts);
-        this.recordTime = recordTime;
-        if (recordTime)
-            startTime = ProfileMeasurement.getTime();
-
+    public LivePullRequestMessage(LivePullRequest livePullRequest, RpcCallback<LivePullResponse> livePullResponseCallback) {
+        super();
+        this.startTime = System.currentTimeMillis();
         this.livePullRequest = livePullRequest;
         this.livePullResponseCallback = livePullResponseCallback;
     }
@@ -37,13 +32,8 @@ public class LivePullRequestMessage extends InternalTxnMessage {
         return (this.livePullResponseCallback);
     }
 
-
-
-    public synchronized long getStartTime() {
-        if(recordTime)
-            return startTime;
-        else
-            throw new NotImplementedException("No implementation for recorded without time");
+    public long getStartTime() {
+        return startTime;
     }
 
 }

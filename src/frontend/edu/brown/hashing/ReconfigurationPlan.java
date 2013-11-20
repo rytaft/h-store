@@ -263,7 +263,52 @@ public class ReconfigurationPlan {
         @SuppressWarnings("unchecked")
         public <T> T castKey(Comparable<?> key){
             return (T)key;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((max_long == null) ? 0 : max_long.hashCode());
+            result = prime * result + ((min_long == null) ? 0 : min_long.hashCode());
+            result = prime * result + new_partition;
+            result = prime * result + old_partition;
+            result = prime * result + ((table_name == null) ? 0 : table_name.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            ReconfigurationRange other = (ReconfigurationRange) obj;
+            if (max_long == null) {
+                if (other.max_long != null)
+                    return false;
+            } else if (!max_long.equals(other.max_long))
+                return false;
+            if (min_long == null) {
+                if (other.min_long != null)
+                    return false;
+            } else if (!min_long.equals(other.min_long))
+                return false;
+            if (new_partition != other.new_partition)
+                return false;
+            if (old_partition != other.old_partition)
+                return false;
+            if (table_name == null) {
+                if (other.table_name != null)
+                    return false;
+            } else if (!table_name.equals(other.table_name))
+                return false;
+            return true;
         }  
+        
+        
       }
       
 

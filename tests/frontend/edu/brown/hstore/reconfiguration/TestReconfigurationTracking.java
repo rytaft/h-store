@@ -2,7 +2,9 @@ package edu.brown.hstore.reconfiguration;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.Test;
 import org.voltdb.VoltType;
@@ -74,6 +76,7 @@ public class TestReconfigurationTracking extends BaseTestCase {
         super();
     }
     
+    @SuppressWarnings("unchecked")
     @Test
     public void testTrackReconfigurationRange() throws Exception{
         PlannedPartitions p = new PlannedPartitions(catalogContext, json_path);
@@ -113,7 +116,7 @@ public class TestReconfigurationTracking extends BaseTestCase {
         assertNotNull(ex);
         assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_NOT_MIGRATED,ex.exceptionType);        
         assertTrue(ex.dataNotYetMigrated.size()== 1);
-        ReconfigurationRange<Long> range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.get(0);
+        ReconfigurationRange<Long> range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.toArray()[0];
         assertTrue(range.getMin_inclusive() ==  110L && range.getMax_exclusive() == 110L);
         
         //source still has the key
@@ -129,7 +132,7 @@ public class TestReconfigurationTracking extends BaseTestCase {
         }
         assertNotNull(ex);
         assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_MIGRATED_OUT,ex.exceptionType);         
-        range = (ReconfigurationRange<Long>) ex.dataMigratedOut.get(0);
+        range = (ReconfigurationRange<Long>) ex.dataMigratedOut.toArray()[0];//.get(0);
         assertTrue(range.getMin_inclusive() ==  104L && range.getMax_exclusive() == 104L); 
         
         
@@ -141,7 +144,7 @@ public class TestReconfigurationTracking extends BaseTestCase {
           ex =e;
         }
         assertEquals(ExceptionTypes.TUPLES_NOT_MIGRATED, ex.exceptionType);         
-        range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.get(0);
+        range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.toArray()[0];
         assertTrue(range.getMin_inclusive() ==  371L && range.getMax_exclusive() == 371L); 
                 
         //Testing an existing range split
@@ -163,7 +166,7 @@ public class TestReconfigurationTracking extends BaseTestCase {
           ex =e;
         }
         assertEquals(ExceptionTypes.TUPLES_NOT_MIGRATED, ex.exceptionType);         
-        range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.get(0);
+        range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.toArray()[0];
         assertTrue(range.getMin_inclusive() ==  365L && range.getMax_exclusive() == 365L);  
         
         ex = null;
@@ -173,7 +176,7 @@ public class TestReconfigurationTracking extends BaseTestCase {
           ex =e;
         }
         assertEquals(ExceptionTypes.TUPLES_NOT_MIGRATED, ex.exceptionType);         
-        range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.get(0);
+        range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.toArray()[0];
         assertTrue(range.getMin_inclusive() ==  369L && range.getMax_exclusive() == 369L);  
         
         
@@ -187,7 +190,7 @@ public class TestReconfigurationTracking extends BaseTestCase {
           ex =e;
         }
         assertEquals(ExceptionTypes.TUPLES_NOT_MIGRATED, ex.exceptionType);         
-        range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.get(0);
+        range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.toArray()[0];
         assertTrue(range.getMin_inclusive() ==  390L && range.getMax_exclusive() == 390L);
         assertEquals(3, range.old_partition);
         
@@ -205,6 +208,7 @@ public class TestReconfigurationTracking extends BaseTestCase {
 
     }
     
+    @SuppressWarnings("unchecked")
     @Test
     public void testTrackReconfigurationKey() throws Exception{
         PlannedPartitions p = new PlannedPartitions(catalogContext, json_path);
@@ -235,7 +239,7 @@ public class TestReconfigurationTracking extends BaseTestCase {
         assertNotNull(ex);
         assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_NOT_MIGRATED,ex.exceptionType);        
         assertTrue(ex.dataNotYetMigrated.size()== 1);
-        ReconfigurationRange<Long> range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.get(0);
+        ReconfigurationRange<Long> range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.toArray()[0];
         assertTrue(range.getMin_inclusive() ==  100L && range.getMax_exclusive() == 100L); 
         
         //'migrate key'
@@ -257,11 +261,12 @@ public class TestReconfigurationTracking extends BaseTestCase {
         assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_MIGRATED_OUT,ex.exceptionType);        
         assertTrue(ex.dataNotYetMigrated.size()== 0);
         assertTrue(ex.dataMigratedOut.size()== 1);
-        range = (ReconfigurationRange<Long>) ex.dataMigratedOut.get(0);
+        range = (ReconfigurationRange<Long>) ex.dataMigratedOut.toArray()[0];
         assertTrue(range.getMin_inclusive() ==  100L && range.getMax_exclusive() == 100L); 
         
 
         //check table 2
+        Set<ReconfigurationRange<? extends Comparable<?>>> pulls = new HashSet<>();
         assertTrue(tracking3.checkKeyOwned("table2", 1L));
         ex = null;
         try{
@@ -272,8 +277,24 @@ public class TestReconfigurationTracking extends BaseTestCase {
         assertNotNull(ex);
         assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_NOT_MIGRATED,ex.exceptionType);        
         assertTrue(ex.dataNotYetMigrated.size()== 1);
-        range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.get(0);
+        range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.toArray()[0];
         assertTrue(range.getMin_inclusive() ==  1L && range.getMax_exclusive() == 1L);
+        pulls.add(range);
+        pulls.add(range);
+        assertEquals(pulls.size(),1);
+        
+        ex = null;
+        try{
+            tracking4.checkKeyOwned("table2", 1L);
+        } catch(ReconfigurationException e){
+          ex =e;  
+        }
+        range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.toArray()[0];
+        pulls.add(range);
+        
+        assertEquals(pulls.size(),1);
+        
+        
         
         tracking3.markKeyAsMigratedOut("table2", 1L);
         tracking4.markKeyAsReceived("table2", 1L);
@@ -289,7 +310,7 @@ public class TestReconfigurationTracking extends BaseTestCase {
         assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_MIGRATED_OUT,ex.exceptionType);        
         assertTrue(ex.dataNotYetMigrated.size()== 0);
         assertTrue(ex.dataMigratedOut.size()== 1);
-        range = (ReconfigurationRange<Long>) ex.dataMigratedOut.get(0);  
+        range = (ReconfigurationRange<Long>) ex.dataMigratedOut.toArray()[0];
         assertTrue(range.getMin_inclusive() ==  1L && range.getMax_exclusive() == 1L);      
         
 

@@ -1,12 +1,12 @@
 package org.voltdb.exceptions;
 
-import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.voltdb.VoltType;
-import org.voltdb.utils.VoltTypeUtil;
 
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
@@ -26,8 +26,8 @@ public class ReconfigurationException extends SerializableException {
     };
 
     public ExceptionTypes exceptionType;
-    public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut = null;
-    public List<ReconfigurationRange<? extends Comparable<?>>> dataNotYetMigrated = null;
+    public Set<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut = null;
+    public Set<ReconfigurationRange<? extends Comparable<?>>> dataNotYetMigrated = null;
 
     public ReconfigurationException(ReconfigurationProtocols reconfigurationProtocols) {
         this.reconfigurationProtocols = reconfigurationProtocols;
@@ -46,8 +46,10 @@ public class ReconfigurationException extends SerializableException {
 
     public ReconfigurationException(List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut, List<ReconfigurationRange<? extends Comparable<?>>> dataNotYetMigrated) {
         super();
-        this.dataMigratedOut = dataMigratedOut;
-        this.dataNotYetMigrated = dataNotYetMigrated;
+        this.dataMigratedOut = new HashSet<>();
+        this.dataMigratedOut.addAll(dataMigratedOut);
+        this.dataNotYetMigrated = new HashSet<>();
+        this.dataNotYetMigrated.addAll(dataNotYetMigrated);
         if (dataMigratedOut != null && dataMigratedOut.size() > 0 && dataNotYetMigrated != null && dataMigratedOut.size() > 0) {
             this.exceptionType = ExceptionTypes.BOTH;
         } else if (dataMigratedOut != null && dataMigratedOut.size() > 0) {
@@ -67,11 +69,13 @@ public class ReconfigurationException extends SerializableException {
         keys.add(range);
         this.exceptionType = exceptionType;
         if (exceptionType == ExceptionTypes.TUPLES_NOT_MIGRATED) {
-            dataNotYetMigrated = keys;
-            dataMigratedOut = new ArrayList<>();
+            dataNotYetMigrated = new HashSet<>();
+            dataNotYetMigrated.addAll(keys);
+            dataMigratedOut = new HashSet<>();
         } else if (exceptionType == ExceptionTypes.TUPLES_MIGRATED_OUT) {
-            dataMigratedOut = keys;
-            dataNotYetMigrated = new ArrayList<>();
+            dataMigratedOut = new HashSet<>();
+            dataMigratedOut.addAll(keys);
+            dataNotYetMigrated = new HashSet<>();
         } else
             throw new NotImplementedException("ExceptionType for single key not supported " + exceptionType);
 

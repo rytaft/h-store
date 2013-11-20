@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.CountDownLatch;
@@ -1082,7 +1083,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     // If we get something back here, then it should become our
                     // current transaction.
                     if (nextTxn != null) {
-                        LOG.info("nextTxn != null");
                         // If this a single-partition txn, then we'll want to
                         // execute it right away
                         if (nextTxn.isPredictSinglePartition()) {
@@ -1499,6 +1499,20 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
             
         }
+
+        // Pull Request Message
+        else if (work instanceof LivePullRequestMessage) {
+            // Process the pull request
+            LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
+            if(hstore_conf.site.reconfig_profiling){
+                this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.appendTime(livePullRequestMessage.getStartTime(), ProfileMeasurement.getTime());
+                if(tempPullResponseCounter++%100==0)
+                    LOG.info(String.format("Avg live pull response queue Time MS %s Count:%s ",
+                            this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getAverageThinkTimeMS(),
+                            this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getInvocations()));
+            }
+            processLivePullRequestMessage(livePullRequestMessage);
+        }
         // -------------------------------
         // BAD MOJO!
         // -------------------------------
@@ -1550,7 +1564,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // Execute Query Plan Fragments
         // -------------------------------
         else if (work instanceof WorkFragmentMessage) {
-            LOG.info(" ## WorkFragmentMessage  "); //TODO remove
             WorkFragment fragment = ((WorkFragmentMessage) work).getFragment();
             assert (fragment != null);
 
@@ -1634,19 +1647,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             } else {
                 this.setCurrentDtxn(((SetDistributedTxnMessage) work).getTransaction());
             }
-        }
-        // Pull Request Message
-        else if (work instanceof LivePullRequestMessage) {
-            // Process the pull request
-            LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
-            if(hstore_conf.site.reconfig_profiling){
-                this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.appendTime(livePullRequestMessage.getStartTime(), ProfileMeasurement.getTime());
-                if(tempPullResponseCounter++%100==0)
-                    LOG.info(String.format("Avg live pull response queue Time MS %s Count:%s ",
-                            this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getAverageThinkTimeMS(),
-                            this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getInvocations()));
-            }
-            processLivePullRequestMessage(livePullRequestMessage);
         }
 
     }
@@ -2086,8 +2086,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // If the Transaction is on the same HStoreSite, then all the 
         // input dependencies will be internal and can be retrieved locally
         if (ts instanceof LocalTransaction) {
-            LOG.info(" ## LocalTransaction  "); //TODO remove
-
             DependencyTracker txnTracker = null;
             if (ts.getBasePartition() != this.partitionId) {
                 txnTracker = hstore_site.getDependencyTracker(ts.getBasePartition());
@@ -2430,7 +2428,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      */
     public boolean queueLivePullRequest(LivePullRequest livePullRequest, RpcCallback<LivePullResponse> livePullResponseCallback) {
         //TODO AE refactor, can we embed the livepull request into the msg and process then? 
-
+        LOG.info(String.format("(%d) queueLivePullRequest : %s", this.partitionId, livePullRequest));
         assert (livePullRequest.isInitialized()) : "Unexpected uninitialized live Pull Request";
         // Make a dummy transaction with dummy parameters and only transaction
         // Id initiated and
@@ -2449,10 +2447,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         ParameterSet parameterSet = new ParameterSet();
         RpcCallback<ClientResponseImpl> dummyCallback = null;
         localTransaction.init(transactionId, initiateTime, clientHandle, 0, partitionSet, false, false, procedure, parameterSet, dummyCallback);
-        LivePullRequestMessage livePullRequestMessage = new LivePullRequestMessage(localTransaction, livePullRequest, livePullResponseCallback, hstore_conf.site.reconfig_profiling);
+        LivePullRequestMessage livePullRequestMessage = new LivePullRequestMessage(livePullRequest, livePullResponseCallback);
         boolean success = this.work_queue.offer(livePullRequestMessage); // ,
                                                                          // true);
-        assert (success) : String.format("Failed to queue %s at partition %d for %s", livePullRequestMessage, this.partitionId, livePullRequestMessage.getTransactionId());
+        assert (success) : String.format("Failed to queue %s at partition %d ", livePullRequestMessage, this.partitionId);
         return success;
     }
 
@@ -3138,7 +3136,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public void processLivePullRequestMessage(LivePullRequestMessage livePullRequestMessage) {
         LivePullRequest livePullRequest = livePullRequestMessage.getLivePullRequest();
         LOG.info("Processing Live pull request :" + livePullRequest.getLivePullIdentifier() );
-
+        LOG.error(" * ************* LEFTOFF" );
         boolean moreDataNeeded = true;
         int chunkId = 0;
         while(moreDataNeeded) {
@@ -3639,8 +3637,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // migrated)
 
         // Get all the fragments
-        List<ReconfigurationRange<? extends Comparable<?>>> pullRequestsNeeded = new ArrayList<>();
-        List<ReconfigurationRange<? extends Comparable<?>>> restartsNeeded = new ArrayList<>();
+        Set<ReconfigurationRange<? extends Comparable<?>>> pullRequestsNeeded = new HashSet<>();
+        Set<ReconfigurationRange<? extends Comparable<?>>> restartsNeeded = new HashSet<>();
 
         for (int i = 0; i < fragmentIds.length; i++) {
             // Calls andy's methods for calculaitng the offsets
@@ -3653,7 +3651,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     // FIXME make generic
                     if (trace.val)
                         LOG.trace(String.format("PE (%s) checking if key owned", this.partitionId));
-                    boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), (Long) parameterToCheck);
+                    boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), parameterToCheck);
                     if (trace.val)
                         LOG.trace("Key owned " + keyOwned);
                     // Check with the reconfig tracking function if the values
@@ -3662,7 +3660,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         LOG.trace("Parameter " + parameterToCheck.toString() + " " + keyOwned);
                 } catch (ReconfigurationException rex) {
                     // A reconfigurationException was thrown for this key
-                    LOG.info("Exception thrown from reconfig check" + rex.toString(), rex);
+                    LOG.info(String.format("(%d) Exception thrown from reconfig check : %s ", this.partitionId, rex.toString()));
 
                     // Store the type of reconfigurationRange
                     if (rex.exceptionType == ExceptionTypes.TUPLES_MIGRATED_OUT || rex.exceptionType == ExceptionTypes.BOTH) {
