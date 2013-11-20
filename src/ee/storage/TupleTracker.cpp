@@ -233,7 +233,7 @@ void TupleTrackerManager::getTopKPerPart(int k){
 	long int kk = (v_tupleTrackingInfo.size()/ratio + (v_tupleTrackingInfo.size() % ratio != 0));
 
     //header first line
-	HTfile << " k = " << kk<<"\n";
+	HTfile << " k = " << kk<<" of "<<v_tupleTrackingInfo.size()<<"\n";
 	HTfile << " |Table Name";
 	HTfile << " |Tuple ID";
 	HTfile << " |Frequency|";
