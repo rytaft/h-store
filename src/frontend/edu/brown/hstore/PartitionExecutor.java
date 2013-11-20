@@ -1117,11 +1117,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                 reconfiguration_coordinator.queueAsyncPull() && this.scheduleAsyncPullQueue.isEmpty() == false) {
                             //nextWork = this.work_queue.poll(WORK_QUEUE_POLL_TIME, WORK_QUEUE_POLL_TIMEUNIT);    
                             //if (nextWork == null){
-                                LOG.info(" ### Pulling the next async pull from the scheduleAsyncPullQueue. Items :  " + scheduleAsyncPullQueue.size());
-                                nextWork = scheduleAsyncPullQueue.remove();
+                                LOG.info(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue. Items :  " + scheduleAsyncPullQueue.size());
+                                this.work_queue.offer(scheduleAsyncPullQueue.remove());
                                 asyncOutstanding.set(true);
                             //}
-                        } else if (hstore_conf.site.specexec_enable && this.lockQueue.approximateIsEmpty() == false) {
+                        } 
+                        
+                        if (hstore_conf.site.specexec_enable && this.lockQueue.approximateIsEmpty() == false) {
                             nextWork = this.work_queue.poll();
                         } else {
                             nextWork = this.work_queue.poll(WORK_QUEUE_POLL_TIME, WORK_QUEUE_POLL_TIMEUNIT);    
