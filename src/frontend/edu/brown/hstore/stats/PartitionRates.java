@@ -51,6 +51,9 @@ public class PartitionRates extends StatsSource {
 	private Timer timer;
 	private FastIntHistogram[] accessesTable = new FastIntHistogram[TABLE_SIZE];
 	private int currPosTable = 0;
+	int[] localPartitions = new int [numberOfPartitions];
+	int numberOfLocalPartitions;
+
 	
 	public PartitionRates(CatalogContext catalog, int siteId){
 		super(SysProcSelector.PARTITIONRATES.name(), false);
@@ -62,16 +65,15 @@ public class PartitionRates extends StatsSource {
 //			affinityMatrix[i] = new FastIntHistogram(false,numberOfPartitions);
 //		}
 
-//		localPartitions = new int [numberOfPartitions];
-//		int curr = 0;
-//		numberOfLocalPartitions = 0;
-//		for (int part = 0; part < numberOfPartitions; part++){
-//			if(catalog.getSiteIdForPartitionId(part) == siteId){
-//				localPartitions[curr++] = part;
-//				numberOfLocalPartitions++;
-//			}
-//		}
-
+		localPartitions = new int [numberOfPartitions];
+		int curr = 0;
+		numberOfLocalPartitions = 0;
+		for (int part = 0; part < numberOfPartitions; part++){
+			if(catalog.getSiteIdForPartitionId(part) == siteId){
+				localPartitions[curr++] = part;
+				numberOfLocalPartitions++;
+			}
+		}
 		//		lastCall = System.currentTimeMillis();
 	}
 	
@@ -87,9 +89,9 @@ public class PartitionRates extends StatsSource {
 			timer.scheduleAtFixedRate(new NewRow(), TABLE_ROW_PERIOD, TABLE_ROW_PERIOD);
 			firstCall = false;
 		}
-		for (int part = 0; part < numberOfPartitions; part++){
-			if(counts.contains(part)){
-				accessRates.put(part);
+		for (int i = 0; i < numberOfLocalPartitions; i++){
+			if(counts.contains(localPartitions[i])){
+				accessRates.put(localPartitions[i]);
 //				accessRates.put(part, accessRates.get(part)+1);
 			}
 			
@@ -124,14 +126,15 @@ public class PartitionRates extends StatsSource {
     @Override
     protected Iterator<Object> getStatsRowKeyIterator(boolean interval) {
         return new Iterator<Object>() {
-        	int nextPart = 0;
+        	int nextLocPartIndex = 0;
             @Override
             public boolean hasNext() {
-                return nextPart < numberOfPartitions;
+                return nextLocPartIndex < numberOfLocalPartitions;
             }
             @Override
             public Object next() {
-                return nextPart++;
+            	nextLocPartIndex++;
+                return localPartitions[nextLocPartIndex-1];
             }
             @Override
             public void remove() {}
