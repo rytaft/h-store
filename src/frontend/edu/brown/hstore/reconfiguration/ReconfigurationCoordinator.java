@@ -604,7 +604,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         if(detailed_timing){
             this.profilers[livePullRequest.getOldPartition()].src_data_pull_req_init_time.appendTime(now, System.currentTimeMillis());
         }
-        
+        LOG.info("done with queueing  live pull");
 
         // TODO : Remove
         /*

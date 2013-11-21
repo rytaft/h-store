@@ -1153,12 +1153,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         // TRANSACTIONAL WORK
                         // -------------------------------
                         if (nextWork instanceof InternalTxnMessage) {
+                            LOG.info("InternalTxnMsg");
                             this.processInternalTxnMessage((InternalTxnMessage)nextWork);
                         }
                         // -------------------------------
                         // EVERYTHING ELSE
                         // -------------------------------
                         else {
+                            LOG.info("InternalMsg");
                             this.processInternalMessage(nextWork);
                         }
                     } finally {
