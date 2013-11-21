@@ -6160,7 +6160,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             start = System.currentTimeMillis();
         }
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
-        
+        if (currentTxnId == null) {
+            LOG.info("Casting currentTxn to -1");
+            currentTxnId = -1L;
+        }
         Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table, table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
         if (res != null) {
             if(ReconfigurationCoordinator.detailed_timing){
