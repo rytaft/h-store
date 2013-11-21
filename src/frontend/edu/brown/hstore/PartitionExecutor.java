@@ -1087,6 +1087,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         // If this a single-partition txn, then we'll want to
                         // execute it right away
                         if (nextTxn.isPredictSinglePartition()) {
+                            LOG.info("isSingle : " + nextTxn.getTransactionId() +  " bp : " +nextTxn.getBasePartition());
                             LocalTransaction localTxn = (LocalTransaction) nextTxn;
                             nextWork = localTxn.getStartTxnMessage();
                             if (hstore_conf.site.txn_profiling && localTxn.profiler != null)
@@ -1098,11 +1099,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         // the queue
                         // for more work.
                         else {
+                            LOG.info("setDxtn " + nextTxn.getTransactionId() +  " bp : " +nextTxn.getBasePartition());
                             this.setCurrentDtxn(nextTxn);
                         }
                     }
                 }
-
+                if (true){
+                    LOG.info("WithPull Next Work: " + nextWork + " txn : " + nextTxn + " dtxn: "+ this.currentDtxn);
+                }
                 // -------------------------------
                 // Poll Work Queue
                 // -------------------------------
@@ -1136,9 +1140,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             profiler.idle_time.stopIfStarted();
                     }
                 }
-                if (true){
-                    LOG.info("WithPull Next Work: " + nextWork + " txn : " + currentTxnId + " dtxn: "+ this.currentDtxn);
-                }
+
                 // -------------------------------
                 // Process Work
                 // -------------------------------
