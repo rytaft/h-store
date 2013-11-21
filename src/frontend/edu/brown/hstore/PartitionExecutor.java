@@ -1137,7 +1137,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     }
                 }
                 if (withPull){
-                    LOG.info("WithPull Next Work: " + nextWork + " txn : " + currentTxnId );
+                    LOG.info("WithPull Next Work: " + nextWork + " txn : " + currentTxnId + " dtxn: "+ this.currentDtxn);
                 }
                 // -------------------------------
                 // Process Work
