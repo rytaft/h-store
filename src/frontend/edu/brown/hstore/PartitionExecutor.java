@@ -743,6 +743,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     private final SystemProcedureContext m_systemProcedureContext = new SystemProcedureContext();
+    private boolean withPull = false;
 
     // ----------------------------------------------------------------------------
     // INITIALIZATION
@@ -1135,7 +1136,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             profiler.idle_time.stopIfStarted();
                     }
                 }
-
+                if (withPull){
+                    LOG.info("WithPull Next Work: " + nextWork + " txn : " + currentTxnId );
+                }
                 // -------------------------------
                 // Process Work
                 // -------------------------------
@@ -2453,6 +2456,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         boolean success = this.work_queue.offer(livePullRequestMessage); // ,
                                                                          // true);
         assert (success) : String.format("Failed to queue %s at partition %d ", livePullRequestMessage, this.partitionId);
+        if(!success){
+            throw new RuntimeException("Failed to put in pull");
+        }
+        withPull  = true;
         return success;
     }
 
