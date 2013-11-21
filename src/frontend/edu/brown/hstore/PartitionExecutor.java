@@ -1136,7 +1136,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             profiler.idle_time.stopIfStarted();
                     }
                 }
-                if (withPull){
+                if (true){
                     LOG.info("WithPull Next Work: " + nextWork + " txn : " + currentTxnId + " dtxn: "+ this.currentDtxn);
                 }
                 // -------------------------------
