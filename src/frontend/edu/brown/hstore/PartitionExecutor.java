@@ -2437,23 +2437,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         //TODO AE refactor, can we embed the livepull request into the msg and process then? 
         LOG.info(String.format("(%d) queueLivePullRequest : %s", this.partitionId, livePullRequest));
         assert (livePullRequest.isInitialized()) : "Unexpected uninitialized live Pull Request";
-        // Make a dummy transaction with dummy parameters and only transaction
-        // Id initiated and
-        // we are only being allowed to pass around transaction as null
-        LocalTransaction localTransaction = new LocalTransaction(hstore_site);
-        Long transactionId = livePullRequest.getTransactionID();
-        long initiateTime = 0;
-        long clientHandle = livePullRequest.getSenderSite();
-        PartitionSet partitionSet = new PartitionSet();
-        partitionSet.add(partitionId);
-        // Random procedure for now
-        // FIXME vaibhav : Procedure Id shouldn't be hardcoded. This is the procedure id
-        // for
-        // Reconfiguration
-        Procedure procedure = hstore_site.getCatalogContext().getProcedureById(25);
-        ParameterSet parameterSet = new ParameterSet();
-        RpcCallback<ClientResponseImpl> dummyCallback = null;
-        localTransaction.init(transactionId, initiateTime, clientHandle, 0, partitionSet, false, false, procedure, parameterSet, dummyCallback);
+
         LivePullRequestMessage livePullRequestMessage = new LivePullRequestMessage(livePullRequest, livePullResponseCallback);
         boolean success = this.work_queue.offer(livePullRequestMessage); // ,
                                                                          // true);
