@@ -294,6 +294,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 throw new RuntimeException(e);
             }
             this.currentReconfigurationPlan = reconfig_plan;
+
+            LOG.info("Init reconfiguraiton complete");
             return reconfig_plan;
         } else {
             // If the reconfig plan is null, but we are in progress we should
@@ -311,8 +313,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
             }
             LOG.debug(String.format("Init reconfiguration returning existing plan %s", this.currentReconfigurationPlan));
 
+            LOG.info("Init reconfiguraiton complete");
             return this.currentReconfigurationPlan;
         }
+    }
+    
+    public void reconfigurationSysProcTerminate(){
+        LOG.info(" ## ** ReconfigurationSysProcTerminate");
     }
 
     /**

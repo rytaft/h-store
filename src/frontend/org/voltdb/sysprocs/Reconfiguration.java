@@ -80,6 +80,11 @@ public class Reconfiguration extends VoltSystemProcedure {
     }
     case SysProcFragmentId.PF_reconfigurationAggregate: {
       LOG.info("Combining results");
+      try {
+          hstore_site.getReconfigurationCoordinator().reconfigurationSysProcTerminate();
+        } catch (Exception ex) {
+          throw new ServerFaultException(ex.getMessage(), txn_id);
+        }
       List<VoltTable> siteResults = dependencies.get(SysProcFragmentId.PF_reconfigurationDistribute);
       if (siteResults == null || siteResults.isEmpty()) {
         String msg = "Missing site results";
