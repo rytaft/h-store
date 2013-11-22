@@ -593,6 +593,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         LOG.info(String.format("dataPullRequest received livePullId %s  keys %s->%s for %s  partIds %s->%s", livePullRequest.getLivePullIdentifier(), livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), livePullRequest.getVoltTableName(),
                 livePullRequest.getOldPartition(), livePullRequest.getNewPartition()));
         long now=0;
+        
         if(detailed_timing){
             now = System.currentTimeMillis();
             dataPullResponseTimes.put(livePullRequest.getLivePullIdentifier(), now);

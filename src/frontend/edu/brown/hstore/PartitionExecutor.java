@@ -50,6 +50,7 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -216,6 +217,10 @@ import edu.brown.utils.StringUtil;
  * Controls running stored procedures and manages the execution engine's running
  * of plan fragments. Interacts with the DTXN system to get work to do. The
  * thread might do other things, but this is where the good stuff happens.
+ */
+/**
+ * @author aelmore
+ *
  */
 /**
  * @author aelmore
@@ -1103,9 +1108,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         }
                     }
                 }
-                if (reconfig_plan != null){
-                    LOG.info("WithPull Next Work: " + nextWork + " txn : " + nextTxn + " dtxn: "+ this.currentDtxn);
-                }
+                
                 // -------------------------------
                 // Poll Work Queue
                 // -------------------------------
@@ -1224,6 +1227,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private boolean utilityWork() {
         if (hstore_conf.site.exec_profiling) this.profiler.util_time.start();
         
+        
+        if (hstore_conf.global.reconfiguration_enable && reconfig_plan != null){
+            if (this.currentDtxn != null) {
+                return processQueuedLiveReconfigWork();
+            }
+        }
         // -------------------------------
         // Poll Lock Queue
         // -------------------------------
@@ -2435,6 +2444,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public boolean queueLivePullRequest(LivePullRequest livePullRequest, RpcCallback<LivePullResponse> livePullResponseCallback) {
         //TODO AE refactor, can we embed the livepull request into the msg and process then? 
         LOG.info(String.format("(%d) queueLivePullRequest : %s", this.partitionId, livePullRequest));
+
         assert (livePullRequest.isInitialized()) : "Unexpected uninitialized live Pull Request";
 
         LivePullRequestMessage livePullRequestMessage = new LivePullRequestMessage(livePullRequest, livePullResponseCallback);
@@ -3121,7 +3131,36 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.queuePrepare(ts, callback);
         }
     }
-
+    
+    
+    /**
+     * Check if there is any live reconfig work waiting to be processed
+     */
+    public boolean processQueuedLiveReconfigWork(){
+        LOG.info("processQueuedLiveReconfigWork");
+        Iterator<InternalMessage> iter = this.work_queue.iterator();
+        InternalMessage work = null;
+        while (iter.hasNext()){
+            work = iter.next();
+            //LOG.info(work);
+            if (work instanceof LivePullRequestMessage){
+                LOG.info("Found a livepullRequestTo process");
+                LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
+                if(hstore_conf.site.reconfig_profiling){
+                    this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.appendTime(livePullRequestMessage.getStartTime(), ProfileMeasurement.getTime());
+                    if(tempPullResponseCounter++%100==0)
+                        LOG.info(String.format("Avg live pull response queue Time MS %s Count:%s ",
+                                this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getAverageThinkTimeMS(),
+                                this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getInvocations()));
+                }
+                processLivePullRequestMessage(livePullRequestMessage);
+                this.work_queue.remove(work);
+                return true;
+            }
+        }
+        return false;
+    }
+    
     /**
      * We are processing a scheduled live pull request to extract out data
      * @param livePullRequestMessage
