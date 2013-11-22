@@ -6203,4 +6203,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public void resetRequestCounter() {
         this.requestCounter = 0;
     }
+
+    public ExecutionMode getCurrentExecMode() {
+        return currentExecMode;
+    }
 }

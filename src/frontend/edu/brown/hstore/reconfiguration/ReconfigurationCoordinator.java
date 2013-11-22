@@ -604,14 +604,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 // Queue the live Pull request to the work queue
                 // TODO : Change the input parameters for the senTuples function
                 if (debug.val)
-                    LOG.debug("Queue the live data Pull Request");
+                    LOG.debug("Queue the live data Pull Request " + executor.getCurrentExecMode().toString() + " " + executor.toString());
                 executor.queueLivePullRequest(livePullRequest, livePullResponseCallback);
             }
         }
         if(detailed_timing){
             this.profilers[livePullRequest.getOldPartition()].src_data_pull_req_init_time.appendTime(now, System.currentTimeMillis());
         }
-        LOG.info("done with queueing  live pull");
+        LOG.info("done with queueing  live pull ");
 
         // TODO : Remove
         /*
