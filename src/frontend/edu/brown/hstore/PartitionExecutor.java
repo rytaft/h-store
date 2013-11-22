@@ -743,7 +743,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     private final SystemProcedureContext m_systemProcedureContext = new SystemProcedureContext();
-    private boolean withPull = false;
 
     // ----------------------------------------------------------------------------
     // INITIALIZATION
@@ -1104,7 +1103,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         }
                     }
                 }
-                if (true){
+                if (reconfig_plan != null){
                     LOG.info("WithPull Next Work: " + nextWork + " txn : " + nextTxn + " dtxn: "+ this.currentDtxn);
                 }
                 // -------------------------------
@@ -2445,7 +2444,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if(!success){
             throw new RuntimeException("Failed to put in pull");
         }
-        withPull  = true;
         return success;
     }
 
@@ -5963,8 +5961,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (debug.val) {
             LOG.debug(String.format("Setting reconfiguration plan. Protocol:%s. State:%s", reconfig_protocol, reconfig_state));
         }
-        this.reconfig_plan = reconfig_plan;
-
+        this.reconfig_plan = reconfig_plan;        
         this.reconfig_protocol = reconfig_protocol;
         this.reconfig_state = reconfig_state;
         this.outgoing_ranges = reconfig_plan.getOutgoing_ranges().get(this.partitionId);
