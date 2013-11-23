@@ -3148,8 +3148,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             if (work instanceof LivePullRequestMessage){
                 LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
                 long txnId = livePullRequestMessage.getLivePullRequest().getTransactionID();
-                if (processOnlyCurrentTxns == false || (txnId == this.currentTxnId || 
-                        (this.currentDtxn != null && txnId == this.currentDtxn.getTransactionId())))
+                if (processOnlyCurrentTxns == false || 
+                        ((this.currentTxnId != null && txnId == this.currentTxnId) || 
+                         (this.currentDtxn != null && txnId == this.currentDtxn.getTransactionId())))
                 {
                     LOG.info("Found a livepullRequestTo process");
                     if(hstore_conf.site.reconfig_profiling){
