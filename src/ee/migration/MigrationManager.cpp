@@ -106,7 +106,7 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
     if(minKey.compare(maxKey)==0 && partitionColumnIsIndexed){
         bool found = partitionIndex->moveToKey(&searchkey);    
         if(found){
-            VOLT_DEBUG("Found");
+            VOLT_INFO("Found");
             while(!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()){
 		#ifdef EXTRACT_STAT_ENABLED
 		rowsExamined++;
@@ -131,8 +131,7 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
             }           
         }
         else{
-            VOLT_DEBUG("key not found for single key extract");       
-            return NULL;
+            VOLT_INFO("key not found for single key extract");       
         }
     } else if(minKey.compare(maxKey)<0){
         //TODO ae andy -> on searching and checking for the max key condition
@@ -214,7 +213,7 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
     m_extractedTableNames[requestToken] = table->name();
     #ifdef EXTRACT_STAT_ENABLED
     VOLT_INFO("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );        
-    VOLT_INFO("Extraction Time: %.2f sec. Examined Tuples:%d Active Tuples: %d  Approximate Size to serialized: %d", timer.elapsed(), rowsExamined, outputTable->activeTupleCount(), outputTable->getApproximateSizeToSerialize());
+    //VOLT_INFO("Extraction Time: %.2f sec. Examined Tuples:%ld Active Tuples: %ld  Approximate Size to serialized: %ld", timer.elapsed(), rowsExamined, outputTable->activeTupleCount(), outputTable->getApproximateSizeToSerialize());
     
     std::string extract_id = "Extract:"+table->name()+" Range:"+minKey.debug().c_str()+"-"+maxKey.debug().c_str();
     m_timingResults[extract_id] = (int32_t)timer.elapsed();

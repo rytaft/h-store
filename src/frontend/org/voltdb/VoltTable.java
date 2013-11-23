@@ -1168,6 +1168,10 @@ public class VoltTable extends VoltTableRow implements FastSerializable {
     public int getRowSize() {
         // FIXME
         int total_size = this.getUnderlyingBufferSize();
+        if (m_rowCount == 0){
+            return 0;
+        }
+            
         return (total_size / m_rowCount);
     }
 
