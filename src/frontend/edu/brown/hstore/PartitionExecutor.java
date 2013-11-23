@@ -3139,7 +3139,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * Check if there is any live reconfig work waiting to be processed
      */
     public boolean processQueuedLiveReconfigWork(boolean processOnlyCurrentTxns){
-        LOG.info("processQueuedLiveReconfigWork");
+        if(debug.val) LOG.debug("processQueuedLiveReconfigWork");
         Iterator<InternalMessage> iter = this.work_queue.iterator();
         InternalMessage work = null;
         while (iter.hasNext()){

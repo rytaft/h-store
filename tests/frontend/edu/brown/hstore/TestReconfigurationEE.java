@@ -102,6 +102,7 @@ public class TestReconfigurationEE extends BaseTestCase {
 
     }
     
+    
     @Test
     public void testExtractDataLarge() throws Exception {
         List<PartitionRange<Long>> olds = new ArrayList<>();
@@ -127,10 +128,11 @@ public class TestReconfigurationEE extends BaseTestCase {
             VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
             Pair<VoltTable,Boolean> resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken()) ;
             rowCount+=resTable.getFirst().getRowCount();
-            assertEquals(false, resTable.getSecond().booleanValue());
+            assertEquals(true, resTable.getSecond().booleanValue());
         }
         assertEquals(tuples,rowCount);
     }
+    
     
     
     @Test
@@ -177,6 +179,18 @@ public class TestReconfigurationEE extends BaseTestCase {
     	LOG.info("Results : " + resTable.getFirst().toString(true));  	
     	resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());
     	assertTrue(resTable.getFirst().getRowCount()==0);
+    	
+    	range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(50), new Long(60), 1, 2);
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
+        
+        resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1,executor.getNextRequestToken());        
+        assertTrue(resTable.getFirst().getRowCount()==10);
+        LOG.info("Results : " + resTable.getFirst().toString(true)); 
+        
+        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(55), new Long(55), 1, 2);
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
+        resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());
+        assertTrue(resTable.getFirst().getRowCount()==0);
     	
     	range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(998), new Long(1002), 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);        

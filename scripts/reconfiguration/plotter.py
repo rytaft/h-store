@@ -94,6 +94,8 @@ def getReconfigEvents(hevent_log):
                 event = "INIT"
             elif "END" in line:
                 event = "END"
+            else:
+                event = "UNKNOWN"
             events.append((ts,event,protocol))
     return events
 
