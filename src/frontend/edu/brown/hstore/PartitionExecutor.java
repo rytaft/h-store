@@ -1120,15 +1120,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     try {
                         // If we're allowed to speculatively execute txns, then we don't want to have
                         // to wait to see if anything will show up in our work queue.
-                        if (reconfiguration_coordinator.getReconfigurationInProgress() && asyncOutstanding.get() == false && 
-                                reconfiguration_coordinator.queueAsyncPull() && this.scheduleAsyncPullQueue.isEmpty() == false) {
-                            //nextWork = this.work_queue.poll(WORK_QUEUE_POLL_TIME, WORK_QUEUE_POLL_TIMEUNIT);    
-                            //if (nextWork == null){
-                                LOG.info(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue. Items :  " + scheduleAsyncPullQueue.size());
-                                this.work_queue.offer(scheduleAsyncPullQueue.remove());
-                                asyncOutstanding.set(true);
-                            //}
-                        } 
+
                         
                         if (hstore_conf.site.specexec_enable && this.lockQueue.approximateIsEmpty() == false) {
                             nextWork = this.work_queue.poll();
@@ -1181,7 +1173,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         this.lastExecutedTxnId = this.currentTxnId;
                 }
                 // Check if we have any utility work to do while we wait
-                else if (hstore_conf.site.specexec_enable) {
+                else if (hstore_conf.site.specexec_enable || hstore_conf.global.reconfiguration_enable) {
 //                    if (trace.val)
 //                        LOG.trace(String.format("The %s for partition %s empty. Checking for utility work...",
 //                                  this.work_queue.getClass().getSimpleName(), this.partitionId));
@@ -1230,8 +1222,18 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         
         if (hstore_conf.global.reconfiguration_enable && reconfig_plan != null){
             if (this.currentDtxn != null) {
-                return processQueuedLiveReconfigWork();
-            }
+                return processQueuedLiveReconfigWork(true);
+            }            
+            else if (reconfiguration_coordinator.getReconfigurationInProgress() && asyncOutstanding.get() == false && 
+                    reconfiguration_coordinator.queueAsyncPull() && this.scheduleAsyncPullQueue.isEmpty() == false) {
+                //nextWork = this.work_queue.poll(WORK_QUEUE_POLL_TIME, WORK_QUEUE_POLL_TIMEUNIT);    
+                //if (nextWork == null){
+                    LOG.info(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue. Items :  " + scheduleAsyncPullQueue.size());
+                    this.work_queue.offer(scheduleAsyncPullQueue.remove());
+                    asyncOutstanding.set(true);
+                //}
+            } 
+            
         }
         // -------------------------------
         // Poll Lock Queue
@@ -3136,7 +3138,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     /**
      * Check if there is any live reconfig work waiting to be processed
      */
-    public boolean processQueuedLiveReconfigWork(){
+    public boolean processQueuedLiveReconfigWork(boolean processOnlyCurrentTxns){
         LOG.info("processQueuedLiveReconfigWork");
         Iterator<InternalMessage> iter = this.work_queue.iterator();
         InternalMessage work = null;
@@ -3144,18 +3146,22 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             work = iter.next();
             //LOG.info(work);
             if (work instanceof LivePullRequestMessage){
-                LOG.info("Found a livepullRequestTo process");
                 LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
-                if(hstore_conf.site.reconfig_profiling){
-                    this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.appendTime(livePullRequestMessage.getStartTime(), ProfileMeasurement.getTime());
-                    if(tempPullResponseCounter++%100==0)
-                        LOG.info(String.format("Avg live pull response queue Time MS %s Count:%s ",
-                                this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getAverageThinkTimeMS(),
-                                this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getInvocations()));
+                long txnId = livePullRequestMessage.getLivePullRequest().getTransactionID();
+                if (processOnlyCurrentTxns == false || (txnId == this.currentTxnId || txnId == this.currentDtxn.getTransactionId()))
+                {
+                    LOG.info("Found a livepullRequestTo process");
+                    if(hstore_conf.site.reconfig_profiling){
+                        this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.appendTime(livePullRequestMessage.getStartTime(), ProfileMeasurement.getTime());
+                        if(tempPullResponseCounter++%100==0)
+                            LOG.info(String.format("Avg live pull response queue Time MS %s Count:%s ",
+                                    this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getAverageThinkTimeMS(),
+                                    this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getInvocations()));
+                    }
+                    processLivePullRequestMessage(livePullRequestMessage);
+                    this.work_queue.remove(work);
+                    return true;
                 }
-                processLivePullRequestMessage(livePullRequestMessage);
-                this.work_queue.remove(work);
-                return true;
             }
         }
         return false;
