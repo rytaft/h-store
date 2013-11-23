@@ -6034,7 +6034,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 scheduleInitialAsyncPullRequests(incoming_ranges);
             }
             else if (this.reconfiguration_coordinator.queueAsyncPull()){
-                LOG.info("Scheduling chunked asynch pulls");           
+                LOG.info("Queueing chunked asynch pulls");           
                 queueInitialAsyncPullRequests(incoming_ranges);
             }
             else {

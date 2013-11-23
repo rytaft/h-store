@@ -769,7 +769,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         AsyncDataPullRequestMessage asyncPullRequestMsg = new AsyncDataPullRequestMessage(asyncPullRequest, asyncPullRequestCallback2);
         for (PartitionExecutor executor : this.local_executors) {
             if (executor.getPartitionId() == asyncPullRequest.getOldPartition()) {
-                LOG.info("Queue the async data pull request");
+                LOG.info("Queue the async data pull request " + asyncPullRequest.toString());
                 executor.queueAsyncPullRequest(asyncPullRequestMsg);
             }
         }
