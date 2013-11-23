@@ -511,7 +511,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
         if (debug.val) LOG.debug("Extract table");
         deserializer.clear();
         byte[] serialized_table = extractTable.getTableDataReference().array();
-        if (trace.val) LOG.trace(String.format("Passing extract table into EE  [id=%d, bytes=%s]", tableId, serialized_table.length));
+        if (debug.val) LOG.debug(String.format("Passing extract table into EE  [id=%d, bytes=%s]", tableId, serialized_table.length));
         int results;
         try {
             long tupleBytes = MemoryEstimator.estimateTupleSize(targetTable);
@@ -519,6 +519,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
             results = deserializer.readInt();
             if (trace.val) LOG.trace("Results :"+results);
             final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table, txnId, lastCommittedTxnId, undoToken, requestToken, tupleExtractLimit);
+            if (debug.val) LOG.debug("Done with extract");
             checkErrorCode(errorCode);
             boolean moreData = checkIfMoreDataOrError(errorCode);
             

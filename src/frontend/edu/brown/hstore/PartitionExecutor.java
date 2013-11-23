@@ -1468,9 +1468,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         else if (work instanceof AsyncDataPullRequestMessage) {
             //We have received and are processing a data pull request
-        	LOG.info("Extracting data for a async data pull request at partition " + this.partitionId);
             AsyncDataPullRequestMessage pullMsg = (AsyncDataPullRequestMessage)work;
             AsyncPullRequest pull = pullMsg.getAsyncPullRequest();
+            LOG.info("Extracting data for a async data pull request at partition " + this.partitionId + " : " + pull.toString());
             try {                
                 String tableName = pull.getVoltTableName();
                 Table catalog_tbl = this.catalogContext.getTableByName(tableName);
@@ -1502,7 +1502,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(pull.getMinInclusive()).setMaxExclusive(pull.getMaxExclusive())
                         .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
                 
-                LOG.error("TODO do we need to invoke something different if local? Right now both remote / local put in with callback");
+                LOG.info("TODO do we need to invoke something different if local? Right now both remote / local put in with callback");
                 pullMsg.getAsyncPullRequestCallback().run(pullResponse);
                         
                 if(moreDataNeeded){
@@ -3148,7 +3148,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             if (work instanceof LivePullRequestMessage){
                 LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
                 long txnId = livePullRequestMessage.getLivePullRequest().getTransactionID();
-                if (processOnlyCurrentTxns == false || (txnId == this.currentTxnId || txnId == this.currentDtxn.getTransactionId()))
+                if (processOnlyCurrentTxns == false || (txnId == this.currentTxnId || 
+                        (this.currentDtxn != null && txnId == this.currentDtxn.getTransactionId())))
                 {
                     LOG.info("Found a livepullRequestTo process");
                     if(hstore_conf.site.reconfig_profiling){
@@ -3511,7 +3512,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                                Map<Integer, List<VoltTable>> input_deps) {
         assert(this.ee != null) : "The EE object is null. This is bad!";
 
-        if (this.hstore_site.getReconfigurationCoordinator().getReconfigurationInProgress()) {
+        if (reconfiguration_coordinator.getReconfigurationInProgress() && 
+                reconfiguration_coordinator.isLive_pull()) {
             checkReconfigurationTracking(fragmentIds, parameterSets);
         }
 

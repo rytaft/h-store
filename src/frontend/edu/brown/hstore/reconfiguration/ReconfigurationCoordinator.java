@@ -68,8 +68,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public static boolean detailed_timing = true;
     private static boolean async_nonchunk_push = false;
     private static boolean async_nonchunk_pull = false;
-    private static boolean async_pull = false;
+    private static boolean async_pull_immediately_in_work_queue = false;
     private static boolean async_queue_pulls = false;
+    private static boolean live_pull = true;
     
     // Cached list of local executors
     private List<PartitionExecutor> local_executors;
@@ -152,17 +153,22 @@ public class ReconfigurationCoordinator implements Shutdownable {
         
         async_nonchunk_push = hstore_conf.site.reconfig_async_nonchunk_push;
         async_nonchunk_pull = hstore_conf.site.reconfig_async_nonchunk_pull;
-        async_pull = hstore_conf.site.reconfig_async_pull;
-        
-        LOG.error("TODO aysnc queue"); //TODO
-        async_queue_pulls = true;
+        async_pull_immediately_in_work_queue =false;        
+        async_queue_pulls =  hstore_conf.site.reconfig_async_pull;
+        live_pull = hstore_conf.site.reconfig_live;
 
-        if (async_queue_pulls) {
+        if (hstore_conf.site.reconfig_async == false){ 
+          LOG.info("Disabling all async pulls");
+          async_nonchunk_push = false;
+          async_nonchunk_pull = false;
+          async_pull_immediately_in_work_queue = false;
+          async_queue_pulls = false;        
+        } else if (async_queue_pulls) {
           LOG.info("Using async queue. Disabling other async methods");
-          async_pull = false;
+          async_pull_immediately_in_work_queue = false;
           async_nonchunk_push = false;
           async_nonchunk_pull = false;          
-        } else if (async_pull) {
+        } else if (async_pull_immediately_in_work_queue) {
             LOG.debug("Disabling nonchunked push and pull, since chunked pull is enabled");
             async_nonchunk_push = false;
             async_nonchunk_pull = false;
@@ -172,8 +178,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 async_nonchunk_push = false;
             }
         
-        LOG.info(String.format("Reconfig configuration. DetailedTiming: %s AsyncPush:%s AysncPull:%s", 
-                detailed_timing, async_nonchunk_push, async_nonchunk_pull));
+        String debugConfig = String.format("Reconfig configuration. DetailedTiming: %s AsyncPush:%s AysncPull:%s AsyncQueuePulls:%s LivePulls:%s", 
+                detailed_timing, async_nonchunk_push, async_nonchunk_pull, async_queue_pulls, live_pull);
+        LOG.info(debugConfig);
+        FileUtil.appendEventToFile(debugConfig);
         
     }
 
@@ -1080,7 +1088,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
 
     public boolean scheduleAsyncPull() {
-        return async_pull;
+        return async_pull_immediately_in_work_queue;
     }
     
     public boolean queueAsyncPull() {
@@ -1151,6 +1159,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
     	                "for partitionId : " + partitionId);
     	    blockedRequests.get(pullID).release();
     	}
+    }
+
+    public boolean isLive_pull() {
+        return live_pull;
     }
 
 

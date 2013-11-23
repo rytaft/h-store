@@ -722,7 +722,7 @@ public final class HStoreConf {
         public boolean reconfig_detailed_profiling;
      
         @ConfigProperty(
-                description="Have livepull reconfiguration use chunking asynchronous pull of migrating data items.",
+                description="Have livepull reconfiguration schedule all chunking asynchronous pull of migrating data items.",
                 defaultBoolean=true,
                 experimental=true
         )
@@ -742,6 +742,20 @@ public final class HStoreConf {
                 experimental=true
         )
         public boolean reconfig_async_nonchunk_push;
+        
+        @ConfigProperty(
+                description="Use async reconfiguration.",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_async;
+   
+        @ConfigProperty(
+                description="Use live reconfiguration.",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_live;
         
         @ConfigProperty(
                 description="The default reconfig plan ID to use. If not set use the first one found. ",
