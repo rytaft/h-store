@@ -104,8 +104,8 @@ int64_t TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tuple
 		i++;
 	}
 
-	//return colValue.castAsBigIntAndGetValue();
-	return i;
+	return colValue.castAsBigIntAndGetValue();
+	//return i;
 	//return colValue.isNull();
 
 	/*
