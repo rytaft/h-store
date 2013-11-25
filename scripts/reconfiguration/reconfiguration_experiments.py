@@ -29,6 +29,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
         fabric.env["client.threads_per_host"] = 2
+        fabric.env["site.reconfig_live"] = False
     
     
     if 'reconfig-wh-baseline' in args['exp_type']:

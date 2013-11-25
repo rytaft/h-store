@@ -218,14 +218,6 @@ import edu.brown.utils.StringUtil;
  * of plan fragments. Interacts with the DTXN system to get work to do. The
  * thread might do other things, but this is where the good stuff happens.
  */
-/**
- * @author aelmore
- *
- */
-/**
- * @author aelmore
- *
- */
 public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private static final Logger LOG = Logger.getLogger(PartitionExecutor.class);
     private static final LoggerBoolean debug = new LoggerBoolean();
@@ -1121,7 +1113,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         // If we're allowed to speculatively execute txns, then we don't want to have
                         // to wait to see if anything will show up in our work queue.
 
-                        
                         if (hstore_conf.site.specexec_enable && this.lockQueue.approximateIsEmpty() == false) {
                             nextWork = this.work_queue.poll();
                         } else {
@@ -1219,8 +1210,19 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private boolean utilityWork() {
         if (hstore_conf.site.exec_profiling) this.profiler.util_time.start();
         
-        
         if (hstore_conf.global.reconfiguration_enable && reconfig_plan != null){
+            this.idle_click_count+=1;
+            //LOG.info("idle click count : " + idle_click_count);
+            
+            if (idle_click_count > PULL_ASYNC_EVERY_CLICKS){
+                this.idle_click_count = 0;
+                ScheduleAsyncPullRequestMessage pullMsg = scheduleAsyncPullQueue.poll();
+                if (pullMsg != null){
+                    LOG.info("Scheduling async pull in work queue due to idle clicks");
+                    this.work_queue.offer(pullMsg);
+                    asyncOutstanding.set(true);
+                }
+            }
             if (this.currentDtxn != null) {
                 return processQueuedLiveReconfigWork(true);
             }            
@@ -5962,7 +5964,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public static int LOCAL_COUNTER_BITS = 24;
     public static int COUNTER_SIZE_BITS = 32;
     private int requestCounter = 1;
-
+    private int idle_click_count;
+    private static int PULL_ASYNC_EVERY_CLICKS=500;
     public Debug getDebugContext() {
         if (this.cachedDebugContext == null) {
             // We don't care if we're thread-safe here...
@@ -6009,6 +6012,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (debug.val) {
             LOG.debug(String.format("Setting reconfiguration plan. Protocol:%s. State:%s", reconfig_protocol, reconfig_state));
         }
+        this.idle_click_count = 0;
         this.reconfig_plan = reconfig_plan;        
         this.reconfig_protocol = reconfig_protocol;
         this.reconfig_state = reconfig_state;
