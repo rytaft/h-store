@@ -95,8 +95,11 @@ int64_t TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tuple
 	std::vector<int>::iterator it = column_indices_vector.begin();
 	NValue colValue;
 
-	if (it != column_indices_vector.end()) // this is for non composite key
+	while (it != column_indices_vector.end()) // this is for non composite key
+	{
 		colValue = tuple.getNValue(*it);
+		it++;
+	}
 
 	return colValue.castAsBigIntAndGetValue();
 	//return colValue.isNull();
