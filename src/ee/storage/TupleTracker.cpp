@@ -80,25 +80,55 @@ void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, 
 
 }
 
-int TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tupleId){
+int64_t TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tupleId){
 
 	Table* table = voltDBEngine->getTable(tableName);
 
-	//TableTuple tuple = TableTuple(table->schema());
+	TableTuple tuple = TableTuple(table->schema());
 
-	//tuple.move(table->dataPtrForTuple(tupleId));
+	tuple.move(table->dataPtrForTuple(tupleId));
 
 	TableIndex *m_index = table->primaryKeyIndex();
 
 	std::vector<int> column_indices_vector = m_index->getColumnIndices();
 
-	std::vector<int>::iterator it;
+	std::vector<int>::iterator it = column_indices_vector.begin();
+	NValue colValue;
+
+	if (it != column_indices_vector.end()) // this is for non composite key
+		colValue = tuple.getNValue(*it);
+
+	return colValue.castAsBigIntAndGetValue();
+	//return colValue.isNull();
+
+	/*
 
 	it = std::find(column_indices_vector.begin(), column_indices_vector.end(), tupleId);
 
-	return (int) std:: distance(column_indices_vector.begin(), it);
+		return (int) std:: distance(column_indices_vector.begin(), it);
 
-	/*
+
+	TableTuple outputTuple = ... // tuple for your output table
+   TableTuple inputTuple = ... // tuple from your tracking table
+   TableTuple origTuple = ... // tuple from the original PersistantTable
+
+    foreach (inputTuple in tracking table) {
+    // (1) Get offset from inputTuple and move the origTuple to that location
+    origTuple.move(table->dataPtrForTuple(tupleId));
+
+    // (2) Now iterate over the pkey column offsets and copy the values into the inputTuple
+    int col_idx = 0;
+    for (pkey_offset in m_index->getColumnIndices()) {
+        NValue colValue = origTuple.getNValue(pkey_offset);
+        outputTuple.setNValue(col_idx, colValue);
+        col_idx++;
+    }
+
+    // (3) Insert outputTuple into output table
+     }
+
+
+
 	int colCount = (int)column_indices_vector.size();
 
 
@@ -108,6 +138,10 @@ int TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tupleId){
 
 
 	return column_indices_vector[tupleId];
+
+
+
+
    //*/
 }
 
@@ -230,10 +264,10 @@ void TupleTrackerManager::getTopKPerPart(int k){
 
 	std::vector<TupleTrackingInfo>::const_iterator iter = v_tupleTrackingInfo.begin();
 	int ratio = 100; // %1
-	long int kk = (v_tupleTrackingInfo.size()/ratio + (v_tupleTrackingInfo.size() % ratio != 0));
+	long int kk = (v_tupleTrackingInfo.size()/ratio + (v_tupleTrackingInfo.size() % ratio != 0)); // ceil (size * (1/ratio) )
 
     //header first line
-	HTfile << " k = " << kk<<" of "<<v_tupleTrackingInfo.size()<<"\n";
+	//HTfile << " k = " << kk<<" of "<<v_tupleTrackingInfo.size()<<"\n";
 	HTfile << " |Table Name";
 	HTfile << " |Tuple ID";
 	HTfile << " |Frequency|";

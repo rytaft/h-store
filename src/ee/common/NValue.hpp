@@ -98,6 +98,41 @@ class NValue {
     /* Create a default NValue */
     NValue();
 
+
+    //Essam
+    int64_t castAsBigIntAndGetValue() const {
+    const ValueType type = getValueType();
+    if (isNull()) {
+        return INT64_NULL;
+    }
+
+    switch (type) {
+    case VALUE_TYPE_NULL:
+        return INT64_NULL;
+    case VALUE_TYPE_TINYINT:
+        return static_cast<int64_t>(getTinyInt());
+    case VALUE_TYPE_SMALLINT:
+        return static_cast<int64_t>(getSmallInt());
+    case VALUE_TYPE_INTEGER:
+        return static_cast<int64_t>(getInteger());
+    case VALUE_TYPE_ADDRESS:
+        return getBigInt();
+    case VALUE_TYPE_BIGINT:
+        return getBigInt();
+    case VALUE_TYPE_TIMESTAMP:
+        return getTimestamp();
+    case VALUE_TYPE_DOUBLE:
+        if (getDouble() > (double)INT64_MAX || getDouble() < (double)VOLT_INT64_MIN) {
+            throwCastSQLValueOutOfRangeException<double>(getDouble(), VALUE_TYPE_DOUBLE, VALUE_TYPE_BIGINT);
+        }
+        return static_cast<int64_t>(getDouble());
+    default:
+        throwCastSQLException(type, VALUE_TYPE_BIGINT);
+        return 0; // NOT REACHED
+    }
+}
+
+
         // todo: free() should not really be const
 
     /* Release memory associated to object type NValues */
@@ -600,6 +635,7 @@ class NValue {
                            msg);
     }
 
+    /* Esssm
     int64_t castAsBigIntAndGetValue() const {
         const ValueType type = getValueType();
         if (isNull()) {
@@ -631,6 +667,8 @@ class NValue {
             return 0; // NOT REACHED
         }
     }
+
+    //*/
 
     int64_t castAsRawInt64AndGetValue() const {
         const ValueType type = getValueType();

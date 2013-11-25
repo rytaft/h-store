@@ -56,6 +56,7 @@ class ExecutorContext;
 class TableTuple;
 class TupleSchema;
 class Table;
+class NValue;
     
 /**
  * TupleTracker Manager for a single partition
@@ -77,11 +78,11 @@ class TupleTrackerManager {
         void eraseTupleTrackingInfo();
         void extractTupleTrackingInfo();
         void sortTupleTrackingInfo();
-        int getPrimaryKey(std::string tableName,uint32_t tupleId);
         void insertTupleAccesses(boost::unordered_map<std::string, RowOffsets*> *map, int64_t txnId);
         void insertTuple(int64_t txnId, const std::string tableName, uint32_t tupleId);
-        
         void getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const;
+        
+        int64_t getPrimaryKey(std::string tableName,uint32_t tupleId);
         
 
         static int64_t summedAccessFreq;

@@ -344,13 +344,16 @@ public:
     virtual bool equals(const voltdb::Table *other) const;
     virtual voltdb::TableStats* getTableStats();
 
+    char * dataPtrForTuple(const int index) const; //Essam
+    char * dataPtrForTupleForced(const int index); //Essam
+
 protected:
     Table(int tableAllocationTargetSize);
     void resetTable();
 
     void nextFreeTuple(TableTuple *tuple);
-    char * dataPtrForTuple(const int index) const;
-    char * dataPtrForTupleForced(const int index);
+    //char * dataPtrForTuple(const int index) const; //Essam
+    //char * dataPtrForTupleForced(const int index); //Essam
     virtual void allocateNextBlock();
 
     /**
