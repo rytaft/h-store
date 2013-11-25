@@ -290,7 +290,7 @@ void TupleTrackerManager::getTopKPerPart(int k){
 	while (iter != v_tupleTrackingInfo.end() && i < kk) {
 
 		HTfile << iter->tableName<<"\t";
-		//HTfile << iter->tupleID<<"("<<getPrimaryKey(iter->tableName,iter->tupleID)<<")"<<"\t";
+		//HTfile << iter->tupleID<<"("<<getPrimaryKey(iter->tableName,iter->tupleID)<<")"<<"\t"; // offset(PKey)
 		HTfile << getPrimaryKey(iter->tableName,iter->tupleID) <<"\t";
 		HTfile << iter->frequency<<"\n";
 		i++;
