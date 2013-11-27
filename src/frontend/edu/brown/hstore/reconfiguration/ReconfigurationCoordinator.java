@@ -33,6 +33,8 @@ import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.HStoreSite;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
+import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest;
+import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.DataTransferRequest;
 import edu.brown.hstore.Hstoreservice.DataTransferResponse;
 import edu.brown.hstore.Hstoreservice.HStoreService;
@@ -792,6 +794,22 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public void asyncPullRequestFromRC(AsyncPullRequest asyncPullRequest, RpcCallback<AsyncPullResponse> asyncPullResponseCallback) {
         queueAsyncDataPullRequest(asyncPullRequest,asyncPullResponseCallback);
         
+    }
+    
+    /**
+     * Called when a reqply to a pull request comes from another RC
+     * @param asyncPullRequest
+     * @param asyncPullResponseCallback
+     */
+    public void asyncPullReplyFromRC(ChunkedAsyncPullReplyRequest chunkedAsyncPullReplyRequest, 
+        RpcCallback<ChunkedAsyncPullReplyResponse> ChunkedAsyncPullReplyResponse) {
+    	
+      
+    }
+    
+    public void sendChunkAsyncPullReplyRequestFromPE(int remoteSiteId, ChunkedAsyncPullReplyRequest chunkedAsyncPullReplyRequest){
+    	ProtoRpcController controller = new ProtoRpcController();
+        this.channels[remoteSiteId].chunkedAsyncPullReply(controller, chunkedAsyncPullReplyRequest, null);
     }
     
     public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, 

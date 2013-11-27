@@ -129,6 +129,7 @@ import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
+import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest;
 import edu.brown.hstore.Hstoreservice.LivePullRequest;
 import edu.brown.hstore.Hstoreservice.LivePullResponse;
 import edu.brown.hstore.Hstoreservice.QueryEstimate;
@@ -201,6 +202,7 @@ import edu.brown.markov.EstimationThresholds;
 import edu.brown.profilers.PartitionExecutorProfiler;
 import edu.brown.profilers.ProfileMeasurement;
 import edu.brown.protorpc.NullCallback;
+import edu.brown.protorpc.ProtoRpcController;
 import edu.brown.statistics.FastIntHistogram;
 import edu.brown.statistics.Histogram;
 import edu.brown.utils.ClassUtil;
@@ -1495,7 +1497,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 
                 int chunkId = pullMsg.getAndIncrementChunk();
                 boolean moreDataNeeded = vt.getSecond().booleanValue();         
-                AsyncPullResponse pullResponse = AsyncPullResponse.newBuilder().
+                ChunkedAsyncPullReplyRequest chunkedAsyncPullReplyRequest = ChunkedAsyncPullReplyRequest.newBuilder().
                         setAsyncPullIdentifier(pull.getAsyncPullIdentifier()).
                         setSenderSite(this.hstore_site.getSiteId()).  
                         setOldPartition(pull.getOldPartition()).setNewPartition(pull.getNewPartition()).setVoltTableName(pull.getVoltTableName())
@@ -1503,7 +1505,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
                 
                 LOG.info("TODO do we need to invoke something different if local? Right now both remote / local put in with callback");
-                pullMsg.getAsyncPullRequestCallback().run(pullResponse);
+                if(siteId != pull.getSenderSite()) {
+                	this.reconfiguration_coordinator.sendChunkAsyncPullReplyRequestFromPE(pull.getSenderSite(), chunkedAsyncPullReplyRequest);
+                } else {
+                  //local message
+                }
                         
                 if(moreDataNeeded){
                     LOG.info(" ### We have more data in the async pull to schedule. Queue the" +

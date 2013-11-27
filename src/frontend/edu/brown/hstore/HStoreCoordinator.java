@@ -37,6 +37,8 @@ import com.google.protobuf.RpcController;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
+import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest;
+import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.DataTransferRequest;
 import edu.brown.hstore.Hstoreservice.DataTransferResponse;
 import edu.brown.hstore.Hstoreservice.HStoreService;
@@ -919,6 +921,12 @@ public class HStoreCoordinator implements Shutdownable {
                 LOG.error("Exception incurred while deleting tuples (not just marking)", e);
               }
             
+        }
+        
+        @Override
+        public void chunkedAsyncPullReply(RpcController controller, 
+            ChunkedAsyncPullReplyRequest request, RpcCallback<ChunkedAsyncPullReplyResponse> done) {
+          
         }
         
 
