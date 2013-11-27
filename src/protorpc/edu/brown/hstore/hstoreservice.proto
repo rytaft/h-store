@@ -658,52 +658,54 @@ message AsyncPullResponse {
 message ChunkedAsyncPullReplyRequest {
     // The unique id of the async requested pull
     required int32 async_pull_identifier = 1;
+    // The chunk id of the message
+    required int32 chunk_id = 2;
     // The id of the HStoreSite sending this live pull message
-    required int32 sender_site = 2;
+    required int32 sender_site = 3;
     // The time when the local HStoreSite sent this request
-    required int64 t0_s = 3;
+    required int64 t0_s = 4;
     // The transaction id of the Request sending this live pull message
-    required int64 transactionID = 4;
+    required int64 transactionID = 5;
     // This is the old partition pull is associated with 
-    required int32 old_partition = 5; 
+    required int32 old_partition = 6; 
     // This is the new partition for the pull request  
-    required int32 new_partition = 6; 
+    required int32 new_partition = 7; 
     // This is the table name to be pulled
-    required string volt_table_name = 7; 
+    required string volt_table_name = 8; 
     // This is the minimum inclusive range for the pull
     // Set to long for now, generalize later  
-    required int64 min_inclusive = 8;
+    required int64 min_inclusive = 9;
     // This is the maximum exclusive range for the pull 
-    required int64 max_exclusive = 9;
+    required int64 max_exclusive = 10;
     // This is the data returned (in form of serialized volt table)
-    required bytes volt_table_data = 10;
+    required bytes volt_table_data = 11;
     //This  indicates whether more data is still left to be pulled
     // It will be useful as async pull is chunked into pieces
-    required bool more_data_needed = 11;
+    required bool more_data_needed = 12;
 }
 
 message ChunkedAsyncPullReplyResponse {
      // The unique id associated with the pull
     required int32 async_pull_identifier = 1;
     // The chunk id of the message
-    required int32 chunk_id = 12;
+    required int32 chunk_id = 2;
     // The id of the HStoreSite responding to live pull message
-    required int32 sender_site = 2;
+    required int32 sender_site = 3;
     // The time when the remote HStoreSite sent this request
-    required int64 t0_s = 3;
+    required int64 t0_s = 4;
     // The transaction id of the Request 
-    required int64 transactionID = 4;
+    required int64 transactionID = 5;
       // This is the old partition pull is associated with 
-    required int32 old_partition = 5; 
+    required int32 old_partition = 6; 
     // This is the new partition for the pull request  
-    required int32 new_partition = 6; 
+    required int32 new_partition = 7; 
     // This is the table name to be pulled
-    required string volt_table_name = 7; 
+    required string volt_table_name = 8; 
     // This is the minimum inclusive range for the pull
     // Set to long for now, generalize later
-    required int64 min_inclusive = 8;
+    required int64 min_inclusive = 9;
     // This is the maximum exclusive range for the pull 
-    required int64 max_exclusive = 9;
+    required int64 max_exclusive = 10;
 }
 
 //------------------------------------
