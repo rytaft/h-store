@@ -1095,7 +1095,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         // the queue
                         // for more work.
                         else {
-                            LOG.info("setDxtn " + nextTxn.getTransactionId() +  " bp : " +nextTxn.getBasePartition());
                             this.setCurrentDtxn(nextTxn);
                         }
                     }
@@ -1143,14 +1142,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         // TRANSACTIONAL WORK
                         // -------------------------------
                         if (nextWork instanceof InternalTxnMessage) {
-                            LOG.info("InternalTxnMsg");
                             this.processInternalTxnMessage((InternalTxnMessage)nextWork);
                         }
                         // -------------------------------
                         // EVERYTHING ELSE
                         // -------------------------------
                         else {
-                            LOG.info("InternalMsg");
                             this.processInternalMessage(nextWork);
                         }
                     } finally {
@@ -1246,7 +1243,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
         // Check whether there is something we can speculatively execute right
         // now
-        if (this.specExecIgnoreCurrent == false && this.lockQueue.approximateIsEmpty() == false) {
+        if (hstore_conf.site.specexec_enable && this.specExecIgnoreCurrent == false && this.lockQueue.approximateIsEmpty() == false) {
 //            if (trace.val)
 //                LOG.trace(String.format("Checking %s for something to do at partition %d while %s",
 //                          this.specExecScheduler.getClass().getSimpleName(),
@@ -1472,7 +1469,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             //We have received and are processing a data pull request
             AsyncDataPullRequestMessage pullMsg = (AsyncDataPullRequestMessage)work;
             AsyncPullRequest pull = pullMsg.getAsyncPullRequest();
-            LOG.info("Extracting data for a async data pull request at partition " + this.partitionId + " : " + pull.toString());
+            LOG.info("Extracting data for a async data pull request at partition " + this.partitionId + " : " + pull.getAsyncPullIdentifier());
             try {                
                 String tableName = pull.getVoltTableName();
                 Table catalog_tbl = this.catalogContext.getTableByName(tableName);
@@ -6205,7 +6202,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         if (currentTxnId == null) {
-            LOG.info("Casting currentTxn to -1");
+            if (debug.val) LOG.debug("Casting currentTxn to -1");
             currentTxnId = -1L;
         }
         Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table, table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
