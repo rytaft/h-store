@@ -934,7 +934,7 @@ public class HStoreCoordinator implements Shutdownable {
         	try{
         		if(request.getIsAsync()){
         			LOG.info("Processing an async pull reply message");
-        			hstore_site.getReconfigurationCoordinator().asyncPullReplyFromRC(request, done);
+        			hstore_site.getReconfigurationCoordinator().processPullReplyFromRC(request, done);
         		} else {
         			LOG.info("Processing a live pull reply message");
         		}
