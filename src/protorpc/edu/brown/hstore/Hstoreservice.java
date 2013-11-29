@@ -19634,31 +19634,31 @@ public final class Hstoreservice {
     // @@protoc_insertion_point(class_scope:edu.brown.hstore.AsyncPullResponse)
   }
   
-  public static final class ChunkedAsyncPullReplyRequest extends
+  public static final class MultiPullReplyRequest extends
       com.google.protobuf.GeneratedMessage {
-    // Use ChunkedAsyncPullReplyRequest.newBuilder() to construct.
-    private ChunkedAsyncPullReplyRequest() {
+    // Use MultiPullReplyRequest.newBuilder() to construct.
+    private MultiPullReplyRequest() {
       initFields();
     }
-    private ChunkedAsyncPullReplyRequest(boolean noInit) {}
+    private MultiPullReplyRequest(boolean noInit) {}
     
-    private static final ChunkedAsyncPullReplyRequest defaultInstance;
-    public static ChunkedAsyncPullReplyRequest getDefaultInstance() {
+    private static final MultiPullReplyRequest defaultInstance;
+    public static MultiPullReplyRequest getDefaultInstance() {
       return defaultInstance;
     }
     
-    public ChunkedAsyncPullReplyRequest getDefaultInstanceForType() {
+    public MultiPullReplyRequest getDefaultInstanceForType() {
       return defaultInstance;
     }
     
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return edu.brown.hstore.Hstoreservice.internal_static_edu_brown_hstore_ChunkedAsyncPullReplyRequest_descriptor;
+      return edu.brown.hstore.Hstoreservice.internal_static_edu_brown_hstore_MultiPullReplyRequest_descriptor;
     }
     
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return edu.brown.hstore.Hstoreservice.internal_static_edu_brown_hstore_ChunkedAsyncPullReplyRequest_fieldAccessorTable;
+      return edu.brown.hstore.Hstoreservice.internal_static_edu_brown_hstore_MultiPullReplyRequest_fieldAccessorTable;
     }
     
     // required int32 async_pull_identifier = 1;
@@ -19668,78 +19668,85 @@ public final class Hstoreservice {
     public boolean hasAsyncPullIdentifier() { return hasAsyncPullIdentifier; }
     public int getAsyncPullIdentifier() { return asyncPullIdentifier_; }
     
-    // required int32 chunk_id = 2;
-    public static final int CHUNK_ID_FIELD_NUMBER = 2;
+    // required bool is_async = 2;
+    public static final int IS_ASYNC_FIELD_NUMBER = 2;
+    private boolean hasIsAsync;
+    private boolean isAsync_ = false;
+    public boolean hasIsAsync() { return hasIsAsync; }
+    public boolean getIsAsync() { return isAsync_; }
+    
+    // required int32 chunk_id = 3;
+    public static final int CHUNK_ID_FIELD_NUMBER = 3;
     private boolean hasChunkId;
     private int chunkId_ = 0;
     public boolean hasChunkId() { return hasChunkId; }
     public int getChunkId() { return chunkId_; }
     
-    // required int32 sender_site = 3;
-    public static final int SENDER_SITE_FIELD_NUMBER = 3;
+    // required int32 sender_site = 4;
+    public static final int SENDER_SITE_FIELD_NUMBER = 4;
     private boolean hasSenderSite;
     private int senderSite_ = 0;
     public boolean hasSenderSite() { return hasSenderSite; }
     public int getSenderSite() { return senderSite_; }
     
-    // required int64 t0_s = 4;
-    public static final int T0_S_FIELD_NUMBER = 4;
+    // required int64 t0_s = 5;
+    public static final int T0_S_FIELD_NUMBER = 5;
     private boolean hasT0S;
     private long t0S_ = 0L;
     public boolean hasT0S() { return hasT0S; }
     public long getT0S() { return t0S_; }
     
-    // required int64 transactionID = 5;
-    public static final int TRANSACTIONID_FIELD_NUMBER = 5;
+    // required int64 transactionID = 6;
+    public static final int TRANSACTIONID_FIELD_NUMBER = 6;
     private boolean hasTransactionID;
     private long transactionID_ = 0L;
     public boolean hasTransactionID() { return hasTransactionID; }
     public long getTransactionID() { return transactionID_; }
     
-    // required int32 old_partition = 6;
-    public static final int OLD_PARTITION_FIELD_NUMBER = 6;
+    // required int32 old_partition = 7;
+    public static final int OLD_PARTITION_FIELD_NUMBER = 7;
     private boolean hasOldPartition;
     private int oldPartition_ = 0;
     public boolean hasOldPartition() { return hasOldPartition; }
     public int getOldPartition() { return oldPartition_; }
     
-    // required int32 new_partition = 7;
-    public static final int NEW_PARTITION_FIELD_NUMBER = 7;
+    // required int32 new_partition = 8;
+    public static final int NEW_PARTITION_FIELD_NUMBER = 8;
     private boolean hasNewPartition;
     private int newPartition_ = 0;
     public boolean hasNewPartition() { return hasNewPartition; }
     public int getNewPartition() { return newPartition_; }
     
-    // required string volt_table_name = 8;
-    public static final int VOLT_TABLE_NAME_FIELD_NUMBER = 8;
+    // required string volt_table_name = 9;
+    public static final int VOLT_TABLE_NAME_FIELD_NUMBER = 9;
     private boolean hasVoltTableName;
     private java.lang.String voltTableName_ = "";
     public boolean hasVoltTableName() { return hasVoltTableName; }
     public java.lang.String getVoltTableName() { return voltTableName_; }
     
-    // required int64 min_inclusive = 9;
-    public static final int MIN_INCLUSIVE_FIELD_NUMBER = 9;
+    // required int64 min_inclusive = 10;
+    public static final int MIN_INCLUSIVE_FIELD_NUMBER = 10;
     private boolean hasMinInclusive;
     private long minInclusive_ = 0L;
     public boolean hasMinInclusive() { return hasMinInclusive; }
     public long getMinInclusive() { return minInclusive_; }
     
-    // required int64 max_exclusive = 10;
-    public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 10;
+    // required int64 max_exclusive = 11;
+    public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 11;
     private boolean hasMaxExclusive;
     private long maxExclusive_ = 0L;
     public boolean hasMaxExclusive() { return hasMaxExclusive; }
     public long getMaxExclusive() { return maxExclusive_; }
     
-    // required bytes volt_table_data = 11;
-    public static final int VOLT_TABLE_DATA_FIELD_NUMBER = 11;
+    // required bytes volt_table_data = 12;
+    public static final int VOLT_TABLE_DATA_FIELD_NUMBER = 12;
     private boolean hasVoltTableData;
     private com.google.protobuf.ByteString voltTableData_ = com.google.protobuf.ByteString.EMPTY;
     public boolean hasVoltTableData() { return hasVoltTableData; }
     public com.google.protobuf.ByteString getVoltTableData() { return voltTableData_; }
     
-    // required bool more_data_needed = 12;
-    public static final int MORE_DATA_NEEDED_FIELD_NUMBER = 12;
+    // required bool more_data_needed = 13;
+    public static final int MORE_DATA_NEEDED_FIELD_NUMBER = 13;
     private boolean hasMoreDataNeeded;
     private boolean moreDataNeeded_ = false;
     public boolean hasMoreDataNeeded() { return hasMoreDataNeeded; }
@@ -19749,6 +19756,7 @@ public final class Hstoreservice {
     }
     public final boolean isInitialized() {
       if (!hasAsyncPullIdentifier) return false;
+      if (!hasIsAsync) return false;
       if (!hasChunkId) return false;
       if (!hasSenderSite) return false;
       if (!hasT0S) return false;
@@ -19769,38 +19777,41 @@ public final class Hstoreservice {
       if (hasAsyncPullIdentifier()) {
         output.writeInt32(1, getAsyncPullIdentifier());
       }
+      if (hasIsAsync()) {
+        output.writeBool(2, getIsAsync());
+      }
       if (hasChunkId()) {
-        output.writeInt32(2, getChunkId());
+        output.writeInt32(3, getChunkId());
       }
       if (hasSenderSite()) {
-        output.writeInt32(3, getSenderSite());
+        output.writeInt32(4, getSenderSite());
       }
       if (hasT0S()) {
-        output.writeInt64(4, getT0S());
+        output.writeInt64(5, getT0S());
       }
       if (hasTransactionID()) {
-        output.writeInt64(5, getTransactionID());
+        output.writeInt64(6, getTransactionID());
       }
       if (hasOldPartition()) {
-        output.writeInt32(6, getOldPartition());
+        output.writeInt32(7, getOldPartition());
       }
       if (hasNewPartition()) {
-        output.writeInt32(7, getNewPartition());
+        output.writeInt32(8, getNewPartition());
       }
       if (hasVoltTableName()) {
-        output.writeString(8, getVoltTableName());
+        output.writeString(9, getVoltTableName());
       }
       if (hasMinInclusive()) {
-        output.writeInt64(9, getMinInclusive());
+        output.writeInt64(10, getMinInclusive());
       }
       if (hasMaxExclusive()) {
-        output.writeInt64(10, getMaxExclusive());
+        output.writeInt64(11, getMaxExclusive());
       }
       if (hasVoltTableData()) {
-        output.writeBytes(11, getVoltTableData());
+        output.writeBytes(12, getVoltTableData());
       }
       if (hasMoreDataNeeded()) {
-        output.writeBool(12, getMoreDataNeeded());
+        output.writeBool(13, getMoreDataNeeded());
       }
       getUnknownFields().writeTo(output);
     }
@@ -19815,90 +19826,94 @@ public final class Hstoreservice {
         size += com.google.protobuf.CodedOutputStream
           .computeInt32Size(1, getAsyncPullIdentifier());
       }
+      if (hasIsAsync()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(2, getIsAsync());
+      }
       if (hasChunkId()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(2, getChunkId());
+          .computeInt32Size(3, getChunkId());
       }
       if (hasSenderSite()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(3, getSenderSite());
+          .computeInt32Size(4, getSenderSite());
       }
       if (hasT0S()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(4, getT0S());
+          .computeInt64Size(5, getT0S());
       }
       if (hasTransactionID()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(5, getTransactionID());
+          .computeInt64Size(6, getTransactionID());
       }
       if (hasOldPartition()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(6, getOldPartition());
+          .computeInt32Size(7, getOldPartition());
       }
       if (hasNewPartition()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(7, getNewPartition());
+          .computeInt32Size(8, getNewPartition());
       }
       if (hasVoltTableName()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeStringSize(8, getVoltTableName());
+          .computeStringSize(9, getVoltTableName());
       }
       if (hasMinInclusive()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(9, getMinInclusive());
+          .computeInt64Size(10, getMinInclusive());
       }
       if (hasMaxExclusive()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(10, getMaxExclusive());
+          .computeInt64Size(11, getMaxExclusive());
       }
       if (hasVoltTableData()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(11, getVoltTableData());
+          .computeBytesSize(12, getVoltTableData());
       }
       if (hasMoreDataNeeded()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeBoolSize(12, getMoreDataNeeded());
+          .computeBoolSize(13, getMoreDataNeeded());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
     }
     
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest parseFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyRequest parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return newBuilder().mergeFrom(data).buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest parseFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyRequest parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return newBuilder().mergeFrom(data, extensionRegistry)
                .buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest parseFrom(byte[] data)
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyRequest parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return newBuilder().mergeFrom(data).buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest parseFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyRequest parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return newBuilder().mergeFrom(data, extensionRegistry)
                .buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest parseFrom(java.io.InputStream input)
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyRequest parseFrom(java.io.InputStream input)
         throws java.io.IOException {
       return newBuilder().mergeFrom(input).buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest parseFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyRequest parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
       return newBuilder().mergeFrom(input, extensionRegistry)
                .buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest parseDelimitedFrom(java.io.InputStream input)
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyRequest parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
       Builder builder = newBuilder();
       if (builder.mergeDelimitedFrom(input)) {
@@ -19907,7 +19922,7 @@ public final class Hstoreservice {
         return null;
       }
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest parseDelimitedFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyRequest parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -19918,12 +19933,12 @@ public final class Hstoreservice {
         return null;
       }
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest parseFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyRequest parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
       return newBuilder().mergeFrom(input).buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest parseFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyRequest parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -19933,25 +19948,25 @@ public final class Hstoreservice {
     
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest prototype) {
+    public static Builder newBuilder(edu.brown.hstore.Hstoreservice.MultiPullReplyRequest prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
     
     public static final class Builder extends
         com.google.protobuf.GeneratedMessage.Builder<Builder> {
-      private edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest result;
+      private edu.brown.hstore.Hstoreservice.MultiPullReplyRequest result;
       
-      // Construct using edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest.newBuilder()
+      // Construct using edu.brown.hstore.Hstoreservice.MultiPullReplyRequest.newBuilder()
       private Builder() {}
       
       private static Builder create() {
         Builder builder = new Builder();
-        builder.result = new edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest();
+        builder.result = new edu.brown.hstore.Hstoreservice.MultiPullReplyRequest();
         return builder;
       }
       
-      protected edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest internalGetResult() {
+      protected edu.brown.hstore.Hstoreservice.MultiPullReplyRequest internalGetResult() {
         return result;
       }
       
@@ -19960,7 +19975,7 @@ public final class Hstoreservice {
           throw new IllegalStateException(
             "Cannot call clear() after build().");
         }
-        result = new edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest();
+        result = new edu.brown.hstore.Hstoreservice.MultiPullReplyRequest();
         return this;
       }
       
@@ -19970,24 +19985,24 @@ public final class Hstoreservice {
       
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest.getDescriptor();
+        return edu.brown.hstore.Hstoreservice.MultiPullReplyRequest.getDescriptor();
       }
       
-      public edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest getDefaultInstanceForType() {
-        return edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest.getDefaultInstance();
+      public edu.brown.hstore.Hstoreservice.MultiPullReplyRequest getDefaultInstanceForType() {
+        return edu.brown.hstore.Hstoreservice.MultiPullReplyRequest.getDefaultInstance();
       }
       
       public boolean isInitialized() {
         return result.isInitialized();
       }
-      public edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest build() {
+      public edu.brown.hstore.Hstoreservice.MultiPullReplyRequest build() {
         if (result != null && !isInitialized()) {
           throw newUninitializedMessageException(result);
         }
         return buildPartial();
       }
       
-      private edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest buildParsed()
+      private edu.brown.hstore.Hstoreservice.MultiPullReplyRequest buildParsed()
           throws com.google.protobuf.InvalidProtocolBufferException {
         if (!isInitialized()) {
           throw newUninitializedMessageException(
@@ -19996,29 +20011,32 @@ public final class Hstoreservice {
         return buildPartial();
       }
       
-      public edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest buildPartial() {
+      public edu.brown.hstore.Hstoreservice.MultiPullReplyRequest buildPartial() {
         if (result == null) {
           throw new IllegalStateException(
             "build() has already been called on this Builder.");
         }
-        edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest returnMe = result;
+        edu.brown.hstore.Hstoreservice.MultiPullReplyRequest returnMe = result;
         result = null;
         return returnMe;
       }
       
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest) {
-          return mergeFrom((edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest)other);
+        if (other instanceof edu.brown.hstore.Hstoreservice.MultiPullReplyRequest) {
+          return mergeFrom((edu.brown.hstore.Hstoreservice.MultiPullReplyRequest)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
       
-      public Builder mergeFrom(edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest other) {
-        if (other == edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest.getDefaultInstance()) return this;
+      public Builder mergeFrom(edu.brown.hstore.Hstoreservice.MultiPullReplyRequest other) {
+        if (other == edu.brown.hstore.Hstoreservice.MultiPullReplyRequest.getDefaultInstance()) return this;
         if (other.hasAsyncPullIdentifier()) {
           setAsyncPullIdentifier(other.getAsyncPullIdentifier());
+        }
+        if (other.hasIsAsync()) {
+          setIsAsync(other.getIsAsync());
         }
         if (other.hasChunkId()) {
           setChunkId(other.getChunkId());
@@ -20083,46 +20101,50 @@ public final class Hstoreservice {
               break;
             }
             case 16: {
-              setChunkId(input.readInt32());
+              setIsAsync(input.readBool());
               break;
             }
             case 24: {
-              setSenderSite(input.readInt32());
+              setChunkId(input.readInt32());
               break;
             }
             case 32: {
-              setT0S(input.readInt64());
+              setSenderSite(input.readInt32());
               break;
             }
             case 40: {
-              setTransactionID(input.readInt64());
+              setT0S(input.readInt64());
               break;
             }
             case 48: {
-              setOldPartition(input.readInt32());
+              setTransactionID(input.readInt64());
               break;
             }
             case 56: {
+              setOldPartition(input.readInt32());
+              break;
+            }
+            case 64: {
               setNewPartition(input.readInt32());
               break;
             }
-            case 66: {
+            case 74: {
               setVoltTableName(input.readString());
               break;
             }
-            case 72: {
+            case 80: {
               setMinInclusive(input.readInt64());
               break;
             }
-            case 80: {
+            case 88: {
               setMaxExclusive(input.readInt64());
               break;
             }
-            case 90: {
+            case 98: {
               setVoltTableData(input.readBytes());
               break;
             }
-            case 96: {
+            case 104: {
               setMoreDataNeeded(input.readBool());
               break;
             }
@@ -20149,7 +20171,25 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int32 chunk_id = 2;
+      // required bool is_async = 2;
+      public boolean hasIsAsync() {
+        return result.hasIsAsync();
+      }
+      public boolean getIsAsync() {
+        return result.getIsAsync();
+      }
+      public Builder setIsAsync(boolean value) {
+        result.hasIsAsync = true;
+        result.isAsync_ = value;
+        return this;
+      }
+      public Builder clearIsAsync() {
+        result.hasIsAsync = false;
+        result.isAsync_ = false;
+        return this;
+      }
+      
+      // required int32 chunk_id = 3;
       public boolean hasChunkId() {
         return result.hasChunkId();
       }
@@ -20167,7 +20207,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int32 sender_site = 3;
+      // required int32 sender_site = 4;
       public boolean hasSenderSite() {
         return result.hasSenderSite();
       }
@@ -20185,7 +20225,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int64 t0_s = 4;
+      // required int64 t0_s = 5;
       public boolean hasT0S() {
         return result.hasT0S();
       }
@@ -20203,7 +20243,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int64 transactionID = 5;
+      // required int64 transactionID = 6;
       public boolean hasTransactionID() {
         return result.hasTransactionID();
       }
@@ -20221,7 +20261,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int32 old_partition = 6;
+      // required int32 old_partition = 7;
       public boolean hasOldPartition() {
         return result.hasOldPartition();
       }
@@ -20239,7 +20279,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int32 new_partition = 7;
+      // required int32 new_partition = 8;
       public boolean hasNewPartition() {
         return result.hasNewPartition();
       }
@@ -20257,7 +20297,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required string volt_table_name = 8;
+      // required string volt_table_name = 9;
       public boolean hasVoltTableName() {
         return result.hasVoltTableName();
       }
@@ -20278,7 +20318,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int64 min_inclusive = 9;
+      // required int64 min_inclusive = 10;
       public boolean hasMinInclusive() {
         return result.hasMinInclusive();
       }
@@ -20296,7 +20336,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int64 max_exclusive = 10;
+      // required int64 max_exclusive = 11;
       public boolean hasMaxExclusive() {
         return result.hasMaxExclusive();
       }
@@ -20314,7 +20354,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required bytes volt_table_data = 11;
+      // required bytes volt_table_data = 12;
       public boolean hasVoltTableData() {
         return result.hasVoltTableData();
       }
@@ -20335,7 +20375,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required bool more_data_needed = 12;
+      // required bool more_data_needed = 13;
       public boolean hasMoreDataNeeded() {
         return result.hasMoreDataNeeded();
       }
@@ -20353,43 +20393,43 @@ public final class Hstoreservice {
         return this;
       }
       
-      // @@protoc_insertion_point(builder_scope:edu.brown.hstore.ChunkedAsyncPullReplyRequest)
+      // @@protoc_insertion_point(builder_scope:edu.brown.hstore.MultiPullReplyRequest)
     }
     
     static {
-      defaultInstance = new ChunkedAsyncPullReplyRequest(true);
+      defaultInstance = new MultiPullReplyRequest(true);
       edu.brown.hstore.Hstoreservice.internalForceInit();
       defaultInstance.initFields();
     }
     
-    // @@protoc_insertion_point(class_scope:edu.brown.hstore.ChunkedAsyncPullReplyRequest)
+    // @@protoc_insertion_point(class_scope:edu.brown.hstore.MultiPullReplyRequest)
   }
   
-  public static final class ChunkedAsyncPullReplyResponse extends
+  public static final class MultiPullReplyResponse extends
       com.google.protobuf.GeneratedMessage {
-    // Use ChunkedAsyncPullReplyResponse.newBuilder() to construct.
-    private ChunkedAsyncPullReplyResponse() {
+    // Use MultiPullReplyResponse.newBuilder() to construct.
+    private MultiPullReplyResponse() {
       initFields();
     }
-    private ChunkedAsyncPullReplyResponse(boolean noInit) {}
+    private MultiPullReplyResponse(boolean noInit) {}
     
-    private static final ChunkedAsyncPullReplyResponse defaultInstance;
-    public static ChunkedAsyncPullReplyResponse getDefaultInstance() {
+    private static final MultiPullReplyResponse defaultInstance;
+    public static MultiPullReplyResponse getDefaultInstance() {
       return defaultInstance;
     }
     
-    public ChunkedAsyncPullReplyResponse getDefaultInstanceForType() {
+    public MultiPullReplyResponse getDefaultInstanceForType() {
       return defaultInstance;
     }
     
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return edu.brown.hstore.Hstoreservice.internal_static_edu_brown_hstore_ChunkedAsyncPullReplyResponse_descriptor;
+      return edu.brown.hstore.Hstoreservice.internal_static_edu_brown_hstore_MultiPullReplyResponse_descriptor;
     }
     
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return edu.brown.hstore.Hstoreservice.internal_static_edu_brown_hstore_ChunkedAsyncPullReplyResponse_fieldAccessorTable;
+      return edu.brown.hstore.Hstoreservice.internal_static_edu_brown_hstore_MultiPullReplyResponse_fieldAccessorTable;
     }
     
     // required int32 async_pull_identifier = 1;
@@ -20399,64 +20439,71 @@ public final class Hstoreservice {
     public boolean hasAsyncPullIdentifier() { return hasAsyncPullIdentifier; }
     public int getAsyncPullIdentifier() { return asyncPullIdentifier_; }
     
-    // required int32 chunk_id = 2;
-    public static final int CHUNK_ID_FIELD_NUMBER = 2;
+    // required bool is_async = 2;
+    public static final int IS_ASYNC_FIELD_NUMBER = 2;
+    private boolean hasIsAsync;
+    private boolean isAsync_ = false;
+    public boolean hasIsAsync() { return hasIsAsync; }
+    public boolean getIsAsync() { return isAsync_; }
+    
+    // required int32 chunk_id = 3;
+    public static final int CHUNK_ID_FIELD_NUMBER = 3;
     private boolean hasChunkId;
     private int chunkId_ = 0;
     public boolean hasChunkId() { return hasChunkId; }
     public int getChunkId() { return chunkId_; }
     
-    // required int32 sender_site = 3;
-    public static final int SENDER_SITE_FIELD_NUMBER = 3;
+    // required int32 sender_site = 4;
+    public static final int SENDER_SITE_FIELD_NUMBER = 4;
     private boolean hasSenderSite;
     private int senderSite_ = 0;
     public boolean hasSenderSite() { return hasSenderSite; }
     public int getSenderSite() { return senderSite_; }
     
-    // required int64 t0_s = 4;
-    public static final int T0_S_FIELD_NUMBER = 4;
+    // required int64 t0_s = 5;
+    public static final int T0_S_FIELD_NUMBER = 5;
     private boolean hasT0S;
     private long t0S_ = 0L;
     public boolean hasT0S() { return hasT0S; }
     public long getT0S() { return t0S_; }
     
-    // required int64 transactionID = 5;
-    public static final int TRANSACTIONID_FIELD_NUMBER = 5;
+    // required int64 transactionID = 6;
+    public static final int TRANSACTIONID_FIELD_NUMBER = 6;
     private boolean hasTransactionID;
     private long transactionID_ = 0L;
     public boolean hasTransactionID() { return hasTransactionID; }
     public long getTransactionID() { return transactionID_; }
     
-    // required int32 old_partition = 6;
-    public static final int OLD_PARTITION_FIELD_NUMBER = 6;
+    // required int32 old_partition = 7;
+    public static final int OLD_PARTITION_FIELD_NUMBER = 7;
     private boolean hasOldPartition;
     private int oldPartition_ = 0;
     public boolean hasOldPartition() { return hasOldPartition; }
     public int getOldPartition() { return oldPartition_; }
     
-    // required int32 new_partition = 7;
-    public static final int NEW_PARTITION_FIELD_NUMBER = 7;
+    // required int32 new_partition = 8;
+    public static final int NEW_PARTITION_FIELD_NUMBER = 8;
     private boolean hasNewPartition;
     private int newPartition_ = 0;
     public boolean hasNewPartition() { return hasNewPartition; }
     public int getNewPartition() { return newPartition_; }
     
-    // required string volt_table_name = 8;
-    public static final int VOLT_TABLE_NAME_FIELD_NUMBER = 8;
+    // required string volt_table_name = 9;
+    public static final int VOLT_TABLE_NAME_FIELD_NUMBER = 9;
     private boolean hasVoltTableName;
     private java.lang.String voltTableName_ = "";
     public boolean hasVoltTableName() { return hasVoltTableName; }
     public java.lang.String getVoltTableName() { return voltTableName_; }
     
-    // required int64 min_inclusive = 9;
-    public static final int MIN_INCLUSIVE_FIELD_NUMBER = 9;
+    // required int64 min_inclusive = 10;
+    public static final int MIN_INCLUSIVE_FIELD_NUMBER = 10;
     private boolean hasMinInclusive;
     private long minInclusive_ = 0L;
     public boolean hasMinInclusive() { return hasMinInclusive; }
     public long getMinInclusive() { return minInclusive_; }
     
-    // required int64 max_exclusive = 10;
-    public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 10;
+    // required int64 max_exclusive = 11;
+    public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 11;
     private boolean hasMaxExclusive;
     private long maxExclusive_ = 0L;
     public boolean hasMaxExclusive() { return hasMaxExclusive; }
@@ -20466,6 +20513,7 @@ public final class Hstoreservice {
     }
     public final boolean isInitialized() {
       if (!hasAsyncPullIdentifier) return false;
+      if (!hasIsAsync) return false;
       if (!hasChunkId) return false;
       if (!hasSenderSite) return false;
       if (!hasT0S) return false;
@@ -20484,32 +20532,35 @@ public final class Hstoreservice {
       if (hasAsyncPullIdentifier()) {
         output.writeInt32(1, getAsyncPullIdentifier());
       }
+      if (hasIsAsync()) {
+        output.writeBool(2, getIsAsync());
+      }
       if (hasChunkId()) {
-        output.writeInt32(2, getChunkId());
+        output.writeInt32(3, getChunkId());
       }
       if (hasSenderSite()) {
-        output.writeInt32(3, getSenderSite());
+        output.writeInt32(4, getSenderSite());
       }
       if (hasT0S()) {
-        output.writeInt64(4, getT0S());
+        output.writeInt64(5, getT0S());
       }
       if (hasTransactionID()) {
-        output.writeInt64(5, getTransactionID());
+        output.writeInt64(6, getTransactionID());
       }
       if (hasOldPartition()) {
-        output.writeInt32(6, getOldPartition());
+        output.writeInt32(7, getOldPartition());
       }
       if (hasNewPartition()) {
-        output.writeInt32(7, getNewPartition());
+        output.writeInt32(8, getNewPartition());
       }
       if (hasVoltTableName()) {
-        output.writeString(8, getVoltTableName());
+        output.writeString(9, getVoltTableName());
       }
       if (hasMinInclusive()) {
-        output.writeInt64(9, getMinInclusive());
+        output.writeInt64(10, getMinInclusive());
       }
       if (hasMaxExclusive()) {
-        output.writeInt64(10, getMaxExclusive());
+        output.writeInt64(11, getMaxExclusive());
       }
       getUnknownFields().writeTo(output);
     }
@@ -20524,82 +20575,86 @@ public final class Hstoreservice {
         size += com.google.protobuf.CodedOutputStream
           .computeInt32Size(1, getAsyncPullIdentifier());
       }
+      if (hasIsAsync()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(2, getIsAsync());
+      }
       if (hasChunkId()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(2, getChunkId());
+          .computeInt32Size(3, getChunkId());
       }
       if (hasSenderSite()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(3, getSenderSite());
+          .computeInt32Size(4, getSenderSite());
       }
       if (hasT0S()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(4, getT0S());
+          .computeInt64Size(5, getT0S());
       }
       if (hasTransactionID()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(5, getTransactionID());
+          .computeInt64Size(6, getTransactionID());
       }
       if (hasOldPartition()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(6, getOldPartition());
+          .computeInt32Size(7, getOldPartition());
       }
       if (hasNewPartition()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(7, getNewPartition());
+          .computeInt32Size(8, getNewPartition());
       }
       if (hasVoltTableName()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeStringSize(8, getVoltTableName());
+          .computeStringSize(9, getVoltTableName());
       }
       if (hasMinInclusive()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(9, getMinInclusive());
+          .computeInt64Size(10, getMinInclusive());
       }
       if (hasMaxExclusive()) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(10, getMaxExclusive());
+          .computeInt64Size(11, getMaxExclusive());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
     }
     
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse parseFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyResponse parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return newBuilder().mergeFrom(data).buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse parseFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyResponse parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return newBuilder().mergeFrom(data, extensionRegistry)
                .buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse parseFrom(byte[] data)
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyResponse parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return newBuilder().mergeFrom(data).buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse parseFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyResponse parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return newBuilder().mergeFrom(data, extensionRegistry)
                .buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse parseFrom(java.io.InputStream input)
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyResponse parseFrom(java.io.InputStream input)
         throws java.io.IOException {
       return newBuilder().mergeFrom(input).buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse parseFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyResponse parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
       return newBuilder().mergeFrom(input, extensionRegistry)
                .buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse parseDelimitedFrom(java.io.InputStream input)
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyResponse parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
       Builder builder = newBuilder();
       if (builder.mergeDelimitedFrom(input)) {
@@ -20608,7 +20663,7 @@ public final class Hstoreservice {
         return null;
       }
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse parseDelimitedFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyResponse parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -20619,12 +20674,12 @@ public final class Hstoreservice {
         return null;
       }
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse parseFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyResponse parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
       return newBuilder().mergeFrom(input).buildParsed();
     }
-    public static edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse parseFrom(
+    public static edu.brown.hstore.Hstoreservice.MultiPullReplyResponse parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -20634,25 +20689,25 @@ public final class Hstoreservice {
     
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse prototype) {
+    public static Builder newBuilder(edu.brown.hstore.Hstoreservice.MultiPullReplyResponse prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
     
     public static final class Builder extends
         com.google.protobuf.GeneratedMessage.Builder<Builder> {
-      private edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse result;
+      private edu.brown.hstore.Hstoreservice.MultiPullReplyResponse result;
       
-      // Construct using edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse.newBuilder()
+      // Construct using edu.brown.hstore.Hstoreservice.MultiPullReplyResponse.newBuilder()
       private Builder() {}
       
       private static Builder create() {
         Builder builder = new Builder();
-        builder.result = new edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse();
+        builder.result = new edu.brown.hstore.Hstoreservice.MultiPullReplyResponse();
         return builder;
       }
       
-      protected edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse internalGetResult() {
+      protected edu.brown.hstore.Hstoreservice.MultiPullReplyResponse internalGetResult() {
         return result;
       }
       
@@ -20661,7 +20716,7 @@ public final class Hstoreservice {
           throw new IllegalStateException(
             "Cannot call clear() after build().");
         }
-        result = new edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse();
+        result = new edu.brown.hstore.Hstoreservice.MultiPullReplyResponse();
         return this;
       }
       
@@ -20671,24 +20726,24 @@ public final class Hstoreservice {
       
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse.getDescriptor();
+        return edu.brown.hstore.Hstoreservice.MultiPullReplyResponse.getDescriptor();
       }
       
-      public edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse getDefaultInstanceForType() {
-        return edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse.getDefaultInstance();
+      public edu.brown.hstore.Hstoreservice.MultiPullReplyResponse getDefaultInstanceForType() {
+        return edu.brown.hstore.Hstoreservice.MultiPullReplyResponse.getDefaultInstance();
       }
       
       public boolean isInitialized() {
         return result.isInitialized();
       }
-      public edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse build() {
+      public edu.brown.hstore.Hstoreservice.MultiPullReplyResponse build() {
         if (result != null && !isInitialized()) {
           throw newUninitializedMessageException(result);
         }
         return buildPartial();
       }
       
-      private edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse buildParsed()
+      private edu.brown.hstore.Hstoreservice.MultiPullReplyResponse buildParsed()
           throws com.google.protobuf.InvalidProtocolBufferException {
         if (!isInitialized()) {
           throw newUninitializedMessageException(
@@ -20697,29 +20752,32 @@ public final class Hstoreservice {
         return buildPartial();
       }
       
-      public edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse buildPartial() {
+      public edu.brown.hstore.Hstoreservice.MultiPullReplyResponse buildPartial() {
         if (result == null) {
           throw new IllegalStateException(
             "build() has already been called on this Builder.");
         }
-        edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse returnMe = result;
+        edu.brown.hstore.Hstoreservice.MultiPullReplyResponse returnMe = result;
         result = null;
         return returnMe;
       }
       
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse) {
-          return mergeFrom((edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse)other);
+        if (other instanceof edu.brown.hstore.Hstoreservice.MultiPullReplyResponse) {
+          return mergeFrom((edu.brown.hstore.Hstoreservice.MultiPullReplyResponse)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
       
-      public Builder mergeFrom(edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse other) {
-        if (other == edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse.getDefaultInstance()) return this;
+      public Builder mergeFrom(edu.brown.hstore.Hstoreservice.MultiPullReplyResponse other) {
+        if (other == edu.brown.hstore.Hstoreservice.MultiPullReplyResponse.getDefaultInstance()) return this;
         if (other.hasAsyncPullIdentifier()) {
           setAsyncPullIdentifier(other.getAsyncPullIdentifier());
+        }
+        if (other.hasIsAsync()) {
+          setIsAsync(other.getIsAsync());
         }
         if (other.hasChunkId()) {
           setChunkId(other.getChunkId());
@@ -20778,38 +20836,42 @@ public final class Hstoreservice {
               break;
             }
             case 16: {
-              setChunkId(input.readInt32());
+              setIsAsync(input.readBool());
               break;
             }
             case 24: {
-              setSenderSite(input.readInt32());
+              setChunkId(input.readInt32());
               break;
             }
             case 32: {
-              setT0S(input.readInt64());
+              setSenderSite(input.readInt32());
               break;
             }
             case 40: {
-              setTransactionID(input.readInt64());
+              setT0S(input.readInt64());
               break;
             }
             case 48: {
-              setOldPartition(input.readInt32());
+              setTransactionID(input.readInt64());
               break;
             }
             case 56: {
+              setOldPartition(input.readInt32());
+              break;
+            }
+            case 64: {
               setNewPartition(input.readInt32());
               break;
             }
-            case 66: {
+            case 74: {
               setVoltTableName(input.readString());
               break;
             }
-            case 72: {
+            case 80: {
               setMinInclusive(input.readInt64());
               break;
             }
-            case 80: {
+            case 88: {
               setMaxExclusive(input.readInt64());
               break;
             }
@@ -20836,7 +20898,25 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int32 chunk_id = 2;
+      // required bool is_async = 2;
+      public boolean hasIsAsync() {
+        return result.hasIsAsync();
+      }
+      public boolean getIsAsync() {
+        return result.getIsAsync();
+      }
+      public Builder setIsAsync(boolean value) {
+        result.hasIsAsync = true;
+        result.isAsync_ = value;
+        return this;
+      }
+      public Builder clearIsAsync() {
+        result.hasIsAsync = false;
+        result.isAsync_ = false;
+        return this;
+      }
+      
+      // required int32 chunk_id = 3;
       public boolean hasChunkId() {
         return result.hasChunkId();
       }
@@ -20854,7 +20934,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int32 sender_site = 3;
+      // required int32 sender_site = 4;
       public boolean hasSenderSite() {
         return result.hasSenderSite();
       }
@@ -20872,7 +20952,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int64 t0_s = 4;
+      // required int64 t0_s = 5;
       public boolean hasT0S() {
         return result.hasT0S();
       }
@@ -20890,7 +20970,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int64 transactionID = 5;
+      // required int64 transactionID = 6;
       public boolean hasTransactionID() {
         return result.hasTransactionID();
       }
@@ -20908,7 +20988,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int32 old_partition = 6;
+      // required int32 old_partition = 7;
       public boolean hasOldPartition() {
         return result.hasOldPartition();
       }
@@ -20926,7 +21006,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int32 new_partition = 7;
+      // required int32 new_partition = 8;
       public boolean hasNewPartition() {
         return result.hasNewPartition();
       }
@@ -20944,7 +21024,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required string volt_table_name = 8;
+      // required string volt_table_name = 9;
       public boolean hasVoltTableName() {
         return result.hasVoltTableName();
       }
@@ -20965,7 +21045,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int64 min_inclusive = 9;
+      // required int64 min_inclusive = 10;
       public boolean hasMinInclusive() {
         return result.hasMinInclusive();
       }
@@ -20983,7 +21063,7 @@ public final class Hstoreservice {
         return this;
       }
       
-      // required int64 max_exclusive = 10;
+      // required int64 max_exclusive = 11;
       public boolean hasMaxExclusive() {
         return result.hasMaxExclusive();
       }
@@ -21001,16 +21081,16 @@ public final class Hstoreservice {
         return this;
       }
       
-      // @@protoc_insertion_point(builder_scope:edu.brown.hstore.ChunkedAsyncPullReplyResponse)
+      // @@protoc_insertion_point(builder_scope:edu.brown.hstore.MultiPullReplyResponse)
     }
     
     static {
-      defaultInstance = new ChunkedAsyncPullReplyResponse(true);
+      defaultInstance = new MultiPullReplyResponse(true);
       edu.brown.hstore.Hstoreservice.internalForceInit();
       defaultInstance.initFields();
     }
     
-    // @@protoc_insertion_point(class_scope:edu.brown.hstore.ChunkedAsyncPullReplyResponse)
+    // @@protoc_insertion_point(class_scope:edu.brown.hstore.MultiPullReplyResponse)
   }
   
   public static final class ReconfigurationControlRequest extends
@@ -22108,10 +22188,10 @@ public final class Hstoreservice {
           edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest request,
           com.google.protobuf.RpcCallback<edu.brown.hstore.Hstoreservice.ReconfigurationControlResponse> done);
       
-      public abstract void chunkedAsyncPullReply(
+      public abstract void multiPullReply(
           com.google.protobuf.RpcController controller,
-          edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest request,
-          com.google.protobuf.RpcCallback<edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse> done);
+          edu.brown.hstore.Hstoreservice.MultiPullReplyRequest request,
+          com.google.protobuf.RpcCallback<edu.brown.hstore.Hstoreservice.MultiPullReplyResponse> done);
       
     }
     
@@ -22279,11 +22359,11 @@ public final class Hstoreservice {
         }
         
         @Override
-        public  void chunkedAsyncPullReply(
+        public  void multiPullReply(
             com.google.protobuf.RpcController controller,
-            edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest request,
-            com.google.protobuf.RpcCallback<edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse> done) {
-          impl.chunkedAsyncPullReply(controller, request, done);
+            edu.brown.hstore.Hstoreservice.MultiPullReplyRequest request,
+            com.google.protobuf.RpcCallback<edu.brown.hstore.Hstoreservice.MultiPullReplyResponse> done) {
+          impl.multiPullReply(controller, request, done);
         }
         
       };
@@ -22349,7 +22429,7 @@ public final class Hstoreservice {
             case 19:
               return impl.reconfigurationControlMsg(controller, (edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest)request);
             case 20:
-              return impl.chunkedAsyncPullReply(controller, (edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest)request);
+              return impl.multiPullReply(controller, (edu.brown.hstore.Hstoreservice.MultiPullReplyRequest)request);
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -22405,7 +22485,7 @@ public final class Hstoreservice {
             case 19:
               return edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest.getDefaultInstance();
             case 20:
-              return edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest.getDefaultInstance();
+              return edu.brown.hstore.Hstoreservice.MultiPullReplyRequest.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -22461,7 +22541,7 @@ public final class Hstoreservice {
             case 19:
               return edu.brown.hstore.Hstoreservice.ReconfigurationControlResponse.getDefaultInstance();
             case 20:
-              return edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse.getDefaultInstance();
+              return edu.brown.hstore.Hstoreservice.MultiPullReplyResponse.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -22570,10 +22650,10 @@ public final class Hstoreservice {
         edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest request,
         com.google.protobuf.RpcCallback<edu.brown.hstore.Hstoreservice.ReconfigurationControlResponse> done);
     
-    public abstract void chunkedAsyncPullReply(
+    public abstract void multiPullReply(
         com.google.protobuf.RpcController controller,
-        edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest request,
-        com.google.protobuf.RpcCallback<edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse> done);
+        edu.brown.hstore.Hstoreservice.MultiPullReplyRequest request,
+        com.google.protobuf.RpcCallback<edu.brown.hstore.Hstoreservice.MultiPullReplyResponse> done);
     
     public static final
         com.google.protobuf.Descriptors.ServiceDescriptor
@@ -22698,8 +22778,8 @@ public final class Hstoreservice {
               done));
           return;
         case 20:
-          this.chunkedAsyncPullReply(controller, (edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest)request,
-            com.google.protobuf.RpcUtil.<edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse>specializeCallback(
+          this.multiPullReply(controller, (edu.brown.hstore.Hstoreservice.MultiPullReplyRequest)request,
+            com.google.protobuf.RpcUtil.<edu.brown.hstore.Hstoreservice.MultiPullReplyResponse>specializeCallback(
               done));
           return;
         default:
@@ -22757,7 +22837,7 @@ public final class Hstoreservice {
         case 19:
           return edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest.getDefaultInstance();
         case 20:
-          return edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest.getDefaultInstance();
+          return edu.brown.hstore.Hstoreservice.MultiPullReplyRequest.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -22813,7 +22893,7 @@ public final class Hstoreservice {
         case 19:
           return edu.brown.hstore.Hstoreservice.ReconfigurationControlResponse.getDefaultInstance();
         case 20:
-          return edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse.getDefaultInstance();
+          return edu.brown.hstore.Hstoreservice.MultiPullReplyResponse.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -23135,19 +23215,19 @@ public final class Hstoreservice {
             edu.brown.hstore.Hstoreservice.ReconfigurationControlResponse.getDefaultInstance()));
       }
       
-      public  void chunkedAsyncPullReply(
+      public  void multiPullReply(
           com.google.protobuf.RpcController controller,
-          edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest request,
-          com.google.protobuf.RpcCallback<edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse> done) {
+          edu.brown.hstore.Hstoreservice.MultiPullReplyRequest request,
+          com.google.protobuf.RpcCallback<edu.brown.hstore.Hstoreservice.MultiPullReplyResponse> done) {
         channel.callMethod(
           getDescriptor().getMethods().get(20),
           controller,
           request,
-          edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse.getDefaultInstance(),
+          edu.brown.hstore.Hstoreservice.MultiPullReplyResponse.getDefaultInstance(),
           com.google.protobuf.RpcUtil.generalizeCallback(
             done,
-            edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse.class,
-            edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse.getDefaultInstance()));
+            edu.brown.hstore.Hstoreservice.MultiPullReplyResponse.class,
+            edu.brown.hstore.Hstoreservice.MultiPullReplyResponse.getDefaultInstance()));
       }
     }
     
@@ -23257,9 +23337,9 @@ public final class Hstoreservice {
           edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest request)
           throws com.google.protobuf.ServiceException;
       
-      public edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse chunkedAsyncPullReply(
+      public edu.brown.hstore.Hstoreservice.MultiPullReplyResponse multiPullReply(
           com.google.protobuf.RpcController controller,
-          edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest request)
+          edu.brown.hstore.Hstoreservice.MultiPullReplyRequest request)
           throws com.google.protobuf.ServiceException;
     }
     
@@ -23510,15 +23590,15 @@ public final class Hstoreservice {
       }
       
       
-      public edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse chunkedAsyncPullReply(
+      public edu.brown.hstore.Hstoreservice.MultiPullReplyResponse multiPullReply(
           com.google.protobuf.RpcController controller,
-          edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest request)
+          edu.brown.hstore.Hstoreservice.MultiPullReplyRequest request)
           throws com.google.protobuf.ServiceException {
-        return (edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse) channel.callBlockingMethod(
+        return (edu.brown.hstore.Hstoreservice.MultiPullReplyResponse) channel.callBlockingMethod(
           getDescriptor().getMethods().get(20),
           controller,
           request,
-          edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse.getDefaultInstance());
+          edu.brown.hstore.Hstoreservice.MultiPullReplyResponse.getDefaultInstance());
       }
       
     }
@@ -23735,15 +23815,15 @@ public final class Hstoreservice {
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_edu_brown_hstore_AsyncPullResponse_fieldAccessorTable;
   private static com.google.protobuf.Descriptors.Descriptor
-    internal_static_edu_brown_hstore_ChunkedAsyncPullReplyRequest_descriptor;
+    internal_static_edu_brown_hstore_MultiPullReplyRequest_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
-      internal_static_edu_brown_hstore_ChunkedAsyncPullReplyRequest_fieldAccessorTable;
+      internal_static_edu_brown_hstore_MultiPullReplyRequest_fieldAccessorTable;
   private static com.google.protobuf.Descriptors.Descriptor
-    internal_static_edu_brown_hstore_ChunkedAsyncPullReplyResponse_descriptor;
+    internal_static_edu_brown_hstore_MultiPullReplyResponse_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
-      internal_static_edu_brown_hstore_ChunkedAsyncPullReplyResponse_fieldAccessorTable;
+      internal_static_edu_brown_hstore_MultiPullReplyResponse_fieldAccessorTable;
   private static com.google.protobuf.Descriptors.Descriptor
     internal_static_edu_brown_hstore_ReconfigurationControlRequest_descriptor;
   private static
@@ -23905,95 +23985,95 @@ public final class Hstoreservice {
       "on\030\005 \002(\005\022\025\n\rnew_partition\030\006 \002(\005\022\027\n\017volt_",
       "table_name\030\007 \002(\t\022\025\n\rmin_inclusive\030\010 \002(\003\022" +
       "\025\n\rmax_exclusive\030\t \002(\003\022\027\n\017volt_table_dat" +
-      "a\030\n \002(\014\022\030\n\020more_data_needed\030\013 \002(\010\"\261\002\n\034Ch" +
-      "unkedAsyncPullReplyRequest\022\035\n\025async_pull" +
-      "_identifier\030\001 \002(\005\022\020\n\010chunk_id\030\002 \002(\005\022\023\n\013s" +
-      "ender_site\030\003 \002(\005\022\014\n\004t0_s\030\004 \002(\003\022\025\n\rtransa" +
-      "ctionID\030\005 \002(\003\022\025\n\rold_partition\030\006 \002(\005\022\025\n\r" +
-      "new_partition\030\007 \002(\005\022\027\n\017volt_table_name\030\010" +
-      " \002(\t\022\025\n\rmin_inclusive\030\t \002(\003\022\025\n\rmax_exclu" +
-      "sive\030\n \002(\003\022\027\n\017volt_table_data\030\013 \002(\014\022\030\n\020m",
-      "ore_data_needed\030\014 \002(\010\"\377\001\n\035ChunkedAsyncPu" +
-      "llReplyResponse\022\035\n\025async_pull_identifier" +
-      "\030\001 \002(\005\022\020\n\010chunk_id\030\002 \002(\005\022\023\n\013sender_site\030" +
-      "\003 \002(\005\022\014\n\004t0_s\030\004 \002(\003\022\025\n\rtransactionID\030\005 \002" +
-      "(\003\022\025\n\rold_partition\030\006 \002(\005\022\025\n\rnew_partiti" +
-      "on\030\007 \002(\005\022\027\n\017volt_table_name\030\010 \002(\t\022\025\n\rmin" +
-      "_inclusive\030\t \002(\003\022\025\n\rmax_exclusive\030\n \002(\003\"" +
-      "\341\001\n\035ReconfigurationControlRequest\022\032\n\022mes" +
-      "sage_identifier\030\001 \002(\005\022\023\n\013sender_site\030\002 \002" +
-      "(\005\022\025\n\rreceiver_site\030\003 \002(\005\022\025\n\rsrc_partiti",
-      "on\030\004 \002(\005\022\026\n\016dest_partition\030\005 \002(\005\022I\n\023reco" +
-      "nfigControlType\030\006 \002(\0162,.edu.brown.hstore" +
-      ".ReconfigurationControlType\"\342\001\n\036Reconfig" +
-      "urationControlResponse\022\032\n\022message_identi" +
-      "fier\030\001 \002(\005\022\023\n\013sender_site\030\002 \002(\005\022\025\n\rrecei" +
-      "ver_site\030\003 \002(\005\022\025\n\rsrc_partition\030\004 \002(\005\022\026\n" +
-      "\016dest_partition\030\005 \002(\005\022I\n\023reconfigControl" +
-      "Type\030\006 \002(\0162,.edu.brown.hstore.Reconfigur" +
-      "ationControlType*\320\001\n\006Status\022\006\n\002OK\020\000\022\016\n\nA" +
-      "BORT_USER\020\001\022\022\n\016ABORT_GRACEFUL\020\002\022\024\n\020ABORT",
-      "_UNEXPECTED\020\003\022\031\n\025ABORT_CONNECTION_LOST\020\004" +
-      "\022\024\n\020ABORT_MISPREDICT\020\005\022\021\n\rABORT_RESTART\020" +
-      "\006\022\020\n\014ABORT_REJECT\020\007\022\027\n\023ABORT_EVICTEDACCE" +
-      "SS\020\010\022\025\n\021ABORT_SPECULATIVE\020\t*\200\001\n\032Reconfig" +
-      "urationControlType\022\021\n\rPULL_RECEIVED\020\000\022\030\n" +
-      "\024RECONFIGURATION_DONE\020\001\022!\n\035RECONFIGURATI" +
-      "ON_DONE_RECEIVED\020\002\022\022\n\016CHUNK_RECEIVED\020\0032\344" +
-      "\020\n\rHStoreService\022f\n\017TransactionInit\022(.ed" +
-      "u.brown.hstore.TransactionInitRequest\032)." +
-      "edu.brown.hstore.TransactionInitResponse",
-      "\022f\n\017TransactionWork\022(.edu.brown.hstore.T" +
-      "ransactionWorkRequest\032).edu.brown.hstore" +
-      ".TransactionWorkResponse\022x\n\023TransactionP" +
-      "refetch\022+.edu.brown.hstore.TransactionPr" +
-      "efetchResult\0324.edu.brown.hstore.Transact" +
-      "ionPrefetchAcknowledgement\022c\n\016Transactio" +
-      "nMap\022\'.edu.brown.hstore.TransactionMapRe" +
-      "quest\032(.edu.brown.hstore.TransactionMapR" +
-      "esponse\022l\n\021TransactionReduce\022*.edu.brown" +
-      ".hstore.TransactionReduceRequest\032+.edu.b",
-      "rown.hstore.TransactionReduceResponse\022o\n" +
-      "\022TransactionPrepare\022+.edu.brown.hstore.T" +
-      "ransactionPrepareRequest\032,.edu.brown.hst" +
-      "ore.TransactionPrepareResponse\022l\n\021Transa" +
-      "ctionFinish\022*.edu.brown.hstore.Transacti" +
-      "onFinishRequest\032+.edu.brown.hstore.Trans" +
-      "actionFinishResponse\022r\n\023TransactionRedir" +
-      "ect\022,.edu.brown.hstore.TransactionRedire" +
-      "ctRequest\032-.edu.brown.hstore.Transaction" +
-      "RedirectResponse\022i\n\020TransactionDebug\022).e",
-      "du.brown.hstore.TransactionDebugRequest\032" +
-      "*.edu.brown.hstore.TransactionDebugRespo" +
-      "nse\022Q\n\010SendData\022!.edu.brown.hstore.SendD" +
-      "ataRequest\032\".edu.brown.hstore.SendDataRe" +
-      "sponse\022W\n\nInitialize\022#.edu.brown.hstore." +
-      "InitializeRequest\032$.edu.brown.hstore.Ini" +
-      "tializeResponse\022f\n\017ShutdownPrepare\022(.edu" +
-      ".brown.hstore.ShutdownPrepareRequest\032).e" +
-      "du.brown.hstore.ShutdownPrepareResponse\022" +
-      "Q\n\010Shutdown\022!.edu.brown.hstore.ShutdownR",
-      "equest\032\".edu.brown.hstore.ShutdownRespon" +
-      "se\022T\n\tHeartbeat\022\".edu.brown.hstore.Heart" +
-      "beatRequest\032#.edu.brown.hstore.Heartbeat" +
-      "Response\022Q\n\010TimeSync\022!.edu.brown.hstore." +
-      "TimeSyncRequest\032\".edu.brown.hstore.TimeS" +
-      "yncResponse\022f\n\017Reconfiguration\022(.edu.bro" +
-      "wn.hstore.ReconfigurationRequest\032).edu.b" +
-      "rown.hstore.ReconfigurationResponse\022]\n\014D" +
-      "ataTransfer\022%.edu.brown.hstore.DataTrans" +
-      "ferRequest\032&.edu.brown.hstore.DataTransf",
-      "erResponse\022Q\n\010LivePull\022!.edu.brown.hstor" +
-      "e.LivePullRequest\032\".edu.brown.hstore.Liv" +
-      "ePullResponse\022T\n\tAsyncPull\022\".edu.brown.h" +
-      "store.AsyncPullRequest\032#.edu.brown.hstor" +
-      "e.AsyncPullResponse\022~\n\031ReconfigurationCo" +
-      "ntrolMsg\022/.edu.brown.hstore.Reconfigurat" +
-      "ionControlRequest\0320.edu.brown.hstore.Rec" +
-      "onfigurationControlResponse\022x\n\025ChunkedAs" +
-      "yncPullReply\022..edu.brown.hstore.ChunkedA" +
-      "syncPullReplyRequest\032/.edu.brown.hstore.",
-      "ChunkedAsyncPullReplyResponse"
+      "a\030\n \002(\014\022\030\n\020more_data_needed\030\013 \002(\010\"\274\002\n\025Mu" +
+      "ltiPullReplyRequest\022\035\n\025async_pull_identi" +
+      "fier\030\001 \002(\005\022\020\n\010is_async\030\002 \002(\010\022\020\n\010chunk_id" +
+      "\030\003 \002(\005\022\023\n\013sender_site\030\004 \002(\005\022\014\n\004t0_s\030\005 \002(" +
+      "\003\022\025\n\rtransactionID\030\006 \002(\003\022\025\n\rold_partitio" +
+      "n\030\007 \002(\005\022\025\n\rnew_partition\030\010 \002(\005\022\027\n\017volt_t" +
+      "able_name\030\t \002(\t\022\025\n\rmin_inclusive\030\n \002(\003\022\025" +
+      "\n\rmax_exclusive\030\013 \002(\003\022\027\n\017volt_table_data",
+      "\030\014 \002(\014\022\030\n\020more_data_needed\030\r \002(\010\"\212\002\n\026Mul" +
+      "tiPullReplyResponse\022\035\n\025async_pull_identi" +
+      "fier\030\001 \002(\005\022\020\n\010is_async\030\002 \002(\010\022\020\n\010chunk_id" +
+      "\030\003 \002(\005\022\023\n\013sender_site\030\004 \002(\005\022\014\n\004t0_s\030\005 \002(" +
+      "\003\022\025\n\rtransactionID\030\006 \002(\003\022\025\n\rold_partitio" +
+      "n\030\007 \002(\005\022\025\n\rnew_partition\030\010 \002(\005\022\027\n\017volt_t" +
+      "able_name\030\t \002(\t\022\025\n\rmin_inclusive\030\n \002(\003\022\025" +
+      "\n\rmax_exclusive\030\013 \002(\003\"\341\001\n\035Reconfiguratio" +
+      "nControlRequest\022\032\n\022message_identifier\030\001 " +
+      "\002(\005\022\023\n\013sender_site\030\002 \002(\005\022\025\n\rreceiver_sit",
+      "e\030\003 \002(\005\022\025\n\rsrc_partition\030\004 \002(\005\022\026\n\016dest_p" +
+      "artition\030\005 \002(\005\022I\n\023reconfigControlType\030\006 " +
+      "\002(\0162,.edu.brown.hstore.ReconfigurationCo" +
+      "ntrolType\"\342\001\n\036ReconfigurationControlResp" +
+      "onse\022\032\n\022message_identifier\030\001 \002(\005\022\023\n\013send" +
+      "er_site\030\002 \002(\005\022\025\n\rreceiver_site\030\003 \002(\005\022\025\n\r" +
+      "src_partition\030\004 \002(\005\022\026\n\016dest_partition\030\005 " +
+      "\002(\005\022I\n\023reconfigControlType\030\006 \002(\0162,.edu.b" +
+      "rown.hstore.ReconfigurationControlType*\320" +
+      "\001\n\006Status\022\006\n\002OK\020\000\022\016\n\nABORT_USER\020\001\022\022\n\016ABO",
+      "RT_GRACEFUL\020\002\022\024\n\020ABORT_UNEXPECTED\020\003\022\031\n\025A" +
+      "BORT_CONNECTION_LOST\020\004\022\024\n\020ABORT_MISPREDI" +
+      "CT\020\005\022\021\n\rABORT_RESTART\020\006\022\020\n\014ABORT_REJECT\020" +
+      "\007\022\027\n\023ABORT_EVICTEDACCESS\020\010\022\025\n\021ABORT_SPEC" +
+      "ULATIVE\020\t*\200\001\n\032ReconfigurationControlType" +
+      "\022\021\n\rPULL_RECEIVED\020\000\022\030\n\024RECONFIGURATION_D" +
+      "ONE\020\001\022!\n\035RECONFIGURATION_DONE_RECEIVED\020\002" +
+      "\022\022\n\016CHUNK_RECEIVED\020\0032\317\020\n\rHStoreService\022f" +
+      "\n\017TransactionInit\022(.edu.brown.hstore.Tra" +
+      "nsactionInitRequest\032).edu.brown.hstore.T",
+      "ransactionInitResponse\022f\n\017TransactionWor" +
+      "k\022(.edu.brown.hstore.TransactionWorkRequ" +
+      "est\032).edu.brown.hstore.TransactionWorkRe" +
+      "sponse\022x\n\023TransactionPrefetch\022+.edu.brow" +
+      "n.hstore.TransactionPrefetchResult\0324.edu" +
+      ".brown.hstore.TransactionPrefetchAcknowl" +
+      "edgement\022c\n\016TransactionMap\022\'.edu.brown.h" +
+      "store.TransactionMapRequest\032(.edu.brown." +
+      "hstore.TransactionMapResponse\022l\n\021Transac" +
+      "tionReduce\022*.edu.brown.hstore.Transactio",
+      "nReduceRequest\032+.edu.brown.hstore.Transa" +
+      "ctionReduceResponse\022o\n\022TransactionPrepar" +
+      "e\022+.edu.brown.hstore.TransactionPrepareR" +
+      "equest\032,.edu.brown.hstore.TransactionPre" +
+      "pareResponse\022l\n\021TransactionFinish\022*.edu." +
+      "brown.hstore.TransactionFinishRequest\032+." +
+      "edu.brown.hstore.TransactionFinishRespon" +
+      "se\022r\n\023TransactionRedirect\022,.edu.brown.hs" +
+      "tore.TransactionRedirectRequest\032-.edu.br" +
+      "own.hstore.TransactionRedirectResponse\022i",
+      "\n\020TransactionDebug\022).edu.brown.hstore.Tr" +
+      "ansactionDebugRequest\032*.edu.brown.hstore" +
+      ".TransactionDebugResponse\022Q\n\010SendData\022!." +
+      "edu.brown.hstore.SendDataRequest\032\".edu.b" +
+      "rown.hstore.SendDataResponse\022W\n\nInitiali" +
+      "ze\022#.edu.brown.hstore.InitializeRequest\032" +
+      "$.edu.brown.hstore.InitializeResponse\022f\n" +
+      "\017ShutdownPrepare\022(.edu.brown.hstore.Shut" +
+      "downPrepareRequest\032).edu.brown.hstore.Sh" +
+      "utdownPrepareResponse\022Q\n\010Shutdown\022!.edu.",
+      "brown.hstore.ShutdownRequest\032\".edu.brown" +
+      ".hstore.ShutdownResponse\022T\n\tHeartbeat\022\"." +
+      "edu.brown.hstore.HeartbeatRequest\032#.edu." +
+      "brown.hstore.HeartbeatResponse\022Q\n\010TimeSy" +
+      "nc\022!.edu.brown.hstore.TimeSyncRequest\032\"." +
+      "edu.brown.hstore.TimeSyncResponse\022f\n\017Rec" +
+      "onfiguration\022(.edu.brown.hstore.Reconfig" +
+      "urationRequest\032).edu.brown.hstore.Reconf" +
+      "igurationResponse\022]\n\014DataTransfer\022%.edu." +
+      "brown.hstore.DataTransferRequest\032&.edu.b",
+      "rown.hstore.DataTransferResponse\022Q\n\010Live" +
+      "Pull\022!.edu.brown.hstore.LivePullRequest\032" +
+      "\".edu.brown.hstore.LivePullResponse\022T\n\tA" +
+      "syncPull\022\".edu.brown.hstore.AsyncPullReq" +
+      "uest\032#.edu.brown.hstore.AsyncPullRespons" +
+      "e\022~\n\031ReconfigurationControlMsg\022/.edu.bro" +
+      "wn.hstore.ReconfigurationControlRequest\032" +
+      "0.edu.brown.hstore.ReconfigurationContro" +
+      "lResponse\022c\n\016MultiPullReply\022\'.edu.brown." +
+      "hstore.MultiPullReplyRequest\032(.edu.brown",
+      ".hstore.MultiPullReplyResponse"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -24336,22 +24416,22 @@ public final class Hstoreservice {
               new java.lang.String[] { "AsyncPullIdentifier", "ChunkId", "SenderSite", "T0S", "TransactionID", "OldPartition", "NewPartition", "VoltTableName", "MinInclusive", "MaxExclusive", "VoltTableData", "MoreDataNeeded", },
               edu.brown.hstore.Hstoreservice.AsyncPullResponse.class,
               edu.brown.hstore.Hstoreservice.AsyncPullResponse.Builder.class);
-          internal_static_edu_brown_hstore_ChunkedAsyncPullReplyRequest_descriptor =
+          internal_static_edu_brown_hstore_MultiPullReplyRequest_descriptor =
             getDescriptor().getMessageTypes().get(41);
-          internal_static_edu_brown_hstore_ChunkedAsyncPullReplyRequest_fieldAccessorTable = new
+          internal_static_edu_brown_hstore_MultiPullReplyRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_edu_brown_hstore_ChunkedAsyncPullReplyRequest_descriptor,
-              new java.lang.String[] { "AsyncPullIdentifier", "ChunkId", "SenderSite", "T0S", "TransactionID", "OldPartition", "NewPartition", "VoltTableName", "MinInclusive", "MaxExclusive", "VoltTableData", "MoreDataNeeded", },
-              edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest.class,
-              edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest.Builder.class);
-          internal_static_edu_brown_hstore_ChunkedAsyncPullReplyResponse_descriptor =
+              internal_static_edu_brown_hstore_MultiPullReplyRequest_descriptor,
+              new java.lang.String[] { "AsyncPullIdentifier", "IsAsync", "ChunkId", "SenderSite", "T0S", "TransactionID", "OldPartition", "NewPartition", "VoltTableName", "MinInclusive", "MaxExclusive", "VoltTableData", "MoreDataNeeded", },
+              edu.brown.hstore.Hstoreservice.MultiPullReplyRequest.class,
+              edu.brown.hstore.Hstoreservice.MultiPullReplyRequest.Builder.class);
+          internal_static_edu_brown_hstore_MultiPullReplyResponse_descriptor =
             getDescriptor().getMessageTypes().get(42);
-          internal_static_edu_brown_hstore_ChunkedAsyncPullReplyResponse_fieldAccessorTable = new
+          internal_static_edu_brown_hstore_MultiPullReplyResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_edu_brown_hstore_ChunkedAsyncPullReplyResponse_descriptor,
-              new java.lang.String[] { "AsyncPullIdentifier", "ChunkId", "SenderSite", "T0S", "TransactionID", "OldPartition", "NewPartition", "VoltTableName", "MinInclusive", "MaxExclusive", },
-              edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse.class,
-              edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse.Builder.class);
+              internal_static_edu_brown_hstore_MultiPullReplyResponse_descriptor,
+              new java.lang.String[] { "AsyncPullIdentifier", "IsAsync", "ChunkId", "SenderSite", "T0S", "TransactionID", "OldPartition", "NewPartition", "VoltTableName", "MinInclusive", "MaxExclusive", },
+              edu.brown.hstore.Hstoreservice.MultiPullReplyResponse.class,
+              edu.brown.hstore.Hstoreservice.MultiPullReplyResponse.Builder.class);
           internal_static_edu_brown_hstore_ReconfigurationControlRequest_descriptor =
             getDescriptor().getMessageTypes().get(43);
           internal_static_edu_brown_hstore_ReconfigurationControlRequest_fieldAccessorTable = new

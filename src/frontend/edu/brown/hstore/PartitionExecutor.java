@@ -129,10 +129,10 @@ import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
-import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest;
-import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.LivePullRequest;
 import edu.brown.hstore.Hstoreservice.LivePullResponse;
+import edu.brown.hstore.Hstoreservice.MultiPullReplyRequest;
+import edu.brown.hstore.Hstoreservice.MultiPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.QueryEstimate;
 import edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest;
 import edu.brown.hstore.Hstoreservice.ReconfigurationControlType;
@@ -156,12 +156,12 @@ import edu.brown.hstore.internal.AsyncDataPullRequestMessage;
 import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
 import edu.brown.hstore.internal.AsyncNonChunkPullRequestMessage;
 import edu.brown.hstore.internal.AsyncNonChunkPushRequestMessage;
-import edu.brown.hstore.internal.ChunkedAsyncDataPullResponseMessage;
 import edu.brown.hstore.internal.DeferredQueryMessage;
 import edu.brown.hstore.internal.FinishTxnMessage;
 import edu.brown.hstore.internal.InternalMessage;
 import edu.brown.hstore.internal.InternalTxnMessage;
 import edu.brown.hstore.internal.LivePullRequestMessage;
+import edu.brown.hstore.internal.MultiDataPullResponseMessage;
 import edu.brown.hstore.internal.PotentialSnapshotWorkMessage;
 import edu.brown.hstore.internal.PrepareTxnMessage;
 import edu.brown.hstore.internal.ScheduleAsyncPullRequestMessage;
@@ -1497,14 +1497,16 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 }
                 
                 int chunkId = pullMsg.getAndIncrementChunk();
-                boolean moreDataNeeded = vt.getSecond().booleanValue();         
-                ChunkedAsyncPullReplyRequest chunkedAsyncPullReplyRequest = ChunkedAsyncPullReplyRequest.newBuilder().
+                boolean moreDataNeeded = vt.getSecond().booleanValue();  
+                MultiPullReplyRequest chunkedAsyncPullReplyRequest = MultiPullReplyRequest.newBuilder().
                         setAsyncPullIdentifier(pull.getAsyncPullIdentifier()).
+                        setIsAsync(true).
                         setSenderSite(this.hstore_site.getSiteId()).  
                         setOldPartition(pull.getOldPartition()).setNewPartition(pull.getNewPartition()).setVoltTableName(pull.getVoltTableName())
                         .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(pull.getMinInclusive()).setMaxExclusive(pull.getMaxExclusive())
                         .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
                 
+                LOG.info("Sending a multi pull async request");
                 LOG.info("TODO do we need to invoke something different if local? Right now both remote / local put in with callback");
                 this.reconfiguration_coordinator.sendChunkAsyncPullReplyRequestFromPE(pull.getSenderSite(), chunkedAsyncPullReplyRequest);
                
@@ -1521,11 +1523,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             
         }
         // Async Pull Reply
-        else if (work instanceof ChunkedAsyncDataPullResponseMessage) {
+        else if (work instanceof MultiDataPullResponseMessage) {
         	
         	 //We have received and are processing a data pull response
         	LOG.info("Processing the pull response message received");
-        	ChunkedAsyncPullReplyRequest pullReply = ((ChunkedAsyncDataPullResponseMessage) work).getChunkedAsyncPullReplyRequest();
+        	MultiPullReplyRequest pullReply = ((MultiDataPullResponseMessage) work).getMultiPullReplyRequest();
             try {                
                 VoltTable vt = FastDeserializer.deserialize(pullReply.getVoltTableData().toByteArray(), VoltTable.class);
     
@@ -1539,7 +1541,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 //if(pull.getMoreDataNeeded() == false){
                 //    this.reconfiguration_coordinator.unblockingPullRequestSemaphore(pull.getAsyncPullIdentifier(), true);
                 //}
-                ChunkedAsyncPullReplyResponse chunkedAsyncPullReplyResponse = ChunkedAsyncPullReplyResponse.newBuilder().
+                MultiPullReplyResponse chunkedAsyncPullReplyResponse = MultiPullReplyResponse.newBuilder().
                         setAsyncPullIdentifier(pullReply.getAsyncPullIdentifier()).
                         setSenderSite(this.hstore_site.getSiteId()).  
                         setOldPartition(pullReply.getOldPartition()).setNewPartition(pullReply.getNewPartition()).
@@ -1548,7 +1550,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         setMaxExclusive(pullReply.getMaxExclusive())
                         .setTransactionID(pullReply.getTransactionID()).setChunkId(pullReply.getChunkId()).build();
                 // Send the callback of the reply which should work as reconfiguration control message was working for acknowledging the received chunks 
-                ((ChunkedAsyncDataPullResponseMessage) work).getChunkedAsyncPullReplyCallback().run(chunkedAsyncPullReplyResponse);
+                ((MultiDataPullResponseMessage) work).getMultiPullReplyCallback().run(chunkedAsyncPullReplyResponse);
             } catch (Exception e) {
                 LOG.error("Exception when processing async data pull response", e);
             }
@@ -2475,7 +2477,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         return this.work_queue.offer(response);
     }
     
-    public boolean queueChunkedAsyncPullResponse(ChunkedAsyncDataPullResponseMessage response){
+    public boolean queueMultiPullResponse(MultiDataPullResponseMessage response){
         return this.work_queue.offer(response);
     }
     

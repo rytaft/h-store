@@ -34,13 +34,13 @@ import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.HStoreSite;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
-import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest;
-import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.DataTransferRequest;
 import edu.brown.hstore.Hstoreservice.DataTransferResponse;
 import edu.brown.hstore.Hstoreservice.HStoreService;
 import edu.brown.hstore.Hstoreservice.LivePullRequest;
 import edu.brown.hstore.Hstoreservice.LivePullResponse;
+import edu.brown.hstore.Hstoreservice.MultiPullReplyRequest;
+import edu.brown.hstore.Hstoreservice.MultiPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest;
 import edu.brown.hstore.Hstoreservice.ReconfigurationControlType;
 import edu.brown.hstore.Hstoreservice.ReconfigurationRequest;
@@ -49,7 +49,7 @@ import edu.brown.hstore.PartitionExecutor;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.internal.AsyncDataPullRequestMessage;
 import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
-import edu.brown.hstore.internal.ChunkedAsyncDataPullResponseMessage;
+import edu.brown.hstore.internal.MultiDataPullResponseMessage;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
 import edu.brown.interfaces.Shutdownable;
 import edu.brown.logging.LoggerUtil;
@@ -803,31 +803,31 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param asyncPullRequest
      * @param asyncPullResponseCallback
      */
-    public void asyncPullReplyFromRC(ChunkedAsyncPullReplyRequest chunkedAsyncPullReplyRequest, 
-        RpcCallback<ChunkedAsyncPullReplyResponse> chunkedAsyncPullReplyResponseCallback) {
+    public void asyncPullReplyFromRC(MultiPullReplyRequest multiPullReplyRequest, 
+        RpcCallback<MultiPullReplyResponse> multiPullReplyResponseCallback) {
     	
-    	LOG.info(String.format("Scheduling chunked async pull reply message for partition %s ", chunkedAsyncPullReplyRequest.getNewPartition()));
+    	LOG.info(String.format("Scheduling chunked async pull reply message for partition %s ", multiPullReplyRequest.getNewPartition()));
         for (PartitionExecutor executor : local_executors) {
-            if(chunkedAsyncPullReplyRequest.getNewPartition() == executor.getPartitionId()){
+            if(multiPullReplyRequest.getNewPartition() == executor.getPartitionId()){
                 LOG.info("Queue the chunked pull response");
               
                 LOG.error("TODO add chunk ID to response and add new reconfig control type for asyn pull response received"); //TODO
-                ChunkedAsyncDataPullResponseMessage pullResponseMsg = new ChunkedAsyncDataPullResponseMessage(chunkedAsyncPullReplyRequest, chunkedAsyncPullReplyResponseCallback);
-                unblockingPullRequestSemaphore(chunkedAsyncPullReplyRequest.getAsyncPullIdentifier(), chunkedAsyncPullReplyRequest.getNewPartition(),
+                MultiDataPullResponseMessage pullResponseMsg = new MultiDataPullResponseMessage(multiPullReplyRequest, multiPullReplyResponseCallback);
+                unblockingPullRequestSemaphore(multiPullReplyRequest.getAsyncPullIdentifier(), multiPullReplyRequest.getNewPartition(),
                 		true);
-                executor.queueChunkedAsyncPullResponse(pullResponseMsg);                
+                executor.queueMultiPullResponse(pullResponseMsg);                
             }
         }
       
     }
     
-    public void sendChunkAsyncPullReplyRequestFromPE(int remoteSiteId, ChunkedAsyncPullReplyRequest chunkedAsyncPullReplyRequest){
+    public void sendChunkAsyncPullReplyRequestFromPE(int remoteSiteId, MultiPullReplyRequest multiPullReplyRequest){
     	Log.info("Sending the chunked async pull reply request");
     	if(localSiteId != remoteSiteId){
     		ProtoRpcController controller = new ProtoRpcController();
-            this.channels[remoteSiteId].chunkedAsyncPullReply(controller, chunkedAsyncPullReplyRequest, chunkedAsyncPullReplyResponseCallback);
+            this.channels[remoteSiteId].multiPullReply(controller, multiPullReplyRequest, multiPullReplyResponseCallback);
     	} else {
-    		asyncPullReplyFromRC(chunkedAsyncPullReplyRequest, chunkedAsyncPullReplyResponseCallback);
+    		asyncPullReplyFromRC(multiPullReplyRequest, multiPullReplyResponseCallback);
     	}
     	
     }
@@ -1048,9 +1048,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
     };
     
-    private final RpcCallback<ChunkedAsyncPullReplyResponse> chunkedAsyncPullReplyResponseCallback = new RpcCallback<ChunkedAsyncPullReplyResponse>() {
+    private final RpcCallback<MultiPullReplyResponse> multiPullReplyResponseCallback = new RpcCallback<MultiPullReplyResponse>() {
         @Override
-        public void run(ChunkedAsyncPullReplyResponse msg) {
+        public void run(MultiPullReplyResponse msg) {
         	LOG.info(String.format("Callback for chunked async pull reply for partition %s ", msg.getOldPartition()));
         	queueAsyncDataRequestMessageToWorkQueue(msg.getOldPartition());      	
         }
