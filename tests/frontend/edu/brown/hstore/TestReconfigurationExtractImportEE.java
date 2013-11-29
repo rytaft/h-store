@@ -45,7 +45,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
     private static final long NUM_TUPLES = 100;
     private static final String CUSTOMER_TABLE_NAME = TPCCConstants.TABLENAME_CUSTOMER;
     private static final String NEW_ORDER_TABLE_NAME = TPCCConstants.TABLENAME_NEW_ORDER;
-    private static final int DEFAULT_LIMIT = ExecutionEngineJNI.DEFAULT_EXTRACT_LIMIT;
+    private static final int DEFAULT_LIMIT = ExecutionEngineJNI.DEFAULT_EXTRACT_LIMIT_BYTES;
     
     private HStoreSite hstore_site;
     private HStoreConf hstore_conf;
@@ -127,7 +127,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
         this.loadTPCCData(NUM_TUPLES * 10, this.customer_tbl,this.cust_p_index, wid);
         int EXTRACT_LIMIT = 2048;
-        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT = EXTRACT_LIMIT;
+        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
         
         long tupleBytes = MemoryEstimator.estimateTupleSize(this.customer_tbl);
         int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
@@ -152,7 +152,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
     
     @Test
     public void testExtractDataDiffKeys() throws Exception {
-        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT = DEFAULT_LIMIT;
+        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = DEFAULT_LIMIT;
 
         for (int i=0; i< scales.length; i++) {
             long tuples = NUM_TUPLES * scales[i];
@@ -217,7 +217,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
     
     @Test
     public void testExtractDataSameKeys() throws Exception {
-        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT = DEFAULT_LIMIT;
+        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = DEFAULT_LIMIT;
 
         for (int i=0; i< scales.length; i++) {
             long tuples = NUM_TUPLES * scales[i];

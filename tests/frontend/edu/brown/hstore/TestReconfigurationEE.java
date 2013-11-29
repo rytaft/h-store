@@ -137,6 +137,18 @@ public class TestReconfigurationEE extends BaseTestCase {
         assertEquals(tuples,rowCount);
     }
     
+   
+    @Test
+    public void testExtractSize() throws Exception {
+        this.loadData(150l);
+        assertTrue(true);
+        ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(1), new Long(100), 1, 2);
+        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);     
+        int deleteToken  = 47;
+        Pair<VoltTable,Boolean> resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken, 1,10*1024);
+        assertEquals(10, resTable.getFirst().getRowCount());
+        LOG.info("confirming extract request" );
+    }
     
     
     @Test
@@ -164,10 +176,7 @@ public class TestReconfigurationEE extends BaseTestCase {
 
         //TODO undo migration
         //LOG.info("undo  extract request" );
-        //success = this.ee.updateExtractRequest(deleteToken, false);
-        
-        
-
+        //success = this.ee.updateExtractRequest(deleteToken, false);      
     }
     
     @Test

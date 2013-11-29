@@ -1403,7 +1403,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             if(hstore_conf.site.reconfig_replication_delay){
                 replicationDelay();
             }
-            Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), 1);
+            Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), 1, hstore_conf.site.reconfig_async_chunk_size_kb*1024);
             try {
 
                 // RC push tuples
@@ -1487,7 +1487,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 }
 
                 int chunkId = pullMsg.getAndIncrementChunk();
-                Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, pull.getTransactionID(), lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId);
+                Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, pull.getTransactionID(), lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId, hstore_conf.site.reconfig_async_chunk_size_kb*1024);
                 VoltTable voltTable = vt.getFirst();
 
                 ByteString tableBytes = null;

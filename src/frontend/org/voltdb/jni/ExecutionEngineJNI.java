@@ -87,7 +87,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
     public static final int BUFFER_SIZE = 1024 * 1024 * 50;
     private final BBContainer deserializerBufferOrigin = org.voltdb.utils.DBBPool.allocateDirect(BUFFER_SIZE);
 
-    public static int DEFAULT_EXTRACT_LIMIT = 1024*1024*2;
+    public static int DEFAULT_EXTRACT_LIMIT_BYTES = 1024*1024*2;
     private FastDeserializer deserializer = new FastDeserializer(deserializerBufferOrigin.b);
 
     private final BBContainer exceptionBufferOrigin = org.voltdb.utils.DBBPool.allocateDirect(1024 * 1024 * 20);
@@ -146,7 +146,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
                 deserializer.buffer(), deserializer.buffer().capacity(),
                 exceptionBuffer, exceptionBuffer.capacity());
         checkErrorCode(errorCode);
-        DEFAULT_EXTRACT_LIMIT = executor.getHStoreConf().site.reconfig_chunk_size_kb*1024;
+        DEFAULT_EXTRACT_LIMIT_BYTES = executor.getHStoreConf().site.reconfig_chunk_size_kb*1024;
         if (executor.getHStoreConf().global.reconfiguration_enable){
             LOG.info(String.format("EE Reconfiguration enabled. Settings. "
                     + "ChunkSize=%s (kb) ReconfigReplicationDelay=%s ChunkedAsyncPulls=%s NonChunkAsyncPull=%s NonChunkAsyncPush=%s",
@@ -509,7 +509,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
     public Pair<VoltTable, Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId)
     {
         
-        return extractTable(targetTable, tableId, extractTable, txnId, lastCommittedTxnId, undoToken, requestToken, chunkId, DEFAULT_EXTRACT_LIMIT);
+        return extractTable(targetTable, tableId, extractTable, txnId, lastCommittedTxnId, undoToken, requestToken, chunkId, DEFAULT_EXTRACT_LIMIT_BYTES);
     }
     
     @Override
@@ -522,7 +522,7 @@ public class ExecutionEngineJNI extends ExecutionEngine {
         int results;
         try {
             long tupleBytes = MemoryEstimator.estimateTupleSize(targetTable);
-            int tupleExtractLimit = (int)(DEFAULT_EXTRACT_LIMIT/tupleBytes);
+            int tupleExtractLimit = (int)(extractChunkSizeBytes/tupleBytes);
             results = deserializer.readInt();
             if (trace.val) LOG.trace("Results :"+results);
             final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table, txnId, lastCommittedTxnId, undoToken, requestToken, tupleExtractLimit);
