@@ -506,7 +506,14 @@ public class ExecutionEngineJNI extends ExecutionEngine {
     }
     
     @Override
-    public Pair<VoltTable, Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
+    public Pair<VoltTable, Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId)
+    {
+        
+        return extractTable(targetTable, tableId, extractTable, txnId, lastCommittedTxnId, undoToken, requestToken, chunkId, DEFAULT_EXTRACT_LIMIT);
+    }
+    
+    @Override
+    public Pair<VoltTable, Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId, int extractChunkSizeBytes)
     {
         if (debug.val) LOG.debug("Extract table");
         deserializer.clear();

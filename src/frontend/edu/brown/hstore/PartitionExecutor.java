@@ -1403,13 +1403,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             if(hstore_conf.site.reconfig_replication_delay){
                 replicationDelay();
             }
-            Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
+            Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), 1);
             try {
 
                 // RC push tuples
                 reconfiguration_coordinator.pushTuples(pushRange.old_partition, pushRange.new_partition, pushRange.table_name, 
                         vt.getFirst(), pushRange.min_long, pushRange.max_long);
                 if(vt.getSecond()){
+                    LOG.error("TODO async push has more to send");
                     this.reconfiguration_tracker.markRangeAsPartiallyMigratedOut(pushRange);
                 } else {
                     this.reconfiguration_tracker.markRangeAsMigratedOut(pushRange);
@@ -1484,7 +1485,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 if(hstore_conf.site.reconfig_replication_delay){
                     replicationDelay();
                 }
-                Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, pull.getTransactionID(), lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
+
+                int chunkId = pullMsg.getAndIncrementChunk();
+                Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, pull.getTransactionID(), lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId);
                 VoltTable voltTable = vt.getFirst();
 
                 ByteString tableBytes = null;
@@ -1495,7 +1498,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
                 }
                 
-                int chunkId = pullMsg.getAndIncrementChunk();
                 boolean moreDataNeeded = vt.getSecond().booleanValue();         
                 ChunkedAsyncPullReplyRequest chunkedAsyncPullReplyRequest = ChunkedAsyncPullReplyRequest.newBuilder().
                         setAsyncPullIdentifier(pull.getAsyncPullIdentifier()).
@@ -3223,7 +3225,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         while(moreDataNeeded) {
             Pair<VoltTable,Boolean> res = sendTuples(livePullRequest.getTransactionID(), livePullRequest.getOldPartition(), 
                     livePullRequest.getNewPartition(), livePullRequest.getVoltTableName(),
-                    livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive());
+                    livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), chunkId);
             VoltTable voltTable = res.getFirst();
     
             ByteString tableBytes = null;
@@ -6201,13 +6203,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param reconfigurationRange
      * @return
      */
-    public Pair<VoltTable,Boolean> sendTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, Long max_exclusive) {
+    public Pair<VoltTable,Boolean> sendTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, Long max_exclusive, int chunkId) {
         LOG.info(String.format("sendTuples keys %s->%s for %s  partIds %s->%s", min_inclusive, max_exclusive, table_name, oldPartitionId, newPartitionId));
         VoltTable vt = null;
         // FIXME make generic
 
         Table catalog_tbl = this.catalogContext.getTableByName(table_name);
-        return extractTable(catalog_tbl, new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId));
+        return extractTable(catalog_tbl, new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId), chunkId);
     }
 
     
@@ -6220,7 +6222,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if(hstore_conf.site.reconfig_replication_delay){
             replicationDelay();
         }
-        Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
+        Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), 1);
         return vt;
         
     }
@@ -6232,7 +6234,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param range
      * @return
      */
-    public Pair<VoltTable,Boolean> extractTable(Table table, ReconfigurationRange<? extends Comparable<?>> range) {
+    public Pair<VoltTable,Boolean> extractTable(Table table, ReconfigurationRange<? extends Comparable<?>> range, int chunkId) {
         LOG.debug(String.format("Extract table %s Range:%s", table.toString(), range.toString()));
         int table_id = table.getRelativeIndex();
         if(hstore_conf.site.reconfig_replication_delay){
@@ -6247,7 +6249,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             if (debug.val) LOG.debug("Casting currentTxn to -1");
             currentTxnId = -1L;
         }
-        Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table, table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken());
+        Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table, table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId);
         if (res != null) {
             if(ReconfigurationCoordinator.detailed_timing){
                 long diff  = System.currentTimeMillis() - start;

@@ -1501,7 +1501,13 @@ public class ExecutionEngineIPC extends ExecutionEngine {
     
     
     @Override
-    public Pair<VoltTable,Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken)
+    public Pair<VoltTable,Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId)
+    {
+      throw new NotImplementedException("Reconfiguration is disabled for IPC EE");
+    }
+    
+    @Override
+    public Pair<VoltTable,Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId, int chunksize)
     {
       throw new NotImplementedException("Reconfiguration is disabled for IPC EE");
     }

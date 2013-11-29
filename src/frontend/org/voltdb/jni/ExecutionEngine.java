@@ -868,7 +868,39 @@ public abstract class ExecutionEngine implements FastDeserializer.Deserializatio
     // ----------------------------------------------------------------------------
     // Reconfiguration
     // ----------------------------------------------------------------------------
-    public abstract Pair<VoltTable, Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken) throws EEException;
+    /**
+     * Extract (copy and remove) a table from the EE. Returns Pair of Extracted Table
+     * and a boolean to specify if there is more in the EE that was not extracted due to 
+     * default chunk limit.
+     * @param targetTable
+     * @param tableId
+     * @param extractTable
+     * @param txnId
+     * @param lastCommittedTxnId
+     * @param undoToken
+     * @param requestToken
+     * @param chunkId
+     * @return
+     * @throws EEException
+     */
+    public abstract Pair<VoltTable, Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId) throws EEException;
+
+    /**
+     * Extract (copy and remove) a table from the EE. Returns Pair of Extracted Table
+     * and a boolean to specify if there is more in the EE that was not extracted due to 
+     * specified chunk limit.
+     * @param targetTable
+     * @param tableId
+     * @param extractTable
+     * @param txnId
+     * @param lastCommittedTxnId
+     * @param undoToken
+     * @param requestToken
+     * @param extractChunkSize
+     * @return
+     * @throws EEException
+     */
+    public abstract Pair<VoltTable, Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId, int extractChunkSizeBytes) throws EEException;
     
     protected native int nativeExtractTable(long pointer, int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int extractTupleLimit);
     
