@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
+import org.jfree.util.Log;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
@@ -33,6 +34,8 @@ import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.HStoreSite;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
+import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest;
+import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.DataTransferRequest;
 import edu.brown.hstore.Hstoreservice.DataTransferResponse;
 import edu.brown.hstore.Hstoreservice.HStoreService;
@@ -46,6 +49,7 @@ import edu.brown.hstore.PartitionExecutor;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.internal.AsyncDataPullRequestMessage;
 import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
+import edu.brown.hstore.internal.ChunkedAsyncDataPullResponseMessage;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
 import edu.brown.interfaces.Shutdownable;
 import edu.brown.logging.LoggerUtil;
@@ -794,6 +798,40 @@ public class ReconfigurationCoordinator implements Shutdownable {
         
     }
     
+    /**
+     * Called when a reply to a pull request comes from another RC
+     * @param asyncPullRequest
+     * @param asyncPullResponseCallback
+     */
+    public void asyncPullReplyFromRC(ChunkedAsyncPullReplyRequest chunkedAsyncPullReplyRequest, 
+        RpcCallback<ChunkedAsyncPullReplyResponse> chunkedAsyncPullReplyResponseCallback) {
+    	
+    	LOG.info(String.format("Scheduling chunked async pull reply message for partition %s ", chunkedAsyncPullReplyRequest.getNewPartition()));
+        for (PartitionExecutor executor : local_executors) {
+            if(chunkedAsyncPullReplyRequest.getNewPartition() == executor.getPartitionId()){
+                LOG.info("Queue the chunked pull response");
+              
+                LOG.error("TODO add chunk ID to response and add new reconfig control type for asyn pull response received"); //TODO
+                ChunkedAsyncDataPullResponseMessage pullResponseMsg = new ChunkedAsyncDataPullResponseMessage(chunkedAsyncPullReplyRequest, chunkedAsyncPullReplyResponseCallback);
+                unblockingPullRequestSemaphore(chunkedAsyncPullReplyRequest.getAsyncPullIdentifier(), chunkedAsyncPullReplyRequest.getNewPartition(),
+                		true);
+                executor.queueChunkedAsyncPullResponse(pullResponseMsg);                
+            }
+        }
+      
+    }
+    
+    public void sendChunkAsyncPullReplyRequestFromPE(int remoteSiteId, ChunkedAsyncPullReplyRequest chunkedAsyncPullReplyRequest){
+    	Log.info("Sending the chunked async pull reply request");
+    	if(localSiteId != remoteSiteId){
+    		ProtoRpcController controller = new ProtoRpcController();
+            this.channels[remoteSiteId].chunkedAsyncPullReply(controller, chunkedAsyncPullReplyRequest, chunkedAsyncPullReplyResponseCallback);
+    	} else {
+    		asyncPullReplyFromRC(chunkedAsyncPullReplyRequest, chunkedAsyncPullReplyResponseCallback);
+    	}
+    	
+    }
+    
     public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, 
             Long max_exclusive, VoltTable voltTable, boolean moreDataNeeded) {
         
@@ -1009,6 +1047,15 @@ public class ReconfigurationCoordinator implements Shutdownable {
             }
         }
     };
+    
+    private final RpcCallback<ChunkedAsyncPullReplyResponse> chunkedAsyncPullReplyResponseCallback = new RpcCallback<ChunkedAsyncPullReplyResponse>() {
+        @Override
+        public void run(ChunkedAsyncPullReplyResponse msg) {
+        	LOG.info(String.format("Callback for chunked async pull reply for partition %s ", msg.getOldPartition()));
+        	queueAsyncDataRequestMessageToWorkQueue(msg.getOldPartition());      	
+        }
+    };
+        
 
     public void sendAcknowledgement(ReconfigurationControlRequest acknowledgingCallback){
         ProtoRpcController controller = new ProtoRpcController();
@@ -1017,7 +1064,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         if(localSiteId != receiverId){
         	channels[receiverId].reconfigurationControlMsg(controller, acknowledgingCallback, null); 
         } else {
-        	queueAsyncDataRequestMessageToWorkQueue(acknowledgingCallback);
+        	queueAsyncDataRequestMessageToWorkQueue(acknowledgingCallback.getDestPartition());
         }
     
     };
@@ -1041,10 +1088,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
     }
     
-    public void queueAsyncDataRequestMessageToWorkQueue(ReconfigurationControlRequest request){
-    	LOG.info("Chunk has been received and acknowledged. Now queue the job for extracting next chunk");
+    public void queueAsyncDataRequestMessageToWorkQueue(int destPartition){
+    	LOG.info("Chunk has been received and acknowledged. Now queue the job for extracting next chunk for partition: " + destPartition);
     	for (PartitionExecutor executor : local_executors) {
-            if(request.getSrcPartition() == executor.getPartitionId()){
+            if(destPartition == executor.getPartitionId()){
             	// Call PE to get the message from the queue
             	executor.queueAsyncDataRequestMessageToWorkQueue();
             }

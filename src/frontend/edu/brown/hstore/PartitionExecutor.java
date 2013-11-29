@@ -129,6 +129,8 @@ import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
+import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest;
+import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.LivePullRequest;
 import edu.brown.hstore.Hstoreservice.LivePullResponse;
 import edu.brown.hstore.Hstoreservice.QueryEstimate;
@@ -154,6 +156,7 @@ import edu.brown.hstore.internal.AsyncDataPullRequestMessage;
 import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
 import edu.brown.hstore.internal.AsyncNonChunkPullRequestMessage;
 import edu.brown.hstore.internal.AsyncNonChunkPushRequestMessage;
+import edu.brown.hstore.internal.ChunkedAsyncDataPullResponseMessage;
 import edu.brown.hstore.internal.DeferredQueryMessage;
 import edu.brown.hstore.internal.FinishTxnMessage;
 import edu.brown.hstore.internal.InternalMessage;
@@ -1453,8 +1456,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 //    this.reconfiguration_coordinator.unblockingPullRequestSemaphore(pull.getAsyncPullIdentifier(), true);
                 //}
                 ReconfigurationControlRequest acknowledgingCallback = ReconfigurationControlRequest.newBuilder().
-                		setSrcPartition(pull.getOldPartition())
-                        .setDestPartition(pull.getNewPartition())
+                		setSrcPartition(pull.getNewPartition())
+                        .setDestPartition(pull.getOldPartition())
                         .setReconfigControlType(ReconfigurationControlType.CHUNK_RECEIVED)
                         .setReceiverSite(pull.getSenderSite())
                         .setMessageIdentifier(pull.getAsyncPullIdentifier()).
@@ -1494,7 +1497,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 
                 int chunkId = pullMsg.getAndIncrementChunk();
                 boolean moreDataNeeded = vt.getSecond().booleanValue();         
-                AsyncPullResponse pullResponse = AsyncPullResponse.newBuilder().
+                ChunkedAsyncPullReplyRequest chunkedAsyncPullReplyRequest = ChunkedAsyncPullReplyRequest.newBuilder().
                         setAsyncPullIdentifier(pull.getAsyncPullIdentifier()).
                         setSenderSite(this.hstore_site.getSiteId()).  
                         setOldPartition(pull.getOldPartition()).setNewPartition(pull.getNewPartition()).setVoltTableName(pull.getVoltTableName())
@@ -1502,7 +1505,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
                 
                 LOG.info("TODO do we need to invoke something different if local? Right now both remote / local put in with callback");
-                pullMsg.getAsyncPullRequestCallback().run(pullResponse);
+                this.reconfiguration_coordinator.sendChunkAsyncPullReplyRequestFromPE(pull.getSenderSite(), chunkedAsyncPullReplyRequest);
+               
                         
                 if(moreDataNeeded){
                     LOG.info(" ### We have more data in the async pull to schedule. Queue the" +
@@ -1514,6 +1518,40 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.error("Exception when processing async data pull response", e);
             }
             
+        }
+        // Async Pull Reply
+        else if (work instanceof ChunkedAsyncDataPullResponseMessage) {
+        	
+        	 //We have received and are processing a data pull response
+        	LOG.info("Processing the pull response message received");
+        	ChunkedAsyncPullReplyRequest pullReply = ((ChunkedAsyncDataPullResponseMessage) work).getChunkedAsyncPullReplyRequest();
+            try {                
+                VoltTable vt = FastDeserializer.deserialize(pullReply.getVoltTableData().toByteArray(), VoltTable.class);
+    
+                //TODO : Process async pull using chunk id
+                LOG.info("TODO verify chunk id order");
+                receiveTuples(pullReply.getTransactionID(), pullReply.getOldPartition(), pullReply.getNewPartition(), pullReply.getVoltTableName(), 
+                		pullReply.getMinInclusive(), pullReply.getMaxExclusive(), vt, pullReply.getMoreDataNeeded(), true);
+                
+                //Commenting these lines as we have to unblock the semaphore when we get a callback because otherwise the queued job is never unblocked 
+                
+                //if(pull.getMoreDataNeeded() == false){
+                //    this.reconfiguration_coordinator.unblockingPullRequestSemaphore(pull.getAsyncPullIdentifier(), true);
+                //}
+                ChunkedAsyncPullReplyResponse chunkedAsyncPullReplyResponse = ChunkedAsyncPullReplyResponse.newBuilder().
+                        setAsyncPullIdentifier(pullReply.getAsyncPullIdentifier()).
+                        setSenderSite(this.hstore_site.getSiteId()).  
+                        setOldPartition(pullReply.getOldPartition()).setNewPartition(pullReply.getNewPartition()).
+                        setVoltTableName(pullReply.getVoltTableName())
+                        .setT0S(System.currentTimeMillis()).setMinInclusive(pullReply.getMinInclusive()).
+                        setMaxExclusive(pullReply.getMaxExclusive())
+                        .setTransactionID(pullReply.getTransactionID()).setChunkId(pullReply.getChunkId()).build();
+                // Send the callback of the reply which should work as reconfiguration control message was working for acknowledging the received chunks 
+                ((ChunkedAsyncDataPullResponseMessage) work).getChunkedAsyncPullReplyCallback().run(chunkedAsyncPullReplyResponse);
+            } catch (Exception e) {
+                LOG.error("Exception when processing async data pull response", e);
+            }
+        	
         }
 
         // Pull Request Message
@@ -2433,6 +2471,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
     
     public boolean queueAsyncPullResponse(AsyncDataPullResponseMessage response){
+        return this.work_queue.offer(response);
+    }
+    
+    public boolean queueChunkedAsyncPullResponse(ChunkedAsyncDataPullResponseMessage response){
         return this.work_queue.offer(response);
     }
     

@@ -37,6 +37,8 @@ import com.google.protobuf.RpcController;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
+import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest;
+import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.DataTransferRequest;
 import edu.brown.hstore.Hstoreservice.DataTransferResponse;
 import edu.brown.hstore.Hstoreservice.HStoreService;
@@ -904,7 +906,7 @@ public class HStoreCoordinator implements Shutdownable {
                 if(request.getReconfigControlType() == ReconfigurationControlType.PULL_RECEIVED){
                     hstore_site.getReconfigurationCoordinator().deleteTuples(request);
                 } else if(request.getReconfigControlType() == ReconfigurationControlType.CHUNK_RECEIVED){
-                	hstore_site.getReconfigurationCoordinator().queueAsyncDataRequestMessageToWorkQueue(request);
+                	hstore_site.getReconfigurationCoordinator().queueAsyncDataRequestMessageToWorkQueue(request.getDestPartition());
                 	//TODO : Have to delete tuples for the chunk received messages as well
                     //hstore_site.getReconfigurationCoordinator().deleteTuples(request);
                 } else if(request.getReconfigControlType() == ReconfigurationControlType.RECONFIGURATION_DONE) {
@@ -919,6 +921,22 @@ public class HStoreCoordinator implements Shutdownable {
                 LOG.error("Exception incurred while deleting tuples (not just marking)", e);
               }
             
+        }
+        
+        @Override
+        public void chunkedAsyncPullReply(RpcController controller, 
+            ChunkedAsyncPullReplyRequest request, RpcCallback<ChunkedAsyncPullReplyResponse> done) {
+        	if (debug.val)
+                LOG.debug(String.format("Received %s from HStoreSite %s",
+                          request.getClass().getSimpleName(),
+                          HStoreThreadManager.formatSiteName(request.getSenderSite())));
+        	
+        	try{
+        		hstore_site.getReconfigurationCoordinator().asyncPullReplyFromRC(request, done);
+        	} catch (Exception e){
+        		LOG.error("Exception incurred while processing chunked async pull reply", e);
+        	}
+          
         }
         
 
