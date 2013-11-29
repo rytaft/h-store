@@ -168,7 +168,9 @@ public class PlannedPartitions implements JSONSerializable {
                             if (catalog_to_table_map.containsKey(partitionCol)) {
                                 LOG.error("ctm has part col : " + partitionCol + " : " + catalog_to_table_map.get(partitionCol));
                             }
-                            catalog_to_table_map.put(partitionCol, relatedTblName);
+                            //TODO catalog_to_table_map.put(partitionCol, relatedTblName);
+                            LOG.info("no relationships on look up " +partitionCol + " : " + tableName);
+                            catalog_to_table_map.put(partitionCol, tableName);
                         }
                     }
                 }

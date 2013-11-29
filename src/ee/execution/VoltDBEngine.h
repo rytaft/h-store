@@ -330,7 +330,7 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         }
 
         inline void setUndoToken(int64_t nextUndoToken) {
-            if (nextUndoToken == INT64_MAX) { return; }
+            if (nextUndoToken == INT64_MAX || nextUndoToken == -1) { return; }
             if (m_currentUndoQuantum != NULL && m_currentUndoQuantum->isDummy()) {
                 //std::cout << "Deleting dummy undo quantum " << std::endl;
                 delete m_currentUndoQuantum;
