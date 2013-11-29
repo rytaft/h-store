@@ -125,10 +125,14 @@ public class TestReconfigurationEE extends BaseTestCase {
             //assertEquals((Long)tuples, range.getMax_exclusive());
             
             // ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(0), tuples, 1, 2);
-            VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
-            Pair<VoltTable,Boolean> resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken()) ;
-            rowCount+=resTable.getFirst().getRowCount();
-            assertEquals(true, resTable.getSecond().booleanValue());
+            VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
+            boolean moreData = true;
+            while(moreData) {
+                Pair<VoltTable,Boolean> resTable= this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken()) ;
+                rowCount+=resTable.getFirst().getRowCount();
+                //assertEquals(false, resTable.getSecond().booleanValue());
+                moreData = resTable.getSecond().booleanValue();
+            }
         }
         assertEquals(tuples,rowCount);
     }
@@ -233,4 +237,5 @@ public class TestReconfigurationEE extends BaseTestCase {
         */
         
     }
+    
 }
