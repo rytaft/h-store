@@ -657,7 +657,7 @@ message AsyncPullResponse {
 
 message MultiPullReplyRequest {
     // The unique id of the requested pull
-    required int32 async_pull_identifier = 1;
+    required int32 pull_identifier = 1;
     // This indicated whether this is a live pull reply or a async reply
     required bool is_async = 2;
     // The chunk id of the message
@@ -688,7 +688,7 @@ message MultiPullReplyRequest {
 
 message MultiPullReplyResponse {
      // The unique id associated with the pull
-    required int32 async_pull_identifier = 1;
+    required int32 pull_identifier = 1;
     // This indicated whether this is a live pull reply or a async reply
     required bool is_async = 2;
     // The chunk id of the message

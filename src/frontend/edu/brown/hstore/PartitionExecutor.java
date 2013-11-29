@@ -1498,8 +1498,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 
                 int chunkId = pullMsg.getAndIncrementChunk();
                 boolean moreDataNeeded = vt.getSecond().booleanValue();  
-                MultiPullReplyRequest chunkedAsyncPullReplyRequest = MultiPullReplyRequest.newBuilder().
-                        setAsyncPullIdentifier(pull.getAsyncPullIdentifier()).
+                MultiPullReplyRequest multiPullReplyRequest = MultiPullReplyRequest.newBuilder().
+                        setPullIdentifier(pull.getAsyncPullIdentifier()).
                         setIsAsync(true).
                         setSenderSite(this.hstore_site.getSiteId()).  
                         setOldPartition(pull.getOldPartition()).setNewPartition(pull.getNewPartition()).setVoltTableName(pull.getVoltTableName())
@@ -1508,7 +1508,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 
                 LOG.info("Sending a multi pull async request");
                 LOG.info("TODO do we need to invoke something different if local? Right now both remote / local put in with callback");
-                this.reconfiguration_coordinator.sendChunkAsyncPullReplyRequestFromPE(pull.getSenderSite(), chunkedAsyncPullReplyRequest);
+                this.reconfiguration_coordinator.sendMultiPullReplyRequestFromPE(pull.getSenderSite(), multiPullReplyRequest);
                
                         
                 if(moreDataNeeded){
@@ -1533,16 +1533,19 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     
                 //TODO : Process async pull using chunk id
                 LOG.info("TODO verify chunk id order");
+                
                 receiveTuples(pullReply.getTransactionID(), pullReply.getOldPartition(), pullReply.getNewPartition(), pullReply.getVoltTableName(), 
-                		pullReply.getMinInclusive(), pullReply.getMaxExclusive(), vt, pullReply.getMoreDataNeeded(), true);
+                    		pullReply.getMinInclusive(), pullReply.getMaxExclusive(), vt, pullReply.getMoreDataNeeded(), true);
+                
                 
                 //Commenting these lines as we have to unblock the semaphore when we get a callback because otherwise the queued job is never unblocked 
                 
                 //if(pull.getMoreDataNeeded() == false){
                 //    this.reconfiguration_coordinator.unblockingPullRequestSemaphore(pull.getAsyncPullIdentifier(), true);
                 //}
-                MultiPullReplyResponse chunkedAsyncPullReplyResponse = MultiPullReplyResponse.newBuilder().
-                        setAsyncPullIdentifier(pullReply.getAsyncPullIdentifier()).
+                MultiPullReplyResponse multiPullReplyResponse = MultiPullReplyResponse.newBuilder().
+                		setIsAsync(pullReply.getIsAsync()).
+                        setPullIdentifier(pullReply.getPullIdentifier()).
                         setSenderSite(this.hstore_site.getSiteId()).  
                         setOldPartition(pullReply.getOldPartition()).setNewPartition(pullReply.getNewPartition()).
                         setVoltTableName(pullReply.getVoltTableName())
@@ -1550,7 +1553,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         setMaxExclusive(pullReply.getMaxExclusive())
                         .setTransactionID(pullReply.getTransactionID()).setChunkId(pullReply.getChunkId()).build();
                 // Send the callback of the reply which should work as reconfiguration control message was working for acknowledging the received chunks 
-                ((MultiDataPullResponseMessage) work).getMultiPullReplyCallback().run(chunkedAsyncPullReplyResponse);
+                ((MultiDataPullResponseMessage) work).getMultiPullReplyCallback().run(multiPullReplyResponse);
             } catch (Exception e) {
                 LOG.error("Exception when processing async data pull response", e);
             }
@@ -3247,15 +3250,20 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     .setOldPartition(livePullRequest.getOldPartition()).setNewPartition(livePullRequest.getNewPartition()).setVoltTableName(livePullRequest.getVoltTableName())
                     .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(livePullRequest.getMinInclusive()).setMaxExclusive(livePullRequest.getMaxExclusive())
                     .setTransactionID(livePullRequest.getTransactionID()).setMoreDataNeeded(res.getSecond()).setChunkId(chunkId).build();
+            
+            chunkId++;
+            MultiPullReplyRequest multiPullReplyRequest = MultiPullReplyRequest.newBuilder().
+                    setPullIdentifier(livePullRequest.getLivePullIdentifier()).
+                    setIsAsync(true).
+                    setSenderSite(this.hstore_site.getSiteId()).  
+                    setOldPartition(livePullRequest.getOldPartition()).setNewPartition(livePullRequest.getNewPartition()).setVoltTableName(livePullRequest.getVoltTableName())
+                    .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(livePullRequest.getMinInclusive()).setMaxExclusive(livePullRequest.getMaxExclusive())
+                    .setTransactionID(livePullRequest.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
     
-            if (livePullRequestMessage.getLivePullResponseCallback() != null) {
-                // Send the Callback response to the site
-                livePullRequestMessage.getLivePullResponseCallback().run(livePullResponse);
-            } else {
-                // Shows that the request is local , pass it to the local site's RC
-                this.hstore_site.getReconfigurationCoordinator().receiveLivePullTuples(livePullRequest.getLivePullIdentifier(), livePullRequest.getTransactionID(), livePullRequest.getOldPartition(),
-                        livePullRequest.getNewPartition(), livePullRequest.getVoltTableName(), livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), voltTable, res.getSecond());
-            }
+            
+            // Send the multi pull reply request to the end point
+            this.reconfiguration_coordinator.sendMultiPullReplyRequestFromPE(livePullRequest.getSenderSite(), multiPullReplyRequest);
+           
             if (ReconfigurationCoordinator.detailed_timing){
                 reconfiguration_coordinator.notifyPullResponse(livePullRequest.getLivePullIdentifier(), this.partitionId);
             }
