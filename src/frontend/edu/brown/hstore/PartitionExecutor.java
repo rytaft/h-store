@@ -3254,7 +3254,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             chunkId++;
             MultiPullReplyRequest multiPullReplyRequest = MultiPullReplyRequest.newBuilder().
                     setPullIdentifier(livePullRequest.getLivePullIdentifier()).
-                    setIsAsync(true).
+                    setIsAsync(false).
                     setSenderSite(this.hstore_site.getSiteId()).  
                     setOldPartition(livePullRequest.getOldPartition()).setNewPartition(livePullRequest.getNewPartition()).setVoltTableName(livePullRequest.getVoltTableName())
                     .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(livePullRequest.getMinInclusive()).setMaxExclusive(livePullRequest.getMaxExclusive())
