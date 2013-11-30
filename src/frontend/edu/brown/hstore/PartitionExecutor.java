@@ -3207,7 +3207,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             	MultiDataPullResponseMessage multiDataPullResponseMessage = (MultiDataPullResponseMessage)work;
             	MultiPullReplyRequest multiPullReplyRequest = multiDataPullResponseMessage.getMultiPullReplyRequest();
             	long multiPullTxnId = multiPullReplyRequest.getTransactionID();
-            	if(multiPullReplyRequest.getIsAsync() && ((this.currentTxnId != null && multiPullTxnId == this.currentTxnId) || 
+            	if(!multiPullReplyRequest.getIsAsync() && ((this.currentTxnId != null && multiPullTxnId == this.currentTxnId) || 
                          (this.currentDtxn != null && multiPullTxnId == this.currentDtxn.getTransactionId()))){
             		LOG.info("Process a live pull reply for the same transaction as the one blocked");
             		VoltTable vt = null;
