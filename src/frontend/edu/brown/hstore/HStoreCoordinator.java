@@ -37,8 +37,6 @@ import com.google.protobuf.RpcController;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
-import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest;
-import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.DataTransferRequest;
 import edu.brown.hstore.Hstoreservice.DataTransferResponse;
 import edu.brown.hstore.Hstoreservice.HStoreService;
@@ -48,6 +46,8 @@ import edu.brown.hstore.Hstoreservice.InitializeRequest;
 import edu.brown.hstore.Hstoreservice.InitializeResponse;
 import edu.brown.hstore.Hstoreservice.LivePullRequest;
 import edu.brown.hstore.Hstoreservice.LivePullResponse;
+import edu.brown.hstore.Hstoreservice.MultiPullReplyRequest;
+import edu.brown.hstore.Hstoreservice.MultiPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest;
 import edu.brown.hstore.Hstoreservice.ReconfigurationControlResponse;
 import edu.brown.hstore.Hstoreservice.ReconfigurationControlType;
@@ -924,15 +924,21 @@ public class HStoreCoordinator implements Shutdownable {
         }
         
         @Override
-        public void chunkedAsyncPullReply(RpcController controller, 
-            ChunkedAsyncPullReplyRequest request, RpcCallback<ChunkedAsyncPullReplyResponse> done) {
+        public void multiPullReply(RpcController controller, 
+            MultiPullReplyRequest request, RpcCallback<MultiPullReplyResponse> done) {
         	if (debug.val)
                 LOG.debug(String.format("Received %s from HStoreSite %s",
                           request.getClass().getSimpleName(),
                           HStoreThreadManager.formatSiteName(request.getSenderSite())));
         	
         	try{
-        		hstore_site.getReconfigurationCoordinator().asyncPullReplyFromRC(request, done);
+        		if(request.getIsAsync()){
+        			LOG.info("Processing an async pull reply message");
+        			hstore_site.getReconfigurationCoordinator().processPullReplyFromRC(request, done);
+        		} else {
+        			LOG.info("Processing a live pull reply message");
+        		}
+        		
         	} catch (Exception e){
         		LOG.error("Exception incurred while processing chunked async pull reply", e);
         	}

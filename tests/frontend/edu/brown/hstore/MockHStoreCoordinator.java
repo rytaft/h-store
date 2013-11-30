@@ -7,8 +7,6 @@ import com.google.protobuf.RpcController;
 
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
-import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyRequest;
-import edu.brown.hstore.Hstoreservice.ChunkedAsyncPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.DataTransferRequest;
 import edu.brown.hstore.Hstoreservice.DataTransferResponse;
 import edu.brown.hstore.Hstoreservice.HStoreService;
@@ -18,6 +16,8 @@ import edu.brown.hstore.Hstoreservice.InitializeRequest;
 import edu.brown.hstore.Hstoreservice.InitializeResponse;
 import edu.brown.hstore.Hstoreservice.LivePullRequest;
 import edu.brown.hstore.Hstoreservice.LivePullResponse;
+import edu.brown.hstore.Hstoreservice.MultiPullReplyRequest;
+import edu.brown.hstore.Hstoreservice.MultiPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest;
 import edu.brown.hstore.Hstoreservice.ReconfigurationControlResponse;
 import edu.brown.hstore.Hstoreservice.ReconfigurationRequest;
@@ -190,8 +190,8 @@ public class MockHStoreCoordinator extends HStoreCoordinator {
         }
         
         @Override
-        public void chunkedAsyncPullReply(RpcController controller, 
-            ChunkedAsyncPullReplyRequest request, RpcCallback<ChunkedAsyncPullReplyResponse> done) {
+        public void multiPullReply(RpcController controller, 
+            MultiPullReplyRequest request, RpcCallback<MultiPullReplyResponse> done) {
           
         }
 

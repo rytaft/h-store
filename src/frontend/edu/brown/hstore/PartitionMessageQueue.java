@@ -7,7 +7,7 @@ import edu.brown.hstore.internal.AsyncDataPullRequestMessage;
 import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
 import edu.brown.hstore.internal.AsyncNonChunkPullRequestMessage;
 import edu.brown.hstore.internal.AsyncNonChunkPushRequestMessage;
-import edu.brown.hstore.internal.ChunkedAsyncDataPullResponseMessage;
+import edu.brown.hstore.internal.MultiDataPullResponseMessage;
 import edu.brown.hstore.internal.FinishTxnMessage;
 import edu.brown.hstore.internal.InternalMessage;
 import edu.brown.hstore.internal.InternalTxnMessage;
@@ -64,7 +64,7 @@ public class PartitionMessageQueue extends PriorityBlockingQueue<InternalMessage
             AsyncDataPullRequestMessage.class,
             AsyncNonChunkPushRequestMessage.class,
             AsyncNonChunkPullRequestMessage.class,
-            ChunkedAsyncDataPullResponseMessage.class,
+            MultiDataPullResponseMessage.class,
             ScheduleAsyncPullRequestMessage.class
         };
         
