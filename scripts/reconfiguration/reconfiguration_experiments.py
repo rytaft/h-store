@@ -59,12 +59,13 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
 
     if 'reconfig-2' in args['exp_type']:
         fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
-        fabric.env["client.count"] = 4
+        fabric.env["client.count"] = 1
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
         fabric.env["client.threads_per_host"] = min(50, int(partitions * 4))
         fabric.env["site.commandlog_enable"] = False
         fabric.env["site.reconfig_chunk_size_kb"] = 2048 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048 
     
     if 'reconfig-4' in args['exp_type']:
         fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
@@ -93,11 +94,13 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
 
     if 'stopcopy-2' in args['exp_type']:
         fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
-        fabric.env["client.count"] = 4
+        fabric.env["client.count"] = 1
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
         fabric.env["client.threads_per_host"] = min(50, int(partitions * 4))
         fabric.env["site.commandlog_enable"] = False
+        fabric.env["site.reconfig_chunk_size_kb"] = 2048 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048 
 
     if 'baseline-1' in args['exp_type']:
         fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
