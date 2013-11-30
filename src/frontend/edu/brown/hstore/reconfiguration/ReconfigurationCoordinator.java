@@ -978,7 +978,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private final RpcCallback<DataTransferResponse> dataTransferRequestCallback = new RpcCallback<DataTransferResponse>() {
         @Override
         public void run(DataTransferResponse msg) {
-            LOG.error("Not used...");
+            LOG.info("Not used...");
             // TODO : Do the book keeping of received messages
             /*
             int senderId = msg.getSenderSite();
