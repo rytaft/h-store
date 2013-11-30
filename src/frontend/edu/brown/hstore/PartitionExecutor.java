@@ -1531,11 +1531,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         else if (work instanceof MultiDataPullResponseMessage) {
         	
         	 //We have received and are processing a data pull response
-        	LOG.info("Processing the pull response message received");
         	MultiPullReplyRequest pullReply = ((MultiDataPullResponseMessage) work).getMultiPullReplyRequest();
             try {                
                 VoltTable vt = FastDeserializer.deserialize(pullReply.getVoltTableData().toByteArray(), VoltTable.class);
-    
+                LOG.info(String.format("Processing the pull response message received. PullId:%s ChunkID%s IsAsync:%s MoreDataNeeded:%s ",
+                        pullReply.getPullIdentifier(), pullReply.getChunkId(), pullReply.getIsAsync(), pullReply.getMoreDataNeeded()));
+
                 //TODO : Process async pull using chunk id
                 LOG.info("TODO verify chunk id order");
                 
@@ -3258,7 +3259,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public void processLivePullRequestMessage(LivePullRequestMessage livePullRequestMessage) {
         LivePullRequest livePullRequest = livePullRequestMessage.getLivePullRequest();
         LOG.info("Processing Live pull request :" + livePullRequest.getLivePullIdentifier() );
-        LOG.error(" * ************* LEFTOFF" );
         boolean moreDataNeeded = true;
         int chunkId = 0;
         while(moreDataNeeded) {
@@ -3275,16 +3275,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
             }
             
-            if (res.getSecond().booleanValue()){
-                //TODO if there is more data to send, send subsequent messages to 
-                LOG.error("****************\n***************\n\n TODO more data needed on dataPull request.\n****************\n***************\n");
-            }
             moreDataNeeded = res.getSecond();
     
-            LivePullResponse livePullResponse = LivePullResponse.newBuilder().setLivePullIdentifier(livePullRequest.getLivePullIdentifier()).setSenderSite(this.hstore_site.getSiteId())
-                    .setOldPartition(livePullRequest.getOldPartition()).setNewPartition(livePullRequest.getNewPartition()).setVoltTableName(livePullRequest.getVoltTableName())
-                    .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(livePullRequest.getMinInclusive()).setMaxExclusive(livePullRequest.getMaxExclusive())
-                    .setTransactionID(livePullRequest.getTransactionID()).setMoreDataNeeded(res.getSecond()).setChunkId(chunkId).build();
             
             chunkId++;
             MultiPullReplyRequest multiPullReplyRequest = MultiPullReplyRequest.newBuilder().
@@ -3302,10 +3294,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             if (ReconfigurationCoordinator.detailed_timing){
                 reconfiguration_coordinator.notifyPullResponse(livePullRequest.getLivePullIdentifier(), this.partitionId);
             }
-            LOG.info(String.format("sent chunk response to live pull:%s ChunkId:%s ", livePullRequest.getLivePullIdentifier(),chunkId));
-            chunkId++;
+            if (debug.val) LOG.debug(String.format("sent chunk response to live pull:%s ChunkId:%s ", livePullRequest.getLivePullIdentifier(),chunkId));
         }//end while
-        LOG.info("Completed live pull : " +livePullRequest.getLivePullIdentifier()); 
+        LOG.info("Completed live pull : " +livePullRequest.getLivePullIdentifier() + " Last ChunkID: " + chunkId); 
     }
  
     
@@ -6304,7 +6295,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         res.getFirst().getRowCount(), res.getFirst().getRowCount() * res.getFirst().getRowSize() , diff)); 
             }
             
-            LOG.info(String.format("PE (%s) marking range as migrated out %s  ", this.partitionId, range.toString()));
+            if (debug.val) LOG.debug(String.format("PE (%s) marking range as migrated out %s  ", this.partitionId, range.toString()));
             if (this.reconfiguration_tracker != null) {
                 try {
                     if (res.getSecond()){

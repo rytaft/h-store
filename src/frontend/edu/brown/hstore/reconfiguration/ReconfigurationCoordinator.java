@@ -846,7 +846,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
 		   	    
 		    receiveLivePullTuples(multiPullReplyRequest, multiPullReplyResponseCallback);
-		    
+		    /*
 		    MultiPullReplyResponse multiPullReplyResponse = MultiPullReplyResponse.newBuilder().
      		setIsAsync(multiPullReplyRequest.getIsAsync()).
              setPullIdentifier(multiPullReplyRequest.getPullIdentifier()).
@@ -859,7 +859,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // Send the callback of the reply which should work as reconfiguration control message was working for acknowledging the received chunks 
 		    
 		    multiPullReplyResponseCallback.run(multiPullReplyResponse);
-		    
+		    */
     	
     }
     
@@ -907,7 +907,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     //executor.receiveTuples(txnId, oldPartitionId, newPartitionId, table_name, min_inclusive, max_exclusive, voltTable, moreDataNeeded, false);
                 	MultiDataPullResponseMessage pullResponseMsg = new MultiDataPullResponseMessage(multiPullReplyRequest, multiPullReplyResponseCallback);
                 	executor.queueLivePullReplyResponse(pullResponseMsg);
-                    if (detailed_timing) {
+                    if (debug.val && detailed_timing) {
                         receive = System.currentTimeMillis();
                     }
                     // Unblock the semaphore for a blocking request
@@ -916,12 +916,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             LOG.info("keeping PE blocked as more data is needed");
                         }
                         else { 
-                            LOG.info("Unblocking the PE for the pulled request " + livePullId);
+                            LOG.info("Releasing on PE semaphore for the pulled request " + livePullId);
                             blockedRequests.get(livePullId).release();
-                            if (detailed_timing) {
+                            if (debug.val && detailed_timing) {
                                 done = System.currentTimeMillis()-start;
                                 receive-=start;
-                                LOG.info(String.format("(%s) Receive took: %s Receive + Unblock took :%s",newPartitionId, receive, done));
+                                if (debug.val) LOG.debug(String.format("(%s) Receive took: %s Receive + Unblock took :%s",newPartitionId, receive, done));
                             }
                         }
                     }
