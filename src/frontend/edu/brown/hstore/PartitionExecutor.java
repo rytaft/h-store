@@ -234,6 +234,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     private static final UtilityWorkMessage UTIL_WORK_MSG = new UtilityWorkMessage();
     private static final UpdateMemoryMessage STATS_WORK_MSG = new UpdateMemoryMessage();
+    private static  long MIN_MS_BETWEEN_ASYNC_PULLS = 500;
 
     private ReconfigurationState reconfig_state;
     
@@ -245,6 +246,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     
     //Only schedule on async pull at a time
     private AtomicBoolean asyncOutstanding = new AtomicBoolean(false);
+    private long nextAsyncPullTimeMS = 0;
 
     private int tempPullCounter=0;
     private int tempPullResponseCounter=0;
@@ -1086,7 +1088,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         // If this a single-partition txn, then we'll want to
                         // execute it right away
                         if (nextTxn.isPredictSinglePartition()) {
-                            LOG.info("isSingle : " + nextTxn.getTransactionId() +  " bp : " +nextTxn.getBasePartition());
                             LocalTransaction localTxn = (LocalTransaction) nextTxn;
                             nextWork = localTxn.getStartTxnMessage();
                             if (hstore_conf.site.txn_profiling && localTxn.profiler != null)
@@ -1214,26 +1215,28 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.idle_click_count+=1;
             //LOG.info("idle click count : " + idle_click_count);
             
-            if (idle_click_count > PULL_ASYNC_EVERY_CLICKS){
+            if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS && asyncOutstanding.get() == false){
                 this.idle_click_count = 0;
                 ScheduleAsyncPullRequestMessage pullMsg = scheduleAsyncPullQueue.poll();
                 if (pullMsg != null){
-                    LOG.info("Scheduling async pull in work queue due to idle clicks");
+                    LOG.info(" ### Scheduling async pull in work queue due to idle clicks");
                     this.work_queue.offer(pullMsg);
                     asyncOutstanding.set(true);
                 }
             }
+            
             if (this.currentDtxn != null) {
                 return processQueuedLiveReconfigWork(true);
             }            
             else if (reconfiguration_coordinator.getReconfigurationInProgress() && asyncOutstanding.get() == false && 
-                    reconfiguration_coordinator.queueAsyncPull() && this.scheduleAsyncPullQueue.isEmpty() == false) {
-                //nextWork = this.work_queue.poll(WORK_QUEUE_POLL_TIME, WORK_QUEUE_POLL_TIMEUNIT);    
-                //if (nextWork == null){
-                    LOG.info(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue. Items :  " + scheduleAsyncPullQueue.size());
-                    this.work_queue.offer(scheduleAsyncPullQueue.remove());
-                    asyncOutstanding.set(true);
-                //}
+                    reconfiguration_coordinator.queueAsyncPull() && this.scheduleAsyncPullQueue.isEmpty() == false &&
+                    System.currentTimeMillis() > this.nextAsyncPullTimeMS) {
+                 
+
+                LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
+                idle_click_count = 0;
+                this.work_queue.offer(scheduleAsyncPullQueue.remove());
+                asyncOutstanding.set(true);
             } 
             
         }
@@ -6006,7 +6009,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public static int COUNTER_SIZE_BITS = 32;
     private int requestCounter = 1;
     private int idle_click_count;
-    private static int PULL_ASYNC_EVERY_CLICKS=500;
+    private static int MAX_PULL_ASYNC_EVERY_CLICKS=5000;
     public Debug getDebugContext() {
         if (this.cachedDebugContext == null) {
             // We don't care if we're thread-safe here...
@@ -6173,6 +6176,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         if(isAsyncRequest){
                             LOG.info("Last chunk received for async request, unsetting async in progress");
                             asyncOutstanding.set(false);
+                            nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS;
                         }
                     }
                     

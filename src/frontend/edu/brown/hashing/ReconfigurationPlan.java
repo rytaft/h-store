@@ -159,7 +159,7 @@ public class ReconfigurationPlan {
                 long tupleBytes = MemoryEstimator.estimateTupleSize(catalog_table);
                 long currentMax = ReconfigurationConstants.MAX_TRANSFER_BYTES;
                 long maxRows = currentMax/tupleBytes;
-                LOG.info(String.format("Trying to split on table:%s  TupleBytes:%s  CurrentMax:%s  MaxRows:%s", catalog_table.fullName(),tupleBytes,currentMax,maxRows));
+                LOG.info(String.format("Trying to split on table:%s  TupleBytes:%s  CurrentMax:%s  MaxRows:%s MaxTransferBytes:%s", catalog_table.fullName(),tupleBytes,currentMax,maxRows, currentMax));
                 
                 List<ReconfigurationRange<T>> res = new ArrayList<>();
                 Comparable<?> sampleKey = reconfiguration_range.get(0).getMin_inclusive() ;
