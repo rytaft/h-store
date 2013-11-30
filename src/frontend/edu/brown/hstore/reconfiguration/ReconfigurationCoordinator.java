@@ -839,10 +839,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
         } catch (IOException e) {
             LOG.error("Error in deserializing volt table");
         }
-		    receiveLivePullTuples(multiPullReplyRequest.getPullIdentifier(), multiPullReplyRequest.getTransactionID(), multiPullReplyRequest.getOldPartition(),
-				multiPullReplyRequest.getNewPartition(), multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusive(), 
-				multiPullReplyRequest.getMaxExclusive(), 
-				vt, multiPullReplyRequest.getMoreDataNeeded());
+		   	    
+		    receiveLivePullTuples(multiPullReplyRequest, multiPullReplyResponseCallback);
 		    
 		    MultiPullReplyResponse multiPullReplyResponse = MultiPullReplyResponse.newBuilder().
      		setIsAsync(multiPullReplyRequest.getIsAsync()).
@@ -872,9 +870,22 @@ public class ReconfigurationCoordinator implements Shutdownable {
     	
     }
     
-    public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, 
-            Long max_exclusive, VoltTable voltTable, boolean moreDataNeeded) {
+    public void receiveLivePullTuples(MultiPullReplyRequest multiPullReplyRequest, RpcCallback<MultiPullReplyResponse> multiPullReplyResponseCallback) {
         
+    	int livePullId = multiPullReplyRequest.getPullIdentifier();
+    	Long txnId = multiPullReplyRequest.getTransactionID();
+    	int oldPartitionId = multiPullReplyRequest.getOldPartition();
+    	int newPartitionId =  multiPullReplyRequest.getNewPartition();
+    	String table_name = multiPullReplyRequest.getVoltTableName();
+    	Long min_inclusive = multiPullReplyRequest.getMinInclusive(); 
+        Long max_exclusive = multiPullReplyRequest.getMaxExclusive(); 
+        VoltTable voltTable = null;
+        try {
+        	voltTable = FastDeserializer.deserialize(multiPullReplyRequest.getVoltTableData().toByteArray(), VoltTable.class);
+        } catch (IOException e) {
+            LOG.error("Error in deserializing volt table");
+        }
+        boolean moreDataNeeded = multiPullReplyRequest.getMoreDataNeeded();
         long start=0, receive=0, done=0;
         if (detailed_timing){
             start = System.currentTimeMillis();
@@ -885,7 +896,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // TODO : check if we can more efficient here
             if (executor.getPartitionId() == newPartitionId) {
                 try {
-                    executor.receiveTuples(txnId, oldPartitionId, newPartitionId, table_name, min_inclusive, max_exclusive, voltTable, moreDataNeeded, false);
+                	Log.info("We will enqueue the work to load tuples and do it on the PE thread");
+                    //executor.receiveTuples(txnId, oldPartitionId, newPartitionId, table_name, min_inclusive, max_exclusive, voltTable, moreDataNeeded, false);
+                	MultiDataPullResponseMessage pullResponseMsg = new MultiDataPullResponseMessage(multiPullReplyRequest, multiPullReplyResponseCallback);
+                	executor.queueLivePullReplyResponse(pullResponseMsg);
                     if (detailed_timing) {
                         receive = System.currentTimeMillis();
                     }
@@ -912,6 +926,46 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     }
 
+public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, 
+		Long max_exclusive, VoltTable voltTable, boolean moreDataNeeded) {
+        
+        long start=0, receive=0, done=0;
+        if (detailed_timing){
+            start = System.currentTimeMillis();
+        }
+        LOG.info(String.format("Received tuples for %s %s (%s) (from:%s to:%s) for range, " + "(from:%s to:%s)", livePullId, txnId, table_name, newPartitionId, oldPartitionId, min_inclusive,
+                max_exclusive));
+        for (PartitionExecutor executor : local_executors) {
+            // TODO : check if we can more efficient here
+            if (executor.getPartitionId() == newPartitionId) {
+                try {
+                	
+                    executor.receiveTuples(txnId, oldPartitionId, newPartitionId, table_name, min_inclusive, max_exclusive, voltTable, moreDataNeeded, false);
+                    if (detailed_timing) {
+                        receive = System.currentTimeMillis();
+                    }
+                    // Unblock the semaphore for a blocking request
+                    if (blockedRequests.containsKey(livePullId) && blockedRequests.get(livePullId) != null) {
+                        if (moreDataNeeded){
+                            LOG.info("keeping PE blocked as more data is needed");
+                        }
+                        else { 
+                            LOG.info("Unblocking the PE for the pulled request " + livePullId);
+                            blockedRequests.get(livePullId).release();
+                            if (detailed_timing) {
+                                done = System.currentTimeMillis()-start;
+                                receive-=start;
+                                LOG.info(String.format("(%s) Receive took: %s Receive + Unblock took :%s",newPartitionId, receive, done));
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    LOG.error("Error in partition executors receiving tuples for their pull " + "request", e);
+                }
+            }
+        }
+
+    }
 
     
     /**
@@ -1091,8 +1145,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private final RpcCallback<MultiPullReplyResponse> multiPullReplyResponseCallback = new RpcCallback<MultiPullReplyResponse>() {
         @Override
         public void run(MultiPullReplyResponse msg) {
-        	LOG.info(String.format("Callback for chunked async pull reply for partition %s ", msg.getOldPartition()));
-        	queueAsyncDataRequestMessageToWorkQueue(msg.getOldPartition());      	
+        	LOG.info(String.format("Callback for multi pull reply for partition %s ", msg.getOldPartition())+" is Async: "+ msg.getIsAsync());
+        	if(msg.getIsAsync()){
+        		queueAsyncDataRequestMessageToWorkQueue(msg.getOldPartition());  
+        	}
+        	    	
         }
     };
         
@@ -1129,7 +1186,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
     
     public void queueAsyncDataRequestMessageToWorkQueue(int destPartition){
-    	LOG.info("Chunk has been received and acknowledged. Now queue the job for extracting next chunk for partition: " + destPartition);
+    	LOG.info("Async pull reply has been received and acknowledged. Now queue the job for extracting next chunk for partition: " + destPartition);
     	for (PartitionExecutor executor : local_executors) {
             if(destPartition == executor.getPartitionId()){
             	// Call PE to get the message from the queue

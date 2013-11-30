@@ -2306,6 +2306,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.work_queue.offer(work);
     }
 
+    public void queueLivePullReplyResponse(MultiDataPullResponseMessage pullResponseMsg){
+    	this.work_queue.offer(pullResponseMsg);
+    }
+    
     /**
      * Put the prepare request for the transaction into the queue
      * 
@@ -3192,7 +3196,31 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         while (iter.hasNext()){
             work = iter.next();
             //LOG.info(work);
-            if (work instanceof LivePullRequestMessage){
+            if(work instanceof MultiDataPullResponseMessage){
+            	// Check if the work is for 
+            	MultiDataPullResponseMessage multiDataPullResponseMessage = (MultiDataPullResponseMessage)work;
+            	MultiPullReplyRequest multiPullReplyRequest = multiDataPullResponseMessage.getMultiPullReplyRequest();
+            	long multiPullTxnId = multiPullReplyRequest.getTransactionID();
+            	if(multiPullReplyRequest.getIsAsync() && ((this.currentTxnId != null && multiPullTxnId == this.currentTxnId) || 
+                         (this.currentDtxn != null && multiPullTxnId == this.currentDtxn.getTransactionId()))){
+            		LOG.info("Process a live pull reply for the same transaction as the one blocked");
+            		VoltTable vt = null;
+                    try {
+                        vt = FastDeserializer.deserialize(multiPullReplyRequest.getVoltTableData().toByteArray(), VoltTable.class);
+                    } catch (IOException e) {
+                        LOG.error("Error in deserializing volt table");
+                    }
+            		try {
+						receiveTuples(multiPullTxnId, multiPullReplyRequest.getOldPartition(), multiPullReplyRequest.getNewPartition(),
+								multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusive(), 
+								multiPullReplyRequest.getMaxExclusive(), vt, multiPullReplyRequest.getMoreDataNeeded(), false);
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						LOG.error("Error is loading the tuples for the live Pull");
+					}
+            		
+            	}
+            }else if (work instanceof LivePullRequestMessage){
                 LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
                 long txnId = livePullRequestMessage.getLivePullRequest().getTransactionID();
                 if (processOnlyCurrentTxns == false || 
@@ -3785,6 +3813,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.info("Blocking on ranges " + pullRequestsNeeded.size());
                 try {
                     pullBlockSemaphore.acquire(pullRequestsNeeded.size());
+                    LOG.info("Load the buffered data on PE: "+ partitionId +" thread");
+                    processQueuedLiveReconfigWork(true);
 
                     if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.stopIfStarted();
                     if(hstore_conf.site.reconfig_profiling && tempPullCounter % 500 == 0) LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
