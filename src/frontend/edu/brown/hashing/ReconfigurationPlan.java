@@ -250,12 +250,16 @@ public class ReconfigurationPlan {
           return String.format("ReconfigRange (%s)  [%s,%s) id:%s->%s ",table_name,min_inclusive,max_exclusive,old_partition,new_partition);
         }
         
-        //FIXME Ugh this needs to be fixed the generic comparable in these classes are a mess
         public boolean inRange(Comparable<?> key){
-            @SuppressWarnings("unchecked")
-            T castKey = (T)key;
-            if(this.min_inclusive.compareTo(castKey)<=0 && this.max_exclusive.compareTo(castKey)>0){
-                return true;
+            try{
+                long keyL = ((Number)key).longValue();
+                if(this.min_long <= keyL && (this.max_long > keyL || 
+                        (this.max_long == this.min_long && this.min_long == keyL))){
+                    return true;
+                }
+            } catch(Exception e){
+                LOG.error("TODO only number keys supported");
+                LOG.error(e);
             }
             return false;
         }

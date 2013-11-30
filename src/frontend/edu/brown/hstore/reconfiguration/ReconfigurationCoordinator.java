@@ -1152,7 +1152,7 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
     private final RpcCallback<MultiPullReplyResponse> multiPullReplyResponseCallback = new RpcCallback<MultiPullReplyResponse>() {
         @Override
         public void run(MultiPullReplyResponse msg) {
-        	LOG.info(String.format("Callback for multi pull reply for partition %s ", msg.getOldPartition())+" is Async: "+ msg.getIsAsync());
+        	LOG.info(String.format("Callback for multi pull ID:%s chunkID:%s reply for partition %s isAsync:%s ", msg.getPullIdentifier(), msg.getChunkId(), msg.getOldPartition(),msg.getIsAsync()));
         	if(msg.getIsAsync()){
         		queueAsyncDataRequestMessageToWorkQueue(msg.getOldPartition());  
         	}
