@@ -825,7 +825,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     executor.queueMultiPullResponse(pullResponseMsg);
                 } else {
                 	processLivePullReplyFromRC(multiPullReplyRequest, multiPullReplyResponseCallback);
-                	
                 }                      
             }
         }

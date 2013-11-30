@@ -937,6 +937,8 @@ public class HStoreCoordinator implements Shutdownable {
         			hstore_site.getReconfigurationCoordinator().processPullReplyFromRC(request, done);
         		} else {
         			LOG.info("Processing a live pull reply message");
+                    hstore_site.getReconfigurationCoordinator().processPullReplyFromRC(request, done);
+
         		}
         		
         	} catch (Exception e){
