@@ -154,7 +154,11 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     
     @Override
     public boolean markKeyAsMigratedOut(String table_name, Comparable<?> key) {
-        LOG.error("TODO dirty range");//TODO
+        for (ReconfigurationRange<? extends Comparable<?>> range : this.outgoing_ranges) {
+            if (range.inRange(key)){
+                markRangeAsPartiallyMigratedOut(range);
+            }
+        }
         return markAsMigrated(migratedKeyOut, table_name, key);
     }
 

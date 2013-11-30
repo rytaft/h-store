@@ -1215,11 +1215,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.idle_click_count+=1;
             //LOG.info("idle click count : " + idle_click_count);
             
-            if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS && asyncOutstanding.get() == false){
+            if (reconfiguration_coordinator.getReconfigurationInProgress() && asyncOutstanding.get() == false && reconfiguration_coordinator.queueAsyncPull() 
+                    && this.scheduleAsyncPullQueue.isEmpty() == false
+                    && (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )){
+                if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS) {
+                    LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
+                } else {
+                    LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to time. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
+                }                
                 this.idle_click_count = 0;
                 ScheduleAsyncPullRequestMessage pullMsg = scheduleAsyncPullQueue.poll();
                 if (pullMsg != null){
-                    LOG.info(" ### Scheduling async pull in work queue due to idle clicks");
                     this.work_queue.offer(pullMsg);
                     asyncOutstanding.set(true);
                 }
@@ -1227,18 +1233,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             
             if (this.currentDtxn != null) {
                 return processQueuedLiveReconfigWork(true);
-            }            
-            else if (reconfiguration_coordinator.getReconfigurationInProgress() && asyncOutstanding.get() == false && 
-                    reconfiguration_coordinator.queueAsyncPull() && this.scheduleAsyncPullQueue.isEmpty() == false &&
-                    System.currentTimeMillis() > this.nextAsyncPullTimeMS) {
-                 
-
-                LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
-                idle_click_count = 0;
-                this.work_queue.offer(scheduleAsyncPullQueue.remove());
-                asyncOutstanding.set(true);
-            } 
-            
+            }          
         }
         // -------------------------------
         // Poll Lock Queue
@@ -2424,11 +2419,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public boolean queueInitialAsyncPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info(String.format(" ### (%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
-            boolean res = true;            
             for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
                 ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
                 scheduleAsyncPullQueue.add(scheduleAsyncPull);
             }
+            //Set the next time to do an async pull now
+            nextAsyncPullTimeMS = System.currentTimeMillis();
         } else {
             if (debug.val)
                 LOG.debug("No incoming ranges to request");
