@@ -3219,13 +3219,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 						receiveTuples(multiPullTxnId, multiPullReplyRequest.getOldPartition(), multiPullReplyRequest.getNewPartition(),
 								multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusive(), 
 								multiPullReplyRequest.getMaxExclusive(), vt, multiPullReplyRequest.getMoreDataNeeded(), false);
-					} catch (Exception e) {
+						this.work_queue.remove(work);
+	                    return true;
+            		} catch (Exception e) {
 						// TODO Auto-generated catch block
 						LOG.error("Error is loading the tuples for the live Pull");
 					}
             		
             	}
-            }else if (work instanceof LivePullRequestMessage){
+            } else if (work instanceof LivePullRequestMessage){
                 LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
                 long txnId = livePullRequestMessage.getLivePullRequest().getTransactionID();
                 if (processOnlyCurrentTxns == false || 

@@ -812,7 +812,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public void processPullReplyFromRC(MultiPullReplyRequest multiPullReplyRequest, 
         RpcCallback<MultiPullReplyResponse> multiPullReplyResponseCallback) {
     	
-    	LOG.info(String.format("Scheduling chunked async pull reply message for partition %s ", multiPullReplyRequest.getNewPartition()));
+    	if (debug.val) LOG.debug(String.format("Scheduling chunked pull reply message for partition %s ", multiPullReplyRequest.getNewPartition()));
         for (PartitionExecutor executor : local_executors) {
             if(multiPullReplyRequest.getNewPartition() == executor.getPartitionId()){
                 LOG.info("Queue the pull response frpm another RC. Is it Async: "+multiPullReplyRequest.getIsAsync());
@@ -884,6 +884,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     	String table_name = multiPullReplyRequest.getVoltTableName();
     	Long min_inclusive = multiPullReplyRequest.getMinInclusive(); 
         Long max_exclusive = multiPullReplyRequest.getMaxExclusive(); 
+        int chunkId = multiPullReplyRequest.getChunkId();
         VoltTable voltTable = null;
         try {
         	voltTable = FastDeserializer.deserialize(multiPullReplyRequest.getVoltTableData().toByteArray(), VoltTable.class);
@@ -895,7 +896,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
         if (detailed_timing){
             start = System.currentTimeMillis();
         }
-        LOG.info(String.format("Received tuples for %s %s (%s) (from:%s to:%s) for range, " + "(from:%s to:%s)", livePullId, txnId, table_name, newPartitionId, oldPartitionId, min_inclusive,
+        LOG.info(String.format("Received tuples for pullId:%s chunk:%s txn:%s (%s) (from:%s to:%s) for range, " 
+                + "(from:%s to:%s)", livePullId, chunkId, txnId, table_name, newPartitionId, oldPartitionId, min_inclusive,
                 max_exclusive));
         for (PartitionExecutor executor : local_executors) {
             // TODO : check if we can more efficient here
