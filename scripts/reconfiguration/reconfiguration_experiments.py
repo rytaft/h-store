@@ -6,6 +6,7 @@ RECONFIG_EXPERIMENTS = [
     "reconfig-.5",
     "reconfig-1",
     "reconfig-2",
+    "reconfig-2l",
     "reconfig-4",
     "reconfig-10",
     "stopcopy-1",
@@ -71,9 +72,18 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.threads_per_host"] = min(50, int(partitions * 4))
         fabric.env["site.reconfig_chunk_size_kb"] = 2048 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
-        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
         fabric.env["site.commandlog_enable"] = False
     
+    if 'reconfig-2l' in args['exp_type']:
+        fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
+        fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.threads_per_host"] = min(50, int(partitions * 4))
+        fabric.env["site.reconfig_chunk_size_kb"] = 4096 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
+        fabric.env["site.commandlog_enable"] = False
+
     if 'reconfig-4' in args['exp_type']:
         fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT

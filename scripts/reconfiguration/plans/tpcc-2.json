@@ -18,7 +18,17 @@
           }
         }      
       }
-    }
+    },
+    "3": {
+      "tables": {
+        "warehouse": {
+          "partitions": {
+            "0": "1-3"
+          }
+        }      
+      }
+    },
+
   }, 
   "default_table": "warehouse"
 }
