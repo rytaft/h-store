@@ -89,6 +89,7 @@ public class YCSBClient extends BenchmarkComponent {
     private final IntegerGenerator randScan;
     private final FlatHistogram<Transaction> txnWeights;
     private final Random rand_gen;
+    private double skewFactor = YCSBConstants.ZIPFIAN_CONSTANT;
     
     int run_count = 0; 
     
@@ -101,7 +102,6 @@ public class YCSBClient extends BenchmarkComponent {
     public YCSBClient(String args[]) {
         super(args);
 
-        final CatalogContext catalogContext = this.getCatalogContext();
         boolean useFixedSize = false;
         long fixedSize = -1;
         String requestDistribution = YCSBConstants.REQUEST_DISTRIBUTION_PROPERTY_DEFAULT; 
@@ -121,29 +121,22 @@ public class YCSBClient extends BenchmarkComponent {
             else if (key.equalsIgnoreCase(YCSBConstants.REQUEST_DISTRIBUTION_PROPERTY)){
                 requestDistribution = value;
             }
+            // Zipfian Skew Factor
+            else if (key.equalsIgnoreCase("skew_factor")) {
+                this.skewFactor = Double.valueOf(value);
+            }
             else{
                 if(debug.val) LOG.debug("Unknown prop : "  + key);
             }
         } // FOR
         
         // Figure out the # of records that we need
-//        if (useFixedSize && fixedSize > 0) {
-//            this.init_record_count = fixedSize;
-//        }
-//        else {
-//            //this.init_record_count = (int)Math.round(YCSBConstants.NUM_RECORDS * 
-////                                                     catalogContext.numberOfPartitions *
-////                                                     this.getScaleFactor());
-//            
-//            this.init_record_count = YCSBConstants.NUM_RECORDS; 
-//        }
-        if(useFixedSize){
-            if(debug.val) LOG.debug("Using fixed number of records : " + fixedSize);
+        if (useFixedSize && fixedSize > 0) {
             this.init_record_count = fixedSize;
-        } else{
-            this.init_record_count = YCSBConstants.NUM_RECORDS;            
         }
-        
+        else {
+            this.init_record_count = (long)Math.round(YCSBConstants.NUM_RECORDS * this.getScaleFactor());
+        }
         this.rand_gen = new Random(); 
         this.randScan = new ZipfianGenerator(YCSBConstants.MAX_SCAN);
                 
@@ -174,6 +167,8 @@ public class YCSBClient extends BenchmarkComponent {
             throw new RuntimeException(msg);
         }
         
+        this.insertRecord = new ZipfianGenerator(this.init_record_count, this.skewFactor);
+        this.readRecord = new ZipfianGenerator(this.init_record_count, this.skewFactor);
         
         // Initialize the sampling table
         Histogram<Transaction> txns = new ObjectHistogram<Transaction>(); 
