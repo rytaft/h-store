@@ -15,20 +15,12 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
-#    "reconfig-.5 --partitions=2" \
-#    "reconfig-1 --partitions=2" \
-#    "reconfig-2 --partitions=2" \
-#    "reconfig-2l --partitions=2" \
-#    "reconfig-4 --partitions=2" \
-#    "reconfig-.5 --partitions=4" \
-#    "reconfig-1 --partitions=4" \
-    "reconfig-2 --partitions=4 --benchmark-size=12 --exp-suffix=smlmove" \
-    "reconfig-2l --partitions=4 --benchmark-size=12 --exp-suffix=smlmove" \
-    "stopcopy-2 --partitions=4 --benchmark-size=12 --exp-suffix=smlmove" \
-#    "reconfig-4 --partitions=4" \
-#    "reconfig-2 --partitions=4" \
-#    "stopcopy-2 --partitions=2" \
-#    "stopcopy-2 --partitions=4" \
+    "reconfig-2 --partitions=8 --benchmark-size=4000000 --exp-suffix=smlmove --reconfig=95000:0b:0 " \
+    "reconfig-2l --partitions=8 --benchmark-size=4000000 --exp-suffix=smlmove --reconfig=95000:0b:0 " \
+    "stopcopy-2 --partitions=8 --benchmark-size=4000000 --exp-suffix=smlmove --reconfig=95000:0b:0 " \
+    "reconfig-2 --partitions=8 --benchmark-size=4000000 --exp-suffix=cons8to4 --reconfig=95000:1:0 " \
+    "reconfig-2l --partitions=8 --benchmark-size=4000000 --exp-suffix=cons8to4 --reconfig=95000:1:0 " \
+    "stopcopy-2 --partitions=8 --benchmark-size=4000000 --exp-suffix=smlmove --reconfig=95000:1:0 " \
 )
 
 #for b in smallbank tpcc seats; do
@@ -48,7 +40,7 @@ for b in tpcc; do
         --client.duration=150000 \
         --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv
-        --reconfig=95000:2:0
+        
     )
     
     i=0
