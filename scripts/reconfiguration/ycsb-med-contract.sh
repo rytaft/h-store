@@ -12,17 +12,21 @@ function onexit() {
 
 DATA_DIR="out"
 FABRIC_TYPE="ssh"
-FIRST_PARAM_OFFSET=1
+FIRST_PARAM_OFFSET=
 
 EXP_TYPES=( \
-    "stopcopy-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med1contract --reconfig=445000:1:0 " \
-    "reconfig-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med1contract --reconfig=445000:1:0 " \
-    "stopcopy-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med2contract --reconfig=445000:2:0 " \
-    "reconfig-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med2contract --reconfig=445000:2:0 " \
-    "stopcopy-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med3contract --reconfig=445000:3:0 " \
-    "reconfig-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med3contract --reconfig=445000:3:0 " \
-    "stopcopy-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med4contract --reconfig=445000:4:0 " \
-    "reconfig-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med4contract --reconfig=445000:4:0 " \
+#    "stopcopy-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med1contract --reconfig=445000:1:0 " \
+#    "reconfig-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med1contract --reconfig=445000:1:0 " \
+    "stopcopy-ycsb-zipf --partitions=8 --benchmark-size=1000000 --exp-suffix=med2contract --reconfig=245000:2:0 " \
+    "stopcopy-ycsb-hotspot --partitions=8 --benchmark-size=1000000 --exp-suffix=med2contract --reconfig=245000:2:0 " \
+    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=med2contract --reconfig=245000:2:0 " \
+    "reconfig-ycsb-zipf --partitions=8 --benchmark-size=1000000 --exp-suffix=med2contract --reconfig=245000:2:0 " \
+    "reconfig-ycsb-hotspot --partitions=8 --benchmark-size=1000000 --exp-suffix=med2contract --reconfig=245000:2:0 " \
+    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=med2contract --reconfig=245000:2:0 " \
+#    "stopcopy-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med3contract --reconfig=445000:3:0 " \
+#    "reconfig-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med3contract --reconfig=445000:3:0 " \
+#    "stopcopy-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med4contract --reconfig=445000:4:0 " \
+#    "reconfig-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=med4contract --reconfig=445000:4:0 " \
 )
 
 #for b in smallbank tpcc seats; do
