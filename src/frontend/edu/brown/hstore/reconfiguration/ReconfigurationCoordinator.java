@@ -252,6 +252,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         LOG.info("initReconfig for STOPCOPY");
                         this.partitionStates.put(partitionId, ReconfigurationState.DATA_TRANSFER);
                         this.reconfigurationState = ReconfigurationState.DATA_TRANSFER;
+                        long siteStart = System.currentTimeMillis();
+                        int siteKBSent = 0;
                         //turn off local executions
                         for (PartitionExecutor executor : this.local_executors) {
                             executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
@@ -260,13 +262,15 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         //push outgoing ranges for all local PEs
                         for (PartitionExecutor executor : this.local_executors) {
                             LOG.info("Pushing ranges for local PE : " + executor.getPartitionId());
+                            long peStart = System.currentTimeMillis();
+                            int kbSent = 0;
                             List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges = executor.getOutgoingRanges();
                             if (outgoing_ranges != null && outgoing_ranges.size()>0) {
                                 for (ReconfigurationRange<? extends Comparable<?>> range : outgoing_ranges) {
                                     boolean hasMoreData = true;
                                     while(hasMoreData){
                                         Pair<VoltTable,Boolean> res = executor.extractPushRequst(range);
-                                        
+                                        kbSent += res.getFirst().getUnderlyingBufferSize()/1000.0;
                                         pushTuples(range.old_partition, range.new_partition, range.table_name, res.getFirst(), 
                                                 range.min_long,  range.max_long);
                                         hasMoreData = res.getSecond();
@@ -275,11 +279,18 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             } else {
                                 LOG.info("no outgoing ranges for PE : " + executor.getPartitionId());
                             }
+                            long peTime = System.currentTimeMillis() - peStart;
+                            LOG.info(String.format("STOPCOPY for PE(%s) took %s ms for %s kb", executor.getPartitionId(), peTime, kbSent));
+                            siteKBSent += kbSent;
                         }
                         //TODO this file is horrible and needs refactoring....
                         //we have an end, reset and finish reconfiguration...
                         endReconfiguration();
                         resetReconfigurationInProgress();
+                        long siteTime = System.currentTimeMillis() - siteStart;
+                        String timeMsg = String.format("STOPCOPY for site %s took %s ms and send %s kb", this.hstore_site.getSiteId(), siteTime, siteKBSent);
+                        LOG.info(timeMsg);
+                        FileUtil.appendEventToFile(timeMsg);
                     } else {
                         LOG.info("No reconfig plan, nothing to do");
                     }
@@ -531,8 +542,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @throws Exception
      */
     public void pushTuples(int oldPartitionId, int newPartitionId, String table_name, VoltTable vt, Long minInclusive, Long maxExclusive) throws Exception {
-        LOG.info(String.format("pushTuples  keys for %s  partIds %s->%s", table_name, oldPartitionId, newPartitionId));
-        // TODO Auto-generated method stub
+        LOG.info(String.format("pushTuples keys (%s-%s] for [%s]  partitions %s->%s", minInclusive, maxExclusive, table_name, oldPartitionId, newPartitionId));
         int destinationId = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(newPartitionId);
 
         if (destinationId == localSiteId) {
@@ -567,7 +577,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      */
     public DataTransferResponse receiveTuples(int sourceId, long sentTimeStamp, int partitionId, int newPartitionId, String table_name, VoltTable vt, Long minInclusive, Long maxExclusive)
             throws Exception {
-        LOG.info(String.format("receiveTuples  keys for %s  partIds %s->%s", table_name, sourceId, newPartitionId));
+        LOG.info(String.format("receiveTuples  keys for %s  partIds %s->%s", table_name, partitionId, newPartitionId));
 
         if (vt == null) {
             LOG.error("Volt Table received is null");
