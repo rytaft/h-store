@@ -37,6 +37,8 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     private List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges;
     public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut;
     public List<ReconfigurationRange<? extends Comparable<?>>> dataPartiallyMigratedOut;
+
+    public List<ReconfigurationRange<? extends Comparable<?>>> dataPartiallyMigratedIn;
     public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedIn;
     private int rangesMigratedInCount = 0;
     private int rangesMigratedOutCount = 0;
@@ -65,6 +67,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         this.dataMigratedIn = new ArrayList<>();
         this.dataMigratedOut = new ArrayList<>();
         this.dataPartiallyMigratedOut = new ArrayList<>();
+        this.dataPartiallyMigratedIn = new ArrayList<>();
     }
     
     public ReconfigurationTracking(PlannedPartitions partitionPlan, ReconfigurationPlan plan, int partition_id){
@@ -133,8 +136,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     
     @Override
     public boolean markRangeAsPartiallyReceived(ReconfigurationRange<? extends Comparable<?>> range ){
-        LOG.info("TODO - do we need to track partially received ranges?");
-        return true;
+        return this.dataPartiallyMigratedIn.add(range);        
     }
     
 
@@ -165,7 +167,11 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
 
     @Override
     public boolean markKeyAsReceived(String table_name, Comparable<?> key) {
-        LOG.error("TODO dirty range");//TODO
+        for (ReconfigurationRange<? extends Comparable<?>> range : this.incoming_ranges) {
+            if (range.inRange(key)){
+                markRangeAsPartiallyReceived(range);
+            }
+        }
         return markAsMigrated(migratedKeyIn, table_name, key);
     }
 

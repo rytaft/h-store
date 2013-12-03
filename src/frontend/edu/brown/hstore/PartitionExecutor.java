@@ -3223,6 +3223,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 						LOG.error("Error is loading the tuples for the live Pull");
 					}
             		
+            	} else{
+            	    LOG.info(String.format("Not processing a live pull Async:%s PullTxnID:%s  DistTxn:%s CurrentTxn:%s ",multiPullReplyRequest.getIsAsync(),multiPullTxnId, this.currentDtxn, this.currentTxnId ) );
             	}
             } else if (work instanceof LivePullRequestMessage){
                 LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
@@ -3231,10 +3233,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         ((this.currentTxnId != null && txnId == this.currentTxnId) || 
                          (this.currentDtxn != null && txnId == this.currentDtxn.getTransactionId())))
                 {
-                    LOG.info("Found a livepullRequestTo process");
+                    if(debug.val) LOG.debug("Found a livepullRequestTo process");
                     if(hstore_conf.site.reconfig_profiling){
                         this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.appendTime(livePullRequestMessage.getStartTime(), ProfileMeasurement.getTime());
-                        if(tempPullResponseCounter++%100==0)
+                        if(tempPullResponseCounter++%10==0)
                             LOG.info(String.format("Avg live pull response queue Time MS %s Count:%s ",
                                     this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getAverageThinkTimeMS(),
                                     this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getInvocations()));
@@ -3254,7 +3256,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      */
     public void processLivePullRequestMessage(LivePullRequestMessage livePullRequestMessage) {
         LivePullRequest livePullRequest = livePullRequestMessage.getLivePullRequest();
-        LOG.info("Processing Live pull request :" + livePullRequest.getLivePullIdentifier() );
+        LOG.info(String.format("(%s)Processing Live pull request %s",this.partitionId, livePullRequest.getLivePullIdentifier()));
         boolean moreDataNeeded = true;
         int chunkId = 0;
         while(moreDataNeeded) {
@@ -3801,20 +3803,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             if (blockingNeeded) {
                 // block on the pull request
                 Semaphore pullBlockSemaphore = new Semaphore(pullRequestsNeeded.size());
-                LOG.info("Pulling ranges " + pullRequestsNeeded.size());
+                int pullID =getNextRequestToken();                
+                LOG.info(String.format("(%s) PullId:%s pulling number of ranges and then blocking: %s",partitionId, pullID, pullRequestsNeeded.size()));
                 if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.start();
-                this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), this.currentTxnId, this.partitionId, pullRequestsNeeded, pullBlockSemaphore);
-                LOG.info("Blocking on ranges " + pullRequestsNeeded.size());
+                this.reconfiguration_coordinator.pullRanges(pullID, this.currentTxnId, this.partitionId, pullRequestsNeeded, pullBlockSemaphore);
+                if (debug.val) LOG.debug("Blocking on ranges " + pullRequestsNeeded.size());
                 try {
                     pullBlockSemaphore.acquire(pullRequestsNeeded.size());
-                    LOG.info("Load the buffered data on PE: "+ partitionId +" thread");
+                    if (debug.val) LOG.debug("Load the buffered data on PE: "+ partitionId +" thread");
                     processQueuedLiveReconfigWork(true);
 
                     if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.stopIfStarted();
                     if(hstore_conf.site.reconfig_profiling && tempPullCounter % 500 == 0) LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
                             this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getAverageThinkTimeMS(),
                             this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getInvocations()));
-                    LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId));
+                    LOG.info(String.format("PE (%s) has received all pull requests for pullID:%s. Unblocking", this.partitionId, pullID));
 		    tempPullCounter++;	
                 } catch (InterruptedException ex) {
                     LOG.error("Waiting for pull was interuppted. ", ex);
@@ -6177,8 +6180,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long minInclusive, 
             Long maxExclusive, VoltTable vt, boolean moreDataComing, boolean isAsyncRequest) throws Exception {
         
-        LOG.info(String.format("PE (%s) Received tuples for txnId:%s Rows(%s) pIds(from:%s to:%s) for range, " + "(from:%s to:%s)", this.partitionId, txnId, vt.getRowCount(), 
-                newPartitionId, oldPartitionId, minInclusive, maxExclusive));
+        LOG.info(String.format("PE (%s) Received tuples for txnId:%s Rows(%s) partitions(%s->%s) for range, " + "[%s-%s)", this.partitionId, txnId, vt.getRowCount(), 
+                 oldPartitionId, newPartitionId, minInclusive, maxExclusive));
         if(hstore_conf.site.reconfig_replication_delay){
             replicationDelay();
         }
@@ -6238,7 +6241,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @return
      */
     public Pair<VoltTable,Boolean> sendTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, Long max_exclusive, int chunkId) {
-        LOG.info(String.format("sendTuples keys %s->%s for %s  partIds %s->%s", min_inclusive, max_exclusive, table_name, oldPartitionId, newPartitionId));
+        LOG.info(String.format("(%s) sendTuples keys %s->%s for %s, chunkId:%s (partIds %s->%s)", partitionId, min_inclusive, max_exclusive, table_name, chunkId, oldPartitionId, newPartitionId));
         VoltTable vt = null;
         // FIXME make generic
 

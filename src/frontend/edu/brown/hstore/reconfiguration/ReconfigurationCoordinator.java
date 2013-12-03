@@ -815,9 +815,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
     	if (debug.val) LOG.debug(String.format("Scheduling chunked pull reply message for partition %s ", multiPullReplyRequest.getNewPartition()));
         for (PartitionExecutor executor : local_executors) {
             if(multiPullReplyRequest.getNewPartition() == executor.getPartitionId()){
-                LOG.info("Queue the pull response frpm another RC. Is it Async: "+multiPullReplyRequest.getIsAsync());
+                if (debug.val) LOG.debug("Queue the pull response frpm another RC. Is it Async: "+multiPullReplyRequest.getIsAsync());
               
-                LOG.error("TODO add chunk ID to response and add new reconfig control type for asyn pull response received"); //TODO
+                //LOG.error("TODO add chunk ID to response and add new reconfig control type for asyn pull response received"); //TODO
                 if(multiPullReplyRequest.getIsAsync()){
                 	MultiDataPullResponseMessage pullResponseMsg = new MultiDataPullResponseMessage(multiPullReplyRequest, multiPullReplyResponseCallback);
                     unblockingPullRequestSemaphore(multiPullReplyRequest.getPullIdentifier(), multiPullReplyRequest.getNewPartition(),
@@ -837,7 +837,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      */
     public void processLivePullReplyFromRC(MultiPullReplyRequest multiPullReplyRequest, RpcCallback<MultiPullReplyResponse> multiPullReplyResponseCallback){
     	
-    	LOG.info("Processing pull reply from: "+multiPullReplyRequest.getOldPartition()+" to "+ multiPullReplyRequest.getNewPartition());
+        if (debug.val) LOG.debug("Processing pull reply from: "+multiPullReplyRequest.getOldPartition()+" to "+ multiPullReplyRequest.getNewPartition());
     	VoltTable vt = null;
         try {
             vt = FastDeserializer.deserialize(multiPullReplyRequest.getVoltTableData().toByteArray(), VoltTable.class);
@@ -913,10 +913,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     // Unblock the semaphore for a blocking request
                     if (blockedRequests.containsKey(livePullId) && blockedRequests.get(livePullId) != null) {
                         if (moreDataNeeded){
-                            LOG.info("keeping PE blocked as more data is needed");
+                            if (debug.val) LOG.debug("keeping PE blocked as more data is needed");
                         }
                         else { 
-                            LOG.info("Releasing on PE semaphore for the pulled request " + livePullId);
+                            if (debug.val) LOG.debug("Releasing on PE semaphore for the pulled request " + livePullId);
                             blockedRequests.get(livePullId).release();
                             if (debug.val && detailed_timing) {
                                 done = System.currentTimeMillis()-start;
