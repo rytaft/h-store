@@ -744,6 +744,9 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
+        fabric.env["site.reconfig_chunk_size_kb"] = 2048 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
+        fabric.env["site.commandlog_enable"] = False
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
         fabric.env["benchmark.requestdistribution"] = "zipfian"
         fabric.env["benchmark.ReadRecordProportion"] = 0.95
@@ -759,6 +762,9 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
+        fabric.env["site.reconfig_chunk_size_kb"] = 2048 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
+        fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.requestdistribution"] = "uniform"
         fabric.env["benchmark.ReadRecordProportion"] = 0.95
         fabric.env["benchmark.UpdateRecordProportion"] = 0.05
@@ -773,6 +779,9 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
+        fabric.env["site.reconfig_chunk_size_kb"] = 2048 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
+        fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.requestdistribution"] = "hotspot"
         fabric.env["benchmark.ReadRecordProportion"] = 0.95
         fabric.env["benchmark.UpdateRecordProportion"] = 0.05
