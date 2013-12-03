@@ -96,7 +96,8 @@ def getReconfigEvents(hevent_log):
                 event = "END"
             else:
                 event = "UNKNOWN"
-            events.append((ts,event,protocol))
+            if event != "UNKNOWN":
+              events.append((ts,event,protocol))
     return events
 
 def addReconfigEvent(df, reconfig_events):
@@ -294,6 +295,8 @@ def plotTSD(args, files, ax):
                             LOG.error("*****************************************")
             
                         init_legend = None
+                    elif len(df[df.RECONFIG.str.contains('TXN')]) < 1:
+                        LOG.error("NO reconfig event found!")
                     else:
                         LOG.error("Multiple reconfig events not currently supported")
             print name     
