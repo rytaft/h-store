@@ -32,6 +32,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     private static final Logger LOG = Logger.getLogger(ReconfigurationTracking.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
+    private static boolean PULL_SINGLE_KEY = false;
     private List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges;
     private List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges;
     public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut;
@@ -212,8 +213,18 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                     }
                     // The key has not been received. Throw an exception to notify
                     //It could be in a partial range, but that doesn't matter to us. Still need to pull the full range.
-                    ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED,table_name, previousPartition,expectedPartition,key);
-                    throw ex;
+                    if (PULL_SINGLE_KEY) {
+                        ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED,table_name, previousPartition,expectedPartition,key);
+                        throw ex;
+                    } else {
+                        for(ReconfigurationRange<? extends Comparable<?>> range : this.incoming_ranges){
+                            if(range.inRange(key)){
+                                LOG.info(String.format("Access for key %s, pulling entire range :%s", key, range.toString()));
+                                ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED,table_name, previousPartition,expectedPartition,range);
+                                throw ex;
+                            }
+                        }    
+                    }
                 }
                 
             } else if (expectedPartition != partition_id &&  previousPartition == partition_id) {

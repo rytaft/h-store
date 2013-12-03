@@ -15,8 +15,8 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
-    "reconfig-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=medmove --reconfig=245000:1:0 " \
-    "stopcopy-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=medmove --reconfig=245000:1:0 " \
+    "reconfig-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=medmove --reconfig=445000:1:0 " \
+    "stopcopy-2 --partitions=8 --benchmark-size=1000000 --exp-suffix=medmove --reconfig=445000:1:0 " \
 )
 
 #for b in smallbank tpcc seats; do
