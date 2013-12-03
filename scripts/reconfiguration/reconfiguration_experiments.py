@@ -15,7 +15,7 @@ RECONFIG_EXPERIMENTS = [
     "reconfig-localhost",
 ]
 
-RECONFIG_CLIENT_COUNT = 1
+RECONFIG_CLIENT_COUNT = 4
 
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
@@ -69,7 +69,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = min(50, int(partitions * 4))
+        fabric.env["client.threads_per_host"] = min(15, int(partitions * 4))
         fabric.env["site.reconfig_chunk_size_kb"] = 2048 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
         fabric.env["site.commandlog_enable"] = False
@@ -119,7 +119,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = min(50, int(partitions * 4))
+        fabric.env["client.threads_per_host"] = min(15, int(partitions * 4))
         fabric.env["site.reconfig_chunk_size_kb"] = 30000 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 30000 
         fabric.env["site.commandlog_enable"] = False
