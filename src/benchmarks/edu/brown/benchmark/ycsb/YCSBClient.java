@@ -167,8 +167,6 @@ public class YCSBClient extends BenchmarkComponent {
             throw new RuntimeException(msg);
         }
         
-        this.insertRecord = new ZipfianGenerator(this.init_record_count, this.skewFactor);
-        this.readRecord = new ZipfianGenerator(this.init_record_count, this.skewFactor);
         
         // Initialize the sampling table
         Histogram<Transaction> txns = new ObjectHistogram<Transaction>(); 
