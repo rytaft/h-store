@@ -224,7 +224,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                         throw ex;
                     } else {
                         for(ReconfigurationRange<? extends Comparable<?>> range : this.incoming_ranges){
-                            if(range.inRange(key)){
+                            if(range.table_name.equalsIgnoreCase(table_name) && range.inRange(key)){
                                 LOG.info(String.format("Access for key %s, pulling entire range :%s", key, range.toString()));
                                 ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED,table_name, previousPartition,expectedPartition,range,true);
                                 throw ex;
