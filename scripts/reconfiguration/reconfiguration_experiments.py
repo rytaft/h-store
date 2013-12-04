@@ -17,7 +17,7 @@ RECONFIG_EXPERIMENTS = [
     "reconfig-localhost",
 ]
 
-RECONFIG_CLIENT_COUNT = 4
+RECONFIG_CLIENT_COUNT = 2
 
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
@@ -66,7 +66,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["site.reconfig_async_chunk_size_kb"] = 1024
         fabric.env["site.commandlog_enable"] = False
 
-    if 'reconfig-2' in args['exp_type']:
+    if 'reconfig-2' == args['exp_type']:
         fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
         fabric.env["client.blocking"] = True
@@ -76,8 +76,9 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
         fabric.env["site.commandlog_enable"] = False
     
-    if 'reconfig-2b' in args['exp_type'] or 'stopcopy-2b' in args['exp_type']:
+    if 'reconfig-2b' in  args['exp_type'] or 'stopcopy-2b' in args['exp_type']:
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
+        fabric.env["client.blocking_concurrent"] = 1
         #fabric.env["client.txnrate"] = 100000
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
