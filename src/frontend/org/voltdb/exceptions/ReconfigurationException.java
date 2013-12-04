@@ -60,6 +60,24 @@ public class ReconfigurationException extends SerializableException {
 
     }
 
+    public ReconfigurationException(ExceptionTypes exceptionType, String table_name, int old_partition, int new_partition, ReconfigurationRange<? extends Comparable<?>> range, boolean isRange) {
+        List<ReconfigurationRange<? extends Comparable<?>>> keys = new ArrayList<>();
+
+
+        keys.add(range);
+        this.exceptionType = exceptionType;
+        if (exceptionType == ExceptionTypes.TUPLES_NOT_MIGRATED) {
+            dataNotYetMigrated = new HashSet<>();
+            dataNotYetMigrated.addAll(keys);
+            dataMigratedOut = new HashSet<>();
+        } else if (exceptionType == ExceptionTypes.TUPLES_MIGRATED_OUT) {
+            dataMigratedOut = new HashSet<>();
+            dataMigratedOut.addAll(keys);
+            dataNotYetMigrated = new HashSet<>();
+        } else
+            throw new NotImplementedException("ExceptionType for single key not supported " + exceptionType);
+    }
+    
     public ReconfigurationException(ExceptionTypes exceptionType, String table_name, int old_partition, int new_partition, Comparable key) {
         List<ReconfigurationRange<? extends Comparable<?>>> keys = new ArrayList<>();
 
@@ -78,7 +96,6 @@ public class ReconfigurationException extends SerializableException {
             dataNotYetMigrated = new HashSet<>();
         } else
             throw new NotImplementedException("ExceptionType for single key not supported " + exceptionType);
-
     }
 
     public ReconfigurationProtocols getReconfigurationProtocols() {
