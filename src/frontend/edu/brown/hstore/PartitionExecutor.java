@@ -3589,7 +3589,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                                Map<Integer, List<VoltTable>> input_deps) {
         assert(this.ee != null) : "The EE object is null. This is bad!";
 
-        if (reconfiguration_coordinator.getReconfigurationInProgress() && 
+        if (reconfiguration_coordinator != null && reconfiguration_coordinator.getReconfigurationInProgress() && 
                 reconfiguration_coordinator.isLive_pull()) {
             checkReconfigurationTracking(fragmentIds, parameterSets);
         }
