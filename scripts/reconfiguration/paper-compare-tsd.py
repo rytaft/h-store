@@ -7,7 +7,7 @@ import os
 from texGraphDefault import *
 
 
-def plotTSD(files,filedir,var,ylabel, ylim,xtrim=None):
+def plotTSD(files,filedir,var,ylabel,xlabel, ylim=None,xtrim=None, filename=None):
   data = []
   labels = []
   reconfigs = []
@@ -17,9 +17,12 @@ def plotTSD(files,filedir,var,ylabel, ylim,xtrim=None):
     df = pandas.DataFrame.from_csv(_file,index_col=1)
     if xtrim:
       df = df[:xtrim]
+    print var
+    print df[var].values
     data.append(df[var].values)
     reconfig_events = plotter.getReconfigEvents(_file.replace("interval_res.csv", "hevent.log"))
     plotter.addReconfigEvent(df, reconfig_events)
+    df.index = df.index / 1000
     reconfigs.append(df)
     labels.append(f[0])
 
@@ -30,8 +33,8 @@ def plotTSD(files,filedir,var,ylabel, ylim,xtrim=None):
 
   f,axarr = plot.subplots(len(data), sharex=True, sharey=True)
   plot.title("", fontsize=16)
-  plot.xlabel("Elapsed Time (seconds)",fontsize='16')
-  plot.ylabel('tt', fontsize='18')
+  plot.xlabel(xlabel,fontsize='16')
+  #f.text(0.06, 0.5, 'common ylabel', ha='center', va='center', rotation='vertical', fontsize='18')
   
   pylab.ylim(ylim)
 
@@ -43,8 +46,10 @@ def plotTSD(files,filedir,var,ylabel, ylim,xtrim=None):
   color = "black"
   for j,(_d,r, name) in enumerate(zip(data,reconfigs,labels)):
     ax =axarr[j]
-    ax.set_ylim(ylim)
+    if ylim:
+      ax.set_ylim(ylim)
     ax.plot(df.index, _d, label=name)
+    ax.set_ylabel(ylabel, fontsize='12')
     ax.set_title(name)
     if len(r[r.RECONFIG.str.contains('TXN')]) == 1:
       ax.axvline(r[r.RECONFIG.str.contains('TXN')].index[0], color=color, lw=1.5, linestyle="--",label=init_legend)
@@ -72,25 +77,31 @@ def plotTSD(files,filedir,var,ylabel, ylim,xtrim=None):
 
   rcParams.update(params)
   plot.tight_layout()
-
-  plot.savefig( "compareTsd.pdf", format = 'pdf')
-
-
-  plot.show()
+  
+  if filename:
+    plot.savefig(filename, format = 'pdf')
+  else:
+    plot.show()
 
 if __name__ == "__main__":
 
   ycsb_files = [ 
-    ( "S&C YCSB Zipfian" , "stopcopy-ycsb-zipf/ycsb-08p-med2contract-interval_res.csv"),
-    ( "Squall YCSB Zipfian" , "reconfig-ycsb-zipf/ycsb-08p-med2contract-interval_res.csv"),
-    ( "S&C YCSB Uniform" , "stopcopy-ycsb-uniform/ycsb-08p-med2contract-interval_res.csv"), 
-    ( "Squall YCSB Uniform" , "reconfig-ycsb-uniform/ycsb-08p-med2contract-interval_res.csv"), 
+    ( "Stop and Copy YCSB (Zipfian)" , "stopcopy-ycsb-zipf/ycsb-08p-med2contract-interval_res.csv"),
+    ( "Squall YCSB (Zipfian)" , "reconfig-ycsb-zipf/ycsb-08p-med2contract-interval_res.csv"),
+    ( "Stop and Copy YCSB (Uniform)" , "stopcopy-ycsb-uniform/ycsb-08p-med2contract-interval_res.csv"), 
+    ( "Squall YCSB (Uniform)" , "reconfig-ycsb-uniform/ycsb-08p-med2contract-interval_res.csv"), 
   ] 
 
   filedir = "/home/aelmore/Dropbox/research/data/distY2-xif"
   if not os.path.isdir(filedir):
     raise Exception("Not a directory")
   var = "LATENCY"
-  ylabel = "Mean Latency (ms)"
-  plotTSD(ycsb_files,filedir,var, ylabel, [0,100],180)
+  ylabel = "Latency (ms)"
+  xlabel = "Elapsed Time (seconds)"
+  plotTSD(ycsb_files,filedir,var, ylabel,xlabel, [0,100],180, "ycsbTSD-LatencyCompared")
+  
+  var = "THROUGHPUT"
+  ylabel = "TPS"
+  xlabel = "Elapsed Time (seconds)"
+  #plotTSD(ycsb_files,filedir,var, ylabel,xlabel, [0,15000],180, "ycsbTSD-ThroughputCompared" )  
 
