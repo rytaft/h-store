@@ -6,6 +6,7 @@ import plotter
 import os
 from texGraphDefault import *
 
+LOG = plotter.LOG
 
 def plotTSD(files,filedir,var,ylabel,xlabel, ylim=None,xtrim=None, filename=None):
   data = []
@@ -83,7 +84,7 @@ def plotTSD(files,filedir,var,ylabel,xlabel, ylim=None,xtrim=None, filename=None
   else:
     plot.show()
 
-if __name__ == "__main__":
+if __name__ == "__main2__":
 
   ycsb_files = [ 
     ( "Stop and Copy YCSB (Zipfian)" , "stopcopy-ycsb-zipf/ycsb-08p-med2contract-interval_res.csv"),
@@ -91,7 +92,7 @@ if __name__ == "__main__":
     ( "Stop and Copy YCSB (Uniform)" , "stopcopy-ycsb-uniform/ycsb-08p-med2contract-interval_res.csv"), 
     ( "Squall YCSB (Uniform)" , "reconfig-ycsb-uniform/ycsb-08p-med2contract-interval_res.csv"), 
   ] 
-
+  
   filedir = "/home/aelmore/Dropbox/research/data/distY2-xif"
   if not os.path.isdir(filedir):
     raise Exception("Not a directory")
@@ -104,4 +105,22 @@ if __name__ == "__main__":
   ylabel = "TPS"
   xlabel = "Elapsed Time (seconds)"
   #plotTSD(ycsb_files,filedir,var, ylabel,xlabel, [0,15000],180, "ycsbTSD-ThroughputCompared" )  
+
+if __name__ == "__main__":
+  tpcc_files = [ 
+    ( "Stop and Copy TPC-C" , "stopcopy-2b/tpcc-08p-tpcContract-interval_res.csv"),
+    ( "Squall TPC-C" , "reconfig-2b/tpcc-08p-tpcContract-interval_res.csv"),
+  ] 
+  filedir = "/home/aelmore/out/tpccScaleDown1/out"
+  if not os.path.isdir(filedir):
+    raise Exception("Not a directory")
+  var = "LATENCY"
+  ylabel = "Latency (ms)"
+  xlabel = "Elapsed Time (seconds)"
+  #plotTSD(tpcc_files,filedir,var, ylabel,xlabel, [0,2000],180, "tpccTSD-LatencyCompared")
+  
+  var = "THROUGHPUT"
+  ylabel = "TPS"
+  xlabel = "Elapsed Time (seconds)"
+  plotTSD(tpcc_files,filedir,var, ylabel,xlabel, [0,15000],180, "tpccTSD-ThroughputCompared" )  
 
