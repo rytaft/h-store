@@ -215,7 +215,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 } else {                       
                     //check if the key was received out in a range        
                     for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedIn){
-                        if(range.inRange(key)){
+                        if(range.inRange(key) && range.table_name.equalsIgnoreCase(table_name)){
                             return true;
                         }
                     }
@@ -249,8 +249,12 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                             else {
                                 for(String relatedTable : relatedTables){
                                     if(range.table_name.equalsIgnoreCase(relatedTable) && range.inRange(key)){
-                                        LOG.info(String.format("Access for key %s, pulling entire range :%s (%s)", key, range.toString(),relatedTable));
-                                        rangesToPull.add(range);
+                                        if (dataMigratedIn.contains(range)){
+                                            LOG.info(String.format("Range %s has already been migrated in. Not pulling again", range));
+                                        } else {
+                                            LOG.info(String.format("Access for key %s, pulling entire range :%s (%s)", key, range.toString(),relatedTable));
+                                            rangesToPull.add(range);
+                                        }
                                     }
                                 }
                             }
