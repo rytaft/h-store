@@ -4,6 +4,7 @@
 package edu.brown.hstore.reconfiguration;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.exceptions.ReconfigurationException;
@@ -32,7 +34,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     private static final Logger LOG = Logger.getLogger(ReconfigurationTracking.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
-    private static boolean PULL_SINGLE_KEY = false;
+    public static boolean PULL_SINGLE_KEY = false;
     private List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges;
     private List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges;
     public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut;
@@ -213,23 +215,53 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 } else {                       
                     //check if the key was received out in a range        
                     for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedIn){
-                        if(range.inRange(key)){
+                        if(range.inRange(key) && range.table_name.equalsIgnoreCase(table_name)){
                             return true;
                         }
+                    }
+                    List<String> relatedTables = null;
+                    if (partitionPlan.getRelatedTablesMap().containsKey(table_name)){
+                        relatedTables=partitionPlan.getRelatedTablesMap().get(table_name);
+                        LOG.info(String.format("Table %s has related tables:%s",table_name, StringUtils.join(relatedTables, ',')));
                     }
                     // The key has not been received. Throw an exception to notify
                     //It could be in a partial range, but that doesn't matter to us. Still need to pull the full range.
                     if (PULL_SINGLE_KEY) {
-                        ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED,table_name, previousPartition,expectedPartition,key);
+                        ReconfigurationException ex = null;
+                        if(relatedTables == null){
+                            ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED, table_name, previousPartition, expectedPartition, key);
+                        } else {
+                            ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED, relatedTables, previousPartition, expectedPartition, key);
+                        }
                         throw ex;
                     } else {
+                        //FIXME highly inefficient
+                        List<ReconfigurationRange<? extends Comparable<?>>> rangesToPull = new ArrayList<>();    
                         for(ReconfigurationRange<? extends Comparable<?>> range : this.incoming_ranges){
-                            if(range.inRange(key)){
-                                LOG.info(String.format("Access for key %s, pulling entire range :%s", key, range.toString()));
-                                ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED,table_name, previousPartition,expectedPartition,range);
-                                throw ex;
+                            if(relatedTables == null) {
+                                if(range.table_name.equalsIgnoreCase(table_name) && range.inRange(key)){
+                                    LOG.info(String.format("Access for key %s, pulling entire range :%s (%s)", key, range.toString(),table_name));
+                                    rangesToPull.add(range);
+                                    //we only have table to match
+                                    break;
+                                }
                             }
-                        }    
+                            else {
+                                for(String relatedTable : relatedTables){
+                                    if(range.table_name.equalsIgnoreCase(relatedTable) && range.inRange(key)){
+                                        if (dataMigratedIn.contains(range)){
+                                            LOG.info(String.format("Range %s has already been migrated in. Not pulling again", range));
+                                        } else {
+                                            LOG.info(String.format("Access for key %s, pulling entire range :%s (%s)", key, range.toString(),relatedTable));
+                                            rangesToPull.add(range);
+                                        }
+                                    }
+                                }
+                            }
+
+                        }
+                        ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED, previousPartition,expectedPartition,rangesToPull);
+                        throw ex;
                     }
                 }
                 

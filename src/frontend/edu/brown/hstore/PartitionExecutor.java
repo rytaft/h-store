@@ -3195,6 +3195,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if(debug.val) LOG.debug("processQueuedLiveReconfigWork");
         Iterator<InternalMessage> iter = this.work_queue.iterator();
         InternalMessage work = null;
+        boolean workDone = false;
         while (iter.hasNext()){
             work = iter.next();
             //LOG.info(work);
@@ -3217,7 +3218,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 								multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusive(), 
 								multiPullReplyRequest.getMaxExclusive(), vt, multiPullReplyRequest.getMoreDataNeeded(), false);
 						this.work_queue.remove(work);
-	                    return true;
+	                    workDone = true;
             		} catch (Exception e) {
 						// TODO Auto-generated catch block
 						LOG.error("Error is loading the tuples for the live Pull");
@@ -3243,11 +3244,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     }
                     processLivePullRequestMessage(livePullRequestMessage);
                     this.work_queue.remove(work);
-                    return true;
+                    workDone = true;
                 }
             }
         }
-        return false;
+        return workDone;
     }
     
     /**
@@ -3766,15 +3767,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 Object parameterToCheck = parameterSet.toArray()[offsetPair.getSecond()];
                 try {
                     // FIXME make generic
-                    if (trace.val)
-                        LOG.trace(String.format("PE (%s) checking if key owned", this.partitionId));
                     boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), parameterToCheck);
                     if (trace.val)
-                        LOG.trace("Key owned " + keyOwned);
-                    // Check with the reconfig tracking function if the values
-                    // are present
-                    if (trace.val)
-                        LOG.trace("Parameter " + parameterToCheck.toString() + " " + keyOwned);
+                        LOG.trace(String.format("CatalogObj:%s Parameter:%s  KeyOwned:%s ",offsetPair.getFirst(), parameterToCheck.toString(), keyOwned));
                 } catch (ReconfigurationException rex) {
                     // A reconfigurationException was thrown for this key
                     LOG.info(String.format("(%d) Exception thrown from reconfig check : %s ", this.partitionId, rex.toString()));
@@ -6095,8 +6090,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.reconfig_state = reconfig_state;
         this.outgoing_ranges = reconfig_plan.getOutgoing_ranges().get(this.partitionId);
         this.incoming_ranges = reconfig_plan.getIncoming_ranges().get(this.partitionId);
-
         this.reconfiguration_tracker = new ReconfigurationTracking(planned_partitions, reconfig_plan, this.partitionId);
+        if (this.catalogContext.jarPath.getName().contains("ycsb")){
+            LOG.info("Pulling ranges instead of keys ************");
+            ReconfigurationTracking.PULL_SINGLE_KEY = false;
+        } else {
+            LOG.info("Pulling single keys and not ranges ************");
+            ReconfigurationTracking.PULL_SINGLE_KEY = true;
+        }
         if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY) {
             LOG.info("Stopping exeuction");
             this.currentExecMode = ExecutionMode.DISABLED_REJECT;

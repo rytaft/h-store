@@ -122,6 +122,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
     
     //some tracking
     private Map<Integer,Long> dataPullResponseTimes;
+    private Map<Integer,PartitionExecutor>  executorMap;
+    private Map<Integer,Integer>  livePullKBMap;
 
     public ReconfigurationCoordinator(HStoreSite hstore_site, HStoreConf hstore_conf) {        
         this.reconfigurationLeader = -1;
@@ -188,8 +190,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 async_nonchunk_push = false;
             }
         
-        String debugConfig = String.format("Reconfig configuration. DetailedTiming: %s AsyncPush:%s AysncPull:%s AsyncQueuePulls:%s LivePulls:%s", 
-                detailed_timing, async_nonchunk_push, async_nonchunk_pull, async_queue_pulls, live_pull);
+        String debugConfig = String.format("Reconfig configuration. DetailedTiming: %s AsyncPush:%s AysncPull:%s AsyncQueuePulls:%s LivePulls:%s AsyncPullSizeKB:%s LivePullSizeKB:%s", 
+                detailed_timing, async_nonchunk_push, async_nonchunk_pull, async_queue_pulls, live_pull, hstore_conf.site.reconfig_async_chunk_size_kb, hstore_conf.site.reconfig_chunk_size_kb);
         LOG.info(debugConfig);
         FileUtil.appendEventToFile(debugConfig);
         
@@ -224,6 +226,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
         // atomic
         if (this.reconfigurationInProgress.compareAndSet(false, true)) {
             LOG.info("Initializing reconfiguration. New reconfig plan.");
+            executorMap = new HashMap<>();
+            livePullKBMap = new HashMap<>();
+            for (PartitionExecutor executor : this.local_executors) {
+                executorMap.put(executor.getPartitionId(),executor);
+                livePullKBMap.put(executor.getPartitionId(),new Integer(0));
+            }
             if (this.hstore_site.getSiteId() == leaderId) {
                 // TODO : Check if more leader logic is needed
                 FileUtil.appendEventToFile("LEADER_RECONFIG_INIT, siteId="+this.hstore_site.getSiteId());
@@ -826,7 +834,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
         for (PartitionExecutor executor : local_executors) {
             if(multiPullReplyRequest.getNewPartition() == executor.getPartitionId()){
                 if (debug.val) LOG.debug("Queue the pull response frpm another RC. Is it Async: "+multiPullReplyRequest.getIsAsync());
-              
+                if (multiPullReplyRequest.hasVoltTableData()){
+                    ByteString resp = multiPullReplyRequest.getVoltTableData();
+                    livePullKBMap.put(executor.getPartitionId(), livePullKBMap.get(executor.getPartitionId())+resp.size()/1000);
+                }
+                
                 //LOG.error("TODO add chunk ID to response and add new reconfig control type for asyn pull response received"); //TODO
                 if(multiPullReplyRequest.getIsAsync()){
                 	MultiDataPullResponseMessage pullResponseMsg = new MultiDataPullResponseMessage(multiPullReplyRequest, multiPullReplyResponseCallback);
@@ -838,7 +850,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 }                      
             }
         }
-      
     }
     
     /**
@@ -1284,7 +1295,11 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
                         this.profilers[p_id].on_demand_pull_response_queue.getInvocations(), p_id);
                 LOG.info(pullResponse);
                 FileUtil.appendEventToFile(pullResponse);
-                
+
+                String pullSizeReport = String.format("REPORT_TOTAL_PULL_SIZE, KB=%s, PartitionId=%s ",livePullKBMap.get(p_id), p_id);
+                LOG.info(pullSizeReport);
+                FileUtil.appendEventToFile(pullSizeReport);
+
                 if (detailed_timing) {
                     String dataPullInit = String.format("REPORT_AVG_SRC_DATA_PULL_INIT, MS=%s, Count=%s, PartitionId=%s ",
                             this.profilers[p_id].src_data_pull_req_init_time.getAverageThinkTimeMS(),
@@ -1298,6 +1313,7 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
                     LOG.info(dataPullProc);
                     FileUtil.appendEventToFile(dataPullProc);
                 }
+                
                 
             }
         }
