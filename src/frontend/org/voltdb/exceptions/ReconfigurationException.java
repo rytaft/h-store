@@ -35,9 +35,7 @@ public class ReconfigurationException extends SerializableException {
 
     public ReconfigurationException() {
         // TODO Auto-generated constructor stub
-    }
-    
-    
+    }    
 
     public ReconfigurationException(ExceptionTypes exceptionType) {
         super();
@@ -60,11 +58,29 @@ public class ReconfigurationException extends SerializableException {
 
     }
 
-    public ReconfigurationException(ExceptionTypes exceptionType, String table_name, int old_partition, int new_partition, ReconfigurationRange<? extends Comparable<?>> range, boolean isRange) {
+    public ReconfigurationException(ExceptionTypes exceptionType,  int old_partition, int new_partition, List<ReconfigurationRange<? extends Comparable<?>>> ranges) {
+
+        this.exceptionType = exceptionType;
+        if (exceptionType == ExceptionTypes.TUPLES_NOT_MIGRATED) {
+            dataNotYetMigrated = new HashSet<>();
+            dataNotYetMigrated.addAll(ranges);
+            dataMigratedOut = new HashSet<>();
+        } else if (exceptionType == ExceptionTypes.TUPLES_MIGRATED_OUT) {
+            dataMigratedOut = new HashSet<>();
+            dataMigratedOut.addAll(ranges);
+            dataNotYetMigrated = new HashSet<>();
+        } else
+            throw new NotImplementedException("ExceptionType for single key not supported " + exceptionType);
+    }
+
+    public ReconfigurationException(ExceptionTypes exceptionType, List<String> table_names, int old_partition, int new_partition, Comparable key) {
         List<ReconfigurationRange<? extends Comparable<?>>> keys = new ArrayList<>();
 
-
-        keys.add(range);
+        for(String table_name: table_names){
+            ReconfigurationRange<? extends Comparable<?>> range;
+            range = new ReconfigurationRange(table_name, VoltType.typeFromObject(key), key, key, old_partition, new_partition);
+            keys.add(range);
+        }
         this.exceptionType = exceptionType;
         if (exceptionType == ExceptionTypes.TUPLES_NOT_MIGRATED) {
             dataNotYetMigrated = new HashSet<>();
@@ -77,7 +93,7 @@ public class ReconfigurationException extends SerializableException {
         } else
             throw new NotImplementedException("ExceptionType for single key not supported " + exceptionType);
     }
-    
+
     public ReconfigurationException(ExceptionTypes exceptionType, String table_name, int old_partition, int new_partition, Comparable key) {
         List<ReconfigurationRange<? extends Comparable<?>>> keys = new ArrayList<>();
 
