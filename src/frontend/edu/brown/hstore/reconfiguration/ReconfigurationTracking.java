@@ -34,7 +34,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     private static final Logger LOG = Logger.getLogger(ReconfigurationTracking.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
-    public static boolean PULL_SINGLE_KEY = false;
+    public static boolean PULL_SINGLE_KEY = true;
     private List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges;
     private List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges;
     public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut;
@@ -152,6 +152,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
 
     private boolean checkMigratedMapSet(Map<String,Set<Comparable>> migratedMapSet, String table_name, Object key){
         if(migratedMapSet.containsKey(table_name) == false){
+           if (debug.val) LOG.debug("Checking a key for which there is no table tracking for yet " + table_name); 
            return false;
         }
         return migratedMapSet.get(table_name).contains(key);
@@ -160,7 +161,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     @Override
     public boolean markKeyAsMigratedOut(String table_name, Comparable<?> key) {
         for (ReconfigurationRange<? extends Comparable<?>> range : this.outgoing_ranges) {
-            if (range.inRange(key)){
+            if (range.inRange(key) && range.table_name.equalsIgnoreCase(table_name)){
                 markRangeAsPartiallyMigratedOut(range);
             }
         }
@@ -170,7 +171,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     @Override
     public boolean markKeyAsReceived(String table_name, Comparable<?> key) {
         for (ReconfigurationRange<? extends Comparable<?>> range : this.incoming_ranges) {
-            if (range.inRange(key)){
+            if (range.inRange(key) && range.table_name.equalsIgnoreCase(table_name)){
                 markRangeAsPartiallyReceived(range);
             }
         }
@@ -181,7 +182,9 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     public boolean checkKeyOwned(CatalogType catalog, Object key) throws ReconfigurationException{
         
         if(key instanceof Comparable<?>){
-            return checkKeyOwned(this.partitionPlan.getTableName(catalog), (Comparable)key);
+            String tableName = this.partitionPlan.getTableName(catalog);
+            if (debug.val) LOG.debug(String.format("Checking Key owned for catalog:%s table:%s",catalog.toString(),tableName));
+            return checkKeyOwned(tableName, (Comparable)key);
         }
         else
             throw new NotImplementedException("Only comparable keys are supported");
@@ -211,6 +214,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 
                 //Has the key been received as a single key
                 if (checkMigratedMapSet(migratedKeyIn,table_name,key)== true){
+                    if (debug.val) LOG.debug(String.format("Key has been migrated in %s (%s)",key,table_name));
                     return true;
                 } else {                       
                     //check if the key was received out in a range        
@@ -231,6 +235,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                         if(relatedTables == null){
                             ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED, table_name, previousPartition, expectedPartition, key);
                         } else {
+                            //FIXME only give tables which ahve not been pulled
                             ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED, relatedTables, previousPartition, expectedPartition, key);
                         }
                         throw ex;
