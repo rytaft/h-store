@@ -10,7 +10,7 @@ function onexit() {
 
 # ---------------------------------------------------------------------
 
-DATA_DIR="out"
+DATA_DIR="out2"
 FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
@@ -40,7 +40,7 @@ for b in tpcc; do
         --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv \
         --client.txnrate=5 \
-        --reconfig=195000:2min:0
+        --reconfig=195000:0min:0
     )
     
     i=0
