@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import net.sf.antcontrib.math.Numeric;
+
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -146,8 +148,8 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         if(migratedMapSet.containsKey(table_name) == false){
             migratedMapSet.put(table_name, new HashSet());
         }
-        assert(key instanceof Comparable);
-        return migratedMapSet.get(table_name).add(key);
+        assert(key instanceof Number);
+        return migratedMapSet.get(table_name).add(((Number)key).longValue());
     }
 
     private boolean checkMigratedMapSet(Map<String,Set<Comparable>> migratedMapSet, String table_name, Object key){
@@ -155,7 +157,8 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
            if (debug.val) LOG.debug("Checking a key for which there is no table tracking for yet " + table_name); 
            return false;
         }
-        return migratedMapSet.get(table_name).contains(key);
+        assert(key instanceof Number);
+        return migratedMapSet.get(table_name).contains(((Number)key).longValue());
     }
     
     @Override
@@ -181,7 +184,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     @Override
     public boolean checkKeyOwned(CatalogType catalog, Object key) throws ReconfigurationException{
         
-        if(key instanceof Comparable<?>){
+        if(key instanceof Number){
             String tableName = this.partitionPlan.getTableName(catalog);
             if (debug.val) LOG.debug(String.format("Checking Key owned for catalog:%s table:%s",catalog.toString(),tableName));
             return checkKeyOwned(tableName, (Comparable)key);
