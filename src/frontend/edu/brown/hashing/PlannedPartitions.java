@@ -300,6 +300,12 @@ public class PlannedPartitions implements JSONSerializable {
             return -1;
         PartitionPhase phase = this.partition_phase_map.get(previousPhase);
         PartitionedTable<?> table = phase.getTable(table_name);
+        if (table == null){
+            table = phase.getTable(table_name.toLowerCase());
+            if (table == null) {
+                throw new Exception("Unable to find table "+ table_name + " in phase  " + previousPhase);
+            }
+        }
         assert table != null : "Table not found " + table_name;
         return table.findPartition(id);
     }
