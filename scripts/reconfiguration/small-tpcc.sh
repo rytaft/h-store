@@ -40,7 +40,7 @@ for b in tpcc; do
         --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv \
         --client.txnrate=5 \
-        --reconfig=195000:0min:0
+        --reconfig=195000:0minimal:0
     )
     
     i=0
