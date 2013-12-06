@@ -206,7 +206,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
             if (expectedPartition == partition_id &&  previousPartition == partition_id)
             {
                 //This partition should have the key and it didnt move     
-                if (debug.val) LOG.debug(String.format("Key %s is at %s and did not migrate ",key,partition_id));
+                if (trace.val) LOG.trace(String.format("Key %s is at %s and did not migrate ",key,partition_id));
                 return true;
             } else if (expectedPartition == partition_id &&  previousPartition != partition_id) {
                 //Key should be moving to here
