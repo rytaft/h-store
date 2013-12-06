@@ -56,6 +56,7 @@ def getParser():
     parser.add_argument("--tsd", action="store_true", help="Plot Time Series Data (intervals)")
     parser.add_argument("-r","--recursive", dest="recursive", action="store_true", help="Check directories recursively")
     parser.add_argument("--reconfig", dest="reconfig", action="store_true", help="Plot reconfig bars") 
+    parser.add_argument("--subplots", dest="subplots", action="store_true", help="Plot subplots") 
      
     parser.add_argument("-s","--show", dest="show", choices=["tps","lat","lat50","lat95","lat99","latall"], required=True, help="Show this data type")            
     
@@ -134,7 +135,9 @@ def plotGraph(args):
     else:
         plot.xlabel("Elapsed Time (s)")
     
-    if args.title != None:
+    if args.subplots:
+        pass
+    elif args.title != None:
         plot.title(args.title)
     else:
         #add \n every 128 
@@ -262,16 +265,21 @@ def plotResults(args, files, ax):
 ## ==============================================
 def plotTSD(args, files, ax):
     dfs = [ (d, pandas.DataFrame.from_csv(d,index_col=1)) for d in files if "interval" in d]
+    if args.subplots:
+        f,axarr = plot.subplots(len(dfs), sharex=True, sharey=False)
     data = {}
     init_legend = "Reconfig Init"
     end_legend = "Reconfig End"
     x = 0
-    for (_file, df) in dfs:
+    for i,(_file, df) in enumerate(dfs):
         name = os.path.basename(_file).split("-interval")[0] 
         base_name = name
         if args.recursive:
             name = "%s-%s" % (name, os.path.dirname(_file).rsplit(os.path.sep,1)[1])   
             base_name = name
+        if args.subplots:
+            ax = axarr[i]
+            ax.set_title(name)
         for show_var in args.show_vars:
             color = COLORS[x % len(COLORS)]
             linestyle = LINE_STYLES[x % len(LINE_STYLES)]
@@ -319,8 +327,12 @@ def plotTSD(args, files, ax):
 ## main
 ## ==============================================
 def plotter(args, files):
-    plot.figure()
-    ax = plot.subplot(111)
+
+    if not args.subplots:
+        plot.figure()
+        ax = plot.subplot(111)
+    else:
+        ax = None
     
     print args
     if args.show == "latall":
