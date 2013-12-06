@@ -3757,7 +3757,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // Get all the fragments
         Set<ReconfigurationRange<? extends Comparable<?>>> pullRequestsNeeded = new HashSet<>();
         Set<ReconfigurationRange<? extends Comparable<?>>> restartsNeeded = new HashSet<>();
-
+        
+        this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.start();
         for (int i = 0; i < fragmentIds.length; i++) {
             // Calls andy's methods for calculaitng the offsets
             List<Pair<Column, Integer>> offsets = new ArrayList<>();
@@ -3788,6 +3789,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 }
             }
         }
+        this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.stopIfStarted();
         // Blocking here
         boolean blockingNeeded = true;
         if (restartsNeeded.size() > 0) {
@@ -3798,7 +3800,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             if (blockingNeeded) {
                 // block on the pull request
                 Semaphore pullBlockSemaphore = new Semaphore(pullRequestsNeeded.size());
-                int pullID =getNextRequestToken();                
+                int pullID =getNextRequestToken();
+                this.reconfiguration_coordinator.profilers[this.partitionId].pe_live_pull_block_time.start();
                 LOG.info(String.format("(%s) PullId:%s pulling number of ranges and then blocking: %s",partitionId, pullID, pullRequestsNeeded.size()));
                 if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.start();
                 this.reconfiguration_coordinator.pullRanges(pullID, this.currentTxnId, this.partitionId, pullRequestsNeeded, pullBlockSemaphore);
@@ -3807,13 +3810,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     pullBlockSemaphore.acquire(pullRequestsNeeded.size());
                     if (debug.val) LOG.debug("Load the buffered data on PE: "+ partitionId +" thread");
                     processQueuedLiveReconfigWork(true);
-
+                    this.reconfiguration_coordinator.profilers[this.partitionId].pe_live_pull_block_time.start();
+                    this.reconfiguration_coordinator.profilers[this.partitionId].pe_block_queue_size.put(this.lockQueue.size());
                     if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.stopIfStarted();
-                    if(hstore_conf.site.reconfig_profiling && tempPullCounter % 500 == 0) LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
+                    if(hstore_conf.site.reconfig_profiling && tempPullCounter++ % 500 == 0) { 
+                        LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
                             this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getAverageThinkTimeMS(),
                             this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getInvocations()));
+                    }
                     LOG.info(String.format("PE (%s) has received all pull requests for pullID:%s. Unblocking", this.partitionId, pullID));
-		    tempPullCounter++;	
                 } catch (InterruptedException ex) {
                     LOG.error("Waiting for pull was interuppted. ", ex);
                     // TODO ae restart txn?
@@ -3828,7 +3833,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             Histogram<Integer> partitionHistogram = new FastIntHistogram();
             partitionHistogram.put(this.currentTxn.getPredictTouchedPartitions(), 1);
             for (ReconfigurationRange range : restartsNeeded) {
-                LOG.info("adding a restart on partition " + range.new_partition);
+                LOG.info(" *** adding a restart on partition " + range.new_partition);
                 partitionHistogram.put(range.new_partition);
             }
             throw new MispredictionException(this.currentTxnId, partitionHistogram);
@@ -6183,6 +6188,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         
         LOG.info(String.format("PE (%s) Received tuples for txnId:%s Rows(%s) partitions(%s->%s) for range, " + "[%s-%s)", this.partitionId, txnId, vt.getRowCount(), 
                  oldPartitionId, newPartitionId, minInclusive, maxExclusive));
+        if(vt.getRowCount()==0){
+            this.reconfiguration_coordinator.profilers[partitionId].empty_loads++;
+        }
         if(hstore_conf.site.reconfig_replication_delay){
             replicationDelay();
         }

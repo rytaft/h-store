@@ -54,6 +54,7 @@ import edu.brown.hstore.reconfiguration.ReconfigurationConstants.Reconfiguration
 import edu.brown.interfaces.Shutdownable;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import edu.brown.profilers.ProfileMeasurement;
 import edu.brown.profilers.ReconfigurationProfiler;
 import edu.brown.protorpc.ProtoRpcController;
 import edu.brown.utils.FileUtil;
@@ -1267,51 +1268,45 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
         return async_queue_pulls;
     }
     
+    
+    public void reportProfiler(String str, ProfileMeasurement pm, int partitionId){
+        String logMsg = String.format("%s, MS=%s, Count=%s, PartitionId=%s",
+                str,
+                pm.getAverageThinkTimeMS(),
+                pm.getInvocations(), partitionId);
+        LOG.info(logMsg);
+        FileUtil.appendEventToFile(logMsg);
+    }
+    
     public void showReconfigurationProfiler() {
         if(hstore_conf.site.reconfig_profiling) {
             for (int p_id : hstore_site.getLocalPartitionIds().values()) {
                 LOG.info("Showing reconfig stats");
                 LOG.info(this.profilers[p_id].toString());
-                String avgPull = String.format("REPORT_AVG_DEMAND_PULL_TIME, MS=%s, Count=%s, PartitionId=%s",
-                        this.profilers[p_id].on_demand_pull_time.getAverageThinkTimeMS(),
-                        this.profilers[p_id].on_demand_pull_time.getInvocations(), p_id);
-                LOG.info(avgPull);
-                FileUtil.appendEventToFile(avgPull);
                 
-                String avgAsync = String.format("REPORT_AVG_ASYNC_PULL_TIME, MS=%s, Count=%s, PartitionId=%s ",
-                        this.profilers[p_id].async_pull_time.getAverageThinkTimeMS(),
-                        this.profilers[p_id].async_pull_time.getInvocations(), p_id);
-                LOG.info(avgAsync);
-                FileUtil.appendEventToFile(avgAsync);
- 
-                String avgAsyncQ = String.format("REPORT_AVG_ASYNC_DEST_QUEUE_TIME, MS=%s, Count=%s, PartitionId=%s ",
-                        this.profilers[p_id].async_dest_queue_time.getAverageThinkTimeMS(),
-                        this.profilers[p_id].async_dest_queue_time.getInvocations(), p_id);
-                LOG.info(avgAsyncQ);
-                FileUtil.appendEventToFile(avgAsyncQ);
+                reportProfiler("REPORT_AVG_DEMAND_PULL_TIME",this.profilers[p_id].on_demand_pull_time, p_id);
                 
-                String pullResponse = String.format("REPORT_AVG_LIVE_PULL_RESONSE_QUEUE_TIME, MS=%s, Count=%s, PartitionId=%s ",
-                        this.profilers[p_id].on_demand_pull_response_queue.getAverageThinkTimeMS(),
-                        this.profilers[p_id].on_demand_pull_response_queue.getInvocations(), p_id);
-                LOG.info(pullResponse);
-                FileUtil.appendEventToFile(pullResponse);
+                reportProfiler("REPORT_AVG_ASYNC_PULL_TIME",this.profilers[p_id].async_pull_time, p_id);
+                reportProfiler("REPORT_AVG_ASYNC_DEST_QUEUE_TIME",this.profilers[p_id].async_dest_queue_time, p_id);
+                reportProfiler("REPORT_AVG_LIVE_PULL_RESONSE_QUEUE_TIME",this.profilers[p_id].on_demand_pull_response_queue, p_id);
+                reportProfiler("REPORT_PE_CHECK_TXN_TIME",this.profilers[p_id].pe_check_txn_time, p_id);
+                reportProfiler("REPORT_PE_LIVE_PULL_BLOCK_TIME",this.profilers[p_id].pe_live_pull_block_time, p_id);
+                
+                String emptyLoads = String.format("REPORT_EMPTY_LOADS, Number=%s, PartitionId=%s ", this.profilers[p_id].empty_loads, p_id);
+                LOG.info(emptyLoads);
+                FileUtil.appendEventToFile(emptyLoads);
 
+                String queueSize = String.format("REPORT_BLOCKED_QUEUE_SIZE, Number=[%s], PartitionId=%s ", this.profilers[p_id].pe_block_queue_size,toString(), p_id);
+                LOG.info(queueSize);
+                FileUtil.appendEventToFile(queueSize);
+                
                 String pullSizeReport = String.format("REPORT_TOTAL_PULL_SIZE, KB=%s, PartitionId=%s ",livePullKBMap.get(p_id), p_id);
                 LOG.info(pullSizeReport);
                 FileUtil.appendEventToFile(pullSizeReport);
 
                 if (detailed_timing) {
-                    String dataPullInit = String.format("REPORT_AVG_SRC_DATA_PULL_INIT, MS=%s, Count=%s, PartitionId=%s ",
-                            this.profilers[p_id].src_data_pull_req_init_time.getAverageThinkTimeMS(),
-                            this.profilers[p_id].src_data_pull_req_init_time.getInvocations(), p_id);
-                    LOG.info(dataPullInit);
-                    FileUtil.appendEventToFile(dataPullInit);
-                    
-                    String dataPullProc = String.format("REPORT_AVG_SRC_DATA_PULL_PROC, MS=%s, Count=%s, PartitionId=%s ",
-                            this.profilers[p_id].src_data_pull_req_proc_time.getAverageThinkTimeMS(),
-                            this.profilers[p_id].src_data_pull_req_proc_time.getInvocations(), p_id);
-                    LOG.info(dataPullProc);
-                    FileUtil.appendEventToFile(dataPullProc);
+                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id);
+                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_PROC",this.profilers[p_id].src_data_pull_req_proc_time, p_id);                    
                 }
                 
                 
