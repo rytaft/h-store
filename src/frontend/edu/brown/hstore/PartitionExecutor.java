@@ -3206,7 +3206,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             	long multiPullTxnId = multiPullReplyRequest.getTransactionID();
             	if(!multiPullReplyRequest.getIsAsync() && ((this.currentTxnId != null && multiPullTxnId == this.currentTxnId) || 
                          (this.currentDtxn != null && multiPullTxnId == this.currentDtxn.getTransactionId()))){
-            		LOG.info("Process a live pull reply for the same transaction as the one blocked");
+            		if (debug.val) LOG.debug("Process a live pull reply for the same transaction as the one blocked");
             		VoltTable vt = null;
                     try {
                         vt = FastDeserializer.deserialize(multiPullReplyRequest.getVoltTableData().toByteArray(), VoltTable.class);

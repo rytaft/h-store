@@ -238,8 +238,16 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                         if(relatedTables == null){
                             ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED, table_name, previousPartition, expectedPartition, key);
                         } else {
-                            //FIXME only give tables which ahve not been pulled
-                            ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED, relatedTables, previousPartition, expectedPartition, key);
+                            List<String> relatedTablesToPull = new ArrayList<>();
+                            for(String rTable : relatedTables){
+                                if (checkMigratedMapSet(migratedKeyIn,rTable,key)== false) {
+                                    LOG.info(" Related table key not migrated, adding to pull : " + rTable);
+                                    relatedTablesToPull.add(rTable);
+                                } else {
+                                    LOG.info(" Related table already pulled for key " + rTable);
+                                }
+                            }
+                            ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED, relatedTablesToPull, previousPartition, expectedPartition, key);
                         }
                         throw ex;
                     } else {
@@ -287,7 +295,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 
                 //check to see if this key was migrated in a range
                 for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedOut){
-                    if(range.inRange(key)){
+                    if(range.inRange(key) && range.table_name.equalsIgnoreCase(table_name)){
                         ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table_name, previousPartition,expectedPartition, key);
                         throw ex;
                     }
@@ -295,7 +303,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 
               //check to see if this key was migrated in a range
                 for(ReconfigurationRange<? extends Comparable<?>> range : this.dataPartiallyMigratedOut){
-                    if(range.inRange(key)){
+                    if(range.inRange(key) && range.table_name.equalsIgnoreCase(table_name)){
                         ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table_name, previousPartition,expectedPartition, key);
                         throw ex;
                     }

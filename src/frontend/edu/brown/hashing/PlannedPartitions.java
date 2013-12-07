@@ -546,7 +546,6 @@ public class PlannedPartitions implements JSONSerializable {
             }
             // TODO fix partitiontype
             assert (min_inclusive instanceof Number && max_exclusive instanceof Number);
-            LOG.info("Setting long values");
             this.min_inclusive_long = ((Number) min_inclusive).longValue();
             this.max_exclusive_long = ((Number) max_exclusive).longValue();
         }
