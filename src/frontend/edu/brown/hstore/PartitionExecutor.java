@@ -6118,6 +6118,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY) {
             LOG.info("Stopping exeuction");
             this.currentExecMode = ExecutionMode.DISABLED_REJECT;
+            haltProcessing();
         } else if (reconfig_protocol == ReconfigurationProtocols.LIVEPULL) {
             LOG.debug("Creating reconfiguration tracker");
 
@@ -6183,6 +6184,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * Clear the reconfiguration state after reconfiguration ends
      */
     public void endReconfiguration() {
+        if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY){
+            LOG.info("Ending S&C");
+            this.currentExecMode = ExecutionMode.COMMIT_ALL;
+            haltProcessing();
+        }
+            
     	this.reconfig_plan = null;
     	this.reconfig_state = ReconfigurationState.END;
     }
