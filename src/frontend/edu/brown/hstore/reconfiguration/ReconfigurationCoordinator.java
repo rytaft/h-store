@@ -19,6 +19,7 @@ import org.apache.log4j.Logger;
 import org.jfree.util.Log;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
+import org.voltdb.catalog.CatalogType;
 import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.messaging.FastSerializer;
@@ -1361,6 +1362,41 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
 
     public boolean isLive_pull() {
         return live_pull;
+    }
+
+    /**
+     * Return the current partition for the data item if either are local.
+     * If not return the expected
+     * @param previousPartition
+     * @param expectedPartition
+     * @param catalogItem
+     * @param value
+     * @return
+     */
+    public int getPartitionId(int previousPartition, int expectedPartition, CatalogType catalogItem, Object value) {
+        //TODO add a fast lookup with no exception
+        if (executorMap.containsKey(expectedPartition)){
+            //check with destination if we have it
+            try{
+                if (executorMap.get(expectedPartition).getReconfiguration_tracker().checkKeyOwned(catalogItem, value))
+                    return expectedPartition;
+                else
+                    return previousPartition;
+            } catch(Exception e) {
+                return previousPartition;
+            }
+        } else if (executorMap.containsKey(previousPartition)) {
+            try{
+                if (executorMap.get(previousPartition).getReconfiguration_tracker().checkKeyOwned(catalogItem, value))
+                    return previousPartition;
+                else
+                    return expectedPartition;
+            } catch(Exception e) {
+                return expectedPartition;
+            }
+        } else {
+            return expectedPartition;
+        }    
     }
 
 

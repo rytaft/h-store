@@ -311,8 +311,21 @@ public class PlannedPartitions implements JSONSerializable {
     }
 
     public int getPreviousPartitionId(CatalogType catalog, Object id) throws Exception {
+        String previousPhase = this.getPreviousPhase_phase();
+        if (previousPhase == null)
+            return -1;
+
         String table_name = this.catalog_to_table_map.get(catalog);
-        return this.getPartitionId(table_name, id);
+        PartitionPhase phase = this.partition_phase_map.get(previousPhase);
+        PartitionedTable<?> table = phase.getTable(table_name);
+        if (table == null){
+            table = phase.getTable(table_name.toLowerCase());
+            if (table == null) {
+                throw new Exception("Unable to find table "+ table_name + " in phase  " + previousPhase);
+            }
+        }
+        assert table != null : "Table not found " + table_name;
+        return table.findPartition(id);
     }
 
     // ******** Containers *****************************************/

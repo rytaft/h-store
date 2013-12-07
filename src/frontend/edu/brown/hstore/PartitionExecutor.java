@@ -6368,4 +6368,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public ExecutionMode getCurrentExecMode() {
         return currentExecMode;
     }
+
+    public ReconfigurationTrackingInterface getReconfiguration_tracker() {
+        return reconfiguration_tracker;
+    }
 }
