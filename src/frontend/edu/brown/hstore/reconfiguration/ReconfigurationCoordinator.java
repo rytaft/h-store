@@ -57,6 +57,7 @@ import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.profilers.ProfileMeasurement;
 import edu.brown.profilers.ReconfigurationProfiler;
 import edu.brown.protorpc.ProtoRpcController;
+import edu.brown.statistics.FastIntHistogram;
 import edu.brown.utils.FileUtil;
 
 /**
@@ -1278,6 +1279,28 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
         FileUtil.appendEventToFile(logMsg);
     }
     
+    public void reportProfiler(String str, FastIntHistogram h, int partitionId){
+        String histString = "Histogram=NoEntries";
+        if (!h.isEmpty())
+            histString = String.format("Histogram=\n%s", h.toString());
+        String logMsg = String.format("%s, PartitionId=%s, Histogram=\n%s",
+                str,
+                partitionId,
+                histString);
+        LOG.info(logMsg);
+        FileUtil.appendEventToFile(logMsg);
+    }
+    
+    public void reportProfiler(String desc, String valDesc, Number n, int partitionId){
+        String logMsg = String.format("%s, %s=%s, PartitionId=%s",
+                desc,
+                valDesc,
+                n,
+                partitionId);
+        LOG.info(logMsg);
+        FileUtil.appendEventToFile(logMsg);
+    }
+    
     public void showReconfigurationProfiler() {
         if(hstore_conf.site.reconfig_profiling) {
             for (int p_id : hstore_site.getLocalPartitionIds().values()) {
@@ -1292,17 +1315,15 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
                 reportProfiler("REPORT_PE_CHECK_TXN_TIME",this.profilers[p_id].pe_check_txn_time, p_id);
                 reportProfiler("REPORT_PE_LIVE_PULL_BLOCK_TIME",this.profilers[p_id].pe_live_pull_block_time, p_id);
                 
-                String emptyLoads = String.format("REPORT_EMPTY_LOADS, Number=%s, PartitionId=%s ", this.profilers[p_id].empty_loads, p_id);
-                LOG.info(emptyLoads);
-                FileUtil.appendEventToFile(emptyLoads);
 
-                String queueSize = String.format("REPORT_BLOCKED_QUEUE_SIZE, Number=[%s], PartitionId=%s ", this.profilers[p_id].pe_block_queue_size,toString(), p_id);
-                LOG.info(queueSize);
-                FileUtil.appendEventToFile(queueSize);
+                reportProfiler("REPORT_EMPTY_LOADS", "Count", this.profilers[p_id].empty_loads, p_id);
+
+                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE",  this.profilers[p_id].pe_block_queue_size, p_id);
+                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_block_queue_size_growth, p_id);
+                reportProfiler("REPORT_EXTRACT_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_extract_queue_size_growth, p_id);
+                reportProfiler("REPORT_EXTRACT_PROC_TIME",  this.profilers[p_id].src_extract_proc_time, p_id);
                 
-                String pullSizeReport = String.format("REPORT_TOTAL_PULL_SIZE, KB=%s, PartitionId=%s ",livePullKBMap.get(p_id), p_id);
-                LOG.info(pullSizeReport);
-                FileUtil.appendEventToFile(pullSizeReport);
+                reportProfiler("REPORT_TOTAL_PULL_SIZE", "KB", livePullKBMap.get(p_id), p_id);
 
                 if (detailed_timing) {
                     reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id);

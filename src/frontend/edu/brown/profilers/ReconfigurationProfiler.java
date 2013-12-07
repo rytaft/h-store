@@ -22,8 +22,12 @@ public class ReconfigurationProfiler extends AbstractProfiler {
     
     public ProfileMeasurement src_data_pull_req_init_time= new ProfileMeasurement("SRC_DATA_PULL_REQUEST_INIT_TIME");
     public ProfileMeasurement src_data_pull_req_proc_time= new ProfileMeasurement("SRC_DATA_PULL_REQUEST_PROCESSING_TIME");
+    public ProfileMeasurement src_extract_proc_time= new ProfileMeasurement("SRC_DATA_EXTRACT_PROCESSING_TIME");
+
     public int empty_loads = 0;
 
     public FastIntHistogram pe_block_queue_size = new FastIntHistogram(true);
+    public FastIntHistogram pe_block_queue_size_growth = new FastIntHistogram(true);
+    public FastIntHistogram pe_extract_queue_size_growth = new FastIntHistogram(true);
     
 }

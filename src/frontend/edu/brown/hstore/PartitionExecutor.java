@@ -3257,7 +3257,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      */
     public void processLivePullRequestMessage(LivePullRequestMessage livePullRequestMessage) {
         LivePullRequest livePullRequest = livePullRequestMessage.getLivePullRequest();
+        
         LOG.info(String.format("(%s)Processing Live pull request %s",this.partitionId, livePullRequest.getLivePullIdentifier()));
+        int queueSize = this.lockQueue.size();
+        this.reconfiguration_coordinator.profilers[this.partitionId].src_extract_proc_time.start();
+        
         boolean moreDataNeeded = true;
         int chunkId = 0;
         while(moreDataNeeded) {
@@ -3295,6 +3299,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
             if (debug.val) LOG.debug(String.format("sent chunk response to live pull:%s ChunkId:%s ", livePullRequest.getLivePullIdentifier(),chunkId));
         }//end while
+
+        this.reconfiguration_coordinator.profilers[this.partitionId].src_extract_proc_time.stopIfStarted();
+        this.reconfiguration_coordinator.profilers[this.partitionId].pe_extract_queue_size_growth.put(this.lockQueue.size()-queueSize);
+        
         LOG.info("Completed live pull : " +livePullRequest.getLivePullIdentifier() + " Last ChunkID: " + chunkId); 
     }
  
@@ -3801,6 +3809,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // block on the pull request
                 Semaphore pullBlockSemaphore = new Semaphore(pullRequestsNeeded.size());
                 int pullID =getNextRequestToken();
+                int queueSize = this.lockQueue.size();
                 this.reconfiguration_coordinator.profilers[this.partitionId].pe_live_pull_block_time.start();
                 LOG.info(String.format("(%s) PullId:%s pulling number of ranges and then blocking: %s",partitionId, pullID, pullRequestsNeeded.size()));
                 if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.start();
@@ -3810,8 +3819,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     pullBlockSemaphore.acquire(pullRequestsNeeded.size());
                     if (debug.val) LOG.debug("Load the buffered data on PE: "+ partitionId +" thread");
                     processQueuedLiveReconfigWork(true);
-                    this.reconfiguration_coordinator.profilers[this.partitionId].pe_live_pull_block_time.start();
-                    this.reconfiguration_coordinator.profilers[this.partitionId].pe_block_queue_size.put(this.lockQueue.size());
+                    this.reconfiguration_coordinator.profilers[this.partitionId].pe_live_pull_block_time.stopIfStarted();
+                    int endQueueSize =this.lockQueue.size();
+                    this.reconfiguration_coordinator.profilers[this.partitionId].pe_block_queue_size.put(endQueueSize);
+                    this.reconfiguration_coordinator.profilers[this.partitionId].pe_block_queue_size_growth.put(endQueueSize-queueSize);                    
+                    
                     if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.stopIfStarted();
                     if(hstore_conf.site.reconfig_profiling && tempPullCounter++ % 500 == 0) { 
                         LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
@@ -6186,7 +6198,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long minInclusive, 
             Long maxExclusive, VoltTable vt, boolean moreDataComing, boolean isAsyncRequest) throws Exception {
         
-        LOG.info(String.format("PE (%s) Received tuples for txnId:%s Rows(%s) partitions(%s->%s) for range, " + "[%s-%s)", this.partitionId, txnId, vt.getRowCount(), 
+        LOG.info(String.format("PE (%s) Received tuples for %s txnId:%s Rows(%s) partitions(%s->%s) for range, " + "[%s-%s)", this.partitionId,table_name, txnId, vt.getRowCount(), 
                  oldPartitionId, newPartitionId, minInclusive, maxExclusive));
         if(vt.getRowCount()==0){
             this.reconfiguration_coordinator.profilers[partitionId].empty_loads++;
@@ -6201,8 +6213,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (this.reconfig_protocol != ReconfigurationProtocols.STOPCOPY && this.reconfiguration_tracker != null) {
             if (minInclusive.compareTo(maxExclusive) == 0) {
                 // We have received a single key
-                LOG.info(String.format("PE (%s) marking key as received %s %s ", this.partitionId, table_name, minInclusive));
-                this.reconfiguration_tracker.markKeyAsReceived(table_name, minInclusive);
+                if(moreDataComing == false) {
+                    LOG.info(String.format("(%s) marking key as received %s %s ", this.partitionId, table_name, minInclusive));                    
+                    this.reconfiguration_tracker.markKeyAsReceived(table_name, minInclusive);
+                } else {
+                    LOG.info(String.format("PE (%s) keyreceived, but more data is coming. %s %s ", this.partitionId, table_name, minInclusive));     
+                }                
                 this.reconfiguration_tracker.markRangeAsPartiallyReceived(new ReconfigurationRange<Long>
                             (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
             } else {
