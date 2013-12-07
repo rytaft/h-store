@@ -93,7 +93,7 @@ def getReconfigEvents(hevent_log):
                     if "SYSPROC" in line:
                         event = "TXN"
                         protocol = items[len(items)-1].strip().split("=")[1]
-                    elif "INIT" in line:
+                    elif "INIT" in line and "REPORT" not in line:
                         event = "INIT"
                     elif "END" in line:
                         event = "END"
@@ -103,12 +103,25 @@ def getReconfigEvents(hevent_log):
                       events.append((ts,event,protocol))
 
             except ValueError:
-               LOG.error("Skipping line to value error %s"%line) 
+               LOG.debug("Skipping line to value error %s"%line) 
                 
     return events
 
+def getReconfigStartEnd(reconfig_events):
+  start = 0
+  end = 0
+  for r in reconfig_events:
+    if r[1] == "TXN":
+      start = r[0]
+    elif r[1] == "END":
+      end = r[0]
+  return (start,end)      
+
 def addReconfigEvent(df, reconfig_events):
     df['RECONFIG'] = ''
+    df['IN_RECONFIG'] = False
+    df['MISSING_DATA'] = False
+    start, end = getReconfigStartEnd(reconfig_events)
     if not reconfig_events:
         return 
     for event in reconfig_events:
@@ -116,12 +129,15 @@ def addReconfigEvent(df, reconfig_events):
       #find the index last row that has a smaller physical TS
       _i = df[(df['TIMESTAMP'] <= ts ) ][-1:].index
 
+      #LATENCY.isnull()
       #if we have new event set, otherwise append      
       if df.RECONFIG[_i] == "":
          df.RECONFIG[_i] = event[1]
       else:
          df.RECONFIG[_i] = df.RECONFIG[_i] + "-" + event[1]
-
+    df['IN_RECONFIG'][(df.TIMESTAMP >= start-1000) & (df.TIMESTAMP <= end)] = True
+    df['MISSING_DATA'] = df.LATENCY.isnull()
+    #df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].mean()
             
 def plotGraph(args):
 
@@ -287,7 +303,10 @@ def plotTSD(args, files, ax):
             ax = axarr[i]
             ax.set_title(name)
         for show_var in args.show_vars:
-            color = COLORS[x % len(COLORS)]
+            if args.subplots:
+              color = "black"
+            else:  
+              color = COLORS[x % len(COLORS)]
             linestyle = LINE_STYLES[x % len(LINE_STYLES)]
             if len(args.show_vars) > 1:
                 name = "%s-%s" % (base_name,show_var)
@@ -316,6 +335,7 @@ def plotTSD(args, files, ax):
             print name     
             print "="*80
             print df
+            print df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].mean()
             print ""
             if args.type == "line":
                 #plot the line with the same color 
