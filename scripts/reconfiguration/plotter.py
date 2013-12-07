@@ -86,19 +86,25 @@ def getReconfigEvents(hevent_log):
     with open(hevent_log, "r") as f:
         protocol = ''
         for line in f:
-            items = line.split(",")
-            ts = np.int64(items[0])    
-            if "SYSPROC" in line:
-                event = "TXN"
-                protocol = items[len(items)-1].strip().split("=")[1]
-            elif "INIT" in line:
-                event = "INIT"
-            elif "END" in line:
-                event = "END"
-            else:
-                event = "UNKNOWN"
-            if event != "UNKNOWN":
-              events.append((ts,event,protocol))
+            try:
+                if "," in line:
+                    items = line.split(",")
+                    ts = np.int64(items[0])    
+                    if "SYSPROC" in line:
+                        event = "TXN"
+                        protocol = items[len(items)-1].strip().split("=")[1]
+                    elif "INIT" in line:
+                        event = "INIT"
+                    elif "END" in line:
+                        event = "END"
+                    else:
+                        event = "UNKNOWN"
+                    if event != "UNKNOWN":
+                      events.append((ts,event,protocol))
+
+            except ValueError:
+               LOG.error("Skipping line to value error %s"%line) 
+                
     return events
 
 def addReconfigEvent(df, reconfig_events):
