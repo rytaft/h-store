@@ -266,10 +266,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         int siteKBSent = 0;
                         //turn off local executions
                         for (PartitionExecutor executor : this.local_executors) {
+                            //TODO hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId())
                             executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
                             this.partitionStates.put(partitionId, ReconfigurationState.PREPARE);
                         }
                         //push outgoing ranges for all local PEs
+                        //TODO remove this loop and schedule chunked pulls/ 
                         for (PartitionExecutor executor : this.local_executors) {
                             LOG.info("Pushing ranges for local PE : " + executor.getPartitionId());
                             long peStart = System.currentTimeMillis();
@@ -293,6 +295,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             LOG.info(String.format("STOPCOPY for PE(%s) took %s ms for %s kb", executor.getPartitionId(), peTime, kbSent));
                             siteKBSent += kbSent;
                         }
+                        //TODO haltProcessing() at end
+                        //TODO hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId())
+                        
                         //TODO this file is horrible and needs refactoring....
                         //we have an end, reset and finish reconfiguration...
                         endReconfiguration();

@@ -6117,7 +6117,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY) {
             LOG.info("Stopping exeuction");
-            this.currentExecMode = ExecutionMode.DISABLED_REJECT;
             haltProcessing();
         } else if (reconfig_protocol == ReconfigurationProtocols.LIVEPULL) {
             LOG.debug("Creating reconfiguration tracker");
