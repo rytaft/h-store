@@ -314,7 +314,9 @@ def plotTSD(args, files, ax):
                     else:
                         LOG.error("Multiple reconfig events not currently supported")
             print name     
+            print "="*80
             print df
+            print ""
             if args.type == "line":
                 #plot the line with the same color 
                 ax.plot(df.index, data[name], color=color,label=name,ls=linestyle, lw=2.0)
