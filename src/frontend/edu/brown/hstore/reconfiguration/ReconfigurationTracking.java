@@ -193,6 +193,74 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
             throw new NotImplementedException("Only comparable keys are supported");
     }
     
+    @Override
+    public boolean quickCheckKeyOwned(CatalogType catalog, Object key) {
+        try{
+            String table_name = this.partitionPlan.getTableName(catalog);
+            int expectedPartition = partitionPlan.getPartitionId(table_name, key);
+            int previousPartition =  partitionPlan.getPreviousPartitionId(table_name, key);  
+            if (expectedPartition == partition_id &&  previousPartition == partition_id)
+            {
+                //This partition should have the key and it didnt move     
+                if (trace.val) LOG.trace(String.format("Key %s is at %s and did not migrate ",key,partition_id));
+                return true;
+            } else if (expectedPartition == partition_id &&  previousPartition != partition_id) {
+              //Key should be moving to here
+                if (debug.val) LOG.debug(String.format("Key %s should be at %s. Checking if migrated in",key,partition_id));
+                
+                //Has the key been received as a single key
+                if (checkMigratedMapSet(migratedKeyIn,table_name,key)== true){
+                    if (debug.val) LOG.debug(String.format("Key has been migrated in %s (%s)",key,table_name));
+                    return true;
+                } else {                       
+                    Comparable<?> keyComp = (Comparable)key;
+                    //check if the key was received out in a range        
+                    for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedIn){
+                        if(range.inRange(keyComp) && range.table_name.equalsIgnoreCase(table_name)){
+                            if (debug.val) LOG.debug(String.format("Key has been migrated in range %s %s (%s)",range, key,table_name));
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            } else if (expectedPartition != partition_id &&  previousPartition == partition_id) {
+                //Key should be moving away
+                if (debug.val) LOG.debug(String.format("Key %s was at %s. Checking if migrated ",key,partition_id));                
+                //Check to see if we migrated this key individually
+                if (checkMigratedMapSet(migratedKeyOut,table_name,key)){
+                    if (debug.val) LOG.debug(String.format("Key has been migrated out %s (%s)",key,table_name));                    
+                    return false;
+                }                
+                Comparable<?> keyComp = (Comparable)key;                
+                //check to see if this key was migrated in a range
+                for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedOut){
+                    if(range.inRange(keyComp) && range.table_name.equalsIgnoreCase(table_name)){
+                        if (debug.val) LOG.debug(String.format("Key has been migrated out range %s %s (%s)",range, key,table_name));
+                        return false;
+                    }
+                }                
+                //check to see if this key was migrated in a range
+                for(ReconfigurationRange<? extends Comparable<?>> range : this.dataPartiallyMigratedOut){
+                    if(range.inRange(keyComp) && range.table_name.equalsIgnoreCase(table_name)){
+                        if (debug.val) LOG.debug(String.format("Key may have been migrated out in partially dirtied range %s %s (%s)",range, key,table_name));
+                        return false;
+                    }
+                }                
+                return true;
+            } else if (expectedPartition != partition_id &&  previousPartition != partition_id) {
+                //We didnt have nor are are expected to
+                if (debug.val) LOG.debug(String.format("Key %s is not at %s, nor was it previously",key,partition_id));
+
+                return false;
+            }
+        } catch (Exception e) {
+            LOG.error("Exception quickCheckKeyOwned",e);
+            return false;
+        }
+        LOG.error("Should never get here");
+        return false;
+
+    }
     
     @Override
     public boolean checkKeyOwned(String table_name, Comparable<?> key) throws ReconfigurationException {

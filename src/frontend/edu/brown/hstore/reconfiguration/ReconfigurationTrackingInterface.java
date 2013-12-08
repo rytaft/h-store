@@ -115,6 +115,15 @@ public interface ReconfigurationTrackingInterface {
     public boolean checkKeyOwned(CatalogType catalog, Object key) throws ReconfigurationException;
     
     /**
+     * Check if a key is owned and currently present.
+     * No related tables or exceptions thrown for what should be migrated.
+     * @param catalog
+     * @param key
+     * @return if the key is owned or not.\
+     */
+    public boolean quickCheckKeyOwned(CatalogType catalog, Object key);
+    
+    /**
      * Called to check if all reconfiguration ranges are received 
      * @return
      */

@@ -1277,6 +1277,9 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
     
     
     public void reportProfiler(String str, ProfileMeasurement pm, int partitionId){
+        if (pm.getInvocations()==0){
+            return;
+        }
         String logMsg = String.format("%s, MS=%s, Count=%s, PartitionId=%s",
                 str,
                 pm.getAverageThinkTimeMS(),
@@ -1289,6 +1292,8 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
         String histString = "Histogram=NoEntries";
         if (!h.isEmpty())
             histString = String.format("Histogram=\n%s", h.toString());
+        else
+            return;
         String logMsg = String.format("%s, PartitionId=%s, Histogram=\n%s",
                 str,
                 partitionId,
@@ -1298,6 +1303,8 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
     }
     
     public void reportProfiler(String desc, String valDesc, Number n, int partitionId){
+        if (n.intValue() == 0)
+            return;
         String logMsg = String.format("%s, %s=%s, PartitionId=%s",
                 desc,
                 valDesc,
@@ -1378,7 +1385,7 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
         if (executorMap.containsKey(expectedPartition)){
             //check with destination if we have it
             try{
-                if (executorMap.get(expectedPartition).getReconfiguration_tracker().checkKeyOwned(catalogItem, value))
+                if (executorMap.get(expectedPartition).getReconfiguration_tracker().quickCheckKeyOwned(catalogItem, value))
                     return expectedPartition;
                 else
                     return previousPartition;
@@ -1387,7 +1394,7 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
             }
         } else if (executorMap.containsKey(previousPartition)) {
             try{
-                if (executorMap.get(previousPartition).getReconfiguration_tracker().checkKeyOwned(catalogItem, value))
+                if (executorMap.get(previousPartition).getReconfiguration_tracker().quickCheckKeyOwned(catalogItem, value))
                     return previousPartition;
                 else
                     return expectedPartition;
