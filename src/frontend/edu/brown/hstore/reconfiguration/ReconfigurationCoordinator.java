@@ -274,6 +274,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         //push outgoing ranges for all local PEs
                         //TODO remove this loop and schedule chunked pulls/ 
                         for (PartitionExecutor executor : this.local_executors) {
+                        	LOG.info("Sechduling async chunked pulls for local PE for Stop and Copy : " + executor.getPartitionId());
+                        	executor.scheduleInitialAsyncPullRequestsForSC(executor.getIncomingRanges());
+                            /** Comment the previous S&C work
+                              
                             LOG.info("Pushing ranges for local PE : " + executor.getPartitionId());
                             long peStart = System.currentTimeMillis();
                             int kbSent = 0;
@@ -295,6 +299,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             long peTime = System.currentTimeMillis() - peStart;
                             LOG.info(String.format("STOPCOPY for PE(%s) took %s ms for %s kb", executor.getPartitionId(), peTime, kbSent));
                             siteKBSent += kbSent;
+                            
+                            **/
                         }
                         //TODO haltProcessing() at end
                         //TODO hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId())
