@@ -35,6 +35,7 @@ public class ReconfigurationPlan {
     //Helper map of partition ID and outgoing/incoming ranges for this reconfiguration
     protected Map<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> outgoing_ranges;
     protected Map<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> incoming_ranges;
+    public String planDebug = "";
     
     /**
      * @throws Exception 
@@ -49,7 +50,8 @@ public class ReconfigurationPlan {
             tables_map.put(table_name, new ReconfigurationTable(old_phase.getTable(table_name), new_phase.getTable(table_name)));
         }
         registerReconfigurationRanges();
-        LOG.info(String.format("Reconfiguration plan generated \n Out: %s \n In: %s",outgoing_ranges.toString(),incoming_ranges.toString()));
+        planDebug = String.format("Reconfiguration plan generated \n Out: %s \n In: %s",outgoing_ranges.toString(),incoming_ranges.toString());
+        LOG.info(planDebug);
     }
     
     protected void registerReconfigurationRanges(){

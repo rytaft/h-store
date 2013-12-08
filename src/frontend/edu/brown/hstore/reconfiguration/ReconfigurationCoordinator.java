@@ -257,6 +257,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             try {
                 // Find reconfig plan
                 reconfig_plan = hasher.changePartitionPhase(partitionPlan);
+                FileUtil.appendEventToFile(reconfig_plan.planDebug);
                 this.planned_partitions = hasher.getPlanned_partitions();
                 if (reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
                     if (reconfig_plan != null){

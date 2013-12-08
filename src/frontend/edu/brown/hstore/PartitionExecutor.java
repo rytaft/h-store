@@ -3225,7 +3225,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 					}
             		
             	} else{
-            	    if (multiPullReplyRequest.getIsAsync())
+            	    if (multiPullReplyRequest.getIsAsync()==false)
             	        LOG.info(String.format("Not processing a live pull Async:%s PullTxnID:%s  DistTxn:%s CurrentTxn:%s ",multiPullReplyRequest.getIsAsync(),multiPullTxnId, this.currentDtxn, this.currentTxnId ) );
             	    else
             	        if (debug.val) LOG.debug(String.format("Not processing an async pull Async:%s PullTxnID:%s  DistTxn:%s CurrentTxn:%s ",multiPullReplyRequest.getIsAsync(),multiPullTxnId, this.currentDtxn, this.currentTxnId ) );
