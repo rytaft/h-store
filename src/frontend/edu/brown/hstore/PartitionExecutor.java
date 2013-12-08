@@ -3298,6 +3298,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             	this.work_queue.remove(work);
             } else if(work instanceof AsyncDataPullRequestMessage){
             	AsyncDataPullRequestMessage asyncDataPullRequestMessage = ((AsyncDataPullRequestMessage) work);
+            	LOG.info("An async pull message encountered while looking for queued work ");
             	if(!asyncDataPullRequestMessage.getProtocol().equals("s&c")) {
             		continue;
             	}
