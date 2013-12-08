@@ -310,7 +310,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         boolean reconfigEnds = false;
                         while(!reconfigEnds){
                           reconfigEnds = true;
+                          
                           for (PartitionExecutor executor : this.local_executors) {
+                            if(executor.getPartitionId() == partitionId){
+                              executor.processQueuedLiveReconfigWork(true);
+                            }
                             reconfigEnds = reconfigEnds && executor.checkAsyncPullMessageQueue();
                           }
                         }
