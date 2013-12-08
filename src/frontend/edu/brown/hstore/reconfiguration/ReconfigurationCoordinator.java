@@ -276,7 +276,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         //push outgoing ranges for all local PEs
                         //TODO remove this loop and schedule chunked pulls/ 
                         for (PartitionExecutor executor : this.local_executors) {
-                        	LOG.info("Sechduling async chunked pulls for local PE for Stop and Copy : " + executor.getPartitionId());
+                        	LOG.info("Schduling async chunked pulls for local PE for Stop and Copy : " + executor.getPartitionId());
                         	executor.scheduleInitialAsyncPullRequestsForSC(executor.getIncomingRanges());
                             /** Comment the previous S&C work
                               
