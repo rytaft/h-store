@@ -3255,16 +3255,36 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         LOG.error("Error in deserializing volt table");
                     }
             		try {
-						receiveTuples(multiPullTxnId, multiPullReplyRequest.getOldPartition(), multiPullReplyRequest.getNewPartition(),
-								multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusive(), 
-								multiPullReplyRequest.getMaxExclusive(), vt, multiPullReplyRequest.getMoreDataNeeded(), false);
-						this.work_queue.remove(work);
-	                    workDone = true;
+            		  receiveTuples(multiPullTxnId, multiPullReplyRequest.getOldPartition(), multiPullReplyRequest.getNewPartition(),
+            		      multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusive(), 
+            		      multiPullReplyRequest.getMaxExclusive(), vt, multiPullReplyRequest.getMoreDataNeeded(), false);
+						      this.work_queue.remove(work);
+	                workDone = true;
             		} catch (Exception e) {
-						// TODO Auto-generated catch block
-						LOG.error("Error is loading the tuples for the live Pull");
-					}
+            		  LOG.error("Error is loading the tuples for the live Pull");
+					      }
             		
+            	} else if(multiPullReplyRequest.getIsAsync() && multiPullReplyRequest.getTransactionID() == ReconfigurationCoordinator.STOP_COPY_TXNID){
+            	  
+            	  LOG.info(String.format("Processing a pull for Stop and Copy Async:%s PullTxnID:%s  DistTxn:%s CurrentTxn:%s ",multiPullReplyRequest.getIsAsync(),multiPullTxnId, this.currentDtxn, this.currentTxnId ) );
+                
+            	  VoltTable vt = null;
+                try {
+                    vt = FastDeserializer.deserialize(multiPullReplyRequest.getVoltTableData().toByteArray(), VoltTable.class);
+                } catch (IOException e) {
+                    LOG.error("Error in deserializing volt table");
+                }
+                try {
+                   receiveTuples(multiPullTxnId, multiPullReplyRequest.getOldPartition(), multiPullReplyRequest.getNewPartition(),
+                       multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusive(), 
+                       multiPullReplyRequest.getMaxExclusive(), vt, multiPullReplyRequest.getMoreDataNeeded(), false);
+                   this.work_queue.remove(work);
+                  workDone = true;
+                } catch (Exception e) {
+               
+                LOG.error("Error is loading the tuples for the live Pull");
+                }
+            	  
             	} else{
             	    LOG.info(String.format("Not processing a live pull Async:%s PullTxnID:%s  DistTxn:%s CurrentTxn:%s ",multiPullReplyRequest.getIsAsync(),multiPullTxnId, this.currentDtxn, this.currentTxnId ) );
             	}
