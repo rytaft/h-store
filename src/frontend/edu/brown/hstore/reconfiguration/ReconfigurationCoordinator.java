@@ -127,6 +127,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private Map<Integer,Long> dataPullResponseTimes;
     private Map<Integer,PartitionExecutor>  executorMap;
     private Map<Integer,Integer>  livePullKBMap;
+    
+    public static Long STOP_COPY_TXNID = -2L;
 
     public ReconfigurationCoordinator(HStoreSite hstore_site, HStoreConf hstore_conf) {        
         this.reconfigurationLeader = -1;
@@ -302,8 +304,22 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             
                             **/
                         }
-                        //TODO haltProcessing() at end
-                        //TODO hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId())
+                        // Check here whether S&C has ended
+                        // The checking is done by each partition based on whether they have processed
+                        // all the scheduled async messages or not
+                        boolean reconfigEnds = false;
+                        while(!reconfigEnds){
+                          reconfigEnds = true;
+                          for (PartitionExecutor executor : this.local_executors) {
+                            reconfigEnds = reconfigEnds && executor.checkAsyncPullMessageQueue();
+                          }
+                        }
+                        
+                        // Halt processing and clear queues at each partition
+                        for (PartitionExecutor executor : this.local_executors) {
+                          executor.haltProcessing();
+                          hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId());
+                        }
                         
                         //TODO this file is horrible and needs refactoring....
                         //we have an end, reset and finish reconfiguration...
@@ -817,6 +833,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
      */
     private void queueAsyncDataPullRequest(AsyncPullRequest asyncPullRequest, RpcCallback<AsyncPullResponse> asyncPullRequestCallback2) {
         AsyncDataPullRequestMessage asyncPullRequestMsg = new AsyncDataPullRequestMessage(asyncPullRequest, asyncPullRequestCallback2);
+        if(asyncPullRequest.getTransactionID() == STOP_COPY_TXNID){
+          // This is a s&c request so set the protocol to stop and copy
+          asyncPullRequestMsg.setProtocol("s&c");
+        }
         for (PartitionExecutor executor : this.local_executors) {
             if (executor.getPartitionId() == asyncPullRequest.getOldPartition()) {
                 LOG.info("Queue the async data pull request " + asyncPullRequest.toString());

@@ -2411,6 +2411,20 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
     }
     
+    public boolean checkAsyncPullMessageQueue(){
+      boolean queueEmpty = true;
+      Iterator<InternalMessage> iter = this.work_queue.iterator();
+      InternalMessage work = null;
+      boolean workDone = false;
+      while (iter.hasNext()){
+        work = iter.next();
+        if(work instanceof ScheduleAsyncPullRequestMessage){
+          return false;
+        }
+      }
+      return queueEmpty;
+    }
+    
     /**
      * Schedule this initial list of async pull ranges that will be chunked
      * @param incomingRanges
@@ -3276,12 +3290,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             		continue;
             	}
             	//Its Stop and Copy Work so process the async Chunked Pull Messages
+            	LOG.info("Processing the Scheduling Request for Stop and Copy");
             	processScheduleAsyncPullRequestMessage(scheduleAsycPullRequestMessage);
             } else if(work instanceof AsyncDataPullRequestMessage){
             	AsyncDataPullRequestMessage asyncDataPullRequestMessage = ((AsyncDataPullRequestMessage) work);
             	if(!asyncDataPullRequestMessage.getProtocol().equals("s&c")) {
             		continue;
             	}
+            	LOG.info("Processing the Pull Request for Stop and Copy");
             	//Its Stop and Copy Work so process the async Chunked Pull Messages
             	processAsyncDataPullRequestMessage(asyncDataPullRequestMessage);
             }
@@ -3365,7 +3381,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         pullRequests.add(pullRange);
         // transaction id is a dummy here
         // Calling the RC to generates a Live Pull Request for a range and blocking. When the reply comes back the RC will unblock the semaphore
-        this.reconfiguration_coordinator.asyncPullRequestFromPE(getNextRequestToken(), -1L, this.partitionId, pullRequests);
+        Long txnID = -1L;
+        if(scheduleAsyncPullMsg.getProtocol().equals("s&c")){
+          txnID = -2L;
+        }
+        this.reconfiguration_coordinator.asyncPullRequestFromPE(getNextRequestToken(), txnID, this.partitionId, pullRequests);
 
         LOG.info("("+ this.partitionId + ") ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
        
