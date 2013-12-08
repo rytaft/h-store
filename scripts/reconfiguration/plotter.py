@@ -138,7 +138,58 @@ def addReconfigEvent(df, reconfig_events):
     df['IN_RECONFIG'][(df.TIMESTAMP >= start-1000) & (df.TIMESTAMP <= end)] = True
     df['MISSING_DATA'] = df.LATENCY.isnull()
     #df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].mean()
-            
+    
+def getIntStats(interval_file):
+  df = pandas.DataFrame.from_csv(interval_file)  
+  reconfig_events = getReconfigEvents(interval_file.replace("interval_res.csv", "hevent.log"))
+  addReconfigEvent(df,reconfig_events)
+  return df
+   
+def printDFStat(df):
+  print "="*80
+  print "Mean"
+  print df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].mean()
+  print ""
+  print "Median"
+  print df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].median()
+  print ""
+
+   
+def getDirStat(directory):
+
+  interval_files = [os.path.join(directory,f) for f in os.listdir(directory) if "interval_res" in f]
+  if len(interval_files) == 0:
+    print "No interval file found in %s %s" % (directory,','.join(os.listdir(directory)))
+    return
+  for interval_file in interval_files:  
+    print  
+    df = getIntStats(interval_file)
+    print interval_file 
+
+    if "recon" in interval_file:
+      alt_version = interval_file.replace("reconfig","stopcopy")
+    elif "stopcopy" in interval_file:
+      alt_version = interval_file.replace("stopcopy", "reconfig")
+    
+    printDFStat(df)
+
+    if os.path.exists(alt_version):
+      adf = getIntStats(alt_version)
+      print alt_version
+      printDFStat(adf)
+    else:
+      print "no alt version found"
+    print ""
+  
+def exploreDir(d):
+  print "-- --  " * 15
+  for r,dirs,files in os.walk(d):
+    print ",".join(dirs)
+    print ""
+    for d in dirs:
+      if "reconfig" in d:
+        getDirStat(os.path.join(r,d))
+        print "-- --  " * 15
 def plotGraph(args):
 
     if args.ylabel != None:
