@@ -2421,6 +2421,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if(work instanceof ScheduleAsyncPullRequestMessage){
           return false;
         }
+        if(work instanceof AsyncDataPullRequestMessage){
+          return false;
+        }
       }
       return queueEmpty;
     }
