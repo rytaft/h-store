@@ -3225,7 +3225,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 					}
             		
             	} else{
-            	    LOG.info(String.format("Not processing a live pull Async:%s PullTxnID:%s  DistTxn:%s CurrentTxn:%s ",multiPullReplyRequest.getIsAsync(),multiPullTxnId, this.currentDtxn, this.currentTxnId ) );
+            	    if (multiPullReplyRequest.getIsAsync())
+            	        LOG.info(String.format("Not processing a live pull Async:%s PullTxnID:%s  DistTxn:%s CurrentTxn:%s ",multiPullReplyRequest.getIsAsync(),multiPullTxnId, this.currentDtxn, this.currentTxnId ) );
+            	    else
+            	        if (debug.val) LOG.debug(String.format("Not processing an async pull Async:%s PullTxnID:%s  DistTxn:%s CurrentTxn:%s ",multiPullReplyRequest.getIsAsync(),multiPullTxnId, this.currentDtxn, this.currentTxnId ) );
+                    
             	}
             } else if (work instanceof LivePullRequestMessage){
                 LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
@@ -3825,7 +3829,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     this.reconfiguration_coordinator.profilers[this.partitionId].pe_block_queue_size_growth.put(endQueueSize-queueSize);                    
                     
                     if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.stopIfStarted();
-                    if(hstore_conf.site.reconfig_profiling && tempPullCounter++ % 500 == 0) { 
+                    if(hstore_conf.site.reconfig_profiling && tempPullCounter++ % 1 == 0) { 
                         LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
                             this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getAverageThinkTimeMS(),
                             this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getInvocations()));

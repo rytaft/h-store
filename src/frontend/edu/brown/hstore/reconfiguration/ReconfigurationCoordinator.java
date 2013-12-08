@@ -442,6 +442,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         	} else{
         		this.channels[destinationId].reconfigurationControlMsg(controller, leaderCallback, null);
         		FileUtil.appendEventToFile("RECONFIGURATION_SITE_DONE, siteId="+this.hstore_site.getSiteId());
+                showReconfigurationProfiler(true);
         	}
         }
     }
@@ -479,7 +480,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             LOG.info("Sending a message to notify all sites that reconfiguration has ended");
             FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+", siteId="+this.hstore_site.getSiteId());
             sendReconfigEndAcknowledgementToAllSites();
-            showReconfigurationProfiler();
+            showReconfigurationProfiler(true);
         }
     }
     
@@ -504,7 +505,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      
             sendReconfigEndAcknowledgementToAllSites();
             FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+" , siteId="+this.hstore_site.getSiteId());
-            showReconfigurationProfiler();
+            showReconfigurationProfiler(true);
         }
     }
     
@@ -1276,7 +1277,7 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
     }
     
     
-    public void reportProfiler(String str, ProfileMeasurement pm, int partitionId){
+    public void reportProfiler(String str, ProfileMeasurement pm, int partitionId, boolean writeToEventLog){
         if (pm.getInvocations()==0){
             return;
         }
@@ -1285,10 +1286,10 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
                 pm.getAverageThinkTimeMS(),
                 pm.getInvocations(), partitionId);
         LOG.info(logMsg);
-        FileUtil.appendEventToFile(logMsg);
+        if (writeToEventLog) FileUtil.appendEventToFile(logMsg);
     }
     
-    public void reportProfiler(String str, FastIntHistogram h, int partitionId){
+    public void reportProfiler(String str, FastIntHistogram h, int partitionId, boolean writeToEventLog){
         String histString = "Histogram=NoEntries";
         if (!h.isEmpty())
             histString = String.format("Histogram=\n%s", h.toString());
@@ -1299,10 +1300,10 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
                 partitionId,
                 histString);
         LOG.info(logMsg);
-        FileUtil.appendEventToFile(logMsg);
+        if (writeToEventLog) FileUtil.appendEventToFile(logMsg);
     }
     
-    public void reportProfiler(String desc, String valDesc, Number n, int partitionId){
+    public void reportProfiler(String desc, String valDesc, Number n, int partitionId, boolean writeToEventLog){
         if (n.intValue() == 0)
             return;
         String logMsg = String.format("%s, %s=%s, PartitionId=%s",
@@ -1311,36 +1312,36 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
                 n,
                 partitionId);
         LOG.info(logMsg);
-        FileUtil.appendEventToFile(logMsg);
+        if (writeToEventLog) FileUtil.appendEventToFile(logMsg);
     }
     
-    public void showReconfigurationProfiler() {
+    public void showReconfigurationProfiler(boolean writeToEventLog) {
         if(hstore_conf.site.reconfig_profiling) {
             for (int p_id : hstore_site.getLocalPartitionIds().values()) {
                 LOG.info("Showing reconfig stats");
                 LOG.info(this.profilers[p_id].toString());
                 
-                reportProfiler("REPORT_AVG_DEMAND_PULL_TIME",this.profilers[p_id].on_demand_pull_time, p_id);
+                reportProfiler("REPORT_AVG_DEMAND_PULL_TIME",this.profilers[p_id].on_demand_pull_time, p_id, writeToEventLog);
                 
-                reportProfiler("REPORT_AVG_ASYNC_PULL_TIME",this.profilers[p_id].async_pull_time, p_id);
-                reportProfiler("REPORT_AVG_ASYNC_DEST_QUEUE_TIME",this.profilers[p_id].async_dest_queue_time, p_id);
-                reportProfiler("REPORT_AVG_LIVE_PULL_RESONSE_QUEUE_TIME",this.profilers[p_id].on_demand_pull_response_queue, p_id);
-                reportProfiler("REPORT_PE_CHECK_TXN_TIME",this.profilers[p_id].pe_check_txn_time, p_id);
-                reportProfiler("REPORT_PE_LIVE_PULL_BLOCK_TIME",this.profilers[p_id].pe_live_pull_block_time, p_id);
+                reportProfiler("REPORT_AVG_ASYNC_PULL_TIME",this.profilers[p_id].async_pull_time, p_id, writeToEventLog);
+                reportProfiler("REPORT_AVG_ASYNC_DEST_QUEUE_TIME",this.profilers[p_id].async_dest_queue_time, p_id, writeToEventLog);
+                reportProfiler("REPORT_AVG_LIVE_PULL_RESPONSE_QUEUE_TIME",this.profilers[p_id].on_demand_pull_response_queue, p_id, writeToEventLog);
+                reportProfiler("REPORT_PE_CHECK_TXN_TIME",this.profilers[p_id].pe_check_txn_time, p_id, writeToEventLog);
+                reportProfiler("REPORT_PE_LIVE_PULL_BLOCK_TIME",this.profilers[p_id].pe_live_pull_block_time, p_id, writeToEventLog);
                 
 
-                reportProfiler("REPORT_EMPTY_LOADS", "Count", this.profilers[p_id].empty_loads, p_id);
+                reportProfiler("REPORT_EMPTY_LOADS", "Count", this.profilers[p_id].empty_loads, p_id, writeToEventLog);
 
-                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE",  this.profilers[p_id].pe_block_queue_size, p_id);
-                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_block_queue_size_growth, p_id);
-                reportProfiler("REPORT_EXTRACT_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_extract_queue_size_growth, p_id);
-                reportProfiler("REPORT_EXTRACT_PROC_TIME",  this.profilers[p_id].src_extract_proc_time, p_id);
+                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE",  this.profilers[p_id].pe_block_queue_size, p_id, writeToEventLog);
+                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_block_queue_size_growth, p_id, writeToEventLog);
+                reportProfiler("REPORT_EXTRACT_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_extract_queue_size_growth, p_id, writeToEventLog);
+                reportProfiler("REPORT_EXTRACT_PROC_TIME",  this.profilers[p_id].src_extract_proc_time, p_id, writeToEventLog);
                 
-                reportProfiler("REPORT_TOTAL_PULL_SIZE", "KB", livePullKBMap.get(p_id), p_id);
+                reportProfiler("REPORT_TOTAL_PULL_SIZE", "KB", livePullKBMap.get(p_id), p_id, writeToEventLog);
 
                 if (detailed_timing) {
-                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id);
-                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_PROC",this.profilers[p_id].src_data_pull_req_proc_time, p_id);                    
+                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id, writeToEventLog);
+                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_PROC",this.profilers[p_id].src_data_pull_req_proc_time, p_id, writeToEventLog);                    
                 }
                 
                 
