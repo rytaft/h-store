@@ -117,7 +117,9 @@ public class TestReconfigurationTracking extends BaseTestCase {
         assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_NOT_MIGRATED,ex.exceptionType);        
         assertTrue(ex.dataNotYetMigrated.size()== 1);
         ReconfigurationRange<Long> range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.toArray()[0];
-        assertTrue(range.getMin_inclusive() ==  110L && range.getMax_exclusive() == 110L);
+        
+        assertTrue(range.getMin_inclusive() ==  110L);
+        assertTrue(range.getMax_exclusive() == 110L);
         
         //source still has the key
         assertTrue(tracking2.checkKeyOwned(tbl, 110L));
@@ -212,10 +214,13 @@ public class TestReconfigurationTracking extends BaseTestCase {
     @Test
     public void testTrackReconfigurationKey() throws Exception{
         PlannedPartitions p = new PlannedPartitions(catalogContext, json_path);
+        
         p.setPartitionPhase("1");    
         ReconfigurationPlan plan = p.setPartitionPhase("2");
+        
         //PE 1
         ReconfigurationTrackingInterface tracking1 = new ReconfigurationTracking(p,plan,1);
+        System.out.println(((ReconfigurationTracking)tracking1).PULL_SINGLE_KEY);
         //PE 2
         ReconfigurationTrackingInterface tracking2 = new ReconfigurationTracking(p, plan,2);
         ReconfigurationTrackingInterface tracking3 = new ReconfigurationTracking(p, plan,3);
@@ -240,8 +245,10 @@ public class TestReconfigurationTracking extends BaseTestCase {
         assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_NOT_MIGRATED,ex.exceptionType);        
         assertTrue(ex.dataNotYetMigrated.size()== 1);
         ReconfigurationRange<Long> range = (ReconfigurationRange<Long>) ex.dataNotYetMigrated.toArray()[0];
-        assertTrue(range.getMin_inclusive() ==  100L && range.getMax_exclusive() == 100L); 
-        
+        System.out.println(range);
+        assertTrue(range.getMin_inclusive() ==  100L); 
+        assertTrue(range.getMax_exclusive() == 100L); 
+
         //'migrate key'
         tracking1.markKeyAsReceived(tbl, 100L);
         tracking2.markKeyAsMigratedOut(tbl, 100L);

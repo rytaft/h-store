@@ -80,6 +80,7 @@ import com.google.protobuf.RpcCallback;
 
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hashing.AbstractHasher;
+import edu.brown.hashing.PlannedHasher;
 import edu.brown.hstore.ClientInterface.ClientInputHandler;
 import edu.brown.hstore.HStoreThreadManager.ThreadGroupType;
 import edu.brown.hstore.Hstoreservice.QueryEstimate;
@@ -642,6 +643,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         if(hstore_conf.global.reconfiguration_enable){
             LOG.info("Initializing Reconfiguration Coordinator");
             this.reconfiguration_coordinator = this.initReconfigCoordinator();
+            if(this.hasher instanceof PlannedHasher){
+                ((PlannedHasher)this.hasher).setReconfigCoord(this.reconfiguration_coordinator);
+            }
         }
         
         // First we need to tell the HStoreCoordinator to start-up and initialize its connections

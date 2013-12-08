@@ -78,6 +78,7 @@ public class PlannedPartitions implements JSONSerializable {
     private Map<String, VoltType> table_vt_map;
     private Map<String, PartitionPhase> partition_phase_map;
     private Map<CatalogType, String> catalog_to_table_map;
+    private Map<String, List<String>> relatedTablesMap;
     private ParameterMappingsSet paramMappings;
     private String current_phase;
     private String previous_phase;
@@ -94,6 +95,7 @@ public class PlannedPartitions implements JSONSerializable {
         this.partition_phase_map = new HashMap<>();
         this.catalog_to_table_map = new HashMap<>();
         this.paramMappings = catalog_context.paramMappings;
+        this.relatedTablesMap = new HashMap<>();
 
         Set<String> partitionedTables = getExplicitPartitionedTables(planned_partition_json);
         // TODO find catalogContext.getParameter mapping to find
@@ -153,11 +155,14 @@ public class PlannedPartitions implements JSONSerializable {
                 }
                 List<Column> depCols = dependUtil.getAncestors(partitionCol);
                 boolean partitionedParentFound = false;
+                List<String> relatedTables = new ArrayList<>();
                 for (Column c : depCols) {
                     CatalogType p = c.getParent();
                     if (p instanceof Table) {
                         // if in table then map to it
                         String relatedTblName = p.getName().toLowerCase();
+                        LOG.info(String.format("Table %s is related to %s",tableName,relatedTblName));
+                        relatedTables.add(relatedTblName);
                         if (partitionedTables.contains(relatedTblName)) {
                             LOG.info("parent partitioned table : " + p + " : " + relatedTblName);
                             partitionedTablesByFK.put(tableName, relatedTblName);
@@ -168,9 +173,16 @@ public class PlannedPartitions implements JSONSerializable {
                             if (catalog_to_table_map.containsKey(partitionCol)) {
                                 LOG.error("ctm has part col : " + partitionCol + " : " + catalog_to_table_map.get(partitionCol));
                             }
-                            catalog_to_table_map.put(partitionCol, relatedTblName);
+                            //TODO catalog_to_table_map.put(partitionCol, relatedTblName);
+                            LOG.info("no relationships on look up " +partitionCol + " : " + tableName);
+                            catalog_to_table_map.put(partitionCol, tableName);
                         }
                     }
+                }
+                if(!relatedTables.isEmpty()){
+                    LOG.info("Associating the list of related tables for :"+ tableName);
+                    relatedTables.add(tableName);
+                    relatedTablesMap.put(tableName, relatedTables);
                 }
                 if (!partitionedParentFound) {
                     throw new RuntimeException("No partitioned relationship found for table : " + tableName + " partitioned:" + partitionedTables.toString());
@@ -288,13 +300,32 @@ public class PlannedPartitions implements JSONSerializable {
             return -1;
         PartitionPhase phase = this.partition_phase_map.get(previousPhase);
         PartitionedTable<?> table = phase.getTable(table_name);
+        if (table == null){
+            table = phase.getTable(table_name.toLowerCase());
+            if (table == null) {
+                throw new Exception("Unable to find table "+ table_name + " in phase  " + previousPhase);
+            }
+        }
         assert table != null : "Table not found " + table_name;
         return table.findPartition(id);
     }
 
     public int getPreviousPartitionId(CatalogType catalog, Object id) throws Exception {
+        String previousPhase = this.getPreviousPhase_phase();
+        if (previousPhase == null)
+            return -1;
+
         String table_name = this.catalog_to_table_map.get(catalog);
-        return this.getPartitionId(table_name, id);
+        PartitionPhase phase = this.partition_phase_map.get(previousPhase);
+        PartitionedTable<?> table = phase.getTable(table_name);
+        if (table == null){
+            table = phase.getTable(table_name.toLowerCase());
+            if (table == null) {
+                throw new Exception("Unable to find table "+ table_name + " in phase  " + previousPhase);
+            }
+        }
+        assert table != null : "Table not found " + table_name;
+        return table.findPartition(id);
     }
 
     // ******** Containers *****************************************/
@@ -528,7 +559,6 @@ public class PlannedPartitions implements JSONSerializable {
             }
             // TODO fix partitiontype
             assert (min_inclusive instanceof Number && max_exclusive instanceof Number);
-            LOG.info("Setting long values");
             this.min_inclusive_long = ((Number) min_inclusive).longValue();
             this.max_exclusive_long = ((Number) max_exclusive).longValue();
         }
@@ -660,6 +690,10 @@ public class PlannedPartitions implements JSONSerializable {
     public void fromJSON(JSONObject json_object, Database catalog_db) throws JSONException {
         // TODO Auto-generated method stub
 
+    }
+
+    public Map<String, List<String>> getRelatedTablesMap() {
+        return relatedTablesMap;
     }
 
 }

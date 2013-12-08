@@ -42,10 +42,10 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
 
     private static final Logger LOG = Logger.getLogger(TestReconfigurationExtractImportEE.class);
     private static final int NUM_PARTITIONS = 1;
-    private static final long NUM_TUPLES = 1000;
+    private static final long NUM_TUPLES = 100;
     private static final String CUSTOMER_TABLE_NAME = TPCCConstants.TABLENAME_CUSTOMER;
     private static final String NEW_ORDER_TABLE_NAME = TPCCConstants.TABLENAME_NEW_ORDER;
-    private static final int DEFAULT_LIMIT = ExecutionEngineJNI.DEFAULT_EXTRACT_LIMIT;
+    private static final int DEFAULT_LIMIT = ExecutionEngineJNI.DEFAULT_EXTRACT_LIMIT_BYTES;
     
     private HStoreSite hstore_site;
     private HStoreConf hstore_conf;
@@ -57,6 +57,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
     private Table neworder_tbl;
     private int neworder_p_index;
     private int cust_p_index;
+    private int undo=1;
     
     //private int ycsbTableId(Catalog catalog) {
     //    return catalog.getClusters().get("cluster").getDatabases().get("database").getTables().get(TARGET_TABLE).getRelativeIndex();
@@ -113,9 +114,10 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
 
     }
     
-    int[] scales = { 1,3,5};//,11,29,51,97 };
+    int[] scales = { 1,2,3,5};//,11,29,51,97 };
     int[] scales2 = { 2 };
 
+    
     @Test 
     public void testMultiExtract() throws Exception {
         int wid = 2;
@@ -125,7 +127,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
         this.loadTPCCData(NUM_TUPLES * 10, this.customer_tbl,this.cust_p_index, wid);
         int EXTRACT_LIMIT = 2048;
-        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT = EXTRACT_LIMIT;
+        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
         
         long tupleBytes = MemoryEstimator.estimateTupleSize(this.customer_tbl);
         int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
@@ -133,13 +135,13 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
         int resCount = 0;
         int chunks = 0;
         Pair<VoltTable,Boolean> resTable = 
-                this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
+                this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
         assertTrue(resTable.getSecond());
         resCount += resTable.getFirst().getRowCount();
         chunks++;
         while(resTable.getSecond()){
             resTable = 
-                    this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
+                    this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
             resCount += resTable.getFirst().getRowCount();
             chunks++;
         }
@@ -147,32 +149,19 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
         assertEquals(NUM_TUPLES*10, resCount);
     }
     
+    
     @Test
-    public void testExtractData() throws Exception {
-        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT = DEFAULT_LIMIT;
+    public void testExtractDataDiffKeys() throws Exception {
+        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = DEFAULT_LIMIT;
 
         for (int i=0; i< scales.length; i++) {
-            this.loadTPCCData(NUM_TUPLES * scales[i], this.customer_tbl,this.cust_p_index,scales[i]);
+            long tuples = NUM_TUPLES * scales[i];
+            LOG.info(String.format("Loading %s tuples for customers with W_ID :%s ", tuples,scales[i]));
+            this.loadTPCCData(tuples, this.customer_tbl,this.cust_p_index,scales[i]);
                 
         }
         LOG.info("load done");
-        /*
-        for (int i=0; i< scales.length; i++) {
-            this.loadTPCCData(NUM_TUPLES * scales[i], this.customer_tbl,this.cust_p_index,scales[i]+2);
-                
-        }
-        LOG.info("load filler data done");
-        */
-        /*
-        this.loadTPCCData(NUM_TUPLES*20, this.customer_tbl,this.cust_p_index,20);
-        this.loadTPCCData(NUM_TUPLES*40, this.customer_tbl,this.cust_p_index,40);
-        this.loadTPCCData(NUM_TUPLES*40, this.customer_tbl,this.cust_p_index,60);
-        */
-        /*this.loadTPCCData(NUM_TUPLES, this.neworder_tbl,this.neworder_p_index,1);
-        
-        this.loadTPCCData(NUM_TUPLES*200, this.neworder_tbl,this.neworder_p_index,2);
-        this.loadTPCCData(NUM_TUPLES*400, this.neworder_tbl,this.neworder_p_index,4);
-        */
+
         
     	assertTrue(true);
     	
@@ -185,18 +174,21 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
     	
     	for (int i=0; i< scales.length; i++) {
     	    int scale = scales[i];
-
+    	    LOG.info("Testing for scale : " + scale);
     	    //extract
             range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale+1), 1, 2);
             extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
             start = System.currentTimeMillis();
-            resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
+            resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
             extract = System.currentTimeMillis()-start; 
+            assertFalse(resTable.getSecond());
+            LOG.info("Tuples : " + resTable.getFirst().getRowCount());
             assertTrue(resTable.getFirst().getRowCount()==NUM_TUPLES *scale);
             
             //assert empty     
-            resTableVerify= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
+            resTableVerify= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
             assertTrue(resTableVerify.getFirst().getRowCount()==0);
+            
             
             //load
             start = System.currentTimeMillis();
@@ -205,9 +197,9 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
             LOG.info(String.format("size=%s Extract=%s Load=%s Diff:%s", NUM_TUPLES*scale, extract, load, load-extract));
 
             //re extract and check its there
-            resTableVerify= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, -1);
+            resTableVerify= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
             assertTrue(resTableVerify.getFirst().getRowCount()==NUM_TUPLES *scale);
-
+            
             
             
     	    
@@ -221,6 +213,72 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
         resTable= this.ee.extractTable(this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
         assertTrue(resTable.getRowCount()==2);
         */
+    }
+    
+    @Test
+    public void testExtractDataSameKeys() throws Exception {
+        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = DEFAULT_LIMIT;
+
+        for (int i=0; i< scales.length; i++) {
+            long tuples = NUM_TUPLES * scales[i];
+            LOG.info(String.format("Loading %s tuples for customers with W_ID :%s ", tuples,scales[i]));
+            this.loadTPCCData(tuples, this.customer_tbl,this.cust_p_index,scales[i]);
+                
+        }
+        LOG.info("load done");
+
+        
+        assertTrue(true);
+        
+        ReconfigurationRange<Long> range; 
+        VoltTable extractTable;
+        long start, extract, load;
+        Pair<VoltTable,Boolean> resTable;
+        Pair<VoltTable,Boolean> resTableVerify;
+        
+        
+        for (int i=0; i< scales.length; i++) {
+            int scale = scales[i];
+            LOG.info("Testing for scale : " + scale);
+            //extract
+            range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale), 1, 2);
+            extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
+            start = System.currentTimeMillis();
+            resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+            extract = System.currentTimeMillis()-start;
+            assertFalse(resTable.getSecond());
+            LOG.info("Tuples : " + resTable.getFirst().getRowCount());
+            assertTrue(resTable.getFirst().getRowCount()==NUM_TUPLES *scale);
+            
+            //assert empty     
+            resTableVerify= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+            assertTrue(resTableVerify.getFirst().getRowCount()==0);
+            
+            
+            //load
+            start = System.currentTimeMillis();
+            this.executor.loadTable(2000L, this.customer_tbl, resTable.getFirst(), false);
+            load = System.currentTimeMillis() - start;
+            LOG.info(String.format("size=%s Extract=%s Load=%s Diff:%s", NUM_TUPLES*scale, extract, load, load-extract));
+
+            //re extract and check its there
+            resTableVerify= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+            assertTrue(resTableVerify.getFirst().getRowCount()==NUM_TUPLES *scale);
+            
+            
+            
+            
+        }
+        
+
+        
+        /*
+        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(998), new Long(1002), 1, 2);
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
+        resTable= this.ee.extractTable(this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
+        assertTrue(resTable.getRowCount()==2);
+        */
 
     }
+    
 }

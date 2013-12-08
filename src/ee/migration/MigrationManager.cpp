@@ -75,9 +75,12 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
     int partitionColumn = table->partitionColumn();
     bool partitionColumnIsIndexed=true;
     if(partitionIndex == NULL){
+	VOLT_DEBUG("partitionColumn is not indexed partitionColumn: %d",partitionColumn);
         //TODO ae what do we do when we have no index for the partition colum?
         partitionColumnIsIndexed = false;
-    }       
+    } else {
+	VOLT_DEBUG("partitionColumn is indexed partitionColumn: %d",partitionColumn);
+    }
     TableTuple tuple(table->schema());
     //TODO ae andy -> How many byes should we set this to? Below is just a silly guess
     int outTableSizeInBytes = 1024; 
@@ -104,6 +107,7 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
     #endif
     //Do we have a single key to pull
     if(minKey.compare(maxKey)==0 && partitionColumnIsIndexed){
+	VOLT_DEBUG("Pulling single key on partitionedColumn");
         bool found = partitionIndex->moveToKey(&searchkey);    
         if(found){
             VOLT_INFO("Found");
@@ -133,12 +137,13 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
         else{
             VOLT_INFO("key not found for single key extract");       
         }
-    } else if(minKey.compare(maxKey)<0){
+    } else if(minKey.compare(maxKey)<=0){
         //TODO ae andy -> on searching and checking for the max key condition
             // (cont) should we be using an expression or ok to just do  value check end value on iteration?
         //IF b-Tree
         if (partitionColumnIsIndexed && partitionIndex->getScheme().type == BALANCED_TREE_INDEX){            
             //We have a range to check
+	    VOLT_DEBUG("Pulling one or more keys on partitionedColumn BTREE");
             partitionIndex->moveToKeyOrGreater(&searchkey);    
             while(((!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()) ||
             (!(tuple = partitionIndex->nextValue()).isNullTuple())) && (maxKey.compare(tuple.getNValue(partitionColumn)) >0)){                
@@ -169,7 +174,7 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
         else if (!partitionColumnIsIndexed || partitionIndex->getScheme().type == HASH_TABLE_INDEX
 	  ||  partitionIndex->getScheme().type == ARRAY_INDEX) {
             //find key
-            
+            VOLT_DEBUG("Pulling one or more key on partitionedColumn hash or array or non-indexed partition column");
             //TODO ae andy -> assume we cannot leverage anything about hashing with ranges, correct?
             //Iterate through results
             TableIterator iterator(table);           
@@ -179,7 +184,10 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
 		rowsExamined++;
 		#endif
                 //Is the partitionColumn in the range between min inclusive and max exclusive
-                if (minKey.compare(tuple.getNValue(partitionColumn)) <= 0 && maxKey.compare(tuple.getNValue(partitionColumn)) >0){
+		//VOLT_DEBUG("Val:%s  MinKey:%s MaxKey:%s MinCompare:%d MaxCompare:%d", tuple.getNValue(partitionColumn).debug().c_str(), minKey.debug().c_str(), maxKey.debug().c_str(), minKey.compare(tuple.getNValue(partitionColumn)), maxKey.compare(tuple.getNValue(partitionColumn))); 
+		//MinKey <= val && (maxKey > val || (min==max && maxKey == val))
+                if ((minKey.compare(tuple.getNValue(partitionColumn)) <= 0) && 
+		  ((maxKey.compare(tuple.getNValue(partitionColumn)) > 0) || ((minKey.compare(maxKey) == 0) && maxKey.compare(tuple.getNValue(partitionColumn)) == 0))){
                   
 		  //Have we reached our datalimit and found another tuple
 		  if (dataLimitReach == true){
@@ -201,14 +209,15 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
 		    }
                 }
             }
-        } else {            
+        } else {
+	    VOLT_ERROR("Unsupported Index type");
             throwFatalException("Unsupported Index type %d",partitionIndex->getScheme().type );
         }     
     } else {
         //Min key should never be greater than maxKey        
         throwFatalException("Max extract key is smaller than min key");
     } 
-    VOLT_DEBUG("Output Table %s",outputTable->debug().c_str());
+    VOLT_DEBUG("Tuples extracted: %d, Rows examined: %d  Output Table %s",tuplesExtracted, rowsExamined, outputTable->debug().c_str());
     m_extractedTables[requestToken] = outputTable;
     m_extractedTableNames[requestToken] = table->name();
     #ifdef EXTRACT_STAT_ENABLED
@@ -229,9 +238,9 @@ TableIndex* MigrationManager::getPartitionColumnIndex(PersistentTable *table) {
     for (int i = 0; i < table->indexCount(); ++i) {
         TableIndex *index = tableIndexes[i];
         
-        VOLT_DEBUG("Index %s ", index->debug().c_str());
+        VOLT_DEBUG("Index %s ", index->debug().substr(0,20).c_str());
         //One column in this index
-        if(index->getColumnCount() == 1 && index->isUniqueIndex()) {
+        if(index->getColumnCount() == 1) {
             if (index->getColumnIndices()[0] == partitionColumn){
                 VOLT_DEBUG("Index matches");
                 return index;
