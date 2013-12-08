@@ -128,7 +128,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private Map<Integer,PartitionExecutor>  executorMap;
     private Map<Integer,Integer>  livePullKBMap;
     
-    public static Long STOP_COPY_TXNID = -2L;
+    public static long STOP_COPY_TXNID = -2L;
 
     public ReconfigurationCoordinator(HStoreSite hstore_site, HStoreConf hstore_conf) {        
         this.reconfigurationLeader = -1;
@@ -835,6 +835,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         AsyncDataPullRequestMessage asyncPullRequestMsg = new AsyncDataPullRequestMessage(asyncPullRequest, asyncPullRequestCallback2);
         if(asyncPullRequest.getTransactionID() == STOP_COPY_TXNID){
           // This is a s&c request so set the protocol to stop and copy
+          LOG.info("Stop & Copy transaction");
           asyncPullRequestMsg.setProtocol("s&c");
         }
         for (PartitionExecutor executor : this.local_executors) {

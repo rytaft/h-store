@@ -3296,6 +3296,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             	LOG.info("Processing the Scheduling Request for Stop and Copy");
             	processScheduleAsyncPullRequestMessage(scheduleAsycPullRequestMessage);
             	this.work_queue.remove(work);
+            	 workDone = true;
             } else if(work instanceof AsyncDataPullRequestMessage){
             	AsyncDataPullRequestMessage asyncDataPullRequestMessage = ((AsyncDataPullRequestMessage) work);
             	LOG.info("An async pull message encountered while looking for queued work ");
@@ -3306,6 +3307,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             	//Its Stop and Copy Work so process the async Chunked Pull Messages
             	processAsyncDataPullRequestMessage(asyncDataPullRequestMessage);
             	this.work_queue.remove(work);
+            	workDone = true;
             }
         }
         return workDone;
