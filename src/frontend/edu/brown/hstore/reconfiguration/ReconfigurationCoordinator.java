@@ -147,13 +147,15 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.channels = hstore_site.getCoordinator().getChannels();
         this.partitionStates = new ConcurrentHashMap<Integer, ReconfigurationCoordinator.ReconfigurationState>();
         this.hstore_conf = hstore_conf;
-        
+        executorMap = new HashMap<>();
+
         int num_partitions = hstore_site.getCatalogContext().numberOfPartitions;
         this.num_of_sites = hstore_site.getCatalogContext().numberOfSites;
         if(hstore_conf.site.reconfig_profiling) 
             this.profilers = new ReconfigurationProfiler[num_partitions];
         for (int p_id : hstore_site.getLocalPartitionIds().values()) {
             this.local_executors.add(hstore_site.getPartitionExecutor(p_id));
+            executorMap.put(p_id,hstore_site.getPartitionExecutor(p_id));
             this.partitionStates.put(p_id, ReconfigurationState.NORMAL);
             if(hstore_conf.site.reconfig_profiling) 
                 this.profilers[p_id] = new ReconfigurationProfiler();
@@ -238,10 +240,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
         // atomic
         if (this.reconfigurationInProgress.compareAndSet(false, true)) {
             LOG.info("Initializing reconfiguration. New reconfig plan.");
-            executorMap = new HashMap<>();
             livePullKBMap = new HashMap<>();
             for (PartitionExecutor executor : this.local_executors) {
-                executorMap.put(executor.getPartitionId(),executor);
                 livePullKBMap.put(executor.getPartitionId(),new Integer(0));
             }
             if (this.hstore_site.getSiteId() == leaderId) {

@@ -773,7 +773,7 @@ public final class HStoreConf {
 
         @ConfigProperty(
                 description="The default live chunk size for reconfiguration ",
-                defaultInt=40000,
+                defaultInt=4000,
                 experimental=true
         )
         public int reconfig_chunk_size_kb;
