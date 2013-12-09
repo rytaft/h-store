@@ -78,6 +78,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private static boolean async_pull_immediately_in_work_queue = false;
     private static boolean async_queue_pulls = false;
     private static boolean live_pull = true;
+    private static boolean abortsEnabledForStopCopy = true;
     
     // Cached list of local executors
     private List<PartitionExecutor> local_executors;
@@ -321,8 +322,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         
                         // Halt processing and clear queues at each partition
                         for (PartitionExecutor executor : this.local_executors) {
-                          executor.haltProcessing();
-                          hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId());
+                        	if(abortsEnabledForStopCopy){
+                        		executor.haltProcessing();
+                                hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId());
+                        	}
                         }
                         
                         //TODO this file is horrible and needs refactoring....
@@ -1393,6 +1396,10 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
 
     public boolean isLive_pull() {
         return live_pull;
+    }
+    
+    public boolean areAbortsEnabledForStopCopy(){
+    	return abortsEnabledForStopCopy;
     }
 
     /**
