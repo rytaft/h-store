@@ -15,16 +15,16 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-    "reconfig-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.1 --client.scalefactor=0.1 --results-dir=${DATA_DIR}"  \
+#    "reconfig-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.1 --client.scalefactor=0.1 --results-dir=${DATA_DIR}"  \
     "reconfig-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=1 --client.scalefactor=1 --results-dir=${DATA_DIR}"  \
-    "reconfig-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.2  --client.scalefactor=0.2 --results-dir=${DATA_DIR}" \
-    "reconfig-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.5  --client.scalefactor=0.5 --results-dir=${DATA_DIR}" \
-    "reconfig-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.3  --client.scalefactor=0.3 --results-dir=${DATA_DIR}" \
-    "stopcopy-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.1 --client.scalefactor=0.1 --results-dir=${DATA_DIR}"  \
-    "stopcopy-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=1 --client.scalefactor=1 --results-dir=${DATA_DIR}"  \
-    "stopcopy-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.2  --client.scalefactor=0.2 --results-dir=${DATA_DIR}" \
-    "stopcopy-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.5  --client.scalefactor=0.5 --results-dir=${DATA_DIR}" \
-    "stopcopy-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.3  --client.scalefactor=0.3 --results-dir=${DATA_DIR}" \
+#    "reconfig-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.2  --client.scalefactor=0.2 --results-dir=${DATA_DIR}" \
+#    "reconfig-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.5  --client.scalefactor=0.5 --results-dir=${DATA_DIR}" \
+#    "reconfig-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.3  --client.scalefactor=0.3 --results-dir=${DATA_DIR}" \
+#    "stopcopy-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.1 --client.scalefactor=0.1 --results-dir=${DATA_DIR}"  \
+#    "stopcopy-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=1 --client.scalefactor=1 --results-dir=${DATA_DIR}"  \
+#    "stopcopy-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.2  --client.scalefactor=0.2 --results-dir=${DATA_DIR}" \
+#    "stopcopy-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.5  --client.scalefactor=0.5 --results-dir=${DATA_DIR}" \
+#    "stopcopy-tpcc-small --partitions=8 --benchmark-size=32  --exp-suffix=0.3  --client.scalefactor=0.3 --results-dir=${DATA_DIR}" \
 )
 
 for b in tpcc; do
@@ -39,10 +39,9 @@ for b in tpcc; do
         --client.interval=1000 \
         --client.output_interval=true \
         --client.duration=280000 \
-        --client.warmup=10000 \
+        --client.warmup=30000 \
         --client.output_results_csv=interval_res.csv \
-        --client.txnrate=5 \
-        --reconfig=195000:0min:0
+        --reconfig=265000:0min:0
     )
     
     i=0

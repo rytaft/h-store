@@ -94,7 +94,9 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["site.reconfig_chunk_size_kb"] = 2048 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
         fabric.env["site.commandlog_enable"] = False
-    
+        fabric.env["benchmark.loadthread_per_warehouse"] = False
+        fabric.env["benchmark.loadthreads"] = max(16, partitions)
+     
     if 'reconfig-fast' in  args['exp_type'] or 'stopcopy-fast' in args['exp_type']:
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
         fabric.env["client.blocking_concurrent"] = 4
@@ -172,6 +174,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     if 'reconfig-tpcc-small' in  args['exp_type'] or 'stopcopy-tpcc-small' in args['exp_type']:
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
         fabric.env["client.blocking_concurrent"] = 1
+        #fabric.env["client.txnrate"] = 100
         fabric.env["client.blocking"] = True
         fabric.env["client.output_exec_profiling"] = "execprofile.csv"
         fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
