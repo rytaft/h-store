@@ -627,6 +627,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
                 LOG.info("Updating the num of records %s" % args["benchmark_size"])
                 fabric.env["benchmark.num_records"] = args["benchmark_size"]
                 plan_base = "%s-size%s" % (plan_base, args["benchmark_size"])
+		fabric.env['benchmark.loadthreads'] = partitions
 
         plan_path = '%s-%s.json' % (plan_base, partitions)
         LOG.info("Using plan: %s" % plan_path)

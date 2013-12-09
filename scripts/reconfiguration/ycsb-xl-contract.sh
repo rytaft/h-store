@@ -15,7 +15,18 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-    "reconfig-ycsb-zipf --partitions=8 --benchmark-size=20000000 --exp-suffix=xl2contract --reconfig=2565000:1:0 " \
+    "stopcopy-ycsb-zipf --partitions=8 --benchmark-size=20000000 --exp-suffix=xl1contract --reconfig=2565000:1:0 " \
+    "reconfig-ycsb-zipf --partitions=8 --benchmark-size=20000000 --exp-suffix=xl1contract --reconfig=2565000:1:0 " \
+    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=20000000 --exp-suffix=xl1contract --reconfig=2565000:1:0 " \
+    "reconfig-ycsb-unirom --partitions=8 --benchmark-size=20000000 --exp-suffix=xl1contract --reconfig=2565000:1:0 " \
+    "stopcopy-ycsb-zipf --partitions=8 --benchmark-size=20000000 --exp-suffix=xl0mincontract --reconfig=2565000:0min:0 " \
+    "reconfig-ycsb-zipf --partitions=8 --benchmark-size=20000000 --exp-suffix=xl0mincontract --reconfig=2565000:0min:0 " \
+    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=20000000 --exp-suffix=xl0mincontract --reconfig=2565000:0min:0 " \
+    "reconfig-ycsb-unirom --partitions=8 --benchmark-size=20000000 --exp-suffix=xl0mincontract --reconfig=2565000:0min:0 " \
+    "stopcopy-ycsb-zipf --partitions=8 --benchmark-size=20000000 --exp-suffix=xl4contract --reconfig=2565000:4:0 " \
+    "reconfig-ycsb-zipf --partitions=8 --benchmark-size=20000000 --exp-suffix=xl4contract --reconfig=2565000:4:0 " \
+    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=20000000 --exp-suffix=xl4contract --reconfig=2565000:4:0 " \
+    "reconfig-ycsb-unirom --partitions=8 --benchmark-size=20000000 --exp-suffix=xl4contract --reconfig=2565000:4:0 " \
 )
 
 #for b in smallbank tpcc seats; do
@@ -29,13 +40,12 @@ for b in ycsb; do
         --exp-trials=1 \
         --exp-attempts=1 \        
         --no-json \
-	      --sweep-reconfiguration \
+        --sweep-reconfiguration \
         --client.interval=1000 \
         --client.output_interval=true \
         --client.duration=300000 \
         --client.warmup=30000 \
         --client.output_results_csv=interval_res.csv
-        
     )
     
     i=0

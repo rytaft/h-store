@@ -10,7 +10,7 @@ function onexit() {
 
 # ---------------------------------------------------------------------
 
-DATA_DIR="out"
+DATA_DIR="t-out"
 FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
