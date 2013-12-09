@@ -2,7 +2,7 @@
   "partition_plans": {
     "0": {
       "tables": {
-        "warehouse": {
+        "usertable": {
           "partitions": {
             "0": "1-1250001", 
             "1": "1250001-2500001", 
@@ -18,7 +18,7 @@
     }, 
     "1": {
       "tables": {
-        "warehouse": {
+        "usertable": {
           "partitions": {
             "0": "1-1428573", 
             "1": "1428573-2857145", 
@@ -33,7 +33,7 @@
     }, 
     "0min": {
       "tables": {
-        "warehouse": {
+        "usertable": {
           "partitions": {
             "0": "1-750001", 
             "1": "750001-2500001", 
@@ -49,7 +49,7 @@
     }, 
     "4": {
       "tables": {
-        "warehouse": {
+        "usertable": {
           "partitions": {
             "0": "1-2500001", 
             "1": "2500001-5000001", 
@@ -60,5 +60,5 @@
       }
     }
   }, 
-  "default_table": "warehouse"
+  "default_table": "usertable"
 }
