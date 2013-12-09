@@ -3,6 +3,7 @@ package edu.brown.hstore.reconfiguration;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -60,6 +61,7 @@ import edu.brown.profilers.ReconfigurationProfiler;
 import edu.brown.protorpc.ProtoRpcController;
 import edu.brown.statistics.FastIntHistogram;
 import edu.brown.utils.FileUtil;
+import edu.brown.utils.PartitionSet;
 
 /**
  * @author vaibhav : Reconfiguration Coordinator at each site, responsible for
@@ -72,6 +74,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private static final Logger LOG = Logger.getLogger(ReconfigurationCoordinator.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
+    public static final boolean STATIC_PULL_FILTER = true;
     public static boolean detailed_timing = true;
     private static boolean async_nonchunk_push = false;
     private static boolean async_nonchunk_pull = false;
@@ -129,6 +132,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private Map<Integer,Integer>  livePullKBMap;
 
     public ReconfigurationCoordinator(HStoreSite hstore_site, HStoreConf hstore_conf) {        
+        if (FORCE_DESTINATION){
+            LOG.warn("***********\n FORCE PULL IS ON \n *********");
+        }
         this.reconfigurationLeader = -1;
         this.reconfigurationInProgress = new AtomicBoolean(false);
         this.currentReconfigurationPlan = null;
@@ -648,15 +654,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
             if (executor.getPartitionId() == livePullRequest.getOldPartition()) {
                 // Queue the live Pull request to the work queue
                 // TODO : Change the input parameters for the senTuples function
-                if (debug.val)
-                    LOG.debug("Queue the live data Pull Request " + executor.getCurrentExecMode().toString() + " " + executor.toString());
+                if (debug.val) LOG.debug("Queue the live data Pull Request " + executor.getCurrentExecMode().toString() + " " + executor.toString());
                 executor.queueLivePullRequest(livePullRequest, livePullResponseCallback);
             }
         }
         if(detailed_timing){
             this.profilers[livePullRequest.getOldPartition()].src_data_pull_req_init_time.appendTime(now, System.currentTimeMillis());
         }
-        LOG.info("done with queueing  live pull ");
+        if (debug.val) LOG.debug("done with queueing  live pull ");
 
         // TODO : Remove
         /*
@@ -1344,6 +1349,10 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
                     reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id, writeToEventLog);
                     reportProfiler("REPORT_AVG_SRC_DATA_PULL_PROC",this.profilers[p_id].src_data_pull_req_proc_time, p_id, writeToEventLog);                    
                 }
+                String liveLog = this.executorMap.get(p_id).liveLogData.toString();
+                LOG.info(liveLog);
+                if (writeToEventLog) FileUtil.appendEventToFile(liveLog);
+                
                 
                 
             }
@@ -1407,6 +1416,22 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
             return expectedPartition;
         }    
     }
+
+    public static final String[] NEW_ORDER_FILTER = {"order_line","history","new_order"};
+    public static final List<String> NEW_ORDER_FILTER_LIST = Arrays.asList(NEW_ORDER_FILTER);
+    public static final String[] PAYMENT_FILTER = {"order_line","orders","stock","history"};
+    public static final List<String> PAYMENT_FILTER_LIST = Arrays.asList(PAYMENT_FILTER);
+    public static final String[] ORDER_STATUS_FILTER = {"warehouse","history","district","stock"};
+    public static final List<String> ORDER_STATUS_FILTER_LIST = Arrays.asList(ORDER_STATUS_FILTER);
+    public static final String[] STOCK_LEVEL_FILTER = {"warehouse","customer","history","new_order"};
+    public static final List<String> STOCK_LEVEL_FILTER_LIST = Arrays.asList(STOCK_LEVEL_FILTER);
+    public static final String[] DELIVERY_FILTER = {"warehouse","stock","district"};
+    public static final List<String> DELIVERY_FILTER_LIST = Arrays.asList(DELIVERY_FILTER);
+    
+    //Force reconfig look ups to go to destination
+    public static final boolean FORCE_DESTINATION = false;
+    
+
 
 
 

@@ -297,7 +297,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                     List<String> relatedTables = null;
                     if (partitionPlan.getRelatedTablesMap().containsKey(table_name)){
                         relatedTables=partitionPlan.getRelatedTablesMap().get(table_name);
-                        LOG.info(String.format("Table %s has related tables:%s",table_name, StringUtils.join(relatedTables, ',')));
+                        if (debug.val) LOG.debug(String.format("Table %s has related tables:%s",table_name, StringUtils.join(relatedTables, ',')));
                     }
                     // The key has not been received. Throw an exception to notify
                     //It could be in a partial range, but that doesn't matter to us. Still need to pull the full range.
@@ -309,10 +309,10 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                             List<String> relatedTablesToPull = new ArrayList<>();
                             for(String rTable : relatedTables){
                                 if (checkMigratedMapSet(migratedKeyIn,rTable,key)== false) {
-                                    LOG.info(" Related table key not migrated, adding to pull : " + rTable);
+                                    if (debug.val) LOG.debug(" Related table key not migrated, adding to pull : " + rTable);
                                     relatedTablesToPull.add(rTable);
                                 } else {
-                                    LOG.info(" Related table already pulled for key " + rTable);
+                                    if (debug.val) LOG.debug(" Related table already pulled for key " + rTable);
                                 }
                             }
                             ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED, relatedTablesToPull, previousPartition, expectedPartition, key);

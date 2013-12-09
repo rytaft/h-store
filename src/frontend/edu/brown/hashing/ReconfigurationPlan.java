@@ -249,7 +249,7 @@ public class ReconfigurationPlan {
         
         @Override
         public String toString(){
-          return String.format("ReconfigRange (%s)  [%s,%s) id:%s->%s ",table_name,min_inclusive,max_exclusive,old_partition,new_partition);
+          return String.format("ReconfigRange (%s) keys:[%s,%s) p_id:%s->%s ",table_name,min_inclusive,max_exclusive,old_partition,new_partition);
         }
         
         public boolean inRange(Comparable<?> key){

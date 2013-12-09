@@ -772,15 +772,15 @@ public final class HStoreConf {
         public boolean reconfig_replication_delay;
 
         @ConfigProperty(
-                description="The default chunk size for reconfiguration ",
-                defaultInt=2048,
+                description="The default live chunk size for reconfiguration ",
+                defaultInt=40000,
                 experimental=true
         )
         public int reconfig_chunk_size_kb;
         
         @ConfigProperty(
                 description="The default async chunk size for reconfiguration ",
-                defaultInt=512,
+                defaultInt=2048,
                 experimental=true
         )
         public int reconfig_async_chunk_size_kb;

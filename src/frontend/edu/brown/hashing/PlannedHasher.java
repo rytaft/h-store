@@ -119,7 +119,7 @@ public class PlannedHasher extends DefaultHasher {
         if (catalogItem instanceof Column || catalogItem instanceof Procedure || catalogItem instanceof Statement) {
             try {
                 //If we do not have an RC, or there is an RC but no reconfig is in progress
-                if(reconfigCoord == null || (reconfigCoord != null && !reconfigCoord.getReconfigurationInProgress())){
+                if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !reconfigCoord.getReconfigurationInProgress())){
                     if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s Phase:%s",catalogItem,value,planned_partitions.getPartitionId(catalogItem, value),planned_partitions.getCurrent_phase()));
                     return planned_partitions.getPartitionId(catalogItem, value);
                 } else {
