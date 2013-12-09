@@ -101,7 +101,7 @@ public class YCSBLoader extends Loader {
                                                      catalogContext.numberOfPartitions *
                                                      this.getScaleFactor());
         }
-        LOG.info("Initializing database with " + init_record_count + " records.");
+        LOG.info("Initializing database with " + init_record_count + " records. Using " + this.loadthreads + " load threads");
     }
 
     @Override
