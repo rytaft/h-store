@@ -15,8 +15,7 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-    "stopcopy-ycsb-zipf --partitions=8 --benchmark-size=20000000 --exp-suffix=xl2contract" \
- # --reconfig=245000:2:0 " \
+    "reconfig-ycsb-zipf --partitions=8 --benchmark-size=20000000 --exp-suffix=xl2contract --reconfig=2565000:1:0 " \
 )
 
 #for b in smallbank tpcc seats; do
@@ -33,8 +32,8 @@ for b in ycsb; do
 	      --sweep-reconfiguration \
         --client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=240000 \
-        --client.warmup=610000 \
+        --client.duration=300000 \
+        --client.warmup=30000 \
         --client.output_results_csv=interval_res.csv
         
     )
