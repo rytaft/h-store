@@ -2413,6 +2413,47 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             return true;
         }
     }
+    
+    public boolean checkAsyncPullMessageQueue(){
+      boolean queueEmpty = true;
+      Iterator<InternalMessage> iter = this.work_queue.iterator();
+      InternalMessage work = null;
+      boolean workDone = false;
+      while (iter.hasNext()){
+        work = iter.next();
+        if(work instanceof ScheduleAsyncPullRequestMessage){
+          return false;
+        }
+        if(work instanceof AsyncDataPullRequestMessage){
+          return false;
+        }
+      }
+      return queueEmpty;
+    }
+    
+    /**
+     * Schedule this initial list of async pull ranges that will be chunked
+     * @param incomingRanges
+     * @return success bool
+     */
+    public boolean scheduleInitialAsyncPullRequestsForSC(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+        if (incomingRanges != null && !incomingRanges.isEmpty()) {
+            LOG.info(String.format("(%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
+            boolean res = true;            
+            for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
+                ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
+                scheduleAsyncPull.setProtocol("s&c");
+                boolean success = this.work_queue.offer(scheduleAsyncPull); // ,
+                if (!success)
+                    res = false;
+            }
+            return res;
+        } else {
+            if (debug.val)
+                LOG.debug("No incoming ranges to request");
+            return true;
+        }
+    }
 
     /**
      * Schedule this initial list of async pull ranges that will be chunked
@@ -3218,16 +3259,36 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         LOG.error("Error in deserializing volt table");
                     }
             		try {
-						receiveTuples(multiPullTxnId, multiPullReplyRequest.getOldPartition(), multiPullReplyRequest.getNewPartition(),
-								multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusive(), 
-								multiPullReplyRequest.getMaxExclusive(), vt, multiPullReplyRequest.getMoreDataNeeded(), false);
-						this.work_queue.remove(work);
-	                    workDone = true;
+            		  receiveTuples(multiPullTxnId, multiPullReplyRequest.getOldPartition(), multiPullReplyRequest.getNewPartition(),
+            		      multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusive(), 
+            		      multiPullReplyRequest.getMaxExclusive(), vt, multiPullReplyRequest.getMoreDataNeeded(), false);
+						      this.work_queue.remove(work);
+	                workDone = true;
             		} catch (Exception e) {
-						// TODO Auto-generated catch block
-						LOG.error("Error is loading the tuples for the live Pull");
-					}
+            		  LOG.error("Error is loading the tuples for the live Pull");
+					      }
             		
+            	} else if(multiPullReplyRequest.getIsAsync() && multiPullReplyRequest.getTransactionID() == ReconfigurationCoordinator.STOP_COPY_TXNID){
+            	  
+            	  LOG.info(String.format("Processing a pull for Stop and Copy Async:%s PullTxnID:%s  DistTxn:%s CurrentTxn:%s ",multiPullReplyRequest.getIsAsync(),multiPullTxnId, this.currentDtxn, this.currentTxnId ) );
+                
+            	  VoltTable vt = null;
+                try {
+                    vt = FastDeserializer.deserialize(multiPullReplyRequest.getVoltTableData().toByteArray(), VoltTable.class);
+                } catch (IOException e) {
+                    LOG.error("Error in deserializing volt table");
+                }
+                try {
+                   receiveTuples(multiPullTxnId, multiPullReplyRequest.getOldPartition(), multiPullReplyRequest.getNewPartition(),
+                       multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusive(), 
+                       multiPullReplyRequest.getMaxExclusive(), vt, multiPullReplyRequest.getMoreDataNeeded(), false);
+                   this.work_queue.remove(work);
+                  workDone = true;
+                } catch (Exception e) {
+               
+                LOG.error("Error is loading the tuples for the live Pull");
+                }
+            	  
             	} else{
             	    if (multiPullReplyRequest.getIsAsync()==false)
             	        LOG.info(String.format("Not processing a live pull Async:%s PullTxnID:%s  DistTxn:%s CurrentTxn:%s ",multiPullReplyRequest.getIsAsync(),multiPullTxnId, this.currentDtxn, this.currentTxnId ) );
@@ -3254,6 +3315,27 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     this.work_queue.remove(work);
                     workDone = true;
                 }
+            } else if(work instanceof ScheduleAsyncPullRequestMessage){
+            	ScheduleAsyncPullRequestMessage scheduleAsycPullRequestMessage = ((ScheduleAsyncPullRequestMessage)work);
+            	if(!scheduleAsycPullRequestMessage.getProtocol().equals("s&c")) {
+            		continue;
+            	}
+            	//Its Stop and Copy Work so process the async Chunked Pull Messages
+            	LOG.info("Processing the Scheduling Request for Stop and Copy");
+            	processScheduleAsyncPullRequestMessage(scheduleAsycPullRequestMessage);
+            	this.work_queue.remove(work);
+            	 workDone = true;
+            } else if(work instanceof AsyncDataPullRequestMessage){
+            	AsyncDataPullRequestMessage asyncDataPullRequestMessage = ((AsyncDataPullRequestMessage) work);
+            	LOG.info("An async pull message encountered while looking for queued work ");
+            	if(!asyncDataPullRequestMessage.getProtocol().equals("s&c")) {
+            		continue;
+            	}
+            	LOG.info("Processing the Pull Request for Stop and Copy");
+            	//Its Stop and Copy Work so process the async Chunked Pull Messages
+            	processAsyncDataPullRequestMessage(asyncDataPullRequestMessage);
+            	this.work_queue.remove(work);
+            	workDone = true;
             }
         }
         return workDone;
@@ -3334,10 +3416,69 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         pullRequests.add(pullRange);
         // transaction id is a dummy here
         // Calling the RC to generates a Live Pull Request for a range and blocking. When the reply comes back the RC will unblock the semaphore
-        this.reconfiguration_coordinator.asyncPullRequestFromPE(getNextRequestToken(), -1L, this.partitionId, pullRequests);
+        Long txnID = -1L;
+        if(scheduleAsyncPullMsg.getProtocol().equals("s&c")){
+          txnID = -2L;
+        }
+        this.reconfiguration_coordinator.asyncPullRequestFromPE(getNextRequestToken(), txnID, this.partitionId, pullRequests);
 
         LOG.info("("+ this.partitionId + ") ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
        
+    }
+    
+    
+    public void processAsyncDataPullRequestMessage(AsyncDataPullRequestMessage pullMsg){
+    	
+        AsyncPullRequest pull = pullMsg.getAsyncPullRequest();
+        LOG.info("Extracting data for a async data pull request at partition " + this.partitionId + " : " + pull.getAsyncPullIdentifier());
+        try {                
+            String tableName = pull.getVoltTableName();
+            Table catalog_tbl = this.catalogContext.getTableByName(tableName);
+            int table_id = catalog_tbl.getRelativeIndex();
+            VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(
+                    new ReconfigurationRange<Long>(tableName, VoltType.BIGINT, pull.getMinInclusive(), pull.getMaxExclusive(), 
+                            pull.getOldPartition(), pull.getNewPartition())
+                    );
+            if(hstore_conf.site.reconfig_replication_delay){
+                replicationDelay();
+            }
+
+            int chunkId = pullMsg.getAndIncrementChunk();
+            Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, pull.getTransactionID(), lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId, hstore_conf.site.reconfig_async_chunk_size_kb*1024);
+            VoltTable voltTable = vt.getFirst();
+
+            ByteString tableBytes = null;
+            try {
+                ByteBuffer b = ByteBuffer.wrap(FastSerializer.serialize(voltTable));
+                tableBytes = ByteString.copyFrom(b.array());
+            } catch (Exception ex) {
+                throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
+            }
+            
+
+            boolean moreDataNeeded = vt.getSecond().booleanValue();  
+            MultiPullReplyRequest multiPullReplyRequest = MultiPullReplyRequest.newBuilder().
+                    setPullIdentifier(pull.getAsyncPullIdentifier()).
+                    setIsAsync(true).
+                    setSenderSite(this.hstore_site.getSiteId()).  
+                    setOldPartition(pull.getOldPartition()).setNewPartition(pull.getNewPartition()).setVoltTableName(pull.getVoltTableName())
+                    .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(pull.getMinInclusive()).setMaxExclusive(pull.getMaxExclusive())
+                    .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
+            
+            LOG.info("Sending a multi pull async request");
+            LOG.info("TODO do we need to invoke something different if local? Right now both remote / local put in with callback");
+            this.reconfiguration_coordinator.sendMultiPullReplyRequestFromPE(pull.getSenderSite(), multiPullReplyRequest);
+           
+                    
+            if(moreDataNeeded){
+                LOG.info(" ### We have more data in the async pull to schedule. Queue the" +
+                		"job to local requestPullQueue. Size : " + asyncRequestPullQueue.size());
+                asyncRequestPullQueue.add(pullMsg);
+                //this.work_queue.offer(pullMsg);
+            }
+        } catch (Exception e) {
+            LOG.error("Exception when processing async data pull response", e);
+        }
     }
     
     
@@ -6183,7 +6324,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY) {
             LOG.info("Stopping exeuction");
-            haltProcessing();
+            if(hstore_site.getReconfigurationCoordinator().areAbortsEnabledForStopCopy()){
+            	haltProcessing();
+            }
         } else if (reconfig_protocol == ReconfigurationProtocols.LIVEPULL) {
             LOG.debug("Creating reconfiguration tracker");
 
@@ -6221,6 +6364,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     public List<ReconfigurationRange<? extends Comparable<?>>> getOutgoingRanges() throws Exception {
         return this.outgoing_ranges;
+    }
+    
+    public List<ReconfigurationRange<? extends Comparable<?>>> getIncomingRanges() throws Exception {
+        return this.incoming_ranges;
     }
 
     public void startReconfiguration() throws Exception {

@@ -81,6 +81,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private static boolean async_pull_immediately_in_work_queue = false;
     private static boolean async_queue_pulls = false;
     private static boolean live_pull = true;
+    private static boolean abortsEnabledForStopCopy = true;
     
     // Cached list of local executors
     private List<PartitionExecutor> local_executors;
@@ -130,6 +131,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private Map<Integer,Long> dataPullResponseTimes;
     private Map<Integer,PartitionExecutor>  executorMap;
     private Map<Integer,Integer>  livePullKBMap;
+    
+    public static long STOP_COPY_TXNID = -2L;
 
     public ReconfigurationCoordinator(HStoreSite hstore_site, HStoreConf hstore_conf) {        
         if (FORCE_DESTINATION){
@@ -281,6 +284,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         //push outgoing ranges for all local PEs
                         //TODO remove this loop and schedule chunked pulls/ 
                         for (PartitionExecutor executor : this.local_executors) {
+                        	LOG.info("Schduling async chunked pulls for local PE for Stop and Copy : " + executor.getPartitionId());
+                        	executor.scheduleInitialAsyncPullRequestsForSC(executor.getIncomingRanges());
+                            /** Comment the previous S&C work
+                              
                             LOG.info("Pushing ranges for local PE : " + executor.getPartitionId());
                             long peStart = System.currentTimeMillis();
                             int kbSent = 0;
@@ -302,9 +309,31 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             long peTime = System.currentTimeMillis() - peStart;
                             LOG.info(String.format("STOPCOPY for PE(%s) took %s ms for %s kb", executor.getPartitionId(), peTime, kbSent));
                             siteKBSent += kbSent;
+                            
+                            **/
                         }
-                        //TODO haltProcessing() at end
-                        //TODO hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId())
+                        // Check here whether S&C has ended
+                        // The checking is done by each partition based on whether they have processed
+                        // all the scheduled async messages or not
+                        boolean reconfigEnds = false;
+                        while(!reconfigEnds){
+                          reconfigEnds = true;
+                          
+                          for (PartitionExecutor executor : this.local_executors) {
+                            if(executor.getPartitionId() == partitionId){
+                              executor.processQueuedLiveReconfigWork(true);
+                            }
+                            reconfigEnds = reconfigEnds && executor.checkAsyncPullMessageQueue();
+                          }
+                        }
+                        
+                        // Halt processing and clear queues at each partition
+                        for (PartitionExecutor executor : this.local_executors) {
+                        	if(abortsEnabledForStopCopy){
+                        		executor.haltProcessing();
+                                hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId());
+                        	}
+                        }
                         
                         //TODO this file is horrible and needs refactoring....
                         //we have an end, reset and finish reconfiguration...
@@ -818,6 +847,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
      */
     private void queueAsyncDataPullRequest(AsyncPullRequest asyncPullRequest, RpcCallback<AsyncPullResponse> asyncPullRequestCallback2) {
         AsyncDataPullRequestMessage asyncPullRequestMsg = new AsyncDataPullRequestMessage(asyncPullRequest, asyncPullRequestCallback2);
+        if(asyncPullRequest.getTransactionID() == STOP_COPY_TXNID){
+          // This is a s&c request so set the protocol to stop and copy
+          LOG.info("Stop & Copy transaction");
+          asyncPullRequestMsg.setProtocol("s&c");
+        }
         for (PartitionExecutor executor : this.local_executors) {
             if (executor.getPartitionId() == asyncPullRequest.getOldPartition()) {
                 LOG.info("Queue the async data pull request " + asyncPullRequest.toString());
@@ -1380,6 +1414,10 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
 
     public boolean isLive_pull() {
         return live_pull;
+    }
+    
+    public boolean areAbortsEnabledForStopCopy(){
+    	return abortsEnabledForStopCopy;
     }
 
     /**
