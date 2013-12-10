@@ -15,8 +15,10 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
-    "reconfig-2 --partitions=4 --global.hasher_plan=scripts/reconfiguration/plans/ycsb-4expand.json --exp-suffix=expand " \
-    "stopcopy-2 --partitions=4 --global.hasher_plan=scripts/reconfiguration/plans/ycsb-4expand.json --exp-suffix=expand" \
+    "stopcopy-ycsb-zipf --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand --reconfig=245000:4:0 " \
+    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand --reconfig=245000:4:0 " \
+    "reconfig-ycsb-zipf --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand --reconfig=245000:4:0 " \
+    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand --reconfig=245000:4:0 " \
 )
 
 #for b in smallbank tpcc seats; do
@@ -33,10 +35,10 @@ for b in ycsb; do
 	      --sweep-reconfiguration \
         --client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=90000 \
+        --client.duration=240000 \
         --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv
-        --reconfig=95000:2:0
+        --global.hasher_plan=scripts/reconfiguration/plans/ycsb-4expand.json \
     )
     
     i=0
