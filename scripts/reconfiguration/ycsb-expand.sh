@@ -38,7 +38,7 @@ for b in ycsb; do
         --client.duration=240000 \
         --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv
-        --global.hasher_plan=scripts/reconfiguration/plans/ycsb-4expand.json \
+        --global.hasher_plan=scripts/reconfiguration/plans/ycsb-size1000000-8-expand.json \
     )
     
     i=0
