@@ -42,7 +42,7 @@ LOG_formatter = logging.Formatter(fmt='%(asctime)s [%(funcName)s:%(lineno)03d] %
                                   datefmt='%m-%d-%Y %H:%M:%S')
 LOG_handler.setFormatter(LOG_formatter)
 LOG.addHandler(LOG_handler)
-LOG.setLevel(logging.DEBUG)
+LOG.setLevel(logging.INFO)
 
 
 
@@ -107,6 +107,24 @@ def getReconfigEvents(hevent_log):
                 
     return events
 
+def getReconfigDetails(hevent_log):
+    details = {}
+    if not os.path.exists(hevent_log):
+        return None
+    pulledSize = 0    
+    with open(hevent_log, "r") as f:
+      for line in f:
+        try:
+          if "REPORT_TOTAL_PULL_SIZE" in line:
+            vals = {k.strip():v.strip() for (k,v) in [d.split("=") for d in line.split(",") if "=" in d]}
+            if "KB" in vals:
+              pulledSize+= int(vals["KB"])
+        except:
+          print "Error in line", line
+
+    details['pulledKB'] = pulledSize
+    return details
+
 def getReconfigStartEnd(reconfig_events):
   start = 0
   end = 0
@@ -126,8 +144,12 @@ def addReconfigEvent(df, reconfig_events):
         return 
     for event in reconfig_events:
       ts = event[0]
+      if 'stop' in event[2]:
+        ts+=1000
+      if event[1] == 'END' and 'stop' in event[2]:
+        ts += 1000
       #find the index last row that has a smaller physical TS
-      _i = df[(df['TIMESTAMP'] <= ts ) ][-1:].index
+      _i = df[(df['TIMESTAMP'] <= (ts) ) ][-1:].index
 
       #LATENCY.isnull()
       #if we have new event set, otherwise append      
@@ -137,27 +159,44 @@ def addReconfigEvent(df, reconfig_events):
          df.RECONFIG[_i] = df.RECONFIG[_i] + "-" + event[1]
     df['IN_RECONFIG'][(df.TIMESTAMP >= start-1000) & (df.TIMESTAMP <= end)] = True
     df['MISSING_DATA'] = df.LATENCY.isnull()
+    df['DOWNTIME'] = df['MISSING_DATA'].sum()
+    df['RECONFIG_TIME'] = end-start
     #df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].mean()
     
 def getIntStats(interval_file):
   df = pandas.DataFrame.from_csv(interval_file)  
   reconfig_events = getReconfigEvents(interval_file.replace("interval_res.csv", "hevent.log"))
+  reconfig_details= getReconfigDetails(interval_file.replace("interval_res.csv", "hevent.log"))
   addReconfigEvent(df,reconfig_events)
+
+  df['KB_PULLED'] = reconfig_details['pulledKB']
   return df
    
 def printDFStat(df):
   print "="*80
   print "Mean"
-  print df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].mean()
+  print
+  print df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95'
+  ,'LATENCY_99','THROUGHPUT','DOWNTIME','RECONFIG_TIME','KB_PULLED'].mean()
   print ""
   print "Median"
-  print df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].median()
+  print df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT','DOWNTIME','RECONFIG_TIME','KB_PULLED'].median()
   print ""
 
-   
-def getDirStat(directory):
+def getDFState(df,show):
+  if show == "mean":    
+    return df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT','DOWNTIME','RECONFIG_TIME','KB_PULLED'].mean()
+  elif show == "median":
+    return df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT','DOWNTIME','RECONFIG_TIME','KB_PULLED'].median()
+  else:
+    raise Exception("doh")
+
+def getDirStat(directory,reconfigs, stops, show="mean", keepfilter=None, display=False):
 
   interval_files = [os.path.join(directory,f) for f in os.listdir(directory) if "interval_res" in f]
+  if keepfilter:
+    interval_files = [f for f in interval_files if keepfilter in f]
+
   if len(interval_files) == 0:
     print "No interval file found in %s %s" % (directory,','.join(os.listdir(directory)))
     return
@@ -168,28 +207,39 @@ def getDirStat(directory):
 
     if "recon" in interval_file:
       alt_version = interval_file.replace("reconfig","stopcopy")
+      if os.path.exists(alt_version):
+        #only keep if we have both version of the same experiment
+        adf = getIntStats(alt_version)
+        reconfigs.append(getDFState(df,show))
+        stops.append(getDFState(adf,show))
     elif "stopcopy" in interval_file:
       alt_version = interval_file.replace("stopcopy", "reconfig")
-    
-    printDFStat(df)
+      print "Adding to stops", interval_file
+      stops.append(getDFState(df,show))
 
-    if os.path.exists(alt_version):
-      adf = getIntStats(alt_version)
-      print alt_version
-      printDFStat(adf)
-    else:
-      print "no alt version found"
-    print ""
+    if display:
+      printDFStat(df)
+
+      if os.path.exists(alt_version):
+        adf = getIntStats(alt_version)
+        print alt_version
+        printDFStat(adf)
+      else:
+        print "no alt version found"
+      print ""
   
-def exploreDir(d):
+def exploreDir(d, keepfilter=None):
+  reconfigs = []
+  stops = []
   print "-- --  " * 15
   for r,dirs,files in os.walk(d):
     print ",".join(dirs)
     print ""
     for d in dirs:
       if "reconfig" in d:
-        getDirStat(os.path.join(r,d))
+        getDirStat(os.path.join(r,d),reconfigs,stops,"mean",keepfilter)
         print "-- --  " * 15
+  return {"reconfigs": reconfigs, "stops": stops}      
 def plotGraph(args):
 
     if args.ylabel != None:
@@ -386,7 +436,7 @@ def plotTSD(args, files, ax):
             print name     
             print "="*80
             print df
-            print df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].mean()
+            #print df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].mean()
             print ""
             if args.type == "line":
                 #plot the line with the same color 
