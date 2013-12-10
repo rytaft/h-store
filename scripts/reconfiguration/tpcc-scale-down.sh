@@ -18,8 +18,8 @@ EXP_TYPES=( \
 #    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractBase1 --reconfig=155000:1:0" \
 #    "reconfig-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractBase1 --reconfig=155000:1:0" \
 #    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractCopy1 --reconfig=155000:1:0" \
-#    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractMin1 --reconfig=185000:1min:0" \
-    "reconfig-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractMin1 --reconfig=185000:0min:0" \
+    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpc4Contract --reconfig=185000:4:0" \
+    "reconfig-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpc4Contract --reconfig=185000:4:0" \
 #    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractMin2 --reconfig=155000:2min:0" \
 #    "reconfig-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractMin2 --reconfig=155000:2min:0" \
 #    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractBase2 --reconfig=155000:2:0" \
@@ -37,7 +37,7 @@ for b in tpcc; do
         --exp-trials=1 \
         --exp-attempts=1 \        
         --no-json \
-	--sweep-reconfiguration \
+ 	--sweep-reconfiguration \
         --client.interval=1000 \
         --client.output_interval=true \
         --client.duration=210000 \
