@@ -31,8 +31,8 @@ def plotTSD(files,filedir,var,ylabel,xlabel, ylim=None,xtrim=None, filename=None
   pylab.rc("axes", linewidth=2.0)
   pylab.rc("lines", markeredgewidth=2.0)
 
-
-  f,axarr = plot.subplots(len(data), sharex=True, sharey=True)
+  plot.figure(figsize=calcShortFigSize())
+  f,axarr = plot.subplots(len(data), sharex=True, sharey=True,)# figsize=calcShortFigSize())
   plot.title("", fontsize=16)
   plot.xlabel(xlabel,fontsize='16')
   #f.text(0.06, 0.5, 'common ylabel', ha='center', va='center', rotation='vertical', fontsize='18')
@@ -49,9 +49,17 @@ def plotTSD(files,filedir,var,ylabel,xlabel, ylim=None,xtrim=None, filename=None
     ax =axarr[j]
     if ylim:
       ax.set_ylim(ylim)
-    ax.plot(df.index, _d, label=name)
+
+    if "Squall" not in name:
+      lcolor ="red"
+    else:
+      lcolor ="blue"
+    ax.plot(df.index, _d, label=name, lw=1.5, color= lcolor,)
     ax.set_ylabel(ylabel, fontsize='12')
-    ax.set_title(name)
+    #ax.set_title(name)
+    ax.yaxis.set_major_locator(MaxNLocator(5))
+    ax.legend(loc=0,prop={'size':8})
+
     if len(r[r.RECONFIG.str.contains('TXN')]) == 1:
       ax.axvline(r[r.RECONFIG.str.contains('TXN')].index[0], color=color, lw=1.5, linestyle="--",label=init_legend)
       if any(r.RECONFIG.str.contains('END')):
@@ -76,19 +84,24 @@ def plotTSD(files,filedir,var,ylabel,xlabel, ylim=None,xtrim=None, filename=None
   #for label in ax.xaxis.get_ticklabels():
     #label.set_rotation(0)
 
+  
+  params['figure.figsize'] = calcShortFigSize()
   rcParams.update(params)
   plot.tight_layout()
-  
+  print params
   if filename:
     plot.savefig(filename, format = 'pdf')
   else:
     plot.show()
 
 if __name__ == "__main__":
+  import sys
 
-  ycsb_files = [ 
+  ycsb_files_zipf = [ 
     ( "Stop and Copy YCSB (Zipfian)" , "stopcopy-ycsb-zipf/ycsb-08p-med4contract-interval_res.csv"),
     ( "Squall YCSB (Zipfian)" , "reconfig-ycsb-zipf/ycsb-08p-med4contract-interval_res.csv"),
+  ]
+  ycsb_uniform = [
     ( "Stop and Copy YCSB (Uniform)" , "stopcopy-ycsb-uniform/ycsb-08p-med4contract-interval_res.csv"), 
     ( "Squall YCSB (Uniform)" , "reconfig-ycsb-uniform/ycsb-08p-med4contract-interval_res.csv"), 
   ] 
@@ -99,11 +112,18 @@ if __name__ == "__main__":
   var = "LATENCY"
   ylabel = "Latency (ms)"
   xlabel = "Elapsed Time (seconds)"
-  #plotTSD(ycsb_files,filedir,var, ylabel,xlabel, [0,50],180, "ycsbTSDmeanLat-8to4partitions-1gb")
+  if len(sys.argv) < 2 or sys.argv[1] == "1":
+    plotTSD(ycsb_files_zipf,filedir,var, ylabel,xlabel, [0,50],180, "ycsbTSDmeanLat-8to4partitions-1gb-zipf")
+  if sys.argv[1] == "2":
+    plotTSD(ycsb_uniform,filedir,var, ylabel,xlabel, [0,50],180, "ycsbTSDmeanLat-8to4partitions-1gb-uniform")
   
   var = "THROUGHPUT"
   ylabel = "TPS"
   xlabel = "Elapsed Time (seconds)"
-  plotTSD(ycsb_files,filedir,var, ylabel,xlabel, [0,15000],180, "ycsbTSDmeanTPS-8to4partitions-1gb" )  
+
+  if sys.argv[1] == "3":
+    plotTSD(ycsb_files_zipf,filedir,var, ylabel,xlabel, [0,15000],180, "ycsbTSDmeanTPS-8to4partitions-1gb-zipf" )  
+  if sys.argv[1] == "4":
+    plotTSD(ycsb_uniform,filedir,var, ylabel,xlabel, [0,15000],180, "ycsbTSDmeanTPS-8to4partitions-1gbB-uniform" )  
 
 

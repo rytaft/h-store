@@ -2,6 +2,7 @@ from pylab import rcParams
 from pylab import sqrt
 import matplotlib.cm as cm
 from numpy import mod
+from matplotlib.ticker import MaxNLocator
 
 GRAPH_COLOR = cm.summer
 LINE_STYLES = ['-','-','-','-','--','--','--','--',':',':',':',':']
