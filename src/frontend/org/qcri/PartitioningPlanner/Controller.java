@@ -54,6 +54,8 @@ public class Controller implements Runnable {
 	// used HStoreTerminal as model to handle the catalog
 	public Controller (Catalog catalog){
 		//algo = new Placement();
+		
+		//Jennie: here we instaniate the planner algo
 		algo = new GreedyPlacement();
 		
 		ttExecutor = new TupleTrackerExecutor();
