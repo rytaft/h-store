@@ -92,10 +92,18 @@ public class Controller implements Runnable {
 					try {
 						
 					//ttExecutor.runTestCase(); 	
-					System.out.println("Essam Before: hotTuplesList size is " + hotTuplesList.size());	
+					//System.out.println("Essam Before: hotTuplesList size is " + hotTuplesList.size());
+					
+						
+					//Jennie: here we get top K
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
+					
+					//Jennie: here we get load per site
 					ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
-					System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
+					
+					//System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
+					
+					//Jennie: here we call the planner
 					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt");
 					
 						currentPlan.toJSON("test.txt");
