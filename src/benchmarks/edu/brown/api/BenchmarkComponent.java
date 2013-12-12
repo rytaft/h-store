@@ -250,9 +250,9 @@ public abstract class BenchmarkComponent {
      * second
      */
 //    final int m_txnRate;
-    int m_txnRate; // Marco
+    volatile int m_txnRate; // Marco
     Scanner m_incrementsTxnRate; // Marco
-    int m_lastTxnRateIncrement; // Marco
+//	volatile int  m_lastTxnRateIncrement; // Marco
     
     private final boolean m_blocking;
 
@@ -1283,19 +1283,19 @@ public abstract class BenchmarkComponent {
     protected synchronized final void invokeTickCallback(int counter) {
         if (debug.val) LOG.debug("New Tick Update: " + counter);
     	// Marco - begin
-        if(m_incrementsTxnRate!= null && counter > m_lastTxnRateIncrement){
-//        	synchronized(this){
-//        		// only one thread should increment rate for a given tick
-//        		if (counter > m_lastTxnRateIncrement){
+//        if(m_incrementsTxnRate!= null && counter > m_lastTxnRateIncrement){
+        if(m_incrementsTxnRate!= null){
+//		synchronized(BenchmarkComponent.class){
+//			if (counter > m_lastTxnRateIncrement){
 		        	if(m_incrementsTxnRate.hasNextLine()){
 			        	double increment = Double.parseDouble(m_incrementsTxnRate.nextLine());
-			        	if (increment != 1){
+	        			if (increment != 1){
 			        		LOG.info("Thread " + Thread.currentThread() 
 			        				+ " modify load by factor of " + increment 
 			        				+ " for counter " + counter
 			        				+ " txn rate " + m_txnRate 
-			        				+ " txn rate per millisecond " + m_txnsPerMillisecond
-			        				+ " last update " + m_lastTxnRateIncrement);
+			        				+ " txn rate per millisecond " + m_txnsPerMillisecond);
+//			        				+ " last update " + m_lastTxnRateIncrement);
 				        	m_txnRate = (int) ((double) m_txnRate * increment);
 				        	m_txnsPerMillisecond = m_txnsPerMillisecond * increment;
 			        	}
@@ -1303,7 +1303,7 @@ public abstract class BenchmarkComponent {
 		        	else{
 		        		System.out.println("Warning: no increment for tick number " + counter);
 		        	}
-		        	m_lastTxnRateIncrement = counter;
+//		        	m_lastTxnRateIncrement = counter;
 //        		}
 //        	}
         }
