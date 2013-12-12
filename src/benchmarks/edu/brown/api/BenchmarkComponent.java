@@ -252,6 +252,7 @@ public abstract class BenchmarkComponent {
 //    final int m_txnRate;
     int m_txnRate; // Marco
     Scanner m_incrementsTxnRate; // Marco
+    int m_lastTxnRateIncrement; // Marco
     
     private final boolean m_blocking;
 
@@ -1279,21 +1280,32 @@ public abstract class BenchmarkComponent {
      * This will invoke the tick() method that can be implemented benchmark clients 
      * @param counter
      */
-    protected final void invokeTickCallback(int counter) {
+    protected synchronized final void invokeTickCallback(int counter) {
         if (debug.val) LOG.debug("New Tick Update: " + counter);
     	// Marco - begin
-        if(m_incrementsTxnRate!= null){
-        	if(m_incrementsTxnRate.hasNextLine()){
-	        	double increment = Double.parseDouble(m_incrementsTxnRate.nextLine());
-	        	if (increment != 1){
-	        		LOG.info("Modify load by factor of " + increment);
-		        	m_txnRate = (int) (m_txnRate * increment);
-		        	m_txnsPerMillisecond = (int) (m_txnsPerMillisecond * increment);
-	        	}
-        	}
-        	else{
-        		System.out.println("Warning: no increment for tick number " + counter);
-        	}
+        if(m_incrementsTxnRate!= null && counter > m_lastTxnRateIncrement){
+//        	synchronized(this){
+//        		// only one thread should increment rate for a given tick
+//        		if (counter > m_lastTxnRateIncrement){
+		        	if(m_incrementsTxnRate.hasNextLine()){
+			        	double increment = Double.parseDouble(m_incrementsTxnRate.nextLine());
+			        	if (increment != 1){
+			        		LOG.info("Thread " + Thread.currentThread() 
+			        				+ " modify load by factor of " + increment 
+			        				+ " for counter " + counter
+			        				+ " txn rate " + m_txnRate 
+			        				+ " txn rate per millisecond " + m_txnsPerMillisecond
+			        				+ " last update " + m_lastTxnRateIncrement);
+				        	m_txnRate = (int) ((double) m_txnRate * increment);
+				        	m_txnsPerMillisecond = m_txnsPerMillisecond * increment;
+			        	}
+		        	}
+		        	else{
+		        		System.out.println("Warning: no increment for tick number " + counter);
+		        	}
+		        	m_lastTxnRateIncrement = counter;
+//        		}
+//        	}
         }
     	// Marco - end
         this.tickCallback(counter);
