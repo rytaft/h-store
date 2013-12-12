@@ -447,11 +447,11 @@ public abstract class BenchmarkComponent {
         try {
 			m_incrementsTxnRate = new Scanner(Paths.get("txnrates.txt"));
 		} catch (IOException e) {
-			Log.debug("Warning: File txnrates.txt not found");
+			Log.info("File txnrates.txt not found. Using constant transaction rate per client");
 		}
-        if (m_incrementsTxnRate != null){
-        	System.out.println("Using variable request rates"); 
-        }
+//        if (m_incrementsTxnRate != null){
+//        	System.out.println("Using variable request rates"); 
+//        }
         
         // Marco - end
         
