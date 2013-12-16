@@ -1296,7 +1296,7 @@ public abstract class BenchmarkComponent {
         		}
         	}
         	else{
-        		System.out.println("Warning: no increment for tick number " + counter);
+        		LOG.info("Warning: no increment for tick number " + counter);
         	}
         }
     	// Marco - end
