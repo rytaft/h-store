@@ -14,10 +14,9 @@ import java.util.Map;
 import org.qcri.PartitioningPlanner.placement.Plan;
 
 
-
 public class BinPackerPlacement extends Placement {
 
-	Long coldPartitionWidth = 1000L; // redistribute cold tuples in chunks of 1000
+    Long coldPartitionWidth = 1000L; // redistribute cold tuples in chunks of 1000
     ArrayList<Long> tupleIds = null;
     ArrayList<Long> accesses = null; 
     ArrayList<Integer> locations = null; 
@@ -86,8 +85,8 @@ public class BinPackerPlacement extends Placement {
 	    List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth);
 	    if(partitionSlices.size() > 0) {
 		sliceCount += partitionSlices.size();
-		for(List<Plan.Range> slice : partitionSlices) {  // for each slice
-		    Double tupleWeight = ((double) oldLoad.get(i)) / oldPlan.getTupleCount(i); // per tuple
+		Double tupleWeight = ((double) oldLoad.get(i)) / oldPlan.getTupleCount(i); // per tuple
+	    for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 		    Long sliceSize = Plan.getRangeListWidth(slice);
 		    Long newWeight = (long) (tupleWeight *  ((double) sliceSize));
 		    slices.add(slice);
@@ -227,8 +226,18 @@ public class BinPackerPlacement extends Placement {
 			else {
 			    List<Plan.Range> slice = slices.get(i - tupleCount);
 			    for(Plan.Range r : slice) { 
-				aPlan.removeRange(srcPartition, r.from);
-				aPlan.addRange(dstPartition, r.from, r.to);
+			    	Plan.Range oldRange = aPlan.getRangeValue(srcPartition, r.from);
+					if(oldRange != null) {
+						aPlan.removeRange(srcPartition, oldRange.from);
+						
+						if(oldRange.from < r.from) {
+							aPlan.addRange(srcPartition, oldRange.from, r.from - 1);
+						}
+						if(r.to < oldRange.to) {
+							aPlan.addRange(srcPartition, r.to + 1, oldRange.to);
+						}
+					}
+					aPlan.addRange(dstPartition, r.from, r.to);
 			    }
 			}
 		    }
@@ -237,12 +246,9 @@ public class BinPackerPlacement extends Placement {
 	    }
 	}
 
-
         GLPK.glp_delete_prob(lp);
-
 	return aPlan;
 	
     }
-    
 
 }
