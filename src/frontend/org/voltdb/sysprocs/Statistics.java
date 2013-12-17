@@ -61,6 +61,13 @@ public class Statistics extends VoltSystemProcedure {
         LoggerUtil.attachObserver(HOST_LOG, debug, trace);
     }
 
+    
+    ///Essam Tuple Tracking
+    static final int DEP_tupleData = (int)
+            SysProcFragmentId.PF_tupleData | HStoreConstants.MULTIPARTITION_DEPENDENCY;
+        static final int DEP_tupleAggregator = (int) SysProcFragmentId.PF_tupleAggregator;
+   //////////////////////////////
+    
     static final int DEP_tableData = (int)
         SysProcFragmentId.PF_tableData | HStoreConstants.MULTIPARTITION_DEPENDENCY;
     static final int DEP_tableAggregator = (int) SysProcFragmentId.PF_tableAggregator;
@@ -103,10 +110,17 @@ public class Statistics extends VoltSystemProcedure {
         addStatsFragments(SysProcSelector.SITEPROFILER, SysProcFragmentId.PF_siteProfilerData, SysProcFragmentId.PF_siteProfilerAggregator);
         addStatsFragments(SysProcSelector.PLANNERPROFILER, SysProcFragmentId.PF_plannerProfilerData, SysProcFragmentId.PF_plannerProfilerAggregator);
         addStatsFragments(SysProcSelector.ANTICACHE, SysProcFragmentId.PF_anticacheProfilerData, SysProcFragmentId.PF_anticacheProfilerAggregator);
+        addStatsFragments(SysProcSelector.TXNRESPONSETIME, SysProcFragmentId.PF_txnRTData, SysProcFragmentId.PF_txnRTAggregator); // Marco
+        addStatsFragments(SysProcSelector.CPUUSAGE, SysProcFragmentId.PF_cpuUsageData, SysProcFragmentId.PF_cpuUsageAggregator); // Essam
+        //addStatsFragments(SysProcSelector.TUPLE, SysProcFragmentId.PF_tupleData, SysProcFragmentId.PF_tupleAggregator); // Essam
     } // STATIC
     
     @Override
     public void initImpl() {
+    	
+    	registerPlanFragment(SysProcFragmentId.PF_tupleData);//Essam
+        registerPlanFragment(SysProcFragmentId.PF_tupleAggregator);//Essam
+    	
         registerPlanFragment(SysProcFragmentId.PF_tableData);
         registerPlanFragment(SysProcFragmentId.PF_tableAggregator);
         registerPlanFragment(SysProcFragmentId.PF_procedureData);
@@ -116,6 +130,7 @@ public class Statistics extends VoltSystemProcedure {
         registerPlanFragment(SysProcFragmentId.PF_partitionCount);
         registerPlanFragment(SysProcFragmentId.PF_ioData);
         registerPlanFragment(SysProcFragmentId.PF_ioDataAggregator);
+        registerPlanFragment(SysProcFragmentId.PF_txnRTData); // Marco
         
         // Automatically register our STATS_DATA entries
         for (Integer id : STATS_DATA.keySet()) {
@@ -146,7 +161,16 @@ public class Statistics extends VoltSystemProcedure {
             case SysProcFragmentId.PF_specexecProfilerData:
             case SysProcFragmentId.PF_siteProfilerData:
             case SysProcFragmentId.PF_plannerProfilerData:
-            case SysProcFragmentId.PF_anticacheProfilerData: {
+            
+            // Essam
+            case SysProcFragmentId.PF_cpuUsageData: {
+                // Tell the PartitionExecutors to update their CPU stats
+                //this.executor.queueUtilityWork(new UpdateMemoryMessage());
+            }
+            case SysProcFragmentId.PF_anticacheProfilerData:
+            case SysProcFragmentId.PF_txnRTData: // Marco
+            {
+
                 assert(params.toArray().length == 2);
                 final boolean interval =
                     ((Byte)params.toArray()[0]).byteValue() == 0 ? false : true;
@@ -179,6 +203,7 @@ public class Statistics extends VoltSystemProcedure {
             // PROFILER DATA AGGREGATION
             // ----------------------------------------------------------------------------
             case SysProcFragmentId.PF_nodeMemoryAggregator:
+            case SysProcFragmentId.PF_cpuUsageAggregator: // Essam
             case SysProcFragmentId.PF_txnCounterAggregator:
             case SysProcFragmentId.PF_txnProfilerAggregator:
             case SysProcFragmentId.PF_execProfilerAggregator:
@@ -187,7 +212,11 @@ public class Statistics extends VoltSystemProcedure {
             case SysProcFragmentId.PF_specexecProfilerAggregator:
             case SysProcFragmentId.PF_siteProfilerAggregator:
             case SysProcFragmentId.PF_plannerProfilerAggregator:
-            case SysProcFragmentId.PF_anticacheProfilerAggregator: {
+
+            case SysProcFragmentId.PF_anticacheProfilerAggregator:
+            case SysProcFragmentId.PF_txnRTAggregator: // Marco
+            {
+
                 // Do a reverse look up to find the input dependency id
                 int dataFragmentId = -1;
                 for (Integer id : STATS_DATA.keySet()) {
@@ -203,6 +232,34 @@ public class Statistics extends VoltSystemProcedure {
                 }
                 VoltTable result = VoltTableUtil.union(dependencies.get(dataFragmentId));
                 return new DependencySet(fragmentId, result);
+            }
+            
+         // ----------------------------------------------------------------------------
+            //  TUPLE statistics Essam
+            // ----------------------------------------------------------------------------
+            case SysProcFragmentId.PF_tupleData: {
+                assert(params.toArray().length == 2);
+                final boolean interval =
+                    ((Byte)params.toArray()[0]).byteValue() == 0 ? false : true;
+                final Long now = (Long)params.toArray()[1];
+                // create an array of the table ids for which statistics are required.
+                // pass this to EE owned by the execution site running this plan fragment.
+                CatalogMap<Table> tables = context.getDatabase().getTables();
+                int[] tableGuids = new int[tables.size()];
+                int ii = 0;
+                for (Table table : tables) {
+                    tableGuids[ii++] = table.getRelativeIndex();
+                }
+                VoltTable result = executor.getExecutionEngine().getStats(
+                            SysProcSelector.TUPLE,
+                            tableGuids,
+                            interval,
+                            now)[0];
+                return new DependencySet(DEP_tupleData, result);
+            }
+            case SysProcFragmentId.PF_tupleAggregator: {
+                VoltTable result = VoltTableUtil.union(dependencies.get(DEP_tupleData));
+                return new DependencySet(DEP_tupleAggregator, result);
             }
             
             // ----------------------------------------------------------------------------
@@ -359,6 +416,10 @@ public class Statistics extends VoltSystemProcedure {
         }
         else if (selector.toUpperCase().startsWith(SysProcSelector.TABLE.name())) {
             results = getTableData(interval, now);
+        }
+        // Essam Tuple Tracking
+        else if (selector.toUpperCase().startsWith(SysProcSelector.TUPLE.name())) {
+            results = getTupleData(interval, now);
         }
         else if (selector.toUpperCase().startsWith(SysProcSelector.PROCEDURE.name())) {
             results = getProcedureData(interval, now);
@@ -541,4 +602,34 @@ public class Statistics extends VoltSystemProcedure {
         results = executeSysProcPlanFragments(pfs, DEP_tableAggregator);
         return results;
     }
+    
+    // Essam Tuple Tracking
+    private VoltTable[] getTupleData(long interval, final long now) {
+        VoltTable[] results;
+        SynthesizedPlanFragment pfs[] = new SynthesizedPlanFragment[2];
+        // create a work fragment to gather table data from each of the sites.
+        pfs[1] = new SynthesizedPlanFragment();
+        pfs[1].fragmentId = SysProcFragmentId.PF_tupleData;
+        pfs[1].outputDependencyIds = new int[]{ DEP_tupleData };
+        pfs[1].inputDependencyIds = new int[]{};
+        pfs[1].multipartition = true;
+        pfs[1].parameters = new ParameterSet();
+        pfs[1].parameters.setParameters((byte)interval, now);
+
+        // create a work fragment to aggregate the results.
+        // Set the MULTIPARTITION_DEPENDENCY bit to require a dependency from every site.
+        pfs[0] = new SynthesizedPlanFragment();
+        pfs[0].fragmentId = SysProcFragmentId.PF_tupleAggregator;
+        pfs[0].outputDependencyIds = new int[]{ DEP_tupleAggregator };
+        pfs[0].inputDependencyIds = new int[]{DEP_tupleData};
+        pfs[0].multipartition = false;
+        pfs[0].parameters = new ParameterSet();
+
+        // distribute and execute these fragments providing pfs and id of the
+        // aggregator's output dependency table.
+        results = executeSysProcPlanFragments(pfs, DEP_tupleAggregator);
+        return results;
+    }
+    
+    
 }

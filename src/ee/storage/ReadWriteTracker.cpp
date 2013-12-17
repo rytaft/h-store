@@ -33,6 +33,10 @@ using namespace std;
 
 namespace voltdb {
 
+
+
+//
+
 ReadWriteTracker::ReadWriteTracker(int64_t txnId) :
         txnId(txnId) {
     
@@ -55,6 +59,20 @@ ReadWriteTracker::~ReadWriteTracker() {
     } // WHILE
 }
 
+//------------------Essam Tuple Tracker
+boost::unordered_map<std::string, RowOffsets*>* ReadWriteTracker::getReads(){
+	return &reads;
+}
+
+boost::unordered_map<std::string, RowOffsets*>* ReadWriteTracker::getWrites(){
+	return &writes;
+}
+
+int64_t ReadWriteTracker::getTxnId(){
+	return txnId;
+}
+//--------------------------
+//void ReadWriteTracker::insertTuple(boost::unordered_map<std::string, RowOffsets*> *map, const std::string tableName, TableTuple *tuple) {
 void ReadWriteTracker::insertTuple(boost::unordered_map<std::string, RowOffsets*> *map, Table *table, TableTuple *tuple) {
     RowOffsets *offsets = NULL;
     const std::string tableName = table->name();

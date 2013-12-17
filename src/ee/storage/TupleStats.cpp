@@ -13,8 +13,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with VoltDB.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Essam Tuple Tracking
+ *
  */
-#include "storage/TableStats.h"
+#include "storage/TupleStats.h"
 #include "stats/StatsSource.h"
 #include "common/TupleSchema.h"
 #include "common/ids.h"
@@ -29,22 +32,20 @@
 #include <iostream>
 #include <fstream>
 
-
 using namespace voltdb;
 using namespace std;
 
-vector<string> TableStats::generateTableStatsColumnNames() {
+vector<string> TupleStats::generateTupleStatsColumnNames() {
     vector<string> columnNames = StatsSource::generateBaseStatsColumnNames();
     columnNames.push_back("TABLE_NAME");
     columnNames.push_back("TABLE_TYPE");
-    columnNames.push_back("TUPLE_ID");//Essam
     columnNames.push_back("TUPLE_COUNT");
     columnNames.push_back("TUPLE_ACCESSES");
     columnNames.push_back("TUPLE_ALLOCATED_MEMORY");
     columnNames.push_back("TUPLE_DATA_MEMORY");
     columnNames.push_back("STRING_DATA_MEMORY");
     
-    /*
+    /*/
     #ifdef ANTICACHE
     // ACTIVE
     columnNames.push_back("ANTICACHE_TUPLES_EVICTED");
@@ -61,12 +62,11 @@ vector<string> TableStats::generateTableStatsColumnNames() {
     columnNames.push_back("ANTICACHE_BLOCKS_READ");
     columnNames.push_back("ANTICACHE_BYTES_READ");
     #endif
-    //*/
-    
+    //Essam*/
     return columnNames;
 }
 
-void TableStats::populateTableStatsSchema(
+void TupleStats::populateTupleStatsSchema(
         vector<ValueType> &types,
         vector<int32_t> &columnLengths,
         vector<bool> &allowNull) {
@@ -78,9 +78,8 @@ void TableStats::populateTableStatsSchema(
     types.push_back(VALUE_TYPE_INTEGER); columnLengths.push_back(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER)); allowNull.push_back(false);
     types.push_back(VALUE_TYPE_INTEGER); columnLengths.push_back(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER)); allowNull.push_back(false);
     types.push_back(VALUE_TYPE_INTEGER); columnLengths.push_back(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER)); allowNull.push_back(false);
-    types.push_back(VALUE_TYPE_INTEGER); columnLengths.push_back(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER)); allowNull.push_back(false);//Essam Tuple tracking
     
-    /*
+    /*/
     #ifdef ANTICACHE
     // ANTICACHE_TUPLES_EVICTED
     types.push_back(VALUE_TYPE_INTEGER);
@@ -127,22 +126,23 @@ void TableStats::populateTableStatsSchema(
     columnLengths.push_back(NValue::getTupleStorageSize(VALUE_TYPE_BIGINT));
     allowNull.push_back(false);
     #endif
-    //*/
+
+    //Essam*/
 }
 
 Table*
-TableStats::generateEmptyTableStatsTable()
+TupleStats::generateEmptyTupleStatsTable()
 {
     string name = "Persistent Table aggregated table stats temp table";
     // An empty stats table isn't clearly associated with any specific
     // database ID.  Just pick something that works for now (Yes,
     // abstractplannode::databaseId(), I'm looking in your direction)
     CatalogId databaseId = 1;
-    vector<string> columnNames = TableStats::generateTableStatsColumnNames();
+    vector<string> columnNames = TupleStats::generateTupleStatsColumnNames();
     vector<ValueType> columnTypes;
     vector<int32_t> columnLengths;
     vector<bool> columnAllowNull;
-    TableStats::populateTableStatsSchema(columnTypes, columnLengths,
+    TupleStats::populateTupleStatsSchema(columnTypes, columnLengths,
                                          columnAllowNull);
     TupleSchema *schema =
         TupleSchema::createTupleSchema(columnTypes, columnLengths,
@@ -159,12 +159,11 @@ TableStats::generateEmptyTableStatsTable()
 /*
  * Constructor caches reference to the table that will be generating the statistics
  */
-TableStats::TableStats(Table* table)
+TupleStats::TupleStats(Table* table)
     : StatsSource(), m_table(table), m_lastTupleCount(0), m_lastTupleAccessCount(0),
       m_lastAllocatedTupleMemory(0), m_lastOccupiedTupleMemory(0),
       m_lastStringDataMemory(0)
 {
-	/*/
     #ifdef ANTICACHE
     m_lastTuplesEvicted = 0;
     m_lastBlocksEvicted = 0;
@@ -178,7 +177,6 @@ TableStats::TableStats(Table* table)
     m_lastBlocksRead = 0;
     m_lastBytesRead = 0;
     #endif
-    //*/
 }
 
 /**
@@ -191,7 +189,7 @@ TableStats::TableStats(Table* table)
  * @parameter partitionId this stat source is associated with
  * @parameter databaseId Database this source is associated with
  */
-void TableStats::configure(
+void TupleStats::configure(
         string name,
         CatalogId hostId,
         std::string hostname,
@@ -208,21 +206,14 @@ void TableStats::configure(
  * the parent class's version to obtain the list of columns contributed by ancestors and then append the columns they will be
  * contributing to the end of the list.
  */
-vector<string> TableStats::generateStatsColumnNames() {
-    return TableStats::generateTableStatsColumnNames();
+vector<string> TupleStats::generateStatsColumnNames() {
+    return TupleStats::generateTupleStatsColumnNames();
 }
 
 /**
  * Update the stats tuple with the latest statistics available to this StatsSource.
  */
-void TableStats::updateStatsTuple(TableTuple *tuple) {
-
-	//voltdb::TableTuple *statsTuple = tuple;//Essam
-	//m_table->insertTuple(*statsTuple); //Essam
-
-
-
-	///////////////////////
+void TupleStats::updateStatsTuple(TableTuple *tuple) {
     tuple->setNValue( StatsSource::m_columnName2Index["TABLE_NAME"], m_tableName);
     tuple->setNValue( StatsSource::m_columnName2Index["TABLE_TYPE"], m_tableType);
     int64_t tupleCount = m_table->activeTupleCount();
@@ -232,6 +223,7 @@ void TableStats::updateStatsTuple(TableTuple *tuple) {
     int64_t occupied_tuple_mem_kb = m_table->occupiedTupleMemory() / 1024;
     int64_t string_data_mem_kb = m_table->nonInlinedMemorySize() / 1024;
     
+    /*/
     #ifdef ANTICACHE
     int32_t tuplesEvicted = m_table->getTuplesEvicted();
     int32_t blocksEvicted = m_table->getBlocksEvicted();
@@ -245,6 +237,8 @@ void TableStats::updateStatsTuple(TableTuple *tuple) {
     int32_t blocksRead = m_table->getBlocksRead();
     int64_t bytesRead = m_table->getBytesRead();
     #endif
+
+	//Essam*/
 
     if (interval()) {
         tupleCount = tupleCount - m_lastTupleCount;
@@ -263,6 +257,8 @@ void TableStats::updateStatsTuple(TableTuple *tuple) {
             string_data_mem_kb - (m_lastStringDataMemory / 1024);
         m_lastStringDataMemory = m_table->nonInlinedMemorySize();
         
+
+        /*/
         #ifdef ANTICACHE
         
         // ACTIVE
@@ -295,6 +291,7 @@ void TableStats::updateStatsTuple(TableTuple *tuple) {
         bytesRead = bytesRead - m_lastBytesRead;
         m_lastBytesRead = m_table->getBytesRead();
         #endif
+        //Essam/*/
     }
 
     if (string_data_mem_kb > INT32_MAX)
@@ -309,16 +306,6 @@ void TableStats::updateStatsTuple(TableTuple *tuple) {
     {
         occupied_tuple_mem_kb = -1;
     }
-
-
-    ///Essam
-
-    m_tupleID = 1;
-    tuple->setNValue(
-                StatsSource::m_columnName2Index["TUPLE_ID"],
-                ValueFactory::getBigIntValue(m_tupleID));
-
-    /////////
 
     tuple->setNValue(
             StatsSource::m_columnName2Index["TUPLE_COUNT"],
@@ -336,7 +323,7 @@ void TableStats::updateStatsTuple(TableTuple *tuple) {
     tuple->setNValue( StatsSource::m_columnName2Index["STRING_DATA_MEMORY"],
                       ValueFactory::
                       getIntegerValue(static_cast<int32_t>(string_data_mem_kb)));
-
+    /*/
     #ifdef ANTICACHE
     tuple->setNValue( StatsSource::m_columnName2Index["ANTICACHE_TUPLES_EVICTED"],
                       ValueFactory::
@@ -370,22 +357,30 @@ void TableStats::updateStatsTuple(TableTuple *tuple) {
                       ValueFactory::
                       getBigIntValue(static_cast<int64_t>(bytesRead)));
     #endif
+    //Essam/*/
 }
 
 /**
  * Same pattern as generateStatsColumnNames except the return value is used as an offset into the tuple schema instead of appending to
  * end of a list.
  */
-void TableStats::populateSchema(
+void TupleStats::populateSchema(
         vector<ValueType> &types,
         vector<int32_t> &columnLengths,
         vector<bool> &allowNull) {
+	ofstream myfile;
 
 
-	 TableStats::populateTableStatsSchema(types, columnLengths, allowNull);
+	  ///Essam del
+	              ofstream myfile;
+	              myfile.open ("populateSchema.tupleStats");//Essam
+	              myfile.close();
+
+
+    TupleStats::populateTupleStatsSchema(types, columnLengths, allowNull);
 }
 
-TableStats::~TableStats() {
+TupleStats::~TupleStats() {
     m_tableName.free();
     m_tableType.free();
 }

@@ -211,6 +211,9 @@ bool SeqScanExecutor::p_execute(const NValueArray &params, ReadWriteTracker *tra
             }
             
             target_table->updateTupleAccessCount();
+            //tuple.updateTupleAccessFreq() ; //Essam Tuple
+
+
             VOLT_TRACE("INPUT TUPLE: %s, %d/%d\n",
                        tuple.debug(target_table->name()).c_str(), tuple_ctr,
                        (int)target_table->activeTupleCount());

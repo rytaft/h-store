@@ -43,6 +43,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+
 #include <iostream>
 #include <stdio.h>
 #include <fstream>
@@ -126,6 +127,9 @@ VoltDBEngine::VoltDBEngine(Topend *topend, LogProxy *logProxy)
 
     // require a site id, at least, to inititalize.
     m_executorContext = NULL;
+
+    //Essam Tuple Tracker Manager have a tracker per partition
+    //tupletrackerMgr = NULL;
 }
 
 bool VoltDBEngine::initialize(
@@ -165,16 +169,36 @@ bool VoltDBEngine::initialize(
                                             0, /* epoch not yet known */
                                             hostname,
                                             hostId);
+
+
+
+    //Essam enable tuple tracker per partition
+    //*/
+    m_executorContext->enableTupleTracking(partitionId,this);
+    //*/
     return true;
 }
 
 VoltDBEngine::~VoltDBEngine() {
+
+
     // WARNING WARNING WARNING
     // The sequence below in which objects are cleaned up/deleted is
     // fragile.  Reordering or adding additional destruction below
     // greatly increases the risk of accidentally freeing the same
     // object multiple times.  Change at your own risk.
     // --izzy 8/19/2009
+
+
+
+	//Essam Print Tuple Tracker Per Partition
+	/*/
+	 m_executorContext->getTupleTrackerManager()->print();
+	 ofstream myfile1;
+	 myfile1.open ("_VoltDBEngine.del");
+	 myfile1 << " end of _VoltDBEngine \n";
+	 myfile1.close();
+    //*/
 
     // Get rid of any dummy undo quantum first so m_undoLog.clear()
     // doesn't wipe this out before we do it.
@@ -215,6 +239,9 @@ VoltDBEngine::~VoltDBEngine() {
         tidPair.second->decrementRefcount();
     }
     m_exportingTables.clear();
+
+
+
 
     delete m_topend;
     delete m_executorContext;
@@ -732,6 +759,9 @@ bool VoltDBEngine::rebuildTableCollections() {
     // need to re-map all the table ids.
     getStatsManager().unregisterStatsSource(STATISTICS_SELECTOR_TYPE_TABLE);
 
+    // Essam need to re-map all the tuples ids.
+        getStatsManager().unregisterStatsSource(STATISTICS_SELECTOR_TYPE_TUPLE);
+
     //map<string, catalog::Table*>::const_iterator it = m_database->tables().begin();
     map<string, CatalogDelegate*>::iterator cdIt = m_catalogDelegates.begin();
 
@@ -747,6 +777,11 @@ bool VoltDBEngine::rebuildTableCollections() {
                                                   catTable->relativeIndex(),
                                                   tcd->getTable()->getTableStats());
             
+            //Essam Tuple tracking
+            getStatsManager().registerStatsSource(STATISTICS_SELECTOR_TYPE_TUPLE,
+                                                              catTable->relativeIndex(),
+                                                              tcd->getTable()->getTableStats());
+
             // add all of the indexes to the stats source
             std::vector<TableIndex*> tindexes = tcd->getTable()->allIndexes();
             for (int i = 0; i < tindexes.size(); i++) {
@@ -1100,7 +1135,9 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
 
     try {
         switch (selector) {
+
         case STATISTICS_SELECTOR_TYPE_TABLE:
+        {
             for (int ii = 0; ii < numLocators; ii++) {
                 CatalogId locator = static_cast<CatalogId>(locators[ii]);
                 if (m_tables.find(locator) == m_tables.end()) {
@@ -1113,9 +1150,11 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
                 }
             }
 
+
             resultTable = m_statsManager.getStats(
                 (StatisticsSelectorType) selector,
                 locatorIds, interval, now);
+        }
             break;
         case STATISTICS_SELECTOR_TYPE_INDEX:
             for (int ii = 0; ii < numLocators; ii++) {
@@ -1134,6 +1173,36 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
                 (StatisticsSelectorType) selector,
                 locatorIds, interval, now);
             break;
+
+            //Essam's code starts
+                    case STATISTICS_SELECTOR_TYPE_TUPLE:
+                    {
+                                for (int ii = 0; ii < numLocators; ii++) {
+                                    CatalogId locator = static_cast<CatalogId>(locators[ii]);
+                                    if (m_tables.find(locator) == m_tables.end()) {
+                                        char message[256];
+                                        snprintf(message, 256,  "getStats() called with selector %d, and"
+                                                " an invalid locator %d that does not correspond to"
+                                                " a table", selector, locator);
+                                        throw SerializableEEException(VOLT_EE_EXCEPTION_TYPE_EEEXCEPTION,
+                                                                      message);
+                                    }
+                                }
+
+
+                                //Essam Print Tuple Tracker Per Partition
+                                //*/
+                                 m_executorContext->getTupleTrackerManager()->print();
+                                //*/
+
+                                resultTable = m_statsManager.getStats(
+                                    (StatisticsSelectorType) selector,
+                                    locatorIds, interval, now);
+                    }
+                                break;
+                    //Essam's code ends
+
+
         default:
             char message[256];
             snprintf(message, 256, "getStats() called with an unrecognized selector"
@@ -1399,18 +1468,23 @@ void VoltDBEngine::trackingEnable(int64_t txnId) {
     }
     VOLT_INFO("Creating ReadWriteTracker for txn #%ld at Partition %d", txnId, m_partitionId);
     ReadWriteTrackerManager *trackerMgr = m_executorContext->getTrackerManager();
+    //trackerMgr->enableTracking(txnId, m_partitionId);//Essam Tuple Tracking
     trackerMgr->enableTracking(txnId);
 }
 
 void VoltDBEngine::trackingFinish(int64_t txnId) {
     if (m_executorContext->isTrackingEnabled() == false) {
         VOLT_WARN("Tracking is not enable for txn #%ld at Partition %d", txnId, m_partitionId);
-        return;
+      return;
     }
     ReadWriteTrackerManager *trackerMgr = m_executorContext->getTrackerManager();
-    VOLT_INFO("Deleting ReadWriteTracker for txn #%ld at Partition %d",
-              txnId, m_partitionId);
+    VOLT_INFO("Deleting ReadWriteTracker for txn #%ld at Partition %d",txnId, m_partitionId);
+
+    //Essam Tuple Tracker
+    m_executorContext->getTupleTrackerManager()->insertReadWriteTracker(trackerMgr->getTracker(txnId));
+
     trackerMgr->removeTracker(txnId);
+
     return;
 }
 

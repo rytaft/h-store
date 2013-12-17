@@ -118,6 +118,12 @@ Table* StatsSource::getStatsTable(bool interval, int64_t now) {
  * @return Pointer to a table tuple containing the latest version of the statistics.
  */
 TableTuple* StatsSource::getStatsTuple(bool interval, int64_t now) {
+
+
+	//if(  ValueFactory::getBigIntValue(m_partitionId).isZero())//Essam
+	//{//essam
+
+
     m_interval = interval;
     assert (m_statsTable != NULL);
     if (m_statsTable == NULL) {
@@ -128,10 +134,16 @@ TableTuple* StatsSource::getStatsTuple(bool interval, int64_t now) {
     m_statsTuple.setNValue(2, m_hostname);
     m_statsTuple.setNValue(3, ValueFactory::getBigIntValue(m_siteId));
     m_statsTuple.setNValue(4, ValueFactory::getBigIntValue(m_partitionId));
+
     updateStatsTuple(&m_statsTuple);
     m_statsTable->insertTuple(m_statsTuple);
-    //assert (success);
-    return &m_statsTuple;
+
+
+
+	//}//essam
+
+	//assert (success);
+	        return &m_statsTuple;
 }
 
 /**

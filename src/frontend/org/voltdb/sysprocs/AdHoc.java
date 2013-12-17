@@ -48,6 +48,7 @@ public class AdHoc extends VoltSystemProcedure {
         LoggerUtil.attachObserver(LOG, debug);
     }
 
+
     final int AGG_DEPID = 1;
     final int COLLECT_DEPID = 2 | HStoreConstants.MULTIPARTITION_DEPENDENCY;
 
@@ -58,12 +59,17 @@ public class AdHoc extends VoltSystemProcedure {
 
     @Override
     public DependencySet executePlanFragment(Long txn_id, Map<Integer, List<VoltTable>> dependencies, int fragmentId, ParameterSet params, SystemProcedureExecutionContext context) {
-        // get the three params (depId, json plan, sql stmt)
+        
+    	// Essam Enable read/write set tracking 
+    	//this.hstore_conf.site.exec_readwrite_tracking = true; //Essam
+    	   	
+    	
+    	// get the three params (depId, json plan, sql stmt)
         int outputDepId = (Integer) params.toArray()[0];
         String plan = (String) params.toArray()[1];
         String sql = (String) params.toArray()[2];
         int inputDepId = -1;
-
+        
         // make dependency ids available to the execution engine
         if ((dependencies != null) && (dependencies.size() > 00)) {
             assert(dependencies.size() <= 1);
@@ -80,31 +86,40 @@ public class AdHoc extends VoltSystemProcedure {
             assert(sql != null);
             // table = m_hsql.runDML(sql);
         }
-        else {
+        else
+        {
             assert(plan != null);
             
             ExecutionEngine ee = context.getExecutionEngine();
             AbstractTransaction ts = this.hstore_site.getTransaction(txn_id);
             
             // Enable read/write set tracking
-            if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
+            //if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
+            if (hstore_conf.site.exec_readwrite_tracking) {//Essam
                 if (debug.val)
                     LOG.trace(String.format("%s - Enabling read/write set tracking in EE at partition %d",
                               ts, this.partitionId));
                 ee.trackingEnable(txn_id);
             }
             
+            // Essam Enable read/write set tracking
+            // if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
+           //     this.executor.getExecutionEngine().trackingEnable(txn_id);
+            // }
+            
             // Always mark this information for the txn so that we can
             // rollback anything that it may do
             ts.markExecNotReadOnly(this.partitionId);
             ts.markExecutedWork(this.partitionId);
             
-            table = ee.executeCustomPlanFragment(plan, outputDepId, inputDepId, txn_id,
+            table = context.getExecutionEngine().
+                executeCustomPlanFragment(plan, outputDepId, inputDepId, txn_id,
                                           context.getLastCommittedTxnId(),
                                           ts.getLastUndoToken(this.partitionId));
         }
 
-        return new DependencySet(new int[]{ outputDepId }, new VoltTable[]{ table });
+        
+      return new DependencySet(new int[]{ outputDepId }, new VoltTable[]{ table });
     }
 
     /**
@@ -197,6 +212,8 @@ public class AdHoc extends VoltSystemProcedure {
 //            retval.addRow(changedTuples);
 //            results[0] = retval;
 //        }
+        
+        
 
         return results;
     }

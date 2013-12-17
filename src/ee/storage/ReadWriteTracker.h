@@ -56,6 +56,10 @@ class ReadWriteTracker {
         void markTupleRead(Table *table, TableTuple *tuple);
         void markTupleWritten(Table *table, TableTuple *tuple);
         
+        int64_t getTxnId();
+        boost::unordered_map<std::string, RowOffsets*>* getReads();
+        boost::unordered_map<std::string, RowOffsets*>* getWrites();
+
         void clear();
         
         std::vector<std::string> getTablesRead();

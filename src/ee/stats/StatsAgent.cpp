@@ -20,11 +20,18 @@
 #include "common/tabletuple.h"
 #include "common/TupleSchema.h"
 #include "storage/PersistentTableStats.h"
+#include "storage/PersistentTupleStats.h"//Essam
 #include "storage/tablefactory.h"
 #include "storage/tableiterator.h"
 #include <cassert>
 #include <string>
 #include <vector>
+
+//Essam
+#include <iostream>
+#include <stdio.h>
+#include <fstream>
+using namespace std;
 
 namespace voltdb {
 
@@ -84,10 +91,23 @@ Table* StatsAgent::getStats(voltdb::StatisticsSelectorType sst,
                 TupleSchema::createTupleSchema(table->schema()),
                 table->columnNames(),
                 NULL));
+
+
+
+
         m_statsTablesByStatsSelector[sst] = statsTable;
     }
 
     statsTable->deleteAllTuples(false);
+
+    ///Essam del
+                   /*
+                    ofstream myfile1;
+                     myfile1.open ("catalogIds.size");//Essam
+                     myfile1 << " catalogIds.size() ="<<catalogIds.size();
+                     myfile1 << "\n";
+                     myfile1.close();
+                    //*/
 
     for (int ii = 0; ii < catalogIds.size(); ii++) {
         voltdb::StatsSource *ss = (*statsSources)[catalogIds[ii]];
@@ -98,6 +118,9 @@ Table* StatsAgent::getStats(voltdb::StatisticsSelectorType sst,
 
         voltdb::TableTuple *statsTuple = ss->getStatsTuple(interval, now);
         statsTable->insertTuple(*statsTuple);
+
+
+
     }
     return statsTable;
 }
