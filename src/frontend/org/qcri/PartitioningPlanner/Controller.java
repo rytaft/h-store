@@ -12,6 +12,7 @@ import java.util.HashMap;
 
 import org.qcri.PartitioningPlanner.placement.Placement;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
+import org.qcri.PartitioningPlanner.placement.BinPackerPlacement;
 import org.qcri.PartitioningPlanner.placement.Plan;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
@@ -56,7 +57,8 @@ public class Controller implements Runnable {
 		//algo = new Placement();
 		
 		//Jennie: here we instaniate the planner algo
-		algo = new GreedyPlacement();
+		//algo = new GreedyPlacement();
+	        algo = new BinPackerPlacement();
 		
 		ttExecutor = new TupleTrackerExecutor();
 		// connect to VoltDB server
