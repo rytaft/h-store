@@ -2576,9 +2576,10 @@ UTILITIES
   <java fork="yes" failonerror="true" classname="org.qcri.PartitioningPlanner.Controller">
         <jvmarg value="-client" />
         <jvmarg value="-Xms256m" />
-    <jvmarg value="-Xmx${client.memory}m" />
+        <jvmarg value="-Xmx${client.memory}m" />
         <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
-    <arg value="catalog.jar=${benchmark.jar}" />
+        <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
+        <arg value="catalog.jar=${benchmark.jar}" />
         <classpath refid='project.classpath' />
     <assertions><enable/></assertions>
     </java>

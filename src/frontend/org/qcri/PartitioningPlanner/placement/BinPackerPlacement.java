@@ -36,6 +36,12 @@ public class BinPackerPlacement extends Placement {
     
     // initialize the private data members based on the input parameters
     private void init(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan) {
+	tupleIds = new ArrayList<Long>();
+	accesses = new ArrayList<Long>(); 
+	locations = new ArrayList<Integer>(); 
+	slices = new ArrayList<List<Plan.Range>>();
+	sliceSizes = new ArrayList<Long>();
+
 	// copy partitionTotals into oldLoad
 	totalAccesses = 0L;
 	Map<Integer, Long> oldLoad = new HashMap<Integer, Long> ();

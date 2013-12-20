@@ -221,7 +221,7 @@ public class Plan {
 		}
 		// range of one
 		else if(precedingRange.getKey() == precedingRange.getValue()) {
-			partitionToRanges.remove(tupleId);
+		        partitionToRanges.get(partition).remove(tupleId);
 		}
 		else if(precedingRange.getValue() == tupleId) {
 			Long lowerBound = precedingRange.getKey();
@@ -231,7 +231,7 @@ public class Plan {
 		}
 		else if(precedingRange.getKey() == tupleId) {
 			Long upperBound = precedingRange.getValue();
-			partitionToRanges.remove(tupleId);
+			partitionToRanges.get(partition).remove(tupleId);
 			partitionToRanges.get(partition).put(tupleId + 1, upperBound);
 		}
 			

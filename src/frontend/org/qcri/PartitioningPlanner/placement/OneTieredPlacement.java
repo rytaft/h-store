@@ -33,6 +33,11 @@ public class OneTieredPlacement extends Placement {
 	// initialize the private data members based on the input parameters
 	private void init(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan) {
 		// ignore hotTuplesList
+
+	        accesses = new ArrayList<Long>();
+		locations = new ArrayList<Integer>();
+		slices = new ArrayList<List<Plan.Range>>();
+		sliceSizes = new ArrayList<Long>();
 		
 		// count total accesses
 		totalAccesses = 0L;
