@@ -26,12 +26,7 @@ public class Plan {
 
 		public String toString() {
 			String rangeStr = new String();
-			if(from == to) {
-				rangeStr = from.toString();
-			}
-			else{
-				rangeStr = from.toString() + "-" + to.toString();
-			}
+			rangeStr = from.toString() + "-" + (to.toString() + 1);
 			return rangeStr;
 		}
 			
@@ -255,13 +250,8 @@ public class Plan {
 		
 		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
 		for(Map.Entry<Long, Long> range : ranges.entrySet()){
-			if(range.getKey() == range.getValue()) {
-				rangeStr = range.getKey().toString();
-			}
-			else {
-				rangeStr = range.getKey() + "-" + range.getValue();
-			}
-			
+		        rangeStr = range.getKey() + "-" + (range.getValue() + 1);
+					
 			if(!first) {
 				output = output + ",";
 			}
@@ -287,6 +277,9 @@ public class Plan {
 			String rhs = inner.nextToken();
 			parsed.from = Long.parseLong(lhs);
 			parsed.to = Long.parseLong(rhs);
+			if(parsed.to > parsed.from) {
+			    parsed.to--; // assuming we are passed non-inclusive ranges
+			}
 		 }
 		 else {
 			 value = Long.parseLong(src);
