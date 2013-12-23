@@ -22,9 +22,9 @@ import edu.brown.hashing.ReconfigurationPlan.ReconfigurationTable;
 import edu.brown.utils.FileUtil;
 import edu.brown.utils.ProjectType;
 
-public class TestPlannedPartitions extends BaseTestCase {
+public class TestTwoTieredRangePartitions extends BaseTestCase {
 
-    public TestPlannedPartitions() {
+    public TestTwoTieredRangePartitions() {
 
     }
 
