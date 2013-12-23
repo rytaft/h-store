@@ -198,7 +198,7 @@ public class TwoTieredRangePartitions implements JSONSerializable {
      * @param partition_json
      * @return the set of tables in the partition plan
      */
-    private Set<String> getExplicitPartitionedTables(JSONObject partition_json) {
+    public Set<String> getExplicitPartitionedTables(JSONObject partition_json) {
     	try {
     		Set<String> tables = new HashSet<>();;
             if (partition_json.has(PARTITION_PLAN)) {
