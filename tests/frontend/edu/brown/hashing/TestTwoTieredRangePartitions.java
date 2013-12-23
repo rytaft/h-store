@@ -30,7 +30,7 @@ public class TestTwoTieredRangePartitions extends BaseTestCase {
 
     public String test_json1 = "{" 
 	+ "       \"default_table\":\"usertable\"," 
-	+ "       \"partition_plans\":{" 
+	+ "       \"partition_plan\":{" 
 	+ "          \"tables\":{" 
 	+ "            \"usertable\":{"
 	+ "              \"partitions\":{" 
@@ -46,7 +46,7 @@ public class TestTwoTieredRangePartitions extends BaseTestCase {
 
     public String test_json2 = "{"
         + "       \"default_table\":\"usertable\","
-        + "       \"partition_plans\":{"
+        + "       \"partition_plan\":{"
         + "          \"tables\":{"
         + "            \"usertable\":{"
         + "              \"partitions\":{"
