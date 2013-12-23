@@ -16,7 +16,7 @@ import org.voltdb.catalog.CatalogType;
 import org.voltdb.exceptions.ReconfigurationException;
 import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 
-import edu.brown.hashing.PlannedPartitions;
+import edu.brown.hashing.TwoTieredRangePartitions;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
@@ -45,10 +45,10 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     public Map<String,Set<Comparable>> migratedKeyOut;
     
     private int partition_id;
-    private PlannedPartitions partitionPlan;
+    private TwoTieredRangePartitions partitionPlan;
     
     
-    public ReconfigurationTracking(PlannedPartitions partitionPlan,List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges,
+    public ReconfigurationTracking(TwoTieredRangePartitions partitionPlan,List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges,
             List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges, int partition_id) {
         super();
         this.partitionPlan = partitionPlan;
@@ -66,7 +66,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         this.dataPartiallyMigratedOut = new ArrayList<>();
     }
     
-    public ReconfigurationTracking(PlannedPartitions partitionPlan, ReconfigurationPlan plan, int partition_id){
+    public ReconfigurationTracking(TwoTieredRangePartitions partitionPlan, ReconfigurationPlan plan, int partition_id){
         this(partitionPlan,plan.getOutgoing_ranges().get(partition_id), plan.getIncoming_ranges().get(partition_id),partition_id);
         /*this.partitionPlan = partitionPlan;
         this.outgoing_ranges = new ArrayList<ReconfigurationRange<? extends Comparable<?>>>();
