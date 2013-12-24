@@ -16,7 +16,7 @@ import java.io.FileWriter;
 
 public class Plan {
 	
-	public static final String PLANNED_PARTITIONS = "partition_plans";
+	public static final String PLANNED_PARTITIONS = "partition_plan";
 	// the TreeMap is a range. The key is the beginning of interval, the value is the end.
 	private Map<Integer, TreeMap<Long, Long>> partitionToRanges = new HashMap<Integer, TreeMap<Long, Long>>();
 	public class Range{
@@ -475,7 +475,7 @@ public class Plan {
 	}
 	
 	public void toJSON (String filename)  {
-		JSONObject srcData = new JSONObject(), planList, newPlan;
+		JSONObject srcData = new JSONObject(), lastPlan, newPlan;
 		String oldPlan = new String();
 		System.out.println("Planner writing to " + filename);
 		try {
@@ -490,41 +490,18 @@ public class Plan {
 				srcData = new JSONObject(oldPlan);					
 			}
 			
-			if(srcData.has(PLANNED_PARTITIONS)) {
-				planList = srcData.getJSONObject(PLANNED_PARTITIONS);
-			}
-			else {
-				planList = new JSONObject();
-				srcData.put(PLANNED_PARTITIONS, planList);	
-			}
-
-			
-			String[]  partitionKeys = JSONObject.getNames(planList);
-			Integer planNo = 1;
-			if(partitionKeys != null) {
-				planNo = partitionKeys.length + 1;
-			}
-		
-			System.out.println("Constructing plan #" + planNo + " from " + oldPlan);
-		
 			newPlan = constructNewJSON();
-			if(partitionKeys != null) {
-				Integer lastPlanNo = planNo - 1;
-				JSONObject lastPlan = planList.getJSONObject(lastPlanNo.toString());
+			if(srcData.has(PLANNED_PARTITIONS)) {
+				lastPlan = srcData.getJSONObject(PLANNED_PARTITIONS);
 				System.out.println("Comparing " + lastPlan.toString() + " to " + newPlan.toString());
 				if(!lastPlan.toString().equals(newPlan.toString())) {
 					System.out.println("Not a duplicate!");
-					planList.put(planNo.toString(), newPlan);
 				}
 			}
-			else {
-				planList.put(planNo.toString(), newPlan);
+			
+			srcData = new JSONObject();
+			srcData.put(PLANNED_PARTITIONS, newPlan);	
 
-			}
-
-			partitionKeys = JSONObject.getNames(srcData.getJSONObject(PLANNED_PARTITIONS));
-			System.out.println("Concluding with " + partitionKeys.length + " entries.");
-		
 		} catch(JSONException f) {
 			System.out.println("Init of JSONObject in toJSON failed!");
 		}
