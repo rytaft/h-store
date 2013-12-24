@@ -97,6 +97,8 @@ import edu.brown.hstore.estimators.TransactionEstimator;
 import edu.brown.hstore.estimators.remote.RemoteEstimator;
 import edu.brown.hstore.estimators.remote.RemoteEstimatorState;
 import edu.brown.hstore.internal.SetDistributedTxnMessage;
+import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator;
+import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
 import edu.brown.hstore.stats.AntiCacheManagerProfilerStats;
 import edu.brown.hstore.stats.BatchPlannerProfilerStats;
 import edu.brown.hstore.stats.MarkovEstimatorProfilerStats;
@@ -348,6 +350,12 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
      */
     private final EventObservableExceptionHandler exceptionHandler = new EventObservableExceptionHandler();
     
+    /*
+     * Reconfiguration coordinator 
+     */
+    private ReconfigurationCoordinator reconfiguration_coordinator = null;
+
+    
     // ----------------------------------------------------------------------------
     // INTERNAL STATE OBSERVABLES
     // ----------------------------------------------------------------------------
@@ -453,9 +461,19 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         this.depTrackers = new DependencyTracker[num_partitions];
         
         // Get the hasher we will use for this HStoreSite
+        // check if reconfiguration is enabled and that plan is set
+        if(hstore_conf.global.reconfiguration_enable){
+            if(hstore_conf.global.hasher_plan == null){
+                LOG.warn("Reconfiguration enabled but no plan set. Disabling reconfiguration and using default hasher");
+                hstore_conf.global.reconfiguration_enable = false;
+                hstore_conf.global.hasher_class  = "edu.brown.hashing.DefaultHasher";                
+            }
+        }
+        
+        LOG.info("Using hasher class: " + hstore_conf.global.hasher_class );     
         this.hasher = ClassUtil.newInstance(hstore_conf.global.hasher_class,
-                                             new Object[]{ this.catalogContext, num_partitions },
-                                             new Class<?>[]{ CatalogContext.class, int.class });
+                                             new Object[]{ this.catalogContext, num_partitions , this.hstore_conf },
+                                             new Class<?>[]{ CatalogContext.class, int.class, HStoreConf.class });
         this.p_estimator = new PartitionEstimator(this.catalogContext, this.hasher);
         this.remoteTxnEstimator = new RemoteEstimator(this.p_estimator);
 
@@ -627,6 +645,11 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
             LOG.debug("Initializing HStoreSite " + this.getSiteName());
         this.hstore_coordinator = this.initHStoreCoordinator();
         
+        if(hstore_conf.global.reconfiguration_enable){
+            LOG.info("Initializing Reconfiguration Coordinator");
+            this.reconfiguration_coordinator = this.initReconfigCoordinator();
+        }
+        
         // First we need to tell the HStoreCoordinator to start-up and initialize its connections
         if (debug.val)
             LOG.debug("Starting HStoreCoordinator for " + this.getSiteName());
@@ -686,7 +709,10 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                       this.local_partitions.size(), this.getSiteName()));
         for (int partition : this.local_partitions.values()) {
             PartitionExecutor executor = this.getPartitionExecutor(partition);
-            // executor.initHStoreSite(this);
+            if (hstore_conf.global.reconfiguration_enable) {
+                executor.setReconfigurationCoordinator(reconfiguration_coordinator);
+            }
+            //executor.initHStoreSite(this);
             
             t = new Thread(this.threadManager.getThreadGroup(ThreadGroupType.EXECUTION), executor);
             t.setDaemon(true);
@@ -973,6 +999,11 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         return new HStoreCoordinator(this);        
     }
     
+    protected ReconfigurationCoordinator initReconfigCoordinator() {
+        assert(this.shutdown_state != ShutdownState.STARTED);
+        return new ReconfigurationCoordinator(this, hstore_conf);
+    }
+    
     protected void setTransactionIdManagerTimeDelta(long delta) {
         for (TransactionIdManager t : this.txnIdManagers) {
             if (t != null) t.setTimeDelta(delta);
@@ -1093,6 +1124,16 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     public MapReduceHelperThread getMapReduceHelper() {
         return (this.mr_helper);
     }
+    
+    // ----------------------------------------------------------------------------
+    // RECONFIGURATION METHODS
+    // ----------------------------------------------------------------------------
+
+    
+    public ReconfigurationCoordinator getReconfigurationCoordinator(){
+      return this.reconfiguration_coordinator;
+    }
+    
     
     // ----------------------------------------------------------------------------
     // UTILITY METHODS
@@ -1527,6 +1568,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
             this.clientInterface.shutdown();
         }
         
+        if(hstore_conf.site.reconfig_profiling && hstore_conf.global.reconfiguration_enable) {
+            this.reconfiguration_coordinator.showReconfigurationProfiler();
+        }
         LOG.info(String.format("Completed shutdown process at %s [instanceId=%d]",
                                this.getSiteName(), this.instanceId));
     }

@@ -1,0 +1,17 @@
+{
+  "partition_plans": {
+    "0": {
+      "tables": {
+        "warehouse": {
+          "partitions": {
+            "0": "1-5", 
+            "1": "5-9", 
+            "2": "9-13", 
+            "3": "13-17"
+          }
+        }
+      }
+    }
+  }, 
+  "default_table": "warehouse"
+}

@@ -292,6 +292,10 @@ CTX.INPUT['storage'] = """
  TupleTracker.cpp
 """
 
+CTX.INPUT['migration'] = """
+ MigrationManager.cpp
+"""
+
 CTX.INPUT['stats'] = """
  StatsAgent.cpp
  StatsSource.cpp

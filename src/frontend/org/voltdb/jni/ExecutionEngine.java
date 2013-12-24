@@ -38,6 +38,7 @@ import org.voltdb.export.ExportProtoMessage;
 import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.utils.DBBPool.BBContainer;
 import org.voltdb.utils.LogKeys;
+import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltLoggerFactory;
 
 import edu.brown.hstore.HStore;
@@ -71,6 +72,7 @@ public abstract class ExecutionEngine implements FastDeserializer.Deserializatio
     /** Error codes exported for JNI methods. */
     public static final int ERRORCODE_SUCCESS = 0;
     public static final int ERRORCODE_ERROR = 1; // just error or not so far.
+    public static final int ERRORCODE_SUCCESS_MORE_DATA = 3;
     public static final int ERRORCODE_WRONG_SERIALIZED_BYTES = 101;
     public static final int ERRORCODE_NO_DATA = 102;
 
@@ -91,12 +93,26 @@ public abstract class ExecutionEngine implements FastDeserializer.Deserializatio
 
     /** Utility method to verify return code and throw as required */
     final protected void checkErrorCode(final int errorCode) {
-        if (errorCode != ERRORCODE_SUCCESS) {
-            if (debug.val) LOG.error(String.format("Unexpected ExecutionEngine error [code=%d]", errorCode));
+        if (errorCode != ERRORCODE_SUCCESS && errorCode != ERRORCODE_SUCCESS_MORE_DATA) {
+            LOG.error(String.format("Unexpected ExecutionEngine error [code=%d]", errorCode));
             throwExceptionForError(errorCode);
         }
     }
 
+    /** Utility method to verify return code and throw as required */
+    final protected boolean checkIfMoreDataOrError(final int errorCode) {
+        if (errorCode == ERRORCODE_SUCCESS){
+            return false;
+        } else if (errorCode == ERRORCODE_SUCCESS_MORE_DATA){
+            return true;
+        } else if (errorCode != ERRORCODE_SUCCESS && errorCode != ERRORCODE_SUCCESS_MORE_DATA) {
+            if (debug.val) LOG.error(String.format("Unexpected ExecutionEngine error [code=%d]", errorCode));
+            throwExceptionForError(errorCode);
+        }
+        return false;
+        
+    }
+    
     /**
      * Utility method to generate an EEXception that can be overridden by
      * derived classes
@@ -848,4 +864,49 @@ public abstract class ExecutionEngine implements FastDeserializer.Deserializatio
      * @return Returns the RSS size in bytes or -1 on error (or wrong platform).
      */
     public native static long nativeGetRSS();
+
+    // ----------------------------------------------------------------------------
+    // Reconfiguration
+    // ----------------------------------------------------------------------------
+    /**
+     * Extract (copy and remove) a table from the EE. Returns Pair of Extracted Table
+     * and a boolean to specify if there is more in the EE that was not extracted due to 
+     * default chunk limit.
+     * @param targetTable
+     * @param tableId
+     * @param extractTable
+     * @param txnId
+     * @param lastCommittedTxnId
+     * @param undoToken
+     * @param requestToken
+     * @param chunkId
+     * @return
+     * @throws EEException
+     */
+    public abstract Pair<VoltTable, Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId) throws EEException;
+
+    /**
+     * Extract (copy and remove) a table from the EE. Returns Pair of Extracted Table
+     * and a boolean to specify if there is more in the EE that was not extracted due to 
+     * specified chunk limit.
+     * @param targetTable
+     * @param tableId
+     * @param extractTable
+     * @param txnId
+     * @param lastCommittedTxnId
+     * @param undoToken
+     * @param requestToken
+     * @param extractChunkSize
+     * @return
+     * @throws EEException
+     */
+    public abstract Pair<VoltTable, Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId, int extractChunkSizeBytes) throws EEException;
+    
+    protected native int nativeExtractTable(long pointer, int table_id, byte[] serialized_table,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int extractTupleLimit);
+    
+    public abstract boolean updateExtractRequest(int requestToken, boolean deleteRequestedData);
+    
+    protected native int nativeUpdateExtractRequest(long pointer, int requestToken, boolean deleteRequestedData);
+    
 }
+

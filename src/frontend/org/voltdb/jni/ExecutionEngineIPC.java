@@ -49,6 +49,7 @@ import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.messaging.FastSerializer;
 import org.voltdb.utils.DBBPool.BBContainer;
 import org.voltdb.utils.NotImplementedException;
+import org.voltdb.utils.Pair;
 
 import edu.brown.hstore.HStore;
 import edu.brown.hstore.PartitionExecutor;
@@ -1495,5 +1496,25 @@ public class ExecutionEngineIPC extends ExecutionEngine {
     @Override
     public VoltTable antiCacheEvictBlock(Table catalog_tbl, long block_size, int num_blocks) {
         throw new NotImplementedException("Anti-Caching is disabled for IPC ExecutionEngine");
+    }
+    
+    
+    
+    @Override
+    public Pair<VoltTable,Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId)
+    {
+      throw new NotImplementedException("Reconfiguration is disabled for IPC EE");
+    }
+    
+    @Override
+    public Pair<VoltTable,Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId, int chunksize)
+    {
+      throw new NotImplementedException("Reconfiguration is disabled for IPC EE");
+    }
+    
+    @Override
+    public boolean updateExtractRequest(int requestToken, boolean deleteRequestedData)
+    {
+        throw new NotImplementedException("Reconfiguration is disabled for IPC EE");      
     }
 }

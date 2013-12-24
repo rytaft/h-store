@@ -14,6 +14,7 @@ import org.voltdb.benchmark.tpcc.TPCCProjectBuilder;
 import org.voltdb.benchmark.tpcc.procedures.neworder;
 import org.voltdb.benchmark.tpcc.procedures.paymentByCustomerId;
 import org.voltdb.catalog.*;
+import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTypeUtil;
 
 import edu.brown.BaseTestCase;
@@ -31,9 +32,9 @@ import edu.brown.hstore.HStoreConstants;
  */
 public class TestPartitionEstimator extends BaseTestCase {
 
-    protected static AbstractHasher hasher;
-    protected static final int NUM_PARTITIONS = 100;
-    protected static final int BASE_PARTITION = 1;
+    private static AbstractHasher hasher;
+    private static final int NUM_PARTITIONS = 100;
+    private static final int BASE_PARTITION = 1;
     
     private final PartitionSet partitions = new PartitionSet();
     
@@ -60,7 +61,7 @@ public class TestPartitionEstimator extends BaseTestCase {
         super.setUp(builder);
         this.addPartitions(NUM_PARTITIONS);
         if (hasher == null) {
-            hasher = new DefaultHasher(catalogContext, NUM_PARTITIONS); // CatalogUtil.getNumberOfPartitions(catalog_db));
+            hasher = new DefaultHasher(catalogContext, NUM_PARTITIONS); // CatalogUtil.getNumberOfPartitions(catalogContext.database));
         }
         
         Table catalog_tbl = this.getTable(TPCCConstants.TABLENAME_WAREHOUSE);
@@ -140,6 +141,32 @@ public class TestPartitionEstimator extends BaseTestCase {
         Object params[] = new Object[] { };
         p_estimator.getAllPartitions(partitions, catalog_stmt, params, BASE_PARTITION);
         assertEquals(catalogContext.getAllPartitionIds(), partitions);
+    }
+    
+    /**
+     * testGetPlanFragmentEstimationParameters
+     */
+    public void testGetPlanFragmentEstimationParameters() throws Exception {
+        // Make sure that we can get the proper mapping from the partitioning key
+        // referenced in the PlanFragment to the StmtParameter offset 
+        
+        Procedure proc = this.getProcedure(neworder.class);
+        Statement stmt = this.getStatement(proc, "getWarehouseTaxRate"); 
+        PlanFragment frag = CollectionUtil.first(stmt.getFragments());
+        assertNotNull(frag);
+        Table tbl = this.getTable(TPCCConstants.TABLENAME_WAREHOUSE);
+        Column col = tbl.getPartitioncolumn();
+        assertNotNull(col);
+        
+        List<Pair<Column, Integer>> offsets = new ArrayList<>();
+        boolean result = p_estimator.getPlanFragmentEstimationParameters(frag, offsets);
+        assertTrue(result);
+        assertEquals(1, offsets.size());
+        
+        Pair<Column, Integer> pair = CollectionUtil.first(offsets);
+        assertNotNull(pair);
+        assertEquals(col, pair.getFirst());
+        assertEquals(0, pair.getSecond().intValue());
     }
     
     /**

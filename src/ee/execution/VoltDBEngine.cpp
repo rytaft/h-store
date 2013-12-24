@@ -101,6 +101,7 @@
 #include "stats/StatsAgent.h"
 #include "voltdbipc.h"
 #include "common/FailureInjection.h"
+#include "migration/MigrationManager.h"
 
 using namespace std;
 namespace voltdb {
@@ -118,7 +119,8 @@ VoltDBEngine::VoltDBEngine(Topend *topend, LogProxy *logProxy)
       m_numResultDependencies(0),
       m_logManager(logProxy),
       m_templateSingleLongTable(NULL),
-      m_topend(topend)
+      m_topend(topend),
+      m_migrationManager(NULL)
 {
     m_currentUndoQuantum = new DummyUndoQuantum();
 
@@ -169,6 +171,7 @@ bool VoltDBEngine::initialize(
                                             0, /* epoch not yet known */
                                             hostname,
                                             hostId);
+
 
 
 
@@ -239,6 +242,10 @@ VoltDBEngine::~VoltDBEngine() {
         tidPair.second->decrementRefcount();
     }
     m_exportingTables.clear();
+    
+    if (m_migrationManager != NULL) {
+        delete m_migrationManager;
+    }
 
 
 
@@ -595,6 +602,9 @@ bool VoltDBEngine::loadCatalog(const string &catalogPayload) {
     // load the plan fragments from the catalog
     if (!rebuildPlanFragmentCollections())
         return false;
+    
+    // Initialize MigrationManager
+    m_migrationManager = new MigrationManager(m_executorContext, m_database);
 
     VOLT_DEBUG("Loaded catalog...");
     return true;
@@ -721,7 +731,6 @@ VoltDBEngine::loadTable(bool allowExport, int32_t tableId,
     m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
                                              txnId,
                                              lastCommittedTxnId);
-
     Table* ret = getTable(tableId);
     if (ret == NULL) {
         VOLT_ERROR("Table ID %d doesn't exist. Could not load data",
@@ -1058,8 +1067,9 @@ void VoltDBEngine::printReport() {
 
 bool VoltDBEngine::isLocalSite(const NValue& value)
 {
-    int index = TheHashinator::hashinate(value, m_totalPartitions);
-    return index == m_partitionId;
+    //int index = TheHashinator::hashinate(value, m_totalPartitions);
+    //return index == m_partitionId;
+    return true;
 }
 
 /** Perform once per second, non-transactional work. */
@@ -1454,6 +1464,86 @@ size_t VoltDBEngine::tableHashCode(int32_t tableId) {
     }
     return table->hashCode();
 }
+
+// -------------------------------------------------
+// RECONFIGURATION FUNCTIONS
+// -------------------------------------------------
+bool VoltDBEngine::updateExtractRequest(int32_t requestToken, bool confirmDelete){
+    VOLT_DEBUG("UpdateExtractRequest %d, %d",requestToken,confirmDelete);
+    if(confirmDelete == true)
+        return m_migrationManager->confirmExtractDelete(requestToken);
+    else
+        return m_migrationManager->undoExtractDelete(requestToken);            
+}
+
+int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken, int32_t extractTupleLimit){
+    VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
+    m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
+                                            txnId,
+                                            lastCommittedTxnId);
+    Table* ret = getTable(tableId);
+    if (ret == NULL) {
+        VOLT_ERROR("Table ID %d doesn't exist. Could not load data", (int) tableId);
+        return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
+    }
+
+    //TODO move some computation to external manager?
+    PersistentTable *table = dynamic_cast<PersistentTable*>(ret);
+    if (table == NULL) {
+        VOLT_ERROR("Table ID %d(name '%s') is not a persistent table."
+                " Could not load data",
+                (int) tableId, ret->name().c_str());
+        return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
+    }
+
+    //TODO ae andy how to get databaseId?
+    std::string tableName = "EXTRACT_TABLE";
+    CatalogId databaseId = 1;
+
+    std::string* colNames = TupleSchema::createMigrateColumnNames();
+    TupleSchema *extractMigrateSchema = TupleSchema::createMigrateTupleSchema();
+
+    Table* tempExtractTable = reinterpret_cast<Table*>(TableFactory::getTempTable(
+            databaseId,
+            tableName,
+            extractMigrateSchema,
+            &colNames[0],
+            NULL));
+
+    VOLT_DEBUG("Extract table: %s", tempExtractTable->name().c_str());
+    try {
+        tempExtractTable->loadTuplesFrom(false, serialize_io);
+    } catch (SerializableEEException e) {
+        throwFatalException("%s", e.message().c_str());
+    }
+    TableIterator inputIterator = tempExtractTable->tableIterator();
+    TableTuple extractTuple(tempExtractTable->schema());
+    while (inputIterator.next(extractTuple)) {
+        //TODO ae more than 1 range -> into a single result?
+        VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
+	bool moreData = false;
+        Table* outputTable = m_migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3),requestToken, extractTupleLimit, moreData);
+        size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
+        if (outputTable != NULL) {
+            outputTable->serializeTo(m_resultOutput);
+            m_resultOutput.writeIntAt(lengthPosition,static_cast<int32_t>(m_resultOutput.size()- sizeof(int32_t)));        
+            //TODO delete keySchema,partitionIndex
+            //delete colNames;
+            
+            TupleSchema::freeTupleSchema(extractMigrateSchema);
+	    if (moreData == true)
+	      return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS_MORE_DATA;
+	    else
+	      return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
+        } 
+        else{
+            return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
+        }
+    }
+    
+    return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
+}
+
 
 // -------------------------------------------------
 // READ/WRITE SET TRACKING FUNCTIONS

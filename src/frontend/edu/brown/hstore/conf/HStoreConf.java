@@ -131,7 +131,15 @@ public final class HStoreConf {
         )
         public boolean nanosecond_latencies;
 
+        @ConfigProperty(
+            description="Enable reconfiguration feature.",
+            defaultBoolean=true,
+            experimental=true
+        )
+        public boolean reconfiguration_enable;
     }
+    
+
     
     // ============================================================================
     // SITE
@@ -711,6 +719,89 @@ public final class HStoreConf {
                 experimental=true
         )
         public String anticache_eviction_distribution;
+        
+        // ----------------------------------------------------------------------------
+        // Reconfiguration Options
+        // ----------------------------------------------------------------------------
+                
+        
+        @ConfigProperty(
+                description="Enable reconfiguration profiling.",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_profiling;
+        
+        @ConfigProperty(
+                description="Enable detailed reconfiguration profiling.",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_detailed_profiling;
+     
+        @ConfigProperty(
+                description="Have livepull reconfiguration schedule all chunking asynchronous pull of migrating data items.",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_async_pull;
+        
+        @ConfigProperty(
+                description="Have livepull reconfiguration use nonchunking asynchronous pull of migrating data items.",
+                defaultBoolean=false,
+                experimental=true
+        )
+        public boolean reconfig_async_nonchunk_pull;
+        
+        @ConfigProperty(
+                description="Have livepull reconfiguration use nonchunking asynchronous push of migrating data items."
+                        + "If set with async pull, pull will override and be used.",
+                defaultBoolean=false,
+                experimental=true
+        )
+        public boolean reconfig_async_nonchunk_push;
+        
+        @ConfigProperty(
+                description="Use async reconfiguration.",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_async;
+   
+        @ConfigProperty(
+                description="Use live reconfiguration.",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_live;
+        
+        @ConfigProperty(
+                description="The default reconfig plan ID to use. If not set use the first one found. ",
+                defaultNull=true,
+                experimental=true
+        )
+        public String reconfig_initial_plan;
+        
+        @ConfigProperty(
+                description="The introduce delay to inject replication latency into reconfiguraiton. ",
+                defaultBoolean=false,
+                experimental=true
+        )
+        public boolean reconfig_replication_delay;
+
+        @ConfigProperty(
+                description="The default chunk size for reconfiguration ",
+                defaultInt=2048,
+                experimental=true
+        )
+        public int reconfig_chunk_size_kb;
+        
+        @ConfigProperty(
+                description="The default async chunk size for reconfiguration ",
+                defaultInt=512,
+                experimental=true
+        )
+        public int reconfig_async_chunk_size_kb;
         
         // ----------------------------------------------------------------------------
         // Storage Options

@@ -30,6 +30,7 @@ import org.voltdb.catalog.Table;
 import org.voltdb.exceptions.EEException;
 import org.voltdb.export.ExportProtoMessage;
 import org.voltdb.utils.DBBPool.BBContainer;
+import org.voltdb.utils.Pair;
 
 public class MockExecutionEngine extends ExecutionEngine {
 
@@ -224,5 +225,23 @@ public class MockExecutionEngine extends ExecutionEngine {
     public VoltTable antiCacheEvictBlock(Table catalog_tbl, long block_size, int num_blocks) {
         // TODO Auto-generated method stub
         return (null);
+    }
+    
+    @Override
+    public Pair<VoltTable,Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId)
+    {
+    	return null;
+    }
+    
+    @Override
+    public Pair<VoltTable,Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId, int chunkSize)
+    {
+        return null;
+    }
+    
+    @Override
+    public boolean updateExtractRequest(int requestToken, boolean deleteRequestedData) {
+        // TODO Auto-generated method stub
+        return false;
     }
 }

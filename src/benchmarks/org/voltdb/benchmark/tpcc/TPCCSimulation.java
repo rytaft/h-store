@@ -148,6 +148,9 @@ public class TPCCSimulation {
         if (config.warehouse_debug) {
             LOG.info("Enabling WAREHOUSE debug mode");
         }
+        if (config.neworder_hotspot) {
+            LOG.info("Enabling hotspot");
+        }
 
         lastAssignedWarehouseId += 1;
         if (lastAssignedWarehouseId > parameters.last_warehouse)
@@ -253,6 +256,7 @@ public class TPCCSimulation {
                 w_id = (short)generator.number(parameters.starting_warehouse, parameters.last_warehouse);
             }
         }
+        
         // ZIPFIAN SKEWED WAREHOUSE ID
         else if (config.neworder_skew_warehouse) {
             assert(this.zipf != null);
@@ -263,6 +267,20 @@ public class TPCCSimulation {
                 w_id = (short)generator.number(parameters.starting_warehouse, parameters.last_warehouse);
             }
         }
+        
+        // HOTSPOT SKEWED WAREHOUSE ID
+        else if (config.neworder_hotspot) {
+            if (generator.number(1, 100) <= config.hotspot_ops_percent) {
+                //In the hotspot
+                //Hotspot op use 1 - hotspotsize
+                w_id = (short)generator.number(parameters.starting_warehouse, 
+                        Math.min(parameters.last_warehouse, (config.hotspot_size)));
+            } else { 
+                //Use uniform random
+                w_id = (short)generator.number(parameters.starting_warehouse, parameters.last_warehouse);
+            }
+        }
+        
         // GAUSSIAN SKEWED WAREHOUSE ID
         else if (skewFactor > 0.0d) {
             w_id = (short)generator.skewedNumber(parameters.starting_warehouse, parameters.last_warehouse, skewFactor);

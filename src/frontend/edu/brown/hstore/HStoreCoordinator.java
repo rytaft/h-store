@@ -1,5 +1,6 @@
 package edu.brown.hstore;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ import org.voltdb.catalog.Procedure;
 import org.voltdb.catalog.Site;
 import org.voltdb.exceptions.SerializableException;
 import org.voltdb.exceptions.ServerFaultException;
+import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.messaging.FastSerializer;
 import org.voltdb.utils.EstTime;
 import org.voltdb.utils.Pair;
@@ -33,11 +35,24 @@ import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
 
 import edu.brown.catalog.CatalogUtil;
+import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
+import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
+import edu.brown.hstore.Hstoreservice.DataTransferRequest;
+import edu.brown.hstore.Hstoreservice.DataTransferResponse;
 import edu.brown.hstore.Hstoreservice.HStoreService;
 import edu.brown.hstore.Hstoreservice.HeartbeatRequest;
 import edu.brown.hstore.Hstoreservice.HeartbeatResponse;
 import edu.brown.hstore.Hstoreservice.InitializeRequest;
 import edu.brown.hstore.Hstoreservice.InitializeResponse;
+import edu.brown.hstore.Hstoreservice.LivePullRequest;
+import edu.brown.hstore.Hstoreservice.LivePullResponse;
+import edu.brown.hstore.Hstoreservice.MultiPullReplyRequest;
+import edu.brown.hstore.Hstoreservice.MultiPullReplyResponse;
+import edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest;
+import edu.brown.hstore.Hstoreservice.ReconfigurationControlResponse;
+import edu.brown.hstore.Hstoreservice.ReconfigurationControlType;
+import edu.brown.hstore.Hstoreservice.ReconfigurationRequest;
+import edu.brown.hstore.Hstoreservice.ReconfigurationResponse;
 import edu.brown.hstore.Hstoreservice.SendDataRequest;
 import edu.brown.hstore.Hstoreservice.SendDataResponse;
 import edu.brown.hstore.Hstoreservice.ShutdownPrepareRequest;
@@ -66,10 +81,10 @@ import edu.brown.hstore.Hstoreservice.TransactionReduceResponse;
 import edu.brown.hstore.Hstoreservice.TransactionWorkRequest;
 import edu.brown.hstore.Hstoreservice.TransactionWorkResponse;
 import edu.brown.hstore.Hstoreservice.WorkFragment;
-import edu.brown.hstore.callbacks.ShutdownPrepareCallback;
 import edu.brown.hstore.callbacks.LocalFinishCallback;
-import edu.brown.hstore.callbacks.TransactionPrefetchCallback;
 import edu.brown.hstore.callbacks.LocalPrepareCallback;
+import edu.brown.hstore.callbacks.ShutdownPrepareCallback;
+import edu.brown.hstore.callbacks.TransactionPrefetchCallback;
 import edu.brown.hstore.callbacks.TransactionRedirectResponseCallback;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.dispatchers.TransactionFinishDispatcher;
@@ -768,6 +783,19 @@ public class HStoreCoordinator implements Shutdownable {
             ThreadUtil.sleep(10);
             done.run(builder.setT1S(System.currentTimeMillis()).build());
         }
+        
+        @Override
+        public void reconfiguration(RpcController controller, ReconfigurationRequest request, RpcCallback<ReconfigurationResponse> done) {
+            if (debug.val)
+                LOG.debug(String.format("Received %s from HStoreSite %s",
+                          request.getClass().getSimpleName(),
+                          HStoreThreadManager.formatSiteName(request.getSenderSite())));
+            ReconfigurationResponse.Builder builder = ReconfigurationResponse.newBuilder()
+                                                    .setT0S(request.getT0S())
+                                                    .setSenderSite(local_site_id);
+            ThreadUtil.sleep(10);
+            done.run(builder.build());
+        }
 
         @Override
         public void transactionDebug(RpcController controller, TransactionDebugRequest request, RpcCallback<TransactionDebugResponse> done) {
@@ -794,6 +822,133 @@ public class HStoreCoordinator implements Shutdownable {
                                                   .build();
             done.run(response);
         }
+
+        @Override
+        public void dataTransfer(RpcController controller,
+            DataTransferRequest request, RpcCallback<DataTransferResponse> done) {
+          
+          if (debug.val)
+            LOG.debug(String.format("Received %s from HStoreSite %s",
+                      request.getClass().getSimpleName(),
+                      HStoreThreadManager.formatSiteName(request.getSenderSite())));
+          
+          VoltTable vt = null;
+          try {
+            vt = FastDeserializer.deserialize(request.getVoltTableData().toByteArray(), VoltTable.class);
+          } catch (IOException e) {
+            // TODO Auto-generated catch block
+            LOG.error("Error in deserializing volt table");
+          }
+          DataTransferResponse response = null;
+          try {
+            response = hstore_site.getReconfigurationCoordinator().receiveTuples(
+                request.getSenderSite(), request.getT0S(), request.getOldPartition(), request.getNewPartition(), 
+                request.getVoltTableName(), vt, request.getMinInclusive(), request.getMaxExclusive());
+          } catch (Exception e) {
+            // TODO Auto-generated catch block
+            LOG.error("Exception incurred while receiving tuples", e);
+          }
+          
+          done.run(response);
+          
+        }
+
+        @Override
+        public void livePull(RpcController controller, LivePullRequest request,
+            RpcCallback<LivePullResponse> done) {
+          if (debug.val)
+            LOG.debug(String.format("Received %s from HStoreSite %s",
+                      request.getClass().getSimpleName(),
+                      HStoreThreadManager.formatSiteName(request.getSenderSite())));
+          
+          LivePullResponse response = null;
+          try {
+              hstore_site.getReconfigurationCoordinator().dataPullRequest(
+                request, done);
+          } catch (Exception e) {
+            // TODO Auto-generated catch block
+            LOG.error("Exception incurred while receiving tuples", e);
+          }
+          
+          // Callback will be made when the work item is processed
+          // from the queue
+          //done.run(response);
+          
+        }
+
+        @Override
+        public void asyncPull(RpcController controller, AsyncPullRequest request,
+            RpcCallback<AsyncPullResponse> done) {
+            
+            // This is an async data pull request which will be sent to RC and
+            // processed asynchronously
+             try {
+                 hstore_site.getReconfigurationCoordinator().asyncPullRequestFromRC (
+                   request, done);
+             } catch (Exception e) {
+               // TODO Auto-generated catch block
+               LOG.error("Exception occured while processing async pull request", e);
+             }
+            
+        }
+        
+        
+        @Override
+        public void reconfigurationControlMsg(RpcController controller, 
+                ReconfigurationControlRequest request, RpcCallback<ReconfigurationControlResponse> done) {
+
+            if (debug.val)
+                LOG.debug(String.format("Received %s from HStoreSite %s",
+                          request.getClass().getSimpleName(),
+                          HStoreThreadManager.formatSiteName(request.getSenderSite())));
+            
+            // No callback to be sent
+            try{
+                if(request.getReconfigControlType() == ReconfigurationControlType.PULL_RECEIVED){
+                    hstore_site.getReconfigurationCoordinator().deleteTuples(request);
+                } else if(request.getReconfigControlType() == ReconfigurationControlType.CHUNK_RECEIVED){
+                	hstore_site.getReconfigurationCoordinator().queueAsyncDataRequestMessageToWorkQueue(request.getDestPartition());
+                	//TODO : Have to delete tuples for the chunk received messages as well
+                    //hstore_site.getReconfigurationCoordinator().deleteTuples(request);
+                } else if(request.getReconfigControlType() == ReconfigurationControlType.RECONFIGURATION_DONE) {
+                    hstore_site.getReconfigurationCoordinator().leaderReceiveRemoteReconfigComplete(request.getSenderSite());
+                }  else if(request.getReconfigControlType() == ReconfigurationControlType.
+                		RECONFIGURATION_DONE_RECEIVED) {
+                    hstore_site.getReconfigurationCoordinator().receiveReconfigurationCompleteFromLeader();
+                }
+               
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                LOG.error("Exception incurred while deleting tuples (not just marking)", e);
+              }
+            
+        }
+        
+        @Override
+        public void multiPullReply(RpcController controller, 
+            MultiPullReplyRequest request, RpcCallback<MultiPullReplyResponse> done) {
+        	if (debug.val)
+                LOG.debug(String.format("Received %s from HStoreSite %s",
+                          request.getClass().getSimpleName(),
+                          HStoreThreadManager.formatSiteName(request.getSenderSite())));
+        	
+        	try{
+        		if(request.getIsAsync()){
+        			LOG.info("Processing an async pull reply message");
+        			hstore_site.getReconfigurationCoordinator().processPullReplyFromRC(request, done);
+        		} else {
+        			LOG.info("Processing a live pull reply message");
+                    hstore_site.getReconfigurationCoordinator().processPullReplyFromRC(request, done);
+
+        		}
+        		
+        	} catch (Exception e){
+        		LOG.error("Exception incurred while processing chunked async pull reply", e);
+        	}
+          
+        }
+        
+
 
     } // END CLASS
     
@@ -1538,5 +1693,9 @@ public class HStoreCoordinator implements Shutdownable {
         }
         HStoreService channel = HStoreService.newStub(channels[0]);
         return (channel);
+    }
+
+    public synchronized HStoreService[] getChannels() {
+      return channels;
     }
 }

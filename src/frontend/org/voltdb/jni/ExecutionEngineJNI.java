@@ -40,7 +40,9 @@ import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.messaging.FastSerializer;
 import org.voltdb.messaging.FastSerializer.BufferGrowCallback;
 import org.voltdb.utils.DBBPool.BBContainer;
+import org.voltdb.utils.Pair;
 
+import edu.brown.designer.MemoryEstimator;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.PartitionExecutor;
 import edu.brown.logging.LoggerUtil;
@@ -82,7 +84,10 @@ public class ExecutionEngineJNI extends ExecutionEngine {
      * that rely on being able to serialize large results sets will get the same amount of storage
      * when using the IPC backend.
      **/
-    private final BBContainer deserializerBufferOrigin = org.voltdb.utils.DBBPool.allocateDirect(1024 * 1024 * 10);
+    public static final int BUFFER_SIZE = 1024 * 1024 * 50;
+    private final BBContainer deserializerBufferOrigin = org.voltdb.utils.DBBPool.allocateDirect(BUFFER_SIZE);
+
+    public static int DEFAULT_EXTRACT_LIMIT_BYTES = 1024*1024*2;
     private FastDeserializer deserializer = new FastDeserializer(deserializerBufferOrigin.b);
 
     private final BBContainer exceptionBufferOrigin = org.voltdb.utils.DBBPool.allocateDirect(1024 * 1024 * 20);
@@ -141,6 +146,16 @@ public class ExecutionEngineJNI extends ExecutionEngine {
                 deserializer.buffer(), deserializer.buffer().capacity(),
                 exceptionBuffer, exceptionBuffer.capacity());
         checkErrorCode(errorCode);
+        DEFAULT_EXTRACT_LIMIT_BYTES = executor.getHStoreConf().site.reconfig_chunk_size_kb*1024;
+        if (executor.getHStoreConf().global.reconfiguration_enable){
+            LOG.info(String.format("EE Reconfiguration enabled. Settings. "
+                    + "ChunkSize=%s (kb) ReconfigReplicationDelay=%s ChunkedAsyncPulls=%s NonChunkAsyncPull=%s NonChunkAsyncPush=%s",
+                    executor.getHStoreConf().site.reconfig_chunk_size_kb, 
+                    executor.getHStoreConf().site.reconfig_replication_delay,
+                    executor.getHStoreConf().site.reconfig_async_pull,
+                    executor.getHStoreConf().site.reconfig_async_nonchunk_pull,
+                    executor.getHStoreConf().site.reconfig_async_nonchunk_push));
+        }
         
         //LOG.info("Initialized Execution Engine");
     }
@@ -489,6 +504,51 @@ public class ExecutionEngineJNI extends ExecutionEngine {
                                               undoToken, allowExport);
         checkErrorCode(errorCode);
     }
+    
+    @Override
+    public Pair<VoltTable, Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId)
+    {
+        
+        return extractTable(targetTable, tableId, extractTable, txnId, lastCommittedTxnId, undoToken, requestToken, chunkId, DEFAULT_EXTRACT_LIMIT_BYTES);
+    }
+    
+    @Override
+    public Pair<VoltTable, Boolean> extractTable(Table targetTable, int tableId, VoltTable extractTable,long txnId, long lastCommittedTxnId, long undoToken, int requestToken, int chunkId, int extractChunkSizeBytes)
+    {
+        if (debug.val) LOG.debug("Extract table");
+        deserializer.clear();
+        byte[] serialized_table = extractTable.getTableDataReference().array();
+        if (debug.val) LOG.debug(String.format("Passing extract table into EE  [id=%d, bytes=%s]", tableId, serialized_table.length));
+        int results;
+        try {
+            long tupleBytes = MemoryEstimator.estimateTupleSize(targetTable);
+            int tupleExtractLimit = (int)(extractChunkSizeBytes/tupleBytes);
+            results = deserializer.readInt();
+            if (trace.val) LOG.trace("Results :"+results);
+            final int errorCode = nativeExtractTable(this.pointer, tableId, serialized_table, txnId, lastCommittedTxnId, undoToken, requestToken, tupleExtractLimit);
+            if (debug.val) LOG.debug("Done with extract");
+            checkErrorCode(errorCode);
+            boolean moreData = checkIfMoreDataOrError(errorCode);
+            
+            return new Pair<VoltTable, Boolean>(deserializer.readObject(VoltTable.class), moreData, false);
+        } catch (IOException e) {
+            LOG.error("Failed to deserialze result dependencies" + e);
+            throw new EEException(ERRORCODE_WRONG_SERIALIZED_BYTES);
+        }
+        
+    }
+    
+    @Override
+    public boolean updateExtractRequest(int requestToken, boolean deleteRequestedData)
+    {
+        if (debug.val) LOG.debug("updateExtractRequest table");
+        final int errorCode = nativeUpdateExtractRequest(this.pointer, requestToken, deleteRequestedData);
+        checkErrorCode(errorCode);  
+        return true;
+
+    }
+    
+    
 
     /**
      * This method should be called roughly every second. It allows the EE

@@ -936,14 +936,14 @@ TEST CASES
             failureproperty="junit.failures"
             printsummary="@{printsummary}"
             timeout="@{timeout}"
-            maxmemory='2600M'
+            maxmemory='7600M'
             showoutput="@{showoutput}"
         >
             <classpath refid='project.classpath' />
             <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
             <jvmarg value="-server" />
             <jvmarg value="-Xcheck:jni" />
-            <jvmarg value="-Xmx2600m"/>
+            <jvmarg value="-Xmx7600m"/>
             <jvmarg value="-XX:+HeapDumpOnOutOfMemoryError"/>
 
             <env key="ENABLE_JAR_REUSE" value="${junit.reusejars}"/>
@@ -1053,7 +1053,7 @@ TEST CASES
                 <exclude name="**/TestMapReduceTransactionSuite.class" />
                 <exclude name="**/TestWikipediaSuite.class" />
                 <exclude name="**/TestWikipediaLoader.class" />
-<!--                 <exclude name="**/TestAntiCache*.class" /> -->
+                <exclude name="**/TestAntiCache*.class" /> 
                 
                 <!-- Misc VoltDB stuff -->
                 <exclude name='org/voltdb/TestHSQLBackend*'/>
@@ -1135,7 +1135,7 @@ TEST CASES
                 <exclude name="**/TestMapReduceTransactionSuite.class" />
                 <exclude name="**/TestWikipediaSuite.class" />
                 <exclude name="**/TestWikipediaLoader.class" />
-<!--                 <exclude name="**/TestAntiCache*.class" /> -->
+                 <exclude name="**/TestAntiCache*.class" /> 
 
                 <!-- Tests that use too much memory -->
                 <exclude name='edu/brown/benchmark/tpce/*'/>
@@ -1212,7 +1212,7 @@ TEST CASES
                     <exclude name="**/TestMapReduceTransactionSuite.class" />
                     <exclude name="**/TestWikipediaSuite.class" />
                     <exclude name="**/TestWikipediaLoader.class" />
-<!--                     <exclude name="**/TestAntiCache*.class" /> -->
+                     <exclude name="**/TestAntiCache*.class" /> 
                 </fileset>
             </tests>
         </run_junit>

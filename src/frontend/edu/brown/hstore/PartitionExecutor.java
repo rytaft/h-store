@@ -50,18 +50,22 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.voltdb.BackendTarget;
 import org.voltdb.CatalogContext;
@@ -78,8 +82,10 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltProcedure.VoltAbortException;
 import org.voltdb.VoltSystemProcedure;
 import org.voltdb.VoltTable;
+import org.voltdb.VoltType;
 import org.voltdb.catalog.Catalog;
 import org.voltdb.catalog.Cluster;
+import org.voltdb.catalog.Column;
 import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Host;
 import org.voltdb.catalog.Partition;
@@ -92,6 +98,8 @@ import org.voltdb.exceptions.ConstraintFailureException;
 import org.voltdb.exceptions.EEException;
 import org.voltdb.exceptions.EvictedTupleAccessException;
 import org.voltdb.exceptions.MispredictionException;
+import org.voltdb.exceptions.ReconfigurationException;
+import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 import org.voltdb.exceptions.SQLException;
 import org.voltdb.exceptions.SerializableException;
 import org.voltdb.exceptions.ServerFaultException;
@@ -108,6 +116,7 @@ import org.voltdb.utils.DBBPool;
 import org.voltdb.utils.DBBPool.BBContainer;
 import org.voltdb.utils.Encoder;
 import org.voltdb.utils.EstTime;
+import org.voltdb.utils.Pair;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
@@ -115,7 +124,18 @@ import com.google.protobuf.RpcCallback;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.catalog.PlanFragmentIdGenerator;
 import edu.brown.catalog.special.CountedStatement;
+import edu.brown.hashing.PlannedPartitions;
+import edu.brown.hashing.ReconfigurationPlan;
+import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
+import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
+import edu.brown.hstore.Hstoreservice.LivePullRequest;
+import edu.brown.hstore.Hstoreservice.LivePullResponse;
+import edu.brown.hstore.Hstoreservice.MultiPullReplyRequest;
+import edu.brown.hstore.Hstoreservice.MultiPullReplyResponse;
 import edu.brown.hstore.Hstoreservice.QueryEstimate;
+import edu.brown.hstore.Hstoreservice.ReconfigurationControlRequest;
+import edu.brown.hstore.Hstoreservice.ReconfigurationControlType;
 import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.hstore.Hstoreservice.TransactionPrefetchResult;
 import edu.brown.hstore.Hstoreservice.TransactionPrepareResponse;
@@ -132,18 +152,31 @@ import edu.brown.hstore.estimators.Estimate;
 import edu.brown.hstore.estimators.EstimatorState;
 import edu.brown.hstore.estimators.EstimatorUtil;
 import edu.brown.hstore.estimators.TransactionEstimator;
+import edu.brown.hstore.internal.AsyncDataPullRequestMessage;
+import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
+import edu.brown.hstore.internal.AsyncNonChunkPullRequestMessage;
+import edu.brown.hstore.internal.AsyncNonChunkPushRequestMessage;
 import edu.brown.hstore.internal.DeferredQueryMessage;
 import edu.brown.hstore.internal.FinishTxnMessage;
 import edu.brown.hstore.internal.InternalMessage;
 import edu.brown.hstore.internal.InternalTxnMessage;
+import edu.brown.hstore.internal.LivePullRequestMessage;
+import edu.brown.hstore.internal.MultiDataPullResponseMessage;
 import edu.brown.hstore.internal.PotentialSnapshotWorkMessage;
 import edu.brown.hstore.internal.PrepareTxnMessage;
+import edu.brown.hstore.internal.ScheduleAsyncPullRequestMessage;
 import edu.brown.hstore.internal.SetDistributedTxnMessage;
 import edu.brown.hstore.internal.StartTxnMessage;
 import edu.brown.hstore.internal.UtilityWorkMessage;
 import edu.brown.hstore.internal.UtilityWorkMessage.TableStatsRequestMessage;
 import edu.brown.hstore.internal.UtilityWorkMessage.UpdateMemoryMessage;
 import edu.brown.hstore.internal.WorkFragmentMessage;
+import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
+import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator;
+import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator.ReconfigurationState;
+import edu.brown.hstore.reconfiguration.ReconfigurationTracking;
+import edu.brown.hstore.reconfiguration.ReconfigurationTrackingInterface;
+import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
 import edu.brown.hstore.specexec.QueryTracker;
 import edu.brown.hstore.specexec.checkers.AbstractConflictChecker;
 import edu.brown.hstore.specexec.checkers.MarkovConflictChecker;
@@ -169,8 +202,10 @@ import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.markov.EstimationThresholds;
 import edu.brown.profilers.PartitionExecutorProfiler;
+import edu.brown.profilers.ProfileMeasurement;
 import edu.brown.protorpc.NullCallback;
 import edu.brown.statistics.FastIntHistogram;
+import edu.brown.statistics.Histogram;
 import edu.brown.utils.ClassUtil;
 import edu.brown.utils.CollectionUtil;
 import edu.brown.utils.EventObservable;
@@ -182,9 +217,9 @@ import edu.brown.utils.StringUtil;
 
 /**
  * The main executor of transactional work in the system for a single partition.
- * Controls running stored procedures and manages the execution engine's running of plan
- * fragments. Interacts with the DTXN system to get work to do. The thread might
- * do other things, but this is where the good stuff happens.
+ * Controls running stored procedures and manages the execution engine's running
+ * of plan fragments. Interacts with the DTXN system to get work to do. The
+ * thread might do other things, but this is where the good stuff happens.
  */
 public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private static final Logger LOG = Logger.getLogger(PartitionExecutor.class);
@@ -196,22 +231,37 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     private static final long WORK_QUEUE_POLL_TIME = 10; // 0.5 milliseconds
     private static final TimeUnit WORK_QUEUE_POLL_TIMEUNIT = TimeUnit.MICROSECONDS;
-    
+
     private static final UtilityWorkMessage UTIL_WORK_MSG = new UtilityWorkMessage();
     private static final UpdateMemoryMessage STATS_WORK_MSG = new UpdateMemoryMessage();
+    private static  long MIN_MS_BETWEEN_ASYNC_PULLS = 500;
+
+    private ReconfigurationState reconfig_state;
     
+    //Queue to schedule an async pull at the destination's work_queue when there is no work 
+    private Queue<ScheduleAsyncPullRequestMessage> scheduleAsyncPullQueue = new LinkedList<>();
+    
+    //Queue to schedule an async pull request at the source's work_queue when there is no work 
+    private Queue<AsyncDataPullRequestMessage> asyncRequestPullQueue = new LinkedList<>();
+    
+    //Only schedule on async pull at a time
+    private AtomicBoolean asyncOutstanding = new AtomicBoolean(false);
+    private long nextAsyncPullTimeMS = 0;
+
+    private int tempPullCounter=0;
+    private int tempPullResponseCounter=0;
     // ----------------------------------------------------------------------------
     // INTERNAL EXECUTION STATE
     // ----------------------------------------------------------------------------
 
     /**
-     * The current execution mode for this PartitionExecutor
-     * This defines what level of speculative execution we have enabled.
+     * The current execution mode for this PartitionExecutor This defines what
+     * level of speculative execution we have enabled.
      */
     public enum ExecutionMode {
         /**
-         * Disable processing all transactions until told otherwise.
-         * We will still accept new ones
+         * Disable processing all transactions until told otherwise. We will
+         * still accept new ones
          */
         DISABLED,
         /**
@@ -231,11 +281,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
          */
         COMMIT_NONCONFLICTING,
         /**
-         * All txn responses must wait until the current distributed txn is committed
-         */ 
+         * All txn responses must wait until the current distributed txn is
+         * committed
+         */
         COMMIT_NONE,
     };
-    
+
     // ----------------------------------------------------------------------------
     // DATA MEMBERS
     // ----------------------------------------------------------------------------
@@ -243,11 +294,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private Thread self;
 
     /**
-     * If this flag is enabled, then we need to shut ourselves down and stop running txns
+     * If this flag is enabled, then we need to shut ourselves down and stop
+     * running txns
      */
     private ShutdownState shutdown_state = Shutdownable.ShutdownState.INITIALIZED;
     private Semaphore shutdown_latch;
-    
+
     /**
      * Catalog objects
      */
@@ -262,24 +314,23 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private final HsqlBackend hsql;
     private final DBBPool buffer_pool = new DBBPool(false, false);
     private final FastSerializer fs = new FastSerializer(this.buffer_pool);
-    
+
     /**
-     * The PartitionEstimator is what we use to figure our what partitions each 
-     * query invocation needs to be sent to at run time.
-     * It is deterministic.
+     * The PartitionEstimator is what we use to figure our what partitions each
+     * query invocation needs to be sent to at run time. It is deterministic.
      */
     private final PartitionEstimator p_estimator;
-    
+
     /**
-     * The TransactionEstimator is the runtime piece that we use to keep track of
-     * where a locally running transaction is in its execution workflow. This allows 
-     * us to make predictions about what kind of things we expect the xact to do in 
-     * the future
+     * The TransactionEstimator is the runtime piece that we use to keep track
+     * of where a locally running transaction is in its execution workflow. This
+     * allows us to make predictions about what kind of things we expect the
+     * xact to do in the future
      */
     private final TransactionEstimator localTxnEstimator;
-    
+
     private EstimationThresholds thresholds = EstimationThresholds.factory();
-    
+
     // Each execution site manages snapshot using a SnapshotSiteProcessor
     private final SnapshotSiteProcessor m_snapshotter;
 
@@ -287,7 +338,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * ProcedureId -> Queue<VoltProcedure>
      */
     private final Queue<VoltProcedure>[] procedures;
-    
+
     // ----------------------------------------------------------------------------
     // H-Store Transaction Stuff
     // ----------------------------------------------------------------------------
@@ -302,37 +353,39 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     // ----------------------------------------------------------------------------
     // Work Queue
     // ----------------------------------------------------------------------------
-    
+
     /**
-     * This is the queue of the list of things that we need to execute.
-     * The entries may be either InitiateTaskMessages (i.e., start a stored procedure) or
-     * WorkFragment (i.e., execute some fragments on behalf of another transaction)
-     * We will use this special wrapper around the PartitionExecutorQueue that can determine
-     * whether this partition is overloaded and therefore new requests should be throttled
+     * This is the queue of the list of things that we need to execute. The
+     * entries may be either InitiateTaskMessages (i.e., start a stored
+     * procedure) or WorkFragment (i.e., execute some fragments on behalf of
+     * another transaction) We will use this special wrapper around the
+     * PartitionExecutorQueue that can determine whether this partition is
+     * overloaded and therefore new requests should be throttled
      */
     private final PartitionMessageQueue work_queue;
-    
+
     // ----------------------------------------------------------------------------
     // Internal Execution State
     // ----------------------------------------------------------------------------
-    
+
     /**
-     * The transaction id of the current transaction
-     * This is mostly used for testing and should not be relied on from the outside.
+     * The transaction id of the current transaction This is mostly used for
+     * testing and should not be relied on from the outside.
      */
     private Long currentTxnId = null;
-    
+
     /**
-     * We can only have one active "parent" transaction at a time.
-     * We can speculatively execute other transactions out of order, but the active parent
-     * transaction will always be the same.  
+     * We can only have one active "parent" transaction at a time. We can
+     * speculatively execute other transactions out of order, but the active
+     * parent transaction will always be the same.
      */
     private AbstractTransaction currentTxn;
-    
+
     /**
-     * We can only have one active distributed transactions at a time.  
-     * The multi-partition TransactionState that is currently executing at this partition
-     * When we get the response for these txn, we know we can commit/abort the speculatively executed transactions
+     * We can only have one active distributed transactions at a time. The
+     * multi-partition TransactionState that is currently executing at this
+     * partition When we get the response for these txn, we know we can
+     * commit/abort the speculatively executed transactions
      */
     private AbstractTransaction currentDtxn = null;
     private String lastDtxnDebug = null;
@@ -344,14 +397,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private VoltProcedure currentVoltProc = null;
     
     /**
-     * List of messages that are blocked waiting for the outstanding dtxn to commit
+     * List of messages that are blocked waiting for the outstanding dtxn to
+     * commit
      */
     private final List<InternalMessage> currentBlockedTxns = new ArrayList<InternalMessage>();
 
     /**
-     * The current ExecutionMode. This defines when transactions are allowed to execute
-     * and whether they can return their results to the client immediately or whether they
-     * must wait until the current_dtxn commits.
+     * The current ExecutionMode. This defines when transactions are allowed to
+     * execute and whether they can return their results to the client
+     * immediately or whether they must wait until the current_dtxn commits.
      */
     private ExecutionMode currentExecMode = ExecutionMode.COMMIT_ALL;
 
@@ -364,27 +418,27 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * The time in ms since last stats update
      */
     private long lastStatsTime = 0;
-    
+
     /**
      * The last txn id that we executed (either local or remote)
      */
     private volatile Long lastExecutedTxnId = null;
-    
+
     /**
      * The last txn id that we committed
      */
     private volatile Long lastCommittedTxnId = Long.valueOf(-1l);
-    
+
     /**
      * The last undoToken that we handed out
      */
     private long lastUndoToken = 0l;
-    
+
     /**
      * The last undoToken that we committed at this partition
      */
     private long lastCommittedUndoToken = -1l;
-    
+
     // ----------------------------------------------------------------------------
     // SPECULATIVE EXECUTION STATE
     // ----------------------------------------------------------------------------
@@ -393,7 +447,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private AbstractConflictChecker specExecChecker;
     private boolean specExecSkipAfter = false;
     private SpecExecScheduler specExecScheduler;
-    
+
     /**
      * Transactions that were speculatively executed before or after the current 
      * distributed transaction finished at this partition and are now waiting to be committed.
@@ -407,16 +461,18 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private final TransactionUndoTokenComparator specExecComparator;
     
     /**
-     * If this flag is set to true, that means some txn has modified the database
-     * in the current batch of speculatively executed txns. Any read-only specexec txn that 
-     * is executed when this flag is set to false can be returned to the client immediately.
-     * TODO: This should really be a bitmap of table ids so that we have finer grain control
+     * If this flag is set to true, that means some txn has modified the
+     * database in the current batch of speculatively executed txns. Any
+     * read-only specexec txn that is executed when this flag is set to false
+     * can be returned to the client immediately. TODO: This should really be a
+     * bitmap of table ids so that we have finer grain control
      */
     private boolean specExecModified = false;
 
     /**
-     * If set to true, then we should not check for speculative execution candidates
-     * at run time. This needs to be set any time we change the currentDtxn
+     * If set to true, then we should not check for speculative execution
+     * candidates at run time. This needs to be set any time we change the
+     * currentDtxn
      */
     private boolean specExecIgnoreCurrent = false;
     
@@ -429,11 +485,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * The idea is that we can quickly derived the partitions for each unique set of SQLStmt list
      */
     private final Map<Integer, BatchPlanner> batchPlanners = new HashMap<Integer, BatchPlanner>(100);
-    
+
     // ----------------------------------------------------------------------------
     // DISTRIBUTED TRANSACTION TEMPORARY DATA COLLECTIONS
     // ----------------------------------------------------------------------------
-    
+
     /**
      * WorkFragments that we need to send to a remote HStoreSite for execution
      */
@@ -443,7 +499,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      */
     private final List<WorkFragment.Builder> tmp_localWorkFragmentBuilders = new ArrayList<WorkFragment.Builder>();
     /**
-     * WorkFragments that we need to send to a different PartitionExecutor that is on this same HStoreSite
+     * WorkFragments that we need to send to a different PartitionExecutor that
+     * is on this same HStoreSite
      */
     private final List<WorkFragment.Builder> tmp_localSiteFragmentBuilders = new ArrayList<WorkFragment.Builder>();
     /**
@@ -493,13 +550,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private final IntArrayCache tmp_inputDepIds = new IntArrayCache(10);
     
     /**
-     * The following three arrays are used by utilityWork() to create transactions
-     * for deferred queries
+     * The following three arrays are used by utilityWork() to create
+     * transactions for deferred queries
      */
     private final SQLStmt[] tmp_def_stmt = new SQLStmt[1];
     private final ParameterSet[] tmp_def_params = new ParameterSet[1];
     private LocalTransaction tmp_def_txn;
-    
+
     // ----------------------------------------------------------------------------
     // INTERNAL CLASSES
     // ----------------------------------------------------------------------------
@@ -558,42 +615,42 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     // ----------------------------------------------------------------------------
     // PROFILING OBJECTS
     // ----------------------------------------------------------------------------
-    
+
     private final PartitionExecutorProfiler profiler = new PartitionExecutorProfiler();
-    
+
     // ----------------------------------------------------------------------------
     // WORK REQUEST CALLBACK
     // ----------------------------------------------------------------------------
-    
+
     /**
-     * This will be invoked for each TransactionWorkResponse that comes back from
-     * the remote HStoreSites. Note that we don't need to do any counting as to whether
-     * a transaction has gotten back all of the responses that it expected. That logic is down
-     * below in waitForResponses()
+     * This will be invoked for each TransactionWorkResponse that comes back
+     * from the remote HStoreSites. Note that we don't need to do any counting
+     * as to whether a transaction has gotten back all of the responses that it
+     * expected. That logic is down below in waitForResponses()
      */
     private final RpcCallback<TransactionWorkResponse> request_work_callback = new RpcCallback<TransactionWorkResponse>() {
         @Override
         public void run(TransactionWorkResponse msg) {
             Long txn_id = msg.getTransactionId();
             LocalTransaction ts = hstore_site.getTransaction(txn_id);
-            
-            // We can ignore anything that comes in for a transaction that we don't know about
+
+            // We can ignore anything that comes in for a transaction that we
+            // don't know about
             if (ts == null) {
-                if (debug.val) LOG.debug("No transaction state exists for txn #" + txn_id);
+                if (debug.val)
+                    LOG.debug("No transaction state exists for txn #" + txn_id);
                 return;
             }
-            
+
             if (debug.val)
-                LOG.debug(String.format("Processing TransactionWorkResponse for %s with %d results%s",
-                          ts, msg.getResultsCount(), (trace.val ? "\n"+msg : "")));
+                LOG.debug(String.format("Processing TransactionWorkResponse for %s with %d results%s", ts, msg.getResultsCount(), (trace.val ? "\n" + msg : "")));
             for (int i = 0, cnt = msg.getResultsCount(); i < cnt; i++) {
-                WorkResult result = msg.getResults(i); 
+                WorkResult result = msg.getResults(i);
                 if (debug.val)
-                    LOG.debug(String.format("Got %s from partition %d for %s",
-                              result.getClass().getSimpleName(), result.getPartitionId(), ts));
+                    LOG.debug(String.format("Got %s from partition %d for %s", result.getClass().getSimpleName(), result.getPartitionId(), ts));
                 PartitionExecutor.this.processWorkResult(ts, result);
             } // FOR
-            if (hstore_conf.site.specexec_enable) { 
+            if (hstore_conf.site.specexec_enable) {
                 specExecScheduler.interruptSearch(UTIL_WORK_MSG);
             }
         }
@@ -602,7 +659,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     // ----------------------------------------------------------------------------
     // SYSPROC STUFF
     // ----------------------------------------------------------------------------
-    
+
     // Associate the system procedure planfragment ids to wrappers.
     // Planfragments are registered when the procedure wrapper is init()'d.
     private final Map<Long, VoltSystemProcedure> m_registeredSysProcPlanFragments = new HashMap<Long, VoltSystemProcedure>();
@@ -610,43 +667,81 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public void registerPlanFragment(final long pfId, final VoltSystemProcedure proc) {
         synchronized (m_registeredSysProcPlanFragments) {
             if (!m_registeredSysProcPlanFragments.containsKey(pfId)) {
-                assert(m_registeredSysProcPlanFragments.containsKey(pfId) == false) : "Trying to register the same sysproc more than once: " + pfId;
+                assert (m_registeredSysProcPlanFragments.containsKey(pfId) == false) : "Trying to register the same sysproc more than once: " + pfId;
                 m_registeredSysProcPlanFragments.put(pfId, proc);
-                if (trace.val) LOG.trace(String.format("Registered %s sysproc handle at partition %d for FragmentId #%d",
-                                 VoltSystemProcedure.procCallName(proc.getClass()), partitionId, pfId));
+                if (trace.val)
+                    LOG.trace(String.format("Registered %s sysproc handle at partition %d for FragmentId #%d", VoltSystemProcedure.procCallName(proc.getClass()), partitionId, pfId));
             }
         } // SYNCH
     }
 
     /**
-     * SystemProcedures are "friends" with PartitionExecutors and granted
-     * access to internal state via m_systemProcedureContext.
-     * access to internal state via m_systemProcedureContext.
+     * SystemProcedures are "friends" with PartitionExecutors and granted access
+     * to internal state via m_systemProcedureContext. access to internal state
+     * via m_systemProcedureContext.
      */
     public interface SystemProcedureExecutionContext {
         public Catalog getCatalog();
+
         public Database getDatabase();
+
         public Cluster getCluster();
+
         public Site getSite();
+
         public Host getHost();
+
         public ExecutionEngine getExecutionEngine();
+
         public long getLastCommittedTxnId();
+
         public PartitionExecutor getPartitionExecutor();
+
         public HStoreSite getHStoreSite();
+
         public Long getCurrentTxnId();
     }
 
     protected class SystemProcedureContext implements SystemProcedureExecutionContext {
-        public Catalog getCatalog()                 { return catalogContext.catalog; }
-        public Database getDatabase()               { return catalogContext.database; }
-        public Cluster getCluster()                 { return catalogContext.cluster; }
-        public Site getSite()                       { return site; }
-        public Host getHost()                       { return site.getHost(); }
-        public ExecutionEngine getExecutionEngine() { return ee; }
-        public long getLastCommittedTxnId()         { return lastCommittedTxnId; }
-        public PartitionExecutor getPartitionExecutor() { return PartitionExecutor.this; }
-        public HStoreSite getHStoreSite()           { return hstore_site; }
-        public Long getCurrentTxnId()               { return PartitionExecutor.this.currentTxnId; }
+        public Catalog getCatalog() {
+            return catalogContext.catalog;
+        }
+
+        public Database getDatabase() {
+            return catalogContext.database;
+        }
+
+        public Cluster getCluster() {
+            return catalogContext.cluster;
+        }
+
+        public Site getSite() {
+            return site;
+        }
+
+        public Host getHost() {
+            return site.getHost();
+        }
+
+        public ExecutionEngine getExecutionEngine() {
+            return ee;
+        }
+
+        public long getLastCommittedTxnId() {
+            return lastCommittedTxnId;
+        }
+
+        public PartitionExecutor getPartitionExecutor() {
+            return PartitionExecutor.this;
+        }
+
+        public HStoreSite getHStoreSite() {
+            return hstore_site;
+        }
+
+        public Long getCurrentTxnId() {
+            return PartitionExecutor.this.currentTxnId;
+        }
     }
 
     private final SystemProcedureContext m_systemProcedureContext = new SystemProcedureContext();
@@ -676,47 +771,48 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.partitionId = 0;
         this.procedures = null;
         this.tmp_transactionRequestBuilders = null;
+        this.reconfig_state = ReconfigurationState.NORMAL;
     }
 
     /**
      * Initialize the StoredProcedure runner and EE for this Site.
+     * 
      * @param partitionId
      * @param t_estimator
      * @param coordinator
      * @param siteManager
-     * @param serializedCatalog A list of catalog commands, separated by
-     * newlines that, when executed, reconstruct the complete m_catalog.
+     * @param serializedCatalog
+     *            A list of catalog commands, separated by newlines that, when
+     *            executed, reconstruct the complete m_catalog.
      */
-    public PartitionExecutor(final int partitionId,
-                             final CatalogContext catalogContext,
-                             final BackendTarget target,
-                             final PartitionEstimator p_estimator,
-                             final TransactionEstimator t_estimator) {
+    public PartitionExecutor(final int partitionId, final CatalogContext catalogContext, final BackendTarget target, final PartitionEstimator p_estimator, final TransactionEstimator t_estimator) {
         this.hstore_conf = HStoreConf.singleton();
         this.work_queue = new PartitionMessageQueue();
         this.backend_target = target;
         this.catalogContext = catalogContext;
         this.partition = catalogContext.getPartitionById(partitionId);
-        assert(this.partition != null) : "Invalid Partition #" + partitionId;
+        assert (this.partition != null) : "Invalid Partition #" + partitionId;
         this.partitionId = this.partition.getId();
         this.site = this.partition.getParent();
-        assert(site != null) : "Unable to get Site for Partition #" + partitionId;
+        assert (site != null) : "Unable to get Site for Partition #" + partitionId;
         this.siteId = this.site.getId();
 
         this.lastUndoToken = this.partitionId * 1000000;
         this.p_estimator = p_estimator;
         this.localTxnEstimator = t_estimator;
+
+        this.reconfig_state = ReconfigurationState.NORMAL;
         this.specExecComparator = new TransactionUndoTokenComparator(this.partitionId);
         
         // VoltProcedure Queues
         @SuppressWarnings("unchecked")
-        Queue<VoltProcedure> voltProcQueues[] = new Queue[catalogContext.procedures.size()+1];
+        Queue<VoltProcedure> voltProcQueues[] = new Queue[catalogContext.procedures.size() + 1];
         this.procedures = voltProcQueues;
-        
+
         // An execution site can be backed by HSQLDB, by volt's EE accessed
-        // via JNI or by volt's EE accessed via IPC.  When backed by HSQLDB,
+        // via JNI or by volt's EE accessed via IPC. When backed by HSQLDB,
         // the VoltProcedure interface invokes HSQLDB directly through its
-        // hsql Backend member variable.  The real volt backend is encapsulated
+        // hsql Backend member variable. The real volt backend is encapsulated
         // by the ExecutionEngine class. This class has implementations for both
         // JNI and IPC - and selects the desired implementation based on the
         // value of this.eeBackend.
@@ -724,7 +820,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         ExecutionEngine eeTemp = null;
         SnapshotSiteProcessor snapshotter = null;
         try {
-            if (trace.val) LOG.trace("Creating EE wrapper with target type '" + target + "'");
+            if (trace.val)
+                LOG.trace("Creating EE wrapper with target type '" + target + "'");
             if (this.backend_target == BackendTarget.HSQLDB_BACKEND) {
                 hsqlTemp = new HsqlBackend(partitionId);
                 final String hexDDL = catalogContext.database.getSchema();
@@ -737,18 +834,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     hsqlTemp.runDDL(command);
                 }
                 eeTemp = new MockExecutionEngine();
-                
-            }
-            else if (target == BackendTarget.NATIVE_EE_JNI) {
+
+            } else if (target == BackendTarget.NATIVE_EE_JNI) {
                 org.voltdb.EELibraryLoader.loadExecutionEngineLibrary(true);
                 // set up the EE
-                eeTemp = new ExecutionEngineJNI(this,
-                                                catalogContext.cluster.getRelativeIndex(),
-                                                this.getSiteId(),
-                                                this.getPartitionId(),
-                                                this.site.getHost().getId(),
-                                                "localhost");
-                
+                eeTemp = new ExecutionEngineJNI(this, catalogContext.cluster.getRelativeIndex(), this.getSiteId(), this.getPartitionId(), this.site.getHost().getId(), "localhost");
+
                 // Initialize Anti-Cache
                 if (hstore_conf.site.anticache_enable) {
                     File acFile = AntiCacheManager.getDatabaseDir(this);
@@ -766,24 +857,18 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 eeTemp.loadCatalog(catalogContext.catalog.serialize());
                 this.lastTickTime = System.currentTimeMillis();
                 eeTemp.tick(this.lastTickTime, 0);
-                
+
                 snapshotter = new SnapshotSiteProcessor(new Runnable() {
                     final PotentialSnapshotWorkMessage msg = new PotentialSnapshotWorkMessage();
+
                     @Override
                     public void run() {
                         PartitionExecutor.this.work_queue.add(this.msg);
                     }
                 });
-            }
-            else {
+            } else {
                 // set up the EE over IPC
-                eeTemp = new ExecutionEngineIPC(this,
-                                                catalogContext.cluster.getRelativeIndex(),
-                                                this.getSiteId(),
-                                                this.getPartitionId(),
-                                                this.site.getHost().getId(),
-                                                "localhost",
-                                                target);
+                eeTemp = new ExecutionEngineIPC(this, catalogContext.cluster.getRelativeIndex(), this.getSiteId(), this.getPartitionId(), this.site.getHost().getId(), "localhost", target);
                 eeTemp.loadCatalog(catalogContext.catalog.serialize());
                 this.lastTickTime = System.currentTimeMillis();
                 eeTemp.tick(this.lastTickTime, 0);
@@ -796,17 +881,19 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.ee = eeTemp;
         this.hsql = hsqlTemp;
         m_snapshotter = snapshotter;
-        assert(this.ee != null);
-        assert(!(this.ee == null && this.hsql == null)) : "Both execution engine objects are empty. This should never happen";
-        
+        assert (this.ee != null);
+        assert (!(this.ee == null && this.hsql == null)) : "Both execution engine objects are empty. This should never happen";
+
         // Initialize temporary data structures
         int num_sites = this.catalogContext.numberOfSites;
         this.tmp_transactionRequestBuilders = new TransactionWorkRequestBuilder[num_sites];
     }
-    
+
     /**
-     * Link this PartitionExecutor with its parent HStoreSite
-     * This will initialize the references the various components shared among the PartitionExecutors 
+     * Link this PartitionExecutor with its parent HStoreSite This will
+     * initialize the references the various components shared among the
+     * PartitionExecutors
+     * 
      * @param hstore_site
      */
     public void initHStoreSite(HStoreSite hstore_site) {
@@ -819,7 +906,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.thresholds = hstore_site.getThresholds();
         this.queueManager = hstore_site.getTransactionQueueManager();
         this.lockQueue = this.queueManager.getLockQueue(this.partitionId);
-        
+
         if (hstore_conf.site.exec_deferrable_queries) {
             tmp_def_txn = new LocalTransaction(hstore_site);
         }
@@ -837,7 +924,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 queueUtilityWork(STATS_WORK_MSG);
             }
         });
-        
+
         // Reset our profiling information when we get the first non-sysproc
         this.profiler.resetOnEventObservable(observable);
         
@@ -905,15 +992,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         assert(this.specExecChecker != null);
         
         SpecExecSchedulerPolicyType policy = SpecExecSchedulerPolicyType.get(hstore_conf.site.specexec_scheduler_policy);
-        assert(policy != null) : String.format("Invalid %s '%s'",
-                                               SpecExecSchedulerPolicyType.class.getSimpleName(),
-                                               hstore_conf.site.specexec_scheduler_policy);
-        assert(this.lockQueue.getPartitionId() == this.partitionId);
-        this.specExecScheduler = new SpecExecScheduler(this.specExecChecker,
-                                                       this.partitionId,
-                                                       this.lockQueue,
-                                                       policy,
-                                                       hstore_conf.site.specexec_scheduler_window);
+        assert (policy != null) : String.format("Invalid %s '%s'", SpecExecSchedulerPolicyType.class.getSimpleName(), hstore_conf.site.specexec_scheduler_policy);
+        assert (this.lockQueue.getPartitionId() == this.partitionId);
+        this.specExecScheduler = new SpecExecScheduler(this.specExecChecker, this.partitionId, this.lockQueue, policy, hstore_conf.site.specexec_scheduler_window);
         this.specExecChecker.setEstimationThresholds(this.thresholds);
         this.specExecScheduler.updateConf(hstore_conf, null);
         
@@ -929,25 +1010,22 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.specExecScheduler.updateConf(hstore_conf, changed);
         }
     }
-    
+
     // ----------------------------------------------------------------------------
     // MAIN EXECUTION LOOP
     // ----------------------------------------------------------------------------
-    
+
     /**
-     * Primary run method that is invoked a single time when the thread is started.
-     * Has the opportunity to do startup config.
+     * Primary run method that is invoked a single time when the thread is
+     * started. Has the opportunity to do startup config.
      */
     @Override
     public final void run() {
         if (this.hstore_site == null) {
-            String msg = String.format("Trying to start %s for partition %d before its HStoreSite was initialized",
-                                       this.getClass().getSimpleName(), this.partitionId);
+            String msg = String.format("Trying to start %s for partition %d before its HStoreSite was initialized", this.getClass().getSimpleName(), this.partitionId);
             throw new RuntimeException(msg);
-        }
-        else if (this.self != null) {
-            String msg = String.format("Trying to restart %s for partition %d after it was already running",
-                                       this.getClass().getSimpleName(), this.partitionId);
+        } else if (this.self != null) {
+            String msg = String.format("Trying to restart %s for partition %d after it was already running", this.getClass().getSimpleName(), this.partitionId);
             throw new RuntimeException(msg);
         }
 
@@ -969,13 +1047,16 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         assert(this.hstore_coordinator != null);
         assert(this.specExecScheduler != null);
         assert(this.queueManager != null);
+        if (hstore_conf.global.reconfiguration_enable)
+            assert (this.reconfiguration_coordinator != null);
         
         // *********************************** DEBUG ***********************************
         if (hstore_conf.site.exec_validate_work) {
             LOG.warn("Enabled Distributed Transaction Validation Checker");
         }
-        // *********************************** DEBUG ***********************************
-        
+        // *********************************** DEBUG
+        // ***********************************
+
         // Things that we will need in the loop below
         InternalMessage nextWork = null;
         AbstractTransaction nextTxn = null;
@@ -986,34 +1067,43 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 this.currentTxnId = null;
                 nextTxn = null;
                 nextWork = null;
-                
+
                 // This is the starting state of the PartitionExecutor.
-                // At this point here we currently don't have a txn to execute nor 
-                // are we involved in a distributed txn running at another partition.
+                // At this point here we currently don't have a txn to execute
+                // nor
+                // are we involved in a distributed txn running at another
+                // partition.
                 // So we need to go our PartitionLockQueue and get back the next
                 // txn that will have our lock.
-                if (this.currentDtxn == null) {
+                // Aaron 5.28.14 - if work queue has work, it could be reconfiguration 
+                // related, so use that first.
+                if (this.currentDtxn == null && this.work_queue.isEmpty()) {
                     this.tick();
-                    
-                    if (hstore_conf.site.exec_profiling) profiler.poll_time.start();
+
+                    if (hstore_conf.site.exec_profiling)
+                        profiler.poll_time.start();
                     try {
                         nextTxn = this.queueManager.checkLockQueue(this.partitionId); // NON-BLOCKING
                     } finally {
-                        if (hstore_conf.site.exec_profiling) profiler.poll_time.stopIfStarted();
+                        if (hstore_conf.site.exec_profiling)
+                            profiler.poll_time.stopIfStarted();
                     }
-                    
-                    // If we get something back here, then it should become our current transaction.
+
+                    // If we get something back here, then it should become our
+                    // current transaction.
                     if (nextTxn != null) {
-                        // If it's a single-partition txn, then we can return the StartTxnMessage 
-                        // so that we can fire it off right away.
+                        // If this a single-partition txn, then we'll want to
+                        // execute it right away
                         if (nextTxn.isPredictSinglePartition()) {
-                            LocalTransaction localTxn = (LocalTransaction)nextTxn;
+                            LocalTransaction localTxn = (LocalTransaction) nextTxn;
                             nextWork = localTxn.getStartTxnMessage();
-                            if (hstore_conf.site.txn_profiling && localTxn.profiler != null) 
+                            if (hstore_conf.site.txn_profiling && localTxn.profiler != null)
                                 localTxn.profiler.startQueueExec();
                         }
-                        // If it's as distribued txn, then we'll want to just set it as our 
-                        // current dtxn at this partition and then keep checking the queue
+                        // If it's as distribued txn, then we'll want to just
+                        // set it as our
+                        // current dtxn at this partition and then keep checking
+                        // the queue
                         // for more work.
                         else {
                             this.setCurrentDtxn(nextTxn);
@@ -1024,13 +1114,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // -------------------------------
                 // Poll Work Queue
                 // -------------------------------
-                
+
                 // Check if we have anything to do right now
                 if (nextWork == null) {
-                    if (hstore_conf.site.exec_profiling) profiler.idle_time.start();
+                    if (hstore_conf.site.exec_profiling)
+                        profiler.idle_time.start();
                     try {
                         // If we're allowed to speculatively execute txns, then we don't want to have
                         // to wait to see if anything will show up in our work queue.
+
                         if (hstore_conf.site.specexec_enable && this.lockQueue.approximateIsEmpty() == false) {
                             nextWork = this.work_queue.poll();
                         } else {
@@ -1039,19 +1131,22 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     } catch (InterruptedException ex) {
                         continue;
                     } finally {
-                        if (hstore_conf.site.exec_profiling) profiler.idle_time.stopIfStarted();
+                        if (hstore_conf.site.exec_profiling)
+                            profiler.idle_time.stopIfStarted();
                     }
                 }
-                
+
                 // -------------------------------
                 // Process Work
                 // -------------------------------
                 if (nextWork != null) {
-                    if (trace.val) LOG.trace("Next Work: " + nextWork);
+                    if (trace.val)
+                        LOG.trace("Next Work: " + nextWork);
                     if (hstore_conf.site.exec_profiling) {
                         profiler.numMessages.put(nextWork.getClass().getSimpleName());
                         profiler.exec_time.start();
-                        if (this.currentDtxn != null) profiler.sp2_time.stopIfStarted();
+                        if (this.currentDtxn != null)
+                            profiler.sp2_time.stopIfStarted();
                     }
                     try {
                         // -------------------------------
@@ -1069,13 +1164,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     } finally {
                         if (hstore_conf.site.exec_profiling) {
                             profiler.exec_time.stopIfStarted();
-                            if (this.currentDtxn != null) profiler.sp2_time.start();
+                            if (this.currentDtxn != null)
+                                profiler.sp2_time.start();
                         }
                     }
-                    if (this.currentTxnId != null) this.lastExecutedTxnId = this.currentTxnId;
+                    if (this.currentTxnId != null)
+                        this.lastExecutedTxnId = this.currentTxnId;
                 }
                 // Check if we have any utility work to do while we wait
-                else if (hstore_conf.site.specexec_enable) {
+                else if (hstore_conf.site.specexec_enable || hstore_conf.global.reconfiguration_enable) {
 //                    if (trace.val)
 //                        LOG.trace(String.format("The %s for partition %s empty. Checking for utility work...",
 //                                  this.work_queue.getClass().getSimpleName(), this.partitionId));
@@ -1104,31 +1201,57 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                          (this.currentTxnId != null ? " In-Flight Txn: #" + this.currentTxnId : ""),
                          txnDebug));
             }
-            
+
             // Release the shutdown latch in case anybody waiting for us
             this.shutdown_latch.release();
         }
     }
-    
+
     /**
-     * Special function that allows us to do some utility work while 
-     * we are waiting for a response or something real to do.
-     * Note: this tracks how long the system spends doing utility work. It would
-     * be interesting to have the system report on this before it shuts down.
+     * Special function that allows us to do some utility work while we are
+     * waiting for a response or something real to do. Note: this tracks how
+     * long the system spends doing utility work. It would be interesting to
+     * have the system report on this before it shuts down.
+     * 
      * @return true if there is more utility work that can be done
      */
     private boolean utilityWork() {
         if (hstore_conf.site.exec_profiling) this.profiler.util_time.start();
         
+        if (hstore_conf.global.reconfiguration_enable && reconfig_plan != null){
+            this.idle_click_count+=1;
+            //LOG.info("idle click count : " + idle_click_count);
+            
+            if (reconfiguration_coordinator.getReconfigurationInProgress() && asyncOutstanding.get() == false && reconfiguration_coordinator.queueAsyncPull() 
+                    && this.scheduleAsyncPullQueue.isEmpty() == false
+                    && (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )){
+                if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS) {
+                    LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
+                } else {
+                    LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to time. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
+                }                
+                this.idle_click_count = 0;
+                ScheduleAsyncPullRequestMessage pullMsg = scheduleAsyncPullQueue.poll();
+                if (pullMsg != null){
+                    this.work_queue.offer(pullMsg);
+                    asyncOutstanding.set(true);
+                }
+            }
+            
+            if (this.currentDtxn != null) {
+                return processQueuedLiveReconfigWork(true);
+            }          
+        }
         // -------------------------------
         // Poll Lock Queue
         // -------------------------------
 
         LocalTransaction specTxn = null;
         InternalMessage work = null;
-        
-        // Check whether there is something we can speculatively execute right now
-        if (this.specExecIgnoreCurrent == false && this.lockQueue.approximateIsEmpty() == false) {
+
+        // Check whether there is something we can speculatively execute right
+        // now
+        if (hstore_conf.site.specexec_enable && this.specExecIgnoreCurrent == false && this.lockQueue.approximateIsEmpty() == false) {
 //            if (trace.val)
 //                LOG.trace(String.format("Checking %s for something to do at partition %d while %s",
 //                          this.specExecScheduler.getClass().getSimpleName(),
@@ -1137,17 +1260,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             assert(hstore_conf.site.specexec_enable) :
                 "Trying to schedule speculative txn even though it is disabled";
             SpeculationType specType = this.calculateSpeculationType();
-            if (hstore_conf.site.exec_profiling) this.profiler.conflicts_time.start();
+            if (hstore_conf.site.exec_profiling)
+                this.profiler.conflicts_time.start();
             try {
                 specTxn = this.specExecScheduler.next(this.currentDtxn, specType);
             } finally {
-                if (hstore_conf.site.exec_profiling) this.profiler.conflicts_time.stopIfStarted();
+                if (hstore_conf.site.exec_profiling)
+                    this.profiler.conflicts_time.stopIfStarted();
             }
-            
-            // Because we don't have fine-grained undo support, we are just going
+
+            // Because we don't have fine-grained undo support, we are just
+            // going
             // keep all of our speculative execution txn results around
             if (specTxn != null) {
-                // TODO: What we really want to do is check to see whether we have anything
+                // TODO: What we really want to do is check to see whether we
+                // have anything
                 // in our work queue before we go ahead and fire off this txn
                 if (debug.val) {
                     if (this.work_queue.isEmpty() == false) {
@@ -1180,15 +1307,20 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // it will never get cleaned up properly. This is necessary in order to support
                 // sending out client results *before* the dtxn finishes
                 specTxn.getInitCallback().cancel();
-                
+
                 // Ok now that that's out of the way, let's run this baby...
                 specTxn.setSpeculative(specType);
-                if (hstore_conf.site.exec_profiling) profiler.specexec_time.start();
+                if (hstore_conf.site.exec_profiling)
+                    profiler.specexec_time.start();
                 try {
                     this.executeTransaction(specTxn);
                 } finally {
-                    if (hstore_conf.site.exec_profiling) profiler.specexec_time.stopIfStarted();
+                    if (hstore_conf.site.exec_profiling)
+                        profiler.specexec_time.stopIfStarted();
                 }
+            } else if (trace.val) {
+                LOG.trace(String.format("%s - No speculative execution candidates found at partition %d [queueSize=%d]", this.currentDtxn, this.partitionId,
+                        this.queueManager.getLockQueue(this.partitionId).size()));
             }
 //            else if (trace.val) {
 //                LOG.trace(String.format("%s - No speculative execution candidates found at partition %d [queueSize=%d]",
@@ -1204,13 +1336,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (hstore_conf.site.exec_profiling) this.profiler.util_time.stopIfStarted();
         return (specTxn != null || work != null);
     }
-    
+
     // ----------------------------------------------------------------------------
     // MESSAGE PROCESSING METHODS
     // ----------------------------------------------------------------------------
-    
+
     /**
      * Process an InternalMessage
+     * 
      * @param work
      */
     private final void processInternalMessage(InternalMessage work) {
@@ -1225,15 +1358,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
             // TABLE STATS REQUEST
             else if (work instanceof TableStatsRequestMessage) {
-                TableStatsRequestMessage stats_work = (TableStatsRequestMessage)work;
-                VoltTable results[] = this.ee.getStats(SysProcSelector.TABLE,
-                                                       stats_work.getLocators(),
-                                                       false,
-                                                       EstTime.currentTimeMillis());
-                assert(results.length == 1);
+                TableStatsRequestMessage stats_work = (TableStatsRequestMessage) work;
+                VoltTable results[] = this.ee.getStats(SysProcSelector.TABLE, stats_work.getLocators(), false, EstTime.currentTimeMillis());
+                assert (results.length == 1);
                 stats_work.getObservable().notifyObservers(results[0]);
-            }
-            else {
+            } else {
                 // IGNORE
             }
         }
@@ -1241,23 +1370,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // DEFERRED QUERIES
         // -------------------------------
         else if (work instanceof DeferredQueryMessage) {
-            DeferredQueryMessage def_work = (DeferredQueryMessage)work;
-            
+            DeferredQueryMessage def_work = (DeferredQueryMessage) work;
+
             // Set the txnId in our handle to be what the original txn was that
             // deferred this query.
             tmp_def_stmt[0] = def_work.getStmt();
             tmp_def_params[0] = def_work.getParams();
-            tmp_def_txn.init(def_work.getTxnId(), 
-                       -1, // We don't really need the clientHandle
-                       EstTime.currentTimeMillis(),
-                       this.partitionId,
-                       catalogContext.getPartitionSetSingleton(this.partitionId),
-                       false,
-                       false,
-                       tmp_def_stmt[0].getProcedure(),
-                       def_work.getParams(),
-                       null // We don't need the client callback
-            );
+            tmp_def_txn.init(def_work.getTxnId(), -1, // We don't really need
+                                                      // the clientHandle
+                    EstTime.currentTimeMillis(), this.partitionId, catalogContext.getPartitionSetSingleton(this.partitionId), false, false, tmp_def_stmt[0].getProcedure(), def_work.getParams(), null // We
+                                                                                                                                                                                                       // don't
+                                                                                                                                                                                                       // need
+                                                                                                                                                                                                       // the
+                                                                                                                                                                                                       // client
+                                                                                                                                                                                                       // callback
+                    );
             this.executeSQLStmtBatch(tmp_def_txn, 1, tmp_def_stmt, tmp_def_params, false, false);
         }
         // -------------------------------
@@ -1265,6 +1392,194 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // -------------------------------
         else if (work instanceof PotentialSnapshotWorkMessage) {
             m_snapshotter.doSnapshotWork(ee);
+        }
+        // -------------------------------
+        // RECONFIGURATION PUSH WORK
+        // -------------------------------
+        else if (work instanceof AsyncNonChunkPushRequestMessage) {
+            ReconfigurationRange<? extends Comparable<?>> pushRange = ((AsyncNonChunkPushRequestMessage) work).getPushRange();
+            LOG.info("Asynch push message scheduled " + pushRange.toString());
+
+            long _txnid = -1;
+            // TODO Check that this range still needs to be pushed
+            Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
+            int table_id = catalog_tbl.getRelativeIndex();
+            VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(pushRange);
+            if(hstore_conf.site.reconfig_replication_delay){
+                replicationDelay();
+            }
+            Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), 1, hstore_conf.site.reconfig_async_chunk_size_kb*1024);
+            try {
+
+                // RC push tuples
+                reconfiguration_coordinator.pushTuples(pushRange.old_partition, pushRange.new_partition, pushRange.table_name, 
+                        vt.getFirst(), pushRange.min_long, pushRange.max_long);
+                if(vt.getSecond()){
+                    LOG.error("TODO async push has more to send");
+                    this.reconfiguration_tracker.markRangeAsPartiallyMigratedOut(pushRange);
+                } else {
+                    this.reconfiguration_tracker.markRangeAsMigratedOut(pushRange);
+                }
+            } catch (ReconfigurationException re) {
+                if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_OUT)
+                    this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
+                else
+                    LOG.error("Unexpected reconfiguration Exception", re);
+
+            } catch (Exception e) {
+                LOG.error("Exception when pushing tuples on asynch push", e);
+            }
+
+        } 
+        else if (work instanceof AsyncNonChunkPullRequestMessage) {
+            //We have a scheduled async pull to initiate
+
+            AsyncNonChunkPullRequestMessage asyncLivePullRequestMessage = (AsyncNonChunkPullRequestMessage)work;
+            processAsyncNonChunkPullRequestMessage(asyncLivePullRequestMessage);
+            //throw new NotImplementedException();
+        }  
+        else if (work instanceof ScheduleAsyncPullRequestMessage) {
+            LOG.info(String.format("(%s) Schedule async pull. Work Queue Size: %s", this.partitionId, this.work_queue.size()));
+            //We have a scheduled async pull to initiate
+            //this.reconfiguration_coordinator.asyncPullRequestFromPE(livePullId, txnId, callingPartition, pullRequests, pullBlockSemaphore);
+            processScheduleAsyncPullRequestMessage((ScheduleAsyncPullRequestMessage)work);
+        }  
+        else if (work instanceof AsyncDataPullResponseMessage) {
+            //We have received and are processing a data pull response
+        	LOG.info("Processing the pull response message received");
+            AsyncPullResponse pull = ((AsyncDataPullResponseMessage) work).getAsyncPullResponse();
+            try {                
+                VoltTable vt = FastDeserializer.deserialize(pull.getVoltTableData().toByteArray(), VoltTable.class);
+    
+                //TODO : Process async pull using chunk id
+                LOG.info("TODO verify chunk id order");
+                receiveTuples(pull.getTransactionID(), pull.getOldPartition(), pull.getNewPartition(), pull.getVoltTableName(), 
+                        pull.getMinInclusive(), pull.getMaxExclusive(), vt, pull.getMoreDataNeeded(), true);
+                
+                //Commenting these lines as we have to unblock the semaphore when we get a callback because otherwise the queued job is never unblocked 
+                
+                //if(pull.getMoreDataNeeded() == false){
+                //    this.reconfiguration_coordinator.unblockingPullRequestSemaphore(pull.getAsyncPullIdentifier(), true);
+                //}
+                ReconfigurationControlRequest acknowledgingCallback = ReconfigurationControlRequest.newBuilder().
+                		setSrcPartition(pull.getNewPartition())
+                        .setDestPartition(pull.getOldPartition())
+                        .setReconfigControlType(ReconfigurationControlType.CHUNK_RECEIVED)
+                        .setReceiverSite(pull.getSenderSite())
+                        .setMessageIdentifier(pull.getAsyncPullIdentifier()).
+                        setSenderSite(this.siteId).build();
+                this.reconfiguration_coordinator.sendAcknowledgement(acknowledgingCallback);
+            } catch (Exception e) {
+                LOG.error("Exception when processing async data pull response", e);
+            }
+            
+        }
+        else if (work instanceof AsyncDataPullRequestMessage) {
+            //We have received and are processing a data pull request
+            AsyncDataPullRequestMessage pullMsg = (AsyncDataPullRequestMessage)work;
+            AsyncPullRequest pull = pullMsg.getAsyncPullRequest();
+            LOG.info("Extracting data for a async data pull request at partition " + this.partitionId + " : " + pull.getAsyncPullIdentifier());
+            try {                
+                String tableName = pull.getVoltTableName();
+                Table catalog_tbl = this.catalogContext.getTableByName(tableName);
+                int table_id = catalog_tbl.getRelativeIndex();
+                VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(
+                        new ReconfigurationRange<Long>(tableName, VoltType.BIGINT, pull.getMinInclusive(), pull.getMaxExclusive(), 
+                                pull.getOldPartition(), pull.getNewPartition())
+                        );
+                if(hstore_conf.site.reconfig_replication_delay){
+                    replicationDelay();
+                }
+
+                int chunkId = pullMsg.getAndIncrementChunk();
+                Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, pull.getTransactionID(), lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId, hstore_conf.site.reconfig_async_chunk_size_kb*1024);
+                VoltTable voltTable = vt.getFirst();
+
+                ByteString tableBytes = null;
+                try {
+                    ByteBuffer b = ByteBuffer.wrap(FastSerializer.serialize(voltTable));
+                    tableBytes = ByteString.copyFrom(b.array());
+                } catch (Exception ex) {
+                    throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
+                }
+                
+
+                boolean moreDataNeeded = vt.getSecond().booleanValue();  
+                MultiPullReplyRequest multiPullReplyRequest = MultiPullReplyRequest.newBuilder().
+                        setPullIdentifier(pull.getAsyncPullIdentifier()).
+                        setIsAsync(true).
+                        setSenderSite(this.hstore_site.getSiteId()).  
+                        setOldPartition(pull.getOldPartition()).setNewPartition(pull.getNewPartition()).setVoltTableName(pull.getVoltTableName())
+                        .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(pull.getMinInclusive()).setMaxExclusive(pull.getMaxExclusive())
+                        .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
+                
+                LOG.info("Sending a multi pull async request");
+                LOG.info("TODO do we need to invoke something different if local? Right now both remote / local put in with callback");
+                this.reconfiguration_coordinator.sendMultiPullReplyRequestFromPE(pull.getSenderSite(), multiPullReplyRequest);
+               
+                        
+                if(moreDataNeeded){
+                    LOG.info(" ### We have more data in the async pull to schedule. Queue the" +
+                    		"job to local requestPullQueue. Size : " + asyncRequestPullQueue.size());
+                    asyncRequestPullQueue.add(pullMsg);
+                    //this.work_queue.offer(pullMsg);
+                }
+            } catch (Exception e) {
+                LOG.error("Exception when processing async data pull response", e);
+            }
+            
+        }
+        // Async Pull Reply
+        else if (work instanceof MultiDataPullResponseMessage) {
+        	
+        	 //We have received and are processing a data pull response
+        	MultiPullReplyRequest pullReply = ((MultiDataPullResponseMessage) work).getMultiPullReplyRequest();
+            try {                
+                VoltTable vt = FastDeserializer.deserialize(pullReply.getVoltTableData().toByteArray(), VoltTable.class);
+                LOG.info(String.format("Processing the pull response message received. PullId:%s ChunkID%s IsAsync:%s MoreDataNeeded:%s ",
+                        pullReply.getPullIdentifier(), pullReply.getChunkId(), pullReply.getIsAsync(), pullReply.getMoreDataNeeded()));
+
+                //TODO : Process async pull using chunk id
+                LOG.info("TODO verify chunk id order");
+                
+                receiveTuples(pullReply.getTransactionID(), pullReply.getOldPartition(), pullReply.getNewPartition(), pullReply.getVoltTableName(), 
+                    		pullReply.getMinInclusive(), pullReply.getMaxExclusive(), vt, pullReply.getMoreDataNeeded(), true);
+                
+                
+                //Commenting these lines as we have to unblock the semaphore when we get a callback because otherwise the queued job is never unblocked 
+                
+                //if(pull.getMoreDataNeeded() == false){
+                //    this.reconfiguration_coordinator.unblockingPullRequestSemaphore(pull.getAsyncPullIdentifier(), true);
+                //}
+                MultiPullReplyResponse multiPullReplyResponse = MultiPullReplyResponse.newBuilder().
+                		setIsAsync(pullReply.getIsAsync()).
+                        setPullIdentifier(pullReply.getPullIdentifier()).
+                        setSenderSite(this.hstore_site.getSiteId()).  
+                        setOldPartition(pullReply.getOldPartition()).setNewPartition(pullReply.getNewPartition()).
+                        setVoltTableName(pullReply.getVoltTableName())
+                        .setT0S(System.currentTimeMillis()).setMinInclusive(pullReply.getMinInclusive()).
+                        setMaxExclusive(pullReply.getMaxExclusive())
+                        .setTransactionID(pullReply.getTransactionID()).setChunkId(pullReply.getChunkId()).build();
+                // Send the callback of the reply which should work as reconfiguration control message was working for acknowledging the received chunks 
+                ((MultiDataPullResponseMessage) work).getMultiPullReplyCallback().run(multiPullReplyResponse);
+            } catch (Exception e) {
+                LOG.error("Exception when processing async data pull response", e);
+            }
+        	
+        }
+
+        // Pull Request Message
+        else if (work instanceof LivePullRequestMessage) {
+            // Process the pull request
+            LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
+            if(hstore_conf.site.reconfig_profiling){
+                this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.appendTime(livePullRequestMessage.getStartTime(), ProfileMeasurement.getTime());
+                if(tempPullResponseCounter++%100==0)
+                    LOG.info(String.format("Avg live pull response queue Time MS %s Count:%s ",
+                            this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getAverageThinkTimeMS(),
+                            this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getInvocations()));
+            }
+            processLivePullRequestMessage(livePullRequestMessage);
         }
         // -------------------------------
         // BAD MOJO!
@@ -1277,6 +1592,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     /**
      * Process an InternalTxnMessage
+     * 
      * @param work
      */
     private void processInternalTxnMessage(InternalTxnMessage work) {
@@ -1284,48 +1600,53 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.currentTxn = ts;
         this.currentTxnId = ts.getTransactionId();
 
-        // If this transaction has already been aborted and they are trying to give us
-        // something that isn't a FinishTaskMessage, then we won't bother processing it
+        // If this transaction has already been aborted and they are trying to
+        // give us
+        // something that isn't a FinishTaskMessage, then we won't bother
+        // processing it
         if (ts.isAborted() && (work instanceof FinishTxnMessage) == false) {
             if (debug.val)
-                LOG.debug(String.format("%s - Cannot process %s on partition %d because txn was marked as aborted",
-                          ts, work.getClass().getSimpleName(), this.partitionId));
+                LOG.debug(String.format("%s - Cannot process %s on partition %d because txn was marked as aborted", ts, work.getClass().getSimpleName(), this.partitionId));
             return;
         }
-        
+
         if (debug.val)
             LOG.debug(String.format("Processing %s at partition %d", work, this.partitionId));
-        
+
         // -------------------------------
         // Start Transaction
         // -------------------------------
         if (work instanceof StartTxnMessage) {
-            if (hstore_conf.site.specexec_enable && ts.isPredictSinglePartition()) this.specExecScheduler.reset();
-            if (hstore_conf.site.exec_profiling) profiler.txn_time.start();
+            if (hstore_conf.site.specexec_enable && ts.isPredictSinglePartition())
+                this.specExecScheduler.reset();
+            if (hstore_conf.site.exec_profiling)
+                profiler.txn_time.start();
             try {
-                this.executeTransaction((LocalTransaction)ts);
+                this.executeTransaction((LocalTransaction) ts);
             } finally {
-                if (hstore_conf.site.exec_profiling) profiler.txn_time.stopIfStarted();
+                if (hstore_conf.site.exec_profiling)
+                    profiler.txn_time.stopIfStarted();
             }
         }
         // -------------------------------
         // Execute Query Plan Fragments
         // -------------------------------
         else if (work instanceof WorkFragmentMessage) {
-            WorkFragment fragment = ((WorkFragmentMessage)work).getFragment();
-            assert(fragment != null);
-            
+            WorkFragment fragment = ((WorkFragmentMessage) work).getFragment();
+            assert (fragment != null);
+
             // HACK HACK HACK
             if (ts.isInitialized() == false) {
-                LOG.warn(String.format("Skipping %s at partition %d for unitialized txn",
-                         work.getClass().getSimpleName(), this.partitionId));
+                LOG.warn(String.format("Skipping %s at partition %d for unitialized txn", work.getClass().getSimpleName(), this.partitionId));
                 return;
             }
 
             // Get the ParameterSet array for this WorkFragment
-            // It can either be attached to the AbstractTransaction handle if it came
-            // over the wire directly from the txn's base partition, or it can be attached
-            // as for prefetch WorkFragments 
+            // It can either be attached to the AbstractTransaction handle if it
+            // came
+            // over the wire directly from the txn's base partition, or it can
+            // be attached
+            // as for prefetch WorkFragments
             ParameterSet parameters[] = null;
             if (fragment.getPrefetch()) {
                 parameters = ts.getPrefetchParameterSets();
@@ -1341,11 +1662,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             // At this point we know that we are either the current dtxn or the current dtxn is null
             // We will allow any read-only transaction to commit if
             // (1) The WorkFragment for the remote txn is read-only
-            // (2) This txn has always been read-only up to this point at this partition
+            // (2) This txn has always been read-only up to this point at this
+            // partition
             ExecutionMode newMode = null;
             if (hstore_conf.site.specexec_enable) {
                 if (fragment.getReadOnly() && ts.isExecReadOnly(this.partitionId)) {
-                    newMode = ExecutionMode.COMMIT_READONLY ;
+                    newMode = ExecutionMode.COMMIT_READONLY;
                 } else {
                     newMode = ExecutionMode.COMMIT_NONE;
                 }
@@ -1356,21 +1678,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             if (this.currentDtxn == null) {
                 this.setCurrentDtxn(ts);
                 if (debug.val)
-                    LOG.debug(String.format("Marking %s as current DTXN on partition %d [nextMode=%s]",
-                              ts, this.partitionId, newMode));                    
+                    LOG.debug(String.format("Marking %s as current DTXN on partition %d [nextMode=%s]", ts, this.partitionId, newMode));
             }
             // There is a current DTXN but it's not us!
             // That means we need to block ourselves until it finishes
             else if (this.currentDtxn != ts) {
                 if (debug.val)
-                    LOG.debug(String.format("%s - Blocking on partition %d until current Dtxn %s finishes",
-                              ts, this.partitionId, this.currentDtxn));
+                    LOG.debug(String.format("%s - Blocking on partition %d until current Dtxn %s finishes", ts, this.partitionId, this.currentDtxn));
                 this.blockTransaction(work);
                 return;
             }
-            assert(this.currentDtxn == ts) :
-                String.format("Trying to execute a second Dtxn %s before the current one has finished [current=%s]",
-                              ts, this.currentDtxn);
+            assert (this.currentDtxn == ts) : String.format("Trying to execute a second Dtxn %s before the current one has finished [current=%s]", ts, this.currentDtxn);
             this.setExecutionMode(ts, newMode);
             this.processWorkFragment(ts, fragment, parameters);
         }
@@ -1389,54 +1707,66 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.prepareTransaction(pTask.getTransaction(), pTask.getCallback());
         }
         // -------------------------------
-        // Set Distributed Transaction 
+        // Set Distributed Transaction
         // -------------------------------
         else if (work instanceof SetDistributedTxnMessage) {
             if (this.currentDtxn != null) {
                 this.blockTransaction(work);
             } else {
-                this.setCurrentDtxn(((SetDistributedTxnMessage)work).getTransaction());
+                this.setCurrentDtxn(((SetDistributedTxnMessage) work).getTransaction());
             }
         }
+
     }
 
     // ----------------------------------------------------------------------------
     // DATA MEMBER METHODS
     // ----------------------------------------------------------------------------
-    
+
     public final ExecutionEngine getExecutionEngine() {
         return (this.ee);
     }
+
     public final Thread getExecutionThread() {
         return (this.self);
     }
+
     public final HsqlBackend getHsqlBackend() {
         return (this.hsql);
     }
+
     public final PartitionEstimator getPartitionEstimator() {
         return (this.p_estimator);
     }
+
     public final TransactionEstimator getTransactionEstimator() {
         return (this.localTxnEstimator);
     }
+
     public final BackendTarget getBackendTarget() {
         return (this.backend_target);
     }
+
     public final HStoreSite getHStoreSite() {
         return (this.hstore_site);
     }
+
     public final HStoreConf getHStoreConf() {
         return (this.hstore_conf);
     }
+
     public final CatalogContext getCatalogContext() {
         return (this.catalogContext);
     }
+
     public final int getSiteId() {
         return (this.siteId);
     }
+
     public final Partition getPartition() {
         return (this.partition);
     }
+
     public final int getPartitionId() {
         return (this.partitionId);
     }
@@ -1446,12 +1776,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public final PartitionExecutorProfiler getProfiler() {
         return profiler;
     }
-    
+
     // ----------------------------------------------------------------------------
     // VOLT PROCEDURE HELPER METHODS
     // ----------------------------------------------------------------------------
-    
-    
+
     protected void initializeVoltProcedures() {
         // load up all the stored procedures
         for (final Procedure catalog_proc : catalogContext.procedures) {
@@ -1465,28 +1794,29 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     @SuppressWarnings("unchecked")
     protected VoltProcedure initializeVoltProcedure(Procedure catalog_proc) {
         VoltProcedure volt_proc = null;
-        
+
         if (catalog_proc.getHasjava()) {
             // Only try to load the Java class file for the SP if it has one
             Class<? extends VoltProcedure> p_class = null;
             final String className = catalog_proc.getClassname();
             try {
-                p_class = (Class<? extends VoltProcedure>)Class.forName(className);
-                volt_proc = (VoltProcedure)p_class.newInstance();
+                p_class = (Class<? extends VoltProcedure>) Class.forName(className);
+                volt_proc = (VoltProcedure) p_class.newInstance();
             } catch (Exception e) {
-                throw new ServerFaultException("Failed to created VoltProcedure instance for " + catalog_proc.getName() , e);
+                throw new ServerFaultException("Failed to created VoltProcedure instance for " + catalog_proc.getName(), e);
             }
-            
+
         } else {
             volt_proc = new VoltProcedure.StmtProcedure();
         }
         volt_proc.init(this, catalog_proc, this.backend_target);
         return (volt_proc);
     }
-    
+
     /**
      * Returns a new VoltProcedure instance for a given stored procedure name
      * <B>Note:</B> You will get a new VoltProcedure for each invocation
+     * 
      * @param proc_name
      * @return
      */
@@ -1498,31 +1828,33 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         return (voltProc);
     }
-    
+
     /**
      * Return the given VoltProcedure back into the queue to be re-used again
+     * 
      * @param voltProc
      */
     protected void finishVoltProcedure(VoltProcedure voltProc) {
         voltProc.finish();
         this.procedures[voltProc.getProcedureId()].offer(voltProc);
     }
-    
+
     // ----------------------------------------------------------------------------
     // UTILITY METHODS
     // ----------------------------------------------------------------------------
-    
+
     private void tick() {
         // invoke native ee tick if at least one second has passed
         final long time = EstTime.currentTimeMillis();
-        long elapsed = time - this.lastTickTime; 
+        long elapsed = time - this.lastTickTime;
         if (elapsed >= 1000) {
             if ((this.lastTickTime != 0) && (this.ee != null)) {
                 this.ee.tick(time, this.lastCommittedTxnId);
-                
+
                 // do other periodic work
-                if (m_snapshotter != null) m_snapshotter.doSnapshotWork(this.ee);
-                
+                if (m_snapshotter != null)
+                    m_snapshotter.doSnapshotWork(this.ee);
+
                 if ((time - this.lastStatsTime) >= 20000) {
                     this.updateMemoryStats(time);
                 }
@@ -1530,11 +1862,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.lastTickTime = time;
         }
     }
-    
+
     private void updateMemoryStats(long time) {
         if (trace.val)
             LOG.trace("Updating memory stats for partition " + this.partitionId);
-        
         Collection<Table> tables = this.catalogContext.database.getTables();
         int[] tableIds = new int[tables.size()];
         int i = 0;
@@ -1550,17 +1881,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         int tupleAllocatedMem = 0;
         int indexMem = 0;
         int stringMem = 0;
-        
+
         // ACTIVE
         long tuplesEvicted = 0;
         long blocksEvicted = 0;
         long bytesEvicted = 0;
-        
+
         // GLOBAL WRITTEN
         long tuplesWritten = 0;
         long blocksWritten = 0;
         long bytesWritten = 0;
-        
+
         // GLOBAL READ
         long tuplesRead = 0;
         long blocksRead = 0;
@@ -1575,7 +1906,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         if (s1 != null) {
             VoltTable stats = s1[0];
-            assert(stats != null);
+            assert (stats != null);
 
             // rollup the table memory stats for this site
             while (stats.advanceRow()) {
@@ -1585,18 +1916,18 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 tupleAllocatedMem += (int) stats.getLong(idx++);
                 tupleDataMem += (int) stats.getLong(idx++);
                 stringMem += (int) stats.getLong(idx++);
-                
+
                 // ACTIVE
                 if (hstore_conf.site.anticache_enable) {
                     tuplesEvicted += (long) stats.getLong(idx++);
                     blocksEvicted += (long) stats.getLong(idx++);
                     bytesEvicted += (long) stats.getLong(idx++);
-                
+
                     // GLOBAL WRITTEN
                     tuplesWritten += (long) stats.getLong(idx++);
                     blocksWritten += (long) stats.getLong(idx++);
                     bytesWritten += (long) stats.getLong(idx++);
-                    
+
                     // GLOBAL READ
                     tuplesRead += (long) stats.getLong(idx++);
                     blocksRead += (long) stats.getLong(idx++);
@@ -1607,51 +1938,45 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
 
         // update index stats
-//        final VoltTable[] s2 = ee.getStats(SysProcSelector.INDEX, tableIds, false, time);
-//        if ((s2 != null) && (s2.length > 0)) {
-//            VoltTable stats = s2[0];
-//            assert(stats != null);
-//            LOG.info("INDEX:\n" + VoltTableUtil.format(stats));
-//
-//            // rollup the index memory stats for this site
-////            while (stats.advanceRow()) {
-////                indexMem += stats.getLong(10);
-////            }
-//            stats.resetRowPosition();
-//
-//            // m_indexStats.setStatsTable(stats);
-//        }
+        // final VoltTable[] s2 = ee.getStats(SysProcSelector.INDEX, tableIds,
+        // false, time);
+        // if ((s2 != null) && (s2.length > 0)) {
+        // VoltTable stats = s2[0];
+        // assert(stats != null);
+        // LOG.info("INDEX:\n" + VoltTableUtil.format(stats));
+        //
+        // // rollup the index memory stats for this site
+        // // while (stats.advanceRow()) {
+        // // indexMem += stats.getLong(10);
+        // // }
+        // stats.resetRowPosition();
+        //
+        // // m_indexStats.setStatsTable(stats);
+        // }
 
         // update the rolled up memory statistics
         MemoryStats memoryStats = hstore_site.getMemoryStatsSource();
-        memoryStats.eeUpdateMemStats(this.siteId,
-                                     tupleCount,
-                                     tupleDataMem,
-                                     tupleAllocatedMem,
-                                     indexMem,
-                                     stringMem,
-                                     0, // FIXME
-                                     
-                                     // ACTIVE
-                                     tuplesEvicted, blocksEvicted, bytesEvicted,
-                                     
-                                     // GLOBAL WRITTEN
-                                     tuplesWritten, blocksWritten, bytesWritten,
-                                     
-                                     // GLOBAL READ
-                                     tuplesRead, blocksRead, bytesRead
-        );
-        
+        memoryStats.eeUpdateMemStats(this.siteId, tupleCount, tupleDataMem, tupleAllocatedMem, indexMem, stringMem, 0, // FIXME
+
+                // ACTIVE
+                tuplesEvicted, blocksEvicted, bytesEvicted,
+
+                // GLOBAL WRITTEN
+                tuplesWritten, blocksWritten, bytesWritten,
+
+                // GLOBAL READ
+                tuplesRead, blocksRead, bytesRead);
+
         this.lastStatsTime = time;
     }
-    
+
     public void haltProcessing() {
-//        if (debug.val)
-            LOG.warn("Halting transaction processing at partition " + this.partitionId);
-        
+        // if (debug.val)
+        LOG.warn("Halting transaction processing at partition " + this.partitionId);
+
         ExecutionMode origMode = this.currentExecMode;
         this.setExecutionMode(this.currentTxn, ExecutionMode.DISABLED_REJECT);
-        List<InternalMessage> toKeep = new ArrayList<InternalMessage>(); 
+        List<InternalMessage> toKeep = new ArrayList<InternalMessage>();
         InternalMessage msg = null;
         while ((msg = this.work_queue.poll()) != null) {
             // -------------------------------
@@ -1670,14 +1995,16 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         } // WHILE
         // assert(this.work_queue.isEmpty());
         this.work_queue.addAll(toKeep);
-        
-        // For now we'll set it back so that we can execute new stuff. Clearing out
+
+        // For now we'll set it back so that we can execute new stuff. Clearing
+        // out
         // the queue should enough for now
         this.setExecutionMode(this.currentTxn, origMode);
     }
-    
+
     /**
-     * Figure out the current speculative execution mode for this partition 
+     * Figure out the current speculative execution mode for this partition
+     * 
      * @return
      */
     private SpeculationType calculateSpeculationType() {
@@ -1712,36 +2039,39 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     /**
-     * Set the current ExecutionMode for this executor. The transaction handle given as an input
-     * argument is the transaction that caused the mode to get changed. It is only used for debug
-     * purposes.
+     * Set the current ExecutionMode for this executor. The transaction handle
+     * given as an input argument is the transaction that caused the mode to get
+     * changed. It is only used for debug purposes.
+     * 
      * @param newMode
      * @param txn_id
      */
     private void setExecutionMode(AbstractTransaction ts, ExecutionMode newMode) {
         if (debug.val && this.currentExecMode != newMode) {
-            LOG.debug(String.format("Setting ExecutionMode for partition %d to %s because of %s [origMode=%s]",
-                      this.partitionId, newMode, ts, this.currentExecMode));
+            LOG.debug(String.format("Setting ExecutionMode for partition %d to %s because of %s [origMode=%s]", this.partitionId, newMode, ts, this.currentExecMode));
         }
-        assert(newMode != ExecutionMode.COMMIT_READONLY ||
-              (newMode == ExecutionMode.COMMIT_READONLY && this.currentDtxn != null)) :
-            String.format("%s is trying to set partition %d to %s when the current DTXN is null?", ts, this.partitionId, newMode);
+        assert (newMode != ExecutionMode.COMMIT_READONLY || (newMode == ExecutionMode.COMMIT_READONLY && this.currentDtxn != null)) : String.format(
+                "%s is trying to set partition %d to %s when the current DTXN is null?", ts, this.partitionId, newMode);
         this.currentExecMode = newMode;
     }
-    
+
     /**
      * Returns the next undo token to use when hitting up the EE with work
      * MAX_VALUE = no undo
+     * 
      * @param txn_id
      * @return
      */
     private long getNextUndoToken() {
-        if (trace.val) LOG.trace(String.format("Next Undo for Partition %d: %d", this.partitionId, this.lastUndoToken+1));
+        if (trace.val)
+            LOG.trace(String.format("Next Undo for Partition %d: %d", this.partitionId, this.lastUndoToken + 1));
         return (++this.lastUndoToken);
     }
-    
+
     /**
-     * For the given txn, return the next undo token to use for its next execution round
+     * For the given txn, return the next undo token to use for its next
+     * execution round
+     * 
      * @param ts
      * @param readOnly
      * @return
@@ -1750,42 +2080,42 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         long undoToken = HStoreConstants.DISABLE_UNDO_LOGGING_TOKEN;
         long lastUndoToken = ts.getLastUndoToken(this.partitionId);
         boolean singlePartition = ts.isPredictSinglePartition();
-        
+
         // Speculative txns always need an undo token
         // It's just easier this way...
         if (ts.isSpeculative()) {
             undoToken = this.getNextUndoToken();
         }
-        // If this plan is read-only, then we don't need a new undo token (unless
+        // If this plan is read-only, then we don't need a new undo token
+        // (unless
         // we don't have one already)
         else if (readOnly) {
             if (lastUndoToken == HStoreConstants.NULL_UNDO_LOGGING_TOKEN) {
                 lastUndoToken = HStoreConstants.DISABLE_UNDO_LOGGING_TOKEN;
-//                lastUndoToken = this.getNextUndoToken();
+                // lastUndoToken = this.getNextUndoToken();
             }
             undoToken = lastUndoToken;
         }
-        // Otherwise, we need to figure out whether we want to be a brave soul and 
+        // Otherwise, we need to figure out whether we want to be a brave soul
+        // and
         // not use undo logging at all
         else {
-            // If one of the following conditions are true, then we need to get a new token:
-            //  (1) If this our first time up at bat
-            //  (2) If we're a distributed transaction
-            //  (3) The force undo logging option is enabled
-            if (lastUndoToken == HStoreConstants.NULL_UNDO_LOGGING_TOKEN ||
-                    singlePartition == false ||
-                    hstore_conf.site.exec_force_undo_logging_all) {
+            // If one of the following conditions are true, then we need to get
+            // a new token:
+            // (1) If this our first time up at bat
+            // (2) If we're a distributed transaction
+            // (3) The force undo logging option is enabled
+            if (lastUndoToken == HStoreConstants.NULL_UNDO_LOGGING_TOKEN || singlePartition == false || hstore_conf.site.exec_force_undo_logging_all) {
                 undoToken = this.getNextUndoToken();
             }
-            // If we originally executed this transaction with undo buffers and we have a MarkovEstimate,
-            // then we can go back and check whether we want to disable undo logging for the rest of the transaction
+            // If we originally executed this transaction with undo buffers and
+            // we have a MarkovEstimate,
+            // then we can go back and check whether we want to disable undo
+            // logging for the rest of the transaction
             else if (ts.getEstimatorState() != null && singlePartition && ts.isSpeculative() == false) {
                 Estimate est = ts.getEstimatorState().getLastEstimate();
-                assert(est != null) : "Got back null MarkovEstimate for " + ts;
-                if (hstore_conf.site.exec_no_undo_logging == false ||
-                    est.isValid() == false ||
-                    est.isAbortable(this.thresholds) ||
-                    est.isReadOnlyPartition(this.thresholds, this.partitionId) == false) {
+                assert (est != null) : "Got back null MarkovEstimate for " + ts;
+                if (hstore_conf.site.exec_no_undo_logging == false || est.isValid() == false || est.isAbortable(this.thresholds) || est.isReadOnlyPartition(this.thresholds, this.partitionId) == false) {
                     undoToken = lastUndoToken;
                 } else if (debug.val) {
                     LOG.warn(String.format("Bold! Disabling undo buffers for inflight %s\n%s", ts, est));
@@ -1793,15 +2123,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
         }
         // Make sure that it's at least as big as the last one handed out
-        if (undoToken < this.lastUndoToken) undoToken = this.lastUndoToken;
-        
+        if (undoToken < this.lastUndoToken)
+            undoToken = this.lastUndoToken;
+
         if (debug.val)
-            LOG.debug(String.format("%s - Next undo token at partition %d is %s [readOnly=%s]",
-                      ts, this.partitionId,
-                      (undoToken == HStoreConstants.DISABLE_UNDO_LOGGING_TOKEN ? "<DISABLED>" :
-                          (undoToken == HStoreConstants.NULL_UNDO_LOGGING_TOKEN ? "<NULL>" : undoToken)),
-                      readOnly));
-        
+            LOG.debug(String.format("%s - Next undo token at partition %d is %s [readOnly=%s]", ts, this.partitionId, (undoToken == HStoreConstants.DISABLE_UNDO_LOGGING_TOKEN ? "<DISABLED>"
+                    : (undoToken == HStoreConstants.NULL_UNDO_LOGGING_TOKEN ? "<NULL>" : undoToken)), readOnly));
+
         return (undoToken);
     }
     
@@ -1869,20 +2197,19 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * Set the given AbstractTransaction handle as the current distributed txn
      * that is running at this partition. Note that this will check to make sure
      * that no other txn is marked as the currentDtxn.
+     * 
      * @param ts
      */
     private void setCurrentDtxn(AbstractTransaction ts) {
-        // There can never be another current dtxn still unfinished at this partition!
-        assert(this.currentBlockedTxns.isEmpty()) :
-            String.format("Concurrent multi-partition transactions at partition %d: " +
-                          "Orig[%s] <=> New[%s] / BlockedQueue:%d",
-                          this.partitionId, this.currentDtxn, ts, this.currentBlockedTxns.size());
-        assert(this.currentDtxn == null) :
-            String.format("Concurrent multi-partition transactions at partition %d: " +
-                          "Orig[%s] <=> New[%s] / BlockedQueue:%d",
-                          this.partitionId, this.currentDtxn, ts, this.currentBlockedTxns.size());
-        
-        // Check whether we should check for speculative txns to execute whenever this
+        // There can never be another current dtxn still unfinished at this
+        // partition!
+        assert (this.currentBlockedTxns.isEmpty()) : String.format("Concurrent multi-partition transactions at partition %d: " + "Orig[%s] <=> New[%s] / BlockedQueue:%d", this.partitionId,
+                this.currentDtxn, ts, this.currentBlockedTxns.size());
+        assert (this.currentDtxn == null) : String.format("Concurrent multi-partition transactions at partition %d: " + "Orig[%s] <=> New[%s] / BlockedQueue:%d", this.partitionId, this.currentDtxn,
+                ts, this.currentBlockedTxns.size());
+
+        // Check whether we should check for speculative txns to execute
+        // whenever this
         // dtxn is idle at this partition
         this.currentDtxn = ts;
         if (hstore_conf.site.specexec_enable && ts.isSysProc() == false && this.specExecScheduler.isDisabled() == false) {
@@ -1899,13 +2226,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             profiler.sp2_time.start();
         }
     }
-    
+
     /**
      * Reset the current dtxn for this partition
      */
     private void resetCurrentDtxn() {
-        assert(this.currentDtxn != null) :
-            "Trying to reset the currentDtxn when it is already null";
+        assert (this.currentDtxn != null) : "Trying to reset the currentDtxn when it is already null";
         if (debug.val)
             LOG.debug(String.format("Resetting current DTXN for partition %d to null [previous=%s]",
                       this.partitionId, this.lastDtxnDebug));
@@ -1914,6 +2240,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     /**
      * Store a new prefetch result for a transaction
+     * 
      * @param txnId
      * @param fragmentId
      * @param partitionId
@@ -1933,71 +2260,70 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                       result.getRowCount(), partitionId, stmtCounter, paramsHash));
         this.depTracker.addPrefetchResult(ts, stmtCounter, fragmentId, partitionId, paramsHash, result);
     }
-    
+
     // ---------------------------------------------------------------
     // PartitionExecutor API
     // ---------------------------------------------------------------
 
     /**
-     * Queue a new transaction initialization at this partition. This will cause the 
-     * transaction to get added to this partition's lock queue. This PartitionExecutor does 
-     * not have to be this txn's base partition/
+     * Queue a new transaction initialization at this partition. This will cause
+     * the transaction to get added to this partition's lock queue. This
+     * PartitionExecutor does not have to be this txn's base partition/
+     * 
      * @param ts
      */
     public void queueSetPartitionLock(AbstractTransaction ts) {
-        assert(ts.isInitialized()) : "Unexpected uninitialized transaction: " + ts;
+        assert (ts.isInitialized()) : "Unexpected uninitialized transaction: " + ts;
         SetDistributedTxnMessage work = ts.getSetDistributedTxnMessage();
         boolean success = this.work_queue.offer(work);
-        assert(success) :
-            String.format("Failed to queue %s at partition %d for %s",
-                          work, this.partitionId, ts);
+        assert (success) : String.format("Failed to queue %s at partition %d for %s", work, this.partitionId, ts);
         if (debug.val)
-            LOG.debug(String.format("%s - Added %s to front of partition %d " +
-                      "work queue [size=%d]",
-                      ts, work.getClass().getSimpleName(), this.partitionId,
-                      this.work_queue.size()));
-        if (hstore_conf.site.specexec_enable) this.specExecScheduler.interruptSearch(work);
+            LOG.debug(String.format("%s - Added %s to front of partition %d " + "work queue [size=%d]", ts, work.getClass().getSimpleName(), this.partitionId, this.work_queue.size()));
+        if (hstore_conf.site.specexec_enable)
+            this.specExecScheduler.interruptSearch(work);
     }
-    
+
     /**
-     * New work from the coordinator that this local site needs to execute (non-blocking)
-     * This method will simply chuck the task into the work queue.
-     * We should not be sent an InitiateTaskMessage here!
+     * New work from the coordinator that this local site needs to execute
+     * (non-blocking) This method will simply chuck the task into the work
+     * queue. We should not be sent an InitiateTaskMessage here!
+     * 
      * @param ts
      * @param task
      */
     public void queueWork(AbstractTransaction ts, WorkFragment fragment) {
-        assert(ts.isInitialized()) : "Unexpected uninitialized transaction: " + ts;
+        assert (ts.isInitialized()) : "Unexpected uninitialized transaction: " + ts;
         WorkFragmentMessage work = ts.getWorkFragmentMessage(fragment);
         boolean success = this.work_queue.offer(work); // , true);
-        assert(success) :
-            String.format("Failed to queue %s at partition %d for %s",
-                          work, this.partitionId, ts);
+        assert (success) : String.format("Failed to queue %s at partition %d for %s", work, this.partitionId, ts);
         ts.markQueuedWork(this.partitionId);
         if (debug.val)
-            LOG.debug(String.format("%s - Added %s to partition %d " +
-                      "work queue [size=%d]",
-                      ts, work.getClass().getSimpleName(), this.partitionId,
-                      this.work_queue.size()));
-        if (hstore_conf.site.specexec_enable) this.specExecScheduler.interruptSearch(work);
+            LOG.debug(String.format("%s - Added %s to partition %d " + "work queue [size=%d]", ts, work.getClass().getSimpleName(), this.partitionId, this.work_queue.size()));
+        if (hstore_conf.site.specexec_enable)
+            this.specExecScheduler.interruptSearch(work);
     }
 
     /**
-     * Add a new work message to our utility queue 
+     * Add a new work message to our utility queue
+     * 
      * @param work
      */
     public void queueUtilityWork(InternalMessage work) {
         if (debug.val)
-            LOG.debug(String.format("Added utility work %s to partition %d",
-                      work.getClass().getSimpleName(), this.partitionId));
+            LOG.debug(String.format("Added utility work %s to partition %d", work.getClass().getSimpleName(), this.partitionId));
         this.work_queue.offer(work);
     }
 
+    public void queueLivePullReplyResponse(MultiDataPullResponseMessage pullResponseMsg){
+    	this.work_queue.offer(pullResponseMsg);
+    }
     
     /**
      * Put the prepare request for the transaction into the queue
+     * 
      * @param task
-     * @param status The final status of the transaction
+     * @param status
+     *            The final status of the transaction
      */
     public void queuePrepare(AbstractTransaction ts, PartitionCountingCallback<? extends AbstractTransaction> callback) {
         assert(ts.isInitialized()) : "Uninitialized transaction: " + ts;
@@ -2005,34 +2331,27 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         
         PrepareTxnMessage work = new PrepareTxnMessage(ts, callback);
         boolean success = this.work_queue.offer(work);
-        assert(success) :
-            String.format("Failed to queue %s at partition %d for %s",
-                          work, this.partitionId, ts);
+        assert (success) : String.format("Failed to queue %s at partition %d for %s", work, this.partitionId, ts);
         if (debug.val)
-            LOG.debug(String.format("%s - Added %s to partition %d " +
-                      "work queue [size=%d]",
-                      ts, work.getClass().getSimpleName(), this.partitionId,
-                      this.work_queue.size()));
-        // if (hstore_conf.site.specexec_enable) this.specExecScheduler.interruptSearch();
+            LOG.debug(String.format("%s - Added %s to partition %d " + "work queue [size=%d]", ts, work.getClass().getSimpleName(), this.partitionId, this.work_queue.size()));
+        // if (hstore_conf.site.specexec_enable)
+        // this.specExecScheduler.interruptSearch();
     }
-    
+
     /**
      * Put the finish request for the transaction into the queue
+     * 
      * @param task
-     * @param status The final status of the transaction
+     * @param status
+     *            The final status of the transaction
      */
     public void queueFinish(AbstractTransaction ts, Status status) {
-        assert(ts.isInitialized()) : "Unexpected uninitialized transaction: " + ts;
+        assert (ts.isInitialized()) : "Unexpected uninitialized transaction: " + ts;
         FinishTxnMessage work = ts.getFinishTxnMessage(status);
         boolean success = this.work_queue.offer(work); // , true);
-        assert(success) :
-            String.format("Failed to queue %s at partition %d for %s",
-                          work, this.partitionId, ts);
+        assert (success) : String.format("Failed to queue %s at partition %d for %s", work, this.partitionId, ts);
         if (debug.val)
-            LOG.debug(String.format("%s - Added %s to partition %d " +
-                      "work queue [size=%d]",
-                      ts, work.getClass().getSimpleName(), this.partitionId,
-                      this.work_queue.size()));
+            LOG.debug(String.format("%s - Added %s to partition %d " + "work queue [size=%d]", ts, work.getClass().getSimpleName(), this.partitionId, this.work_queue.size()));
         // if (success) this.specExecScheduler.haltSearch();
     }
 
@@ -2043,97 +2362,224 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param callback
      */
     public boolean queueStartTransaction(LocalTransaction ts) {
-        assert(ts != null) : "Unexpected null transaction handle!";
+        assert (ts != null) : "Unexpected null transaction handle!";
         boolean singlePartitioned = ts.isPredictSinglePartition();
         boolean force = (singlePartitioned == false) || ts.isMapReduce() || ts.isSysProc();
-        
+
         // UPDATED 2012-07-12
         // We used to have a bunch of checks to determine whether we needed
         // put the new request in the blocked queue or not. This required us to
-        // acquire the exec_lock to do the check and then another lock to actually put 
+        // acquire the exec_lock to do the check and then another lock to
+        // actually put
         // the request into the work_queue. Now we'll just throw it right in
         // the queue (checking for throttling of course) and let the main
         // thread sort out the mess of whether the txn should get blocked or not
         if (this.currentExecMode == ExecutionMode.DISABLED_REJECT) {
             if (debug.val)
-                LOG.warn(String.format("%s - Not queuing txn at partition %d because current mode is %s",
-                         ts, this.partitionId, this.currentExecMode));
+                LOG.warn(String.format("%s - Not queuing txn at partition %d because current mode is %s", ts, this.partitionId, this.currentExecMode));
             return (false);
         }
-        
+
         StartTxnMessage work = ts.getStartTxnMessage();
         if (debug.val)
-            LOG.debug(String.format("Queuing %s for '%s' request on partition %d " +
-                      "[currentDtxn=%s, queueSize=%d, mode=%s]",
-                      work.getClass().getSimpleName(), ts.getProcedure().getName(), this.partitionId,
-                      this.currentDtxn, this.work_queue.size(), this.currentExecMode));
+            LOG.debug(String.format("Queuing %s for '%s' request on partition %d " + "[currentDtxn=%s, queueSize=%d, mode=%s]", work.getClass().getSimpleName(), ts.getProcedure().getName(),
+                    this.partitionId, this.currentDtxn, this.work_queue.size(), this.currentExecMode));
         boolean success = this.work_queue.offer(work); // , force);
         if (debug.val && force && success == false) {
             String msg = String.format("Failed to add %s even though force flag was true!", ts);
             throw new ServerFaultException(msg, ts.getTransactionId());
         }
-        if (success && hstore_conf.site.specexec_enable) this.specExecScheduler.interruptSearch(work);
+        if (success && hstore_conf.site.specexec_enable)
+            this.specExecScheduler.interruptSearch(work);
         return (success);
+    }
+
+    
+    /**
+     * Schedule this initial list of async pull ranges that will be chunked
+     * @param incomingRanges
+     * @return success bool
+     */
+    public boolean scheduleInitialAsyncPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+        if (incomingRanges != null && !incomingRanges.isEmpty()) {
+            LOG.info(String.format("(%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
+            boolean res = true;            
+            for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
+                ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
+                boolean success = this.work_queue.offer(scheduleAsyncPull); // ,
+                if (!success)
+                    res = false;
+            }
+            return res;
+        } else {
+            if (debug.val)
+                LOG.debug("No incoming ranges to request");
+            return true;
+        }
+    }
+
+    /**
+     * Schedule this initial list of async pull ranges that will be chunked
+     * @param incomingRanges
+     * @return success bool
+     */
+    public boolean queueInitialAsyncPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+        if (incomingRanges != null && !incomingRanges.isEmpty()) {
+            LOG.info(String.format(" ### (%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
+            for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
+                ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
+                scheduleAsyncPullQueue.add(scheduleAsyncPull);
+            }
+            //Set the next time to do an async pull now
+            nextAsyncPullTimeMS = System.currentTimeMillis();
+        } else {
+            if (debug.val)
+                LOG.debug("No incoming ranges to request");
+        }
+        return true;
+    }
+    
+    /**
+     * Schedule this initial list of async pull ranges that will NOT be  chunked
+     * @param incomingRanges
+     * @return success bool
+     */
+    public boolean scheduleInitialAsyncNonChunkPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+        if (incomingRanges != null && !incomingRanges.isEmpty()) {
+            LOG.info("Scheduling async pull requests : " + incomingRanges.size());
+            boolean res = true;
+            for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
+                AsyncNonChunkPullRequestMessage pullMessage = new AsyncNonChunkPullRequestMessage(range);
+                boolean success = this.work_queue.offer(pullMessage); // ,
+                if (!success)
+                    res = false;
+            }
+            return res;
+        } else {
+            if (debug.val)
+                LOG.debug("No incoming ranges to request");
+            return true;
+        }
+    }
+
+    /**
+     * Schedule this initial list of async push ranges that will NOT be chunked
+     * @param outgoingRanges
+     * @return
+     */
+    public boolean scheduleInitialAsyncNonChunkPushRequests(List<ReconfigurationRange<? extends Comparable<?>>> outgoingRanges) {
+        if (outgoingRanges != null && !outgoingRanges.isEmpty()) {
+            LOG.info("Scheduling async push requests : " + outgoingRanges.size());
+            boolean res = true;
+            for (ReconfigurationRange<? extends Comparable<?>> range : outgoingRanges) {
+                AsyncNonChunkPushRequestMessage pushMessage = new AsyncNonChunkPushRequestMessage(range);
+                boolean success = this.work_queue.offer(pushMessage); // ,
+                if (!success)
+                    res = false;
+            }
+            return res;
+        } else {
+            if (debug.val)
+                LOG.debug("No outgoing ranges to send");
+            return true;
+        }
+    }
+    
+    public boolean queueAsyncPullRequest(AsyncDataPullRequestMessage pull){
+        return this.work_queue.offer(pull);
+    }
+    
+    public boolean queueAsyncPullResponse(AsyncDataPullResponseMessage response){
+        return this.work_queue.offer(response);
+    }
+    
+    public boolean queueMultiPullResponse(MultiDataPullResponseMessage response){
+        return this.work_queue.offer(response);
+    }
+    
+    /**
+     * Enqueue a live pull request from the local RC.
+     * @param livePullRequest
+     * @param livePullResponseCallback
+     * @return
+     */
+    public boolean queueLivePullRequest(LivePullRequest livePullRequest, RpcCallback<LivePullResponse> livePullResponseCallback) {
+        //TODO AE refactor, can we embed the livepull request into the msg and process then? 
+        LOG.info(String.format("(%d) queueLivePullRequest : %s", this.partitionId, livePullRequest));
+
+        assert (livePullRequest.isInitialized()) : "Unexpected uninitialized live Pull Request";
+
+        LivePullRequestMessage livePullRequestMessage = new LivePullRequestMessage(livePullRequest, livePullResponseCallback);
+        boolean success = this.work_queue.offer(livePullRequestMessage); // ,
+                                                                         // true);
+        assert (success) : String.format("Failed to queue %s at partition %d ", livePullRequestMessage, this.partitionId);
+        if(!success){
+            throw new RuntimeException("Failed to put in pull");
+        }
+        return success;
     }
 
     // ---------------------------------------------------------------
     // WORK QUEUE PROCESSING METHODS
     // ---------------------------------------------------------------
-    
+
     /**
-     * Process a WorkResult and update the internal state the LocalTransaction accordingly
-     * Note that this will always be invoked by a thread other than the main execution thread
-     * for this PartitionExecutor. That means if something comes back that's bad, we need a way
-     * to alert the other thread so that it can act on it. 
+     * Process a WorkResult and update the internal state the LocalTransaction
+     * accordingly Note that this will always be invoked by a thread other than
+     * the main execution thread for this PartitionExecutor. That means if
+     * something comes back that's bad, we need a way to alert the other thread
+     * so that it can act on it.
+     * 
      * @param ts
      * @param result
      */
     private void processWorkResult(LocalTransaction ts, WorkResult result) {
         boolean needs_profiling = (hstore_conf.site.txn_profiling && ts.profiler != null);
         if (debug.val)
-            LOG.debug(String.format("Processing WorkResult for %s on partition %d [srcPartition=%d, deps=%d]",
-                      ts, this.partitionId, result.getPartitionId(), result.getDepDataCount()));
-        
-        // If the Fragment failed to execute, then we need to abort the Transaction
-        // Note that we have to do this before we add the responses to the TransactionState so that
-        // we can be sure that the VoltProcedure knows about the problem when it wakes the stored 
+            LOG.debug(String.format("Processing WorkResult for %s on partition %d [srcPartition=%d, deps=%d]", ts, this.partitionId, result.getPartitionId(), result.getDepDataCount()));
+
+        // If the Fragment failed to execute, then we need to abort the
+        // Transaction
+        // Note that we have to do this before we add the responses to the
+        // TransactionState so that
+        // we can be sure that the VoltProcedure knows about the problem when it
+        // wakes the stored
         // procedure back up
         if (result.getStatus() != Status.OK) {
             if (trace.val)
-                LOG.trace(String.format("Received non-success response %s from partition %d for %s",
-                          result.getStatus(), result.getPartitionId(), ts));
+                LOG.trace(String.format("Received non-success response %s from partition %d for %s", result.getStatus(), result.getPartitionId(), ts));
 
             SerializableException error = null;
-            if (needs_profiling) ts.profiler.startDeserialization();
+            if (needs_profiling)
+                ts.profiler.startDeserialization();
             try {
                 ByteBuffer buffer = result.getError().asReadOnlyByteBuffer();
                 error = SerializableException.deserializeFromBuffer(buffer);
             } catch (Exception ex) {
-                String msg = String.format("Failed to deserialize SerializableException from partition %d " +
-                                                   "for %s [bytes=%d]",
-                                           result.getPartitionId(), ts, result.getError().size());
+                String msg = String.format("Failed to deserialize SerializableException from partition %d " + "for %s [bytes=%d]", result.getPartitionId(), ts, result.getError().size());
                 throw new ServerFaultException(msg, ex);
             } finally {
-                if (needs_profiling) ts.profiler.stopDeserialization();
+                if (needs_profiling)
+                    ts.profiler.stopDeserialization();
             }
-            // At this point there is no need to even deserialize the rest of the message because 
+            // At this point there is no need to even deserialize the rest of
+            // the message because
             // we know that we're going to have to abort the transaction
             if (error == null) {
                 LOG.warn(ts + " - Unexpected null SerializableException\n" + result);
             } else {
                 if (debug.val)
-                    LOG.error(String.format("%s - Got error from partition %d in %s",
-                              ts, result.getPartitionId(), result.getClass().getSimpleName()), error);
+                    LOG.error(String.format("%s - Got error from partition %d in %s", ts, result.getPartitionId(), result.getClass().getSimpleName()), error);
                 ts.setPendingError(error, true);
             }
             return;
         }
-        
-        if (needs_profiling) ts.profiler.startDeserialization();
+
+        if (needs_profiling)
+            ts.profiler.startDeserialization();
         for (int i = 0, cnt = result.getDepDataCount(); i < cnt; i++) {
             if (trace.val)
-                LOG.trace(String.format("Storing intermediate results from partition %d for %s",
-                          result.getPartitionId(), ts));
+                LOG.trace(String.format("Storing intermediate results from partition %d for %s", result.getPartitionId(), ts));
             int depId = result.getDepId(i);
             ByteString bs = result.getDepData(i);
             VoltTable vt = null;
@@ -2147,14 +2593,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
             this.depTracker.addResult(ts, result.getPartitionId(), depId, vt);
         } // FOR (dependencies)
-        if (needs_profiling) ts.profiler.stopDeserialization();
+        if (needs_profiling)
+            ts.profiler.stopDeserialization();
     }
 
     /**
-     * Execute a new transaction at this partition.
-     * This will invoke the run() method define in the VoltProcedure for this txn and 
-     * then process the ClientResponse. Only the PartitionExecutor itself should be calling
-     * this directly, since it's the only thing that knows what's going on with the world...
+     * Execute a new transaction at this partition. This will invoke the run()
+     * method define in the VoltProcedure for this txn and then process the
+     * ClientResponse. Only the PartitionExecutor itself should be calling this
+     * directly, since it's the only thing that knows what's going on with the
+     * world...
+     * 
      * @param ts
      */
     private void executeTransaction(LocalTransaction ts) {
@@ -2166,53 +2615,64 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                           ts, this.partitionId);
         
         if (trace.val)
-            LOG.debug(String.format("%s - Attempting to start transaction on partition %d",
-                      ts, this.partitionId));
-        
-        // If this is a MapReduceTransaction handle, we actually want to get the 
-        // inner LocalTransaction handle for this partition. The MapReduceTransaction
+            LOG.debug(String.format("%s - Attempting to start transaction on partition %d", ts, this.partitionId));
+
+        // If this is a MapReduceTransaction handle, we actually want to get the
+        // inner LocalTransaction handle for this partition. The
+        // MapReduceTransaction
         // is just a placeholder
         if (ts instanceof MapReduceTransaction) {
-            MapReduceTransaction mr_ts = (MapReduceTransaction)ts; 
+            MapReduceTransaction mr_ts = (MapReduceTransaction) ts;
             ts = mr_ts.getLocalTransaction(this.partitionId);
-            assert(ts != null) : 
-                "Unexpected null LocalTransaction handle from " + mr_ts; 
+            assert (ts != null) : "Unexpected null LocalTransaction handle from " + mr_ts;
         }
-        
+
         ExecutionMode before_mode = this.currentExecMode;
         boolean predict_singlePartition = ts.isPredictSinglePartition();
-            
+
         // -------------------------------
         // DISTRIBUTED TXN
         // -------------------------------
         if (predict_singlePartition == false) {
             // If there is already a dtxn running, then we need to throw this
             // mofo back into the blocked txn queue
-            // TODO: If our dtxn is on the same site as us, then at this point we know that 
-            //       it is done executing the control code and is sending around 2PC messages 
-            //       to commit/abort. That means that we could assume that all of the other 
-            //       remote partitions are going to agree on the same outcome and we can start 
-            //       speculatively executing this dtxn. After all, if we're at this point in 
-            //       the PartitionExecutor then we know that we got this partition's locks 
-            //       from the TransactionQueueManager.
+            // TODO: If our dtxn is on the same site as us, then at this point
+            // we know that
+            // it is done executing the control code and is sending around 2PC
+            // messages
+            // to commit/abort. That means that we could assume that all of the
+            // other
+            // remote partitions are going to agree on the same outcome and we
+            // can start
+            // speculatively executing this dtxn. After all, if we're at this
+            // point in
+            // the PartitionExecutor then we know that we got this partition's
+            // locks
+            // from the TransactionQueueManager.
             if (this.currentDtxn != null && this.currentDtxn.equals(ts) == false) {
-                assert(this.currentDtxn.equals(ts) == false) :
-                    String.format("New DTXN %s != Current DTXN %s", ts, this.currentDtxn);
-                
+                assert (this.currentDtxn.equals(ts) == false) : String.format("New DTXN %s != Current DTXN %s", ts, this.currentDtxn);
+
                 // If this is a local txn, then we can finagle things a bit.
                 if (this.currentDtxn.isExecLocal(this.partitionId)) {
-                    // It would be safe for us to speculative execute this DTXN right here
-                    // if the currentDtxn has aborted... but we can never be in this state.
-                    assert(this.currentDtxn.isAborted() == false) : // Sanity Check
-                        String.format("We want to execute %s on partition %d but aborted %s is still hanging around\n",
-                                      ts, this.partitionId, this.currentDtxn, this.work_queue);
-                    
-                    // So that means we know that it committed, which doesn't necessarily mean
-                    // that it will still commit, but we'll be able to abort, rollback, and requeue
+                    // It would be safe for us to speculative execute this DTXN
+                    // right here
+                    // if the currentDtxn has aborted... but we can never be in
+                    // this state.
+                    assert (this.currentDtxn.isAborted() == false) : // Sanity
+                                                                     // Check
+                    String.format("We want to execute %s on partition %d but aborted %s is still hanging around\n", ts, this.partitionId, this.currentDtxn, this.work_queue);
+
+                    // So that means we know that it committed, which doesn't
+                    // necessarily mean
+                    // that it will still commit, but we'll be able to abort,
+                    // rollback, and requeue
                     // if that happens.
-                    // TODO: Right now our current dtxn marker is a single value. We may want to 
-                    //       switch it to a FIFO queue so that we can multiple guys hanging around.
-                    //       For now we will just do the default thing and block this txn
+                    // TODO: Right now our current dtxn marker is a single
+                    // value. We may want to
+                    // switch it to a FIFO queue so that we can multiple guys
+                    // hanging around.
+                    // For now we will just do the default thing and block this
+                    // txn
                     this.blockTransaction(ts);
                     return;
                 }
@@ -2223,35 +2683,42 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 }
             }
             // If there is no other DTXN right now, then we're it!
-            else if (this.currentDtxn == null) { //  || this.currentDtxn.equals(ts) == false) {
+            else if (this.currentDtxn == null) { // ||
+                                                 // this.currentDtxn.equals(ts)
+                                                 // == false) {
                 this.setCurrentDtxn(ts);
-            
+
             }
-            // 2011-11-14: We don't want to set the execution mode here, because we know that we
-            //             can check whether we were read-only after the txn finishes
+            // 2011-11-14: We don't want to set the execution mode here, because
+            // we know that we
+            // can check whether we were read-only after the txn finishes
             this.setExecutionMode(this.currentDtxn, ExecutionMode.COMMIT_NONE);
             
             if (debug.val)
-                LOG.debug(String.format("Marking %s as current DTXN on Partition %d [isLocal=%s, execMode=%s]",
-                          ts, this.partitionId, true, this.currentExecMode));                    
+                LOG.debug(String.format("Marking %s as current DTXN on Partition %d [isLocal=%s, execMode=%s]", ts, this.partitionId, true, this.currentExecMode));
         }
         // -------------------------------
         // SINGLE-PARTITION TXN
         // -------------------------------
         else {
-            // If this is a single-partition transaction, then we need to check whether we are
-            // being executed under speculative execution mode. We have to check this here 
-            // because it may be the case that we queued a bunch of transactions when speculative 
-            // execution was enabled, but now the transaction that was ahead of this one is finished,
+            // If this is a single-partition transaction, then we need to check
+            // whether we are
+            // being executed under speculative execution mode. We have to check
+            // this here
+            // because it may be the case that we queued a bunch of transactions
+            // when speculative
+            // execution was enabled, but now the transaction that was ahead of
+            // this one is finished,
             // so now we're just executing them regularly
             if (this.currentDtxn != null) {
-                // HACK: If we are currently under DISABLED mode when we get this, then we just 
-                // need to block the transaction and return back to the queue. This is easier than 
+                // HACK: If we are currently under DISABLED mode when we get
+                // this, then we just
+                // need to block the transaction and return back to the queue.
+                // This is easier than
                 // having to set all sorts of crazy locks
                 if (this.currentExecMode == ExecutionMode.DISABLED || hstore_conf.site.specexec_enable == false) {
                     if (debug.val)
-                        LOG.debug(String.format("%s - Blocking single-partition %s until dtxn finishes [mode=%s]",
-                                  this.currentDtxn, ts, this.currentExecMode));
+                        LOG.debug(String.format("%s - Blocking single-partition %s until dtxn finishes [mode=%s]", this.currentDtxn, ts, this.currentExecMode));
                     this.blockTransaction(ts);
                     return;
                 }
@@ -2262,8 +2729,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 assert(ts.isSpeculative()) : ts + " was not marked as being speculative!";
             }
         }
-        
-        // If we reach this point, we know that we're about to execute our homeboy here...
+
+        // If we reach this point, we know that we're about to execute our
+        // homeboy here...
         if (hstore_conf.site.txn_profiling && ts.profiler != null) {
             ts.profiler.startExec();
         }
@@ -2275,33 +2743,31 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // Grab a VoltProcedure handle for this txn
         // Two txns can't use the same VoltProcedure at the same time.
         VoltProcedure volt_proc = this.getVoltProcedure(ts.getProcedure().getId());
-        assert(volt_proc != null) : "No VoltProcedure for " + ts;
-        
+        assert (volt_proc != null) : "No VoltProcedure for " + ts;
+
         if (debug.val) {
-            LOG.debug(String.format("%s - Starting execution of txn on partition %d " +
-                      "[txnMode=%s, mode=%s]",
-                      ts, this.partitionId, before_mode, this.currentExecMode));
+            LOG.debug(String.format("%s - Starting execution of txn on partition %d " + "[txnMode=%s, mode=%s]", ts, this.partitionId, before_mode, this.currentExecMode));
             if (trace.val)
-                LOG.trace(String.format("Current Transaction at partition #%d\n%s",
-                          this.partitionId, ts.debug()));
+                LOG.trace(String.format("Current Transaction at partition #%d\n%s", this.partitionId, ts.debug()));
         }
-        
-        if (hstore_conf.site.txn_counters) TransactionCounter.EXECUTED.inc(ts.getProcedure());
+
+        if (hstore_conf.site.txn_counters)
+            TransactionCounter.EXECUTED.inc(ts.getProcedure());
         ClientResponseImpl cresponse = null;
         VoltProcedure previous = this.currentVoltProc;
         try {
             this.currentVoltProc = volt_proc;
             ts.markControlCodeExecuted();
             cresponse = volt_proc.call(ts, ts.getProcedureParameters().toArray()); // Blocking...
-        // VoltProcedure.call() should handle any exceptions thrown by the transaction
-        // If we get anything out here then that's bad news
+            // VoltProcedure.call() should handle any exceptions thrown by the
+            // transaction
+            // If we get anything out here then that's bad news
         } catch (Throwable ex) {
             if (this.isShuttingDown() == false) {
                 SQLStmt last[] = volt_proc.voltLastQueriesExecuted();
                 LOG.fatal("Unexpected error while executing " + ts, ex);
                 if (last.length > 0) {
-                    LOG.fatal(String.format("Last Queries Executed [%d]: %s",
-                              last.length, Arrays.toString(last)));
+                    LOG.fatal(String.format("Last Queries Executed [%d]: %s", last.length, Arrays.toString(last)));
                 }
                 LOG.fatal("LocalTransactionState Dump:\n" + ts.debug());
                 this.crash(ex);
@@ -2309,109 +2775,112 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         } finally {
             this.currentVoltProc = previous;
             this.finishVoltProcedure(volt_proc);
-            if (hstore_conf.site.txn_profiling && ts.profiler != null) ts.profiler.startPost();
-            
-//            if (cresponse.getStatus() == Status.ABORT_UNEXPECTED) {
-//                cresponse.getException().printStackTrace();
-//            }
+            if (hstore_conf.site.txn_profiling && ts.profiler != null)
+                ts.profiler.startPost();
+
+            // if (cresponse.getStatus() == Status.ABORT_UNEXPECTED) {
+            // cresponse.getException().printStackTrace();
+            // }
         }
-        
-        // If this is a MapReduce job, then we can just ignore the ClientResponse
-        // and return immediately. The VoltMapReduceProcedure is responsible for storing
+
+        // If this is a MapReduce job, then we can just ignore the
+        // ClientResponse
+        // and return immediately. The VoltMapReduceProcedure is responsible for
+        // storing
         // the result at the proper location.
         if (ts.isMapReduce()) {
             return;
         } else if (cresponse == null) {
-            assert(this.isShuttingDown()) : String.format("No ClientResponse for %s???", ts);
+            assert (this.isShuttingDown()) : String.format("No ClientResponse for %s???", ts);
             return;
         }
-        
+
         // -------------------------------
         // PROCESS RESPONSE AND FIGURE OUT NEXT STEP
         // -------------------------------
-        
+
         Status status = cresponse.getStatus();
         if (debug.val) {
-            LOG.debug(String.format("%s - Finished execution of transaction control code " +
-                                    "[status=%s, beforeMode=%s, currentMode=%s]",
-                                    ts, status, before_mode, this.currentExecMode));
+            LOG.debug(String.format("%s - Finished execution of transaction control code " + "[status=%s, beforeMode=%s, currentMode=%s]", ts, status, before_mode, this.currentExecMode));
             if (ts.hasPendingError()) {
-                LOG.debug(String.format("%s - Txn finished with pending error: %s",
-                          ts, ts.getPendingErrorMessage()));
+                LOG.debug(String.format("%s - Txn finished with pending error: %s", ts, ts.getPendingErrorMessage()));
             }
         }
 
-        // We assume that most transactions are not speculatively executed and are successful
+        // We assume that most transactions are not speculatively executed and
+        // are successful
         // Therefore we don't want to grab the exec_mode lock here.
         if (predict_singlePartition == false || this.canProcessClientResponseNow(ts, status, before_mode)) {
             this.processClientResponse(ts, cresponse);
         }
-        // Otherwise always queue our response, since we know that whatever thread is out there
+        // Otherwise always queue our response, since we know that whatever
+        // thread is out there
         // is waiting for us to finish before it drains the queued responses
         else {
-            // If the transaction aborted, then we can't execute any transaction that touch the tables
-            // that this guy touches. But since we can't just undo this transaction without undoing 
-            // everything that came before it, we'll just disable executing all transactions until the 
+            // If the transaction aborted, then we can't execute any transaction
+            // that touch the tables
+            // that this guy touches. But since we can't just undo this
+            // transaction without undoing
+            // everything that came before it, we'll just disable executing all
+            // transactions until the
             // current distributed transaction commits
             if (status != Status.OK && ts.isExecReadOnly(this.partitionId) == false) {
                 this.setExecutionMode(ts, ExecutionMode.DISABLED);
                 int blocked = this.work_queue.drainTo(this.currentBlockedTxns);
                 if (debug.val) {
                     if (trace.val && blocked > 0)
-                        LOG.trace(String.format("Blocking %d transactions at partition %d because ExecutionMode is now %s",
-                                  blocked, this.partitionId, this.currentExecMode));
-                    LOG.debug(String.format("Disabling execution on partition %d because speculative %s aborted",
-                              this.partitionId, ts));
+                        LOG.trace(String.format("Blocking %d transactions at partition %d because ExecutionMode is now %s", blocked, this.partitionId, this.currentExecMode));
+                    LOG.debug(String.format("Disabling execution on partition %d because speculative %s aborted", this.partitionId, ts));
                 }
             }
             if (trace.val)
-                LOG.trace(String.format("%s - Queuing ClientResponse [status=%s, origMode=%s, newMode=%s, dtxn=%s]",
-                          ts, cresponse.getStatus(), before_mode, this.currentExecMode, this.currentDtxn));
+                LOG.trace(String.format("%s - Queuing ClientResponse [status=%s, origMode=%s, newMode=%s, dtxn=%s]", ts, cresponse.getStatus(), before_mode, this.currentExecMode, this.currentDtxn));
             this.blockClientResponse(ts, cresponse);
         }
     }
-    
+
     /**
-     * Determines whether a finished transaction that executed locally can have their ClientResponse processed immediately
-     * or if it needs to wait for the response from the outstanding multi-partition transaction for this partition 
-     * (1) This is the multi-partition transaction that everyone is waiting for
-     * (2) The transaction was not executed under speculative execution mode 
-     * (3) The transaction does not need to wait for the multi-partition transaction to finish first
+     * Determines whether a finished transaction that executed locally can have
+     * their ClientResponse processed immediately or if it needs to wait for the
+     * response from the outstanding multi-partition transaction for this
+     * partition (1) This is the multi-partition transaction that everyone is
+     * waiting for (2) The transaction was not executed under speculative
+     * execution mode (3) The transaction does not need to wait for the
+     * multi-partition transaction to finish first
+     * 
      * @param ts
      * @param status
      * @param before_mode
      * @return
      */
     private boolean canProcessClientResponseNow(LocalTransaction ts, Status status, ExecutionMode before_mode) {
-        if (debug.val) LOG.debug(String.format("%s - Checking whether to process %s response now at partition %d " +
-                         "[singlePartition=%s, readOnly=%s, specExecModified=%s, before=%s, current=%s]",
-                         ts, status, this.partitionId,
-                         ts.isPredictSinglePartition(),
-                         ts.isExecReadOnly(this.partitionId),
-                         this.specExecModified,
-                         before_mode, this.currentExecMode));
+        if (debug.val)
+            LOG.debug(String.format("%s - Checking whether to process %s response now at partition %d " + "[singlePartition=%s, readOnly=%s, specExecModified=%s, before=%s, current=%s]", ts, status,
+                    this.partitionId, ts.isPredictSinglePartition(), ts.isExecReadOnly(this.partitionId), this.specExecModified, before_mode, this.currentExecMode));
         // Commit All
         if (this.currentExecMode == ExecutionMode.COMMIT_ALL) {
             return (true);
         }
         // SPECIAL CASE
-        // Any user-aborted, speculative single-partition transaction should be processed immediately.
+        // Any user-aborted, speculative single-partition transaction should be
+        // processed immediately.
         else if (status == Status.ABORT_USER && ts.isSpeculative()) {
             return (true);
         }
-//        // SPECIAL CASE
-//        // If this txn threw a user abort, and the current outstanding dtxn is read-only
-//        // then it's safe for us to rollback
-//        else if (status == Status.ABORT_USER &&
-//                  this.currentDtxn != null &&
-//                  this.currentDtxn.isExecReadOnly(this.partitionId)) {
-//            return (true);
-//        }
+        // // SPECIAL CASE
+        // // If this txn threw a user abort, and the current outstanding dtxn
+        // is read-only
+        // // then it's safe for us to rollback
+        // else if (status == Status.ABORT_USER &&
+        // this.currentDtxn != null &&
+        // this.currentDtxn.isExecReadOnly(this.partitionId)) {
+        // return (true);
+        // }
         // SPECIAL CASE
         // Anything mispredicted should be processed right away
         else if (status == Status.ABORT_MISPREDICT) {
             return (true);
-        }    
+        }
         // Process successful txns based on the mode that it was executed under
         else if (status == Status.OK) {
             switch (before_mode) {
@@ -2419,29 +2888,34 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     return (true);
                 case COMMIT_READONLY:
                     // Read-only speculative txns can be committed right now
-                    // TODO: Right now we're going to use the specExecModified flag to disable
-                    // sending out any results from spec execed txns that may have read from 
-                    // a modified database. We should switch to a bitmap of table ids so that we
+                    // TODO: Right now we're going to use the specExecModified
+                    // flag to disable
+                    // sending out any results from spec execed txns that may
+                    // have read from
+                    // a modified database. We should switch to a bitmap of
+                    // table ids so that we
                     // have can be more selective.
                     // return (false);
                     return (this.specExecModified == false && ts.isExecReadOnly(this.partitionId));
                 case COMMIT_NONE: {
-                    // If this txn does not conflict with the current dtxn, then we should be able
-                    // to let it commit but we can't because of the way our undo tokens work
+                    // If this txn does not conflict with the current dtxn, then
+                    // we should be able
+                    // to let it commit but we can't because of the way our undo
+                    // tokens work
                     return (false);
                 }
                 default:
-                    throw new ServerFaultException("Unexpected execution mode: " + before_mode, ts.getTransactionId()); 
+                    throw new ServerFaultException("Unexpected execution mode: " + before_mode, ts.getTransactionId());
             } // SWITCH
         }
-//        // If the transaction aborted and it was read-only thus far, then we want to process it immediately
-//        else if (status != Status.OK && ts.isExecReadOnly(this.partitionId)) {
-//            return (true);
-//        }
+        // // If the transaction aborted and it was read-only thus far, then we
+        // want to process it immediately
+        // else if (status != Status.OK && ts.isExecReadOnly(this.partitionId))
+        // {
+        // return (true);
+        // }
 
-        assert(this.currentExecMode != ExecutionMode.COMMIT_ALL) :
-            String.format("Queuing ClientResponse for %s when in non-specutative mode [mode=%s, status=%s]",
-                          ts, this.currentExecMode, status);
+        assert (this.currentExecMode != ExecutionMode.COMMIT_ALL) : String.format("Queuing ClientResponse for %s when in non-specutative mode [mode=%s, status=%s]", ts, this.currentExecMode, status);
         return (false);
     }
 
@@ -2478,7 +2952,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             ts.initRound(this.partitionId, undoToken);
             ts.startRound(this.partitionId);
         }
-        
+
         DependencySet result = null;
         Status status = Status.OK;
         SerializableException error = null;
@@ -2548,7 +3022,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         } catch (Throwable ex) {
             status = Status.ABORT_UNEXPECTED;
             if (ex instanceof SerializableException) {
-                error = (SerializableException)ex;
+                error = (SerializableException) ex;
             } else {
                 error = new SerializableException(ex);
             }
@@ -2561,16 +3035,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
             // Success, but without any results???
             if (result == null && status == Status.OK) {
-                String msg = String.format("The WorkFragment %s executed successfully on Partition %d but " +
-                                           "result is null for %s",
-                                           fragment.getFragmentIdList(), this.partitionId, ts);
+                String msg = String.format("The WorkFragment %s executed successfully on Partition %d but " + "result is null for %s", fragment.getFragmentIdList(), this.partitionId, ts);
                 Exception ex = new Exception(msg);
-                if (debug.val) LOG.warn(ex);
+                if (debug.val)
+                    LOG.warn(ex);
                 status = Status.ABORT_UNEXPECTED;
                 error = new SerializableException(ex);
             }
         }
-        
+
         // For single-partition INSERT/UPDATE/DELETE queries, we don't directly
         // execute the SendPlanNode in order to get back the number of tuples that
         // were modified. So we have to rely on the output dependency ids set in the task
@@ -2582,17 +3055,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (is_basepartition == false) {
             ts.finishRound(this.partitionId);
         }
-        
+
         // -------------------------------
         // PREFETCH QUERIES
         // -------------------------------
         if (is_prefetch) {
-            // Regardless of whether this txn is running at the same HStoreSite as this PartitionExecutor,
+            // Regardless of whether this txn is running at the same HStoreSite
+            // as this PartitionExecutor,
             // we always need to put the result inside of the local query cache
-            // This is so that we can identify if we get request for a query that we have already executed
-            // We'll only do this if it succeeded. If it failed, then we won't do anything and will
-            // just wait until they come back to execute the query again before 
-            // we tell them that something went wrong. It's ghetto, but it's just easier this way...
+            // This is so that we can identify if we get request for a query
+            // that we have already executed
+            // We'll only do this if it succeeded. If it failed, then we won't
+            // do anything and will
+            // just wait until they come back to execute the query again before
+            // we tell them that something went wrong. It's ghetto, but it's
+            // just easier this way...
             if (status == Status.OK) {
                 // We're going to store the result in the base partition cache if they're 
                 // on the same HStoreSite as us
@@ -2612,11 +3089,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     } // FOR
                 }
             }
-            
-            // Now if it's a remote transaction, we need to use the coordinator to send
-            // them our result. Note that we want to send a single message per partition. Unlike
-            // with the TransactionWorkRequests, we don't need to wait until all of the partitions
-            // that are prefetching for this txn at our local HStoreSite to finish.
+
+            // Now if it's a remote transaction, we need to use the coordinator
+            // to send
+            // them our result. Note that we want to send a single message per
+            // partition. Unlike
+            // with the TransactionWorkRequests, we don't need to wait until all
+            // of the partitions
+            // that are prefetching for this txn at our local HStoreSite to
+            // finish.
             if (is_remote) {
                 WorkResult wr = this.buildWorkResult(ts, result, status, error);
                 TransactionPrefetchResult.Builder builder = TransactionPrefetchResult.newBuilder()
@@ -2640,9 +3121,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // LOCAL TRANSACTION
         // -------------------------------
         else if (is_remote == false) {
-            LocalTransaction local_ts = (LocalTransaction)ts;
-            
-            // If the transaction is local, store the result directly in the local TransactionState
+            LocalTransaction local_ts = (LocalTransaction) ts;
+
+            // If the transaction is local, store the result directly in the
+            // local TransactionState
             if (status == Status.OK) {
                 if (trace.val)
                     LOG.trace(String.format("%s - Storing %d dependency results locally for successful work fragment",
@@ -2676,23 +3158,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // -------------------------------
         else {
             if (trace.val)
-                LOG.trace(String.format("%s - Constructing WorkResult with %d bytes from partition %d to send " +
-                          "back to initial partition %d [status=%s]",
-                          ts, (result != null ? result.size() : null),
-                          this.partitionId, ts.getBasePartition(), status));
-            
-            RpcCallback<WorkResult> callback = ((RemoteTransaction)ts).getWorkCallback();
+                LOG.trace(String.format("%s - Constructing WorkResult with %d bytes from partition %d to send " + "back to initial partition %d [status=%s]", ts, (result != null ? result.size()
+                        : null), this.partitionId, ts.getBasePartition(), status));
+
+            RpcCallback<WorkResult> callback = ((RemoteTransaction) ts).getWorkCallback();
             if (callback == null) {
                 LOG.fatal("Unable to send FragmentResponseMessage for " + ts);
                 LOG.fatal("Orignal WorkFragment:\n" + fragment);
                 LOG.fatal(ts.toString());
                 throw new ServerFaultException("No RPC callback to HStoreSite for " + ts, ts.getTransactionId());
             }
-            WorkResult response = this.buildWorkResult((RemoteTransaction)ts, result, status, error);
-            assert(response != null);
+            WorkResult response = this.buildWorkResult((RemoteTransaction) ts, result, status, error);
+            assert (response != null);
             callback.run(response);
         }
-        
+
         // Check whether this is the last query that we're going to get
         // from this transaction. If it is, then we can go ahead and prepare the txn
         if (is_basepartition == false && fragment.getLastFragment()) {
@@ -2714,9 +3194,207 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
     }
     
+    
+    /**
+     * Check if there is any live reconfig work waiting to be processed
+     */
+    public boolean processQueuedLiveReconfigWork(boolean processOnlyCurrentTxns){
+        if(debug.val) LOG.debug("processQueuedLiveReconfigWork");
+        Iterator<InternalMessage> iter = this.work_queue.iterator();
+        InternalMessage work = null;
+        while (iter.hasNext()){
+            work = iter.next();
+            //LOG.info(work);
+            if(work instanceof MultiDataPullResponseMessage){
+            	// Check if the work is for 
+            	MultiDataPullResponseMessage multiDataPullResponseMessage = (MultiDataPullResponseMessage)work;
+            	MultiPullReplyRequest multiPullReplyRequest = multiDataPullResponseMessage.getMultiPullReplyRequest();
+            	long multiPullTxnId = multiPullReplyRequest.getTransactionID();
+            	if(!multiPullReplyRequest.getIsAsync() && ((this.currentTxnId != null && multiPullTxnId == this.currentTxnId) || 
+                         (this.currentDtxn != null && multiPullTxnId == this.currentDtxn.getTransactionId()))){
+            		LOG.info("Process a live pull reply for the same transaction as the one blocked");
+            		VoltTable vt = null;
+                    try {
+                        vt = FastDeserializer.deserialize(multiPullReplyRequest.getVoltTableData().toByteArray(), VoltTable.class);
+                    } catch (IOException e) {
+                        LOG.error("Error in deserializing volt table");
+                    }
+            		try {
+						receiveTuples(multiPullTxnId, multiPullReplyRequest.getOldPartition(), multiPullReplyRequest.getNewPartition(),
+								multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusive(), 
+								multiPullReplyRequest.getMaxExclusive(), vt, multiPullReplyRequest.getMoreDataNeeded(), false);
+						this.work_queue.remove(work);
+	                    return true;
+            		} catch (Exception e) {
+						// TODO Auto-generated catch block
+						LOG.error("Error is loading the tuples for the live Pull");
+					}
+            		
+            	}
+            } else if (work instanceof LivePullRequestMessage){
+                LivePullRequestMessage livePullRequestMessage = ((LivePullRequestMessage) work);
+                long txnId = livePullRequestMessage.getLivePullRequest().getTransactionID();
+                if (processOnlyCurrentTxns == false || 
+                        ((this.currentTxnId != null && txnId == this.currentTxnId) || 
+                         (this.currentDtxn != null && txnId == this.currentDtxn.getTransactionId())))
+                {
+                    LOG.info("Found a livepullRequestTo process");
+                    if(hstore_conf.site.reconfig_profiling){
+                        this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.appendTime(livePullRequestMessage.getStartTime(), ProfileMeasurement.getTime());
+                        if(tempPullResponseCounter++%100==0)
+                            LOG.info(String.format("Avg live pull response queue Time MS %s Count:%s ",
+                                    this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getAverageThinkTimeMS(),
+                                    this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_response_queue.getInvocations()));
+                    }
+                    processLivePullRequestMessage(livePullRequestMessage);
+                    this.work_queue.remove(work);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * We are processing a scheduled live pull request to extract out data
+     * @param livePullRequestMessage
+     */
+    public void processLivePullRequestMessage(LivePullRequestMessage livePullRequestMessage) {
+        LivePullRequest livePullRequest = livePullRequestMessage.getLivePullRequest();
+        LOG.info("Processing Live pull request :" + livePullRequest.getLivePullIdentifier() );
+        boolean moreDataNeeded = true;
+        int chunkId = 0;
+        while(moreDataNeeded) {
+            Pair<VoltTable,Boolean> res = sendTuples(livePullRequest.getTransactionID(), livePullRequest.getOldPartition(), 
+                    livePullRequest.getNewPartition(), livePullRequest.getVoltTableName(),
+                    livePullRequest.getMinInclusive(), livePullRequest.getMaxExclusive(), chunkId);
+            VoltTable voltTable = res.getFirst();
+    
+            ByteString tableBytes = null;
+            try {
+                ByteBuffer b = ByteBuffer.wrap(FastSerializer.serialize(voltTable));
+                tableBytes = ByteString.copyFrom(b.array());
+            } catch (Exception ex) {
+                throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
+            }
+            
+            moreDataNeeded = res.getSecond();
+    
+            
+            chunkId++;
+            MultiPullReplyRequest multiPullReplyRequest = MultiPullReplyRequest.newBuilder().
+                    setPullIdentifier(livePullRequest.getLivePullIdentifier()).
+                    setIsAsync(false).
+                    setSenderSite(this.hstore_site.getSiteId()).  
+                    setOldPartition(livePullRequest.getOldPartition()).setNewPartition(livePullRequest.getNewPartition()).setVoltTableName(livePullRequest.getVoltTableName())
+                    .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(livePullRequest.getMinInclusive()).setMaxExclusive(livePullRequest.getMaxExclusive())
+                    .setTransactionID(livePullRequest.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
+    
+            
+            // Send the multi pull reply request to the end point
+            this.reconfiguration_coordinator.sendMultiPullReplyRequestFromPE(livePullRequest.getSenderSite(), multiPullReplyRequest);
+           
+            if (ReconfigurationCoordinator.detailed_timing){
+                reconfiguration_coordinator.notifyPullResponse(livePullRequest.getLivePullIdentifier(), this.partitionId);
+            }
+            if (debug.val) LOG.debug(String.format("sent chunk response to live pull:%s ChunkId:%s ", livePullRequest.getLivePullIdentifier(),chunkId));
+        }//end while
+        LOG.info("Completed live pull : " +livePullRequest.getLivePullIdentifier() + " Last ChunkID: " + chunkId); 
+    }
+ 
+    
+    /**
+     * Process a scheduled request to init an async data pull
+     * @param scheduleAsyncPullMsg
+     */
+    public void processScheduleAsyncPullRequestMessage(ScheduleAsyncPullRequestMessage scheduleAsyncPullMsg){
+        //This is executing at the intended destination of the tuples -  
+        // We can just fire off a live Pull request here and the source of the tuples / destination of Async Request
+        // can just return the tuples. Because we are blocking the destination we might not want to have low priority messages at the 
+        // source lying around
+        
+        ReconfigurationRange<? extends Comparable<?>> pullRange = scheduleAsyncPullMsg.getPullRange();
+        LOG.info("A chunked asynch pull message being scheduled for range " + pullRange.toString());
+        //How long did it sit in the queue for
+        this.reconfiguration_coordinator.profilers[this.partitionId].async_dest_queue_time.appendTime(scheduleAsyncPullMsg.getQueueTime());
+        //TODO : For now the function is called for each range being pulled, check if we should move the logic of breaking the requests here
+        int requestSize = 1;
+        List<ReconfigurationRange<? extends Comparable<?>>> pullRequests = new  ArrayList<ReconfigurationRange<? extends Comparable<?>>>();
+        pullRequests.add(pullRange);
+        // transaction id is a dummy here
+        // Calling the RC to generates a Live Pull Request for a range and blocking. When the reply comes back the RC will unblock the semaphore
+        this.reconfiguration_coordinator.asyncPullRequestFromPE(getNextRequestToken(), -1L, this.partitionId, pullRequests);
+
+        LOG.info("("+ this.partitionId + ") ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
+       
+    }
+    
+    
+    public void queueAsyncDataRequestMessageToWorkQueue(){
+        if(!asyncRequestPullQueue.isEmpty()){
+            LOG.info(" ### Adding the next asynch pull from requestPullQueue to the work queue. size : " + asyncRequestPullQueue.size());
+    		this.work_queue.offer(asyncRequestPullQueue.remove());
+    	} else {
+    	    LOG.info(" ### RequestPullQueue is empty");
+    	}
+    }
+    
+    /**
+     * Process a scheduled request to init an async data pull
+     * @param asyncPullRequestMessage
+     */
+    public void processAsyncNonChunkPullRequestMessage(AsyncNonChunkPullRequestMessage asyncPullRequestMessage){
+        //This is executing at the intended destination of the tuples -  
+        // We can just fire off a live Pull request here and the source of the tuples / destination of Async Request
+        // can just return the tuples. Because we are blocking the destination we might not want to have low priority messages at the 
+        // source lying around
+        
+        ReconfigurationRange<? extends Comparable<?>> pullRange = asyncPullRequestMessage.getPullRange();
+        LOG.debug("Asynch pull message being scheduled for range " + pullRange.toString());
+        //How long did it sit in the queue for
+        this.reconfiguration_coordinator.profilers[this.partitionId].async_dest_queue_time.appendTime(asyncPullRequestMessage.getQueueTime());
+        //TODO : For now the function is called for each range being pulled, check if we should move the logic of breaking the requests here
+        int requestSize = 1;
+        Semaphore pullBlockSemaphore = new Semaphore(requestSize);
+        List<ReconfigurationRange<? extends Comparable<?>>> pullRequests = new  ArrayList<ReconfigurationRange<? extends Comparable<?>>>();
+        pullRequests.add(pullRange);
+        // transaction id is a dummy here
+        // Calling the RC to generates a Live Pull Request for a range and blocking. When the reply comes back the RC will unblock the semaphore
+        if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.start();
+
+        this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), -1, this.partitionId, pullRequests, pullBlockSemaphore);
+        LOG.info("("+ this.partitionId + ") Blocking PE for ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
+        try {
+            boolean acquired = pullBlockSemaphore.tryAcquire(requestSize,30, TimeUnit.SECONDS);
+            if(acquired){
+                if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.stopIfStarted();
+            }
+            else{
+                final String msg = "Timeout on blocking for pullrequest.";
+                LOG.error(msg);
+                throw new RuntimeException(msg);
+            }
+
+            LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId)); 
+        } catch (InterruptedException ex) {
+            LOG.error("Waiting for pull was interuppted. ", ex);
+            // TODO ae restart txn?
+        }
+    }
+
+    
+    /**
+     * Introduce simulated replication delay for extract and load
+     */
+    public void replicationDelay(){
+        throw new NotImplementedException();
+    }
+    
+    
     /**
      * Executes a WorkFragment on behalf of some remote site and returns the
      * resulting DependencySet
+     * 
      * @param fragment
      * @return
      * @throws Exception
@@ -2777,16 +3455,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                                input_depIds,
                                                input_deps);
             if (result == null) {
-                LOG.warn(String.format("Output DependencySet for %s in %s is null?",
-                         Arrays.toString(fragmentIds), ts));
+                LOG.warn(String.format("Output DependencySet for %s in %s is null?", Arrays.toString(fragmentIds), ts));
             }
         }
         return (result);
     }
-    
+
     /**
-     * Execute a BatchPlan directly on this PartitionExecutor without having to covert it
-     * to WorkFragments first. This is big speed improvement over having to queue things up
+     * Execute a BatchPlan directly on this PartitionExecutor without having to
+     * covert it to WorkFragments first. This is big speed improvement over
+     * having to queue things up
+     * 
      * @param ts
      * @param plan
      * @return
@@ -2803,58 +3482,49 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         long fragmentIds[] = plan.getFragmentIds();
         int output_depIds[] = plan.getOutputDependencyIds();
         int input_depIds[] = plan.getInputDependencyIds();
-        
-        // Mark that we touched the local partition once for each query in the batch
+
+        // Mark that we touched the local partition once for each query in the
+        // batch
         // ts.getTouchedPartitions().put(this.partitionId, plan.getBatchSize());
-        
+
         // Only notify other partitions that we're done with them if we're not
         // a single-partition transaction
         if (hstore_conf.site.specexec_enable && ts.isPredictSinglePartition() == false) {
-            //FIXME
-            //PartitionSet new_done = ts.calculateDonePartitions(this.thresholds);
-            //if (new_done != null && new_done.isEmpty() == false) {
-            //   LocalPrepareCallback callback = ts.getPrepareCallback();
-            //   assert(callback.isInitialized());
-            //   this.hstore_coordinator.transactionPrepare(ts, callback, new_done);
-            //}
+            // FIXME
+            // PartitionSet new_done =
+            // ts.calculateDonePartitions(this.thresholds);
+            // if (new_done != null && new_done.isEmpty() == false) {
+            // LocalPrepareCallback callback = ts.getPrepareCallback();
+            // assert(callback.isInitialized());
+            // this.hstore_coordinator.transactionPrepare(ts, callback,
+            // new_done);
+            // }
         }
 
         if (trace.val)
-            LOG.trace(String.format("Txn #%d - BATCHPLAN:\n" +
-                                    "  fragmentIds:   %s\n" + 
-                                    "  fragmentCount: %s\n" +
-                                    "  output_depIds: %s\n" +
-                                    "  input_depIds:  %s",
-                                    ts.getTransactionId(),
-                                    Arrays.toString(plan.getFragmentIds()),
-                                    plan.getFragmentCount(),
-                                    Arrays.toString(plan.getOutputDependencyIds()),
-                                    Arrays.toString(plan.getInputDependencyIds())));
-        
-        // NOTE: There are no dependencies that we need to pass in because the entire
+            LOG.trace(String.format("Txn #%d - BATCHPLAN:\n" + "  fragmentIds:   %s\n" + "  fragmentCount: %s\n" + "  output_depIds: %s\n" + "  input_depIds:  %s", ts.getTransactionId(),
+                    Arrays.toString(plan.getFragmentIds()), plan.getFragmentCount(), Arrays.toString(plan.getOutputDependencyIds()), Arrays.toString(plan.getInputDependencyIds())));
+
+        // NOTE: There are no dependencies that we need to pass in because the
+        // entire
         // batch is local to this partition.
         DependencySet result = null;
         try {
-            result = this.executePlanFragments(ts,
-                                               undoToken,
-                                               fragmentCount,
-                                               fragmentIds,
-                                               parameterSets,
-                                               output_depIds,
-                                               input_depIds,
-                                               null);
-        
+            result = this.executePlanFragments(ts, undoToken, fragmentCount, fragmentIds, parameterSets, output_depIds, input_depIds, null);
+
         } finally {
-            ts.fastFinishRound(this.partitionId);    
+            ts.fastFinishRound(this.partitionId);
         }
-        // assert(result != null) : "Unexpected null DependencySet result for " + ts; 
+        // assert(result != null) : "Unexpected null DependencySet result for "
+        // + ts;
         if (trace.val)
             LOG.trace("Output:\n" + result);
         return (result != null ? result.dependencies : null);
     }
-    
+
     /**
      * Execute the given fragment tasks on this site's underlying EE
+     * 
      * @param ts
      * @param undoToken
      * @param batchSize
@@ -2923,22 +3593,28 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                                int input_depIds[],
                                                Map<Integer, List<VoltTable>> input_deps) {
         assert(this.ee != null) : "The EE object is null. This is bad!";
+
+        if (reconfiguration_coordinator.getReconfigurationInProgress() && 
+                reconfiguration_coordinator.isLive_pull()) {
+            checkReconfigurationTracking(fragmentIds, parameterSets);
+        }
+
+        
         Long txn_id = ts.getTransactionId();
 
         // *********************************** DEBUG ***********************************
         if (debug.val) {
             StringBuilder sb = new StringBuilder();
-            sb.append(String.format("%s - Executing %d fragments [lastTxnId=%d, undoToken=%d]",
-                      ts, batchSize, this.lastCommittedTxnId, undoToken));
-            // if (trace.val) {
+            sb.append(String.format("%s - Executing %d fragments [lastTxnId=%d, undoToken=%d]", ts, batchSize, this.lastCommittedTxnId, undoToken));
+            //if (trace.val) {
                 Map<String, Object> m = new LinkedHashMap<String, Object>();
                 m.put("Fragments", Arrays.toString(fragmentIds));
-                
+
                 Map<Integer, Object> inner = new LinkedHashMap<Integer, Object>();
                 for (int i = 0; i < batchSize; i++)
                     inner.put(i, parameterSets[i].toString());
                 m.put("Parameters", inner);
-                
+
                 if (batchSize > 0 && input_depIds[0] != HStoreConstants.NULL_DEPENDENCY_ID) {
                     inner = new LinkedHashMap<Integer, Object>();
                     for (int i = 0; i < batchSize; i++) {
@@ -2952,13 +3628,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             // }
             LOG.debug(sb.toString().trim());
         }
-        // *********************************** DEBUG ***********************************
+        // *********************************** DEBUG
+        // ***********************************
 
         // pass attached dependencies to the EE (for non-sysproc work).
         if (input_deps != null && input_deps.isEmpty() == false) {
             if (debug.val)
-                LOG.debug(String.format("%s - Stashing %d InputDependencies at partition %d",
-                          ts, input_deps.size(), this.partitionId));
+                LOG.debug(String.format("%s - Stashing %d InputDependencies at partition %d", ts, input_deps.size(), this.partitionId));
             this.ee.stashWorkUnitDependencies(input_deps);
         }
         
@@ -2969,7 +3645,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         int tableIds[] = null;
         for (int i = 0; i < batchSize; i++) {
             boolean fragReadOnly = PlanFragmentIdGenerator.isPlanFragmentReadOnly(fragmentIds[i]);
-            // We don't need to maintain read/write sets for non-speculative txns
+            // We don't need to maintain read/write sets for non-speculative
+            // txns
             if (speculative || singlePartition == false) {
                 if (fragReadOnly) {
                     tableIds = catalogContext.getReadTableIds(Long.valueOf(fragmentIds[i]));
@@ -2995,31 +3672,29 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (ts.isExecReadOnly(this.partitionId)) {
             if (readonly == false) {
                 if (trace.val)
-                    LOG.trace(String.format("%s - Marking txn as not read-only %s",
-                              ts, Arrays.toString(fragmentIds))); 
+                    LOG.trace(String.format("%s - Marking txn as not read-only %s", ts, Arrays.toString(fragmentIds)));
                 ts.markExecNotReadOnly(this.partitionId);
             }
-            
-            // We can do this here because the only way that we're not read-only is if
+
+            // We can do this here because the only way that we're not read-only
+            // is if
             // we actually modify data at this partition
             ts.markExecutedWork(this.partitionId);
         }
-        
+
         DependencySet result = null;
         boolean needs_profiling = false;
         if (ts.isExecLocal(this.partitionId)) {
-            if (hstore_conf.site.txn_profiling && ((LocalTransaction)ts).profiler != null) {
+            if (hstore_conf.site.txn_profiling && ((LocalTransaction) ts).profiler != null) {
                 needs_profiling = true;
-                ((LocalTransaction)ts).profiler.startExecEE();
+                ((LocalTransaction) ts).profiler.startExecEE();
             }
         }
         
         Throwable error = null;
         try {
-            assert(this.lastCommittedUndoToken < undoToken) :
-                String.format("Trying to execute work using undoToken %d for %s but " +
-                              "it is less than the last committed undoToken %d at partition %d",
-                              undoToken, ts, this.lastCommittedUndoToken, this.partitionId);
+            assert (this.lastCommittedUndoToken < undoToken) : String.format("Trying to execute work using undoToken %d for %s but "
+                    + "it is less than the last committed undoToken %d at partition %d", undoToken, ts, this.lastCommittedUndoToken, this.partitionId);
             if (trace.val)
                 LOG.trace(String.format("%s - Executing fragments %s at partition %d [undoToken=%d]",
                           ts, Arrays.toString(fragmentIds), this.partitionId, undoToken));
@@ -3043,8 +3718,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             throw ex;
         } catch (SerializableException ex) {
             if (debug.val)
-                LOG.error(String.format("%s - Unexpected error in the ExecutionEngine on partition %d",
-                          ts, this.partitionId), ex);
+                LOG.error(String.format("%s - Unexpected error in the ExecutionEngine on partition %d", ts, this.partitionId), ex);
             error = ex;
             throw ex;
         } catch (Throwable ex) {
@@ -3052,26 +3726,135 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             String msg = String.format("%s - Failed to execute PlanFragments: %s", ts, Arrays.toString(fragmentIds));
             throw new ServerFaultException(msg, ex);
         } finally {
-            if (needs_profiling) ((LocalTransaction)ts).profiler.stopExecEE();
+            if (needs_profiling)
+                ((LocalTransaction) ts).profiler.stopExecEE();
             if (error == null && result == null) {
-                LOG.warn(String.format("%s - Finished executing fragments but got back null results [fragmentIds=%s]",
-                         ts, Arrays.toString(fragmentIds)));
+                LOG.warn(String.format("%s - Finished executing fragments but got back null results [fragmentIds=%s]", ts, Arrays.toString(fragmentIds)));
             }
         }
-        
-        // *********************************** DEBUG ***********************************
+
+        // *********************************** DEBUG
+        // ***********************************
         if (debug.val) {
             if (result != null) {
-                LOG.debug(String.format("%s - Finished executing fragments and got back %d results",
-                                        ts, result.depIds.length));
+                LOG.debug(String.format("%s - Finished executing fragments and got back %d results", ts, result.depIds.length));
             } else {
                 LOG.warn(String.format("%s - Finished executing fragments but got back null results? That seems bad...", ts));
             }
         }
-        // *********************************** DEBUG ***********************************
+        // *********************************** DEBUG
+        // ***********************************
         return (result);
     }
-    
+
+    private void checkReconfigurationTracking(long fragmentIds[], ParameterSet parameterSets[]) {
+        if (debug.val)
+            LOG.debug("check reconfigurationTracking");
+        if (this.reconfiguration_tracker == null) {
+            throw new RuntimeException("null reconfig tracker");
+        }
+
+        // Check if all the keys within the parameter sets are supposed to be
+        // present and not
+        // in reconfiguration state (either already migrated or waiting to be
+        // migrated)
+
+        // Get all the fragments
+        Set<ReconfigurationRange<? extends Comparable<?>>> pullRequestsNeeded = new HashSet<>();
+        Set<ReconfigurationRange<? extends Comparable<?>>> restartsNeeded = new HashSet<>();
+
+        for (int i = 0; i < fragmentIds.length; i++) {
+            // Calls andy's methods for calculaitng the offsets
+            List<Pair<Column, Integer>> offsets = new ArrayList<>();
+            p_estimator.getPlanFragmentEstimationParameters(CatalogUtil.getPlanFragment(catalogContext.database, (int) fragmentIds[i]), offsets);
+            ParameterSet parameterSet = parameterSets[i];
+            for (Pair<Column, Integer> offsetPair : offsets) {
+                Object parameterToCheck = parameterSet.toArray()[offsetPair.getSecond()];
+                try {
+                    // FIXME make generic
+                    if (trace.val)
+                        LOG.trace(String.format("PE (%s) checking if key owned", this.partitionId));
+                    boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), parameterToCheck);
+                    if (trace.val)
+                        LOG.trace("Key owned " + keyOwned);
+                    // Check with the reconfig tracking function if the values
+                    // are present
+                    if (trace.val)
+                        LOG.trace("Parameter " + parameterToCheck.toString() + " " + keyOwned);
+                } catch (ReconfigurationException rex) {
+                    // A reconfigurationException was thrown for this key
+                    LOG.info(String.format("(%d) Exception thrown from reconfig check : %s ", this.partitionId, rex.toString()));
+
+                    // Store the type of reconfigurationRange
+                    if (rex.exceptionType == ExceptionTypes.TUPLES_MIGRATED_OUT || rex.exceptionType == ExceptionTypes.BOTH) {
+                        // Lost data to destination
+                        restartsNeeded.addAll(rex.dataMigratedOut);
+                    } else if (rex.exceptionType == ExceptionTypes.TUPLES_NOT_MIGRATED || rex.exceptionType == ExceptionTypes.BOTH) {
+                        // not yet migrated
+                        pullRequestsNeeded.addAll(rex.dataNotYetMigrated);
+                    } else {
+                        throw new NotImplementedException("Unknown reconfigurationException type " + rex.toString());
+                    }
+
+                }
+            }
+        }
+        // Blocking here
+        boolean blockingNeeded = true;
+        if (restartsNeeded.size() > 0) {
+            // Since we want to restart we are not going to block
+            blockingNeeded = false;
+        }
+        if (pullRequestsNeeded.size() > 0) {
+            if (blockingNeeded) {
+                // block on the pull request
+                Semaphore pullBlockSemaphore = new Semaphore(pullRequestsNeeded.size());
+                LOG.info("Pulling ranges " + pullRequestsNeeded.size());
+                if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.start();
+                this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), this.currentTxnId, this.partitionId, pullRequestsNeeded, pullBlockSemaphore);
+                LOG.info("Blocking on ranges " + pullRequestsNeeded.size());
+                try {
+                    pullBlockSemaphore.acquire(pullRequestsNeeded.size());
+                    LOG.info("Load the buffered data on PE: "+ partitionId +" thread");
+                    processQueuedLiveReconfigWork(true);
+
+                    if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.stopIfStarted();
+                    if(hstore_conf.site.reconfig_profiling && tempPullCounter % 500 == 0) LOG.info(String.format("Avg demand pull Time MS %s Count:%s ",
+                            this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getAverageThinkTimeMS(),
+                            this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.getInvocations()));
+                    LOG.info(String.format("PE (%s) has received all pull requests. Unblocking", this.partitionId));
+		    tempPullCounter++;	
+                } catch (InterruptedException ex) {
+                    LOG.error("Waiting for pull was interuppted. ", ex);
+                    // TODO ae restart txn?
+                }
+            } else {
+                LOG.info("Issueing non blocking pull for ranges : " + pullRequestsNeeded.size());
+                this.reconfiguration_coordinator.pullRangesNonBlocking(getNextRequestToken(), this.currentTxnId, this.partitionId, pullRequestsNeeded);
+            }
+        }
+        if (restartsNeeded.size() > 0) {
+            LOG.info("Restarts needed due to migrated data : " + restartsNeeded.size());
+            Histogram<Integer> partitionHistogram = new FastIntHistogram();
+            partitionHistogram.put(this.currentTxn.getPredictTouchedPartitions(), 1);
+            for (ReconfigurationRange range : restartsNeeded) {
+                LOG.info("adding a restart on partition " + range.new_partition);
+                partitionHistogram.put(range.new_partition);
+            }
+            throw new MispredictionException(this.currentTxnId, partitionHistogram);
+
+        }
+
+        // If they are not present, check the reconfiguration exception thrown
+        // (Tuples migrated out or
+        // not yet migrated in)
+        // and block and make a pull call of the tuple to the RC
+        // and block the PE thread on RC
+
+        // When RC gets the data it will unblock the PE
+
+    }
+
     /**
      * Load a VoltTable directly into the EE at this partition.
      * <B>NOTE:</B> This should only be invoked by a system stored procedure.
@@ -3096,16 +3879,52 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             LOG.debug(String.format("Loading %d row(s) into %s [txnId=%d]",
                       data.getRowCount(), table.getName(), ts.getTransactionId()));
         ts.markExecutedWork(this.partitionId);
-        this.ee.loadTable(table.getRelativeIndex(), data,
-                          ts.getTransactionId(),
-                          this.lastCommittedTxnId.longValue(),
-                          ts.getLastUndoToken(this.partitionId),
-                          allowELT != 0);
+        this.ee.loadTable(table.getRelativeIndex(), data, ts.getTransactionId(), this.lastCommittedTxnId.longValue(), ts.getLastUndoToken(this.partitionId), allowELT != 0);
+    }
+
+    /**
+     * Loads table using the same transaction as the current, but creats a new
+     * undo token
+     * 
+     * @param clusterName
+     * @param databaseName
+     * @param tableName
+     * @param data
+     * @throws VoltAbortException
+     */
+    public void loadTableForReconfiguration(String clusterName, String databaseName, String tableName, VoltTable data) throws VoltAbortException {
+        Table table = this.catalogContext.database.getTables().getIgnoreCase(tableName);
+        if (table == null) {
+            throw new VoltAbortException("Table '" + tableName + "' does not exist in database " + clusterName + "." + databaseName);
+        }
+        boolean allowExport = false; // TODO ae what do
+        long lastCommitted = -1;
+        if (this.lastCommittedTxnId == null) {
+            LOG.info("Last commited txn is null");
+        } else {
+            lastCommitted = this.lastCommittedTxnId.longValue();
+        }
+        if (this.ee == null) {
+            throw new VoltAbortException("ee is null!");
+        }
+        if (data == null)
+            throw new VoltAbortException("data i s null");
+        long start=0;
+        if (ReconfigurationCoordinator.detailed_timing) {
+            start = System.currentTimeMillis();
+        }
+        this.ee.loadTable(table.getRelativeIndex(), data, -1, lastCommitted, getNextUndoToken(), allowExport);
+        if (ReconfigurationCoordinator.detailed_timing) {
+            LOG.info(String.format("(%s) Load table[%s] for %s records of size %s took %s ms ",this.partitionId, tableName, 
+                    data.getRowCount(), data.getRowCount() * data.getRowSize() ,System.currentTimeMillis()-start )); 
+        }
+
     }
 
     /**
      * Load a VoltTable directly into the EE at this partition.
      * <B>NOTE:</B> This should only be used for testing
+     * 
      * @param txnId
      * @param table
      * @param data
@@ -3125,23 +3944,28 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     /**
-     * Execute a SQLStmt batch at this partition. This is the main entry point from 
-     * VoltProcedure for where we will execute a SQLStmt batch from a txn.
-     * @param ts The txn handle that is executing this query batch
-     * @param batchSize The number of SQLStmts that the txn queued up using voltQueueSQL()
-     * @param batchStmts The SQLStmts that the txn is trying to execute
-     * @param batchParams The input parameters for the SQLStmts
-     * @param finalTask Whether the txn has marked this as the last batch that they will ever execute
-     * @param forceSinglePartition Whether to force the BatchPlanner to only generate a single-partition plan  
+     * Execute a SQLStmt batch at this partition. This is the main entry point
+     * from VoltProcedure for where we will execute a SQLStmt batch from a txn.
+     * 
+     * @param ts
+     *            The txn handle that is executing this query batch
+     * @param batchSize
+     *            The number of SQLStmts that the txn queued up using
+     *            voltQueueSQL()
+     * @param batchStmts
+     *            The SQLStmts that the txn is trying to execute
+     * @param batchParams
+     *            The input parameters for the SQLStmts
+     * @param finalTask
+     *            Whether the txn has marked this as the last batch that they
+     *            will ever execute
+     * @param forceSinglePartition
+     *            Whether to force the BatchPlanner to only generate a
+     *            single-partition plan
      * @return
      */
-    public VoltTable[] executeSQLStmtBatch(LocalTransaction ts,
-                                           int batchSize,
-                                           SQLStmt batchStmts[],
-                                           ParameterSet batchParams[],
-                                           boolean finalTask,
-                                           boolean forceSinglePartition) {
-        
+    public VoltTable[] executeSQLStmtBatch(LocalTransaction ts, int batchSize, SQLStmt batchStmts[], ParameterSet batchParams[], boolean finalTask, boolean forceSinglePartition) {
+
         boolean needs_profiling = (hstore_conf.site.txn_profiling && ts.profiler != null);
         if (needs_profiling) {
             ts.profiler.addBatch(batchSize);
@@ -3156,28 +3980,30 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         
         if (hstore_conf.site.exec_deferrable_queries) {
-            // TODO: Loop through batchStmts and check whether their corresponding Statement
-            // is marked as deferrable. If so, then remove them from batchStmts and batchParams
-            // (sliding everyone over by one in the arrays). Queue up the deferred query.
+            // TODO: Loop through batchStmts and check whether their
+            // corresponding Statement
+            // is marked as deferrable. If so, then remove them from batchStmts
+            // and batchParams
+            // (sliding everyone over by one in the arrays). Queue up the
+            // deferred query.
             // Be sure decrement batchSize after you finished processing this.
-            // EXAMPLE: batchStmts[0].getStatement().getDeferrable()    
+            // EXAMPLE: batchStmts[0].getStatement().getDeferrable()
         }
-        
-        // Calculate the hash code for this batch to see whether we already have a planner
+
+        // Calculate the hash code for this batch to see whether we already have
+        // a planner
         final Integer batchHashCode = VoltProcedure.getBatchHashCode(batchStmts, batchSize);
         BatchPlanner planner = this.batchPlanners.get(batchHashCode);
         if (planner == null) { // Assume fast case
-            planner = new BatchPlanner(batchStmts,
-                                       batchSize,
-                                       ts.getProcedure(),
-                                       this.p_estimator,
-                                       forceSinglePartition);
+            planner = new BatchPlanner(batchStmts, batchSize, ts.getProcedure(), this.p_estimator, forceSinglePartition);
             this.batchPlanners.put(batchHashCode, planner);
         }
-        assert(planner != null);
-        
-        // At this point we have to calculate exactly what we need to do on each partition
-        // for this batch. So somehow right now we need to fire this off to either our
+        assert (planner != null);
+
+        // At this point we have to calculate exactly what we need to do on each
+        // partition
+        // for this batch. So somehow right now we need to fire this off to
+        // either our
         // local executor or to Evan's magical distributed transaction manager
         BatchPlanner.BatchPlan plan = planner.plan(ts.getTransactionId(),
                                                    this.partitionId,
@@ -3189,27 +4015,28 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             LOG.trace(ts + " - Touched Partitions: " + ts.getTouchedPartitions().values());
             LOG.trace(ts + " - Next BatchPlan:\n" + plan.toString());
         }
-        if (needs_profiling) ts.profiler.stopExecPlanning();
-        
+        if (needs_profiling)
+            ts.profiler.stopExecPlanning();
+
         // Tell the TransactionEstimator that we're about to execute these mofos
         EstimatorState t_state = ts.getEstimatorState();
         if (this.localTxnEstimator != null && t_state != null && t_state.isUpdatesEnabled()) {
             if (needs_profiling) ts.profiler.startExecEstimation();
             try {
-                this.localTxnEstimator.executeQueries(t_state,
-                                                      planner.getStatements(),
-                                                      plan.getStatementPartitions());
+                this.localTxnEstimator.executeQueries(t_state, planner.getStatements(), plan.getStatementPartitions());
             } finally {
-                if (needs_profiling) ts.profiler.stopExecEstimation();
+                if (needs_profiling)
+                    ts.profiler.stopExecEstimation();
             }
         } else if (t_state != null && t_state.shouldAllowUpdates()) {
             LOG.warn("Skipping estimator updates for " + ts);
         }
 
         // Check whether our plan was caused a mispredict
-        // Doing it this way allows us to update the TransactionEstimator before we abort the txn
+        // Doing it this way allows us to update the TransactionEstimator before
+        // we abort the txn
         if (plan.getMisprediction() != null) {
-            MispredictionException ex = plan.getMisprediction(); 
+            MispredictionException ex = plan.getMisprediction();
             ts.setPendingError(ex, false);
             assert(ex.getPartitions().isEmpty() == false) :
                 "Unexpected empty PartitionSet for mispredicated txn " + ts;
@@ -3222,8 +4049,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     LOG.fatal(String.format("Crashing because site.exec_mispredict_crash is true [txn=%s]", ts));
                     this.crash(ex);
                 } // SYNCH
-            }
-            else if (debug.val) {
+            } else if (debug.val) {
                 if (trace.val)
                     LOG.warn("\n" + EstimatorUtil.mispredictDebug(ts, planner, batchStmts, batchParams));
                 LOG.debug(ts + " - Aborting and restarting mispredicted txn.");
@@ -3313,21 +4139,20 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         
         return (results);
     }
-    
+
     /**
-     * 
      * @param fresponse
      */
     protected WorkResult buildWorkResult(AbstractTransaction ts, DependencySet result, Status status, SerializableException error) {
         WorkResult.Builder builder = WorkResult.newBuilder();
-        
+
         // Partition Id
         builder.setPartitionId(this.partitionId);
-        
+
         // Status
         builder.setStatus(status);
-        
-        // SerializableException 
+
+        // SerializableException
         if (error != null) {
             int size = error.getSerializedSize();
             BBContainer bc = this.buffer_pool.acquire(size);
@@ -3341,7 +4166,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             builder.setError(ByteString.copyFrom(bc.b));
             bc.discard();
         }
-        
+
         // Push dependencies back to the remote partition that needs it
         if (status == Status.OK) {
             for (int i = 0, cnt = result.size(); i < cnt; i++) {
@@ -3355,12 +4180,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     throw new ServerFaultException(String.format("Failed to serialize output dependency %d for %s", result.depIds[i], ts), ex);
                 }
                 if (trace.val)
-                    LOG.trace(String.format("%s - Serialized Output Dependency %d\n%s",
-                              ts, result.depIds[i], result.dependencies[i]));  
+                    LOG.trace(String.format("%s - Serialized Output Dependency %d\n%s", ts, result.depIds[i], result.dependencies[i]));
             } // FOR
             this.fs.getBBContainer().discard();
         }
-        
+
         return (builder.build());
     }
 
@@ -3392,7 +4216,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // sure that we don't touch any partition other than our local one. If we do, then we need abort
         // it and restart it as multi-partitioned
         boolean need_restart = false;
-        boolean predict_singlepartition = ts.isPredictSinglePartition(); 
+        boolean predict_singlepartition = ts.isPredictSinglePartition();
         PartitionSet done_partitions = ts.getDonePartitions();
         Estimate t_estimate = ts.getLastEstimate();
         
@@ -3414,7 +4238,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 need_restart = true;
                 break;
             }
-            // Make sure that this txn isn't trying to access a partition that we said we were
+            // Make sure that this txn isn't trying to access a partition that
+            // we said we were
             // done with earlier
             else if (done_partitions.contains(target_partition)) {
                 if (debug.val)
@@ -3429,7 +4254,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.warn(String.format("%s - Trying to send a WorkFragment request with 0 fragments", ts));
                 continue;
             }
-            
+
             // Add in the specexec query estimate at this partition if needed
             if (hstore_conf.site.specexec_enable && t_estimate != null && t_estimate.hasQueryEstimate(target_partition)) {
                 List<CountedStatement> queryEst = t_estimate.getQueryEstimate(target_partition);
@@ -3447,7 +4272,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 } // FOR
                 fragmentBuilder.setFutureStatements(estBuilder);
             }
-           
+
             // Get the TransactionWorkRequest.Builder for the remote HStoreSite
             // We will use this store our serialized input dependencies
             TransactionWorkRequestBuilder requestBuilder = tmp_transactionRequestBuilders[target_site];
@@ -3459,24 +4284,23 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             // Also keep track of what Statements they are executing so that we know
             // we need to send over the wire to them.
             requestBuilder.addParamIndexes(fragmentBuilder.getParamIndexList());
-            
+
             // Input Dependencies
             if (fragmentBuilder.getNeedsInput()) {
                 if (debug.val)
-                    LOG.debug(String.format("%s - Retrieving input dependencies at partition %d",
-                              ts, this.partitionId));
-                
+                    LOG.debug(String.format("%s - Retrieving input dependencies at partition %d", ts, this.partitionId));
+
                 tmp_removeDependenciesMap.clear();
                 for (int i = 0, cnt = fragmentBuilder.getInputDepIdCount(); i < cnt; i++) {
                     this.getFragmentInputs(ts, fragmentBuilder.getInputDepId(i), tmp_removeDependenciesMap);
                 } // FOR
 
                 for (Entry<Integer, List<VoltTable>> e : tmp_removeDependenciesMap.entrySet()) {
-                    if (requestBuilder.hasInputDependencyId(e.getKey())) continue;
+                    if (requestBuilder.hasInputDependencyId(e.getKey()))
+                        continue;
 
                     if (debug.val)
-                        LOG.debug(String.format("%s - Attaching %d input dependencies to be sent to %s",
-                                  ts, e.getValue().size(), HStoreThreadManager.formatSiteName(target_site)));
+                        LOG.debug(String.format("%s - Attaching %d input dependencies to be sent to %s", ts, e.getValue().size(), HStoreThreadManager.formatSiteName(target_site)));
                     for (VoltTable vt : e.getValue()) {
                         this.fs.clear();
                         try {
@@ -3488,10 +4312,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             throw new ServerFaultException(msg, ts.getTransactionId());
                         }
                         if (debug.val)
-                            LOG.debug(String.format("%s - Storing %d rows for InputDependency %d to send " +
-                                      "to partition %d [bytes=%d]",
-                                      ts, vt.getRowCount(), e.getKey(), fragmentBuilder.getPartitionId(),
-                                      CollectionUtil.last(builder.getAttachedDataList()).size()));
+                            LOG.debug(String.format("%s - Storing %d rows for InputDependency %d to send " + "to partition %d [bytes=%d]", ts, vt.getRowCount(), e.getKey(),
+                                    fragmentBuilder.getPartitionId(), CollectionUtil.last(builder.getAttachedDataList()).size()));
                     } // FOR
                     requestBuilder.addInputDependencyId(e.getKey());
                 } // FOR
@@ -3499,31 +4321,34 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
             builder.addFragments(fragmentBuilder);
         } // FOR (tasks)
-        
-        // Bad mojo! We need to throw a MispredictionException so that the VoltProcedure
-        // will catch it and we can propagate the error message all the way back to the HStoreSite
+
+        // Bad mojo! We need to throw a MispredictionException so that the
+        // VoltProcedure
+        // will catch it and we can propagate the error message all the way back
+        // to the HStoreSite
         if (need_restart) {
             if (trace.val)
                 LOG.trace(String.format("Aborting %s because it was mispredicted", ts));
-            // This is kind of screwy because we don't actually want to send the touched partitions
+            // This is kind of screwy because we don't actually want to send the
+            // touched partitions
             // histogram because VoltProcedure will just do it for us...
             throw new MispredictionException(txn_id, null);
         }
 
-        // Stick on the ParameterSets that each site needs into the TransactionWorkRequest
+        // Stick on the ParameterSets that each site needs into the
+        // TransactionWorkRequest
         for (int target_site = 0; target_site < tmp_transactionRequestBuilders.length; target_site++) {
-            TransactionWorkRequestBuilder builder = tmp_transactionRequestBuilders[target_site]; 
+            TransactionWorkRequestBuilder builder = tmp_transactionRequestBuilders[target_site];
             if (builder == null || builder.isDirty() == false) {
                 continue;
             }
-            assert(builder != null);
+            assert (builder != null);
             builder.addParameterSets(parameterSets);
-            
+
             // Bombs away!
             this.hstore_coordinator.transactionWork(ts, target_site, builder.build(), this.request_work_callback);
             if (debug.val)
-                LOG.debug(String.format("%s - Sent Work request to remote site %s",
-                          ts, HStoreThreadManager.formatSiteName(target_site)));
+                LOG.debug(String.format("%s - Sent Work request to remote site %s", ts, HStoreThreadManager.formatSiteName(target_site)));
 
         } // FOR
     }
@@ -3685,11 +4510,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         assert(allFragmentBuilders.isEmpty() == false) :
             "Unexpected empty WorkFragment list for " + ts;
         final boolean needs_profiling = (hstore_conf.site.txn_profiling && ts.profiler != null);
-        
-        // *********************************** DEBUG ***********************************
+
+        // *********************************** DEBUG
+        // ***********************************
         if (debug.val) {
-            LOG.debug(String.format("%s - Preparing to dispatch %d messages and wait for the results [needsProfiling=%s]",
-                      ts, allFragmentBuilders.size(), needs_profiling));
+            LOG.debug(String.format("%s - Preparing to dispatch %d messages and wait for the results [needsProfiling=%s]", ts, allFragmentBuilders.size(), needs_profiling));
             if (trace.val) {
                 StringBuilder sb = new StringBuilder();
                 sb.append(ts + " - WorkFragments:\n");
@@ -3703,14 +4528,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.trace(sb);
             }
         }
-        // *********************************** DEBUG *********************************** 
-        
-        // OPTIONAL: Check to make sure that this request is valid 
-        //  (1) At least one of the WorkFragments needs to be executed on a remote partition
-        //  (2) All of the PlanFragments ids in the WorkFragments match this txn's Procedure
+        // *********************************** DEBUG
+        // ***********************************
+
+        // OPTIONAL: Check to make sure that this request is valid
+        // (1) At least one of the WorkFragments needs to be executed on a
+        // remote partition
+        // (2) All of the PlanFragments ids in the WorkFragments match this
+        // txn's Procedure
         if (hstore_conf.site.exec_validate_work && ts.isSysProc() == false) {
             LOG.warn(String.format("%s - Checking whether all of the WorkFragments are valid", ts));
-            boolean has_remote = false; 
+            boolean has_remote = false;
             for (WorkFragment.Builder frag : allFragmentBuilders) {
                 if (frag.getPartitionId() != this.partitionId) {
                     has_remote = true;
@@ -3718,7 +4546,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 for (int frag_id : frag.getFragmentIdList()) {
                     PlanFragment catalog_frag = CatalogUtil.getPlanFragment(catalogContext.database, frag_id);
                     Statement catalog_stmt = catalog_frag.getParent();
-                    assert(catalog_stmt != null);
+                    assert (catalog_stmt != null);
                     Procedure catalog_proc = catalog_stmt.getParent();
                     if (catalog_proc.equals(ts.getProcedure()) == false) {
                         LOG.warn(ts.debug() + "\n" + allFragmentBuilders + "\n---- INVALID ----\n" + frag);
@@ -3809,25 +4637,31 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 num_remote = 0;
                 num_skipped = 0;
                 total = 0;
-                
+
                 if (trace.val)
-                    LOG.trace(String.format("%s - Waiting for unblocked tasks on partition %d",
-                              ts, this.partitionId));
+                    LOG.trace(String.format("%s - Waiting for unblocked tasks on partition %d", ts, this.partitionId));
                 fragmentBuilders = queue.poll(); // NON-BLOCKING
-                
-                // If we didn't get back a list of fragments here, then we will spin through
-                // and invoke utilityWork() to try to do something useful until what we need shows up
-                if (needs_profiling) ts.profiler.startExecDtxnWork();
-                if (hstore_conf.site.exec_profiling) this.profiler.sp1_time.start();
+
+                // If we didn't get back a list of fragments here, then we will
+                // spin through
+                // and invoke utilityWork() to try to do something useful until
+                // what we need shows up
+                if (needs_profiling)
+                    ts.profiler.startExecDtxnWork();
+                if (hstore_conf.site.exec_profiling)
+                    this.profiler.sp1_time.start();
                 try {
                     while (fragmentBuilders == null) {
-                        // If there is more work that we could do, then we'll just poll the queue
-                        // without waiting so that we can go back and execute it again if we have
+                        // If there is more work that we could do, then we'll
+                        // just poll the queue
+                        // without waiting so that we can go back and execute it
+                        // again if we have
                         // more time.
                         if (this.utilityWork()) {
                             fragmentBuilders = queue.poll();
                         }
-                        // Otherwise we will wait a little so that we don't spin the CPU
+                        // Otherwise we will wait a little so that we don't spin
+                        // the CPU
                         else {
                             fragmentBuilders = queue.poll(WORK_QUEUE_POLL_TIME, TimeUnit.MILLISECONDS);
                         }
@@ -3838,21 +4672,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     }
                     return (null);
                 } finally {
-                    if (needs_profiling) ts.profiler.stopExecDtxnWork();
-                    if (hstore_conf.site.exec_profiling) this.profiler.sp1_time.stopIfStarted();
+                    if (needs_profiling)
+                        ts.profiler.stopExecDtxnWork();
+                    if (hstore_conf.site.exec_profiling)
+                        this.profiler.sp1_time.stopIfStarted();
                 }
             }
-            assert(fragmentBuilders != null);
-            
-            // If the list to fragments unblock is empty, then we 
+            assert (fragmentBuilders != null);
+
+            // If the list to fragments unblock is empty, then we
             // know that we have dispatched all of the WorkFragments for the
-            // transaction's current SQLStmt batch. That means we can just wait 
+            // transaction's current SQLStmt batch. That means we can just wait
             // until all the results return to us.
             if (fragmentBuilders.isEmpty()) {
                 if (trace.val)
-                    LOG.trace(String.format("%s - Got an empty list of WorkFragments at partition %d. " +
-                              "Blocking until dependencies arrive",
-                              ts, this.partitionId));
+                    LOG.trace(String.format("%s - Got an empty list of WorkFragments at partition %d. " + "Blocking until dependencies arrive", ts, this.partitionId));
                 break;
             }
 
@@ -3861,7 +4695,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 this.tmp_remoteFragmentBuilders.clear();
                 this.tmp_localSiteFragmentBuilders.clear();
             }
-            
+
             // -------------------------------
             // FAST PATH: Assume everything is local
             // -------------------------------
@@ -3873,24 +4707,24 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         num_localPartition++;
                     }
                 } // FOR
-                
-                // We have to tell the transaction handle to start the round before we send off the
-                // WorkFragments for execution, since they might start executing locally!
+
+                // We have to tell the transaction handle to start the round
+                // before we send off the
+                // WorkFragments for execution, since they might start executing
+                // locally!
                 if (first) {
                     ts.startRound(this.partitionId);
                     latch = this.depTracker.getDependencyLatch(ts);
                 }
-                
-                // Execute all of our WorkFragments quickly at our local ExecutionEngine
+
+                // Execute all of our WorkFragments quickly at our local
+                // ExecutionEngine
                 for (WorkFragment.Builder fragmentBuilder : this.tmp_localWorkFragmentBuilders) {
                     if (debug.val)
-                        LOG.debug(String.format("%s - Got unblocked %s to execute locally",
-                                  ts, fragmentBuilder.getClass().getSimpleName()));
-                    assert(fragmentBuilder.getPartitionId() == this.partitionId) :
-                        String.format("Trying to process %s for %s on partition %d but it should have been " +
-                                      "sent to partition %d [singlePartition=%s]\n%s",
-                                      fragmentBuilder.getClass().getSimpleName(), ts, this.partitionId,
-                                      fragmentBuilder.getPartitionId(), predict_singlePartition, fragmentBuilder);
+                        LOG.debug(String.format("%s - Got unblocked %s to execute locally", ts, fragmentBuilder.getClass().getSimpleName()));
+                    assert (fragmentBuilder.getPartitionId() == this.partitionId) : String.format("Trying to process %s for %s on partition %d but it should have been "
+                            + "sent to partition %d [singlePartition=%s]\n%s", fragmentBuilder.getClass().getSimpleName(), ts, this.partitionId, fragmentBuilder.getPartitionId(),
+                            predict_singlePartition, fragmentBuilder);
                     WorkFragment fragment = fragmentBuilder.build();
                     this.processWorkFragment(ts, fragment, batchParams);
                 } // FOR
@@ -3899,8 +4733,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             // SLOW PATH: Mixed local and remote messages
             // -------------------------------
             else {
-                // Look at each task and figure out whether it needs to be executed at a remote
-                // HStoreSite or whether we can execute it at one of our local PartitionExecutors.
+                // Look at each task and figure out whether it needs to be
+                // executed at a remote
+                // HStoreSite or whether we can execute it at one of our local
+                // PartitionExecutors.
                 for (WorkFragment.Builder fragmentBuilder : fragmentBuilders) {
                     int partition = fragmentBuilder.getPartitionId();
                     is_localSite = hstore_site.isLocalPartition(partition);
@@ -3980,13 +4816,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     ts.startRound(this.partitionId);
                     latch = this.depTracker.getDependencyLatch(ts);
                 }
-        
+
                 // Now request the fragments that aren't local
                 // We want to push these out as soon as possible
                 if (num_remote > 0) {
                     // We only need to serialize the ParameterSets once
                     if (serializedParams == false) {
-                        if (needs_profiling) ts.profiler.startSerialization();
+                        if (needs_profiling)
+                            ts.profiler.startSerialization();
                         tmp_serializedParams.clear();
                         for (int i = 0; i < batchParams.length; i++) {
                             if (batchParams[i] == null) {
@@ -4003,7 +4840,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                 }
                             }
                         } // FOR
-                        if (needs_profiling) ts.profiler.stopSerialization();
+                        if (needs_profiling)
+                            ts.profiler.stopSerialization();
                     }
                     if (trace.val)
                         LOG.trace(String.format("%s - Requesting %d %s to be executed on remote partitions " +
@@ -4012,40 +4850,40 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     this.requestWork(ts, tmp_remoteFragmentBuilders, tmp_serializedParams, notify);
                     if (needs_profiling) ts.profiler.markRemoteQuery();
                 }
-                
-                // Then dispatch the task that are needed at the same HStoreSite but 
+
+                // Then dispatch the task that are needed at the same HStoreSite
+                // but
                 // at a different partition than this one
                 if (num_localSite > 0) {
                     if (trace.val)
-                        LOG.trace(String.format("%s - Executing %d WorkFragments on local site's partitions",
-                                  ts, num_localSite));
+                        LOG.trace(String.format("%s - Executing %d WorkFragments on local site's partitions", ts, num_localSite));
                     for (WorkFragment.Builder builder : this.tmp_localSiteFragmentBuilders) {
                         PartitionExecutor other = hstore_site.getPartitionExecutor(builder.getPartitionId());
                         other.queueWork(ts, builder.build());
                     } // FOR
-                    if (needs_profiling) ts.profiler.markRemoteQuery();
+                    if (needs_profiling)
+                        ts.profiler.markRemoteQuery();
                 }
-        
-                // Then execute all of the tasks need to access the partitions at this HStoreSite
-                // We'll dispatch the remote-partition-local-site fragments first because they're going
+
+                // Then execute all of the tasks need to access the partitions
+                // at this HStoreSite
+                // We'll dispatch the remote-partition-local-site fragments
+                // first because they're going
                 // to need to get queued up by at the other PartitionExecutors
                 if (num_localPartition > 0) {
                     if (trace.val)
-                        LOG.trace(String.format("%s - Executing %d WorkFragments on local partition",
-                                  ts, num_localPartition));
+                        LOG.trace(String.format("%s - Executing %d WorkFragments on local partition", ts, num_localPartition));
                     for (WorkFragment.Builder fragmentBuilder : this.tmp_localWorkFragmentBuilders) {
                         this.processWorkFragment(ts, fragmentBuilder.build(), batchParams);
                     } // FOR
                 }
             }
             if (trace.val)
-                LOG.trace(String.format("%s - Dispatched %d WorkFragments " +
-                          "[remoteSite=%d, localSite=%d, localPartition=%d]",
-                          ts, total, num_remote, num_localSite, num_localPartition));
+                LOG.trace(String.format("%s - Dispatched %d WorkFragments " + "[remoteSite=%d, localSite=%d, localPartition=%d]", ts, total, num_remote, num_localSite, num_localPartition));
             first = false;
         } // WHILE
         this.fs.getBBContainer().discard();
-        
+
         if (trace.val)
             LOG.trace(String.format("%s - BREAK OUT [first=%s, stillHasWorkFragments=%s, latch=%s]",
                       ts, first, this.depTracker.stillHasWorkFragments(ts), latch));
@@ -4062,20 +4900,23 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             String.format("Unexpected null dependency latch for " + ts);
         if (latch.getCount() > 0) {
             if (debug.val) {
-                LOG.debug(String.format("%s - All blocked messages dispatched. Waiting for %d dependencies",
-                          ts, latch.getCount()));
-                if (trace.val) LOG.trace(ts.toString());
+                LOG.debug(String.format("%s - All blocked messages dispatched. Waiting for %d dependencies", ts, latch.getCount()));
+                if (trace.val)
+                    LOG.trace(ts.toString());
             }
             boolean timeout = false;
             long startTime = EstTime.currentTimeMillis();
-            
-            if (needs_profiling) ts.profiler.startExecDtxnWork();
-            if (hstore_conf.site.exec_profiling) this.profiler.sp1_time.start();
+
+            if (needs_profiling)
+                ts.profiler.startExecDtxnWork();
+            if (hstore_conf.site.exec_profiling)
+                this.profiler.sp1_time.start();
             try {
                 while (latch.getCount() > 0 && ts.hasPendingError() == false) {
                     if (this.utilityWork() == false) {
                         timeout = latch.await(WORK_QUEUE_POLL_TIME, TimeUnit.MILLISECONDS);
-                        if (timeout == false) break;
+                        if (timeout == false)
+                            break;
                     }
                     if ((EstTime.currentTimeMillis() - startTime) > hstore_conf.site.exec_response_timeout) {
                         timeout = true;
@@ -4091,17 +4932,18 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 String msg = String.format("Fatal error for %s while waiting for results", ts);
                 throw new ServerFaultException(msg, ex);
             } finally {
-                if (needs_profiling) ts.profiler.stopExecDtxnWork();
-                if (hstore_conf.site.exec_profiling) this.profiler.sp1_time.stopIfStarted();
+                if (needs_profiling)
+                    ts.profiler.stopExecDtxnWork();
+                if (hstore_conf.site.exec_profiling)
+                    this.profiler.sp1_time.stopIfStarted();
             }
-            
+
             if (timeout && this.isShuttingDown() == false) {
-                LOG.warn(String.format("Still waiting for responses for %s after %d ms [latch=%d]\n%s",
-                         ts, hstore_conf.site.exec_response_timeout, latch.getCount(), ts.debug()));
+                LOG.warn(String.format("Still waiting for responses for %s after %d ms [latch=%d]\n%s", ts, hstore_conf.site.exec_response_timeout, latch.getCount(), ts.debug()));
                 LOG.warn("Procedure Parameters:\n" + ts.getProcedureParameters());
                 hstore_conf.site.exec_profiling = true;
                 LOG.warn(hstore_site.statusSnapshot());
-                
+
                 String msg = "The query responses for " + ts + " never arrived!";
                 throw new ServerFaultException(msg, ts.getTransactionId());
             }
@@ -4117,12 +4959,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // We will rethrow this so that it pops the stack all the way back to VoltProcedure.call()
         // where we can generate a message to the client 
         if (ts.hasPendingError()) {
-            if (debug.val) LOG.warn(String.format("%s was hit with a %s",
-                                          ts, ts.getPendingError().getClass().getSimpleName()));
+            if (debug.val)
+                LOG.warn(String.format("%s was hit with a %s", ts, ts.getPendingError().getClass().getSimpleName()));
             throw ts.getPendingError();
         }
-        
-        // IMPORTANT: Don't try to check whether we got back the right number of tables because the batch
+
+        // IMPORTANT: Don't try to check whether we got back the right number of
+        // tables because the batch
         // may have hit an error and we didn't execute all of them.
         VoltTable results[] = null;
         try {
@@ -4132,8 +4975,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             throw ex;
         }
         ts.finishRound(this.partitionId);
-         if (debug.val) {
-            if (trace.val) LOG.trace(ts + " is now running and looking for love in all the wrong places...");
+        if (debug.val) {
+            if (trace.val)
+                LOG.trace(ts + " is now running and looking for love in all the wrong places...");
             LOG.debug(String.format("%s - Returning back %d tables to VoltProcedure", ts, results.length));
         }
         return (results);
@@ -4144,7 +4988,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     // ---------------------------------------------------------------
 
     /**
-     * Queue a speculatively executed transaction to send its ClientResponseImpl message
+     * Queue a speculatively executed transaction to send its ClientResponseImpl
+     * message
      */
     private void blockClientResponse(LocalTransaction ts, ClientResponseImpl cresponse) {
         assert(ts.isPredictSinglePartition() == true) :
@@ -4166,101 +5011,115 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.specExecBlocked.push(ts);
         this.specExecModified = (this.specExecModified && ts.isExecReadOnly(this.partitionId));
         if (debug.val)
-            LOG.debug(String.format("%s - Blocking %s ClientResponse [partitions=%s, blockQueue=%d]",
-                      ts, cresponse.getStatus(),
-                      ts.getTouchedPartitions().values(), this.specExecBlocked.size()));
+            LOG.debug(String.format("%s - Blocking %s ClientResponse [partitions=%s, blockQueue=%d]", ts, cresponse.getStatus(), ts.getTouchedPartitions().values(), this.specExecBlocked.size()));
     }
-    
+
     /**
-     * For the given transaction's ClientResponse, figure out whether we can send it back to the client
-     * right now or whether we need to initiate two-phase commit.
+     * For the given transaction's ClientResponse, figure out whether we can
+     * send it back to the client right now or whether we need to initiate
+     * two-phase commit.
+     * 
      * @param ts
      * @param cresponse
      */
     protected void processClientResponse(LocalTransaction ts, ClientResponseImpl cresponse) {
-        // IMPORTANT: If we executed this locally and only touched our partition, then we need to commit/abort right here
-        // 2010-11-14: The reason why we can do this is because we will just ignore the commit
-        // message when it shows from the Dtxn.Coordinator. We should probably double check with Evan on this...
+        // IMPORTANT: If we executed this locally and only touched our
+        // partition, then we need to commit/abort right here
+        // 2010-11-14: The reason why we can do this is because we will just
+        // ignore the commit
+        // message when it shows from the Dtxn.Coordinator. We should probably
+        // double check with Evan on this...
         Status status = cresponse.getStatus();
 
         if (debug.val) {
-            LOG.debug(String.format("%s - Processing ClientResponse at partition %d " +
-                      "[status=%s, singlePartition=%s, local=%s, clientHandle=%d]",
-                      ts, this.partitionId, status, ts.isPredictSinglePartition(),
-                      ts.isExecLocal(this.partitionId), cresponse.getClientHandle()));
+            LOG.debug(String.format("%s - Processing ClientResponse at partition %d " + "[status=%s, singlePartition=%s, local=%s, clientHandle=%d]", ts, this.partitionId, status,
+                    ts.isPredictSinglePartition(), ts.isExecLocal(this.partitionId), cresponse.getClientHandle()));
             if (trace.val) {
                 LOG.trace(ts + " Touched Partitions: " + ts.getTouchedPartitions().values());
                 if (ts.isPredictSinglePartition() == false)
                     LOG.trace(ts + " Done Partitions: " + ts.getDonePartitions());
             }
         }
-        
+
         // -------------------------------
         // ALL: Transactions that need to be internally restarted
         // -------------------------------
-        if (status == Status.ABORT_MISPREDICT ||
-            status == Status.ABORT_SPECULATIVE ||
-            status == Status.ABORT_EVICTEDACCESS) {
-            
-            // If the txn was mispredicted, then we will pass the information over to the
-            // HStoreSite so that it can re-execute the transaction. We want to do this 
+        if (status == Status.ABORT_MISPREDICT || status == Status.ABORT_SPECULATIVE || status == Status.ABORT_EVICTEDACCESS) {
+
+            // If the txn was mispredicted, then we will pass the information
+            // over to the
+            // HStoreSite so that it can re-execute the transaction. We want to
+            // do this
             // first so that the txn gets re-executed as soon as possible...
             if (debug.val)
-                LOG.debug(String.format("%s - Restarting because transaction was hit with %s",
-                          ts, (ts.getPendingError() != null ? ts.getPendingError().getClass().getSimpleName() : "")));
+                LOG.debug(String.format("%s - Restarting because transaction was hit with %s", ts, (ts.getPendingError() != null ? ts.getPendingError().getClass().getSimpleName() : "")));
 
-            // We don't want to delete the transaction here because whoever is going to requeue it for
-            // us will need to know what partitions that the transaction touched when it executed before
+            // We don't want to delete the transaction here because whoever is
+            // going to requeue it for
+            // us will need to know what partitions that the transaction touched
+            // when it executed before
             if (ts.isPredictSinglePartition()) {
                 if (ts.isMarkedFinished(this.partitionId) == false)
                     this.finishTransaction(ts, status);
                 this.hstore_site.transactionRequeue(ts, status);
             }
             // Send a message all the partitions involved that the party is over
-            // and that they need to abort the transaction. We don't actually care when we get the
+            // and that they need to abort the transaction. We don't actually
+            // care when we get the
             // results back because we'll start working on new txns right away.
-            // Note that when we call transactionFinish() right here this thread will then go on 
-            // to invoke HStoreSite.transactionFinish() for us. That means when it returns we will
-            // have successfully aborted the txn at least at all of the local partitions at this site.
+            // Note that when we call transactionFinish() right here this thread
+            // will then go on
+            // to invoke HStoreSite.transactionFinish() for us. That means when
+            // it returns we will
+            // have successfully aborted the txn at least at all of the local
+            // partitions at this site.
             else {
-                if (hstore_conf.site.txn_profiling && ts.profiler != null) ts.profiler.startPostFinish();
+                if (hstore_conf.site.txn_profiling && ts.profiler != null)
+                    ts.profiler.startPostFinish();
                 LocalFinishCallback finish_callback = ts.getFinishCallback();
                 finish_callback.init(ts, status);
                 finish_callback.markForRequeue();
-                if (hstore_conf.site.exec_profiling) this.profiler.network_time.start();
+                if (hstore_conf.site.exec_profiling)
+                    this.profiler.network_time.start();
                 this.hstore_coordinator.transactionFinish(ts, status, finish_callback);
-                if (hstore_conf.site.exec_profiling) this.profiler.network_time.stopIfStarted();
+                if (hstore_conf.site.exec_profiling)
+                    this.profiler.network_time.stopIfStarted();
             }
         }
         // -------------------------------
         // ALL: Single-Partition Transactions
         // -------------------------------
         else if (ts.isPredictSinglePartition()) {
-            // Commit or abort the transaction only if we haven't done it already
+            // Commit or abort the transaction only if we haven't done it
+            // already
             // This can happen when we commit speculative txns out of order
             if (ts.isMarkedFinished(this.partitionId) == false) {
                 this.finishTransaction(ts, status);
             }
-            
+
             // We have to mark it as loggable to prevent the response
             // from getting sent back to the client
-            if (hstore_conf.site.commandlog_enable) ts.markLogEnabled();
-            
-            if (hstore_conf.site.exec_profiling) this.profiler.network_time.start();
+            if (hstore_conf.site.commandlog_enable)
+                ts.markLogEnabled();
+
+            if (hstore_conf.site.exec_profiling)
+                this.profiler.network_time.start();
             this.hstore_site.responseSend(ts, cresponse);
-            if (hstore_conf.site.exec_profiling) this.profiler.network_time.stopIfStarted();
+            if (hstore_conf.site.exec_profiling)
+                this.profiler.network_time.stopIfStarted();
             this.hstore_site.queueDeleteTransaction(ts.getTransactionId(), status);
-        } 
+        }
         // -------------------------------
         // COMMIT: Distributed Transaction
         // -------------------------------
         else if (status == Status.OK) {
-            // We need to set the new ExecutionMode before we invoke transactionPrepare
-            // because the LocalTransaction handle might get cleaned up immediately
+            // We need to set the new ExecutionMode before we invoke
+            // transactionPrepare
+            // because the LocalTransaction handle might get cleaned up
+            // immediately
             ExecutionMode newMode = null;
             if (hstore_conf.site.specexec_enable) {
-                newMode = (ts.isExecReadOnly(this.partitionId) ? ExecutionMode.COMMIT_READONLY :
-                                                                 ExecutionMode.COMMIT_NONE);
+                newMode = (ts.isExecReadOnly(this.partitionId) ? ExecutionMode.COMMIT_READONLY : ExecutionMode.COMMIT_NONE);
             } else {
                 newMode = ExecutionMode.DISABLED;
             }
@@ -4286,34 +5145,45 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // ABORT: Distributed Transaction
         // -------------------------------
         else {
-            // Send back the result to the client right now, since there's no way 
-            // that we're magically going to be able to recover this and get them a result
-            // This has to come before the network messages above because this will clean-up the 
+            // Send back the result to the client right now, since there's no
+            // way
+            // that we're magically going to be able to recover this and get
+            // them a result
+            // This has to come before the network messages above because this
+            // will clean-up the
             // LocalTransaction state information
             this.hstore_site.responseSend(ts, cresponse);
-            
+
             // Send a message all the partitions involved that the party is over
-            // and that they need to abort the transaction. We don't actually care when we get the
+            // and that they need to abort the transaction. We don't actually
+            // care when we get the
             // results back because we'll start working on new txns right away.
-            // Note that when we call transactionFinish() right here this thread will then go on 
-            // to invoke HStoreSite.transactionFinish() for us. That means when it returns we will
-            // have successfully aborted the txn at least at all of the local partitions at this site.
-            if (hstore_conf.site.txn_profiling && ts.profiler != null) ts.profiler.startPostFinish();
+            // Note that when we call transactionFinish() right here this thread
+            // will then go on
+            // to invoke HStoreSite.transactionFinish() for us. That means when
+            // it returns we will
+            // have successfully aborted the txn at least at all of the local
+            // partitions at this site.
+            if (hstore_conf.site.txn_profiling && ts.profiler != null)
+                ts.profiler.startPostFinish();
             LocalFinishCallback callback = ts.getFinishCallback();
             callback.init(ts, status);
-            if (hstore_conf.site.exec_profiling) this.profiler.network_time.start();
+            if (hstore_conf.site.exec_profiling)
+                this.profiler.network_time.start();
             try {
                 this.hstore_coordinator.transactionFinish(ts, status, callback);
             } finally {
-                if (hstore_conf.site.exec_profiling) this.profiler.network_time.stopIfStarted();
+                if (hstore_conf.site.exec_profiling)
+                    this.profiler.network_time.stopIfStarted();
             }
         }
     }
-    
+
     /**
-     * Enable speculative execution mode for this partition. The given transaction is 
-     * the one that we will need to wait to finish before we can release the ClientResponses 
-     * for any speculatively executed transactions. 
+     * Enable speculative execution mode for this partition. The given
+     * transaction is the one that we will need to wait to finish before we can
+     * release the ClientResponses for any speculatively executed transactions.
+     * 
      * @param txn_id
      * @return true if speculative execution was enabled at this partition
      */
@@ -4335,10 +5205,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                           ts, this.partitionId, this.specExecBlocked.size()));
             
             ExecutionMode newMode = ExecutionMode.COMMIT_NONE;
-            
-            if (hstore_conf.site.exec_profiling && 
-                   this.partitionId != ts.getBasePartition() &&
-                   ts.needsFinish(this.partitionId)) {
+
+            if (hstore_conf.site.exec_profiling && this.partitionId != ts.getBasePartition() && ts.needsFinish(this.partitionId)) {
                 profiler.sp3_remote_time.start();
             }
             
@@ -4376,17 +5244,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     newMode = ExecutionMode.COMMIT_READONLY;
                 }
             }
-            if (this.currentDtxn != null) this.setExecutionMode(ts, newMode);
+            if (this.currentDtxn != null)
+                this.setExecutionMode(ts, newMode);
         }
-        // It's ok if they try to prepare the txn twice. That might just mean that they never
-        // got the acknowledgement back in time if they tried to send an early commit message.
+        // It's ok if they try to prepare the txn twice. That might just mean
+        // that they never
+        // got the acknowledgement back in time if they tried to send an early
+        // commit message.
         else if (debug.val) {
             LOG.debug(String.format("%s - Already marked 2PC:PREPARE at partition %d", ts, this.partitionId));
         }
 
         // IMPORTANT
         // When we do an early 2PC-PREPARE, we won't have this callback ready
-        // because we don't know what callback to use to send the acknowledgements
+        // because we don't know what callback to use to send the
+        // acknowledgements
         // back over the network
         if (status == Status.OK) {
             if (callback.isInitialized()) {
@@ -4407,9 +5279,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         
         return (status);
     }
-        
+
     /**
-     * Internal call to abort/commit the transaction down in the execution engine
+     * Internal call to abort/commit the transaction down in the execution
+     * engine
+     * 
      * @param ts
      * @param commit
      */
@@ -4431,73 +5305,73 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         //     because that will automatically rollback all of the tokens used by the txn
         //     that came after it.
         boolean commit = (status == Status.OK);
-        long undoToken = (commit ? ts.getLastUndoToken(this.partitionId) :
-                                   ts.getFirstUndoToken(this.partitionId));
-        
+        long undoToken = (commit ? ts.getLastUndoToken(this.partitionId) : ts.getFirstUndoToken(this.partitionId));
+
         // Only commit/abort this transaction if:
-        //  (2) We have the last undo token used by this transaction
-        //  (3) The transaction was executed with undo buffers
-        //  (4) The transaction actually submitted work to the EE
-        //  (5) The transaction modified data at this partition
+        // (2) We have the last undo token used by this transaction
+        // (3) The transaction was executed with undo buffers
+        // (4) The transaction actually submitted work to the EE
+        // (5) The transaction modified data at this partition
         if (ts.needsFinish(this.partitionId) && undoToken != HStoreConstants.NULL_UNDO_LOGGING_TOKEN) {
             if (trace.val)
-                LOG.trace(String.format("%s - Invoking EE to finish work for txn [%s / speculative=%s]",
-                          ts, status, ts.isSpeculative()));
+                LOG.trace(String.format("%s - Invoking EE to finish work for txn [%s / speculative=%s]", ts, status, ts.isSpeculative()));
             this.finishWorkEE(ts, undoToken, commit);
         }
-        
-        // We always need to do the following things regardless if we hit up the EE or not
-        if (commit) this.lastCommittedTxnId = ts.getTransactionId();
-        
+
+        // We always need to do the following things regardless if we hit up the
+        // EE or not
+        if (commit)
+            this.lastCommittedTxnId = ts.getTransactionId();
+
         if (trace.val)
-            LOG.trace(String.format("%s - Telling queue manager that txn is finished at partition %d",
-                      ts, this.partitionId));
+            LOG.trace(String.format("%s - Telling queue manager that txn is finished at partition %d", ts, this.partitionId));
         this.queueManager.lockQueueFinished(ts, status, this.partitionId);
-        
+
         if (debug.val)
             LOG.debug(String.format("%s - Successfully %sed transaction at partition %d",
                       ts, (commit ? "committ" : "abort"), this.partitionId));
         this.markTransactionFinished(ts);
     }
-    
+
     /**
-     * The real method that actually reaches down into the EE and commits/undos the changes 
-     * for the given token.
-     * Unless you know what you're doing, you probably want to be calling finishTransaction()
-     * instead of calling this directly.
+     * The real method that actually reaches down into the EE and commits/undos
+     * the changes for the given token. Unless you know what you're doing, you
+     * probably want to be calling finishTransaction() instead of calling this
+     * directly.
+     * 
      * @param ts
      * @param undoToken
      * @param commit If true, then this txn will be committed. If false, the txn will be aborted.
      */
     private void finishWorkEE(AbstractTransaction ts, long undoToken, boolean commit) {
-        assert(ts.isMarkedFinished(this.partitionId) == false) :
-            String.format("Trying to commit %s twice at partition %d", ts, this.partitionId);
-        
-        // If the txn is completely read-only and they didn't use undo-logging, then
-        // there is nothing that we need to do, except to check to make sure we aren't
+        assert (ts.isMarkedFinished(this.partitionId) == false) : String.format("Trying to commit %s twice at partition %d", ts, this.partitionId);
+
+        // If the txn is completely read-only and they didn't use undo-logging,
+        // then
+        // there is nothing that we need to do, except to check to make sure we
+        // aren't
         // trying to abort this txn
         if (undoToken == HStoreConstants.DISABLE_UNDO_LOGGING_TOKEN) {
-            // SANITY CHECK: Make sure that they're not trying to undo a transaction that
+            // SANITY CHECK: Make sure that they're not trying to undo a
+            // transaction that
             // modified the database but did not use undo logging
             if (ts.isExecReadOnly(this.partitionId) == false && commit == false) {
-                String msg = String.format("TRYING TO ABORT TRANSACTION ON PARTITION %d WITHOUT UNDO LOGGING [undoToken=%d]",
-                                           this.partitionId, undoToken); 
+                String msg = String.format("TRYING TO ABORT TRANSACTION ON PARTITION %d WITHOUT UNDO LOGGING [undoToken=%d]", this.partitionId, undoToken);
                 LOG.fatal(msg + "\n" + ts.debug());
                 this.crash(new ServerFaultException(msg, ts.getTransactionId()));
             }
-            if (debug.val) LOG.debug(String.format("%s - undoToken == DISABLE_UNDO_LOGGING_TOKEN", ts));
+            if (debug.val)
+                LOG.debug(String.format("%s - undoToken == DISABLE_UNDO_LOGGING_TOKEN", ts));
         }
         // COMMIT / ABORT
         else {
             boolean needs_profiling = false;
-            if (hstore_conf.site.txn_profiling && ts.isExecLocal(this.partitionId) && ((LocalTransaction)ts).profiler != null) {
+            if (hstore_conf.site.txn_profiling && ts.isExecLocal(this.partitionId) && ((LocalTransaction) ts).profiler != null) {
                 needs_profiling = true;
-                ((LocalTransaction)ts).profiler.startPostEE();
+                ((LocalTransaction) ts).profiler.startPostEE();
             }
-            assert(this.lastCommittedUndoToken != undoToken) :
-                String.format("Trying to %s undoToken %d for %s twice at partition %d",
-                              (commit ? "COMMIT" : "ABORT"), undoToken, ts, this.partitionId);
-            
+            assert (this.lastCommittedUndoToken != undoToken) : String.format("Trying to %s undoToken %d for %s twice at partition %d", (commit ? "COMMIT" : "ABORT"), undoToken, ts, this.partitionId);
+
             // COMMIT!
             if (commit) {
                 if (debug.val) {
@@ -4510,23 +5384,23 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         LOG.debug(String.format("%s - # of Speculatively Executed Txns: %d ", ts, this.specExecBlocked.size()));
                     }
                 }
-                    
-                assert(this.lastCommittedUndoToken < undoToken) :
-                    String.format("Trying to commit undoToken %d for %s but it is less than the " +
-                                  "last committed undoToken %d at partition %d\n" +
-                                  "Last Committed Txn: %d",
-                                  undoToken, ts, this.lastCommittedUndoToken, this.partitionId,
-                                  this.lastCommittedTxnId);
+
+                assert (this.lastCommittedUndoToken < undoToken) : String.format("Trying to commit undoToken %d for %s but it is less than the " + "last committed undoToken %d at partition %d\n"
+                        + "Last Committed Txn: %d", undoToken, ts, this.lastCommittedUndoToken, this.partitionId, this.lastCommittedTxnId);
                 this.ee.releaseUndoToken(undoToken);
                 this.lastCommittedUndoToken = undoToken;
             }
             // ABORT!
             else {
-                // Evan says that txns will be aborted LIFO. This means the first txn that
-                // we get in abortWork() will have a the greatest undoToken, which means that 
+                // Evan says that txns will be aborted LIFO. This means the
+                // first txn that
+                // we get in abortWork() will have a the greatest undoToken,
+                // which means that
                 // it will automagically rollback all other outstanding txns.
-                // I'm lazy/tired, so for now I'll just rollback everything I get, but in theory
-                // we should be able to check whether our undoToken has already been rolled back
+                // I'm lazy/tired, so for now I'll just rollback everything I
+                // get, but in theory
+                // we should be able to check whether our undoToken has already
+                // been rolled back
                 if (debug.val) {
                     LOG.debug(String.format("%s - ABORTING txn on partition %d with undoToken %d " +
                               "[lastTxnId=%d, lastUndoToken=%d, dtxn=%s]%s",
@@ -4546,45 +5420,59 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                   (ts instanceof LocalTransaction ? " - " + ((LocalTransaction)ts).getSpeculationType() : ""));
                 this.ee.undoUndoToken(undoToken);
             }
-            if (needs_profiling) ((LocalTransaction)ts).profiler.stopPostEE();
+            if (needs_profiling)
+                ((LocalTransaction) ts).profiler.stopPostEE();
         }
     }
-    
+
     /**
-     * Somebody told us that our partition needs to abort/commit the given transaction id.
-     * This method should only be used for distributed transactions, because
-     * it will do some extra work for speculative execution
-     * @param ts - The transaction to finish up.
-     * @param status - The final status of the transaction
+     * Somebody told us that our partition needs to abort/commit the given
+     * transaction id. This method should only be used for distributed
+     * transactions, because it will do some extra work for speculative
+     * execution
+     * 
+     * @param ts
+     *            - The transaction to finish up.
+     * @param status
+     *            - The final status of the transaction
      */
     private void finishDistributedTransaction(final AbstractTransaction ts, final Status status) {
         if (debug.val)
-            LOG.debug(String.format("%s - Processing finish request at partition %d " +
-                      "[status=%s, readOnly=%s]",
-                      ts, this.partitionId,
-                      status, ts.isExecReadOnly(this.partitionId)));
+            LOG.debug(String.format("%s - Processing finish request at partition %d " + "[status=%s, readOnly=%s]", ts, this.partitionId, status, ts.isExecReadOnly(this.partitionId)));
         if (this.currentDtxn == ts) {
-            // 2012-11-22 -- Yes, today is Thanksgiving and I'm working on my database.
-            // That's just grad student life I guess. Anyway, if you're reading this then 
-            // you know that this is an important part of the system. We have a dtxn that 
-            // we have been told is completely finished and now we need to either commit 
-            // or abort any changes that it may have made at this partition. The tricky thing 
-            // is that if we have speculative execution enabled, then we need to make sure
-            // that we process any transactions that were executed while the dtxn was running
+            // 2012-11-22 -- Yes, today is Thanksgiving and I'm working on my
+            // database.
+            // That's just grad student life I guess. Anyway, if you're reading
+            // this then
+            // you know that this is an important part of the system. We have a
+            // dtxn that
+            // we have been told is completely finished and now we need to
+            // either commit
+            // or abort any changes that it may have made at this partition. The
+            // tricky thing
+            // is that if we have speculative execution enabled, then we need to
+            // make sure
+            // that we process any transactions that were executed while the
+            // dtxn was running
             // in the right order to ensure that we maintain serializability.
             // Here is the basic logic of what's about to happen:
-            // 
-            //  (1) If the dtxn is commiting, then we just need to commit the the last txn that 
-            //      was executed (since this will have the largest undo token).
-            //      The EE will automatically commit all undo tokens less than that.
-            //  (2) If the dtxn is aborting, then we can commit any speculative txn that was 
-            //      executed before the dtxn's first non-readonly undo token.
-            //  
-            //  Note that none of the speculative txns in the blocked queue will need to be
-            //  aborted at this point, because we will have rolled back their changes immediately 
-            //  when they aborted, so that our dtxn doesn't read dirty data.  
+            //
+            // (1) If the dtxn is commiting, then we just need to commit the the
+            // last txn that
+            // was executed (since this will have the largest undo token).
+            // The EE will automatically commit all undo tokens less than that.
+            // (2) If the dtxn is aborting, then we can commit any speculative
+            // txn that was
+            // executed before the dtxn's first non-readonly undo token.
+            //
+            // Note that none of the speculative txns in the blocked queue will
+            // need to be
+            // aborted at this point, because we will have rolled back their
+            // changes immediately
+            // when they aborted, so that our dtxn doesn't read dirty data.
             if (this.specExecBlocked.isEmpty() == false) {
-                // First thing we need to do is get the latch that will be set by any transaction
+                // First thing we need to do is get the latch that will be set
+                // by any transaction
                 // that was in the middle of being executed when we were called
                 if (debug.val)
                     LOG.debug(String.format("%s - Checking %d blocked speculative transactions at " +
@@ -4593,11 +5481,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 
                 // -------------------------------
                 // DTXN NON-READ-ONLY ABORT
-                // If the dtxn did not modify this partition, then everthing can commit 
-                // Otherwise, we want to commit anything that was executed before the dtxn started
+                // If the dtxn did not modify this partition, then everthing can
+                // commit
+                // Otherwise, we want to commit anything that was executed
+                // before the dtxn started
                 // -------------------------------
                 if (status != Status.OK && ts.isExecReadOnly(this.partitionId) == false) {
-                    // We need to get the first undo tokens for our distributed transaction
+                    // We need to get the first undo tokens for our distributed
+                    // transaction
                     long dtxnUndoToken = ts.getFirstUndoToken(this.partitionId);
                     if (debug.val)
                         LOG.debug(String.format("%s - Looking for speculative txns to commit before we rollback undoToken %d",
@@ -4696,35 +5587,46 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // -------------------------------
                 else {
                     // **IMPORTANT**
-                    // If the dtxn needs to commit, then all we need to do is get the 
-                    // last undoToken that we've generated (since we know that it had to 
-                    // have been used either by our distributed txn or for one of our 
+                    // If the dtxn needs to commit, then all we need to do is
+                    // get the
+                    // last undoToken that we've generated (since we know that
+                    // it had to
+                    // have been used either by our distributed txn or for one
+                    // of our
                     // speculative txns).
                     //
-                    // If the read-only dtxn needs to abort, then there's nothing we need to
-                    // do, because it didn't make any changes. That means we can just
+                    // If the read-only dtxn needs to abort, then there's
+                    // nothing we need to
+                    // do, because it didn't make any changes. That means we can
+                    // just
                     // commit the last speculatively executed transaction
                     //
-                    // Once we have this token, we can just make a direct call to the EE
-                    // to commit any changes that came before it. Note that we are using our
-                    // special 'finishWorkEE' method that does not require us to provide
+                    // Once we have this token, we can just make a direct call
+                    // to the EE
+                    // to commit any changes that came before it. Note that we
+                    // are using our
+                    // special 'finishWorkEE' method that does not require us to
+                    // provide
                     // the transaction that we're committing.
                     long undoToken = this.lastUndoToken;
                     if (debug.val)
-                        LOG.debug(String.format("%s - Last undoToken at partition %d => %d",
-                                  ts, this.partitionId, undoToken));
+                        LOG.debug(String.format("%s - Last undoToken at partition %d => %d", ts, this.partitionId, undoToken));
                     // Bombs away!
                     if (undoToken != this.lastCommittedUndoToken) {
                         this.finishWorkEE(ts, undoToken, true);
-                        
-                        // IMPORTANT: Make sure that we remove the dtxn from the lock queue!
-                        // This is normally done in finishTransaction() but because we're trying
-                        // to be clever and invoke the EE directly, we have to make sure that
+
+                        // IMPORTANT: Make sure that we remove the dtxn from the
+                        // lock queue!
+                        // This is normally done in finishTransaction() but
+                        // because we're trying
+                        // to be clever and invoke the EE directly, we have to
+                        // make sure that
                         // we call it ourselves.
                         this.queueManager.lockQueueFinished(ts, status, this.partitionId);
                     }
-                    
-                    // Make sure that we mark the dtxn as finished so that we don't
+
+                    // Make sure that we mark the dtxn as finished so that we
+                    // don't
                     // try to do anything with it later on.
                     if (hstore_conf.site.exec_readwrite_tracking)
                         this.markTransactionFinished(ts);
@@ -4745,8 +5647,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             
                         try {
                             if (trace.val)
-                                LOG.trace(String.format("%s - Releasing blocked ClientResponse for %s [status=%s]",
-                                          ts, spec_ts, spec_cr.getStatus()));
+                                LOG.trace(String.format("%s - Releasing blocked ClientResponse for %s [status=%s]", ts, spec_ts, spec_cr.getStatus()));
                             this.processClientResponse(spec_ts, spec_cr);
                         } catch (Throwable ex) {
                             String msg = "Failed to complete queued response for " + spec_ts;
@@ -4763,7 +5664,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             // NO SPECULATIVE TXNS
             // -------------------------------
             else {
-                // There are no speculative txns waiting for this dtxn, 
+                // There are no speculative txns waiting for this dtxn,
                 // so we can just commit it right away
                 if (debug.val)
                     LOG.debug(String.format("%s - No speculative txns at partition %d. Just %s txn by itself",
@@ -4777,25 +5678,25 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             // TODO: Remove anything in our queue for this txn
             // if (ts.hasQueuedWork(this.partitionId)) {
             // }
-            
-            // Check whether this is the response that the speculatively executed txns have been waiting for
-            // We could have turned off speculative execution mode beforehand 
+
+            // Check whether this is the response that the speculatively
+            // executed txns have been waiting for
+            // We could have turned off speculative execution mode beforehand
             if (debug.val)
-                LOG.debug(String.format("%s - Attempting to unmark as the current DTXN at partition %d and " +
-                          "setting execution mode to %s",
-                          ts, this.partitionId, ExecutionMode.COMMIT_ALL));
+                LOG.debug(String.format("%s - Attempting to unmark as the current DTXN at partition %d and " + "setting execution mode to %s", ts, this.partitionId, ExecutionMode.COMMIT_ALL));
             try {
-                // Resetting the current_dtxn variable has to come *before* we change the execution mode
+                // Resetting the current_dtxn variable has to come *before* we
+                // change the execution mode
                 this.resetCurrentDtxn();
                 this.setExecutionMode(ts, ExecutionMode.COMMIT_ALL);
-    
+
                 // Release blocked transactions
                 this.releaseBlockedTransactions(ts);
             } catch (Throwable ex) {
                 String msg = String.format("Failed to finish %s at partition %d", ts, this.partitionId);
                 throw new ServerFaultException(msg, ex, ts.getTransactionId());
             }
-            
+
             if (hstore_conf.site.exec_profiling) {
                 this.profiler.sp3_local_time.stopIfStarted();
                 this.profiler.sp3_remote_time.stopIfStarted();
@@ -4805,19 +5706,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // at this partition. That's ok as long as it's aborting and not trying
         // to commit.
         else {
-            assert(status != Status.OK) :
-                String.format("Trying to commit %s at partition %d but the current dtxn is %s",
-                              ts, this.partitionId, this.currentDtxn);
+            assert (status != Status.OK) : String.format("Trying to commit %s at partition %d but the current dtxn is %s", ts, this.partitionId, this.currentDtxn);
             this.queueManager.lockQueueFinished(ts, status, this.partitionId);
         }
-        
+
         // -------------------------------
         // FINISH CALLBACKS
         // -------------------------------
-        
+
         // MapReduceTransaction
         if (ts instanceof MapReduceTransaction) {
-            PartitionCountingCallback<AbstractTransaction> callback = ((MapReduceTransaction)ts).getCleanupCallback();
+            PartitionCountingCallback<AbstractTransaction> callback = ((MapReduceTransaction) ts).getCleanupCallback();
             // We don't want to invoke this callback at the basePartition's site
             // because we don't want the parent txn to actually get deleted.
             if (this.partitionId == ts.getBasePartition()) {
@@ -4826,8 +5725,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                               ts, callback.getClass().getSimpleName(), this.partitionId));
                 callback.run(this.partitionId);
             }
-        }
-        else {
+        } else {
             PartitionCountingCallback<AbstractTransaction> callback = ts.getFinishCallback();
             if (debug.val)
                 LOG.debug(String.format("%s - Notifying %s that the txn is finished at partition %d",
@@ -4891,41 +5789,40 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     
     private void blockTransaction(InternalTxnMessage work) {
         if (debug.val)
-            LOG.debug(String.format("%s - Adding %s work to blocked queue",
-                      work.getTransaction(), work.getClass().getSimpleName()));
+            LOG.debug(String.format("%s - Adding %s work to blocked queue", work.getTransaction(), work.getClass().getSimpleName()));
         this.currentBlockedTxns.add(work);
     }
-    
+
     private void blockTransaction(LocalTransaction ts) {
         this.blockTransaction(new StartTxnMessage(ts));
     }
 
     /**
-     * Release all the transactions that are currently in this partition's blocked queue 
-     * into the work queue.
+     * Release all the transactions that are currently in this partition's
+     * blocked queue into the work queue.
+     * 
      * @param ts
      */
     private void releaseBlockedTransactions(AbstractTransaction ts) {
         if (this.currentBlockedTxns.isEmpty() == false) {
             if (debug.val)
-                LOG.debug(String.format("Attempting to release %d blocked transactions at partition %d because of %s",
-                          this.currentBlockedTxns.size(), this.partitionId, ts));
+                LOG.debug(String.format("Attempting to release %d blocked transactions at partition %d because of %s", this.currentBlockedTxns.size(), this.partitionId, ts));
             this.work_queue.addAll(this.currentBlockedTxns);
             int released = this.currentBlockedTxns.size();
             this.currentBlockedTxns.clear();
-            if (debug.val) LOG.debug(String.format("Released %d blocked transactions at partition %d because of %s",
-                                           released, this.partitionId, ts));
+            if (debug.val)
+                LOG.debug(String.format("Released %d blocked transactions at partition %d because of %s", released, this.partitionId, ts));
         }
-        assert(this.currentBlockedTxns.isEmpty());
+        assert (this.currentBlockedTxns.isEmpty());
     }
-    
+
     // ---------------------------------------------------------------
     // SNAPSHOT METHODS
     // ---------------------------------------------------------------
-    
+
     /**
-     * Do snapshot work exclusively until there is no more. Also blocks
-     * until the syncing and closing of snapshot data targets has completed.
+     * Do snapshot work exclusively until there is no more. Also blocks until
+     * the syncing and closing of snapshot data targets has completed.
      */
     public void initiateSnapshots(Deque<SnapshotTableTask> tasks) {
         m_snapshotter.initiateSnapshots(ee, tasks);
@@ -4934,56 +5831,65 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public Collection<Exception> completeSnapshotWork() throws InterruptedException {
         return m_snapshotter.completeSnapshotWork(ee);
     }
-    
+
     // ---------------------------------------------------------------
     // SHUTDOWN METHODS
     // ---------------------------------------------------------------
-    
+
     /**
      * Cause this PartitionExecutor to make the entire HStore cluster shutdown
      * This won't return!
      */
     public synchronized void crash(Throwable ex) {
         String msg = String.format("PartitionExecutor for Partition #%d is crashing", this.partitionId);
-        if (ex == null) LOG.warn(msg);
-        else LOG.warn(msg, ex);
-        
-        assert(this.hstore_coordinator != null);
+        if (ex == null)
+            LOG.warn(msg);
+        else
+            LOG.warn(msg, ex);
+
+        assert (this.hstore_coordinator != null);
         this.hstore_coordinator.shutdownClusterBlocking(ex);
     }
-    
+
     @Override
     public boolean isShuttingDown() {
-        return (this.hstore_site.isShuttingDown()); // shutdown_state == State.PREPARE_SHUTDOWN || this.shutdown_state == State.SHUTDOWN);
+        return (this.hstore_site.isShuttingDown()); // shutdown_state ==
+                                                    // State.PREPARE_SHUTDOWN ||
+                                                    // this.shutdown_state ==
+                                                    // State.SHUTDOWN);
     }
-    
+
     @Override
     public void prepareShutdown(boolean error) {
         this.shutdown_state = ShutdownState.PREPARE_SHUTDOWN;
     }
-    
+
     /**
      * Somebody from the outside wants us to shutdown
      */
     public synchronized void shutdown() {
         if (this.shutdown_state == ShutdownState.SHUTDOWN) {
-            if (debug.val) LOG.debug(String.format("Partition #%d told to shutdown again. Ignoring...", this.partitionId));
+            if (debug.val)
+                LOG.debug(String.format("Partition #%d told to shutdown again. Ignoring...", this.partitionId));
             return;
         }
         this.shutdown_state = ShutdownState.SHUTDOWN;
-        
-        if (debug.val) LOG.debug(String.format("Shutting down PartitionExecutor for Partition #%d", this.partitionId));
-        
+
+        if (debug.val)
+            LOG.debug(String.format("Shutting down PartitionExecutor for Partition #%d", this.partitionId));
+
         // Clear the queue
         this.work_queue.clear();
-        
+
         // Knock out this ma
-        if (this.m_snapshotter != null) this.m_snapshotter.shutdown();
-        
+        if (this.m_snapshotter != null)
+            this.m_snapshotter.shutdown();
+
         // Make sure we shutdown our threadpool
         // this.thread_pool.shutdownNow();
-        if (this.self != null) this.self.interrupt();
-        
+        if (this.self != null)
+            this.self.interrupt();
+
         if (this.shutdown_latch != null) {
             try {
                 this.shutdown_latch.acquire();
@@ -4994,7 +5900,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
         }
     }
-    
+
     // ----------------------------------------------------------------------------
     // DEBUG METHODS
     // ----------------------------------------------------------------------------
@@ -5010,39 +5916,51 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             Procedure proc = catalogContext.procedures.getIgnoreCase(procName);
             return (PartitionExecutor.this.getVoltProcedure(proc.getId()));
         }
+
         public SpecExecScheduler getSpecExecScheduler() {
             return (PartitionExecutor.this.specExecScheduler);
         }
+
         public AbstractConflictChecker getSpecExecConflictChecker() {
             return (PartitionExecutor.this.specExecChecker);
         }
+
         public Collection<BatchPlanner> getBatchPlanners() {
             return (PartitionExecutor.this.batchPlanners.values());
         }
+
         public PartitionExecutorProfiler getProfiler() {
             return (PartitionExecutor.this.profiler);
         }
+
         public Thread getExecutionThread() {
             return (PartitionExecutor.this.self);
         }
+
         public Queue<InternalMessage> getWorkQueue() {
             return (PartitionExecutor.this.work_queue);
         }
+
         public void setExecutionMode(AbstractTransaction ts, ExecutionMode newMode) {
             PartitionExecutor.this.setExecutionMode(ts, newMode);
         }
+
         public ExecutionMode getExecutionMode() {
             return (PartitionExecutor.this.currentExecMode);
         }
+
         public Long getLastExecutedTxnId() {
             return (PartitionExecutor.this.lastExecutedTxnId);
         }
+
         public Long getLastCommittedTxnId() {
             return (PartitionExecutor.this.lastCommittedTxnId);
         }
+
         public long getLastCommittedIndoToken() {
             return (PartitionExecutor.this.lastCommittedUndoToken);
         }
+
         /**
          * Get the VoltProcedure handle of the current running txn. This could be null.
          * <B>FOR TESTING ONLY</B> 
@@ -5057,28 +5975,32 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         public AbstractTransaction getCurrentDtxn() {
             return (PartitionExecutor.this.currentDtxn);
         }
+
         /**
-         * Get the txnId of the current distributed transaction at this partition
-         * <B>FOR TESTING ONLY</B>
+         * Get the txnId of the current distributed transaction at this
+         * partition <B>FOR TESTING ONLY</B>
          */
         public Long getCurrentDtxnId() {
             Long ret = null;
             // This is a race condition, so we'll just ignore any errors
-            if (PartitionExecutor.this.currentDtxn != null) { 
+            if (PartitionExecutor.this.currentDtxn != null) {
                 try {
                     ret = PartitionExecutor.this.currentDtxn.getTransactionId();
                 } catch (NullPointerException ex) {
                     // IGNORE
                 }
-            } 
+            }
             return (ret);
         }
+
         public Long getCurrentTxnId() {
             return (PartitionExecutor.this.currentTxnId);
         }
+
         public int getBlockedWorkCount() {
             return (PartitionExecutor.this.currentBlockedTxns.size());
         }
+
         /**
          * Return the number of spec exec txns have completed but are waiting
          * for the distributed txn to finish at this partition
@@ -5086,9 +6008,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         public int getBlockedSpecExecCount() {
             return (PartitionExecutor.this.specExecBlocked.size());
         }
+
         public int getWorkQueueSize() {
             return (PartitionExecutor.this.work_queue.size());
         }
+
         public void updateMemory() {
             PartitionExecutor.this.updateMemoryStats(EstTime.currentTimeMillis());
         }
@@ -5104,13 +6028,319 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             setSpecExecChecker(checker);
         }
     }
-    
+
     private Debug cachedDebugContext;
+
+    // --------------------------------------
+    // Reconfiguration
+    // --------------------------------------
+
+    private ReconfigurationPlan reconfig_plan;
+    private ReconfigurationCoordinator reconfiguration_coordinator = null;
+    private ReconfigurationProtocols reconfig_protocol = null;
+    private List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges;
+    private List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges;
+    private HashMap<Long, Boolean> to_pull;
+    private HashMap<Long, Integer> pulled_tuples;
+    private ReconfigurationTrackingInterface reconfiguration_tracker;
+    public static int PARTITION_BITS = 8;
+    public static int LOCAL_COUNTER_BITS = 24;
+    public static int COUNTER_SIZE_BITS = 32;
+    private int requestCounter = 1;
+    private int idle_click_count;
+    private static int MAX_PULL_ASYNC_EVERY_CLICKS=5000;
     public Debug getDebugContext() {
         if (this.cachedDebugContext == null) {
             // We don't care if we're thread-safe here...
             this.cachedDebugContext = new Debug();
         }
         return this.cachedDebugContext;
+    }
+
+    public ReconfigurationState getReconfiguration_state() {
+        return reconfig_state;
+    }
+
+    public void setReconfiguration_state(ReconfigurationState reconfig_state) {
+        if (debug.val)
+            LOG.debug("Setting reconfiguration state to: " + reconfig_state.toString());
+
+        this.reconfig_state = reconfig_state;
+        if (reconfig_state == ReconfigurationState.NORMAL) {
+            if (debug.val)
+                LOG.debug("Cleaning up reconfiguration");
+            // Reverting back to normal state clean up
+            this.reconfig_plan = null;
+            this.outgoing_ranges = null;
+            this.incoming_ranges = null;
+            this.reconfiguration_tracker = null;
+        }
+    }
+    
+    public void setReconfigurationCoordinator(ReconfigurationCoordinator rc) {
+        this.reconfiguration_coordinator = rc;
+    }
+
+    public void initReconfiguration(ReconfigurationPlan reconfig_plan, ReconfigurationProtocols reconfig_protocol, 
+            ReconfigurationState reconfig_state, PlannedPartitions planned_partitions)
+            throws Exception {
+        // FIXME (ae) We need to check with Andy about concurrency issues here
+        LOG.info(String.format("PE %s InitReconfiguration plan  %s %s", this.partitionId, reconfig_protocol, reconfig_state));
+        if (this.reconfig_plan != null) {
+            String msg = "Reconfiguration plan already set. Cannot set until previous reconfig plan is complete. Current state: " + reconfig_state;
+            LOG.error(msg);
+            throw new Exception(msg);
+
+        }
+        if (debug.val) {
+            LOG.debug(String.format("Setting reconfiguration plan. Protocol:%s. State:%s", reconfig_protocol, reconfig_state));
+        }
+        this.idle_click_count = 0;
+        this.reconfig_plan = reconfig_plan;        
+        this.reconfig_protocol = reconfig_protocol;
+        this.reconfig_state = reconfig_state;
+        this.outgoing_ranges = reconfig_plan.getOutgoing_ranges().get(this.partitionId);
+        this.incoming_ranges = reconfig_plan.getIncoming_ranges().get(this.partitionId);
+
+        this.reconfiguration_tracker = new ReconfigurationTracking(planned_partitions, reconfig_plan, this.partitionId);
+        if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY) {
+            LOG.info("Stopping exeuction");
+            this.currentExecMode = ExecutionMode.DISABLED_REJECT;
+        } else if (reconfig_protocol == ReconfigurationProtocols.LIVEPULL) {
+            LOG.debug("Creating reconfiguration tracker");
+
+            this.to_pull = new HashMap<>();
+            this.pulled_tuples = new HashMap<>();
+            if(this.reconfiguration_coordinator.scheduleAsyncNonChunkPush()){
+                LOG.info("Scheduling nonchunked asynch pushes");
+                scheduleInitialAsyncNonChunkPushRequests(outgoing_ranges);
+            }
+            else if(this.reconfiguration_coordinator.scheduleAsyncNonChunkPull()){
+                LOG.info("Scheduling nonchunked asynch pulls");
+                scheduleInitialAsyncNonChunkPullRequests(incoming_ranges);
+            }
+            else if (this.reconfiguration_coordinator.scheduleAsyncPull()){
+                LOG.info("Scheduling chunked asynch pulls");           
+                scheduleInitialAsyncPullRequests(incoming_ranges);
+            }
+            else if (this.reconfiguration_coordinator.queueAsyncPull()){
+                LOG.info("Queueing chunked asynch pulls");           
+                queueInitialAsyncPullRequests(incoming_ranges);
+            }
+            else {
+                LOG.info("Scheduling no asyn msgs");
+            }
+            if (this.incoming_ranges == null || this.incoming_ranges.isEmpty()) {
+                this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+            }
+            
+            if (this.outgoing_ranges == null || this.outgoing_ranges.isEmpty()) {
+                this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
+            }
+        }
+    }
+    
+
+    public List<ReconfigurationRange<? extends Comparable<?>>> getOutgoingRanges() throws Exception {
+        return this.outgoing_ranges;
+    }
+
+    public void startReconfiguration() throws Exception {
+        // TODO : Check if this function is even called / needed, remove if it
+        // is not
+        // because STOP and COPY procedure handles it directly
+        LOG.info(String.format("Starting reconfiguration"));
+        if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY) {
+            LOG.info("starting stopcopy");
+            Table catalog_tbl = null;
+            VoltTable table = null;
+            for (ReconfigurationRange out_range : outgoing_ranges) {
+
+                catalog_tbl = catalogContext.getTableByName(out_range.table_name);
+                table = CatalogUtil.getVoltTable(catalog_tbl);
+                // TODO ae leftoff
+                // Push Tuples is not called from here
+                // reconfiguration_coordinator.pushTuples(
+                // this.partitionId, out_range.new_partition,
+                // out_range.table_name, table);
+            }
+        }
+    }
+
+    /**
+     * Clear the reconfiguration state after reconfiguration ends
+     */
+    public void endReconfiguration() {
+    	this.reconfig_plan = null;
+    	this.reconfig_state = ReconfigurationState.END;
+    }
+    /**
+     * Receiving tuples for the asynchronous pull operation made as well as the
+     * Stop and Copy
+     * 
+     * @param txnId
+     * @param reconfigurationRange
+     * @param vt
+     * @throws Exception
+     */
+    public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long minInclusive, 
+            Long maxExclusive, VoltTable vt, boolean moreDataComing, boolean isAsyncRequest) throws Exception {
+        
+        LOG.info(String.format("PE (%s) Received tuples for txnId:%s Rows(%s) pIds(from:%s to:%s) for range, " + "(from:%s to:%s)", this.partitionId, txnId, vt.getRowCount(), 
+                newPartitionId, oldPartitionId, minInclusive, maxExclusive));
+        if(hstore_conf.site.reconfig_replication_delay){
+            replicationDelay();
+        }
+        // Currently we don't have any tracking for Stop and Copy.
+        // Sanity checks can be added to make sure all data is added. But
+        // tracker during the
+        // executions is not required as Stop and Copy -> "Stops"
+        if (this.reconfig_protocol != ReconfigurationProtocols.STOPCOPY && this.reconfiguration_tracker != null) {
+            if (minInclusive.compareTo(maxExclusive) == 0) {
+                // We have received a single key
+                LOG.info(String.format("PE (%s) marking key as received %s %s ", this.partitionId, table_name, minInclusive));
+                this.reconfiguration_tracker.markKeyAsReceived(table_name, minInclusive);
+                this.reconfiguration_tracker.markRangeAsPartiallyReceived(new ReconfigurationRange<Long>
+                            (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
+            } else {
+                // TODO ae can we just receive range?
+                LOG.info(String.format("PE (%s) marking range as received %s %s-%s ", this.partitionId, table_name, minInclusive, maxExclusive));
+                try {
+                    if (moreDataComing) {
+                        this.reconfiguration_tracker.markRangeAsPartiallyReceived(new ReconfigurationRange<Long>
+                            (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));                        
+                    } else {
+                        this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>
+                            (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
+                        if(isAsyncRequest){
+                            LOG.info("Last chunk received for async request, unsetting async in progress");
+                            asyncOutstanding.set(false);
+                            nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS;
+                        }
+                    }
+                    
+                    if(this.reconfiguration_tracker.checkIfAllRangesAreMigratedIn()){
+                        // Now reconfiguration resposnibilty of a destination of Live Pull is done,
+                        // so it tells the leader it is done
+                        this.hstore_site.getReconfigurationCoordinator().finishReconfiguration(partitionId);
+                    }
+                } catch (ReconfigurationException re) {
+                    if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_IN)
+                        this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+                    else
+                        LOG.error("Unexpected reconfiguration Exception", re);
+                }
+
+            }
+        }
+        if (debug.val)
+            LOG.debug("load table");
+        loadTableForReconfiguration(this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), table_name, vt);
+    }
+
+    /**
+     * Call from the Reconfiguration coordinator to pull tuples for replying to
+     * a live pull request
+     * 
+     * @param txnId
+     * @param reconfigurationRange
+     * @return
+     */
+    public Pair<VoltTable,Boolean> sendTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, Long min_inclusive, Long max_exclusive, int chunkId) {
+        LOG.info(String.format("sendTuples keys %s->%s for %s  partIds %s->%s", min_inclusive, max_exclusive, table_name, oldPartitionId, newPartitionId));
+        VoltTable vt = null;
+        // FIXME make generic
+
+        Table catalog_tbl = this.catalogContext.getTableByName(table_name);
+        return extractTable(catalog_tbl, new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId), chunkId);
+    }
+
+    
+    public Pair<VoltTable,Boolean> extractPushRequst(ReconfigurationRange<? extends Comparable<?>> pushRange) {
+        long _txnid = -1;
+        // TODO Check that this range still needs to be pushed
+        Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
+        int table_id = catalog_tbl.getRelativeIndex();
+        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(pushRange);
+        if(hstore_conf.site.reconfig_replication_delay){
+            replicationDelay();
+        }
+        Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, _txnid, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), 1);
+        return vt;
+        
+    }
+    
+    /**
+     * Extract the table from the underlying EE engine
+     * 
+     * @param table
+     * @param range
+     * @return
+     */
+    public Pair<VoltTable,Boolean> extractTable(Table table, ReconfigurationRange<? extends Comparable<?>> range, int chunkId) {
+        LOG.debug(String.format("Extract table %s Range:%s", table.toString(), range.toString()));
+        int table_id = table.getRelativeIndex();
+        if(hstore_conf.site.reconfig_replication_delay){
+            replicationDelay();
+        }
+        long start=0;
+        if(ReconfigurationCoordinator.detailed_timing){
+            start = System.currentTimeMillis();
+        }
+        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
+        if (currentTxnId == null) {
+            if (debug.val) LOG.debug("Casting currentTxn to -1");
+            currentTxnId = -1L;
+        }
+        Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table, table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId);
+        if (res != null) {
+            if(ReconfigurationCoordinator.detailed_timing){
+                long diff  = System.currentTimeMillis() - start;
+                LOG.info(String.format("(%s) Extract table[%s] for %s records of size %s took %s ms ",this.partitionId, table.getName(), 
+                        res.getFirst().getRowCount(), res.getFirst().getRowCount() * res.getFirst().getRowSize() , diff)); 
+            }
+            
+            if (debug.val) LOG.debug(String.format("PE (%s) marking range as migrated out %s  ", this.partitionId, range.toString()));
+            if (this.reconfiguration_tracker != null) {
+                try {
+                    if (res.getSecond()){
+                        this.reconfiguration_tracker.markRangeAsPartiallyMigratedOut(range);                       
+                    } else{
+                        this.reconfiguration_tracker.markRangeAsMigratedOut(range);                        
+                    }
+                } catch (ReconfigurationException re) {
+                    if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_OUT)
+                        this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
+                    else
+                        LOG.error("Unexpected reconfiguration Exception", re);
+
+                }
+            }
+        }
+        return res;
+
+    }
+
+    public int getNextRequestToken() {
+        int counter = (((1 << PARTITION_BITS) - 1) & this.partitionId);
+        counter = (counter << (COUNTER_SIZE_BITS - PARTITION_BITS));
+        counter = counter | (requestCounter & ((1 << LOCAL_COUNTER_BITS) - 1));
+        this.requestCounter++;
+        if ((this.requestCounter >> (COUNTER_SIZE_BITS - PARTITION_BITS)) > 0) {
+            // Reset the local counter once it gets over 24 bits
+            // Well it should even if you dont, as there should not be a old
+            // reconfig request
+            // which has 2^24 reconfig requests before the current request
+            resetRequestCounter();
+        }
+        return counter;
+    }
+
+    public void resetRequestCounter() {
+        this.requestCounter = 0;
+    }
+
+    public ExecutionMode getCurrentExecMode() {
+        return currentExecMode;
     }
 }

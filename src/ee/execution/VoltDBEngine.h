@@ -67,6 +67,7 @@
 #include "logging/LogProxy.h"
 #include "logging/StdoutLogProxy.h"
 #include "stats/StatsAgent.h"
+#include "migration/MigrationManager.h"
 
 //#include "storage/TupleTracker.h" //Essam
 
@@ -282,6 +283,13 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         #endif
         
         // -------------------------------------------------
+        // Reconfiguration Functions
+        // -------------------------------------------------
+        int extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken, int32_t extractTupleLimit);
+
+        bool updateExtractRequest(int32_t requestToken, bool confirmDelete);
+
+        // -------------------------------------------------
         // Debug functions
         // -------------------------------------------------
         std::string debug(void) const;
@@ -325,7 +333,7 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         }
 
         inline void setUndoToken(int64_t nextUndoToken) {
-            if (nextUndoToken == INT64_MAX) { return; }
+            if (nextUndoToken == INT64_MAX || nextUndoToken == -1) { return; }
             if (m_currentUndoQuantum != NULL && m_currentUndoQuantum->isDummy()) {
                 //std::cout << "Deleting dummy undo quantum " << std::endl;
                 delete m_currentUndoQuantum;
@@ -490,7 +498,7 @@ class __attribute__((visibility("default"))) VoltDBEngine {
 
         /**
          * System Catalog.
-        */
+         */
         boost::shared_ptr<catalog::Catalog> m_catalog;
         int m_catalogVersion;
         catalog::Database *m_database;
@@ -573,6 +581,9 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         //TupleTrackerManager *tupletrackerMgr;//Essam
 
         DefaultTupleSerializer m_tupleSerializer;
+        
+        // Live Migration
+        MigrationManager *m_migrationManager;
 };
 
 inline void VoltDBEngine::resetReusedResultOutputBuffer(const size_t headerSize) {
