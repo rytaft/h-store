@@ -27,8 +27,8 @@ import org.voltdb.utils.Pair;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
 
-import edu.brown.hashing.PlannedHasher;
-import edu.brown.hashing.PlannedPartitions;
+import edu.brown.hashing.TwoTieredRangeHasher;
+import edu.brown.hashing.TwoTieredRangePartitions;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.HStoreSite;
@@ -110,7 +110,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     // map of requests a PE is blocked on
     private Map<Integer, Semaphore> blockedRequests;
-    private PlannedPartitions planned_partitions;
+    private TwoTieredRangePartitions planned_partitions;
     public ReconfigurationProfiler profilers[];
     private HStoreConf hstore_conf;
     
@@ -206,10 +206,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param partitionId
      * @return the reconfiguration plan or null if plan already set
      */
-    public ReconfigurationPlan initReconfiguration(Integer leaderId, ReconfigurationProtocols reconfigurationProtocol, String partitionPlan, int partitionId) {
+    public ReconfigurationPlan initReconfiguration(Integer leaderId, ReconfigurationProtocols reconfigurationProtocol, String partitionPlanFile, int partitionId) {
 
         // TODO ae start timing
-        if (this.reconfigurationInProgress.get() == false && partitionPlan == this.currentPartitionPlan) {
+        if (this.reconfigurationInProgress.get() == false && partitionPlanFile == this.currentPartitionPlan) {
             LOG.info("Ignoring initReconfiguration request. Requested plan is already set");
             return null;
         }
@@ -235,8 +235,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
             }
             this.reconfigurationLeader = leaderId;
             this.reconfigurationProtocol = reconfigurationProtocol;
-            this.currentPartitionPlan = partitionPlan;
-            PlannedHasher hasher = (PlannedHasher) this.hstore_site.getHasher();
+            this.currentPartitionPlan = partitionPlanFile;
+            TwoTieredRangeHasher hasher = (TwoTieredRangeHasher) this.hstore_site.getHasher();
             ReconfigurationPlan reconfig_plan;
             
             //Used by the leader to track the reconfiguration state of each partition and each site respectively 
@@ -245,8 +245,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
             
             try {
                 // Find reconfig plan
-                reconfig_plan = hasher.changePartitionPhase(partitionPlan);
-                this.planned_partitions = hasher.getPlanned_partitions();
+                reconfig_plan = hasher.changePartitionPlan(partitionPlanFile);
+                this.planned_partitions = hasher.getPartitions();
                 if (reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
                     if (reconfig_plan != null){
                         LOG.info("initReconfig for STOPCOPY");

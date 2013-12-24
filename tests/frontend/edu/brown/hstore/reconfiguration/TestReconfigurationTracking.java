@@ -16,49 +16,56 @@ import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 import edu.brown.BaseTestCase;
 import edu.brown.hashing.PlannedPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
+import edu.brown.hashing.TwoTieredRangePartitions;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.utils.FileUtil;
 import edu.brown.utils.ProjectType;
 
 public class TestReconfigurationTracking extends BaseTestCase {
-    public String test_json1 = "{" 
-            + "       \"default_table\":\"usertable\"," 
+  
+public String test_json1 = "{"
+            + "       \"default_table\":\"usertable\","
             + "       " +
-    		"\"partition_plans\":{" 
-            + "          \"1\" : {"
-            + "            \"tables\":{" 
-            + "              \"usertable\":{" 
-            + "                \"partitions\":{"
-            + "                  1 : \"1-100\"," 
-            + "                  2 : \"100-300\"," 
-            + "                  3 : \"300,350-400,302\","
-            + "                  4 : \"301,303,304-350\"       " 
-            + "                }     " 
-            + "              },"
-            + "              \"table2\":{" 
-            + "                \"partitions\":{"
-            + "                  3 : \"1-10\"" 
-            + "                }     " 
-            + "              }"            
-            + "            }"
-            + "          }," 
-            + "          \"2\" : {"
-            + "            \"tables\":{" 
+                "\"partition_plan\":{"
+            + "            \"tables\":{"
             + "              \"usertable\":{"
-            + "                \"partitions\":{" 
-            + "                  1 : \"1-400\"," 
+            + "                \"partitions\":{"
+            + "                  1 : \"1-100\","
+            + "                  2 : \"100-300\","
+            + "                  3 : \"300,350-400,302\","
+            + "                  4 : \"301,303,304-350\"       "
             + "                }     "
             + "              },"
-            + "              \"table2\":{" 
+            + "              \"table2\":{"
             + "                \"partitions\":{"
-            + "                  4 : \"1-10\"" 
-            + "                }     " 
+            + "                  3 : \"1-10\""
+            + "                }     "
             + "              }"
-            + "            }" 
-            + "          }" 
-            + "        }" 
+            + "            }"
+            + "          }"
             + "}";
-    private File json_path;
+
+public String test_json2 = "{"
+            + "       \"default_table\":\"usertable\","
+            + "       " +
+                "\"partition_plan\":{"
+            + "            \"tables\":{"
+            + "              \"usertable\":{"
+            + "                \"partitions\":{"
+            + "                  1 : \"1-400\","
+            + "                }     "
+            + "              },"
+            + "              \"table2\":{"
+            + "                \"partitions\":{"
+            + "                  4 : \"1-10\""
+            + "                }     "
+            + "              }"
+            + "            }"            
+            + "          }"
+            + "}";
+
+    private File json_path1;
+    private File json_path2;
     String tbl = "usertable"; 
     @Override
     protected void setUp() throws Exception {
@@ -67,8 +74,10 @@ public class TestReconfigurationTracking extends BaseTestCase {
       Column catalog_col = this.getColumn(catalog_tbl, "YCSB_KEY");
       catalog_tbl.setPartitioncolumn(catalog_col);
       String tmp_dir = System.getProperty("java.io.tmpdir");
-      json_path = FileUtil.join(tmp_dir, "test1.json");
-      FileUtil.writeStringToFile(json_path, test_json1);
+      json_path1 = FileUtil.join(tmp_dir, "test1.json");
+      FileUtil.writeStringToFile(json_path1, test_json1);
+      json_path2 = FileUtil.join(tmp_dir, "test2.json");
+      FileUtil.writeStringToFile(json_path2, test_json2);
       
     }
     
@@ -79,9 +88,9 @@ public class TestReconfigurationTracking extends BaseTestCase {
     @SuppressWarnings("unchecked")
     @Test
     public void testTrackReconfigurationRange() throws Exception{
-        PlannedPartitions p = new PlannedPartitions(catalogContext, json_path);
-        p.setPartitionPhase("1");    
-        ReconfigurationPlan plan = p.setPartitionPhase("2");
+        TwoTieredRangePartitions p = new TwoTieredRangePartitions(catalogContext, json_path1);
+        p.setPartitionPlan(json_path1);    
+        ReconfigurationPlan plan = p.setPartitionPlan(json_path2);
         //PE 1
         ReconfigurationTrackingInterface tracking1 = new ReconfigurationTracking(p,plan,1);
         //PE 2
@@ -211,9 +220,9 @@ public class TestReconfigurationTracking extends BaseTestCase {
     @SuppressWarnings("unchecked")
     @Test
     public void testTrackReconfigurationKey() throws Exception{
-        PlannedPartitions p = new PlannedPartitions(catalogContext, json_path);
-        p.setPartitionPhase("1");    
-        ReconfigurationPlan plan = p.setPartitionPhase("2");
+        TwoTieredRangePartitions p = new TwoTieredRangePartitions(catalogContext, json_path1);
+        p.setPartitionPlan(json_path1);    
+        ReconfigurationPlan plan = p.setPartitionPlan(json_path2);
         //PE 1
         ReconfigurationTrackingInterface tracking1 = new ReconfigurationTracking(p,plan,1);
         //PE 2

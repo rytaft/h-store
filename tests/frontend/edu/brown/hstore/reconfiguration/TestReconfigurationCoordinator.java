@@ -13,6 +13,7 @@ import org.voltdb.catalog.Site;
 
 import edu.brown.BaseTestCase;
 import edu.brown.hashing.PlannedHasher;
+import edu.brown.hashing.TwoTieredRangeHasher;
 import edu.brown.hstore.HStoreCoordinator;
 import edu.brown.hstore.HStoreSite;
 import edu.brown.hstore.MockHStoreSite;
@@ -44,8 +45,8 @@ public class TestReconfigurationCoordinator extends BaseTestCase {
         HStoreConf hstore_conf = HStoreConf.singleton(); 
         hstore_conf.site.coordinator_sync_time = false;
         hstore_conf.global.reconfiguration_enable = true;
-        hstore_conf.global.hasher_class = "edu.brown.hashing.PlannedHasher";
-        hstore_conf.global.hasher_plan = PlannedHasher.YCSB_TEST;
+        hstore_conf.global.hasher_class = "edu.brown.hashing.TwoTieredRangeHasher";
+        hstore_conf.global.hasher_plan = TwoTieredRangeHasher.YCSB_TEST;
 
         // Create a fake cluster of two HStoreSites, each with two partitions
         // This will allow us to test same site communication as well as cross-site communication
