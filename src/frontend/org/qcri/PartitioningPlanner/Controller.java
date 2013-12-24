@@ -80,7 +80,7 @@ public class Controller implements Runnable {
 
 	@Override
 	public void run () {
-    	while(true){
+	    //while(true){
 			try {
 				List<Site> overloaded = getOverloadedSites();
 				if (overloaded != null && !overloaded.isEmpty()){
@@ -111,6 +111,29 @@ public class Controller implements Runnable {
 					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt");
 					
 						currentPlan.toJSON("test.txt");
+
+						if(connectedHost == null){
+						    connectToHost();
+						}
+ 						ClientResponse cresponse = null;
+						try {
+						    cresponse = client.callProcedure("@Reconfiguration", 0, "test.txt", "stopcopy");
+						    System.out.println("Controller: received response: " + cresponse);
+						} catch (NoConnectionsException e) {
+						    System.out.println("Controller: lost connection");
+						    e.printStackTrace();
+						} catch (IOException e) {
+						    System.out.println("Controller: IO Exception while connecting to host");
+						    e.printStackTrace();
+						} catch (ProcCallException e) {
+						    System.out.println("Controller: @Reconfiguration transaction rejected (backpressure?)");
+						    e.printStackTrace();
+						}
+
+						if(cresponse.getStatus() != Status.OK){
+						    System.out.println("@Reconfiguration transaction aborted");
+						}
+
 					} catch(Exception e) {
 						System.out.println("Caught on exception " + e.toString());
 					}
@@ -120,7 +143,7 @@ public class Controller implements Runnable {
 				e1.printStackTrace();
 				return;
 			}
-		}
+			//}
 	}
 	
 	private void connectToHost(){

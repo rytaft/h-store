@@ -569,21 +569,15 @@ public class Plan {
 			System.out.println("Failed to read in " + filename);
 			return;
 		}
-		
+
 		if(!srcData.has(PLANNED_PARTITIONS)) {
 			return;
 		}
 		
-		// traverse "partition_plans" object
-		srcData = traverseLevelSingle(srcData);
+		// traverse "partition_plan" object
+		srcData = traverseLevelSingle(srcData);		
 		
-		
-		// have a list of plans - get the last one
-		String[] keys = JSONObject.getNames(srcData);
-		srcData = traverseLevel(srcData, keys[keys.length - 1]);
-		
-		
-		for(Integer i = 0; i < 3; ++i) {
+	 	for(Integer i = 0; i < 3; ++i) {
 			srcData = traverseLevelSingle(srcData);			
 		}
 
