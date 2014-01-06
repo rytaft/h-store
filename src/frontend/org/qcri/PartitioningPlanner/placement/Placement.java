@@ -3,7 +3,10 @@ package org.qcri.PartitioningPlanner.placement;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.voltdb.catalog.Site;
 
@@ -72,8 +75,46 @@ public class Placement {
 		}
 	}
 	
-		Integer _srcPartition; 
-		Long _hotTupleId; 
-		Long _hotAccessCount;
+	Integer _srcPartition; 
+	Long _hotTupleId; 
+	Long _hotAccessCount;
+		
+	// If tuples are no longer hot, put them back in their enclosing range
+	public Plan demoteTuples(ArrayList<Map<Long, Long>> hotTuplesList, Plan plan) {
+		// Get a lookup table of all currently hot tuples
+		Set<Long> hotTuplesLookup = new HashSet<Long>();
+		for(Map<Long, Long>  hotTuples : hotTuplesList) {
+			hotTuplesLookup.addAll(hotTuples.keySet());
+		}
+		
+		// go through the current plan and find old hot tuples by identifying
+		// ranges of size 1
+		ArrayList<List<Plan.Range>> rangesList = new ArrayList<List<Plan.Range>>();
+		rangesList.addAll(plan.getAllRanges().values());
+		int partitionId = 0;
+		for(List<Plan.Range> ranges : rangesList) {
+			for(Plan.Range range : ranges) {
+				// test if the old hot tuple is no longer hot
+				if(Plan.getRangeWidth(range) == 1 && !hotTuplesLookup.contains(range.from)) {
+					Long tupleId = range.from;
+					// Move it to the partition containing the enclosing range
+					Integer nextPartition = plan.getTuplePartition(tupleId + 1);
+					if(nextPartition != null) {
+						plan.removeTupleId(partitionId, tupleId);
+						plan.addRange(nextPartition, tupleId, tupleId);
+					}
+					else {
+						Integer prevPartition = plan.getTuplePartition(tupleId - 1);
+						if(prevPartition != null) {
+							plan.removeTupleId(partitionId, tupleId);
+							plan.addRange(prevPartition, tupleId, tupleId);
+						}
+					}
+				}
+			}
+			partitionId++;
+		}
+		return plan;
+	}
 
 }

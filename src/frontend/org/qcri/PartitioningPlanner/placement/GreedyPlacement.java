@@ -58,6 +58,7 @@ public class GreedyPlacement extends Placement {
 
 		}
 
+		aPlan = demoteTuples(hotTuplesList, aPlan);
 		return aPlan;
 		
 	}

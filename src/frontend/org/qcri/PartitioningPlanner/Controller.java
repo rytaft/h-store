@@ -13,6 +13,8 @@ import java.util.HashMap;
 import org.qcri.PartitioningPlanner.placement.Placement;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
 import org.qcri.PartitioningPlanner.placement.BinPackerPlacement;
+import org.qcri.PartitioningPlanner.placement.FirstFitPlacement;
+import org.qcri.PartitioningPlanner.placement.OneTieredPlacement;
 import org.qcri.PartitioningPlanner.placement.Plan;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
@@ -57,9 +59,11 @@ public class Controller implements Runnable {
 		//algo = new Placement();
 		
 		//Jennie: here we instaniate the planner algo
-		//algo = new GreedyPlacement();
-	        algo = new BinPackerPlacement();
-		
+		algo = new GreedyPlacement();
+	        //algo = new BinPackerPlacement();
+	        //algo = new FirstFitPlacement();
+		//algo = new OneTieredPlacement();		
+
 		ttExecutor = new TupleTrackerExecutor();
 		// connect to VoltDB server
         client = ClientFactory.createClient();
@@ -117,7 +121,7 @@ public class Controller implements Runnable {
 						}
  						ClientResponse cresponse = null;
 						try {
-						    cresponse = client.callProcedure("@Reconfiguration", 0, "test.txt", "stopcopy");
+						    cresponse = client.callProcedure("@Reconfiguration", 0, "test.txt", "livepull");
 						    System.out.println("Controller: received response: " + cresponse);
 						} catch (NoConnectionsException e) {
 						    System.out.println("Controller: lost connection");

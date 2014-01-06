@@ -74,7 +74,6 @@ public class FirstFitPlacement extends Placement {
 
 				partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + _hotAccessCount);
 				oldLoad.put(_srcPartition, oldLoad.get(_srcPartition) - _hotAccessCount);
-
 				hotTuplesList.get(_srcPartition).remove(_hotTupleId);
 				aPlan.removeTupleId(_srcPartition, _hotTupleId);
 				newPlan.addRange(dstPartition, _hotTupleId, _hotTupleId);
@@ -117,7 +116,8 @@ public class FirstFitPlacement extends Placement {
 			
 			
 		} // end for each partition
-		
+
+		newPlan = demoteTuples(hotTuplesList, newPlan);		
 		return newPlan;
 
 	}

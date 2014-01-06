@@ -15,24 +15,24 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 
 public class Plan {
-	
+
 	public static final String PLANNED_PARTITIONS = "partition_plan";
 	// the TreeMap is a range. The key is the beginning of interval, the value is the end.
 	private Map<Integer, TreeMap<Long, Long>> partitionToRanges = new HashMap<Integer, TreeMap<Long, Long>>();
 	public class Range{
 		Long from;
 		Long to;
-		
+
 
 		public String toString() {
 			String rangeStr = new String();
 			rangeStr = from.toString() + "-" + (to.toString() + 1);
 			return rangeStr;
 		}
-			
+
 
 	}
-	
+
 	boolean isEqual(Plan other) {
 		for(Integer i : partitionToRanges.keySet()) {
 			if(other.partitionToRanges.containsKey(i)) {
@@ -48,11 +48,11 @@ public class Plan {
 				return false;
 			}
 		}
-		
+
 		return true;
 	}
-	
-	
+
+
 	// creates empty plan
 	public Plan (Collection<Integer> partitions){
 		TreeMap<Long, Long> emptyRange = new TreeMap<Long,Long>();
@@ -60,7 +60,7 @@ public class Plan {
 			partitionToRanges.put(partition, emptyRange);
 		}
 	}
-	
+
 	public Plan (String filename){
 		fromJSON(filename);
 	}
@@ -74,23 +74,23 @@ public class Plan {
 		partitionToRanges.put(partitionId, emptyRange);
 
 	}
-	
+
 	/*public void addRange(Integer partition, Long from, Long to){
-		
+
 		boolean suspect = false;
-		
+
 		if(from != to) {
 			System.out.println("Adding range " + from + "-" + to + " to " + partition);
 		}
 		else {
 			System.out.println("Adding range " + to + " to " + partition);
 		}
-		
+
 		if(from == 2001) {
 			suspect = true;
 		}
-		
-		
+
+
 		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
 		// find plans that intersect or are adjacent to the new range
 		Map.Entry<Long, Long> precedingFrom = ranges.floorEntry(from - 1);
@@ -100,8 +100,8 @@ public class Plan {
 			System.out.println("Suspect has neighbors " + precedingFrom.toString() + " and " + precedingTo.toString());
 		}
 
-		
-		
+
+
 		if (precedingFrom == null){
 			// from is smaller than any previous range
 			if (precedingTo == null){
@@ -113,7 +113,7 @@ public class Plan {
 				// first remove all ranges before precedingTo
 				removeRange(partition, precedingTo.getKey());
 				ranges.put(from, Math.max(to,precedingTo.getValue()));
-				
+
 			}
 		}
 		else{
@@ -128,12 +128,12 @@ public class Plan {
 				Long lowerBound = from;
 				Long upperBound = Math.max(precedingTo.getValue(), to);
 				ranges.put(lowerBound, upperBound);
-				
+
 			}
 			// lhs linked w/range, rhs not
 			else if(precedingFrom.getValue() > from){
-				
-				
+
+
 			}
 			// intersects on both sides
 			else {
@@ -143,66 +143,66 @@ public class Plan {
 				ranges.put(lowerBound, upperBound);
 
 			}
-								
+
 		} 
 	} */
-	
-	 public void addRange(Integer partition, Long from, Long to){
-		 
-		 // temporarily expand bounds s.t. it merges with adjacent ranges
-		 Long fromTest = from - 1;
-		 Long toTest = to + 1;
 
-         TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
-         Map.Entry<Long, Long> precedingFrom = ranges.floorEntry(fromTest);
-         Map.Entry<Long, Long> precedingTo = ranges.floorEntry(toTest);
+	public void addRange(Integer partition, Long from, Long to){
 
-          		 
-         
-         if (precedingFrom == null){
-                 // from is smaller than any previous range
-                 if (precedingTo == null){
-                         // no range intersecting with this range, create a new range
-                         ranges.put(from,to);
-                 }
-                 else{
-                         // merge the two ranges
-                         // first remove all ranges before precedingTo
-                         ranges.headMap(precedingTo.getKey(),true).clear();
-                         ranges.put(from, Math.max(to,precedingTo.getValue()));
-                 }
-         }
-         else{
-                 if(precedingTo.equals(precedingFrom) && fromTest > precedingFrom.getValue()){
-                         // no range intersecting with this range, create a new range
-                         ranges.put(from,to);
-                 }
-                 else {
-                	 
-                	 	Long lowerBound = from;
-                	 	Long upperBound = to;
-                	 	
-                	 	if(precedingFrom.getValue() >= fromTest) {
-                	 		lowerBound = Math.min(from, precedingFrom.getKey());
-                	 	}
-                	 	
-                	 	if(precedingTo.getKey() <= toTest) {
-                	 		upperBound = Math.max(to, precedingTo.getValue());
-                	 	}
-                	 	                	 	
-                     // remove all ranges intersecting with (from,to)
-                     ranges.subMap(lowerBound,true,upperBound,true).clear();
-                     // merge
-                     ranges.put(lowerBound, upperBound);                	 
-                 }
-         }
-         
-	 }
-	
+		// temporarily expand bounds s.t. it merges with adjacent ranges
+		Long fromTest = from - 1;
+		Long toTest = to + 1;
+
+		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
+		Map.Entry<Long, Long> precedingFrom = ranges.floorEntry(fromTest);
+		Map.Entry<Long, Long> precedingTo = ranges.floorEntry(toTest);
+
+
+
+		if (precedingFrom == null){
+			// from is smaller than any previous range
+			if (precedingTo == null){
+				// no range intersecting with this range, create a new range
+				ranges.put(from,to);
+			}
+			else{
+				// merge the two ranges
+				// first remove all ranges before precedingTo
+				ranges.headMap(precedingTo.getKey(),true).clear();
+				ranges.put(from, Math.max(to,precedingTo.getValue()));
+			}
+		}
+		else{
+			if(precedingTo.equals(precedingFrom) && fromTest > precedingFrom.getValue()){
+				// no range intersecting with this range, create a new range
+				ranges.put(from,to);
+			}
+			else {
+
+				Long lowerBound = from;
+				Long upperBound = to;
+
+				if(precedingFrom.getValue() >= fromTest) {
+					lowerBound = Math.min(from, precedingFrom.getKey());
+				}
+
+				if(precedingTo.getKey() <= toTest) {
+					upperBound = Math.max(to, precedingTo.getValue());
+				}
+
+				// remove all ranges intersecting with (from,to)
+				ranges.subMap(lowerBound,true,upperBound,true).clear();
+				// merge
+				ranges.put(lowerBound, upperBound);                	 
+			}
+		}
+
+	}
+
 	public boolean removeRange(Integer partition, Long from){
 		return (partitionToRanges.get(partition).remove(from) == null);
 	}
-	
+
 	public boolean removeTupleId(Integer partition, Long tupleId) {
 		Map.Entry<Long,Long> precedingRange = partitionToRanges.get(partition).floorEntry(tupleId);
 		if(precedingRange == null) return false;
@@ -215,25 +215,25 @@ public class Plan {
 			partitionToRanges.get(partition).put(tupleId + 1, upperBound);
 		}
 		// range of one
-		else if(precedingRange.getKey() == precedingRange.getValue()) {
+		else if(precedingRange.getKey().equals(precedingRange.getValue())) {
 		        partitionToRanges.get(partition).remove(tupleId);
 		}
-		else if(precedingRange.getValue() == tupleId) {
+		else if(precedingRange.getValue().equals(tupleId)) {
 			Long lowerBound = precedingRange.getKey();
 			partitionToRanges.get(partition).remove(lowerBound);
 			partitionToRanges.get(partition).put(lowerBound, tupleId - 1);
 
 		}
-		else if(precedingRange.getKey() == tupleId) {
+		else if(precedingRange.getKey().equals(tupleId)) {
 			Long upperBound = precedingRange.getValue();
 			partitionToRanges.get(partition).remove(tupleId);
 			partitionToRanges.get(partition).put(tupleId + 1, upperBound);
 		}
-			
+
 		return true;
 	}
-	
-	
+
+
 	Integer getTuplePartition(Long tupleId) {
 		for(Integer partition : partitionToRanges.keySet()) {
 			if(getRangeValue(partition, tupleId) != null) {
@@ -242,35 +242,35 @@ public class Plan {
 		}
 		return -1;
 	}
-	
+
 	public String printPartition(Integer partition) {
 		String output = new String();
 		Boolean first = true;
 		String rangeStr = new String();
-		
+
 		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
 		for(Map.Entry<Long, Long> range : ranges.entrySet()){
-		        rangeStr = range.getKey() + "-" + (range.getValue() + 1);
-					
+			rangeStr = range.getKey() + "-" + (range.getValue() + 1);
+
 			if(!first) {
 				output = output + ",";
 			}
 			else {
 				first = false;
 			}
-			
+
 			output = output + rangeStr;
 		}
 
 		return output;
-		
+
 	}
-	
-	
+
+
 	private Range  parseRange(String src) {
 		Long value;
 		Range parsed = new Range();
-		
+
 		if(src.contains("-")) {
 			StringTokenizer inner = new StringTokenizer(src, "-");
 			String lhs = inner.nextToken();
@@ -278,53 +278,53 @@ public class Plan {
 			parsed.from = Long.parseLong(lhs);
 			parsed.to = Long.parseLong(rhs);
 			if(parsed.to > parsed.from) {
-			    parsed.to--; // assuming we are passed non-inclusive ranges
+				parsed.to--; // assuming we are passed non-inclusive ranges
 			}
-		 }
-		 else {
-			 value = Long.parseLong(src);
-			 parsed.from = parsed.to = value;
-		 }
+		}
+		else {
+			value = Long.parseLong(src);
+			parsed.from = parsed.to = value;
+		}
 		return parsed;
 
-	
+
 	}
-	
+
 	private TreeMap<Long, Long> parseRanges(String srcRanges) {
 		TreeMap<Long, Long> ranges = new TreeMap<Long, Long>();
 		StringTokenizer st = new StringTokenizer(srcRanges, ",");
 		Range parsedRange;
-		
+
 		// just one
 		if(srcRanges.contains(",") == false && srcRanges.length() > 0) {
-		
+
 			parsedRange = parseRange(srcRanges);
 			ranges.put(parsedRange.from, parsedRange.to);
 		}
-		
+
 		while (st.hasMoreTokens()) { 
-			 String rangeStr = st.nextToken();
-			 parsedRange = parseRange(rangeStr);
-			 ranges.put(parsedRange.from, parsedRange.to);
-		 }
-		
+			String rangeStr = st.nextToken();
+			parsedRange = parseRange(rangeStr);
+			ranges.put(parsedRange.from, parsedRange.to);
+		}
+
 		return ranges;
-		
+
 	}
-	
-    public void printPlan() {
-    	
-    	for(Integer partition : partitionToRanges.keySet()) {
+
+	public void printPlan() {
+
+		for(Integer partition : partitionToRanges.keySet()) {
 			System.out.print("Partition " + partition + ": " + printPartition(partition));
 			System.out.println("");
-	
-    	}
-    }
-    	
 
-	
+		}
+	}
 
-	
+
+
+
+
 	public Range getRangeValue(Integer partition, Long value){
 		Map.Entry<Long,Long> precedingRange = partitionToRanges.get(partition).floorEntry(value);
 		if(precedingRange == null) return null;
@@ -336,7 +336,7 @@ public class Plan {
 		}
 		else return null;
 	}
-	
+
 	public List<Range> getAllRanges(Integer partition){
 		List<Range> res = new ArrayList<Range>();
 		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
@@ -356,7 +356,7 @@ public class Plan {
 		}
 		return res;
 	}
-	
+
 	public Long getTupleCount(Integer partition) {
 		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
 		Long sum = 0L;
@@ -369,10 +369,10 @@ public class Plan {
 	static Long getRangeWidth(Range r) {
 		return r.to - r.from + 1; // inclusive
 	}
-	
+
 	static String rangeSliceToString(List<Range> slice) {
 		String printed = new String();
-		
+
 		if(slice.size() > 0) {
 			printed = slice.get(0).toString();
 			for(Integer i = 1; i < slice.size(); ++i) {
@@ -381,16 +381,16 @@ public class Plan {
 		}
 		return printed;
 	}
-	
+
 	static void printRangeSlices(List<List<Range>> slices) {
 		for(Integer i = 0; i < slices.size(); ++i) {
 			System.out.println("Slice " + i + ": " + rangeSliceToString(slices.get(i)));
 		}
 	}
-	
+
 	static Long getRangeListWidth(List<Range> ranges) {
 		Long sum = 0L;
-		
+
 		for(Range r : ranges) {
 			sum = sum + getRangeWidth(r);
 		}
@@ -402,10 +402,10 @@ public class Plan {
 		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
 		List<List<Range>> slices = new ArrayList<List<Range>>();
 
-		Long accumulatedSum = 0L;
+		long accumulatedSum = 0L;
 		List<Range> partialList = new ArrayList<Range>();
-		Long rangeLength = 0L;
-		
+		long rangeLength = 0L;
+
 		for(Long i : ranges.keySet()) {
 			rangeLength = ranges.get(i) - i + 1; // inclusive
 			if(accumulatedSum + rangeLength < sliceWidth) {
@@ -426,14 +426,14 @@ public class Plan {
 				Range tmp1 = new Range();
 				tmp1.from = i;
 				tmp1.to = i + sliceWidth - accumulatedSum - 1; // fill in the remainder
-				
+
 				partialList.add(tmp1);
 				slices.add(partialList);
 
-				
+
 				partialList = new ArrayList<Range>();
 				accumulatedSum = 0L;
-				
+
 				Range tmp2 = new Range();
 				tmp2.from = tmp1.to + 1;
 				tmp2.to = ranges.get(i);
@@ -443,13 +443,13 @@ public class Plan {
 					tmp1.from = tmp2.from;
 					tmp1.to = tmp2.from + sliceWidth - 1;
 					partialList.add(tmp1);
-				
+
 					slices.add(partialList);
-					
+
 					partialList = new ArrayList<Range>();
 					tmp2.from = tmp1.to + 1;
 				}
-				
+
 				if(getRangeWidth(tmp2) == sliceWidth) {
 					slices.add(partialList);
 					partialList = new ArrayList<Range>();					
@@ -460,20 +460,20 @@ public class Plan {
 				}
 			}
 		}
-	
+
 		if(!partialList.isEmpty()) {
 			slices.add(partialList);
 		}
-		
+
 		return slices;
-		
+
 	}
-	
+
 	private void fromJSON(String filename)  {
 		partitionToRanges.clear();
 		readInFile(filename);
 	}
-	
+
 	public void toJSON (String filename)  {
 		JSONObject srcData = new JSONObject(), lastPlan, newPlan;
 		String oldPlan = new String();
@@ -482,14 +482,14 @@ public class Plan {
 			oldPlan = FileUtil.readFile(filename);
 		} catch(Exception e) {
 			System.out.println("Failed to read in " + filename);
-			}
-		
+		}
+
 		// begin JSON block
 		try {
 			if(oldPlan.length() > 0) {
 				srcData = new JSONObject(oldPlan);					
 			}
-			
+
 			newPlan = constructNewJSON();
 			if(srcData.has(PLANNED_PARTITIONS)) {
 				lastPlan = srcData.getJSONObject(PLANNED_PARTITIONS);
@@ -498,7 +498,7 @@ public class Plan {
 					System.out.println("Not a duplicate!");
 				}
 			}
-			
+
 			srcData = new JSONObject();
 			srcData.put(PLANNED_PARTITIONS, newPlan);	
 
@@ -507,36 +507,36 @@ public class Plan {
 		}
 
 		try {
-    		BufferedWriter output = new BufferedWriter(new FileWriter(filename));    	 
-    		output.write(srcData.toString(2));
-    		output.close();
-    	}
-    	catch (Exception e) {
-    		System.out.println("Failed to write partitioning plan to " + filename);
-    		return;
-    	}
+			BufferedWriter output = new BufferedWriter(new FileWriter(filename));    	 
+			output.write(srcData.toString(2));
+			output.close();
+		}
+		catch (Exception e) {
+			System.out.println("Failed to write partitioning plan to " + filename);
+			return;
+		}
 	}
-	
+
 	// build a JSON object using the current contents of this Plan object
 	private JSONObject constructNewJSON()  throws JSONException {
 		JSONObject jsonPlan = new JSONObject();
 		JSONObject tableNameObject = new JSONObject();
 		JSONObject partitionDelimiter = new JSONObject();
 		JSONObject tableObject = new JSONObject();
-		
+
 		jsonPlan.put("tables", tableNameObject);
 		tableNameObject.put("usertable", partitionDelimiter);
 		partitionDelimiter.put("partitions", tableObject);
-		
-		
-    	for(Integer partition : partitionToRanges.keySet()) {
-    		tableObject.put(partition.toString(), printPartition(partition));
-    	}
-    	
-    	return jsonPlan;
+
+
+		for(Integer partition : partitionToRanges.keySet()) {
+			tableObject.put(partition.toString(), printPartition(partition));
+		}
+
+		return jsonPlan;
 
 	}
-	
+
 	private JSONObject traverseLevel(JSONObject srcData, String key) {
 		try {
 			System.out.println("Traversing JSON key " + key);
@@ -551,7 +551,7 @@ public class Plan {
 			return null;
 		}
 	}
-	
+
 	private JSONObject traverseLevelSingle(JSONObject srcData) {
 		String[] keys = JSONObject.getNames(srcData);
 		return traverseLevel(srcData, keys[0]);
@@ -561,7 +561,7 @@ public class Plan {
 	public void readInFile(String filename) {
 		JSONObject srcData;
 		String inputData = FileUtil.readFile(filename);
-		
+
 		System.out.println("Working from " + inputData);
 		try {
 			srcData = new JSONObject(inputData);	
@@ -573,11 +573,11 @@ public class Plan {
 		if(!srcData.has(PLANNED_PARTITIONS)) {
 			return;
 		}
-		
+
 		// traverse "partition_plan" object
 		srcData = traverseLevelSingle(srcData);		
-		
-	 	for(Integer i = 0; i < 3; ++i) {
+
+		for(Integer i = 0; i < 3; ++i) {
 			srcData = traverseLevelSingle(srcData);			
 		}
 
@@ -593,7 +593,7 @@ public class Plan {
 			}
 			partitionToRanges.put(partitionNo, parseRanges(partitionRanges));
 		}
-		
-	
+
+
 	}
 }
