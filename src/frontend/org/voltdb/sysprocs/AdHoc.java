@@ -69,22 +69,25 @@ public class AdHoc extends VoltSystemProcedure {
         
     	// Essam Enable read/write set tracking 
     	
-    	
-    	
+    	//del me
+    	String text = "flag is "; 
+    	    	
     	if(this.hstore_conf.site.exec_readwrite_tracking == false)
     	  {
     		this.hstore_conf.site.exec_readwrite_tracking = true; //Essam
+    		text = "in if false: "+text + this.hstore_conf.site.exec_readwrite_tracking;
     	  }
     	else 
     	  {
     		this.hstore_conf.site.exec_readwrite_tracking = false; //Essam
+    		text = "in else true: " + text + this.hstore_conf.site.exec_readwrite_tracking;
     	  }
     	   	
     	
     	try {
             File file = new File("readwrite_tracking.del");
             BufferedWriter output = new BufferedWriter(new FileWriter(file));
-            String text = "flag is "+this.hstore_conf.site.exec_readwrite_tracking;
+            
             output.write(text);
             output.close();
           } catch ( IOException e ) {
