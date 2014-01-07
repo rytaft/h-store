@@ -17,6 +17,10 @@
 
 package org.voltdb.sysprocs;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -238,6 +242,40 @@ public class Statistics extends VoltSystemProcedure {
             //  TUPLE statistics Essam
             // ----------------------------------------------------------------------------
             case SysProcFragmentId.PF_tupleData: {
+            	
+            	//Essam turn on/off tuple tracking
+            	///////////////////////////////////
+            	// Essam Enable read/write set tracking 
+            	//context.getHStoreSite().getHStoreConf().site
+            	//hstore_conf.site.exec_readwrite_tracking
+            	//this.hstore_conf.site.exec_readwrite_tracking
+            	//del me
+            	String text = "Original flag is  " + hstore_conf.site.exec_readwrite_tracking +"\n"; 
+            	    	
+            	if(hstore_conf.site.exec_readwrite_tracking == false)
+            	  {
+            		hstore_conf.site.exec_readwrite_tracking = true; //Essam
+            		text = text +" in if false: new flag is "+ hstore_conf.site.exec_readwrite_tracking;
+            	  }
+            	else 
+            	  {
+            		hstore_conf.site.exec_readwrite_tracking = false; //Essam
+            		text = text +" in else true: new flag is "+ hstore_conf.site.exec_readwrite_tracking ;
+            	  }
+            	   	
+            	
+            	try {
+                    File file = new File("readwrite_tracking.del");
+                    BufferedWriter output = new BufferedWriter(new FileWriter(file));
+                    
+                    output.write(text);
+                    output.close();
+                  } catch ( IOException e ) {
+                     e.printStackTrace();
+                  }
+            	
+            	///////////////////////////////////
+            	
                 assert(params.toArray().length == 2);
                 final boolean interval =
                     ((Byte)params.toArray()[0]).byteValue() == 0 ? false : true;
