@@ -61,7 +61,14 @@ public class AdHoc extends VoltSystemProcedure {
     public DependencySet executePlanFragment(Long txn_id, Map<Integer, List<VoltTable>> dependencies, int fragmentId, ParameterSet params, SystemProcedureExecutionContext context) {
         
     	// Essam Enable read/write set tracking 
-    	//this.hstore_conf.site.exec_readwrite_tracking = true; //Essam
+    	if(this.hstore_conf.site.exec_readwrite_tracking == false)
+    	  {
+    		this.hstore_conf.site.exec_readwrite_tracking = true; //Essam
+    	  }
+    	else 
+    	  {
+    		this.hstore_conf.site.exec_readwrite_tracking = false; //Essam
+    	  }
     	   	
     	
     	// get the three params (depId, json plan, sql stmt)
