@@ -243,7 +243,27 @@ public class Statistics extends VoltSystemProcedure {
             // ----------------------------------------------------------------------------
             case SysProcFragmentId.PF_tupleData: {
             	
-            	//Essam turn on/off tuple tracking
+            	 	
+                assert(params.toArray().length == 2);
+                final boolean interval =
+                    ((Byte)params.toArray()[0]).byteValue() == 0 ? false : true;
+                final Long now = (Long)params.toArray()[1];
+                // create an array of the table ids for which statistics are required.
+                // pass this to EE owned by the execution site running this plan fragment.
+                CatalogMap<Table> tables = context.getDatabase().getTables();
+                int[] tableGuids = new int[tables.size()];
+                int ii = 0;
+                for (Table table : tables) {
+                    tableGuids[ii++] = table.getRelativeIndex();
+                }
+                VoltTable result = executor.getExecutionEngine().getStats(
+                            SysProcSelector.TUPLE,
+                            tableGuids,
+                            interval,
+                            now)[0];
+                
+                
+              //Essam turn on/off tuple tracking
             	///////////////////////////////////
             	// Essam Enable read/write set tracking 
             	//context.getHStoreSite().getHStoreConf().site
@@ -275,24 +295,8 @@ public class Statistics extends VoltSystemProcedure {
                   }
             	
             	///////////////////////////////////
-            	
-                assert(params.toArray().length == 2);
-                final boolean interval =
-                    ((Byte)params.toArray()[0]).byteValue() == 0 ? false : true;
-                final Long now = (Long)params.toArray()[1];
-                // create an array of the table ids for which statistics are required.
-                // pass this to EE owned by the execution site running this plan fragment.
-                CatalogMap<Table> tables = context.getDatabase().getTables();
-                int[] tableGuids = new int[tables.size()];
-                int ii = 0;
-                for (Table table : tables) {
-                    tableGuids[ii++] = table.getRelativeIndex();
-                }
-                VoltTable result = executor.getExecutionEngine().getStats(
-                            SysProcSelector.TUPLE,
-                            tableGuids,
-                            interval,
-                            now)[0];
+                
+                
                 return new DependencySet(DEP_tupleData, result);
             }
             case SysProcFragmentId.PF_tupleAggregator: {
