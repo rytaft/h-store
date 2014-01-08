@@ -55,8 +55,48 @@ public class TupleTrackerExecutor {
 		
 		
 	}
+	
+	
+	
+public void turnOnOff(int seconds) throws Exception {
+		
+		int port = 21212;
+		String host = "localhost";
+		String statsType = "TUPLE";
+		int interval = 0;
+		
+		//ClientConfig clientConfig = new ClientConfig("program", "none");
+        org.voltdb.client.Client client =
+            org.voltdb.client.ClientFactory.createClient();
+        
+        // Client instance connected to the database running on
+        // the specified IP address, in this case 127.0.0.1. The
+        // database always runs on TCP/IP port 21212.
+        client.createConnection(host,port);
+		
+		//ClientResponse results = client.callProcedure("@Statistics", statsType, interval);
+        
+        client.callProcedure("@Statistics", statsType, interval);
+		
+		try
+		  {
+		  Thread.sleep(seconds*1000);  
+		 
+		  }catch (InterruptedException ie)
+		  {
+		  System.out.println(ie.getMessage());
+		  }
+		
+		client.callProcedure("@Statistics", statsType, interval);
+		
+	}
    
 	public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Long>> htList) throws Exception {
+		
+		
+		
+		
+		
 		
 		Map<Long, Long> hotTuples;
 		BufferedReader reader;
