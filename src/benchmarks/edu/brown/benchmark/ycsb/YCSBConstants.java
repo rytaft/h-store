@@ -35,7 +35,7 @@ public abstract class YCSBConstants {
     
     public static final double ZIPFIAN_CONSTANT = .5;
 
-    public static final int HOT_DATA_WORKLOAD_SKEW = 80;
+    public static final int HOT_DATA_WORKLOAD_SKEW = 95;
     public static final int HOT_DATA_SIZE = 1;
 
     public static final int WARM_DATA_SIZE = 0;

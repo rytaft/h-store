@@ -102,6 +102,9 @@ public class Controller implements Runnable {
 					//ttExecutor.runTestCase(); 	
 					//System.out.println("Essam Before: hotTuplesList size is " + hotTuplesList.size());
 					
+					
+						
+				    ttExecutor.turnOnOff(5);	// turn on tuple tracking for time window of X seconds
 						
 					//Jennie: here we get top K
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
@@ -111,6 +114,9 @@ public class Controller implements Runnable {
 					
 					//System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
 					
+					//hotTuplesList.add(new HashMap<Long,Long>());
+					//mSiteLoad.put(mSiteLoad.size(), 0L);
+
 					//Jennie: here we call the planner
 					long start = System.nanoTime();
 					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt");
