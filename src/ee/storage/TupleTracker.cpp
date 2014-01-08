@@ -219,8 +219,8 @@ void TupleTrackerManager::sortTupleTrackingInfo(){
 }
 void TupleTrackerManager::extractTupleTrackingInfo(){
 
-	if (isTupleTrackingInfoExtracted == true)
-		eraseTupleTrackingInfo();
+	//if (isTupleTrackingInfoExtracted == true)
+	//	eraseTupleTrackingInfo();
 
 	TupleTrackingInfo *info = NULL;
 	Map_TupleIdAccesses *m_tupIdAccesses = NULL;
@@ -251,7 +251,7 @@ void TupleTrackerManager::extractTupleTrackingInfo(){
 
 void TupleTrackerManager::getTopKPerPart(int k){
 
-	if (isTupleTrackingInfoExtracted == false)
+	//if (isTupleTrackingInfoExtracted == false)
 		extractTupleTrackingInfo(); // extract and sort per partition
 
 
@@ -305,6 +305,8 @@ void TupleTrackerManager::TupleTrackerManager::print() {
 
 	//simplePrint();
 	getTopKPerPart(100);
+
+	eraseTupleTrackingInfo();
 }
 
 
