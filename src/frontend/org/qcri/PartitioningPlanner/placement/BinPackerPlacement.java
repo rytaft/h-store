@@ -128,6 +128,7 @@ public class BinPackerPlacement extends Placement {
 		glp_iocp parm = new glp_iocp();
 		GLPK.glp_init_iocp(parm);
 		parm.setPresolve(GLPK.GLP_ON);
+		parm.setTm_lim(60000); // run for at most 1 minute
 
 		// reserved for glpk use in C++
 		GLPK.intArray_setitem(idxX, 0, 0);

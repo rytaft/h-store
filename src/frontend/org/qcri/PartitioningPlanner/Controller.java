@@ -59,10 +59,10 @@ public class Controller implements Runnable {
 		//algo = new Placement();
 		
 		//Jennie: here we instaniate the planner algo
-		algo = new GreedyPlacement();
-	        //algo = new BinPackerPlacement();
-	        //algo = new FirstFitPlacement();
-		//algo = new OneTieredPlacement();		
+	    algo = new GreedyPlacement();
+	    //algo = new BinPackerPlacement();
+	    //algo = new FirstFitPlacement();
+	    //algo = new OneTieredPlacement();		
 
 		ttExecutor = new TupleTrackerExecutor();
 		// connect to VoltDB server
@@ -112,9 +112,11 @@ public class Controller implements Runnable {
 					//System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
 					
 					//Jennie: here we call the planner
+					long start = System.nanoTime();
 					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt");
-					
-						currentPlan.toJSON("test.txt");
+					long end = System.nanoTime();
+					System.out.println("Time to compute plan: " + (end - start));
+					currentPlan.toJSON("test.txt");
 
 						if(connectedHost == null){
 						    connectToHost();
@@ -142,7 +144,7 @@ public class Controller implements Runnable {
 						System.out.println("Caught on exception " + e.toString());
 					}
 				}
-				Thread.sleep(POLL_FREQUENCY);
+				//Thread.sleep(POLL_FREQUENCY);
 			} catch (InterruptedException e1) {
 				e1.printStackTrace();
 				return;
