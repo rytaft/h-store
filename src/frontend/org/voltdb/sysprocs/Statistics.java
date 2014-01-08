@@ -262,6 +262,12 @@ public class Statistics extends VoltSystemProcedure {
                             interval,
                             now)[0];
                 
+                return new DependencySet(DEP_tupleData, result);
+            }
+            case SysProcFragmentId.PF_tupleAggregator: {
+                VoltTable result = VoltTableUtil.union(dependencies.get(DEP_tupleData));
+               // return new DependencySet(DEP_tupleAggregator, result);
+                DependencySet dSet =  new DependencySet(DEP_tupleAggregator, result);
                 
               //Essam turn on/off tuple tracking
             	///////////////////////////////////
@@ -295,13 +301,7 @@ public class Statistics extends VoltSystemProcedure {
                   }
             	
             	///////////////////////////////////
-                
-                
-                return new DependencySet(DEP_tupleData, result);
-            }
-            case SysProcFragmentId.PF_tupleAggregator: {
-                VoltTable result = VoltTableUtil.union(dependencies.get(DEP_tupleData));
-                return new DependencySet(DEP_tupleAggregator, result);
+            	return dSet;
             }
             
             // ----------------------------------------------------------------------------
