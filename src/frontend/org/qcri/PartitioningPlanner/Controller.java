@@ -102,6 +102,9 @@ public class Controller implements Runnable {
 					//ttExecutor.runTestCase(); 	
 					//System.out.println("Essam Before: hotTuplesList size is " + hotTuplesList.size());
 					
+					
+						
+				    ttExecutor.turnOnOff(20);	// turn on tuple tracking for time window of X seconds
 						
 					//Jennie: here we get top K
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
