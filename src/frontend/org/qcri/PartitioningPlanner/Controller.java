@@ -86,6 +86,7 @@ public class Controller implements Runnable {
 	public void run () {
 	    //while(true){
 			try {
+				
 				//List<Site> overloaded = getOverloadedSites();
 				//if (overloaded != null && !overloaded.isEmpty()){
 
