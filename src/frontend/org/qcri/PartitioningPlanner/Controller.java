@@ -86,8 +86,8 @@ public class Controller implements Runnable {
 	public void run () {
 	    //while(true){
 			try {
-				List<Site> overloaded = getOverloadedSites();
-				if (overloaded != null && !overloaded.isEmpty()){
+				//List<Site> overloaded = getOverloadedSites();
+				//if (overloaded != null && !overloaded.isEmpty()){
 
 					//Jennie temp for now
 					Map<Integer, Long> mSiteLoad = new HashMap<Integer, Long>();
