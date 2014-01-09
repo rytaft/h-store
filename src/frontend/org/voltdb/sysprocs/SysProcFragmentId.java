@@ -67,6 +67,8 @@ public class SysProcFragmentId {
     
     public static final int PF_tupleData = 44; // Essam
     public static final int PF_tupleAggregator = 45; // Essam
+    public static final int PF_partRatesData = 46; // Marco
+    public static final int PF_partRatesAggregator = 47; // Marco
 
     // @Shutdown
     public static final int PF_shutdownCommand = 50;

@@ -117,6 +117,7 @@ public class Statistics extends VoltSystemProcedure {
         addStatsFragments(SysProcSelector.TXNRESPONSETIME, SysProcFragmentId.PF_txnRTData, SysProcFragmentId.PF_txnRTAggregator); // Marco
         addStatsFragments(SysProcSelector.CPUUSAGE, SysProcFragmentId.PF_cpuUsageData, SysProcFragmentId.PF_cpuUsageAggregator); // Essam
         //addStatsFragments(SysProcSelector.TUPLE, SysProcFragmentId.PF_tupleData, SysProcFragmentId.PF_tupleAggregator); // Essam
+        addStatsFragments(SysProcSelector.PARTITIONRATES, SysProcFragmentId.PF_partRatesData, SysProcFragmentId.PF_partRatesAggregator); // Marco
     } // STATIC
     
     @Override
@@ -135,6 +136,7 @@ public class Statistics extends VoltSystemProcedure {
         registerPlanFragment(SysProcFragmentId.PF_ioData);
         registerPlanFragment(SysProcFragmentId.PF_ioDataAggregator);
         registerPlanFragment(SysProcFragmentId.PF_txnRTData); // Marco
+        registerPlanFragment(SysProcFragmentId.PF_partRatesData); // Marco
         
         // Automatically register our STATS_DATA entries
         for (Integer id : STATS_DATA.keySet()) {
@@ -157,6 +159,11 @@ public class Statistics extends VoltSystemProcedure {
                 // Tell the PartitionExecutors to update their memory stats
                 this.executor.queueUtilityWork(new UpdateMemoryMessage());
             }
+            // Essam
+            case SysProcFragmentId.PF_cpuUsageData: {
+                // Tell the PartitionExecutors to update their CPU stats
+                //this.executor.queueUtilityWork(new UpdateMemoryMessage());
+            }
             case SysProcFragmentId.PF_txnCounterData:
             case SysProcFragmentId.PF_txnProfilerData:
             case SysProcFragmentId.PF_execProfilerData:
@@ -164,17 +171,11 @@ public class Statistics extends VoltSystemProcedure {
             case SysProcFragmentId.PF_markovProfilerData:
             case SysProcFragmentId.PF_specexecProfilerData:
             case SysProcFragmentId.PF_siteProfilerData:
-            case SysProcFragmentId.PF_plannerProfilerData:
-            
-            // Essam
-            case SysProcFragmentId.PF_cpuUsageData: {
-                // Tell the PartitionExecutors to update their CPU stats
-                //this.executor.queueUtilityWork(new UpdateMemoryMessage());
-            }
+            case SysProcFragmentId.PF_plannerProfilerData:            
             case SysProcFragmentId.PF_anticacheProfilerData:
             case SysProcFragmentId.PF_txnRTData: // Marco
+            case SysProcFragmentId.PF_partRatesData: // Marco
             {
-
                 assert(params.toArray().length == 2);
                 final boolean interval =
                     ((Byte)params.toArray()[0]).byteValue() == 0 ? false : true;
@@ -216,9 +217,9 @@ public class Statistics extends VoltSystemProcedure {
             case SysProcFragmentId.PF_specexecProfilerAggregator:
             case SysProcFragmentId.PF_siteProfilerAggregator:
             case SysProcFragmentId.PF_plannerProfilerAggregator:
-
             case SysProcFragmentId.PF_anticacheProfilerAggregator:
             case SysProcFragmentId.PF_txnRTAggregator: // Marco
+            case SysProcFragmentId.PF_partRatesAggregator: // Marco
             {
 
                 // Do a reverse look up to find the input dependency id
