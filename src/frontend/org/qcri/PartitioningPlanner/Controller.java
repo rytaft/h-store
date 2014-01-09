@@ -84,12 +84,7 @@ public class Controller implements Runnable {
 
 	@Override
 	public void run () {
-	    //while(true){
-			try {
-				
-				//List<Site> overloaded = getOverloadedSites();
-				//if (overloaded != null && !overloaded.isEmpty()){
-
+	   				
 					//Jennie temp for now
 					Map<Integer, Long> mSiteLoad = new HashMap<Integer, Long>();
 					
@@ -146,13 +141,8 @@ public class Controller implements Runnable {
 					} catch(Exception e) {
 						System.out.println("Caught on exception " + e.toString());
 					}
-				}
-				//Thread.sleep(POLL_FREQUENCY);
-			} catch (InterruptedException e1) {
-				e1.printStackTrace();
-				return;
-			}
-			//}
+				
+				
 	}
 	
 	private void connectToHost(){
