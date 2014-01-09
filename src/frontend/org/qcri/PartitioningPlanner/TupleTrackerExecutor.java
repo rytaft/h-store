@@ -59,8 +59,8 @@ public class TupleTrackerExecutor {
 public void turnOnOff(int seconds) throws Exception {
 		
 		int port = 21212;
-		//String host = "localhost";
-		String host = "da08";
+		String host = "localhost";
+		//String host = "da08";
 		String statsType = "TUPLE";
 		int interval = 0;
 		
