@@ -100,7 +100,7 @@ public class Controller implements Runnable {
 					
 					
 						
-				    ttExecutor.turnOnOff(7);	// turn on tuple tracking for time window of X seconds
+				    ttExecutor.turnOnOff(40);	// turn on tuple tracking for time window of X seconds
 						
 					// here we get top K
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
@@ -114,14 +114,14 @@ public class Controller implements Runnable {
 					// @todo - last parameter should be the number of partitions in use - may be less than
 					// hotTuplesList.size()
 					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", hotTuplesList.size());
-					currentPlan.toJSON("test.txt");
+					currentPlan.toJSON("test1.txt");
 
 						if(connectedHost == null){
 						    connectToHost();
 						}
  						ClientResponse cresponse = null;
 						try {
-						    cresponse = client.callProcedure("@Reconfiguration", 0, "test.txt", "livepull");
+						    cresponse = client.callProcedure("@Reconfiguration", 0, "test1.txt", "livepull");
 						    System.out.println("Controller: received response: " + cresponse);
 						} catch (NoConnectionsException e) {
 						    System.out.println("Controller: lost connection");
