@@ -6,8 +6,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.io.*;
 
-//import org.voltdb.catalog.Site;
-
 import org.voltdb.VoltTable;
 //import org.voltdb.VoltTableRow;
 //import org.voltdb.client.ClientConfig;
@@ -61,7 +59,8 @@ public class TupleTrackerExecutor {
 public void turnOnOff(int seconds) throws Exception {
 		
 		int port = 21212;
-		String host = "localhost";
+		//String host = "localhost";
+		String host = "da08";
 		String statsType = "TUPLE";
 		int interval = 0;
 		
@@ -73,10 +72,13 @@ public void turnOnOff(int seconds) throws Exception {
         // the specified IP address, in this case 127.0.0.1. The
         // database always runs on TCP/IP port 21212.
         client.createConnection(host,port);
+        
+        System.out.println("Tuple Tracking: Connected host");
 		
 		//ClientResponse results = client.callProcedure("@Statistics", statsType, interval);
         
         client.callProcedure("@Statistics", statsType, interval);
+        System.out.println("Tuple Tracking: turned on");
 		
 		try
 		  {
@@ -88,6 +90,7 @@ public void turnOnOff(int seconds) throws Exception {
 		  }
 		
 		client.callProcedure("@Statistics", statsType, interval);
+		System.out.println("Tuple Tracking: collected and turned off");
 		
 	}
    
