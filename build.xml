@@ -2573,19 +2573,6 @@ UTILITIES
 	
 <target name='elastic-controller'
         description="H-Store Elasticity Controller">
-  <java fork="yes" failonerror="true" classname="org.qcri.ehstore.Controller">
-        <jvmarg value="-client" />
-        <jvmarg value="-Xms256m" />
-        <jvmarg value="-Xmx${client.memory}m" />
-        <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
-        <arg value="catalog.jar=${benchmark.jar}" />
-        <classpath refid='project.classpath' />
-        <assertions><enable/></assertions>
-    </java>
-</target>
-
-<target name='elastic-controller'
-        description="H-Store Elasticity Controller">
   <java fork="yes" failonerror="true" classname="org.qcri.PartitioningPlanner.Controller">
         <jvmarg value="-client" />
         <jvmarg value="-Xms256m" />
