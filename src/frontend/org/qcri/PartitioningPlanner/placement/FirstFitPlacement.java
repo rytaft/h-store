@@ -19,7 +19,7 @@ public class FirstFitPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount){
 		
 
 		Integer dstPartition = -1;
@@ -40,7 +40,7 @@ public class FirstFitPlacement extends Placement {
 
 		
 		
-		targetCapacity = totalAccesses / partitionTotals.size();		
+		targetCapacity = totalAccesses / partitionCount;		
 		//System.out.println("Target capacity " + targetCapacity);
 		
 		Map<Integer, List<Plan.Range>> ranges = aPlan.getAllRanges();
@@ -67,7 +67,7 @@ public class FirstFitPlacement extends Placement {
 				} // end inner-for
 			
 				if(!placed) {
-					dstPartition = getMostUnderloadedPartitionId(partitionTotals);
+					dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount);
 				}		
 			
 				//System.out.println("Processing hot tuple id " + _hotTupleId + " with access count " + _hotAccessCount + " sending it to " + dstPartition);
@@ -76,6 +76,9 @@ public class FirstFitPlacement extends Placement {
 				oldLoad.put(_srcPartition, oldLoad.get(_srcPartition) - _hotAccessCount);
 				hotTuplesList.get(_srcPartition).remove(_hotTupleId);
 				aPlan.removeTupleId(_srcPartition, _hotTupleId);
+				if(!newPlan.hasPartition(dstPartition)) {
+					newPlan.addPartition(dstPartition);
+				}
 				newPlan.addRange(dstPartition, _hotTupleId, _hotTupleId);
 			} // end outer-for
 		
@@ -99,9 +102,12 @@ public class FirstFitPlacement extends Placement {
 							}
 						}
 						if(!placed) {
-							dstPartition = getMostUnderloadedPartitionId(partitionTotals);
+							dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount);
 						}
 						for(Plan.Range r : slice) { 
+							if(!newPlan.hasPartition(dstPartition)) {
+								newPlan.addPartition(dstPartition);
+							}
 							newPlan.addRange(dstPartition, r.from, r.to);
 						}
 						partitionTotals.put(dstPartition, partitionTotals.get(dstPartition) + newWeight);

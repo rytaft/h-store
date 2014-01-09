@@ -16,7 +16,7 @@ public class GreedyPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount){
 		
 		Integer dstPartition;
 		Long totalAccesses = 0L;
@@ -30,7 +30,7 @@ public class GreedyPlacement extends Placement {
 			totalAccesses = totalAccesses + partitionTotals.get(i);			
 		}
 		
-		meanAccesses = totalAccesses / partitionTotals.size();
+		meanAccesses = totalAccesses / partitionCount;
 
 		System.out.println("Mean access count: " + meanAccesses);
 		
@@ -45,12 +45,15 @@ public class GreedyPlacement extends Placement {
 			//System.out.println("Processing hot tuple id " + _hotTupleId + " with access count " + _hotAccessCount);
 
 			if(partitionTotals.get(_srcPartition) > meanAccesses) {
-					dstPartition = getMostUnderloadedPartitionId(partitionTotals);
+					dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount);
 					if(dstPartition != _srcPartition) {
 						//System.out.println(" sending it to " + dstPartition);
 						partitionTotals.put(_srcPartition, partitionTotals.get(_srcPartition)  - _hotAccessCount);
 						partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + _hotAccessCount);
 						aPlan.removeTupleId(_srcPartition, _hotTupleId);
+						if(!aPlan.hasPartition(dstPartition)) {
+							aPlan.addPartition(dstPartition);
+						}
 						aPlan.addRange(dstPartition, _hotTupleId, _hotTupleId);
 					}
 				}

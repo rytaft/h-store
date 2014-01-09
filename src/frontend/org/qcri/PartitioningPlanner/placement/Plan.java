@@ -74,6 +74,10 @@ public class Plan {
 		partitionToRanges.put(partitionId, emptyRange);
 
 	}
+	
+	public boolean hasPartition(Integer partitionId) {
+		return (partitionToRanges.get(partitionId) != null);
+	}
 
 	/*public void addRange(Integer partition, Long from, Long to){
 

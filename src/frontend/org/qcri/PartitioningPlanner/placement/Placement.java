@@ -21,16 +21,17 @@ public class Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> siteLoads, String planFile){
+	// partitionCount: number of partitions actually in use
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> siteLoads, String planFile, int partitionCount){
 		return new Plan(planFile);
 	}
 	
-	static Integer getMostUnderloadedPartitionId(Map<Integer, Long> partitionTotals) {
+	static Integer getMostUnderloadedPartitionId(Map<Integer, Long> partitionTotals, int partitionCount) {
 		Long minTotal = java.lang.Long.MAX_VALUE; 
 		Integer minPartition = -1;
 
 		for(Integer i : partitionTotals.keySet()) {
-			if(partitionTotals.get(i) < minTotal) {
+			if(i < partitionCount && partitionTotals.get(i) < minTotal) {
 				minPartition = i;
 				minTotal = partitionTotals.get(i);
 			}

@@ -37,7 +37,7 @@ public class BinPackerPlacement extends Placement {
 	}
 
 	// initialize the private data members based on the input parameters
-	private void init(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan) {
+	private void init(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan, int partitionCount) {
 		tupleIds = new ArrayList<Long>();
 		accesses = new ArrayList<Long>(); 
 		locations = new ArrayList<Integer>(); 
@@ -109,7 +109,7 @@ public class BinPackerPlacement extends Placement {
 
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount){
 
 		Plan aPlan = new Plan(planFile);
 		this.init(hotTuplesList, partitionTotals, aPlan);
@@ -119,7 +119,6 @@ public class BinPackerPlacement extends Placement {
 		GLPK.glp_set_prob_name(lp, "min_bandwidth");
 		GLPK.glp_set_obj_dir(lp, GLPK.GLP_MIN);
 
-		int partitionCount = partitionTotals.size();
 		int placementCount = tupleCount + sliceCount; // number of placements we will make
 		SWIGTYPE_p_int idxX = GLPK.new_intArray(placementCount * partitionCount * 2 + 1);
 		SWIGTYPE_p_int idxY = GLPK.new_intArray(placementCount * partitionCount * 2 + 1);
@@ -231,6 +230,9 @@ public class BinPackerPlacement extends Placement {
 						if(i < tupleCount) {
 							Long id = tupleIds.get(i);
 							aPlan.removeTupleId(srcPartition, id);
+							if(!aPlan.hasPartition(dstPartition)) {
+								aPlan.addPartition(dstPartition);
+							}
 							aPlan.addRange(dstPartition, id, id);
 						}
 						else {
@@ -246,6 +248,9 @@ public class BinPackerPlacement extends Placement {
 									if(r.to < oldRange.to) {
 										aPlan.addRange(srcPartition, r.to + 1, oldRange.to);
 									}
+								}
+								if(!aPlan.hasPartition(dstPartition)) {
+									aPlan.addPartition(dstPartition);
 								}
 								aPlan.addRange(dstPartition, r.from, r.to);
 							}

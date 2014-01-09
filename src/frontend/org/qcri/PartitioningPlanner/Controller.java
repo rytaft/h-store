@@ -59,9 +59,9 @@ public class Controller implements Runnable {
 		//algo = new Placement();
 		
 		//Jennie: here we instaniate the planner algo
-	    //algo = new GreedyPlacement();
+	    algo = new GreedyPlacement();
 	    //algo = new BinPackerPlacement();
-	    algo = new FirstFitPlacement();
+	    //algo = new FirstFitPlacement();
 	    //algo = new OneTieredPlacement();		
 
 		ttExecutor = new TupleTrackerExecutor();
@@ -106,16 +106,18 @@ public class Controller implements Runnable {
 						
 				    ttExecutor.turnOnOff(20);	// turn on tuple tracking for time window of X seconds
 						
-					//Jennie: here we get top K
+					// here we get top K
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
 					
-					//Jennie: here we get load per site
+					// here we get load per site
 					ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
 					
 					//System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
 					
-					//Jennie: here we call the planner
-					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt");
+					// here we call the planner
+					// @todo - last parameter should be the number of partitions in use - may be less than
+					// hotTuplesList.size()
+					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", hotTuplesList.size());
 					currentPlan.toJSON("test.txt");
 
 						if(connectedHost == null){

@@ -66,7 +66,7 @@ public class OneTieredPlacement extends Placement {
 
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount){
 		// ignore hotTuplesList
 		
 		Plan aPlan = new Plan(planFile);
@@ -77,7 +77,6 @@ public class OneTieredPlacement extends Placement {
 		GLPK.glp_set_prob_name(lp, "min_bandwidth");
 		GLPK.glp_set_obj_dir(lp, GLPK.GLP_MIN);
 
-		int partitionCount = partitionTotals.size();
 		SWIGTYPE_p_int idxX = GLPK.new_intArray(sliceCount * partitionCount * 2 + 1);
 		SWIGTYPE_p_int idxY = GLPK.new_intArray(sliceCount * partitionCount * 2 + 1);
 		SWIGTYPE_p_double idxR = GLPK.new_doubleArray(sliceCount * partitionCount * 2 + 1);
@@ -192,6 +191,9 @@ public class OneTieredPlacement extends Placement {
 								if(r.to < oldRange.to) {
 									aPlan.addRange(srcPartition, r.to + 1, oldRange.to);
 								}
+							}
+							if(!aPlan.hasPartition(dstPartition)) {
+								aPlan.addPartition(dstPartition);
 							}
 							aPlan.addRange(dstPartition, r.from, r.to);
 						}
