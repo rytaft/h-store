@@ -112,7 +112,7 @@ public class BinPackerPlacement extends Placement {
 	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount){
 
 		Plan aPlan = new Plan(planFile);
-		this.init(hotTuplesList, partitionTotals, aPlan);
+		this.init(hotTuplesList, partitionTotals, aPlan, partitionCount);
 
 		glp_prob lp = GLPK.glp_create_prob();
 
