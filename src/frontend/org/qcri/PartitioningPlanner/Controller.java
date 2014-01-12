@@ -84,6 +84,17 @@ public class Controller implements Runnable {
 
 	@Override
 	public void run () {
+					// Marco begin
+					
+					try{
+						List<Site> overloaded = getOverloadedSites();
+					}
+					catch (InterruptedException e1) {
+						e1.printStackTrace();
+						return;
+					}
+
+					// Marco end
 	   				
 					//Jennie temp for now
 					Map<Integer, Long> mSiteLoad = new HashMap<Integer, Long>();
@@ -100,7 +111,7 @@ public class Controller implements Runnable {
 					
 					
 						
-				    ttExecutor.turnOnOff(40);	// turn on tuple tracking for time window of X seconds
+				        ttExecutor.turnOnOff(10);	// turn on tuple tracking for time window of X seconds
 						
 					// here we get top K
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
