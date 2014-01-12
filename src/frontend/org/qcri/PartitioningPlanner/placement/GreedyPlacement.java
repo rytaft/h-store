@@ -29,6 +29,11 @@ public class GreedyPlacement extends Placement {
 		for(Integer i : partitionTotals.keySet()) {
 			totalAccesses = totalAccesses + partitionTotals.get(i);			
 		}
+		for(int i = 0; i < partitionCount; ++i) {
+		    if(partitionTotals.get(i) == null) {
+			partitionTotals.put(i, 0L);
+		    }
+		}
 		
 		meanAccesses = totalAccesses / partitionCount;
 
