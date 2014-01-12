@@ -61,8 +61,8 @@ public class Controller implements Runnable {
 		//Jennie: here we instaniate the planner algo
 	   // algo = new GreedyPlacement();
 	    //algo = new BinPackerPlacement();
-	    //algo = new FirstFitPlacement();
-	    algo = new OneTieredPlacement();		
+	    algo = new FirstFitPlacement();
+	    //algo = new OneTieredPlacement();		
 
 		ttExecutor = new TupleTrackerExecutor();
 		// connect to VoltDB server
