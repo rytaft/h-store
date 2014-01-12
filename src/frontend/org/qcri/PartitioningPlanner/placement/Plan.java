@@ -75,6 +75,18 @@ public class Plan {
 
 	}
 	
+	public void removePartition(Integer partitionId) {
+		partitionToRanges.remove(partitionId);
+	}
+	
+	public void removeEmptyPartitions() {
+		for(Integer partitionId : partitionToRanges.keySet()) {
+			if(partitionToRanges.get(partitionId).isEmpty()) {
+				partitionToRanges.remove(partitionId);
+			}
+		}
+	}
+	
 	public boolean hasPartition(Integer partitionId) {
 		return (partitionToRanges.get(partitionId) != null);
 	}

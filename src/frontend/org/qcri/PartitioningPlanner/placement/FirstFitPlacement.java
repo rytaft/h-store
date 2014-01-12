@@ -126,6 +126,7 @@ public class FirstFitPlacement extends Placement {
 		} // end for each partition
 
 		newPlan = demoteTuples(hotTuplesList, newPlan);		
+		aPlan.removeEmptyPartitions();
 		return newPlan;
 
 	}

@@ -67,6 +67,7 @@ public class GreedyPlacement extends Placement {
 		}
 
 		aPlan = demoteTuples(hotTuplesList, aPlan);
+		aPlan.removeEmptyPartitions();
 		return aPlan;
 		
 	}
