@@ -118,17 +118,5 @@ public class Placement {
 		}
 		return plan;
 	}
-	
-	static public List<Range> getDisplacedRanges(Plan aPlan, int partitionCount) {
-		List<Range> displacedRanges = new ArrayList<Range>();
-		
-		Map<Integer, List<Range>> ranges = aPlan.getAllRanges();
-		for(Map.Entry<Integer, List<Range>> rangeList : ranges.entrySet()) {
-			if(rangeList.getKey().intValue() >= partitionCount) {
-				displacedRanges.addAll(rangeList.getValue());
-			}
-		}
-		return displacedRanges;
-	}
 
 }
