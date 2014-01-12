@@ -46,11 +46,8 @@ public class Controller implements Runnable {
 	
 	
 	private TupleTrackerExecutor ttExecutor;
+	private Provisioning newServers;
 	
-	
-	private static final double CPU_THRESHOLD = 0.8;
-	private static final int PARTITIONS_PER_HOST = 8;
-	private static final int POLL_FREQUENCY = 3000;
 	
 	private static int no_of_partitions = 2;
 
@@ -84,17 +81,6 @@ public class Controller implements Runnable {
 
 	@Override
 	public void run () {
-					// Marco begin
-					
-					try{
-						List<Site> overloaded = getOverloadedSites();
-					}
-					catch (InterruptedException e1) {
-						e1.printStackTrace();
-						return;
-					}
-
-					// Marco end
 	   				
 					//Jennie temp for now
 					Map<Integer, Long> mSiteLoad = new HashMap<Integer, Long>();
@@ -111,13 +97,19 @@ public class Controller implements Runnable {
 					
 					
 						
-				        ttExecutor.turnOnOff(10);	// turn on tuple tracking for time window of X seconds
+					ttExecutor.turnOnOff(10);	// turn on tuple tracking for time window of X seconds
 						
 					// here we get top K
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
 					
 					// here we get load per site
 					ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
+					
+					int newServers = Provisioning.newServers();
+					
+					for (int i = 0; i < newServers; i++){
+						
+					}
 					
 					//System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
 					
@@ -156,7 +148,7 @@ public class Controller implements Runnable {
 				
 	}
 	
-	private void connectToHost(){
+	public void connectToHost(){
         Site catalog_site = CollectionUtil.random(sites);
         connectedHost= catalog_site.getHost().getIpaddr();
 
@@ -174,98 +166,9 @@ public class Controller implements Runnable {
         System.out.println("Connected to host " + connectedHost);
 	}
 
-	private boolean checkLatencies(){
-		if(connectedHost == null){
-			connectToHost();
-		}
-        String statsType = "TXNRESPONSETIME";
-        int interval = 0;
-        ClientResponse cresponse = null;
-		try {
-			cresponse = client.callProcedure("@Statistics", statsType, interval);
-		} catch (NoConnectionsException e) {
-			System.out.println("Controller: lost connection");
-			e.printStackTrace();
-			return false;
-		} catch (IOException e) {
-			System.out.println("Controller: IO Exception while connecting to host");
-			e.printStackTrace();
-			return false;
-		} catch (ProcCallException e) {
-			System.out.println("Controller: @Statistics transaction rejected (backpressure?)");
-			e.printStackTrace();
-			return false;
-		}
- 
-		if(cresponse.getStatus() != Status.OK){
-			System.out.println("@Statistics transaction aborted");
-			return false;
-		}
-		
-    	System.out.println("Received stats, parsing...");
-    	VoltTable stats = cresponse.getResults()[0];
-    	
-		String prevHost = stats.fetchRow(0).getString(2);
-		long goodTxns = 0;
-		long badTxns = 0;
-		for(int r = 0; r < stats.getRowCount(); ++r){
-			VoltTableRow row = stats.fetchRow(r);
-			String currHost = row.getString(2);
-			if (!prevHost.equals(currHost)){
-				// finished the rows related to the previous host
-				if (badTxns != 0){
-					if (goodTxns == 0 || badTxns/goodTxns > 0.05) return false;
-				}
-				System.out.println("Host " + prevHost +" - good transactions: " + goodTxns + "; bad transactions: " + badTxns);
-				goodTxns = 0;
-				badTxns = 0;
-				prevHost = currHost; 
-			}
-			
-			goodTxns += row.getLong(4) + row.getLong(5) + row.getLong(6);
-			badTxns += row.getLong(7);
-//			System.out.println("Row " + r);
-//			System.out.println("\tPartition: " + row.getLong(1));
-//			System.out.println("\tHost: " + row.getString(2));
-//			System.out.println("\tProcedure: " + row.getString(3));
-//			System.out.println("\tCount-100: " + row.getLong(4));
-		}
-		if (badTxns != 0){
-			if (goodTxns == 0 || badTxns/goodTxns > 0.05) return false;
-		}
-		System.out.println("Host " + prevHost +" - good transactions: " + goodTxns + "; bad transactions: " + badTxns);
-		return true;
-	}
+
 	
-	public List<Site> getOverloadedSites() throws InterruptedException{
-		ArrayList<Site> res = new ArrayList<Site> (sites.size());
-		for(Site s : sites){
-			String ip = s.getHost().getIpaddr();
-			double cpuUsage = getCPUUtil(ip);
-	        if (cpuUsage > CPU_THRESHOLD * PARTITIONS_PER_HOST){
-	        	res.add(s);
-	        }
-		}
-		return res;
-	}
-	
-	public static double getCPUUtil(String ip){
-        System.out.println("Polling " + ip);
-        String results = ShellTools.cmd("ssh " + ip + " ps -eo pcpu");
-//        String results = ShellTools.cmd("ssh " + ip + " ls -l");
-        String[] lines = results.split("\n");
-        if (lines.length < 2){
-        	System.out.println("Controller: Problem while polling CPU usage for host " + ip);
-        	System.exit(-1);
-        }
-        double cpuUsage = 0;
-        for (int i = 1; i < lines.length; ++i){
-        	cpuUsage += Double.parseDouble(lines[i]);
-        }
-        System.out.println("CPU usage of host " + ip + ": " + cpuUsage);
-        return cpuUsage;
-	}
-	
+
 	/**
 	 * @param args
 	 */
