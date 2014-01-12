@@ -178,10 +178,10 @@ public class OneTieredPlacement extends Placement {
 					if(srcPartition != dstPartition) {
 						List<Plan.Range> slice = slices.get(i);
 						for(Plan.Range r : slice) { 
-							Plan.Range oldRange = aPlan.getRangeValue(srcPartition, r.from);
-							if(oldRange != null) {
+							List<Plan.Range> oldRanges = aPlan.getRangeValues(srcPartition, r.from, r.to);
+							for(Plan.Range oldRange : oldRanges) {
 								aPlan.removeRange(srcPartition, oldRange.from);
-								
+
 								if(oldRange.from < r.from) {
 									aPlan.addRange(srcPartition, oldRange.from, r.from - 1);
 								}

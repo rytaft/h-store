@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.qcri.PartitioningPlanner.placement.Plan.Range;
 import org.voltdb.catalog.Site;
 
 public class Placement {
@@ -81,7 +82,7 @@ public class Placement {
 	Long _hotAccessCount;
 		
 	// If tuples are no longer hot, put them back in their enclosing range
-	public Plan demoteTuples(ArrayList<Map<Long, Long>> hotTuplesList, Plan plan) {
+	static public Plan demoteTuples(ArrayList<Map<Long, Long>> hotTuplesList, Plan plan) {
 		// Get a lookup table of all currently hot tuples
 		Set<Long> hotTuplesLookup = new HashSet<Long>();
 		for(Map<Long, Long>  hotTuples : hotTuplesList) {
@@ -116,6 +117,18 @@ public class Placement {
 			partitionId++;
 		}
 		return plan;
+	}
+	
+	static public List<Range> getDisplacedRanges(Plan aPlan, int partitionCount) {
+		List<Range> displacedRanges = new ArrayList<Range>();
+		
+		Map<Integer, List<Range>> ranges = aPlan.getAllRanges();
+		for(Map.Entry<Integer, List<Range>> rangeList : ranges.entrySet()) {
+			if(rangeList.getKey().intValue() >= partitionCount) {
+				displacedRanges.addAll(rangeList.getValue());
+			}
+		}
+		return displacedRanges;
 	}
 
 }

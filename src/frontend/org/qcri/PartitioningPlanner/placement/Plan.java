@@ -340,6 +340,18 @@ public class Plan {
 		}
 		else return null;
 	}
+	
+	// get all the ranges overlapping the given range in the given partition
+	public List<Range> getRangeValues(Integer partition, Long from, Long to){
+		List<Range> ranges = getAllRanges(partition);
+		List<Range> returnedRanges = new ArrayList<Range>();
+		for(Range range : ranges) {
+			if(range.from <= to && range.to >= from) {
+				returnedRanges.add(range);
+			}
+		}
+		return returnedRanges;
+	}
 
 	public List<Range> getAllRanges(Integer partition){
 		List<Range> res = new ArrayList<Range>();
