@@ -12,6 +12,7 @@ import java.util.HashMap;
 
 import org.qcri.PartitioningPlanner.placement.Placement;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
+import org.qcri.PartitioningPlanner.placement.GreedyExtendedPlacement;
 import org.qcri.PartitioningPlanner.placement.BinPackerPlacement;
 import org.qcri.PartitioningPlanner.placement.FirstFitPlacement;
 import org.qcri.PartitioningPlanner.placement.OneTieredPlacement;
@@ -52,14 +53,15 @@ public class Controller implements Runnable {
 	private static final int PARTITIONS_PER_HOST = 8;
 	private static final int POLL_FREQUENCY = 3000;
 	
-	private static int no_of_partitions = 2;
+	private static int no_of_partitions = 4;
 
 	// used HStoreTerminal as model to handle the catalog
 	public Controller (Catalog catalog){
 		//algo = new Placement();
 		
 		//Jennie: here we instaniate the planner algo
-	   algo = new GreedyPlacement();
+	    //algo = new GreedyPlacement();
+	    algo = new GreedyExtendedPlacement();
 	    //algo = new BinPackerPlacement();
 	    //algo = new FirstFitPlacement();
 	    //algo = new OneTieredPlacement();		
@@ -100,7 +102,7 @@ public class Controller implements Runnable {
 					
 					
 						
-				    ttExecutor.turnOnOff(10);	// turn on tuple tracking for time window of X seconds
+                    ttExecutor.turnOnOff(10);	// turn on tuple tracking for time window of X seconds
 						
 					// here we get top K
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
@@ -114,6 +116,7 @@ public class Controller implements Runnable {
 					// @todo - last parameter should be the number of partitions in use - may be less than
 					// hotTuplesList.size()
 					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", hotTuplesList.size());
+
 					currentPlan.toJSON("test1.txt");
 
 						if(connectedHost == null){
