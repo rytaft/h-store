@@ -118,5 +118,13 @@ public class Placement {
 		}
 		return plan;
 	}
+	
+	static public void removeEmptyPartitions(Plan aPlan) {
+		for(Integer partitionId : aPlan.getAllPartitions()) {
+			if(aPlan.getAllRanges(partitionId).isEmpty()) {
+				aPlan.removePartition(partitionId);
+			}
+		}
+	}
 
 }

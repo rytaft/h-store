@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -79,12 +80,8 @@ public class Plan {
 		partitionToRanges.remove(partitionId);
 	}
 	
-	public void removeEmptyPartitions() {
-		for(Integer partitionId : partitionToRanges.keySet()) {
-			if(partitionToRanges.get(partitionId).isEmpty()) {
-				partitionToRanges.remove(partitionId);
-			}
-		}
+	public Set<Integer> getAllPartitions() {
+		return partitionToRanges.keySet();
 	}
 	
 	public boolean hasPartition(Integer partitionId) {
