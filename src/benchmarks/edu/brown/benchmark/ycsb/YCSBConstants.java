@@ -47,10 +47,10 @@ public abstract class YCSBConstants {
     public static final int COLUMN_LENGTH = 100;
 
     public static final int BATCH_SIZE = 10000; 
-    //public static final int MAX_SCAN = 1000; 
+    public static final int MAX_SCAN = 1000; 
 
     //Becca and Essam
-    public static final int MAX_SCAN = 10; 
+   // public static final int MAX_SCAN = 10; 
     
     // Transaction frequencies as specified in YCSB
     public static final int FREQUENCY_INSERT_RECORD = 0;
