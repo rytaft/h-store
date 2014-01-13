@@ -178,10 +178,15 @@ public class OneTieredPlacement extends Placement {
 					if(srcPartition != dstPartition) {
 						List<Plan.Range> slice = slices.get(i);
 						for(Plan.Range r : slice) { 
-							Plan.Range oldRange = aPlan.getRangeValue(srcPartition, r.from);
-							if(oldRange != null) {
+							if(!aPlan.hasPartition(dstPartition)) {
+								aPlan.addPartition(dstPartition);
+							}
+							
+							List<Plan.Range> oldRanges = aPlan.getRangeValues(srcPartition, r.from, r.to);
+							for(Plan.Range oldRange : oldRanges) {
 								aPlan.removeRange(srcPartition, oldRange.from);
-								
+								aPlan.addRange(dstPartition, Math.max(oldRange.from, r.from), Math.min(oldRange.to, r.to));
+
 								if(oldRange.from < r.from) {
 									aPlan.addRange(srcPartition, oldRange.from, r.from - 1);
 								}
@@ -189,10 +194,6 @@ public class OneTieredPlacement extends Placement {
 									aPlan.addRange(srcPartition, r.to + 1, oldRange.to);
 								}
 							}
-							if(!aPlan.hasPartition(dstPartition)) {
-								aPlan.addPartition(dstPartition);
-							}
-							aPlan.addRange(dstPartition, r.from, r.to);
 						}
 						
 					}
@@ -202,6 +203,7 @@ public class OneTieredPlacement extends Placement {
 		}
 
 		GLPK.glp_delete_prob(lp);
+		removeEmptyPartitions(aPlan);
 		return aPlan;
 
 	}
