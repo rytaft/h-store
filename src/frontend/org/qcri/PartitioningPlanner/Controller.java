@@ -111,19 +111,15 @@ public class Controller implements Runnable {
 						
 						//System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
 						
-						// here we call the planner
-						// @todo - last parameter should be the number of partitions in use - may be less than
-						// hotTuplesList.size()
-						Integer currNoPartitions = 0;
-						for (Integer part : mSiteLoad.keySet()){
-							if (part > currNoPartitions && mSiteLoad.get(part) > 0) currNoPartitions = part;
-						}
-						
 						if(connectedHost == null){
 						    connectToHost();
 						}
 						
-						currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", Provisioning.noOfSitesRequiredQuery(client, currNoPartitions));
+						// here we call the planner
+						// @todo - last parameter should be the number of partitions in use - may be less than
+						// hotTuplesList.size()
+						currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", 
+								Provisioning.noOfSitesRequiredQuery(client, no_of_partitions));
 						currentPlan.toJSON("test.txt");
 
  						ClientResponse cresponse = null;
