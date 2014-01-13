@@ -1,11 +1,8 @@
 package org.qcri.PartitioningPlanner;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 
-import org.voltdb.CatalogContext;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
 import org.voltdb.catalog.Site;
@@ -19,34 +16,57 @@ import edu.brown.hstore.Hstoreservice.Status;
 
 public class Provisioning {
 	
-	private static final double CPU_THRESHOLD = 0.8;
+	// thresholds are per site
+	private static final double CPU_THRESHOLD_UP = 150;
+	private static final double CPU_THRESHOLD_DOWN = 100;
 	private static final int SITES_PER_HOST = 8;
-	private static final int CORES_PER_HOST = 8;
-	private static final int POLL_FREQUENCY = 3000;
+	private static final int TOTAL_SITES = 32;
 	
 	// ======== NOTE!! =================
 	// assumes that site 0-7 go to server 0, 8-15 to server 2 and so on
 	// and one partition per server
 	//
 	// also assumes that currPartitions is a multuple of SITES_PER_HOST
-	public static int noOfSitesRequired(CatalogContext catalog, int usedPartitions){
-		int curr = 0;
+	public static int noOfSitesRequiredSSH(Collection<Site> sites, int usedSites){
 		double cpuUsage = 0;
-		while(curr < usedPartitions){
-			Site currSite = catalog.getSiteForPartition(curr);
-			String ip = currSite.getHost().getIpaddr();
-			cpuUsage += getCPUUtil(ip);
-			curr += SITES_PER_HOST;
+		for(Site site : sites){
+			if(site.getId() % SITES_PER_HOST == 0 && site.getId() < usedSites){
+				String ip = site.getHost().getIpaddr();
+				cpuUsage += getCPUSsh(ip);
+			}
 		}
-		double usedServers = usedPartitions / SITES_PER_HOST;
-		// currently adds one server at a time
-		if (cpuUsage / usedServers > (CPU_THRESHOLD * 100 * CORES_PER_HOST)){
-			return usedPartitions + SITES_PER_HOST;
+		double usedServers = usedSites / SITES_PER_HOST;
+		if ((cpuUsage / usedServers) > (CPU_THRESHOLD_UP * SITES_PER_HOST)){
+			// currently adds only one server at a time
+			return usedSites + SITES_PER_HOST;
 		}
-		return usedPartitions;
+		return usedSites;
 	}
 	
-	public static double getCPUUtil(String ip){
+	// ======== NOTE!! =================
+	// assumes that site 0-7 go to server 0, 8-15 to server 2 and so on
+	// and one partition per server
+	//
+	public static int noOfSitesRequiredQuery(Client client, int usedSites){
+		float totalUtil = 0;
+		
+        ClientResponse cresponse = doQuery(client, "CPUUtil");
+    	VoltTable stats = cresponse.getResults()[0];
+    	for(int r = 0; r < stats.getRowCount(); ++r){
+    		VoltTableRow row = stats.fetchRow(r);
+    		int host = (int) (row.getLong(1) % (long) SITES_PER_HOST);
+    		if(host < usedSites) totalUtil += row.getDouble(4);
+    	}
+   		if(totalUtil/TOTAL_SITES > CPU_THRESHOLD_UP){
+   			return usedSites + 1;
+   		}
+   		if(totalUtil/TOTAL_SITES < CPU_THRESHOLD_DOWN){
+   			return usedSites;
+   		}
+    	return usedSites;
+	}
+	
+	public static double getCPUSsh(String ip){
         System.out.println("Polling " + ip);
         String results = ShellTools.cmd("ssh " + ip + " ps -eo pcpu");
 //        String results = ShellTools.cmd("ssh " + ip + " ls -l");
@@ -72,33 +92,11 @@ public class Provisioning {
 	}
 	
 	// TODO not used yet. could be used to tune the CPU threshold dynamically based on SLAs
-	public static boolean checkLatencies(Client client){
+	public static boolean queryLatencies(Client client){
 //		if(connectedHost == null){
 //			connectToHost();
 //		}
-        String statsType = "TXNRESPONSETIME";
-        int interval = 0;
-        ClientResponse cresponse = null;
-		try {
-			cresponse = client.callProcedure("@Statistics", statsType, interval);
-		} catch (NoConnectionsException e) {
-			System.out.println("Controller: lost connection");
-			e.printStackTrace();
-			return false;
-		} catch (IOException e) {
-			System.out.println("Controller: IO Exception while connecting to host");
-			e.printStackTrace();
-			return false;
-		} catch (ProcCallException e) {
-			System.out.println("Controller: @Statistics transaction rejected (backpressure?)");
-			e.printStackTrace();
-			return false;
-		}
- 
-		if(cresponse.getStatus() != Status.OK){
-			System.out.println("@Statistics transaction aborted");
-			return false;
-		}
+        ClientResponse cresponse = doQuery(client, "TXNRESPONSETIME");
 		
     	System.out.println("Received stats, parsing...");
     	VoltTable stats = cresponse.getResults()[0];
@@ -133,5 +131,31 @@ public class Provisioning {
 		}
 		System.out.println("Host " + prevHost +" - good transactions: " + goodTxns + "; bad transactions: " + badTxns);
 		return true;
+	}
+	
+	// general method to execute queries
+	public static ClientResponse doQuery(Client client, String statsType){
+        int interval = 0;
+        ClientResponse cresponse = null;
+		try {
+			cresponse = client.callProcedure("@Statistics", statsType, interval);
+		} catch (NoConnectionsException e) {
+			System.out.println("Controller: lost connection");
+			e.printStackTrace();
+			return null;
+		} catch (IOException e) {
+			System.out.println("Controller: IO Exception while connecting to host");
+			e.printStackTrace();
+			return null;
+		} catch (ProcCallException e) {
+			System.out.println("Controller: @Statistics transaction rejected (backpressure?)");
+			e.printStackTrace();
+			return null;
+		}
+		if(cresponse.getStatus() != Status.OK){
+			System.out.println("@Statistics transaction aborted");
+			return null;
+		}
+		return cresponse;
 	}
 }

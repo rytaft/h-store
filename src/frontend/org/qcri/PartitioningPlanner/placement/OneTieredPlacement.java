@@ -91,7 +91,7 @@ public class OneTieredPlacement extends Placement {
 		GLPK.intArray_setitem(idxY, 0, 0);
 		GLPK.doubleArray_setitem(idxR, 0, 0);
 
-		Long meanAccesses = totalAccesses / partitionTotals.size();
+		Long meanAccesses = totalAccesses / partitionCount;
 		System.out.println("Mean access count: " + meanAccesses);
 
 		double partitionUpperBound = meanAccesses * 1.05; // slightly over target
@@ -176,9 +176,6 @@ public class OneTieredPlacement extends Placement {
 					Integer srcPartition = locations.get(i);
 					Integer dstPartition = j;
 					if(srcPartition != dstPartition) {
-						partitionTotals.put(srcPartition, partitionTotals.get(srcPartition) - accesses.get(i));
-						partitionTotals.put(dstPartition, partitionTotals.get(dstPartition) + accesses.get(i));
-
 						List<Plan.Range> slice = slices.get(i);
 						for(Plan.Range r : slice) { 
 							Plan.Range oldRange = aPlan.getRangeValue(srcPartition, r.from);

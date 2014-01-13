@@ -34,13 +34,15 @@ public class FirstFitPlacement extends Placement {
 		for(Integer i : partitionTotals.keySet()) {
 			totalAccesses = totalAccesses + partitionTotals.get(i);			
 			oldLoad.put(i,  partitionTotals.get(i));
-			// zero out the load for a plan
-			partitionTotals.put(i, 0L);
 		}
 
+		for(int i = 0; i < partitionCount; ++i) {
+		    // zero out the load for a plan
+		    partitionTotals.put(i, 0L);
+		}
 		
 		
-		targetCapacity = totalAccesses / partitionCount;		
+		targetCapacity = totalAccesses / partitionCount;	
 		//System.out.println("Target capacity " + targetCapacity);
 		
 		Map<Integer, List<Plan.Range>> ranges = aPlan.getAllRanges();

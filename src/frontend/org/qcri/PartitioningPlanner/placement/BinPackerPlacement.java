@@ -134,7 +134,7 @@ public class BinPackerPlacement extends Placement {
 		GLPK.intArray_setitem(idxY, 0, 0);
 		GLPK.doubleArray_setitem(idxR, 0, 0);
 
-		Long meanAccesses = totalAccesses / partitionTotals.size();
+		Long meanAccesses = totalAccesses / partitionCount;
 		System.out.println("Mean access count: " + meanAccesses);
 
 		double partitionUpperBound = meanAccesses * 1.05; // slightly over target
@@ -224,9 +224,6 @@ public class BinPackerPlacement extends Placement {
 					Integer srcPartition = locations.get(i);
 					Integer dstPartition = j;
 					if(srcPartition != dstPartition) {
-						partitionTotals.put(srcPartition, partitionTotals.get(srcPartition) - accesses.get(i));
-						partitionTotals.put(dstPartition, partitionTotals.get(dstPartition) + accesses.get(i));
-
 						if(i < tupleCount) {
 							Long id = tupleIds.get(i);
 							aPlan.removeTupleId(srcPartition, id);
@@ -262,6 +259,7 @@ public class BinPackerPlacement extends Placement {
 		}
 
 		GLPK.glp_delete_prob(lp);
+		
 		aPlan = demoteTuples(hotTuplesList, aPlan);
 		return aPlan;
 

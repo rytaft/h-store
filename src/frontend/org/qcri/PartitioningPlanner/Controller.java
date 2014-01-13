@@ -46,7 +46,7 @@ public class Controller implements Runnable {
 	
 	
 	private TupleTrackerExecutor ttExecutor;
-	private Provisioning newServers;
+	private Catalog catalog;
 	
 	
 	private static int no_of_partitions = 2;
@@ -66,6 +66,8 @@ public class Controller implements Runnable {
         client = ClientFactory.createClient();
         client.configureBlocking(false);
         sites = CatalogUtil.getAllSites(catalog);
+        
+        this.catalog = catalog;
         
         HStoreConf hStoreConf = HStoreConf.singleton();
         if(hStoreConf.get("global.hasher_plan") == null){
@@ -105,18 +107,17 @@ public class Controller implements Runnable {
 					// here we get load per site
 					ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
 					
-					int newServers = Provisioning.newServers();
-					
-					for (int i = 0; i < newServers; i++){
-						
-					}
-					
 					//System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
 					
 					// here we call the planner
 					// @todo - last parameter should be the number of partitions in use - may be less than
 					// hotTuplesList.size()
-					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", hotTuplesList.size());
+					Integer currNoPartitions = 0;
+					for (Integer part : mSiteLoad.keySet()){
+						if (part > currNoPartitions && mSiteLoad.get(part) > 0) currNoPartitions = part;
+					}
+					
+					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", Provisioning.noOfSitesRequiredQuery(client, currNoPartitions));
 					currentPlan.toJSON("test1.txt");
 
 						if(connectedHost == null){
