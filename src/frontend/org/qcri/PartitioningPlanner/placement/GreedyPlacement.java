@@ -95,6 +95,7 @@ public class GreedyPlacement extends Placement {
 							if(!aPlan.hasPartition(dstPartition)) {
 								aPlan.addPartition(dstPartition);
 							}
+							aPlan.removeRange(i, r.from);
 							aPlan.addRange(dstPartition, r.from, r.to);
 						}
 						partitionTotals.put(dstPartition, partitionTotals.get(dstPartition) + newWeight);
