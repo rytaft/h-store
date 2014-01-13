@@ -19,8 +19,7 @@ public class Provisioning {
 	// thresholds are per site
 	private static final double CPU_THRESHOLD_UP = 150;
 	private static final double CPU_THRESHOLD_DOWN = 100;
-	private static final int SITES_PER_HOST = 8;
-	private static final int TOTAL_SITES = 32;
+	private static final int SITES_PER_HOST = 2;
 	
 	// ======== NOTE!! =================
 	// assumes that site 0-7 go to server 0, 8-15 to server 2 and so on
@@ -35,10 +34,12 @@ public class Provisioning {
 				cpuUsage += getCPUSsh(ip);
 			}
 		}
-		double usedServers = usedSites / SITES_PER_HOST;
-		if ((cpuUsage / usedServers) > (CPU_THRESHOLD_UP * SITES_PER_HOST)){
+		if ((cpuUsage / usedSites) > CPU_THRESHOLD_UP){
 			// currently adds only one server at a time
 			return usedSites + SITES_PER_HOST;
+		}
+		if ((cpuUsage / usedSites) < CPU_THRESHOLD_DOWN){
+			return usedSites - SITES_PER_HOST;
 		}
 		return usedSites;
 	}
@@ -57,11 +58,11 @@ public class Provisioning {
     		int host = (int) (row.getLong(1) % (long) SITES_PER_HOST);
     		if(host < usedSites) totalUtil += row.getDouble(4);
     	}
-   		if(totalUtil/TOTAL_SITES > CPU_THRESHOLD_UP){
-   			return usedSites + 1;
+   		if(totalUtil/usedSites > CPU_THRESHOLD_UP){
+   			return usedSites + SITES_PER_HOST;
    		}
-   		if(totalUtil/TOTAL_SITES < CPU_THRESHOLD_DOWN){
-   			return usedSites;
+   		if(totalUtil/usedSites < CPU_THRESHOLD_DOWN){
+   			return usedSites - SITES_PER_HOST;
    		}
     	return usedSites;
 	}
