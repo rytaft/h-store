@@ -18,7 +18,7 @@ public class Provisioning {
 	
 	// thresholds are per site
 	private static final double CPU_THRESHOLD_UP = 150;
-	private static final double CPU_THRESHOLD_DOWN = 100;
+	private static final double CPU_THRESHOLD_DOWN = 110;
 	private static final int SITES_PER_HOST = 2;
 	
 	// ======== NOTE!! =================
@@ -51,19 +51,29 @@ public class Provisioning {
 	public static int noOfSitesRequiredQuery(Client client, int usedSites){
 		float totalUtil = 0;
 		
-        ClientResponse cresponse = doQuery(client, "CPUUSAGE");
+	System.out.println("Used sites: " + usedSites);
+	ClientResponse cresponse = doQuery(client, "CPUUSAGE");
+	try{
+	Thread.sleep(3000);
+	} catch (InterruptedException e) {}
+	cresponse = doQuery(client, "CPUUSAGE");
     	VoltTable stats = cresponse.getResults()[0];
     	for(int r = 0; r < stats.getRowCount(); ++r){
     		VoltTableRow row = stats.fetchRow(r);
-    		int host = (int) (row.getLong(1) % (long) SITES_PER_HOST);
-    		if(host < usedSites) totalUtil += row.getDouble(4);
+		System.out.println("Examining site " +  row.getString(2));
+		int site = (int) row.getLong(1);
+    		int host = site / SITES_PER_HOST;
+		System.out.println("Host is " + host);
+		System.out.println("Utilization is " + row.getDouble(4));
+    		if(site < usedSites) totalUtil += row.getDouble(4);
     	}
    		if(totalUtil/usedSites > CPU_THRESHOLD_UP){
-   			return usedSites + SITES_PER_HOST;
+   			usedSites += SITES_PER_HOST;
    		}
    		if(totalUtil/usedSites < CPU_THRESHOLD_DOWN){
-   			return usedSites - SITES_PER_HOST;
+   			usedSites -= SITES_PER_HOST;
    		}
+	System.out.println("Returning " + usedSites);
     	return usedSites;
 	}
 	
