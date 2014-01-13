@@ -120,11 +120,13 @@ public class Placement {
 	}
 	
 	static public void removeEmptyPartitions(Plan aPlan) {
-		for(Integer partitionId : aPlan.getAllPartitions()) {
-			if(aPlan.getAllRanges(partitionId).isEmpty()) {
-				aPlan.removePartition(partitionId);
-			}
+	    Set<Integer> partitions = new HashSet<Integer>();
+	    partitions.addAll(aPlan.getAllPartitions());
+	    for(Integer partitionId : partitions) {
+		if(aPlan.getAllRanges(partitionId).isEmpty()) {
+		    aPlan.removePartition(partitionId);
 		}
+	    }
 	}
 
 }

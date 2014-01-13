@@ -203,7 +203,7 @@ public class OneTieredPlacement extends Placement {
 		}
 
 		GLPK.glp_delete_prob(lp);
-		aPlan.removeEmptyPartitions();
+		removeEmptyPartitions(aPlan);
 		return aPlan;
 
 	}

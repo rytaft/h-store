@@ -54,7 +54,7 @@ public class GreedyPlacement extends Placement {
 			if(partitionTotals.get(_srcPartition) > meanAccesses || _srcPartition >= partitionCount) {
 					dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount);
 					if(dstPartition != _srcPartition) {
-						//System.out.println(" sending it to " + dstPartition);
+					        //System.out.println(" sending it to " + dstPartition);
 						partitionTotals.put(_srcPartition, partitionTotals.get(_srcPartition)  - _hotAccessCount);
 						partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + _hotAccessCount);
 						aPlan.removeTupleId(_srcPartition, _hotTupleId);
@@ -67,14 +67,14 @@ public class GreedyPlacement extends Placement {
 			hotTuplesList.get(_srcPartition).remove(_hotTupleId);
 
 		}
-		
+
 		// If we are shrinking the number of partitions, use the first fit approach 
 		// to place the cold tuples from the deleted partitions
 		for(Integer i : aPlan.getAllRanges().keySet()) { // foreach partition
 			if(i.intValue() >= partitionCount) { // in case of shrinking number of partitions
 				List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth);
 				if(partitionSlices.size() > 0) {
-					Double tupleWeight = ((double) partitionTotals.get(i)) / aPlan.getTupleCount(i); // per tuple
+				        Double tupleWeight = ((double) partitionTotals.get(i)) / aPlan.getTupleCount(i); // per tuple
 
 					for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 
@@ -106,7 +106,7 @@ public class GreedyPlacement extends Placement {
 		} // end for each partition
 
 		aPlan = demoteTuples(hotTuplesList, aPlan);
-		aPlan.removeEmptyPartitions();
+		removeEmptyPartitions(aPlan);
 		return aPlan;
 		
 	}
