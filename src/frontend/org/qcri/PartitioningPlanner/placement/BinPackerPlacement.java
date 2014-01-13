@@ -89,8 +89,8 @@ public class BinPackerPlacement extends Placement {
 
 		// store the ranges, sizes, access counts, and locations of each of the slices of cold tuples
 		sliceCount = 0;
-		for(Integer i : aPlan.getAllRanges().keySet()) { // for each partition
-			List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth);
+		for(Integer i : oldPlan.getAllRanges().keySet()) { // for each partition
+			List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i,  coldPartitionWidth);
 			if(partitionSlices.size() > 0) {
 				sliceCount += partitionSlices.size();
 				Double tupleWeight = ((double) oldLoad.get(i)) / oldPlan.getTupleCount(i); // per tuple
