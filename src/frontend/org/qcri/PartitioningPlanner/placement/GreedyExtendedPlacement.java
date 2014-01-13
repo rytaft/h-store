@@ -11,7 +11,7 @@ import org.qcri.PartitioningPlanner.placement.Plan;
 
 public class GreedyExtendedPlacement extends Placement {
 	
-	Long coldPartitionWidth = 1000L; // redistribute cold tuples in chunks of 1000 if shrinking
+	Long coldPartitionWidth = 1000L; // redistribute cold tuples in chunks of 1000
 	
 	public GreedyExtendedPlacement(){
 		
@@ -83,7 +83,7 @@ public class GreedyExtendedPlacement extends Placement {
 			if(partitionTotals.get(_srcPartition) > meanAccesses || _srcPartition >= partitionCount) {
 					dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount);
 					if(dstPartition != _srcPartition) {
-						//System.out.println(" sending it to " + dstPartition);
+					        //System.out.println(" sending it to " + dstPartition);
 						partitionTotals.put(_srcPartition, partitionTotals.get(_srcPartition)  - _hotAccessCount);
 						partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + _hotAccessCount);
 						aPlan.removeTupleId(_srcPartition, _hotTupleId);
@@ -98,7 +98,7 @@ public class GreedyExtendedPlacement extends Placement {
 		}
 		
 		// place the cold tuples from the overloaded or deleted partitions
-		for(Integer i : aPlan.getAllRanges().keySet()) { // foreach partition
+		for(Integer i : oldPlan.getAllRanges().keySet()) { // foreach partition
 			if(partitionTotals.get(i) > meanAccesses || i.intValue() >= partitionCount) { 
 				List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i,  coldPartitionWidth);
 				if(partitionSlices.size() > 0) {
