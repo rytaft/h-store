@@ -51,7 +51,7 @@ public class Provisioning {
 	public static int noOfSitesRequiredQuery(Client client, int usedSites){
 		float totalUtil = 0;
 		
-        ClientResponse cresponse = doQuery(client, "CPUUtil");
+        ClientResponse cresponse = doQuery(client, "CPUUSAGE");
     	VoltTable stats = cresponse.getResults()[0];
     	for(int r = 0; r < stats.getRowCount(); ++r){
     		VoltTableRow row = stats.fetchRow(r);

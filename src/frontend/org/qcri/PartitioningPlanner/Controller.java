@@ -96,35 +96,36 @@ public class Controller implements Runnable {
 					
 					try {
 						
-					//ttExecutor.runTestCase(); 	
-					//System.out.println("Essam Before: hotTuplesList size is " + hotTuplesList.size());
-					
-					
+						//ttExecutor.runTestCase(); 	
+						//System.out.println("Essam Before: hotTuplesList size is " + hotTuplesList.size());
 						
-					ttExecutor.turnOnOff(10);	// turn on tuple tracking for time window of X seconds
 						
-					// here we get top K
-					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
-					
-					// here we get load per site
-					ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
-					
-					//System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
-					
-					// here we call the planner
-					// @todo - last parameter should be the number of partitions in use - may be less than
-					// hotTuplesList.size()
-					Integer currNoPartitions = 0;
-					for (Integer part : mSiteLoad.keySet()){
-						if (part > currNoPartitions && mSiteLoad.get(part) > 0) currNoPartitions = part;
-					}
-					
-					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", Provisioning.noOfSitesRequiredQuery(client, currNoPartitions));
-					currentPlan.toJSON("test.txt");
-
+							
+						ttExecutor.turnOnOff(10);	// turn on tuple tracking for time window of X seconds
+							
+						// here we get top K
+						ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
+						
+						// here we get load per site
+						ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
+						
+						//System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
+						
+						// here we call the planner
+						// @todo - last parameter should be the number of partitions in use - may be less than
+						// hotTuplesList.size()
+						Integer currNoPartitions = 0;
+						for (Integer part : mSiteLoad.keySet()){
+							if (part > currNoPartitions && mSiteLoad.get(part) > 0) currNoPartitions = part;
+						}
+						
 						if(connectedHost == null){
 						    connectToHost();
 						}
+						
+						currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", Provisioning.noOfSitesRequiredQuery(client, currNoPartitions));
+						currentPlan.toJSON("test.txt");
+
  						ClientResponse cresponse = null;
 						try {
 						    cresponse = client.callProcedure("@Reconfiguration", 0, "test1.txt", "livepull");
