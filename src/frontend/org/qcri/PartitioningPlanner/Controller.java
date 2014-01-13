@@ -59,8 +59,8 @@ public class Controller implements Runnable {
 		//algo = new Placement();
 		
 		//Jennie: here we instaniate the planner algo
-	   algo = new GreedyPlacement();
-	    //algo = new BinPackerPlacement();
+	   //algo = new GreedyPlacement();
+	    algo = new BinPackerPlacement();
 	    //algo = new FirstFitPlacement();
 	    //algo = new OneTieredPlacement();		
 
