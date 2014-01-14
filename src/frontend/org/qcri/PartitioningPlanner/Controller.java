@@ -58,7 +58,7 @@ public class Controller implements Runnable {
 	private static final int PARTITIONS_PER_HOST = 8;
 	private static final int POLL_FREQUENCY = 3000;
 	
-	private static int no_of_partitions = 4;
+	private static int no_of_partitions = 4; 
 
 	// used HStoreTerminal as model to handle the catalog
 	public Controller (Catalog catalog){
