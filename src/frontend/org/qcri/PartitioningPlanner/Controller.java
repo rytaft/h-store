@@ -119,7 +119,8 @@ public class Controller implements Runnable {
 						// @todo - last parameter should be the number of partitions in use - may be less than
 						// hotTuplesList.size()
 						currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", 
-								Provisioning.noOfSitesRequiredQuery(client, no_of_partitions));
+								//Provisioning.noOfSitesRequiredQuery(client, no_of_partitions));
+								no_of_partitions);
 						currentPlan.toJSON("test.txt");
 
  						ClientResponse cresponse = null;

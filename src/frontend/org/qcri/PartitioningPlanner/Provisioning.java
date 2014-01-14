@@ -17,8 +17,8 @@ import edu.brown.hstore.Hstoreservice.Status;
 public class Provisioning {
 	
 	// thresholds are per site
-	private static final double CPU_THRESHOLD_UP = 150;
-	private static final double CPU_THRESHOLD_DOWN = 110;
+	private static final int CPU_THRESHOLD_UP = 160;
+	private static final int CPU_THRESHOLD_DOWN = 110;
 	private static final int SITES_PER_HOST = 2;
 	
 	// ======== NOTE!! =================
