@@ -1,14 +1,18 @@
 package org.qcri.PartitioningPlanner;
 
 import java.io.IOException;
-
 import java.net.UnknownHostException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.FileSystems;
+import java.nio.file.CopyOption;
+import java.nio.file.StandardCopyOption;
 
 import org.qcri.PartitioningPlanner.placement.Placement;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
@@ -43,7 +47,8 @@ public class Controller implements Runnable {
 	
 	private Placement algo;
 	private Plan currentPlan;
-	private String planFile;
+	private Path planFile;
+	private Path outputPlanFile;
 	
 	
 	private TupleTrackerExecutor ttExecutor;
@@ -75,13 +80,15 @@ public class Controller implements Runnable {
         HStoreConf hStoreConf = HStoreConf.singleton();
         if(hStoreConf.get("global.hasher_plan") == null){
         	System.out.println("Must set global.hasher_plan to specify plan file!");
-        	System.out.println("Going on (for testing)");
-	        currentPlan = new Plan();
+        	System.out.println("Using default (plan.txt)");
+        	planFile = FileSystems.getDefault().getPath("plan.txt");
+            
         }
         else{
-	        planFile = hStoreConf.get("global.hasher_plan").toString();
-	        currentPlan = new Plan(planFile);
+        	planFile = FileSystems.getDefault().getPath(hStoreConf.get("global.hasher_plan").toString());
         }
+        
+        outputPlanFile = FileSystems.getDefault().getPath("plan_out.txt");
 	}
 
 	@Override
@@ -112,12 +119,14 @@ public class Controller implements Runnable {
 					
 					//System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
 					
+					Files.copy(planFile, outputPlanFile, StandardCopyOption.REPLACE_EXISTING);
+					
 					// here we call the planner
 					// @todo - last parameter should be the number of partitions in use - may be less than
-					// hotTuplesList.size()
-					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", hotTuplesList.size());
+					// hotTuplesList.size()					
+					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), hotTuplesList.size());
 					//currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", 3);
-					currentPlan.toJSON("test.txt");
+					currentPlan.toJSON(outputPlanFile.toString());
 
 						if(connectedHost == null){
 						    connectToHost();
