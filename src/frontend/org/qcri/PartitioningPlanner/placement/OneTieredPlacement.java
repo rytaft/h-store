@@ -91,7 +91,7 @@ public class OneTieredPlacement extends Placement {
 		GLPK.intArray_setitem(idxY, 0, 0);
 		GLPK.doubleArray_setitem(idxR, 0, 0);
 
-		Long meanAccesses = totalAccesses / partitionTotals.size();
+		Long meanAccesses = totalAccesses / partitionCount;
 		System.out.println("Mean access count: " + meanAccesses);
 
 		double partitionUpperBound = meanAccesses * 1.05; // slightly over target
@@ -176,15 +176,17 @@ public class OneTieredPlacement extends Placement {
 					Integer srcPartition = locations.get(i);
 					Integer dstPartition = j;
 					if(srcPartition != dstPartition) {
-						partitionTotals.put(srcPartition, partitionTotals.get(srcPartition) - accesses.get(i));
-						partitionTotals.put(dstPartition, partitionTotals.get(dstPartition) + accesses.get(i));
-
 						List<Plan.Range> slice = slices.get(i);
 						for(Plan.Range r : slice) { 
-							Plan.Range oldRange = aPlan.getRangeValue(srcPartition, r.from);
-							if(oldRange != null) {
+							if(!aPlan.hasPartition(dstPartition)) {
+								aPlan.addPartition(dstPartition);
+							}
+							
+							List<Plan.Range> oldRanges = aPlan.getRangeValues(srcPartition, r.from, r.to);
+							for(Plan.Range oldRange : oldRanges) {
 								aPlan.removeRange(srcPartition, oldRange.from);
-								
+								aPlan.addRange(dstPartition, Math.max(oldRange.from, r.from), Math.min(oldRange.to, r.to));
+
 								if(oldRange.from < r.from) {
 									aPlan.addRange(srcPartition, oldRange.from, r.from - 1);
 								}
@@ -192,10 +194,6 @@ public class OneTieredPlacement extends Placement {
 									aPlan.addRange(srcPartition, r.to + 1, oldRange.to);
 								}
 							}
-							if(!aPlan.hasPartition(dstPartition)) {
-								aPlan.addPartition(dstPartition);
-							}
-							aPlan.addRange(dstPartition, r.from, r.to);
 						}
 						
 					}
@@ -205,6 +203,7 @@ public class OneTieredPlacement extends Placement {
 		}
 
 		GLPK.glp_delete_prob(lp);
+		removeEmptyPartitions(aPlan);
 		return aPlan;
 
 	}

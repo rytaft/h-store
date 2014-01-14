@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -73,6 +74,14 @@ public class Plan {
 		TreeMap<Long, Long> emptyRange = new TreeMap<Long,Long>();
 		partitionToRanges.put(partitionId, emptyRange);
 
+	}
+	
+	public void removePartition(Integer partitionId) {
+		partitionToRanges.remove(partitionId);
+	}
+	
+	public Set<Integer> getAllPartitions() {
+		return partitionToRanges.keySet();
 	}
 	
 	public boolean hasPartition(Integer partitionId) {
@@ -339,6 +348,18 @@ public class Plan {
 			return res;
 		}
 		else return null;
+	}
+	
+	// get all the ranges overlapping the given range in the given partition
+	public List<Range> getRangeValues(Integer partition, Long from, Long to){
+		List<Range> ranges = getAllRanges(partition);
+		List<Range> returnedRanges = new ArrayList<Range>();
+		for(Range range : ranges) {
+			if(range.from <= to && range.to >= from) {
+				returnedRanges.add(range);
+			}
+		}
+		return returnedRanges;
 	}
 
 	public List<Range> getAllRanges(Integer partition){

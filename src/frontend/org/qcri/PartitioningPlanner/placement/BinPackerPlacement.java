@@ -89,8 +89,8 @@ public class BinPackerPlacement extends Placement {
 
 		// store the ranges, sizes, access counts, and locations of each of the slices of cold tuples
 		sliceCount = 0;
-		for(Integer i : aPlan.getAllRanges().keySet()) { // for each partition
-			List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth);
+		for(Integer i : oldPlan.getAllRanges().keySet()) { // for each partition
+			List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i,  coldPartitionWidth);
 			if(partitionSlices.size() > 0) {
 				sliceCount += partitionSlices.size();
 				Double tupleWeight = ((double) oldLoad.get(i)) / oldPlan.getTupleCount(i); // per tuple
@@ -134,7 +134,7 @@ public class BinPackerPlacement extends Placement {
 		GLPK.intArray_setitem(idxY, 0, 0);
 		GLPK.doubleArray_setitem(idxR, 0, 0);
 
-		Long meanAccesses = totalAccesses / partitionTotals.size();
+		Long meanAccesses = totalAccesses / partitionCount;
 		System.out.println("Mean access count: " + meanAccesses);
 
 		double partitionUpperBound = meanAccesses * 1.05; // slightly over target
@@ -224,9 +224,6 @@ public class BinPackerPlacement extends Placement {
 					Integer srcPartition = locations.get(i);
 					Integer dstPartition = j;
 					if(srcPartition != dstPartition) {
-						partitionTotals.put(srcPartition, partitionTotals.get(srcPartition) - accesses.get(i));
-						partitionTotals.put(dstPartition, partitionTotals.get(dstPartition) + accesses.get(i));
-
 						if(i < tupleCount) {
 							Long id = tupleIds.get(i);
 							aPlan.removeTupleId(srcPartition, id);
@@ -238,9 +235,14 @@ public class BinPackerPlacement extends Placement {
 						else {
 							List<Plan.Range> slice = slices.get(i - tupleCount);
 							for(Plan.Range r : slice) { 
-								Plan.Range oldRange = aPlan.getRangeValue(srcPartition, r.from);
-								if(oldRange != null) {
+								if(!aPlan.hasPartition(dstPartition)) {
+									aPlan.addPartition(dstPartition);
+								}
+								
+								List<Plan.Range> oldRanges = aPlan.getRangeValues(srcPartition, r.from, r.to);
+								for(Plan.Range oldRange : oldRanges) {
 									aPlan.removeRange(srcPartition, oldRange.from);
+									aPlan.addRange(dstPartition, Math.max(oldRange.from, r.from), Math.min(oldRange.to, r.to));
 
 									if(oldRange.from < r.from) {
 										aPlan.addRange(srcPartition, oldRange.from, r.from - 1);
@@ -249,10 +251,6 @@ public class BinPackerPlacement extends Placement {
 										aPlan.addRange(srcPartition, r.to + 1, oldRange.to);
 									}
 								}
-								if(!aPlan.hasPartition(dstPartition)) {
-									aPlan.addPartition(dstPartition);
-								}
-								aPlan.addRange(dstPartition, r.from, r.to);
 							}
 						}
 					}
@@ -262,7 +260,9 @@ public class BinPackerPlacement extends Placement {
 		}
 
 		GLPK.glp_delete_prob(lp);
+		
 		aPlan = demoteTuples(hotTuplesList, aPlan);
+		removeEmptyPartitions(aPlan);
 		return aPlan;
 
 	}
