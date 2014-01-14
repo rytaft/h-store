@@ -1,7 +1,6 @@
 package org.qcri.PartitioningPlanner;
 
 import java.io.IOException;
-
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -9,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
-
+import org.qcri.PartitioningPlanner.placement.GreedyExtendedPlacement;
 import org.qcri.PartitioningPlanner.placement.Placement;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
 import org.qcri.PartitioningPlanner.placement.BinPackerPlacement;
@@ -52,14 +51,16 @@ public class Controller implements Runnable {
 	private static final int PARTITIONS_PER_HOST = 8;
 	private static final int POLL_FREQUENCY = 3000;
 	
-	private static int no_of_partitions = 2;
+
+	private static int no_of_partitions = 4; 
 
 	// used HStoreTerminal as model to handle the catalog
 	public Controller (Catalog catalog){
 		//algo = new Placement();
 		
 		//Jennie: here we instaniate the planner algo
-	    algo = new GreedyPlacement();
+	   // algo = new GreedyPlacement();
+	    algo = new GreedyExtendedPlacement();
 	    //algo = new BinPackerPlacement();
 	    //algo = new FirstFitPlacement();
 	    //algo = new OneTieredPlacement();		
