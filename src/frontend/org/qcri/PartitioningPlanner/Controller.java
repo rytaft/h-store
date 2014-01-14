@@ -89,6 +89,15 @@ public class Controller implements Runnable {
         }
         
         outputPlanFile = FileSystems.getDefault().getPath("plan_out.txt");
+
+	try {
+	    Files.copy(planFile, outputPlanFile, StandardCopyOption.REPLACE_EXISTING);				
+	}
+	catch(IOException e) {
+	    System.out.println("Controller: IO Exception while copying plan file to output plan file");
+	    e.printStackTrace();
+	}
+
 	}
 
 	@Override
@@ -119,13 +128,11 @@ public class Controller implements Runnable {
 					
 					//System.out.println("Essam After: hotTuplesList size is " + hotTuplesList.size());
 					
-					Files.copy(planFile, outputPlanFile, StandardCopyOption.REPLACE_EXISTING);
-					
 					// here we call the planner
 					// @todo - last parameter should be the number of partitions in use - may be less than
 					// hotTuplesList.size()					
 					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), hotTuplesList.size());
-					//currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", 3);
+					//currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 3);
 					currentPlan.toJSON(outputPlanFile.toString());
 
 						if(connectedHost == null){
@@ -133,7 +140,7 @@ public class Controller implements Runnable {
 						}
  						ClientResponse cresponse = null;
 						try {
-						    cresponse = client.callProcedure("@Reconfiguration", 0, "test.txt", "livepull");
+						    cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "livepull");
 						    System.out.println("Controller: received response: " + cresponse);
 						} catch (NoConnectionsException e) {
 						    System.out.println("Controller: lost connection");
