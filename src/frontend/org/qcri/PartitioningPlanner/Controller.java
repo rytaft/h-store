@@ -2,15 +2,23 @@ package org.qcri.PartitioningPlanner;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
-import org.qcri.PartitioningPlanner.placement.GreedyExtendedPlacement;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.FileSystems;
+import java.nio.file.CopyOption;
+import java.nio.file.StandardCopyOption;
+
 import org.qcri.PartitioningPlanner.placement.Placement;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
+import org.qcri.PartitioningPlanner.placement.GreedyExtendedPlacement;
 import org.qcri.PartitioningPlanner.placement.BinPackerPlacement;
 import org.qcri.PartitioningPlanner.placement.FirstFitPlacement;
 import org.qcri.PartitioningPlanner.placement.OneTieredPlacement;
@@ -41,7 +49,8 @@ public class Controller implements Runnable {
 	
 	private Placement algo;
 	private Plan currentPlan;
-	private String planFile;
+	private Path planFile;
+	private Path outputPlanFile;
 	
 	
 	private TupleTrackerExecutor ttExecutor;
@@ -74,13 +83,24 @@ public class Controller implements Runnable {
         HStoreConf hStoreConf = HStoreConf.singleton();
         if(hStoreConf.get("global.hasher_plan") == null){
         	System.out.println("Must set global.hasher_plan to specify plan file!");
-        	System.out.println("Going on (for testing)");
-	        currentPlan = new Plan();
+        	System.out.println("Using default (plan.txt)");
+        	planFile = FileSystems.getDefault().getPath("plan.txt");
+            
         }
         else{
-	        planFile = hStoreConf.get("global.hasher_plan").toString();
-	        currentPlan = new Plan(planFile);
+        	planFile = FileSystems.getDefault().getPath(hStoreConf.get("global.hasher_plan").toString());
         }
+        
+        outputPlanFile = FileSystems.getDefault().getPath("plan_out.txt");
+
+	try {
+	    Files.copy(planFile, outputPlanFile, StandardCopyOption.REPLACE_EXISTING);				
+	}
+	catch(IOException e) {
+	    System.out.println("Controller: IO Exception while copying plan file to output plan file");
+	    e.printStackTrace();
+	}
+
 	}
 
 	@Override
@@ -101,7 +121,7 @@ public class Controller implements Runnable {
 					
 					
 						
-				    ttExecutor.turnOnOff(20);	// turn on tuple tracking for time window of X seconds
+				    ttExecutor.turnOnOff(10);	// turn on tuple tracking for time window of X seconds
 						
 					// here we get top K
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
@@ -113,16 +133,19 @@ public class Controller implements Runnable {
 					
 					// here we call the planner
 					// @todo - last parameter should be the number of partitions in use - may be less than
-					// hotTuplesList.size()
-					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, "test.txt", hotTuplesList.size());
-					currentPlan.toJSON("test.txt");
+
+					// hotTuplesList.size()					
+					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), hotTuplesList.size());
+					//currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 3);
+					currentPlan.toJSON(outputPlanFile.toString());
+
 
 						if(connectedHost == null){
 						    connectToHost();
 						}
  						ClientResponse cresponse = null;
 						try {
-						    cresponse = client.callProcedure("@Reconfiguration", 0, "test.txt", "livepull");
+						    cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "livepull");
 						    System.out.println("Controller: received response: " + cresponse);
 						} catch (NoConnectionsException e) {
 						    System.out.println("Controller: lost connection");
