@@ -42,6 +42,7 @@ import edu.brown.benchmark.ycsb.distributions.CustomSkewGenerator;
 import edu.brown.benchmark.ycsb.distributions.IntegerGenerator;
 import edu.brown.benchmark.ycsb.distributions.UniformIntegerGenerator;
 import edu.brown.benchmark.ycsb.distributions.ZipfianGenerator;
+import edu.brown.benchmark.ycsb.distributions.VaryingZipfianGenerator;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.rand.RandomDistribution.FlatHistogram;
@@ -166,6 +167,18 @@ public class YCSBClient extends BenchmarkComponent {
             //ints are used for keyGens and longs are used for record counts.            
             //TODO check on other zipf params
             this.keyGenerator = new ZipfianGenerator(init_record_count, skewFactor, true);
+        }
+        else if(requestDistribution.equals(YCSBConstants.ZIPFIAN_VARYING_DISTRIBUTION)){
+            if(debug.val) LOG.debug("Using a varying zipfian key distribution");
+            //ints are used for keyGens and longs are used for record counts.            
+            //TODO check on other zipf params
+            this.keyGenerator = new VaryingZipfianGenerator(init_record_count, skewFactor, false, 60000);
+        }
+        else if(requestDistribution.equals(YCSBConstants.ZIPFIAN_SCRAMBLED_VARYING_DISTRIBUTION)){
+            if(debug.val) LOG.debug("Using a scrambled varying zipfian key distribution");
+            //ints are used for keyGens and longs are used for record counts.            
+            //TODO check on other zipf params
+            this.keyGenerator = new VaryingZipfianGenerator(init_record_count, skewFactor, true, 60000);
         }
         else{
             String msg = "Unsupported YCSB key distribution type :" + requestDistribution;
