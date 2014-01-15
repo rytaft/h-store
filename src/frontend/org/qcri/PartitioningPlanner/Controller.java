@@ -80,15 +80,15 @@ public class Controller implements Runnable {
         HStoreConf hStoreConf = HStoreConf.singleton();
         if(hStoreConf.get("global.hasher_plan") == null){
         	System.out.println("Must set global.hasher_plan to specify plan file!");
-        	System.out.println("Using default (plan.txt)");
-        	planFile = FileSystems.getDefault().getPath("plan.txt");
+        	System.out.println("Using default (plan.json)");
+        	planFile = FileSystems.getDefault().getPath("plan.json");
             
         }
         else{
         	planFile = FileSystems.getDefault().getPath(hStoreConf.get("global.hasher_plan").toString());
         }
         
-        outputPlanFile = FileSystems.getDefault().getPath("plan_out.txt");
+        outputPlanFile = FileSystems.getDefault().getPath("plan_out.json");
 
 	try {
 	    Files.copy(planFile, outputPlanFile, StandardCopyOption.REPLACE_EXISTING);				
