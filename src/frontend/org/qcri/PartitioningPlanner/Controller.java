@@ -60,17 +60,26 @@ public class Controller implements Runnable {
 	private static final int PARTITIONS_PER_HOST = 8;
 	private static final int POLL_FREQUENCY = 3000;
 	
-
+	private static int time_window = 10; // time window for tuple tracking
+	
+	private static int planner_selector = 0; // planner ID from 0 to 4, Greedy - GreedyEx - FFit - BP - BP one tier 
+	
 	private static int no_of_partitions = 4; 
+	
+	
+	
 
 	// used HStoreTerminal as model to handle the catalog
 	public Controller (Catalog catalog){
 		//algo = new Placement();
 		
-		//Jennie: here we instaniate the planner algo
+		switch (planner_selector) {
+        case 0: algo = new GreedyPlacement();
+		}
+
 	   // algo = new GreedyPlacement();
 	   // algo = new GreedyExtendedPlacement();
-	    algo = new BinPackerPlacement();
+	   // algo = new BinPackerPlacement();
 	    //algo = new FirstFitPlacement();
 	    //algo = new OneTieredPlacement();		
 
@@ -287,8 +296,12 @@ public class Controller implements Runnable {
 			System.out.println("Must specify server hostname");
 			return;
 		}		
-        ArgumentsParser args = ArgumentsParser.load(vargs,
+        
+		
+		ArgumentsParser args = ArgumentsParser.load(vargs,
 			        ArgumentsParser.PARAM_CATALOG);
+        
+        
 
         Controller c = new Controller(args.catalog);
        	c.run();
