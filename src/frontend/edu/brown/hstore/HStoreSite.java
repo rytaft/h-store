@@ -103,6 +103,7 @@ import edu.brown.hstore.stats.AntiCacheManagerProfilerStats;
 import edu.brown.hstore.stats.BatchPlannerProfilerStats;
 import edu.brown.hstore.stats.MarkovEstimatorProfilerStats;
 import edu.brown.hstore.stats.PartitionExecutorProfilerStats;
+import edu.brown.hstore.stats.PartitionRates;
 import edu.brown.hstore.stats.SiteProfilerStats;
 import edu.brown.hstore.stats.SpecExecProfilerStats;
 import edu.brown.hstore.stats.TransactionCounterStats;
@@ -249,6 +250,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     private MemoryStats memoryStats;
     private CPUStats cpuStats; // Essam
     private TransactionRTStats rtStats; // Marco
+    private PartitionRates partStats; // Marco
     
     // ----------------------------------------------------------------------------
     // NETWORKING STUFF
@@ -864,11 +866,12 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         
 
         // TRANSACTION RESPONSE TIME COUNTERS - Marco
-        //LOG.info("Hi Before");
         this.rtStats = new TransactionRTStats(hstore_conf.global.nanosecond_latencies);
-        //LOG.info("Hi After");
         this.statsAgent.registerStatsSource(SysProcSelector.TXNRESPONSETIME, 0, this.rtStats);
 
+        // PARTITION COUNTERS - Marco
+        this.partStats = new PartitionRates(this.catalogContext, getSiteId());
+        this.statsAgent.registerStatsSource(SysProcSelector.PARTITIONRATES, 0, this.partStats);
     }
     
     /**
@@ -2739,6 +2742,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                      ts, ts.getClass().getSimpleName(), ts.hashCode()));
             this.deletable_last.add(String.format("%s :: %s", ts, status));
         }
+        
         return;
     }
 
@@ -2806,6 +2810,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                     if (hstore_conf.site.txn_counters || hstore_conf.site.status_kill_if_hung) {
                         TransactionCounter.COMPLETED.inc(catalog_proc);
                     }
+                    this.partStats.addAccesses(ts.getTouchedPartitions()); // Marco
                     break;
                 case ABORT_USER:
                     if (t_estimator != null) {

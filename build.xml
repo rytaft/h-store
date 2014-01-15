@@ -2570,7 +2570,7 @@ UTILITIES
         <assertions><enable/></assertions>
     </java>
 </target>
-
+	
 <target name='elastic-controller'
         description="H-Store Elasticity Controller">
   <java fork="yes" failonerror="true" classname="org.qcri.PartitioningPlanner.Controller">

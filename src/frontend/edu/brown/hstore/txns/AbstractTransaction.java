@@ -57,6 +57,7 @@ import edu.brown.interfaces.DebugContext;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.pools.Poolable;
+import edu.brown.statistics.FastIntHistogram;
 import edu.brown.utils.PartitionSet;
 import edu.brown.utils.StringUtil;
 
