@@ -71,7 +71,12 @@ public class Controller implements Runnable {
 
 	// used HStoreTerminal as model to handle the catalog
 	public Controller (Catalog catalog){
-		//algo = new Placement();
+		
+		if(connectedHost == null){
+		    connectToHost();
+		}
+		
+		
 		
 		switch (planner_selector) {
         case 0:  algo = new GreedyPlacement(); System.out.println("GreedyPlacement is selected"); break;
@@ -81,6 +86,7 @@ public class Controller implements Runnable {
         case 4:  algo = new OneTieredPlacement(); System.out.println("OneTieredPlacement is selected"); break;
        	}
 
+		//algo = new Placement();	
 	   // algo = new GreedyPlacement();
 	   // algo = new GreedyExtendedPlacement();
 	   // algo = new BinPackerPlacement();
@@ -153,9 +159,7 @@ public class Controller implements Runnable {
 					currentPlan.toJSON(outputPlanFile.toString());
 
 
-						if(connectedHost == null){
-						    connectToHost();
-						}
+						
  						ClientResponse cresponse = null;
 						try {
 						    cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "livepull");
