@@ -75,15 +75,6 @@ public class Controller implements Runnable {
 	public Controller (Catalog catalog){
 		
 		
-		
-		
-		switch (planner_selector) {
-        case 0:  algo = new GreedyPlacement(); System.out.println("GreedyPlacement is selected"); break;
-        case 1:  algo = new GreedyExtendedPlacement(); System.out.println("GreedyExtendedPlacement is selected"); break;
-        case 2:  algo = new FirstFitPlacement(); System.out.println("FirstFitPlacement is selected"); break;
-        case 3:  algo = new BinPackerPlacement(); System.out.println("BinPackerPlacement is selected"); break;
-        case 4:  algo = new OneTieredPlacement(); System.out.println("OneTieredPlacement is selected"); break;
-       	}
 
 		//algo = new Placement();	
 	   // algo = new GreedyPlacement();
@@ -132,6 +123,14 @@ public class Controller implements Runnable {
 
 	@Override
 	public void run () {
+		
+		switch (planner_selector) {
+        case 0:  algo = new GreedyPlacement(); System.out.println("GreedyPlacement is selected"); break;
+        case 1:  algo = new GreedyExtendedPlacement(); System.out.println("GreedyExtendedPlacement is selected"); break;
+        case 2:  algo = new FirstFitPlacement(); System.out.println("FirstFitPlacement is selected"); break;
+        case 3:  algo = new BinPackerPlacement(); System.out.println("BinPackerPlacement is selected"); break;
+        case 4:  algo = new OneTieredPlacement(); System.out.println("OneTieredPlacement is selected"); break;
+       	}
 	   				
 					//Jennie temp for now
 					Map<Integer, Long> mSiteLoad = new HashMap<Integer, Long>();
