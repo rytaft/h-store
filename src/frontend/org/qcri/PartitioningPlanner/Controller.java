@@ -296,6 +296,7 @@ public class Controller implements Runnable {
 	 * @param args
 	 */
 	public static void main(String[] vargs) throws Exception{
+		
 		if(vargs.length == 0){
 			System.out.println("Must specify server hostname");
 			return;
@@ -303,17 +304,26 @@ public class Controller implements Runnable {
         
 		String[] params = {vargs[0]};
 		
-		//ArgumentsParser args = ArgumentsParser.load(params,ArgumentsParser.PARAM_CATALOG);
+		ArgumentsParser args = ArgumentsParser.load(params,ArgumentsParser.PARAM_CATALOG);
 		
-		System.out.println("Params: bench"+params[0] );//+" no. part " +vargs[1] + " twin "+vargs[2]+" plannerID "+vargs[3]);
+		//System.out.println("Params: bench"+params[0] +" no. part " +vargs[1] + " twin "+vargs[2]+" plannerID "+vargs[3]);
 		
-		//no_of_partitions = Integer.parseInt(vargs[1]);
-		//time_window = Integer.parseInt(vargs[2]);
-		//planner_selector = Integer.parseInt(vargs[3]);
-        
+		if(vargs.length == 4)
+		{
+		no_of_partitions = Integer.parseInt(vargs[1]);
+		time_window = Integer.parseInt(vargs[2]);
+		planner_selector = Integer.parseInt(vargs[3]);
+		}
+		else // use default
+		{
+			no_of_partitions = 4;
+			time_window = 10;
+			planner_selector = 0;
+		}
+
         
 
-        //Controller c = new Controller(args.catalog);
-       	//c.run();
+        Controller c = new Controller(args.catalog);
+       	c.run();
 	}
 }

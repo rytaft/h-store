@@ -2580,6 +2580,9 @@ UTILITIES
         <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
         <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
         <arg value="catalog.jar=${benchmark.jar}" />
+        <arg value="${numPart}" />
+        <arg value="${tWindow}" />
+        <arg value="${plannerID}" />
         <classpath refid='project.classpath' />
     <assertions><enable/></assertions>
     </java>
