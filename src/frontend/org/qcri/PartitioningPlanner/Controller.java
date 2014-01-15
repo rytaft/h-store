@@ -72,9 +72,6 @@ public class Controller implements Runnable {
 	// used HStoreTerminal as model to handle the catalog
 	public Controller (Catalog catalog){
 		
-		if(connectedHost == null){
-		    connectToHost();
-		}
 		
 		
 		
@@ -119,6 +116,13 @@ public class Controller implements Runnable {
 	    System.out.println("Controller: IO Exception while copying plan file to output plan file");
 	    e.printStackTrace();
 	}
+	
+	
+	if(connectedHost == null){
+	    connectToHost();
+	}
+	
+	
 
 	}
 
