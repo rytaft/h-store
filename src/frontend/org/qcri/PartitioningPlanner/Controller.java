@@ -43,7 +43,7 @@ import edu.brown.utils.CollectionUtil;
 
 public class Controller implements Runnable {
 	
-	private Client client;
+	private org.voltdb.client.Client client;
 	private String connectedHost;
 	private Collection<Site> sites;
 	
@@ -74,11 +74,11 @@ public class Controller implements Runnable {
 		//algo = new Placement();
 		
 		switch (planner_selector) {
-        case 0:  algo = new GreedyPlacement(); break;
-        case 1:  algo = new GreedyPlacement(); break;
-        case 2:  algo = new GreedyPlacement(); break;
-        case 3:  algo = new GreedyPlacement(); break;
-        case 4:  algo = new GreedyPlacement(); break;
+        case 0:  algo = new GreedyPlacement(); System.out.println("GreedyPlacement is selected"); break;
+        case 1:  algo = new GreedyExtendedPlacement(); System.out.println("GreedyExtendedPlacement is selected"); break;
+        case 2:  algo = new FirstFitPlacement(); System.out.println("FirstFitPlacement is selected"); break;
+        case 3:  algo = new BinPackerPlacement(); System.out.println("BinPackerPlacement is selected"); break;
+        case 4:  algo = new OneTieredPlacement(); System.out.println("OneTieredPlacement is selected"); break;
        	}
 
 	   // algo = new GreedyPlacement();
@@ -134,7 +134,7 @@ public class Controller implements Runnable {
 					
 					
 						
-				    ttExecutor.turnOnOff(time_window);	// turn on tuple tracking for time window of X seconds
+				    ttExecutor.turnOnOff(time_window,client);	// turn on tuple tracking for time window of X seconds
 						
 					// here we get top K
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
