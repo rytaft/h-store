@@ -2583,6 +2583,7 @@ UTILITIES
         <arg value="${numPart}" />
         <arg value="${tWindow}" />
         <arg value="${plannerID}" />
+        <arg value="${provisioning}" />
         <classpath refid='project.classpath' />
     <assertions><enable/></assertions>
     </java>
