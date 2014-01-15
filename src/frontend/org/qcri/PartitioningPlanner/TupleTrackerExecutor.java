@@ -56,22 +56,21 @@ public class TupleTrackerExecutor {
 	
 	
 	
-public void turnOnOff(int seconds) throws Exception {
+public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Exception {
 		
-		int port = 21212;
+		//int port = 21212;
 		//String host = "localhost";
-		String host = "da08";
+		//String host = "da08";
 		String statsType = "TUPLE";
 		int interval = 0;
 		
 		//ClientConfig clientConfig = new ClientConfig("program", "none");
-        org.voltdb.client.Client client =
-            org.voltdb.client.ClientFactory.createClient();
+        //org.voltdb.client.Client client =   org.voltdb.client.ClientFactory.createClient();
         
         // Client instance connected to the database running on
         // the specified IP address, in this case 127.0.0.1. The
         // database always runs on TCP/IP port 21212.
-        client.createConnection(host,port);
+        //client.createConnection(host,port);
         
         System.out.println("Tuple Tracking: Connected host");
 		
