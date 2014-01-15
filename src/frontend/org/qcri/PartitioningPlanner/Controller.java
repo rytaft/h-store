@@ -313,7 +313,7 @@ public class Controller implements Runnable {
         
         
 
-        Controller c = new Controller(args.catalog);
-       	c.run();
+        //Controller c = new Controller(args.catalog);
+       	//c.run();
 	}
 }
