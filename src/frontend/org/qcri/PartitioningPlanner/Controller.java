@@ -74,8 +74,12 @@ public class Controller implements Runnable {
 		//algo = new Placement();
 		
 		switch (planner_selector) {
-        case 0: algo = new GreedyPlacement();
-		}
+        case 0:  algo = new GreedyPlacement(); break;
+        case 1:  algo = new GreedyPlacement(); break;
+        case 2:  algo = new GreedyPlacement(); break;
+        case 3:  algo = new GreedyPlacement(); break;
+        case 4:  algo = new GreedyPlacement(); break;
+       	}
 
 	   // algo = new GreedyPlacement();
 	   // algo = new GreedyExtendedPlacement();
@@ -130,7 +134,7 @@ public class Controller implements Runnable {
 					
 					
 						
-				    ttExecutor.turnOnOff(10);	// turn on tuple tracking for time window of X seconds
+				    ttExecutor.turnOnOff(time_window);	// turn on tuple tracking for time window of X seconds
 						
 					// here we get top K
 					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
@@ -297,9 +301,14 @@ public class Controller implements Runnable {
 			return;
 		}		
         
+		String[] params = {vargs[0]};
 		
-		ArgumentsParser args = ArgumentsParser.load(vargs,
+		ArgumentsParser args = ArgumentsParser.load(params,
 			        ArgumentsParser.PARAM_CATALOG);
+		
+		no_of_partitions = Integer.parseInt(vargs[1]);
+		time_window = Integer.parseInt(vargs[2]);
+		planner_selector = Integer.parseInt(vargs[3]);
         
         
 
