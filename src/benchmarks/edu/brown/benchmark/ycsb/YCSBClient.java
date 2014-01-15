@@ -42,6 +42,7 @@ import edu.brown.benchmark.ycsb.distributions.CustomSkewGenerator;
 import edu.brown.benchmark.ycsb.distributions.IntegerGenerator;
 import edu.brown.benchmark.ycsb.distributions.UniformIntegerGenerator;
 import edu.brown.benchmark.ycsb.distributions.ZipfianGenerator;
+import edu.brown.benchmark.ycsb.distributions.ScrambledZipfianGenerator;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.rand.RandomDistribution.FlatHistogram;
@@ -160,6 +161,12 @@ public class YCSBClient extends BenchmarkComponent {
             //ints are used for keyGens and longs are used for record counts.            
             //TODO check on other zipf params
             this.keyGenerator = new ZipfianGenerator(init_record_count);
+        }
+        else if(requestDistribution.equals(YCSBConstants.ZIPFIAN_SCRAMBLED_DISTRIBUTION)){
+            if(debug.val) LOG.debug("Using a scrambled zipfian key distribution");
+            //ints are used for keyGens and longs are used for record counts.            
+            //TODO check on other zipf params
+            this.keyGenerator = new ScrambledZipfianGenerator(init_record_count);
         }
         else{
             String msg = "Unsupported YCSB key distribution type :" + requestDistribution;
