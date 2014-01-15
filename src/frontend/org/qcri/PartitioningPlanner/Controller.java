@@ -1,3 +1,4 @@
+
 package org.qcri.PartitioningPlanner;
 
 import java.io.IOException;
@@ -61,7 +62,7 @@ public class Controller implements Runnable {
 	private static int no_of_partitions = 4; 
 
 	// used HStoreTerminal as model to handle the catalog
-	public Controller (Catalog catalog){
+    public Controller (Catalog catalog, HStoreConf hstore_conf){
 		//algo = new Placement();
 		
 		//Jennie: here we instaniate the planner algo
@@ -77,17 +78,16 @@ public class Controller implements Runnable {
         client.configureBlocking(false);
         sites = CatalogUtil.getAllSites(catalog);
         
-        HStoreConf hStoreConf = HStoreConf.singleton();
-        if(hStoreConf.get("global.hasher_plan") == null){
-        	System.out.println("Must set global.hasher_plan to specify plan file!");
-        	System.out.println("Using default (plan.json)");
-        	planFile = FileSystems.getDefault().getPath("plan.json");
+        if(hstore_conf.global.hasher_plan == null){
+	    System.out.println("Must set global.hasher_plan to specify plan file!");
+	    System.out.println("Using default (plan.json)");
+	    planFile = FileSystems.getDefault().getPath("plan.json");
             
         }
         else{
-        	planFile = FileSystems.getDefault().getPath(hStoreConf.get("global.hasher_plan").toString());
+	    planFile = FileSystems.getDefault().getPath(hstore_conf.global.hasher_plan);
         }
-        
+
         outputPlanFile = FileSystems.getDefault().getPath("plan_out.json");
 
 	try {
@@ -282,10 +282,10 @@ public class Controller implements Runnable {
 			System.out.println("Must specify server hostname");
 			return;
 		}		
-        ArgumentsParser args = ArgumentsParser.load(vargs,
-			        ArgumentsParser.PARAM_CATALOG);
 
-        Controller c = new Controller(args.catalog);
+        ArgumentsParser args = ArgumentsParser.load(vargs, ArgumentsParser.PARAM_CATALOG);
+        HStoreConf hstore_conf = HStoreConf.initArgumentsParser(args);
+        Controller c = new Controller(args.catalog, hstore_conf);
        	c.run();
 	}
 }
