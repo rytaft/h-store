@@ -306,9 +306,11 @@ public class Controller implements Runnable {
 		ArgumentsParser args = ArgumentsParser.load(params,
 			        ArgumentsParser.PARAM_CATALOG);
 		
-		no_of_partitions = Integer.parseInt(vargs[1]);
-		time_window = Integer.parseInt(vargs[2]);
-		planner_selector = Integer.parseInt(vargs[3]);
+		System.out.println("Params: no. part " +vargs[1] + " twin "+vargs[2]+" plannerID "+vargs[3]);
+		
+		//no_of_partitions = Integer.parseInt(vargs[1]);
+		//time_window = Integer.parseInt(vargs[2]);
+		//planner_selector = Integer.parseInt(vargs[3]);
         
         
 
