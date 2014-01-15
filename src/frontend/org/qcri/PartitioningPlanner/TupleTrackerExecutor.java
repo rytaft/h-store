@@ -72,12 +72,12 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
         // database always runs on TCP/IP port 21212.
         //client.createConnection(host,port);
         
-        System.out.println("Tuple Tracking: Connected host");
+        //System.out.println("Tuple Tracking: Connected host");
 		
 		//ClientResponse results = client.callProcedure("@Statistics", statsType, interval);
         
         client.callProcedure("@Statistics", statsType, interval);
-        System.out.println("Tuple Tracking: turned on");
+        System.out.println("Tuple Tracking has been turned on for "+seconds+" seconds");
 		
 		try
 		  {
@@ -89,7 +89,7 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 		  }
 		
 		client.callProcedure("@Statistics", statsType, interval);
-		System.out.println("Tuple Tracking: collected and turned off");
+		System.out.println("Tuple Tracking collectted hot tuples and has been turned off");
 		
 	}
    
