@@ -41,6 +41,7 @@ import java.util.Random;
 public class ZipfianGenerator extends IntegerGenerator
 {     
 	public static final double ZIPFIAN_CONSTANT=0.99;
+	public static final long ITEM_COUNT=10000000000L;
 
 	/**
 	 * Number of items.
@@ -311,7 +312,7 @@ public class ZipfianGenerator extends IntegerGenerator
 	
 	public static void main(String[] args)
 	{
-		new ZipfianGenerator(ScrambledZipfianGenerator.ITEM_COUNT);
+		new ZipfianGenerator(ITEM_COUNT);
 	}
 
 	/**
