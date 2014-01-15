@@ -116,7 +116,8 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 	        }
 			reader.close();
 			htList.add(hotTuples);
-			System.out.println("Essam hotTuplesList at partition"+i+" has " + hotTuples.size());
+			
+			//System.out.println("Essam hotTuplesList at partition"+i+" has " + hotTuples.size()); 
 		    
 		}
 		

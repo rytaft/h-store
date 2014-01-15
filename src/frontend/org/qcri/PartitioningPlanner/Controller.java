@@ -160,12 +160,15 @@ public class Controller implements Runnable {
 					
 					if(doProvisioning == 1)
 					{
+						
+					System.out.println("Provisioning is on");	
 					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
 								Provisioning.noOfSitesRequiredQuery(client, no_of_partitions));
 								
 					}
 					else
 					{
+						System.out.println("Provisioning is off");
 						currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
 							                           no_of_partitions);
 					}

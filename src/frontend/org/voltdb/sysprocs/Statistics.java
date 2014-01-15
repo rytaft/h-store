@@ -287,16 +287,7 @@ public class Statistics extends VoltSystemProcedure {
             	  }
             	   	
             	
-            	try {
-                    File file = new File("readwrite_tracking.del");
-                    BufferedWriter output = new BufferedWriter(new FileWriter(file));
-                    
-                    output.write(text);
-                    output.close();
-                  } catch ( IOException e ) {
-                     e.printStackTrace();
-                  }
-            	
+            	            	
             	///////////////////////////////////
             	return dSet;
                 
