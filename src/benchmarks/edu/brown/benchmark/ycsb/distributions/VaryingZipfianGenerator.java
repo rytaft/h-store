@@ -378,7 +378,9 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 		long ret=base+(long)((itemcount) * Math.pow(eta*u - eta + 1, alpha));
 		if(System.currentTimeMillis() - this.interval > this.lastTime) {
 			this.lastTime = System.currentTimeMillis();
+			Utils.random().setSeed(randShift);
 			this.randShift = Utils.random().nextInt();
+			System.out.println("Changing distribution. Adding random shift: " + randShift);
 		}
 		ret = min + (ret + randShift) % items;
 		if(scrambled) {
