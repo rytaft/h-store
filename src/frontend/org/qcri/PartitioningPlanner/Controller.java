@@ -247,7 +247,7 @@ public class Controller implements Runnable {
 		//System.out.println("Params: bench"+params[0] +" no. part " +vargs[1] + " twin "+vargs[2]+" plannerID "+vargs[3]);
         System.out.println("args:: "+args.toString());
 		
-		if(vargs.length == 5)
+		if(vargs.length == 6)
 		{
 		no_of_partitions = Integer.parseInt(vargs[1]);
 		time_window = Integer.parseInt(vargs[2]);
