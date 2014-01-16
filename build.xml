@@ -2584,6 +2584,7 @@ UTILITIES
         <arg value="${tWindow}" />
         <arg value="${plannerID}" />
         <arg value="${provisioning}" />
+	&common;
         <classpath refid='project.classpath' />
     <assertions><enable/></assertions>
     </java>

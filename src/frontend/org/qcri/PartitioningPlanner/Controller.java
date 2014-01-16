@@ -1,3 +1,4 @@
+
 package org.qcri.PartitioningPlanner;
 
 import java.io.IOException;
@@ -72,9 +73,9 @@ public class Controller implements Runnable {
 	
 
 	// used HStoreTerminal as model to handle the catalog
-	public Controller (Catalog catalog){
-		
-		
+
+	 public Controller (Catalog catalog, HStoreConf hstore_conf){
+		//algo = new Placement();
 
 		//algo = new Placement();	
 	   // algo = new GreedyPlacement();
@@ -89,19 +90,20 @@ public class Controller implements Runnable {
         client.configureBlocking(false);
         sites = CatalogUtil.getAllSites(catalog);
         
+
         this.catalog = catalog;
         
-        HStoreConf hStoreConf = HStoreConf.singleton();
-        if(hStoreConf.get("global.hasher_plan") == null){
-        	System.out.println("Must set global.hasher_plan to specify plan file!");
-        	System.out.println("Using default (plan.json)");
-        	planFile = FileSystems.getDefault().getPath("plan.json");
+      
+        if(hstore_conf.global.hasher_plan == null){
+	    System.out.println("Must set global.hasher_plan to specify plan file!");
+	    System.out.println("Using default (plan.json)");
+	    planFile = FileSystems.getDefault().getPath("plan.json");
             
         }
         else{
-        	planFile = FileSystems.getDefault().getPath(hStoreConf.get("global.hasher_plan").toString());
+	    planFile = FileSystems.getDefault().getPath(hstore_conf.global.hasher_plan);
         }
-        
+
         outputPlanFile = FileSystems.getDefault().getPath("plan_out.json");
 
 	try {
@@ -233,12 +235,17 @@ public class Controller implements Runnable {
 			System.out.println("Must specify server hostname");
 			return;
 		}		
+
         
-		String[] params = {vargs[0]};
+		//String[] params = {vargs[0]};
 		
-		ArgumentsParser args = ArgumentsParser.load(params,ArgumentsParser.PARAM_CATALOG);
+		ArgumentsParser args = ArgumentsParser.load(vargs,ArgumentsParser.PARAM_CATALOG);
+		
+		//ArgumentsParser args = ArgumentsParser.load(params, ArgumentsParser.PARAM_CATALOG);
+        HStoreConf hstore_conf = HStoreConf.initArgumentsParser(args);
 		
 		//System.out.println("Params: bench"+params[0] +" no. part " +vargs[1] + " twin "+vargs[2]+" plannerID "+vargs[3]);
+        System.out.println("args:: "+args.toString());
 		
 		if(vargs.length == 5)
 		{
@@ -255,9 +262,10 @@ public class Controller implements Runnable {
 			doProvisioning = 0;
 		}
 
-        
+ 
 
-        Controller c = new Controller(args.catalog);
+        
+        Controller c = new Controller(args.catalog, hstore_conf);
        	c.run();
 	}
 }

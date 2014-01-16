@@ -74,6 +74,16 @@ public abstract class YCSBConstants {
     public static final String ZIPFIAN_SCRAMBLED_DISTRIBUTION = "zipfianscrambled";
     
     /**
+     * Zipfian distribution (varying)
+     */
+    public static final String ZIPFIAN_VARYING_DISTRIBUTION = "zipfianvarying";
+    
+    /**
+     * Zipfian scrambled distribution (varying)
+     */
+    public static final String ZIPFIAN_SCRAMBLED_VARYING_DISTRIBUTION = "zipfianscrambledvarying";
+    
+    /**
      * Latest distributions.
      */
     public static final String LATEST_DISTRIBUTION = "latest";

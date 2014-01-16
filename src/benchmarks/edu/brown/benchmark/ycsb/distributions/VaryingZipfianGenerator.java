@@ -38,11 +38,23 @@ import java.util.Random;
  *
  * The algorithm used here is from "Quickly Generating Billion-Record Synthetic Databases", Jim Gray et al, SIGMOD 1994.
  */
-public class ZipfianGenerator extends IntegerGenerator
+public class VaryingZipfianGenerator extends IntegerGenerator
 {     
 	public static final double ZIPFIAN_CONSTANT=0.99;
 	public static final long ITEM_COUNT=10000000000L;
+	public static final int DEFAULT_INTERVAL=-1; // default not varying
+	public static final int DEFAULT_SHIFT=0; // default no shift
 
+	/**
+	 * The last time we changed the distribution (in milliseconds)
+	 */
+	long lastTime;
+	
+	/**
+	 * The amount to shift the distribution each time
+	 */
+	long shift;
+	
 	/**
 	 * Number of items.
 	 */
@@ -51,7 +63,12 @@ public class ZipfianGenerator extends IntegerGenerator
 	/**
 	 * Min and max items
 	 */
-        long min, max;
+    long min, max;
+	
+    /**
+	 * time interval in (in milliseconds)
+	 */
+    long interval;
 	
 	/**
 	 * Min item to generate.
@@ -73,10 +90,21 @@ public class ZipfianGenerator extends IntegerGenerator
 	 */
 	long countforzeta;
 
-        /**
-         * Whether to scramble the distribution or not
+    /**
+     * Whether to scramble the distribution or not
 	 */
-        boolean scrambled = false;
+    boolean scrambled = false;
+    
+    /**
+     * Whether to mirror the zipfian skew so items on both sides of the hottest tuple are also hot
+	 * Mirrored is intended to be used for the slowly varying skew
+	 */
+    boolean mirrored = false;
+    
+    /**
+     * Whether to make the shift to a new distribution random
+     */
+    boolean randomShift = false;
  
 	
 	/**
@@ -95,10 +123,13 @@ public class ZipfianGenerator extends IntegerGenerator
 	 * Create a zipfian generator for the specified number of items.
 	 * @param _items The number of items in the distribution.
 	 * @param scrambled Whether or not to scramble the distribution
+	 * @param mirrored Whether or not to mirror the zipfian skew so items on both sides of the hottest tuple are also hot
+	 * @param interval The time interval between changing skew
+	 * @param shift The amount to shift the distribution each time
 	 */
-    public ZipfianGenerator(long _items, boolean scrambled)
+    public VaryingZipfianGenerator(long _items, boolean scrambled, boolean mirrored, long interval, long shift)
 	{
-	    this(0,_items-1,scrambled);
+	    this(0,_items-1,scrambled,mirrored,interval,shift);
 	}
 
 	/**
@@ -106,10 +137,13 @@ public class ZipfianGenerator extends IntegerGenerator
 	 * @param _min The smallest integer to generate in the sequence.
 	 * @param _max The largest integer to generate in the sequence.
 	 * @param scrambled Whether or not to scramble the distribution
+	 * @param mirrored Whether or not to mirror the zipfian skew so items on both sides of the hottest tuple are also hot
+	 * @param interval The time interval between changing skew
+	 * @param shift The amount to shift the distribution each time
 	 */
-	public ZipfianGenerator(long _min, long _max, boolean scrambled)
+	public VaryingZipfianGenerator(long _min, long _max, boolean scrambled, boolean mirrored, long interval, long shift)
 	{
-		this(_min,_max,ZIPFIAN_CONSTANT,scrambled);
+		this(_min,_max,ZIPFIAN_CONSTANT,scrambled,mirrored,interval,shift);
 	}
 
 	/**
@@ -118,10 +152,13 @@ public class ZipfianGenerator extends IntegerGenerator
 	 * @param _items The number of items in the distribution.
 	 * @param _zipfianconstant The zipfian constant to use.
 	 * @param scrambled Whether or not to scramble the distribution
+	 * @param mirrored Whether or not to mirror the zipfian skew so items on both sides of the hottest tuple are also hot
+	 * @param interval The time interval between changing skew
+	 * @param shift The amount to shift the distribution each time
 	 */
-	public ZipfianGenerator(long _items, double _zipfianconstant, boolean scrambled)
+	public VaryingZipfianGenerator(long _items, double _zipfianconstant, boolean scrambled, boolean mirrored, long interval, long shift)
 	{
-		this(0,_items-1,_zipfianconstant,scrambled);
+		this(0,_items-1,_zipfianconstant,scrambled,mirrored,interval,shift);
 	}
 
 	/**
@@ -130,10 +167,13 @@ public class ZipfianGenerator extends IntegerGenerator
 	 * @param max The largest integer to generate in the sequence.
 	 * @param _zipfianconstant The zipfian constant to use.
 	 * @param scrambled Whether or not to scramble the distribution
+	 * @param mirrored Whether or not to mirror the zipfian skew so items on both sides of the hottest tuple are also hot
+	 * @param interval The time interval between changing skew
+	 * @param shift The amount to shift the distribution each time
 	 */
-	public ZipfianGenerator(long min, long max, double _zipfianconstant, boolean scrambled)
+	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant, boolean scrambled, boolean mirrored, long interval, long shift)
 	{
-		this(min,max,_zipfianconstant,zetastatic(max-min+1,_zipfianconstant),scrambled);
+		this(min,max,_zipfianconstant,zetastatic(max-min+1,_zipfianconstant),scrambled,mirrored,interval,shift);
 	}
 	
 	/**
@@ -144,12 +184,22 @@ public class ZipfianGenerator extends IntegerGenerator
 	 * @param _zipfianconstant The zipfian constant to use.
 	 * @param _zetan The precomputed zeta constant.
 	 * @param scrambled Whether or not to scramble the distribution
+	 * @param mirrored Whether or not to mirror the zipfian skew so items on both sides of the hottest tuple are also hot
+	 * @param interval The time interval between changing skew
+	 * @param shift The amount to shift the distribution each time
 	 */
-	public ZipfianGenerator(long min, long max, double _zipfianconstant, double _zetan, boolean scrambled)
+	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant, double _zetan, boolean scrambled, boolean mirrored, long interval, long shift)
 	{
-	        this.min=min;
-	        this.max=max;
+	    this.min=min;
+	    this.max=max;
 		this.scrambled=scrambled;
+		this.mirrored=mirrored;
+		this.interval=interval;
+		this.lastTime = System.currentTimeMillis();
+		this.shift = shift;
+		if(shift == DEFAULT_SHIFT) {
+			this.randomShift = true;
+		}
 		items=max-min+1;
 		base=min;
 		zipfianconstant=_zipfianconstant;
@@ -174,9 +224,9 @@ public class ZipfianGenerator extends IntegerGenerator
 	 * Create a zipfian generator for the specified number of items.
 	 * @param _items The number of items in the distribution.
 	 */
-	public ZipfianGenerator(long _items)
+	public VaryingZipfianGenerator(long _items)
 	{
-	    this(_items, false);
+	    this(_items, false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
 	}
 
 	/**
@@ -184,9 +234,9 @@ public class ZipfianGenerator extends IntegerGenerator
 	 * @param _min The smallest integer to generate in the sequence.
 	 * @param _max The largest integer to generate in the sequence.
 	 */
-	public ZipfianGenerator(long _min, long _max)
+	public VaryingZipfianGenerator(long _min, long _max)
 	{
-		this(_min,_max, false);
+		this(_min,_max, false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
 	}
 
 	/**
@@ -195,9 +245,9 @@ public class ZipfianGenerator extends IntegerGenerator
 	 * @param _items The number of items in the distribution.
 	 * @param _zipfianconstant The zipfian constant to use.
 	 */
-	public ZipfianGenerator(long _items, double _zipfianconstant)
+	public VaryingZipfianGenerator(long _items, double _zipfianconstant)
 	{
-	    this(_items,_zipfianconstant, false);
+	    this(_items,_zipfianconstant, false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
 	}
 
 	/**
@@ -206,9 +256,9 @@ public class ZipfianGenerator extends IntegerGenerator
 	 * @param max The largest integer to generate in the sequence.
 	 * @param _zipfianconstant The zipfian constant to use.
 	 */
-	public ZipfianGenerator(long min, long max, double _zipfianconstant)
+	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant)
 	{
-		this(min,max,_zipfianconstant,false);
+		this(min,max,_zipfianconstant,false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
 	}
 	
 	/**
@@ -219,9 +269,9 @@ public class ZipfianGenerator extends IntegerGenerator
 	 * @param _zipfianconstant The zipfian constant to use.
 	 * @param _zetan The precomputed zeta constant.
 	 */
-	public ZipfianGenerator(long min, long max, double _zipfianconstant, double _zetan)
+	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant, double _zetan)
 	{
-	    this(min, max, _zipfianconstant, _zetan, false);
+	    this(min, max, _zipfianconstant, _zetan, false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
 	}
 	
 	/**************************************************************************/
@@ -357,6 +407,20 @@ public class ZipfianGenerator extends IntegerGenerator
 		}
 
 		long ret=base+(long)((itemcount) * Math.pow(eta*u - eta + 1, alpha));
+		if(this.interval != DEFAULT_INTERVAL && System.currentTimeMillis() - this.interval > this.lastTime) {
+			this.lastTime = System.currentTimeMillis();
+			if(this.randomShift) {
+				Utils.random().setSeed(shift);
+				this.shift = Utils.random().nextInt();
+			}
+			System.out.println("Changing distribution. Adding shift: " + shift);
+		}
+		ret = min + (ret + shift) % items;
+		if(mirrored) {
+			if(Utils.random().nextBoolean()) {
+				ret = min + max - ret;
+			}
+		}
 		if(scrambled) {
 		    ret=min+Utils.FNVhash64(ret)%items;
 		}
@@ -387,11 +451,11 @@ public class ZipfianGenerator extends IntegerGenerator
 	
 	public static void main(String[] args)
 	{
-		new ZipfianGenerator(ITEM_COUNT);
+		new VaryingZipfianGenerator(ITEM_COUNT);
 	}
 
 	/**
-	 * @todo Implement ZipfianGenerator.mean()
+	 * @todo Implement VaryingZipfianGenerator.mean()
 	 */
 	@Override
 	public double mean() {
@@ -400,7 +464,7 @@ public class ZipfianGenerator extends IntegerGenerator
 		return ((double)(min + max))/2.0;
 	    }
 	    else {
-		throw new UnsupportedOperationException("@todo implement ZipfianGenerator.mean()");
+		throw new UnsupportedOperationException("@todo implement VaryingZipfianGenerator.mean()");
 	    }
 	}
 }
