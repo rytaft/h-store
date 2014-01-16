@@ -42,7 +42,8 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 {     
 	public static final double ZIPFIAN_CONSTANT=0.99;
 	public static final long ITEM_COUNT=10000000000L;
-	public static final int DEFAULT_INTERVAL=60000; // default is 1 minute
+	public static final int DEFAULT_INTERVAL=-1; // default not varying
+	public static final int DEFAULT_SHIFT=0; // default no shift
 
 	/**
 	 * The last time we changed the distribution (in milliseconds)
@@ -50,9 +51,9 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	long lastTime;
 	
 	/**
-	 * The current random shift
+	 * The amount to shift the distribution each time
 	 */
-	int randShift;
+	long shift;
 	
 	/**
 	 * Number of items.
@@ -93,6 +94,17 @@ public class VaryingZipfianGenerator extends IntegerGenerator
      * Whether to scramble the distribution or not
 	 */
     boolean scrambled = false;
+    
+    /**
+     * Whether to mirror the zipfian skew so items on both sides of the hottest tuple are also hot
+	 * Mirrored is intended to be used for the slowly varying skew
+	 */
+    boolean mirrored = false;
+    
+    /**
+     * Whether to make the shift to a new distribution random
+     */
+    boolean randomShift = false;
  
 	
 	/**
@@ -111,10 +123,13 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * Create a zipfian generator for the specified number of items.
 	 * @param _items The number of items in the distribution.
 	 * @param scrambled Whether or not to scramble the distribution
+	 * @param mirrored Whether or not to mirror the zipfian skew so items on both sides of the hottest tuple are also hot
+	 * @param interval The time interval between changing skew
+	 * @param shift The amount to shift the distribution each time
 	 */
-    public VaryingZipfianGenerator(long _items, boolean scrambled, long interval)
+    public VaryingZipfianGenerator(long _items, boolean scrambled, boolean mirrored, long interval, long shift)
 	{
-	    this(0,_items-1,scrambled,interval);
+	    this(0,_items-1,scrambled,mirrored,interval,shift);
 	}
 
 	/**
@@ -122,10 +137,13 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @param _min The smallest integer to generate in the sequence.
 	 * @param _max The largest integer to generate in the sequence.
 	 * @param scrambled Whether or not to scramble the distribution
+	 * @param mirrored Whether or not to mirror the zipfian skew so items on both sides of the hottest tuple are also hot
+	 * @param interval The time interval between changing skew
+	 * @param shift The amount to shift the distribution each time
 	 */
-	public VaryingZipfianGenerator(long _min, long _max, boolean scrambled, long interval)
+	public VaryingZipfianGenerator(long _min, long _max, boolean scrambled, boolean mirrored, long interval, long shift)
 	{
-		this(_min,_max,ZIPFIAN_CONSTANT,scrambled,interval);
+		this(_min,_max,ZIPFIAN_CONSTANT,scrambled,mirrored,interval,shift);
 	}
 
 	/**
@@ -134,10 +152,13 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @param _items The number of items in the distribution.
 	 * @param _zipfianconstant The zipfian constant to use.
 	 * @param scrambled Whether or not to scramble the distribution
+	 * @param mirrored Whether or not to mirror the zipfian skew so items on both sides of the hottest tuple are also hot
+	 * @param interval The time interval between changing skew
+	 * @param shift The amount to shift the distribution each time
 	 */
-	public VaryingZipfianGenerator(long _items, double _zipfianconstant, boolean scrambled, long interval)
+	public VaryingZipfianGenerator(long _items, double _zipfianconstant, boolean scrambled, boolean mirrored, long interval, long shift)
 	{
-		this(0,_items-1,_zipfianconstant,scrambled,interval);
+		this(0,_items-1,_zipfianconstant,scrambled,mirrored,interval,shift);
 	}
 
 	/**
@@ -146,10 +167,13 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @param max The largest integer to generate in the sequence.
 	 * @param _zipfianconstant The zipfian constant to use.
 	 * @param scrambled Whether or not to scramble the distribution
+	 * @param mirrored Whether or not to mirror the zipfian skew so items on both sides of the hottest tuple are also hot
+	 * @param interval The time interval between changing skew
+	 * @param shift The amount to shift the distribution each time
 	 */
-	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant, boolean scrambled, long interval)
+	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant, boolean scrambled, boolean mirrored, long interval, long shift)
 	{
-		this(min,max,_zipfianconstant,zetastatic(max-min+1,_zipfianconstant),scrambled,interval);
+		this(min,max,_zipfianconstant,zetastatic(max-min+1,_zipfianconstant),scrambled,mirrored,interval,shift);
 	}
 	
 	/**
@@ -160,15 +184,22 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @param _zipfianconstant The zipfian constant to use.
 	 * @param _zetan The precomputed zeta constant.
 	 * @param scrambled Whether or not to scramble the distribution
+	 * @param mirrored Whether or not to mirror the zipfian skew so items on both sides of the hottest tuple are also hot
+	 * @param interval The time interval between changing skew
+	 * @param shift The amount to shift the distribution each time
 	 */
-	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant, double _zetan, boolean scrambled, long interval)
+	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant, double _zetan, boolean scrambled, boolean mirrored, long interval, long shift)
 	{
 	    this.min=min;
 	    this.max=max;
 		this.scrambled=scrambled;
+		this.mirrored=mirrored;
 		this.interval=interval;
 		this.lastTime = System.currentTimeMillis();
-		this.randShift = 0;
+		this.shift = shift;
+		if(shift == DEFAULT_SHIFT) {
+			this.randomShift = true;
+		}
 		items=max-min+1;
 		base=min;
 		zipfianconstant=_zipfianconstant;
@@ -195,7 +226,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 */
 	public VaryingZipfianGenerator(long _items)
 	{
-	    this(_items, false,DEFAULT_INTERVAL);
+	    this(_items, false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
 	}
 
 	/**
@@ -205,7 +236,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 */
 	public VaryingZipfianGenerator(long _min, long _max)
 	{
-		this(_min,_max, false,DEFAULT_INTERVAL);
+		this(_min,_max, false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
 	}
 
 	/**
@@ -216,7 +247,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 */
 	public VaryingZipfianGenerator(long _items, double _zipfianconstant)
 	{
-	    this(_items,_zipfianconstant, false,DEFAULT_INTERVAL);
+	    this(_items,_zipfianconstant, false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
 	}
 
 	/**
@@ -227,7 +258,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 */
 	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant)
 	{
-		this(min,max,_zipfianconstant,false,DEFAULT_INTERVAL);
+		this(min,max,_zipfianconstant,false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
 	}
 	
 	/**
@@ -240,7 +271,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 */
 	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant, double _zetan)
 	{
-	    this(min, max, _zipfianconstant, _zetan, false,DEFAULT_INTERVAL);
+	    this(min, max, _zipfianconstant, _zetan, false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
 	}
 	
 	/**************************************************************************/
@@ -376,13 +407,20 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 		}
 
 		long ret=base+(long)((itemcount) * Math.pow(eta*u - eta + 1, alpha));
-		if(System.currentTimeMillis() - this.interval > this.lastTime) {
+		if(this.interval != DEFAULT_INTERVAL && System.currentTimeMillis() - this.interval > this.lastTime) {
 			this.lastTime = System.currentTimeMillis();
-			Utils.random().setSeed(randShift);
-			this.randShift = Utils.random().nextInt();
-			System.out.println("Changing distribution. Adding random shift: " + randShift);
+			if(this.randomShift) {
+				Utils.random().setSeed(shift);
+				this.shift = Utils.random().nextInt();
+			}
+			System.out.println("Changing distribution. Adding shift: " + shift);
 		}
-		ret = min + (ret + randShift) % items;
+		ret = min + (ret + shift) % items;
+		if(mirrored) {
+			if(Utils.random().nextBoolean()) {
+				ret = min + max - ret;
+			}
+		}
 		if(scrambled) {
 		    ret=min+Utils.FNVhash64(ret)%items;
 		}

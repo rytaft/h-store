@@ -91,6 +91,11 @@ public class YCSBClient extends BenchmarkComponent {
     private final FlatHistogram<Transaction> txnWeights;
     private final Random rand_gen;
     private double skewFactor = YCSBConstants.ZIPFIAN_CONSTANT;
+    private boolean scrambled = false;
+    private boolean mirrored = false;
+    private long interval = VaryingZipfianGenerator.DEFAULT_INTERVAL;
+    private long shift = VaryingZipfianGenerator.DEFAULT_SHIFT;
+    
     
     int run_count = 0; 
     
@@ -126,6 +131,22 @@ public class YCSBClient extends BenchmarkComponent {
             else if (key.equalsIgnoreCase("skew_factor")) {
                 this.skewFactor = Double.valueOf(value);
             }
+            // Whether or not to scramble the zipfian distribution
+            else if (key.equalsIgnoreCase("scrambled")) {
+                this.scrambled = Boolean.valueOf(value);
+            }
+            // Whether or not to mirror the zipfian distribution
+            else if (key.equalsIgnoreCase("mirrored")) {
+                this.mirrored = Boolean.valueOf(value);
+            }
+            // Interval for changing skew distribution
+            else if (key.equalsIgnoreCase("interval")) {
+                this.interval = Long.valueOf(value);
+            }
+            // How much to shift the distribution each time
+            else if (key.equalsIgnoreCase("shift")) {
+                this.shift = Long.valueOf(value);
+            }
             else{
                 if(debug.val) LOG.debug("Unknown prop : "  + key);
             }
@@ -160,25 +181,7 @@ public class YCSBClient extends BenchmarkComponent {
             if(debug.val) LOG.debug("Using a default zipfian key distribution");
             //ints are used for keyGens and longs are used for record counts.            
             //TODO check on other zipf params
-            this.keyGenerator = new ZipfianGenerator(init_record_count, skewFactor);
-        }
-        else if(requestDistribution.equals(YCSBConstants.ZIPFIAN_SCRAMBLED_DISTRIBUTION)){
-            if(debug.val) LOG.debug("Using a scrambled zipfian key distribution");
-            //ints are used for keyGens and longs are used for record counts.            
-            //TODO check on other zipf params
-            this.keyGenerator = new ZipfianGenerator(init_record_count, skewFactor, true);
-        }
-        else if(requestDistribution.equals(YCSBConstants.ZIPFIAN_VARYING_DISTRIBUTION)){
-            if(debug.val) LOG.debug("Using a varying zipfian key distribution");
-            //ints are used for keyGens and longs are used for record counts.            
-            //TODO check on other zipf params
-            this.keyGenerator = new VaryingZipfianGenerator(init_record_count, skewFactor, false, 60000);
-        }
-        else if(requestDistribution.equals(YCSBConstants.ZIPFIAN_SCRAMBLED_VARYING_DISTRIBUTION)){
-            if(debug.val) LOG.debug("Using a scrambled varying zipfian key distribution");
-            //ints are used for keyGens and longs are used for record counts.            
-            //TODO check on other zipf params
-            this.keyGenerator = new VaryingZipfianGenerator(init_record_count, skewFactor, true, 60000);
+            this.keyGenerator = new VaryingZipfianGenerator(init_record_count, skewFactor, scrambled, mirrored, interval, shift);
         }
         else{
             String msg = "Unsupported YCSB key distribution type :" + requestDistribution;
