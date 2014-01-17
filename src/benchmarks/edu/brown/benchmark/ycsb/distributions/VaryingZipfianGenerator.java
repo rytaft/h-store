@@ -219,7 +219,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 		//zetan=zeta(items,theta);
 		zetan=_zetan;
 		countforzeta=items;
-		eta=(1-Math.pow(2.0/items,1-theta))/(1-zeta2theta/zetan);
+		//eta=(1-Math.pow(2.0/items,1-theta))/(1-zeta2theta/zetan);
 		
 		//System.out.println("XXXX 3 XXXX");
 		nextInt();
@@ -344,6 +344,32 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 		
 		return sum;
 	}
+	
+	/**
+	 * Function to generate bounded Pareto distributed RVs
+	 * From: http://www.csee.usf.edu/~christen/tools/genpar2.c
+	 * @param a Pareto alpha value
+	 * @param k lower bound
+	 * @param p upper bound
+	 * @return bounded Pareto Random Variable
+	 */
+	static double bpareto(double a, double k, double p)
+	{
+		  double z;     // Uniform random number from 0 to 1
+		  double rv;    // RV to be returned
+
+		  // Pull a uniform RV (0 < z < 1)
+		  do
+		  {
+		    z = Utils.random().nextDouble();
+		  }
+		  while ((z == 0) || (z == 1));
+
+		  // Generate the bounded Pareto rv using the inversion method
+		  rv = Math.pow((Math.pow(k, a) / (z*Math.pow((k/p), a) - z + 1)), (1.0/a));
+
+		  return(rv);
+		}
 
 	/****************************************************************************************/
 	
@@ -380,7 +406,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 					
 					//we have added more items. can compute zetan incrementally, which is cheaper
 					zetan=zeta(countforzeta,itemcount,theta,zetan);
-					eta=(1-Math.pow(2.0/items,1-theta))/(1-zeta2theta/zetan);
+					//eta=(1-Math.pow(2.0/items,1-theta))/(1-zeta2theta/zetan);
 				}
 				else if ( (itemcount<countforzeta) && (allowitemcountdecrease) )
 				{
@@ -394,7 +420,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 					System.err.println("WARNING: Recomputing Zipfian distribtion. This is slow and should be avoided. (itemcount="+itemcount+" countforzeta="+countforzeta+")");
 					
 					zetan=zeta(itemcount,theta);
-					eta=(1-Math.pow(2.0/items,1-theta))/(1-zeta2theta/zetan);
+					//eta=(1-Math.pow(2.0/items,1-theta))/(1-zeta2theta/zetan);
 				}
 			}
 		}
@@ -412,7 +438,8 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 		    ret = 1;
 		}
 		else {
-		    ret=base+(long)((itemcount) * Math.pow(eta*u - eta + 1, alpha));
+		    //ret=base+(long)((itemcount) * Math.pow(eta*u - eta + 1, alpha));
+			ret=Math.round(bpareto(theta, min, max));
 		}
 
 		if(this.interval != DEFAULT_INTERVAL && System.currentTimeMillis() - this.interval > this.lastTime) {
