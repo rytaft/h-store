@@ -75,14 +75,6 @@ public class Controller implements Runnable {
 	// used HStoreTerminal as model to handle the catalog
 
 	 public Controller (Catalog catalog, HStoreConf hstore_conf){
-		//algo = new Placement();
-
-		//algo = new Placement();	
-	   // algo = new GreedyPlacement();
-	   // algo = new GreedyExtendedPlacement();
-	   // algo = new BinPackerPlacement();
-	    //algo = new FirstFitPlacement();
-	    //algo = new OneTieredPlacement();		
 
 		ttExecutor = new TupleTrackerExecutor();
 		// connect to VoltDB server
@@ -182,6 +174,7 @@ public class Controller implements Runnable {
  						ClientResponse cresponse = null;
 						try {
 						    cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "livepull");
+						    //cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "stopcopy");
 						    System.out.println("Controller: received response: " + cresponse);
 						} catch (NoConnectionsException e) {
 						    System.out.println("Controller: lost connection");

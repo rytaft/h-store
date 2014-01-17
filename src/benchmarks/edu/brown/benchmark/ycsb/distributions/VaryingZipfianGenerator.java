@@ -54,6 +54,11 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * The amount to shift the distribution each time
 	 */
 	long shift;
+
+	/**
+	 * The total shift from the base distribution
+	 */
+	long totalShift;
 	
 	/**
 	 * Number of items.
@@ -197,6 +202,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 		this.interval=interval;
 		this.lastTime = System.currentTimeMillis();
 		this.shift = shift;
+		this.totalShift = 0L;
 		if(shift == DEFAULT_SHIFT) {
 			this.randomShift = true;
 		}
@@ -395,32 +401,39 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 
 		double u=Utils.random().nextDouble();
 		double uz=u*zetan;
+		long ret;
 
 		if (uz<1.0)
 		{
-			return 0;
+		    ret = 0;
 		}
-
-		if (uz<1.0+Math.pow(0.5,theta)) 
+		else if (uz<1.0+Math.pow(0.5,theta)) 
 		{
-			return 1;
+		    ret = 1;
+		}
+		else {
+		    ret=base+(long)((itemcount) * Math.pow(eta*u - eta + 1, alpha));
 		}
 
-		long ret=base+(long)((itemcount) * Math.pow(eta*u - eta + 1, alpha));
 		if(this.interval != DEFAULT_INTERVAL && System.currentTimeMillis() - this.interval > this.lastTime) {
 			this.lastTime = System.currentTimeMillis();
 			if(this.randomShift) {
 				Utils.random().setSeed(shift);
-				this.shift = Utils.random().nextInt();
+				this.totalShift = Utils.random().nextInt();
 			}
-			System.out.println("Changing distribution. Adding shift: " + shift);
-		}
-		ret = min + (ret + shift) % items;
-		if(mirrored) {
-			if(Utils.random().nextBoolean()) {
-				ret = min + max - ret;
+			else {
+			    this.totalShift = (totalShift + shift) % items;
 			}
+			System.out.println("Changing distribution. Adding total shift: " + totalShift);
 		}
+
+		if(mirrored && Utils.random().nextBoolean()) {
+		    ret = min + (max - ret + totalShift - min) % items;
+		}
+		else {
+		    ret = min + (ret + totalShift - min) % items;
+		}
+
 		if(scrambled) {
 		    ret=min+Utils.FNVhash64(ret)%items;
 		}
