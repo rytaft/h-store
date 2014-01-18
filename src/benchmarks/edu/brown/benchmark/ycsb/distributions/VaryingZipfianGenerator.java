@@ -364,6 +364,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 			itemId++;
 			minRandVal += (1.0/Math.pow(itemId, theta))/zetan;
 		}
+		//System.out.println("Size of item map: " + itemMap.size());
 
 	}
 
