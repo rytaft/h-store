@@ -19,6 +19,7 @@ package edu.brown.benchmark.ycsb.distributions;
  */
 
 import java.util.Random;
+import java.util.TreeMap;
 
 /**
  * A generator of a zipfian distribution. It produces a sequence of items, such that some items are more popular than others, according
@@ -110,6 +111,11 @@ public class VaryingZipfianGenerator extends IntegerGenerator
      * Whether to make the shift to a new distribution random
      */
     boolean randomShift = false;
+    
+    /**
+     * Map random double to an item id
+     */
+    TreeMap<Double, Long> itemMap;
  
 	
 	/**
@@ -219,11 +225,14 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 		//zetan=zeta(items,theta);
 		zetan=_zetan;
 		countforzeta=items;
-		//eta=(1-Math.pow(2.0/items,1-theta))/(1-zeta2theta/zetan);
+		if(theta >= 1) {
+			generateItemMap();
+		}
+		else {
+			eta=(1-Math.pow(2.0/items,1-theta))/(1-zeta2theta/zetan);
+		}
 		
-		//System.out.println("XXXX 3 XXXX");
 		nextInt();
-		//System.out.println("XXXX 4 XXXX");
 	}
 
 	/**
@@ -345,31 +354,18 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 		return sum;
 	}
 	
-	/**
-	 * Function to generate bounded Pareto distributed RVs
-	 * From: http://www.csee.usf.edu/~christen/tools/genpar2.c
-	 * @param a Pareto alpha value
-	 * @param k lower bound
-	 * @param p upper bound
-	 * @return bounded Pareto Random Variable
-	 */
-	static double bpareto(double a, double k, double p)
-	{
-		  double z;     // Uniform random number from 0 to 1
-		  double rv;    // RV to be returned
-
-		  // Pull a uniform RV (0 < z < 1)
-		  do
-		  {
-		    z = Utils.random().nextDouble();
-		  }
-		  while ((z == 0) || (z == 1));
-
-		  // Generate the bounded Pareto rv using the inversion method
-		  rv = Math.pow((Math.pow(k, a) / (z*Math.pow((k/p), a) - z + 1)), (1.0/a));
-
-		  return(rv);
+	void generateItemMap() {
+		itemMap = new TreeMap<Double, Long>();
+		
+		Long itemId = 0L;
+		Double minRandVal = 0.0;
+		while(minRandVal < 0.95) {
+			itemMap.put(minRandVal, itemId);
+			itemId++;
+			minRandVal += (1.0/Math.pow(itemId, theta))/zetan;
 		}
+
+	}
 
 	/****************************************************************************************/
 	
@@ -406,7 +402,12 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 					
 					//we have added more items. can compute zetan incrementally, which is cheaper
 					zetan=zeta(countforzeta,itemcount,theta,zetan);
-					//eta=(1-Math.pow(2.0/items,1-theta))/(1-zeta2theta/zetan);
+					if(theta >= 1) {
+						generateItemMap();
+					}
+					else {
+						eta=(1-Math.pow(2.0/items,1-theta))/(1-zeta2theta/zetan);
+					}
 				}
 				else if ( (itemcount<countforzeta) && (allowitemcountdecrease) )
 				{
@@ -420,7 +421,12 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 					System.err.println("WARNING: Recomputing Zipfian distribtion. This is slow and should be avoided. (itemcount="+itemcount+" countforzeta="+countforzeta+")");
 					
 					zetan=zeta(itemcount,theta);
-					//eta=(1-Math.pow(2.0/items,1-theta))/(1-zeta2theta/zetan);
+					if(theta >= 1) {
+						generateItemMap();
+					}
+					else {
+						eta=(1-Math.pow(2.0/items,1-theta))/(1-zeta2theta/zetan);
+					}
 				}
 			}
 		}
@@ -429,17 +435,27 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 		double uz=u*zetan;
 		long ret;
 
-		if (uz<1.0)
-		{
-		    ret = 0;
-		}
-		else if (uz<1.0+Math.pow(0.5,theta)) 
-		{
-		    ret = 1;
+		if(theta >= 1) {
+			if(u < 0.95) {
+				ret = itemMap.floorEntry(u).getValue();
+			}
+			else { // the last 5% are distributed uniformly
+				Long maxItem = itemMap.lastEntry().getValue();
+				ret = Utils.random().nextInt() % (items - maxItem) + maxItem;
+			}
 		}
 		else {
-		    //ret=base+(long)((itemcount) * Math.pow(eta*u - eta + 1, alpha));
-			ret=Math.round(bpareto(theta, min, max));
+			if (uz<1.0)
+			{
+			    ret = 0;
+			}
+			else if (uz<1.0+Math.pow(0.5,theta)) 
+			{
+			    ret = 1;
+			}
+			else {
+			    ret=base+(long)((itemcount) * Math.pow(eta*u - eta + 1, alpha));
+			}
 		}
 
 		if(this.interval != DEFAULT_INTERVAL && System.currentTimeMillis() - this.interval > this.lastTime) {
