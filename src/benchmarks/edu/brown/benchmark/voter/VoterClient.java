@@ -110,6 +110,10 @@ public class VoterClient extends BenchmarkComponent {
             else if (key.equalsIgnoreCase("interval")) {
                 this.interval = Long.valueOf(value);
             }
+            // Whether to use a random shift
+            else if (key.equalsIgnoreCase("random_shift")) {
+                this.randomShift = Boolean.valueOf(value);
+            }
             // How much to shift the distribution each time
             else if (key.equalsIgnoreCase("shift")) {
                 this.shift = Long.valueOf(value);
