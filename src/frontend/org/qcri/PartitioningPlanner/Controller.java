@@ -69,6 +69,7 @@ public class Controller implements Runnable {
 	
 	private static int no_of_partitions = 4; 
 	private static int doProvisioning = 0;
+	private static int timeLimit = 60000; // 1 minute
 	
 	
 
@@ -157,14 +158,14 @@ public class Controller implements Runnable {
 						
 					System.out.println("Provisioning is on");	
 					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
-								Provisioning.noOfSitesRequiredQuery(client, no_of_partitions));
+								Provisioning.noOfSitesRequiredQuery(client, no_of_partitions), timeLimit);
 								
 					}
 					else
 					{
 						System.out.println("Provisioning is off");
 						currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
-							                           no_of_partitions);
+							                           no_of_partitions, timeLimit);
 					}
 					
 					
@@ -229,13 +230,9 @@ public class Controller implements Runnable {
 			return;
 		}		
 
-        
-		//String[] params = {vargs[0]};
+        ArgumentsParser args = ArgumentsParser.load(vargs,ArgumentsParser.PARAM_CATALOG);
 		
-		ArgumentsParser args = ArgumentsParser.load(vargs,ArgumentsParser.PARAM_CATALOG);
-		
-		//ArgumentsParser args = ArgumentsParser.load(params, ArgumentsParser.PARAM_CATALOG);
-        HStoreConf hstore_conf = HStoreConf.initArgumentsParser(args);
+		HStoreConf hstore_conf = HStoreConf.initArgumentsParser(args);
 		
 		//System.out.println("Params: bench"+params[0] +" no. part " +vargs[1] + " twin "+vargs[2]+" plannerID "+vargs[3]);
         System.out.println("args:: "+args.toString());
@@ -248,6 +245,7 @@ public class Controller implements Runnable {
 		time_window = Integer.parseInt(vargs[2]);
 		planner_selector = Integer.parseInt(vargs[3]);
 		doProvisioning = Integer.parseInt(vargs[4]);
+		timeLimit = Integer.parseInt(vargs[5]);
 		}
 		else // use default
 		{
@@ -255,6 +253,7 @@ public class Controller implements Runnable {
 			time_window = 10;
 			planner_selector = 0;
 			doProvisioning = 0;
+			timeLimit = 60000;
 		}
 
  

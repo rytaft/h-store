@@ -23,7 +23,8 @@ public class Placement {
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
 	// partitionCount: number of partitions actually in use
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> siteLoads, String planFile, int partitionCount){
+	// timeLimit - time limit for planner in ms
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> siteLoads, String planFile, int partitionCount, int timeLimit){
 		return new Plan(planFile);
 	}
 	

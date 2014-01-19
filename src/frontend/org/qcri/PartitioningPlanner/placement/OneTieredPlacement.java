@@ -66,7 +66,7 @@ public class OneTieredPlacement extends Placement {
 
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount, int timeLimit){
 		// ignore hotTuplesList
 		
 		Plan aPlan = new Plan(planFile);
@@ -84,7 +84,7 @@ public class OneTieredPlacement extends Placement {
 		glp_iocp parm = new glp_iocp();
 		GLPK.glp_init_iocp(parm);
 		parm.setPresolve(GLPK.GLP_ON);
-		parm.setTm_lim(60000); // run for at most 1 minute   
+		parm.setTm_lim(timeLimit); 
 
 		// reserved for glpk use in C++
 		GLPK.intArray_setitem(idxX, 0, 0);
