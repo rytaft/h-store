@@ -308,8 +308,11 @@ public class VaryingZipfianGenerator extends IntegerGenerator
     	long item = 0;
     	while(hotSpotsSet.size() < numHotSpots) {
     		Utils.random().setSeed(item);
-    		item = Utils.random().nextLong();
-    		hotSpotsSet.add(item % items + min);
+    		item = Utils.random().nextLong() % items + min;
+		if (item < min) item += items;
+    		if(!hotSpotsSet.add(item)) {
+		    item += 1;
+		}
     	}
     	hotSpots.clear();
     	hotSpots.addAll(hotSpotsSet);
@@ -477,6 +480,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 			else { // the last 5% are distributed uniformly
 				Long maxItem = itemMap.lastEntry().getValue();
 				ret = Utils.random().nextInt() % (items - maxItem) + maxItem;
+				if(ret < maxItem) ret += (items - maxItem);
 			}
 		}
 		else {
@@ -515,6 +519,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 		if(scrambled) {
 		    ret=min+Utils.FNVhash64(ret)%items;
 		}
+		if(ret < min) ret += items;
 		setLastInt((int)ret);
 		return ret;
 	}
