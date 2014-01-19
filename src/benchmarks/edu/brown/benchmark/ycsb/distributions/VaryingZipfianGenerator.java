@@ -128,7 +128,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
     /**
      * List of the k randomly selected hot spots
      */
-    ArrayList<Long> hotSpots;
+    ArrayList<Long> hotSpots = new ArrayList<Long>();
     
     /**
      * Map random double to an item id
@@ -304,9 +304,12 @@ public class VaryingZipfianGenerator extends IntegerGenerator
     
     public void setNumHotSpots(int numHotSpots) {
     	this.numHotSpots = numHotSpots;
-    	HashSet<Long> hotSpotsSet = new HashSet<Long>(numHotSpots); 
+    	HashSet<Long> hotSpotsSet = new HashSet<Long>(numHotSpots);
+    	long item = 0;
     	while(hotSpotsSet.size() < numHotSpots) {
-    		hotSpotsSet.add(Utils.random().nextLong() % items + min);
+    		Utils.random().setSeed(item);
+    		item = Utils.random().nextLong();
+    		hotSpotsSet.add(item % items + min);
     	}
     	hotSpots.clear();
     	hotSpots.addAll(hotSpotsSet);
