@@ -32,8 +32,8 @@ package edu.brown.benchmark.voter;
 
 import java.util.Random;
 
-import edu.brown.benchmark.voter.distributions.IntegerGenerator;
-import edu.brown.benchmark.voter.distributions.UniformIntegerGenerator;
+import edu.brown.benchmark.ycsb.distributions.IntegerGenerator;
+import edu.brown.benchmark.ycsb.distributions.UniformIntegerGenerator;
 
 public class PhoneCallGenerator {
 	
