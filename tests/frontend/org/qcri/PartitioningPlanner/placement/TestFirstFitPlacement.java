@@ -90,7 +90,7 @@ public class TestFirstFitPlacement extends BaseTestCase {
 		}
 
 		
-		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  "test.txt", partitionTotals.size());
+		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  "test.txt", partitionTotals.size(), 60000);
 
 		System.out.println("Ending with plan:");
 		aPlan.printPlan();
