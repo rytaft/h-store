@@ -41,14 +41,27 @@ import org.voltdb.client.ClientResponse;
 import org.voltdb.client.ProcedureCallback;
 
 import weka.classifiers.meta.Vote;
-
 import edu.brown.api.BenchmarkComponent;
+import edu.brown.benchmark.voter.distributions.Utils;
+import edu.brown.benchmark.voter.distributions.IntegerGenerator;
+import edu.brown.benchmark.voter.distributions.UniformIntegerGenerator;
+import edu.brown.benchmark.voter.distributions.VaryingZipfianGenerator;
 import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 
 public class VoterClient extends BenchmarkComponent {
     private static final Logger LOG = Logger.getLogger(VoterClient.class);
     private static final LoggerBoolean debug = new LoggerBoolean();
+    
+    // parameters for zipfian skew
+    private double skewFactor = VaryingZipfianGenerator.ZIPFIAN_CONSTANT;
+    private boolean scrambled = false;
+    private boolean mirrored = false;
+    private long interval = VaryingZipfianGenerator.DEFAULT_INTERVAL;
+    private long shift = VaryingZipfianGenerator.DEFAULT_SHIFT;
+    private boolean zipfian = false;
+    private final IntegerGenerator areaCodeGenerator;
+    private final IntegerGenerator phoneNumberGenerator;
 
     // Phone number generator
     PhoneCallGenerator switchboard;
@@ -73,6 +86,50 @@ public class VoterClient extends BenchmarkComponent {
         super(args);
         int numContestants = VoterUtil.getScaledNumContestants(this.getScaleFactor());
         this.switchboard = new PhoneCallGenerator(this.getClientId(), numContestants);
+        
+        for (String key : m_extraParams.keySet()) {
+            String value = m_extraParams.get(key);
+
+            // Zipfian Skew Factor
+            if (key.equalsIgnoreCase("skew_factor")) {
+                this.skewFactor = Double.valueOf(value);
+                this.zipfian = true;
+            }
+            // Whether or not to scramble the zipfian distribution
+            else if (key.equalsIgnoreCase("scrambled")) {
+                this.scrambled = Boolean.valueOf(value);
+            }
+            // Whether or not to mirror the zipfian distribution
+            else if (key.equalsIgnoreCase("mirrored")) {
+                this.mirrored = Boolean.valueOf(value);
+            }
+            // Interval for changing skew distribution
+            else if (key.equalsIgnoreCase("interval")) {
+                this.interval = Long.valueOf(value);
+            }
+            // How much to shift the distribution each time
+            else if (key.equalsIgnoreCase("shift")) {
+                this.shift = Long.valueOf(value);
+            }
+            else{
+                if(debug.val) LOG.debug("Unknown prop : "  + key);
+            }
+        } // FOR
+        
+        if(zipfian) {
+            if(debug.val) LOG.debug("Using a default zipfian key distribution");
+            //ints are used for keyGens and longs are used for record counts.            
+            //TODO check on other zipf params
+            this.areaCodeGenerator = new VaryingZipfianGenerator(PhoneCallGenerator.AREA_CODES.length, skewFactor, scrambled, mirrored, interval, shift);
+            this.phoneNumberGenerator = new VaryingZipfianGenerator(10000000, skewFactor, scrambled, mirrored, interval, shift);
+        }
+        else {
+            if(debug.val) LOG.debug("Using a uniform key distribution");
+            //Ints are used for keyGens and longs are used for record counts.
+            this.areaCodeGenerator = new UniformIntegerGenerator(Utils.random(), 0, PhoneCallGenerator.AREA_CODES.length);
+            this.phoneNumberGenerator = new UniformIntegerGenerator(Utils.random(), 0, 10000000);
+        }
+        
     }
 
     @Override
@@ -96,7 +153,8 @@ public class VoterClient extends BenchmarkComponent {
     @Override
     protected boolean runOnce() throws IOException {
         // Get the next phone call
-        PhoneCallGenerator.PhoneCall call = switchboard.receive();
+        //PhoneCallGenerator.PhoneCall call = switchboard.receive();
+    	PhoneCallGenerator.PhoneCall call = switchboard.receive(areaCodeGenerator, phoneNumberGenerator);
 
         Client client = this.getClientHandle();
         boolean response = client.callProcedure(callback,
