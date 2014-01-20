@@ -79,6 +79,7 @@ public class Controller implements Runnable {
 		client = ClientFactory.createClient();
 		client.configureBlocking(false);
 		sites = CatalogUtil.getAllSites(catalog);
+		connectToHost();
 		provisioning = new Provisioning(client,no_of_partitions);
 
 		if(hstore_conf.global.hasher_plan == null){
@@ -101,11 +102,6 @@ public class Controller implements Runnable {
 			e.printStackTrace();
 		}
 
-
-		if(connectedHost == null){
-			connectToHost();
-		}
-
 		switch (planner_selector) {
 		case 0:  algo = new GreedyPlacement(); System.out.println("GreedyPlacement is selected"); break;
 		case 1:  algo = new GreedyExtendedPlacement(); System.out.println("GreedyExtendedPlacement is selected"); break;
@@ -121,10 +117,11 @@ public class Controller implements Runnable {
 		try {
 			while(true){
 				Thread.sleep(POLL_FREQUENCY);
-				if(provisioning.needReconfiguration()){
-					doReconfiguration();
-				}
-				// wait until reconfiguration has completed
+				System.out.println("\nPolling");
+				if(!provisioning.needReconfiguration()) continue;
+				System.out.println("Starting reconfiguration");
+				doReconfiguration();
+				System.out.println("Waiting until reconfiguration has completed");
 				String ip = sites.iterator().next().getHost().getIpaddr();
 				String response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
 				int previousReconfigurations = response.split("\n").length; 
@@ -133,6 +130,7 @@ public class Controller implements Runnable {
 					response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
 					if(response.split("\n").length > previousReconfigurations) break;
 				}
+				System.out.println("Reconfiguration has completed");
 				provisioning.refreshCPUStats();
 			}
 		} catch (InterruptedException e) {
@@ -156,7 +154,7 @@ public class Controller implements Runnable {
 
 			//ttExecutor.runTestCase(); 	
 			//System.out.println("Essam Before: hotTuplesList size is " + hotTuplesList.size());
-
+			System.out.println("Starting tuple tracking");	
 
 			ttExecutor.turnOnOff(time_window,client);	// turn on tuple tracking for time window of X seconds
 
@@ -165,6 +163,8 @@ public class Controller implements Runnable {
 
 			// here we get load per site
 			ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
+
+			System.out.println("Got list of hot tuples");	
 
 			// here we call the planner
 			// @todo - last parameter should be the number of partitions in use - may be less than
@@ -185,6 +185,7 @@ public class Controller implements Runnable {
 						no_of_partitions, timeLimit);
 			}
 
+			System.out.println("Calculated new plan");
 
 			currentPlan.toJSON(outputPlanFile.toString());
 

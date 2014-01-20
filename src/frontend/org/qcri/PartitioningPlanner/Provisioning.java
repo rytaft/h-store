@@ -20,7 +20,7 @@ public class Provisioning {
 	// thresholds are per site
 	private static final int CPU_THRESHOLD_UP = 160;
 	private static final int CPU_THRESHOLD_DOWN = 110;
-	private static final int SITES_PER_HOST = 2;
+	private static final int SITES_PER_HOST = 1;
 	private static final int PARTITIONS_PER_SITE = 1;
 
 	Client client;
