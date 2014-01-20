@@ -43,167 +43,182 @@ import edu.brown.utils.ArgumentsParser;
 import edu.brown.utils.CollectionUtil;
 
 public class Controller implements Runnable {
-	
+
 	private org.voltdb.client.Client client;
 	private String connectedHost;
 	private Collection<Site> sites;
-	
+
 	private Placement algo;
 	private Plan currentPlan;
 	private Path planFile;
 	private Path outputPlanFile;
-	
-	
-	private TupleTrackerExecutor ttExecutor;
-	private Catalog catalog;
-	
-	
 
-	private static final double CPU_THRESHOLD = 0.8;
-	private static final int PARTITIONS_PER_HOST = 8;
+
+	private TupleTrackerExecutor ttExecutor;
+	private Provisioning provisioning;
+
 	private static final int POLL_FREQUENCY = 3000;
-	
+	private static String HSTORE_HOME = "~/h-store";
+
 	private static int time_window = 10; // time window for tuple tracking
-	
+
 	private static int planner_selector = 0; // planner ID from 0 to 4, Greedy - GreedyEx - FFit - BP - BP one tier 
-	
+
 	private static int no_of_partitions = 4; 
 	private static int doProvisioning = 0;
 	private static int timeLimit = 60000; // 1 minute
-	
-	
+
+
 
 	// used HStoreTerminal as model to handle the catalog
 
-	 public Controller (Catalog catalog, HStoreConf hstore_conf){
+	public Controller (Catalog catalog, HStoreConf hstore_conf){
 
 		ttExecutor = new TupleTrackerExecutor();
 		// connect to VoltDB server
-        client = ClientFactory.createClient();
-        client.configureBlocking(false);
-        sites = CatalogUtil.getAllSites(catalog);
-        
+		client = ClientFactory.createClient();
+		client.configureBlocking(false);
+		sites = CatalogUtil.getAllSites(catalog);
+		provisioning = new Provisioning(client,no_of_partitions);
 
-        this.catalog = catalog;
-        
-      
-        if(hstore_conf.global.hasher_plan == null){
-	    System.out.println("Must set global.hasher_plan to specify plan file!");
-	    System.out.println("Using default (plan.json)");
-	    planFile = FileSystems.getDefault().getPath("plan.json");
-            
-        }
-        else{
-	    planFile = FileSystems.getDefault().getPath(hstore_conf.global.hasher_plan);
-        }
+		if(hstore_conf.global.hasher_plan == null){
+			System.out.println("Must set global.hasher_plan to specify plan file!");
+			System.out.println("Using default (plan.json)");
+			planFile = FileSystems.getDefault().getPath("plan.json");
 
-        outputPlanFile = FileSystems.getDefault().getPath("plan_out.json");
+		}
+		else{
+			planFile = FileSystems.getDefault().getPath(hstore_conf.global.hasher_plan);
+		}
 
-	try {
-	    Files.copy(planFile, outputPlanFile, StandardCopyOption.REPLACE_EXISTING);				
-	}
-	catch(IOException e) {
-	    System.out.println("Controller: IO Exception while copying plan file to output plan file");
-	    e.printStackTrace();
-	}
-	
-	
-	if(connectedHost == null){
-	    connectToHost();
-	}
-	
-	
+		outputPlanFile = FileSystems.getDefault().getPath("plan_out.json");
+
+		try {
+			Files.copy(planFile, outputPlanFile, StandardCopyOption.REPLACE_EXISTING);				
+		}
+		catch(IOException e) {
+			System.out.println("Controller: IO Exception while copying plan file to output plan file");
+			e.printStackTrace();
+		}
+
+
+		if(connectedHost == null){
+			connectToHost();
+		}
+
+		switch (planner_selector) {
+		case 0:  algo = new GreedyPlacement(); System.out.println("GreedyPlacement is selected"); break;
+		case 1:  algo = new GreedyExtendedPlacement(); System.out.println("GreedyExtendedPlacement is selected"); break;
+		case 2:  algo = new FirstFitPlacement(); System.out.println("FirstFitPlacement is selected"); break;
+		case 3:  algo = new BinPackerPlacement(); System.out.println("BinPackerPlacement is selected"); break;
+		case 4:  algo = new OneTieredPlacement(); System.out.println("OneTieredPlacement is selected"); break;
+		}
 
 	}
 
 	@Override
 	public void run () {
-		
-		switch (planner_selector) {
-        case 0:  algo = new GreedyPlacement(); System.out.println("GreedyPlacement is selected"); break;
-        case 1:  algo = new GreedyExtendedPlacement(); System.out.println("GreedyExtendedPlacement is selected"); break;
-        case 2:  algo = new FirstFitPlacement(); System.out.println("FirstFitPlacement is selected"); break;
-        case 3:  algo = new BinPackerPlacement(); System.out.println("BinPackerPlacement is selected"); break;
-        case 4:  algo = new OneTieredPlacement(); System.out.println("OneTieredPlacement is selected"); break;
-       	}
-	   				
-					//Jennie temp for now
-					Map<Integer, Long> mSiteLoad = new HashMap<Integer, Long>();
-					
-					ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>> (no_of_partitions);
-					
-					
-					
-					
-					try {
-						
-						//ttExecutor.runTestCase(); 	
-						//System.out.println("Essam Before: hotTuplesList size is " + hotTuplesList.size());
-						
-
-				    ttExecutor.turnOnOff(time_window,client);	// turn on tuple tracking for time window of X seconds
-						
-					// here we get top K
-					ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
-					
-					// here we get load per site
-					ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
-					
-					// here we call the planner
-					// @todo - last parameter should be the number of partitions in use - may be less than
-					// hotTuplesList.size()
-					
-					if(doProvisioning == 1)
-					{
-						
-					System.out.println("Provisioning is on");	
-					currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
-								Provisioning.noOfSitesRequiredQuery(client, no_of_partitions), timeLimit);
-								
-					}
-					else
-					{
-						System.out.println("Provisioning is off");
-						currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
-							                           no_of_partitions, timeLimit);
-					}
-					
-					
-					currentPlan.toJSON(outputPlanFile.toString());
-
-
- 						ClientResponse cresponse = null;
-						try {
-						    cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "livepull");
-						    //cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "stopcopy");
-						    System.out.println("Controller: received response: " + cresponse);
-						} catch (NoConnectionsException e) {
-						    System.out.println("Controller: lost connection");
-						    e.printStackTrace();
-						} catch (IOException e) {
-						    System.out.println("Controller: IO Exception while connecting to host");
-						    e.printStackTrace();
-						} catch (ProcCallException e) {
-						    System.out.println("Controller: @Reconfiguration transaction rejected (backpressure?)");
-						    e.printStackTrace();
-						}
-
-						if(cresponse.getStatus() != Status.OK){
-						    System.out.println("@Reconfiguration transaction aborted");
-						}
-
-					} catch(Exception e) {
-						System.out.println("Caught on exception " + e.toString());
-					}
-				
-				
+		try {
+			while(true){
+				Thread.sleep(POLL_FREQUENCY);
+				if(provisioning.needReconfiguration()){
+					doReconfiguration();
+				}
+				// wait until reconfiguration has completed
+				String ip = sites.iterator().next().getHost().getIpaddr();
+				String response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
+				int previousReconfigurations = response.split("\n").length; 
+				while(true){
+					Thread.sleep(1000);
+					response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
+					if(response.split("\n").length > previousReconfigurations) break;
+				}
+				provisioning.refreshCPUStats();
+			}
+		} catch (InterruptedException e) {
+			System.out.println("Controller was interrupted");
+			e.printStackTrace();
+			System.exit(1);
+		}
 	}
-	
-	public void connectToHost(){
-        Site catalog_site = CollectionUtil.random(sites);
-        connectedHost= catalog_site.getHost().getIpaddr();
 
-        try {
+	public void doReconfiguration(){
+
+		//Jennie temp for now
+		Map<Integer, Long> mSiteLoad = new HashMap<Integer, Long>();
+
+		ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>> (no_of_partitions);
+
+
+
+
+		try {
+
+			//ttExecutor.runTestCase(); 	
+			//System.out.println("Essam Before: hotTuplesList size is " + hotTuplesList.size());
+
+
+			ttExecutor.turnOnOff(time_window,client);	// turn on tuple tracking for time window of X seconds
+
+			// here we get top K
+			ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList);
+
+			// here we get load per site
+			ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
+
+			// here we call the planner
+			// @todo - last parameter should be the number of partitions in use - may be less than
+			// hotTuplesList.size()
+
+			if(doProvisioning == 1)
+			{
+
+				System.out.println("Provisioning is on");	
+				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
+						provisioning.noOfSitesRequiredQuery(), timeLimit);
+
+			}
+			else
+			{
+				System.out.println("Provisioning is off");
+				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
+						no_of_partitions, timeLimit);
+			}
+
+
+			currentPlan.toJSON(outputPlanFile.toString());
+
+
+			ClientResponse cresponse = null;
+			try {
+				cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "livepull");
+				//cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "stopcopy");
+				System.out.println("Controller: received response: " + cresponse);
+			} catch (NoConnectionsException e) {
+				System.out.println("Controller: lost connection");
+				e.printStackTrace();
+			} catch (IOException e) {
+				System.out.println("Controller: IO Exception while connecting to host");
+				e.printStackTrace();
+			} catch (ProcCallException e) {
+				System.out.println("Controller: @Reconfiguration transaction rejected (backpressure?)");
+				e.printStackTrace();
+			}
+
+			if(cresponse.getStatus() != Status.OK){
+				System.out.println("@Reconfiguration transaction aborted");
+			}
+
+		} catch(Exception e) {
+			System.out.println("Caught on exception " + e.toString());
+		}
+	}
+
+	public void connectToHost(){
+		Site catalog_site = CollectionUtil.random(sites);
+		connectedHost= catalog_site.getHost().getIpaddr();
+
+		try {
 			client.createConnection(null, connectedHost, HStoreConstants.DEFAULT_PORT, "user", "password");
 		} catch (UnknownHostException e) {
 			System.out.println("Controller: tried to connect to unknown host");
@@ -214,38 +229,38 @@ public class Controller implements Runnable {
 			e.printStackTrace();
 			return;
 		}
-        System.out.println("Connected to host " + connectedHost);
+		System.out.println("Connected to host " + connectedHost);
 	}
 
 
-	
+
 
 	/**
 	 * @param args
 	 */
 	public static void main(String[] vargs) throws Exception{
-		
+
 		if(vargs.length == 0){
 			System.out.println("Must specify server hostname");
 			return;
 		}		
 
-        ArgumentsParser args = ArgumentsParser.load(vargs,ArgumentsParser.PARAM_CATALOG);
-		
+		ArgumentsParser args = ArgumentsParser.load(vargs,ArgumentsParser.PARAM_CATALOG);
+
 		HStoreConf hstore_conf = HStoreConf.initArgumentsParser(args);
-		
+
 		//System.out.println("Params: bench"+params[0] +" no. part " +vargs[1] + " twin "+vargs[2]+" plannerID "+vargs[3]);
-        System.out.println("args:: "+args.toString());
-        
-        System.out.println("vargs.length: "+vargs.length);
-		
+		System.out.println("args:: "+args.toString());
+
+		System.out.println("vargs.length: "+vargs.length);
+
 		if(vargs.length > 1)
 		{
-		no_of_partitions = Integer.parseInt(vargs[1]);
-		time_window = Integer.parseInt(vargs[2]);
-		planner_selector = Integer.parseInt(vargs[3]);
-		doProvisioning = Integer.parseInt(vargs[4]);
-		timeLimit = Integer.parseInt(vargs[5]);
+			no_of_partitions = Integer.parseInt(vargs[1]);
+			time_window = Integer.parseInt(vargs[2]);
+			planner_selector = Integer.parseInt(vargs[3]);
+			doProvisioning = Integer.parseInt(vargs[4]);
+			timeLimit = Integer.parseInt(vargs[5]);
 		}
 		else // use default
 		{
@@ -256,10 +271,10 @@ public class Controller implements Runnable {
 			timeLimit = 60000;
 		}
 
- 
 
-        
-        Controller c = new Controller(args.catalog, hstore_conf);
-       	c.run();
+
+
+		Controller c = new Controller(args.catalog, hstore_conf);
+		c.run();
 	}
 }
