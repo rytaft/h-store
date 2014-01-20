@@ -8,13 +8,15 @@ import java.util.Map;
 
 import org.jaga.definitions.GAParameterSet;
 import org.jaga.definitions.GAResult;
-import org.jaga.exampleApplications.Example1Fitness;
+import org.jaga.definitions.Individual;
 import org.jaga.hooks.AnalysisHook;
+import org.jaga.individualRepresentation.greycodedNumbers.NDecimalsIndividual;
 import org.jaga.individualRepresentation.greycodedNumbers.NDecimalsIndividualSimpleFactory;
 import org.jaga.individualRepresentation.greycodedNumbers.RangeConstraint;
 import org.jaga.masterAlgorithm.ReusableSimpleGA;
 import org.jaga.selection.RouletteWheelSelection;
 import org.jaga.util.DefaultParameterSet;
+import org.jaga.util.FittestIndividualResult;
 import org.qcri.PartitioningPlanner.placement.Plan;
 
 public class GAPlacement extends Placement {
@@ -142,27 +144,65 @@ public class GAPlacement extends Placement {
 		params.setIndividualsFactory(fact);
 
 		ReusableSimpleGA ga = new ReusableSimpleGA(params);
-		AnalysisHook hook = new AnalysisHook();
-		hook.setLogStream(System.out);
-		hook.setUpdateDelay(100);
-		hook.setAnalyseGenMinFit(true);
-		ga.addHook(hook);
+//		AnalysisHook hook = new AnalysisHook();
+//		hook.setLogStream(System.out);
+//		hook.setUpdateDelay(100);
+//		hook.setAnalyseGenMinFit(true);
+//		ga.addHook(hook);
+//
+//		final int attempts = 1;
+//
+//		GAResult [] allResults = new GAResult[attempts];
+//		for (int i = 0; i < attempts; i++) {
+//			hook.reset();
+//			GAResult result = ga.exec();
+//			allResults[i] = result;
+//		}
+//		System.out.println("\nALL DONE.\n");
+//		for (int i = 0; i < attempts; i++) {
+//			System.out.println("Result " + i + " is: " + allResults[i]);
+//		}
 
-		final int attempts = 1;
+		GAResult result = ga.exec();
+		FittestIndividualResult fittestResult = (FittestIndividualResult) result;
+		NDecimalsIndividual indiv = (NDecimalsIndividual) fittestResult.getFittestIndividual();
 
-		GAResult [] allResults = new GAResult[attempts];
-		for (int i = 0; i < attempts; i++) {
-			hook.reset();
-			GAResult result = ga.exec();
-			allResults[i] = result;
+		for(int i = 0; i < indiv.getSize(); ++i) {
+			Integer srcPartition = locations.get(i);
+			Integer dstPartition = (int) indiv.getDoubleValue(i);
+			if(srcPartition != dstPartition) {
+				if(i < tupleCount) {
+					Long id = tupleIds.get(i);
+					aPlan.removeTupleId(srcPartition, id);
+					if(!aPlan.hasPartition(dstPartition)) {
+						aPlan.addPartition(dstPartition);
+					}
+					aPlan.addRange(dstPartition, id, id);
+				}
+				else {
+					List<Plan.Range> slice = slices.get(i - tupleCount);
+					for(Plan.Range r : slice) { 
+						if(!aPlan.hasPartition(dstPartition)) {
+							aPlan.addPartition(dstPartition);
+						}
+
+						List<Plan.Range> oldRanges = aPlan.getRangeValues(srcPartition, r.from, r.to);
+						for(Plan.Range oldRange : oldRanges) {
+							aPlan.removeRange(srcPartition, oldRange.from);
+							aPlan.addRange(dstPartition, Math.max(oldRange.from, r.from), Math.min(oldRange.to, r.to));
+
+							if(oldRange.from < r.from) {
+								aPlan.addRange(srcPartition, oldRange.from, r.from - 1);
+							}
+							if(r.to < oldRange.to) {
+								aPlan.addRange(srcPartition, r.to + 1, oldRange.to);
+							}
+						}
+					}
+				}
+			}
 		}
-		System.out.println("\nALL DONE.\n");
-		for (int i = 0; i < attempts; i++) {
-			System.out.println("Result " + i + " is: " + allResults[i]);
-		}
 
-		
-		
 		
 
 		aPlan = demoteTuples(hotTuplesList, aPlan);
