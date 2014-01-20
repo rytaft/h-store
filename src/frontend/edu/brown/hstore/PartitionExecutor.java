@@ -2445,7 +2445,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             LOG.info(String.format(" ### (%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
             for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
                 ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
-                scheduleAsyncPullQueue.add(scheduleAsyncPull);
+                //scheduleAsyncPullQueue.add(scheduleAsyncPull);
+                this.work_queue.offer(scheduleAsyncPull);
             }
             //Set the next time to do an async pull now
             nextAsyncPullTimeMS = System.currentTimeMillis();
