@@ -34,7 +34,7 @@ import org.jaga.util.*;
 public class NDecimalsIndividualSimpleFactory implements IndividualsFactory {
 
 	private int individualSize = 1;
-	private double decimalScale = 1000000;  // 10^6 i.e., 6 digits
+    	private double decimalScale = 1000000;  // 10^6 i.e., 6 digits
 	private int precision = 64;  // bits
 	private RangeConstraint [] constraints = new RangeConstraint [] {null};
 
@@ -48,8 +48,8 @@ public class NDecimalsIndividualSimpleFactory implements IndividualsFactory {
 	}
 
 	public int getDecimalScale() {
-		double scal = Math.log(decimalScale) / Math.log(10); // i.e. log(10, scale)
-		return (byte) scal;
+	    double scal = Math.log(decimalScale) / Math.log(10); // i.e. log(10, scale)
+	    return (byte) scal;
 	}
 
 	public void setDecimalScale(int val) {
@@ -116,10 +116,9 @@ public class NDecimalsIndividualSimpleFactory implements IndividualsFactory {
 	 * ranges specified by the constrains applicable to this factory;
 	 * <code>false</code> otherwise.
 	 */
-	public boolean valid(NDecimalsIndividual indiv) {
-
+    public boolean valid(NDecimalsIndividual indiv) {
 		// check if individual's settings match this factiory:
-		if (indiv.getDecimalScale() != this.getDecimalScale()
+		if (indiv.getDecimalScale() != decimalScale
 				|| indiv.getSize() != this.getIndividualSize()
 				|| indiv.getPrecision() != this.getPrecision()) {
 			throw new IllegalArgumentException("The given individual (" + indiv

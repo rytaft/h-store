@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.jaga.*;
 import org.jaga.definitions.GAParameterSet;
 import org.jaga.definitions.GAResult;
 import org.jaga.exampleApplications.Example1Fitness;
@@ -17,7 +16,6 @@ import org.jaga.masterAlgorithm.ReusableSimpleGA;
 import org.jaga.selection.RouletteWheelSelection;
 import org.jaga.util.DefaultParameterSet;
 import org.qcri.PartitioningPlanner.placement.Plan;
-
 
 public class GAPlacement extends Placement {
 	
@@ -130,7 +128,7 @@ public class GAPlacement extends Placement {
 		
 		
 		GAParameterSet params = new DefaultParameterSet();
-		params.setPopulationSize(0);
+		params.setPopulationSize(100);
 		GAPlacementFitness fitness = new GAPlacementFitness();
 		fitness.initialize(tupleIds,accesses,locations,slices,sliceSizes,tupleCount,
 				sliceCount,totalAccesses,partitionCount); 

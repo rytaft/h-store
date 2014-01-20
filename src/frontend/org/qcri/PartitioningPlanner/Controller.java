@@ -23,6 +23,7 @@ import org.qcri.PartitioningPlanner.placement.GreedyExtendedPlacement;
 import org.qcri.PartitioningPlanner.placement.BinPackerPlacement;
 import org.qcri.PartitioningPlanner.placement.FirstFitPlacement;
 import org.qcri.PartitioningPlanner.placement.OneTieredPlacement;
+import org.qcri.PartitioningPlanner.placement.GAPlacement;
 import org.qcri.PartitioningPlanner.placement.Plan;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
@@ -125,6 +126,7 @@ public class Controller implements Runnable {
         case 2:  algo = new FirstFitPlacement(); System.out.println("FirstFitPlacement is selected"); break;
         case 3:  algo = new BinPackerPlacement(); System.out.println("BinPackerPlacement is selected"); break;
         case 4:  algo = new OneTieredPlacement(); System.out.println("OneTieredPlacement is selected"); break;
+        case 5:  algo = new GAPlacement(); System.out.println("GAPlacement is selected"); break;
        	}
 	   				
 					//Jennie temp for now
