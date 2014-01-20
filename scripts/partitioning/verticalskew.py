@@ -5,7 +5,8 @@ import math
 ####
 
 def sinewave(steps, max_factor, frequency = 2.0):
-	"""Produces sinewave vertical skew. Parameters:
+	"""
+	Produces sinewave vertical skew. Parameters:
 	- number of steps
 	- maximum load increase factor
 	- number of peaks (optional)
@@ -34,7 +35,8 @@ def sinewave(steps, max_factor, frequency = 2.0):
 ####
 	
 def linear(steps, max_factor):
-	"""Produces linear vertical skew. Parameters:
+	"""
+	Produces linear vertical skew. Parameters:
 	- number of steps
 	- maximum load increase factor
 	"""
@@ -57,7 +59,8 @@ def linear(steps, max_factor):
 ####
 
 def spike(steps, max_factor, period, duration):
-	"""Produces spike vertical skew. Parameters:
+	"""
+	Produces spike vertical skew. Parameters:
 	- number of steps
 	- maximum load increase factor
 	- spike period
@@ -104,10 +107,10 @@ if __name__ == "__main__":
 	
 	algos = ["sinewave", "spike", "linear", "linear+sinewave", "linear+spike"]
 	if (len(sys.argv) <= 1):
-		print "possible vertical skews:",
+		print "\nPossible vertical skews:",
 		for a in algos:
 			print(a),
-		print "\nEnter skew name to get list of paramters"
+		print "\nEnter skew name to get list of paramters\n"
 		exit(0)
 		
 	if (sys.argv[1] == "sinewave"):
@@ -133,7 +136,8 @@ if __name__ == "__main__":
 
 	elif (sys.argv[1] == "linear+sinewave"):
 		if (len(sys.argv) <= 3):
-			print """Combination of linear and sinewave. Parameters:
+			print """
+			Combination of linear and sinewave. Parameters:
 			- number of steps
 			- maximum LINEAR load increase factor
 			- maximum SINEWAVE load increase factor
@@ -150,7 +154,8 @@ if __name__ == "__main__":
 			
 	elif (sys.argv[1] == "linear+spike"):
 		if (len(sys.argv) <= 3):
-			print """Combination of linear and spike. Parameters:
+			print """
+			Combination of linear and spike. Parameters:
 			- number of steps
 			- maximum LINEAR load increase factor
 			- maximum SPIKE load increase factor
