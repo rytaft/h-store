@@ -18,16 +18,20 @@ import edu.brown.hstore.Hstoreservice.Status;
 
 public class Provisioning {
 	// thresholds are per site
-	private static final int CPU_THRESHOLD_UP = 160;
-	private static final int CPU_THRESHOLD_DOWN = 110;
-	private static final int SITES_PER_HOST = 1;
-	private static final int PARTITIONS_PER_SITE = 1;
+	private final double CPU_THRESHOLD_UP;
+	private final double CPU_THRESHOLD_DOWN;
+	private final int SITES_PER_HOST;
+	private final int PARTITIONS_PER_SITE;
 
 	Client client;
 	HashMap<Integer,Double> CPUUtilPerHost = new HashMap<Integer,Double>();
 	private int usedSites;
 
-	public Provisioning(Client client, int partitions){
+	public Provisioning(Client client, int partitions, int sitesPerHost, int partitionsPerSite, double highCPU, double lowCPU){
+		this.CPU_THRESHOLD_UP = highCPU;
+		this.CPU_THRESHOLD_DOWN = lowCPU;
+		this.SITES_PER_HOST = sitesPerHost;
+		this.PARTITIONS_PER_SITE = partitionsPerSite;
 		this.client = client;
 		usedSites = (int) Math.floor((double) partitions/ (double) PARTITIONS_PER_SITE); 
 		CPUUtilPerHost = queryCPUUtilPerHost(client, usedSites);
@@ -70,7 +74,7 @@ public class Provisioning {
 		//		if(connectedHost == null){
 		//			connectToHost();
 		//		}
-		ClientResponse cresponse = doQuery(client, "TXNRESPONSETIME");
+		ClientResponse cresponse = doStatsQuery(client, "TXNRESPONSETIME");
 
 		System.out.println("Received stats, parsing...");
 		VoltTable stats = cresponse.getResults()[0];
@@ -108,7 +112,7 @@ public class Provisioning {
 	}
 
 	// general method to execute queries
-	public static ClientResponse doQuery(Client client, String statsType){
+	public static ClientResponse doStatsQuery(Client client, String statsType){
 		int interval = 0;
 		ClientResponse cresponse = null;
 		try {
@@ -116,19 +120,20 @@ public class Provisioning {
 		} catch (NoConnectionsException e) {
 			System.out.println("Controller: lost connection");
 			e.printStackTrace();
-			return null;
+			System.exit(1);
+				
 		} catch (IOException e) {
 			System.out.println("Controller: IO Exception while connecting to host");
 			e.printStackTrace();
-			return null;
+			System.exit(1);
 		} catch (ProcCallException e) {
 			System.out.println("Controller: @Statistics transaction rejected (backpressure?)");
 			e.printStackTrace();
-			return null;
+			System.exit(1);
 		}
 		if(cresponse.getStatus() != Status.OK){
 			System.out.println("@Statistics transaction aborted");
-			return null;
+			System.exit(1);
 		}
 		return cresponse;
 	}
@@ -137,14 +142,14 @@ public class Provisioning {
 		CPUUtilPerHost = queryCPUUtilPerHost(client, usedSites);
 	}
 
-	public static HashMap<Integer, Double> queryCPUUtilPerHost(Client client, int usedSites){
+	private HashMap<Integer, Double> queryCPUUtilPerHost(Client client, int usedSites){
 		System.out.println("Used sites: " + usedSites);
-		ClientResponse cresponse = doQuery(client, "CPUUSAGE");
+		ClientResponse cresponse = doStatsQuery(client, "CPUUSAGE");
 		HashMap<Integer,Double> res = new HashMap<Integer,Double>();
 		try{
 			Thread.sleep(3000);
 		} catch (InterruptedException e) {}
-		cresponse = doQuery(client, "CPUUSAGE");
+		cresponse = doStatsQuery(client, "CPUUSAGE");
 		VoltTable stats = cresponse.getResults()[0];
 		for(int r = 0; r < stats.getRowCount(); ++r){
 			VoltTableRow row = stats.fetchRow(r);

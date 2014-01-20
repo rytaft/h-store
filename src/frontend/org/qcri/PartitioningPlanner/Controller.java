@@ -67,7 +67,11 @@ public class Controller implements Runnable {
 	private static int no_of_partitions = 4; 
 	private static int doProvisioning = 0;
 	private static int timeLimit = 60000; // 1 minute
-
+	private static int doMonitoring = 0;
+	private static int sitesPerHost = 1;
+	private static int partPerSite = 1;
+	private static double highCPU = 160;
+	private static double lowCPU = 110;
 
 
 	// used HStoreTerminal as model to handle the catalog
@@ -80,7 +84,7 @@ public class Controller implements Runnable {
 		client.configureBlocking(false);
 		sites = CatalogUtil.getAllSites(catalog);
 		connectToHost();
-		provisioning = new Provisioning(client,no_of_partitions);
+		provisioning = new Provisioning(client,no_of_partitions,sitesPerHost,partPerSite,highCPU,lowCPU);
 
 		if(hstore_conf.global.hasher_plan == null){
 			System.out.println("Must set global.hasher_plan to specify plan file!");
@@ -114,29 +118,34 @@ public class Controller implements Runnable {
 
 	@Override
 	public void run () {
-		try {
-			while(true){
-				Thread.sleep(POLL_FREQUENCY);
-				System.out.println("\nPolling");
-				if(!provisioning.needReconfiguration()) continue;
-				System.out.println("Starting reconfiguration");
-				doReconfiguration();
-				System.out.println("Waiting until reconfiguration has completed");
-				String ip = sites.iterator().next().getHost().getIpaddr();
-				String response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
-				int previousReconfigurations = response.split("\n").length; 
+		if (doMonitoring == 1){
+			try {
 				while(true){
-					Thread.sleep(1000);
-					response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
-					if(response.split("\n").length > previousReconfigurations) break;
+					Thread.sleep(POLL_FREQUENCY);
+					System.out.println("\nPolling");
+					if(!provisioning.needReconfiguration()) continue;
+					System.out.println("Starting reconfiguration");
+					doReconfiguration();
+					System.out.println("Waiting until reconfiguration has completed");
+					String ip = sites.iterator().next().getHost().getIpaddr();
+					String response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
+					int previousReconfigurations = response.split("\n").length; 
+					while(true){
+						Thread.sleep(1000);
+						response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
+						if(response.split("\n").length > previousReconfigurations) break;
+					}
+					System.out.println("Reconfiguration has completed");
+					provisioning.refreshCPUStats();
 				}
-				System.out.println("Reconfiguration has completed");
-				provisioning.refreshCPUStats();
+			} catch (InterruptedException e) {
+				System.out.println("Controller was interrupted");
+				e.printStackTrace();
+				System.exit(1);
 			}
-		} catch (InterruptedException e) {
-			System.out.println("Controller was interrupted");
-			e.printStackTrace();
-			System.exit(1);
+		}
+		else{
+			doReconfiguration();
 		}
 	}
 
@@ -198,16 +207,20 @@ public class Controller implements Runnable {
 			} catch (NoConnectionsException e) {
 				System.out.println("Controller: lost connection");
 				e.printStackTrace();
+				System.exit(1);
 			} catch (IOException e) {
 				System.out.println("Controller: IO Exception while connecting to host");
 				e.printStackTrace();
+				System.exit(1);
 			} catch (ProcCallException e) {
 				System.out.println("Controller: @Reconfiguration transaction rejected (backpressure?)");
 				e.printStackTrace();
+				System.exit(1);
 			}
 
 			if(cresponse.getStatus() != Status.OK){
 				System.out.println("@Reconfiguration transaction aborted");
+				System.exit(1);
 			}
 
 		} catch(Exception e) {
@@ -224,11 +237,11 @@ public class Controller implements Runnable {
 		} catch (UnknownHostException e) {
 			System.out.println("Controller: tried to connect to unknown host");
 			e.printStackTrace();
-			return;
+			System.exit(1);
 		} catch (IOException e) {
 			System.out.println("Controller: IO Exception while connecting to host");
 			e.printStackTrace();
-			return;
+			System.exit(1);
 		}
 		System.out.println("Connected to host " + connectedHost);
 	}
@@ -262,6 +275,11 @@ public class Controller implements Runnable {
 			planner_selector = Integer.parseInt(vargs[3]);
 			doProvisioning = Integer.parseInt(vargs[4]);
 			timeLimit = Integer.parseInt(vargs[5]);
+			doMonitoring = Integer.parseInt(vargs[6]);
+			sitesPerHost = Integer.parseInt(vargs[7]);
+			partPerSite = Integer.parseInt(vargs[8]);
+			highCPU = Double.parseDouble(vargs[9]);
+			lowCPU = Double.parseDouble(vargs[10]);
 		}
 		else // use default
 		{
@@ -270,6 +288,11 @@ public class Controller implements Runnable {
 			planner_selector = 0;
 			doProvisioning = 0;
 			timeLimit = 60000;
+			doMonitoring = 0;
+			sitesPerHost = 1;
+			partPerSite = 1;
+			highCPU = 160;
+			lowCPU = 110;
 		}
 
 
