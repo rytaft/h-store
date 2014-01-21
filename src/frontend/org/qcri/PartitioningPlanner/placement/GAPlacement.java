@@ -9,12 +9,14 @@ import java.util.Map;
 import org.jaga.definitions.GAParameterSet;
 import org.jaga.definitions.GAResult;
 import org.jaga.definitions.Individual;
+import org.jaga.definitions.ReproductionAlgorithm;
 import org.jaga.hooks.AnalysisHook;
 import org.jaga.individualRepresentation.greycodedNumbers.NDecimalsIndividual;
 import org.jaga.individualRepresentation.greycodedNumbers.NDecimalsIndividualSimpleFactory;
 import org.jaga.individualRepresentation.greycodedNumbers.RangeConstraint;
 import org.jaga.masterAlgorithm.ReusableSimpleGA;
 import org.jaga.masterAlgorithm.InitialPopulationGA;
+import org.jaga.reproduction.greycodedNumbers.SimpleBinaryXOverWithMutation;
 import org.jaga.selection.RouletteWheelSelection;
 import org.jaga.util.DefaultParameterSet;
 import org.jaga.util.FittestIndividualResult;
@@ -114,16 +116,6 @@ public class GAPlacement extends Placement {
 		Plan aPlan = new Plan(planFilename);
 		this.init(hotTuplesList, partitionTotals, aPlan, partitionCount);
 
-		for(int i = 0; i < partitionCount; ++i) {
-		    if(partitionTotals.get(i) == null) {
-			partitionTotals.put(i, 0L);
-		    }
-		}
-		
-		for(Integer i : partitionTotals.keySet()) {
-			totalAccesses += partitionTotals.get(i);
-		}
-		
 		int placementCount = tupleCount + sliceCount; // number of placements we will make
 		Long meanAccesses = totalAccesses / partitionCount;
 
@@ -138,7 +130,10 @@ public class GAPlacement extends Placement {
 		params.setFitnessEvaluationAlgorithm(fitness);
 		params.setSelectionAlgorithm(new RouletteWheelSelection(-10E10));
 		params.setMaxGenerationNumber(50);
-		NDecimalsIndividualSimpleFactory fact = new NDecimalsIndividualSimpleFactory(placementCount, 0, 10);
+		ReproductionAlgorithm reprAlg = new SimpleBinaryXOverWithMutation(0.65, 0.05);
+		params.setReproductionAlgorithm(reprAlg);
+		int precision = (int) Math.ceil(Math.log(partitionCount)/Math.log(2)) + 1;
+		NDecimalsIndividualSimpleFactory fact = new NDecimalsIndividualSimpleFactory(placementCount, 0, precision);
 		for(int i = 0; i < placementCount; ++i) {
 			fact.setConstraint(i, new RangeConstraint(0, partitionCount-1));
 		}
@@ -146,15 +141,23 @@ public class GAPlacement extends Placement {
 		InitialPopulationGA ga = new InitialPopulationGA();
 		
 		// seed the initial population with individuals matching the current plan
-		NDecimalsIndividual [] initialIndivs = new NDecimalsIndividual[10];
-		for(int i = 0; i < 10; ++i) {
-			initialIndivs[i] = new NDecimalsIndividual(placementCount, 0, 10);
+		Individual [] initialIndivs = new Individual[5];
+		for(int i = 0; i < 5; ++i) {
+			NDecimalsIndividual indiv = new NDecimalsIndividual(placementCount, 1, precision);
 			for(int j = 0; j < locations.size(); j++) {
-				initialIndivs[i].setDoubleValue(j, locations.get(j));
+			    indiv.setDoubleValue(j, (double) locations.get(j));
 			}
+			initialIndivs[i] = indiv;
 		}
 		ga.setInitialPopulation(initialIndivs);
 		
+		// Analysis for debugging
+		//AnalysisHook hook = new AnalysisHook();
+		//hook.setLogStream(System.out);
+		//hook.setUpdateDelay(100);
+		//hook.setAnalyseGenMinFit(true);
+		//ga.addHook(hook);
+
 		// Execute the genetic algorithm
 		GAResult result = ga.exec(params);
 		FittestIndividualResult fittestResult = (FittestIndividualResult) result;
