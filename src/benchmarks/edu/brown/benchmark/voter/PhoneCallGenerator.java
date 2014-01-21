@@ -113,7 +113,7 @@ public class PhoneCallGenerator {
     	// skew zipfian (if the generators are VaryingZipfianGenerator)
     	double r1 = Utils.random().nextDouble();
     	double r2 = Utils.random().nextDouble();
-    	int r3 = Utils.random().nextInt(numHotSpots);
+    	int r3 = (numHotSpots > 0 ? Utils.random().nextInt(numHotSpots) : 0);
     	
         // Pick a random area code for the originating phone call
         int areaCodeIndex = areaCodeGen.nextInt(r1, r2, r3);
