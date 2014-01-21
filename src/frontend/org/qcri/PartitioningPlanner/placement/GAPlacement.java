@@ -14,6 +14,7 @@ import org.jaga.individualRepresentation.greycodedNumbers.NDecimalsIndividual;
 import org.jaga.individualRepresentation.greycodedNumbers.NDecimalsIndividualSimpleFactory;
 import org.jaga.individualRepresentation.greycodedNumbers.RangeConstraint;
 import org.jaga.masterAlgorithm.ReusableSimpleGA;
+import org.jaga.masterAlgorithm.InitialPopulationGA;
 import org.jaga.selection.RouletteWheelSelection;
 import org.jaga.util.DefaultParameterSet;
 import org.jaga.util.FittestIndividualResult;
@@ -137,15 +138,25 @@ public class GAPlacement extends Placement {
 		params.setFitnessEvaluationAlgorithm(fitness);
 		params.setSelectionAlgorithm(new RouletteWheelSelection(-10E10));
 		params.setMaxGenerationNumber(50);
-		NDecimalsIndividualSimpleFactory fact = new NDecimalsIndividualSimpleFactory(placementCount, 0, 30);
+		NDecimalsIndividualSimpleFactory fact = new NDecimalsIndividualSimpleFactory(placementCount, 0, 10);
 		for(int i = 0; i < placementCount; ++i) {
 			fact.setConstraint(i, new RangeConstraint(0, partitionCount-1));
 		}
 		params.setIndividualsFactory(fact);
-
+		InitialPopulationGA ga = new InitialPopulationGA();
+		
+		// seed the initial population with individuals matching the current plan
+		NDecimalsIndividual [] initialIndivs = new NDecimalsIndividual[10];
+		for(int i = 0; i < 10; ++i) {
+			initialIndivs[i] = new NDecimalsIndividual(placementCount, 0, 10);
+			for(int j = 0; j < locations.size(); j++) {
+				initialIndivs[i].setDoubleValue(j, locations.get(j));
+			}
+		}
+		ga.setInitialPopulation(initialIndivs);
+		
 		// Execute the genetic algorithm
-		ReusableSimpleGA ga = new ReusableSimpleGA(params);
-		GAResult result = ga.exec();
+		GAResult result = ga.exec(params);
 		FittestIndividualResult fittestResult = (FittestIndividualResult) result;
 		NDecimalsIndividual indiv = (NDecimalsIndividual) fittestResult.getFittestIndividual();
 
