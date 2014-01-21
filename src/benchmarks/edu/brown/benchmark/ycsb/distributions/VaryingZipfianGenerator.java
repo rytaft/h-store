@@ -419,12 +419,13 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * be the most popular, 1 the next most popular, etc.
 	 * @param r1 - the random double to use for zipfian skew
 	 * @param r2 - the random double to use to determine whether to assign a hot spot
+	 * @param r3 - the random int to use to select the hot spot
 	 * @return The next item in the sequence.
 	 */
 	@Override
-	public int nextInt(double r1, double r2)
+	public int nextInt(double r1, double r2, int r3)
 	{
-		return (int)nextLong(items, r1, r2);
+		return (int)nextLong(items, r1, r2, r3);
 	}
 
 	/**
@@ -434,7 +435,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @return The next item in the sequence.
 	 */
 	public long nextLong(long itemcount) {
-		return nextLong(itemcount, Utils.random().nextDouble(), Utils.random().nextDouble());
+		return nextLong(itemcount, Utils.random().nextDouble(), Utils.random().nextDouble(), Utils.random().nextInt(hotSpots.size()));
 	}
 	
 	
@@ -444,9 +445,10 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @param itemcount The number of items in the distribution.
 	 * @param r1 - the random double to use for zipfian skew
 	 * @param r2 - the random double to use to determine whether to assign a hot spot
+	 * @param r3 - the random int to use to select the hot spot
 	 * @return The next item in the sequence.
 	 */
-	public long nextLong(long itemcount, double r1, double r2)
+	public long nextLong(long itemcount, double r1, double r2, int r3)
 	{
 		//from "Quickly Generating Billion-Record Synthetic Databases", Jim Gray et al, SIGMOD 1994
 
@@ -496,7 +498,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 		long ret;
 
 		if(r2 < this.percentAccessHotSpots) {
-			int index = Utils.random().nextInt(hotSpots.size());
+			int index = r3;
 			ret = hotSpots.get(index);
 		}
 		else if(theta >= 1) {

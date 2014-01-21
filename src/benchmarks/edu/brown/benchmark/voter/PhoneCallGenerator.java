@@ -97,14 +97,14 @@ public class PhoneCallGenerator {
     }
 	
 	public PhoneCall receive() {
-		return receive(new UniformIntegerGenerator(rand, 0, AREA_CODES.length), new UniformIntegerGenerator(rand, 0, 10000000));
+		return receive(new UniformIntegerGenerator(rand, 0, AREA_CODES.length), new UniformIntegerGenerator(rand, 0, 10000000), 0);
 	}
 	
 	/**
      * Receives/generates a simulated voting call
      * @return Call details (calling number and contestant to whom the vote is given)
      */
-    public PhoneCall receive(IntegerGenerator areaCodeGen, IntegerGenerator phoneNumberGen)
+    public PhoneCall receive(IntegerGenerator areaCodeGen, IntegerGenerator phoneNumberGen, int numHotSpots)
     {
         // For the purpose of a benchmark, issue random voting activity
         // (including invalid votes to demonstrate transaction validation in the database)
@@ -113,9 +113,10 @@ public class PhoneCallGenerator {
     	// skew zipfian (if the generators are VaryingZipfianGenerator)
     	double r1 = Utils.random().nextDouble();
     	double r2 = Utils.random().nextDouble();
+    	int r3 = Utils.random().nextInt(numHotSpots);
     	
         // Pick a random area code for the originating phone call
-        int areaCodeIndex = areaCodeGen.nextInt(r1, r2);
+        int areaCodeIndex = areaCodeGen.nextInt(r1, r2, r3);
 		
         // Pick a contestant number
         int contestantNumber = votingMap[areaCodeIndex];
@@ -130,7 +131,7 @@ public class PhoneCallGenerator {
         }
 		
         // Build the phone number
-        long phoneNumber = AREA_CODES[areaCodeIndex] * 10000000L + phoneNumberGen.nextInt(r1, r2);
+        long phoneNumber = AREA_CODES[areaCodeIndex] * 10000000L + phoneNumberGen.nextInt(r1, r2, r3);
 		
         // This needs to be globally unique
         

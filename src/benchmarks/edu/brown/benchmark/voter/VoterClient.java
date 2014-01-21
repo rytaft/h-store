@@ -186,7 +186,7 @@ public class VoterClient extends BenchmarkComponent {
     protected boolean runOnce() throws IOException {
         // Get the next phone call
         //PhoneCallGenerator.PhoneCall call = switchboard.receive();
-    	PhoneCallGenerator.PhoneCall call = switchboard.receive(areaCodeGenerator, phoneNumberGenerator);
+    	PhoneCallGenerator.PhoneCall call = switchboard.receive(areaCodeGenerator, phoneNumberGenerator, numHotSpots);
 
         Client client = this.getClientHandle();
         boolean response = client.callProcedure(callback,
