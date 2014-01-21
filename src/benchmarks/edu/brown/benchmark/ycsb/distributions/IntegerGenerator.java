@@ -43,6 +43,15 @@ public abstract class IntegerGenerator extends Generator
 	public abstract int nextInt();
 	
 	/**
+	 * Return the next value as an int. When overriding this method, be sure to call setLastString() properly, or the lastString() call won't work.
+	 */
+	public int nextInt(double r1, double r2) 
+	{
+		// as a default, ignore the doubles passed in
+		return nextInt();
+	}
+	
+	/**
 	 * Generate the next string in the distribution.
 	 */
 	public String nextString()

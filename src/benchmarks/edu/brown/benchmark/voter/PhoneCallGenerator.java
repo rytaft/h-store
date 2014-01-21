@@ -34,6 +34,7 @@ import java.util.Random;
 
 import edu.brown.benchmark.ycsb.distributions.IntegerGenerator;
 import edu.brown.benchmark.ycsb.distributions.UniformIntegerGenerator;
+import edu.brown.benchmark.ycsb.distributions.Utils;
 
 public class PhoneCallGenerator {
 	
@@ -106,10 +107,15 @@ public class PhoneCallGenerator {
     public PhoneCall receive(IntegerGenerator areaCodeGen, IntegerGenerator phoneNumberGen)
     {
         // For the purpose of a benchmark, issue random voting activity
-        // (including invalid votes to demonstrate transaction validationg in the database)
+        // (including invalid votes to demonstrate transaction validation in the database)
 		
+    	// Choose random doubles to use for area code and phone number to keep the
+    	// skew zipfian (if the generators are VaryingZipfianGenerator)
+    	double r1 = Utils.random().nextDouble();
+    	double r2 = Utils.random().nextDouble();
+    	
         // Pick a random area code for the originating phone call
-        int areaCodeIndex = areaCodeGen.nextInt();
+        int areaCodeIndex = areaCodeGen.nextInt(r1, r2);
 		
         // Pick a contestant number
         int contestantNumber = votingMap[areaCodeIndex];
@@ -124,7 +130,7 @@ public class PhoneCallGenerator {
         }
 		
         // Build the phone number
-        long phoneNumber = AREA_CODES[areaCodeIndex] * 10000000L + phoneNumberGen.nextInt();
+        long phoneNumber = AREA_CODES[areaCodeIndex] * 10000000L + phoneNumberGen.nextInt(r1, r2);
 		
         // This needs to be globally unique
         

@@ -413,6 +413,19 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	{
 		return (int)nextLong(itemcount);
 	}
+	
+	/** 
+	 * Generate the next item. this distribution will be skewed toward lower integers; e.g. 0 will
+	 * be the most popular, 1 the next most popular, etc.
+	 * @param r1 - the random double to use for zipfian skew
+	 * @param r2 - the random double to use to determine whether to assign a hot spot
+	 * @return The next item in the sequence.
+	 */
+	@Override
+	public int nextInt(double r1, double r2)
+	{
+		return (int)nextLong(items, r1, r2);
+	}
 
 	/**
 	 * Generate the next item as a long.
@@ -420,7 +433,20 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @param itemcount The number of items in the distribution.
 	 * @return The next item in the sequence.
 	 */
-	public long nextLong(long itemcount)
+	public long nextLong(long itemcount) {
+		return nextLong(itemcount, Utils.random().nextDouble(), Utils.random().nextDouble());
+	}
+	
+	
+	/**
+	 * Generate the next item as a long.
+	 * 
+	 * @param itemcount The number of items in the distribution.
+	 * @param r1 - the random double to use for zipfian skew
+	 * @param r2 - the random double to use to determine whether to assign a hot spot
+	 * @return The next item in the sequence.
+	 */
+	public long nextLong(long itemcount, double r1, double r2)
 	{
 		//from "Quickly Generating Billion-Record Synthetic Databases", Jim Gray et al, SIGMOD 1994
 
@@ -465,11 +491,11 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 			}
 		}
 
-		double u=Utils.random().nextDouble();
+		double u=r1;
 		double uz=u*zetan;
 		long ret;
 
-		if(Utils.random().nextDouble() < this.percentAccessHotSpots) {
+		if(r2 < this.percentAccessHotSpots) {
 			int index = Utils.random().nextInt(hotSpots.size());
 			ret = hotSpots.get(index);
 		}

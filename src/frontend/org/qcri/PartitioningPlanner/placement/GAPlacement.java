@@ -128,45 +128,28 @@ public class GAPlacement extends Placement {
 
 		System.out.println("Mean access count: " + meanAccesses);
 		
-		
+		// Set up the genetic algorithm
 		GAParameterSet params = new DefaultParameterSet();
-		params.setPopulationSize(100);
+		params.setPopulationSize(50);
 		GAPlacementFitness fitness = new GAPlacementFitness();
 		fitness.initialize(tupleIds,accesses,locations,slices,sliceSizes,tupleCount,
 				sliceCount,totalAccesses,partitionCount); 
 		params.setFitnessEvaluationAlgorithm(fitness);
 		params.setSelectionAlgorithm(new RouletteWheelSelection(-10E10));
-		params.setMaxGenerationNumber(100);
+		params.setMaxGenerationNumber(50);
 		NDecimalsIndividualSimpleFactory fact = new NDecimalsIndividualSimpleFactory(placementCount, 0, 30);
 		for(int i = 0; i < placementCount; ++i) {
 			fact.setConstraint(i, new RangeConstraint(0, partitionCount-1));
 		}
 		params.setIndividualsFactory(fact);
 
+		// Execute the genetic algorithm
 		ReusableSimpleGA ga = new ReusableSimpleGA(params);
-//		AnalysisHook hook = new AnalysisHook();
-//		hook.setLogStream(System.out);
-//		hook.setUpdateDelay(100);
-//		hook.setAnalyseGenMinFit(true);
-//		ga.addHook(hook);
-//
-//		final int attempts = 1;
-//
-//		GAResult [] allResults = new GAResult[attempts];
-//		for (int i = 0; i < attempts; i++) {
-//			hook.reset();
-//			GAResult result = ga.exec();
-//			allResults[i] = result;
-//		}
-//		System.out.println("\nALL DONE.\n");
-//		for (int i = 0; i < attempts; i++) {
-//			System.out.println("Result " + i + " is: " + allResults[i]);
-//		}
-
 		GAResult result = ga.exec();
 		FittestIndividualResult fittestResult = (FittestIndividualResult) result;
 		NDecimalsIndividual indiv = (NDecimalsIndividual) fittestResult.getFittestIndividual();
 
+		// Update the plan based on the results
 		for(int i = 0; i < indiv.getSize(); ++i) {
 			Integer srcPartition = locations.get(i);
 			Integer dstPartition = (int) indiv.getDoubleValue(i);
