@@ -435,7 +435,8 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @return The next item in the sequence.
 	 */
 	public long nextLong(long itemcount) {
-		return nextLong(itemcount, Utils.random().nextDouble(), Utils.random().nextDouble(), Utils.random().nextInt(hotSpots.size()));
+		return nextLong(itemcount, Utils.random().nextDouble(), Utils.random().nextDouble(), 
+				(hotSpots.size() > 0 ? Utils.random().nextInt(hotSpots.size()) : 0));
 	}
 	
 	
