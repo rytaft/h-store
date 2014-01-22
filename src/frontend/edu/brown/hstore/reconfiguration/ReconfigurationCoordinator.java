@@ -19,6 +19,7 @@ import org.apache.log4j.Logger;
 import org.jfree.util.Log;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
+import org.voltdb.catalog.CatalogType;
 import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.messaging.FastSerializer;
@@ -54,8 +55,10 @@ import edu.brown.hstore.reconfiguration.ReconfigurationConstants.Reconfiguration
 import edu.brown.interfaces.Shutdownable;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import edu.brown.profilers.ProfileMeasurement;
 import edu.brown.profilers.ReconfigurationProfiler;
 import edu.brown.protorpc.ProtoRpcController;
+import edu.brown.statistics.FastIntHistogram;
 import edu.brown.utils.FileUtil;
 
 /**
@@ -122,6 +125,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
     
     //some tracking
     private Map<Integer,Long> dataPullResponseTimes;
+    private Map<Integer,PartitionExecutor>  executorMap;
+    private Map<Integer,Integer>  livePullKBMap;
 
     public ReconfigurationCoordinator(HStoreSite hstore_site, HStoreConf hstore_conf) {        
         this.reconfigurationLeader = -1;
@@ -188,8 +193,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 async_nonchunk_push = false;
             }
         
-        String debugConfig = String.format("Reconfig configuration. DetailedTiming: %s AsyncPush:%s AysncPull:%s AsyncQueuePulls:%s LivePulls:%s", 
-                detailed_timing, async_nonchunk_push, async_nonchunk_pull, async_queue_pulls, live_pull);
+        String debugConfig = String.format("Reconfig configuration. DetailedTiming: %s AsyncPush:%s AysncPull:%s AsyncQueuePulls:%s LivePulls:%s AsyncPullSizeKB:%s LivePullSizeKB:%s", 
+                detailed_timing, async_nonchunk_push, async_nonchunk_pull, async_queue_pulls, live_pull, hstore_conf.site.reconfig_async_chunk_size_kb, hstore_conf.site.reconfig_chunk_size_kb);
         LOG.info(debugConfig);
         FileUtil.appendEventToFile(debugConfig);
         
@@ -224,6 +229,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
         // atomic
         if (this.reconfigurationInProgress.compareAndSet(false, true)) {
             LOG.info("Initializing reconfiguration. New reconfig plan.");
+            executorMap = new HashMap<>();
+            livePullKBMap = new HashMap<>();
+            for (PartitionExecutor executor : this.local_executors) {
+                executorMap.put(executor.getPartitionId(),executor);
+                livePullKBMap.put(executor.getPartitionId(),new Integer(0));
+            }
             if (this.hstore_site.getSiteId() == leaderId) {
                 // TODO : Check if more leader logic is needed
                 FileUtil.appendEventToFile("LEADER_RECONFIG_INIT, siteId="+this.hstore_site.getSiteId());
@@ -252,21 +263,31 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         LOG.info("initReconfig for STOPCOPY");
                         this.partitionStates.put(partitionId, ReconfigurationState.DATA_TRANSFER);
                         this.reconfigurationState = ReconfigurationState.DATA_TRANSFER;
+                        long siteStart = System.currentTimeMillis();
+                        int siteKBSent = 0;
                         //turn off local executions
                         for (PartitionExecutor executor : this.local_executors) {
+                            //TODO hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId())
                             executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
                             this.partitionStates.put(partitionId, ReconfigurationState.PREPARE);
                         }
                         //push outgoing ranges for all local PEs
+                        //TODO remove this loop and schedule chunked pulls/ 
                         for (PartitionExecutor executor : this.local_executors) {
+                        	LOG.info("Sechduling async chunked pulls for local PE for Stop and Copy : " + executor.getPartitionId());
+                        	executor.scheduleInitialAsyncPullRequestsForSC(executor.getIncomingRanges());
+                            /** Comment the previous S&C work
+                              
                             LOG.info("Pushing ranges for local PE : " + executor.getPartitionId());
+                            long peStart = System.currentTimeMillis();
+                            int kbSent = 0;
                             List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges = executor.getOutgoingRanges();
                             if (outgoing_ranges != null && outgoing_ranges.size()>0) {
                                 for (ReconfigurationRange<? extends Comparable<?>> range : outgoing_ranges) {
                                     boolean hasMoreData = true;
                                     while(hasMoreData){
                                         Pair<VoltTable,Boolean> res = executor.extractPushRequst(range);
-                                        
+                                        kbSent += res.getFirst().getUnderlyingBufferSize()/1000.0;
                                         pushTuples(range.old_partition, range.new_partition, range.table_name, res.getFirst(), 
                                                 range.min_long,  range.max_long);
                                         hasMoreData = res.getSecond();
@@ -275,11 +296,23 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             } else {
                                 LOG.info("no outgoing ranges for PE : " + executor.getPartitionId());
                             }
+                            long peTime = System.currentTimeMillis() - peStart;
+                            LOG.info(String.format("STOPCOPY for PE(%s) took %s ms for %s kb", executor.getPartitionId(), peTime, kbSent));
+                            siteKBSent += kbSent;
+                            
+                            **/
                         }
+                        //TODO haltProcessing() at end
+                        //TODO hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId())
+                        
                         //TODO this file is horrible and needs refactoring....
                         //we have an end, reset and finish reconfiguration...
                         endReconfiguration();
                         resetReconfigurationInProgress();
+                        long siteTime = System.currentTimeMillis() - siteStart;
+                        String timeMsg = String.format("STOPCOPY for site %s took %s ms and send %s kb", this.hstore_site.getSiteId(), siteTime, siteKBSent);
+                        LOG.info(timeMsg);
+                        FileUtil.appendEventToFile(timeMsg);
                     } else {
                         LOG.info("No reconfig plan, nothing to do");
                     }
@@ -531,8 +564,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @throws Exception
      */
     public void pushTuples(int oldPartitionId, int newPartitionId, String table_name, VoltTable vt, Long minInclusive, Long maxExclusive) throws Exception {
-        LOG.info(String.format("pushTuples  keys for %s  partIds %s->%s", table_name, oldPartitionId, newPartitionId));
-        // TODO Auto-generated method stub
+        LOG.info(String.format("pushTuples keys (%s-%s] for [%s]  partitions %s->%s", minInclusive, maxExclusive, table_name, oldPartitionId, newPartitionId));
         int destinationId = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(newPartitionId);
 
         if (destinationId == localSiteId) {
@@ -567,7 +599,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      */
     public DataTransferResponse receiveTuples(int sourceId, long sentTimeStamp, int partitionId, int newPartitionId, String table_name, VoltTable vt, Long minInclusive, Long maxExclusive)
             throws Exception {
-        LOG.info(String.format("receiveTuples  keys for %s  partIds %s->%s", table_name, sourceId, newPartitionId));
+        LOG.info(String.format("receiveTuples  keys for %s  partIds %s->%s", table_name, partitionId, newPartitionId));
 
         if (vt == null) {
             LOG.error("Volt Table received is null");
@@ -815,9 +847,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
     	if (debug.val) LOG.debug(String.format("Scheduling chunked pull reply message for partition %s ", multiPullReplyRequest.getNewPartition()));
         for (PartitionExecutor executor : local_executors) {
             if(multiPullReplyRequest.getNewPartition() == executor.getPartitionId()){
-                LOG.info("Queue the pull response frpm another RC. Is it Async: "+multiPullReplyRequest.getIsAsync());
-              
-                LOG.error("TODO add chunk ID to response and add new reconfig control type for asyn pull response received"); //TODO
+                if (debug.val) LOG.debug("Queue the pull response frpm another RC. Is it Async: "+multiPullReplyRequest.getIsAsync());
+                if (multiPullReplyRequest.hasVoltTableData()){
+                    ByteString resp = multiPullReplyRequest.getVoltTableData();
+                    livePullKBMap.put(executor.getPartitionId(), livePullKBMap.get(executor.getPartitionId())+resp.size()/1000);
+                }
+                
+                //LOG.error("TODO add chunk ID to response and add new reconfig control type for asyn pull response received"); //TODO
                 if(multiPullReplyRequest.getIsAsync()){
                 	MultiDataPullResponseMessage pullResponseMsg = new MultiDataPullResponseMessage(multiPullReplyRequest, multiPullReplyResponseCallback);
                     unblockingPullRequestSemaphore(multiPullReplyRequest.getPullIdentifier(), multiPullReplyRequest.getNewPartition(),
@@ -828,7 +864,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 }                      
             }
         }
-      
     }
     
     /**
@@ -837,7 +872,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      */
     public void processLivePullReplyFromRC(MultiPullReplyRequest multiPullReplyRequest, RpcCallback<MultiPullReplyResponse> multiPullReplyResponseCallback){
     	
-    	LOG.info("Processing pull reply from: "+multiPullReplyRequest.getOldPartition()+" to "+ multiPullReplyRequest.getNewPartition());
+        if (debug.val) LOG.debug("Processing pull reply from: "+multiPullReplyRequest.getOldPartition()+" to "+ multiPullReplyRequest.getNewPartition());
     	VoltTable vt = null;
         try {
             vt = FastDeserializer.deserialize(multiPullReplyRequest.getVoltTableData().toByteArray(), VoltTable.class);
@@ -913,10 +948,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     // Unblock the semaphore for a blocking request
                     if (blockedRequests.containsKey(livePullId) && blockedRequests.get(livePullId) != null) {
                         if (moreDataNeeded){
-                            LOG.info("keeping PE blocked as more data is needed");
+                            if (debug.val) LOG.debug("keeping PE blocked as more data is needed");
                         }
                         else { 
-                            LOG.info("Releasing on PE semaphore for the pulled request " + livePullId);
+                            if (debug.val) LOG.debug("Releasing on PE semaphore for the pulled request " + livePullId);
                             blockedRequests.get(livePullId).release();
                             if (debug.val && detailed_timing) {
                                 done = System.currentTimeMillis()-start;
@@ -1246,48 +1281,67 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
         return async_queue_pulls;
     }
     
+    
+    public void reportProfiler(String str, ProfileMeasurement pm, int partitionId){
+        String logMsg = String.format("%s, MS=%s, Count=%s, PartitionId=%s",
+                str,
+                pm.getAverageThinkTimeMS(),
+                pm.getInvocations(), partitionId);
+        LOG.info(logMsg);
+        FileUtil.appendEventToFile(logMsg);
+    }
+    
+    public void reportProfiler(String str, FastIntHistogram h, int partitionId){
+        String histString = "Histogram=NoEntries";
+        if (!h.isEmpty())
+            histString = String.format("Histogram=\n%s", h.toString());
+        String logMsg = String.format("%s, PartitionId=%s, Histogram=\n%s",
+                str,
+                partitionId,
+                histString);
+        LOG.info(logMsg);
+        FileUtil.appendEventToFile(logMsg);
+    }
+    
+    public void reportProfiler(String desc, String valDesc, Number n, int partitionId){
+        String logMsg = String.format("%s, %s=%s, PartitionId=%s",
+                desc,
+                valDesc,
+                n,
+                partitionId);
+        LOG.info(logMsg);
+        FileUtil.appendEventToFile(logMsg);
+    }
+    
     public void showReconfigurationProfiler() {
         if(hstore_conf.site.reconfig_profiling) {
             for (int p_id : hstore_site.getLocalPartitionIds().values()) {
                 LOG.info("Showing reconfig stats");
                 LOG.info(this.profilers[p_id].toString());
-                String avgPull = String.format("REPORT_AVG_DEMAND_PULL_TIME, MS=%s, Count=%s, PartitionId=%s",
-                        this.profilers[p_id].on_demand_pull_time.getAverageThinkTimeMS(),
-                        this.profilers[p_id].on_demand_pull_time.getInvocations(), p_id);
-                LOG.info(avgPull);
-                FileUtil.appendEventToFile(avgPull);
                 
-                String avgAsync = String.format("REPORT_AVG_ASYNC_PULL_TIME, MS=%s, Count=%s, PartitionId=%s ",
-                        this.profilers[p_id].async_pull_time.getAverageThinkTimeMS(),
-                        this.profilers[p_id].async_pull_time.getInvocations(), p_id);
-                LOG.info(avgAsync);
-                FileUtil.appendEventToFile(avgAsync);
- 
-                String avgAsyncQ = String.format("REPORT_AVG_ASYNC_DEST_QUEUE_TIME, MS=%s, Count=%s, PartitionId=%s ",
-                        this.profilers[p_id].async_dest_queue_time.getAverageThinkTimeMS(),
-                        this.profilers[p_id].async_dest_queue_time.getInvocations(), p_id);
-                LOG.info(avgAsyncQ);
-                FileUtil.appendEventToFile(avgAsyncQ);
+                reportProfiler("REPORT_AVG_DEMAND_PULL_TIME",this.profilers[p_id].on_demand_pull_time, p_id);
                 
-                String pullResponse = String.format("REPORT_AVG_LIVE_PULL_RESONSE_QUEUE_TIME, MS=%s, Count=%s, PartitionId=%s ",
-                        this.profilers[p_id].on_demand_pull_response_queue.getAverageThinkTimeMS(),
-                        this.profilers[p_id].on_demand_pull_response_queue.getInvocations(), p_id);
-                LOG.info(pullResponse);
-                FileUtil.appendEventToFile(pullResponse);
+                reportProfiler("REPORT_AVG_ASYNC_PULL_TIME",this.profilers[p_id].async_pull_time, p_id);
+                reportProfiler("REPORT_AVG_ASYNC_DEST_QUEUE_TIME",this.profilers[p_id].async_dest_queue_time, p_id);
+                reportProfiler("REPORT_AVG_LIVE_PULL_RESONSE_QUEUE_TIME",this.profilers[p_id].on_demand_pull_response_queue, p_id);
+                reportProfiler("REPORT_PE_CHECK_TXN_TIME",this.profilers[p_id].pe_check_txn_time, p_id);
+                reportProfiler("REPORT_PE_LIVE_PULL_BLOCK_TIME",this.profilers[p_id].pe_live_pull_block_time, p_id);
                 
+
+                reportProfiler("REPORT_EMPTY_LOADS", "Count", this.profilers[p_id].empty_loads, p_id);
+
+                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE",  this.profilers[p_id].pe_block_queue_size, p_id);
+                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_block_queue_size_growth, p_id);
+                reportProfiler("REPORT_EXTRACT_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_extract_queue_size_growth, p_id);
+                reportProfiler("REPORT_EXTRACT_PROC_TIME",  this.profilers[p_id].src_extract_proc_time, p_id);
+                
+                reportProfiler("REPORT_TOTAL_PULL_SIZE", "KB", livePullKBMap.get(p_id), p_id);
+
                 if (detailed_timing) {
-                    String dataPullInit = String.format("REPORT_AVG_SRC_DATA_PULL_INIT, MS=%s, Count=%s, PartitionId=%s ",
-                            this.profilers[p_id].src_data_pull_req_init_time.getAverageThinkTimeMS(),
-                            this.profilers[p_id].src_data_pull_req_init_time.getInvocations(), p_id);
-                    LOG.info(dataPullInit);
-                    FileUtil.appendEventToFile(dataPullInit);
-                    
-                    String dataPullProc = String.format("REPORT_AVG_SRC_DATA_PULL_PROC, MS=%s, Count=%s, PartitionId=%s ",
-                            this.profilers[p_id].src_data_pull_req_proc_time.getAverageThinkTimeMS(),
-                            this.profilers[p_id].src_data_pull_req_proc_time.getInvocations(), p_id);
-                    LOG.info(dataPullProc);
-                    FileUtil.appendEventToFile(dataPullProc);
+                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id);
+                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_PROC",this.profilers[p_id].src_data_pull_req_proc_time, p_id);                    
                 }
+                
                 
             }
         }
@@ -1314,6 +1368,41 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
 
     public boolean isLive_pull() {
         return live_pull;
+    }
+
+    /**
+     * Return the current partition for the data item if either are local.
+     * If not return the expected
+     * @param previousPartition
+     * @param expectedPartition
+     * @param catalogItem
+     * @param value
+     * @return
+     */
+    public int getPartitionId(int previousPartition, int expectedPartition, CatalogType catalogItem, Object value) {
+        //TODO add a fast lookup with no exception
+        if (executorMap.containsKey(expectedPartition)){
+            //check with destination if we have it
+            try{
+                if (executorMap.get(expectedPartition).getReconfiguration_tracker().checkKeyOwned(catalogItem, value))
+                    return expectedPartition;
+                else
+                    return previousPartition;
+            } catch(Exception e) {
+                return previousPartition;
+            }
+        } else if (executorMap.containsKey(previousPartition)) {
+            try{
+                if (executorMap.get(previousPartition).getReconfiguration_tracker().checkKeyOwned(catalogItem, value))
+                    return previousPartition;
+                else
+                    return expectedPartition;
+            } catch(Exception e) {
+                return expectedPartition;
+            }
+        } else {
+            return expectedPartition;
+        }    
     }
 
 
