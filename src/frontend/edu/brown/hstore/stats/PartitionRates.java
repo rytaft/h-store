@@ -84,25 +84,27 @@ public class PartitionRates extends StatsSource {
 	 */
 
 	public void addAccesses(FastIntHistogram counts){
-		if(firstCall){
-			timer = new Timer();
-			timer.scheduleAtFixedRate(new NewRow(), TABLE_ROW_PERIOD, TABLE_ROW_PERIOD);
-			firstCall = false;
-		}
-		for (int i = 0; i < numberOfLocalPartitions; i++){
-			if(counts.contains(localPartitions[i])){
-				accessRates.put(localPartitions[i]);
-//				accessRates.put(part, accessRates.get(part)+1);
+		if(false){
+			if(firstCall){
+				timer = new Timer();
+				timer.scheduleAtFixedRate(new NewRow(), TABLE_ROW_PERIOD, TABLE_ROW_PERIOD);
+				firstCall = false;
 			}
-			
-//			accessRates.put(part,counts.get(part));
-						
-//			if(counts.contains(part)){
-//				for (int j = 0; j < numberOfLocalPartitions; j++){
-//					int innerPart = localPartitions[j];
-//					affinityMatrix[part].put(innerPart,counts.get(innerPart));
-//				}
-//			}
+			for (int i = 0; i < numberOfLocalPartitions; i++){
+				if(counts.contains(localPartitions[i])){
+					accessRates.put(localPartitions[i]);
+	//				accessRates.put(part, accessRates.get(part)+1);
+				}
+				
+	//			accessRates.put(part,counts.get(part));
+							
+	//			if(counts.contains(part)){
+	//				for (int j = 0; j < numberOfLocalPartitions; j++){
+	//					int innerPart = localPartitions[j];
+	//					affinityMatrix[part].put(innerPart,counts.get(innerPart));
+	//				}
+	//			}
+			}
 		}
 	}
 	

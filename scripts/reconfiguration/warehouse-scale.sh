@@ -15,12 +15,11 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-    "reconfig-test --partitions=2 --client.scalefactor=0.1 --results-dir=${DATA_DIR}/scale.1"  \
-    "reconfig-test --partitions=2 --client.scalefactor=0.2 --results-dir=${DATA_DIR}/scale.2" \
-    "reconfig-test --partitions=2 --client.scalefactor=0.5 --results-dir=${DATA_DIR}/scale.5" \
-    "reconfig-test --partitions=2 --client.scalefactor=1 --results-dir=${DATA_DIR}/scale1" \
-    "reconfig-test --partitions=2 --client.scalefactor=2 --results-dir=${DATA_DIR}/scale2" \
-    "reconfig-test --partitions=2 --client.scalefactor=3 --results-dir=${DATA_DIR}/scale4" \
+    "reconfig-2b --partitions=4 --benchmark-size=12 --exp-suffix=0.1 --client.scalefactor=0.1 --results-dir=${DATA_DIR}/scale.1"  \
+    "reconfig-2b --partitions=4 --benchmark-size=12  --exp-suffix=0.2  --client.scalefactor=0.2 --results-dir=${DATA_DIR}/scale.2" \
+    "reconfig-2b --partitions=4 --benchmark-size=12  --exp-suffix=0.5  --client.scalefactor=0.5 --results-dir=${DATA_DIR}/scale.5" \
+    "reconfig-2b --partitions=4 --benchmark-size=12  --exp-suffix=1  --client.scalefactor=1 --results-dir=${DATA_DIR}/scale1" \
+    "reconfig-2b --partitions=4 --benchmark-size=12  --exp-suffix=0.3  --client.scalefactor=0.3 --results-dir=${DATA_DIR}/scale2" \
 )
 
 #for b in smallbank tpcc seats; do
@@ -33,10 +32,10 @@ for b in tpcc; do
         --exp-trials=1 \
         --exp-attempts=1 \        
         --no-json \
-	    --sweep-reconfiguration \
+   	    --sweep-reconfiguration \
         --client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=120000 \
+        --client.duration=180000 \
         --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv \
         --client.txnrate=5 \

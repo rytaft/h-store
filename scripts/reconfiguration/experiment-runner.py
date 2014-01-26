@@ -231,6 +231,9 @@ EXPERIMENT_SETTINGS = [
     "reconfig-ycsb-zipf",
     "reconfig-ycsb-hotspot",
     "reconfig-ycsb-uniform",
+    "stopcopy-ycsb-zipf",
+    "stopcopy-ycsb-hotspot",
+    "stopcopy-ycsb-uniform",
 
     "reconfig-tpcc-hotspot-0",
     "reconfig-tpcc-hotspot-20",
@@ -735,7 +738,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_response_status"] = True
         fabric.env["client.threads_per_host"] = 20  # max(1, int(partitions/2))
 
-    if args['exp_type'] == 'reconfig-ycsb-zipf':
+    if args['exp_type'] == 'reconfig-ycsb-zipf' or args['exp_type'] == 'stopcopy-ycsb-zipf':
         fabric.env["client.count"] = 4
         #fabric.env["client.txnrate"] = 100000
         fabric.env["client.blocking"] = True
@@ -744,12 +747,15 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
+        fabric.env["site.reconfig_chunk_size_kb"] = 2048 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
+        fabric.env["site.commandlog_enable"] = False
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
         fabric.env["benchmark.requestdistribution"] = "zipfian"
         fabric.env["benchmark.ReadRecordProportion"] = 0.95
         fabric.env["benchmark.UpdateRecordProportion"] = 0.05
 
-    if args['exp_type'] == 'reconfig-ycsb-uniform':
+    if args['exp_type'] == 'reconfig-ycsb-uniform' or args['exp_type'] == 'stopcopy-ycsb-uniform':
         fabric.env["client.count"] = 4
         #fabric.env["client.txnrate"] = 100000
         fabric.env["client.blocking"] = True
@@ -759,11 +765,14 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
+        fabric.env["site.reconfig_chunk_size_kb"] = 2048 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
+        fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.requestdistribution"] = "uniform"
         fabric.env["benchmark.ReadRecordProportion"] = 0.95
         fabric.env["benchmark.UpdateRecordProportion"] = 0.05
 
-    if args['exp_type'] == 'reconfig-ycsb-hotspot':
+    if args['exp_type'] == 'reconfig-ycsb-hotspot' or args['exp_type'] == 'stopcopy-ycsb-hotspot':
         fabric.env["client.count"] = 4
         #fabric.env["client.txnrate"] = 100000
         fabric.env["client.blocking"] = True
@@ -773,6 +782,9 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
+        fabric.env["site.reconfig_chunk_size_kb"] = 2048 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
+        fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.requestdistribution"] = "hotspot"
         fabric.env["benchmark.ReadRecordProportion"] = 0.95
         fabric.env["benchmark.UpdateRecordProportion"] = 0.05

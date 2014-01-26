@@ -20,6 +20,9 @@ package edu.brown.benchmark.ycsb.distributions;
 
 import java.util.Random;
 import java.util.TreeMap;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.ArrayList;
 
 /**
  * A generator of a zipfian distribution. It produces a sequence of items, such that some items are more popular than others, according
@@ -54,37 +57,37 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	/**
 	 * The amount to shift the distribution each time
 	 */
-	long shift;
+	long shift = DEFAULT_SHIFT;
 
 	/**
 	 * The total shift from the base distribution
 	 */
-	long totalShift;
+	long totalShift = 0L;
 	
 	/**
 	 * Number of items.
 	 */
-	long items;
+	long items = ITEM_COUNT;
 
 	/**
 	 * Min and max items
 	 */
-    long min, max;
+    long min = 0L; long max = ITEM_COUNT;
 	
     /**
 	 * time interval in (in milliseconds)
 	 */
-    long interval;
+    long interval = DEFAULT_INTERVAL;
 	
 	/**
 	 * Min item to generate.
 	 */
-	long base;
+	long base = 0L;
 	
 	/**
 	 * The zipfian constant to use.
 	 */
-	double zipfianconstant;
+	double zipfianconstant = ZIPFIAN_CONSTANT;
 	
 	/**
 	 * Computed parameters for generating the distribution.
@@ -113,6 +116,21 @@ public class VaryingZipfianGenerator extends IntegerGenerator
     boolean randomShift = false;
     
     /**
+     * Number of hot spots (k) in addition to the underlying zipfian skew 
+     */
+    int numHotSpots = 0;
+    
+    /**
+     * Percentage of tuple accesses that go to the k hot tuples
+     */
+    double percentAccessHotSpots = 0.0;
+    
+    /**
+     * List of the k randomly selected hot spots
+     */
+    ArrayList<Long> hotSpots = new ArrayList<Long>();
+    
+    /**
      * Map random double to an item id
      */
     TreeMap<Double, Long> itemMap;
@@ -138,9 +156,9 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @param interval The time interval between changing skew
 	 * @param shift The amount to shift the distribution each time
 	 */
-    public VaryingZipfianGenerator(long _items, boolean scrambled, boolean mirrored, long interval, long shift)
+    public VaryingZipfianGenerator(long _items)
 	{
-	    this(0,_items-1,scrambled,mirrored,interval,shift);
+	    this(0,_items-1);
 	}
 
 	/**
@@ -152,9 +170,9 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @param interval The time interval between changing skew
 	 * @param shift The amount to shift the distribution each time
 	 */
-	public VaryingZipfianGenerator(long _min, long _max, boolean scrambled, boolean mirrored, long interval, long shift)
+	public VaryingZipfianGenerator(long _min, long _max)
 	{
-		this(_min,_max,ZIPFIAN_CONSTANT,scrambled,mirrored,interval,shift);
+		this(_min,_max,ZIPFIAN_CONSTANT);
 	}
 
 	/**
@@ -167,9 +185,9 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @param interval The time interval between changing skew
 	 * @param shift The amount to shift the distribution each time
 	 */
-	public VaryingZipfianGenerator(long _items, double _zipfianconstant, boolean scrambled, boolean mirrored, long interval, long shift)
+	public VaryingZipfianGenerator(long _items, double _zipfianconstant)
 	{
-		this(0,_items-1,_zipfianconstant,scrambled,mirrored,interval,shift);
+		this(0,_items-1,_zipfianconstant);
 	}
 
 	/**
@@ -182,9 +200,9 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @param interval The time interval between changing skew
 	 * @param shift The amount to shift the distribution each time
 	 */
-	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant, boolean scrambled, boolean mirrored, long interval, long shift)
+	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant)
 	{
-		this(min,max,_zipfianconstant,zetastatic(max-min+1,_zipfianconstant),scrambled,mirrored,interval,shift);
+		this(min,max,_zipfianconstant,zetastatic(max-min+1,_zipfianconstant));
 	}
 	
 	/**
@@ -199,19 +217,12 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @param interval The time interval between changing skew
 	 * @param shift The amount to shift the distribution each time
 	 */
-	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant, double _zetan, boolean scrambled, boolean mirrored, long interval, long shift)
+	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant, double _zetan)
 	{
 	    this.min=min;
 	    this.max=max;
-		this.scrambled=scrambled;
-		this.mirrored=mirrored;
-		this.interval=interval;
 		this.lastTime = System.currentTimeMillis();
-		this.shift = shift;
 		this.totalShift = 0L;
-		if(shift == DEFAULT_SHIFT) {
-			this.randomShift = true;
-		}
 		items=max-min+1;
 		base=min;
 		zipfianconstant=_zipfianconstant;
@@ -234,60 +245,82 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 		
 		nextInt();
 	}
-
-	/**
-	 * Create a zipfian generator for the specified number of items.
-	 * @param _items The number of items in the distribution.
-	 */
-	public VaryingZipfianGenerator(long _items)
-	{
-	    this(_items, false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
-	}
-
-	/**
-	 * Create a zipfian generator for items between min and max.
-	 * @param _min The smallest integer to generate in the sequence.
-	 * @param _max The largest integer to generate in the sequence.
-	 */
-	public VaryingZipfianGenerator(long _min, long _max)
-	{
-		this(_min,_max, false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
-	}
-
-	/**
-	 * Create a zipfian generator for the specified number of items using the specified zipfian constant.
-	 * 
-	 * @param _items The number of items in the distribution.
-	 * @param _zipfianconstant The zipfian constant to use.
-	 */
-	public VaryingZipfianGenerator(long _items, double _zipfianconstant)
-	{
-	    this(_items,_zipfianconstant, false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
-	}
-
-	/**
-	 * Create a zipfian generator for items between min and max (inclusive) for the specified zipfian constant.
-	 * @param min The smallest integer to generate in the sequence.
-	 * @param max The largest integer to generate in the sequence.
-	 * @param _zipfianconstant The zipfian constant to use.
-	 */
-	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant)
-	{
-		this(min,max,_zipfianconstant,false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
-	}
 	
-	/**
-	 * Create a zipfian generator for items between min and max (inclusive) for the specified zipfian constant, using the precomputed value of zeta.
-	 * 
-	 * @param min The smallest integer to generate in the sequence.
-	 * @param max The largest integer to generate in the sequence.
-	 * @param _zipfianconstant The zipfian constant to use.
-	 * @param _zetan The precomputed zeta constant.
-	 */
-	public VaryingZipfianGenerator(long min, long max, double _zipfianconstant, double _zetan)
-	{
-	    this(min, max, _zipfianconstant, _zetan, false,false,DEFAULT_INTERVAL,DEFAULT_SHIFT);
+	/**************************************************************************/
+	
+	/**********************************Getters/Setters****************************************/
+	
+	public boolean getScrambled() {
+		return scrambled;
 	}
+    
+    public boolean getMirrored() {
+    	return mirrored;
+    }
+    
+    public long getShift() {
+    	return shift;
+    }
+    
+    public boolean getRandomShift() {
+    	return randomShift;
+    }
+    
+    public long getInterval() {
+    	return interval;
+    }
+    
+    public int getNumHotSpots() {
+    	return numHotSpots;
+    }
+    
+    public ArrayList<Long> getHotSpots() {
+    	return hotSpots;
+    }
+	
+    public double getPercentAccessHotSpots() {
+    	return percentAccessHotSpots;
+    }
+    
+    public void setScrambled(boolean scrambled) {
+		this.scrambled = scrambled;
+	}
+    
+    public void setMirrored(boolean mirrored) {
+    	this.mirrored = mirrored;
+    }
+    
+    public void setShift(long shift) {
+    	this.shift = shift;
+    }
+    
+    public void setRandomShift(boolean randomShift) {
+    	this.randomShift = randomShift;
+    }
+    
+    public void setInterval(long interval) {
+    	this.interval = interval;
+    }
+    
+    public void setNumHotSpots(int numHotSpots) {
+    	this.numHotSpots = numHotSpots;
+    	HashSet<Long> hotSpotsSet = new HashSet<Long>(numHotSpots);
+    	long item = 0;
+    	while(hotSpotsSet.size() < numHotSpots) {
+    		Utils.random().setSeed(item);
+    		item = Utils.random().nextLong() % items + min;
+		if (item < min) item += items;
+    		if(!hotSpotsSet.add(item)) {
+		    item += 1;
+		}
+    	}
+    	hotSpots.clear();
+    	hotSpots.addAll(hotSpotsSet);
+    }
+	
+    public void setPercentAccessHotSpots(double percentAccessHotSpots) {
+    	this.percentAccessHotSpots = percentAccessHotSpots;
+    }
 	
 	/**************************************************************************/
 	
@@ -380,6 +413,20 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	{
 		return (int)nextLong(itemcount);
 	}
+	
+	/** 
+	 * Generate the next item. this distribution will be skewed toward lower integers; e.g. 0 will
+	 * be the most popular, 1 the next most popular, etc.
+	 * @param r1 - the random double to use for zipfian skew
+	 * @param r2 - the random double to use to determine whether to assign a hot spot
+	 * @param r3 - the random int to use to select the hot spot
+	 * @return The next item in the sequence.
+	 */
+	@Override
+	public int nextInt(double r1, double r2, int r3)
+	{
+		return (int)nextLong(items, r1, r2, r3);
+	}
 
 	/**
 	 * Generate the next item as a long.
@@ -387,7 +434,22 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 	 * @param itemcount The number of items in the distribution.
 	 * @return The next item in the sequence.
 	 */
-	public long nextLong(long itemcount)
+	public long nextLong(long itemcount) {
+		return nextLong(itemcount, Utils.random().nextDouble(), Utils.random().nextDouble(), 
+				(hotSpots.size() > 0 ? Utils.random().nextInt(hotSpots.size()) : 0));
+	}
+	
+	
+	/**
+	 * Generate the next item as a long.
+	 * 
+	 * @param itemcount The number of items in the distribution.
+	 * @param r1 - the random double to use for zipfian skew
+	 * @param r2 - the random double to use to determine whether to assign a hot spot
+	 * @param r3 - the random int to use to select the hot spot
+	 * @return The next item in the sequence.
+	 */
+	public long nextLong(long itemcount, double r1, double r2, int r3)
 	{
 		//from "Quickly Generating Billion-Record Synthetic Databases", Jim Gray et al, SIGMOD 1994
 
@@ -432,17 +494,22 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 			}
 		}
 
-		double u=Utils.random().nextDouble();
+		double u=r1;
 		double uz=u*zetan;
 		long ret;
 
-		if(theta >= 1) {
+		if(r2 < this.percentAccessHotSpots) {
+			int index = r3;
+			ret = hotSpots.get(index);
+		}
+		else if(theta >= 1) {
 			if(u < 0.95) {
 				ret = itemMap.floorEntry(u).getValue();
 			}
 			else { // the last 5% are distributed uniformly
 				Long maxItem = itemMap.lastEntry().getValue();
 				ret = Utils.random().nextInt() % (items - maxItem) + maxItem;
+				if(ret < maxItem) ret += (items - maxItem);
 			}
 		}
 		else {
@@ -481,6 +548,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 		if(scrambled) {
 		    ret=min+Utils.FNVhash64(ret)%items;
 		}
+		if(ret < min) ret += items;
 		setLastInt((int)ret);
 		return ret;
 	}

@@ -84,6 +84,7 @@ public class TwoTieredRangePartitions implements JSONSerializable {
     private Map<String, String> partitionedTablesByFK;
     private Map<CatalogType, String> catalog_to_table_map;
     private String default_table = null;
+    private Map<String, List<String>> relatedTablesMap;
 
     public TwoTieredRangePartitions(CatalogContext catalog_context, File partition_json_file) throws Exception {
         this(catalog_context, new JSONObject(FileUtil.readFile(partition_json_file)));
@@ -95,6 +96,7 @@ public class TwoTieredRangePartitions implements JSONSerializable {
         this.old_partition_plan = null;
         this.partition_plan = null;
         this.plan_tables = null;
+	this.relatedTablesMap = new HashMap<>();
         Set<String> partitionedTables = getExplicitPartitionedTables(partition_json);
         // TODO find catalogContext.getParameter mapping to find
         // statement_column
@@ -151,13 +153,17 @@ public class TwoTieredRangePartitions implements JSONSerializable {
                 } else {
                     LOG.info(tableName + " is not explicitly partitioned.");
                 }
+
                 List<Column> depCols = dependUtil.getAncestors(partitionCol);
                 boolean partitionedParentFound = false;
+		List<String> relatedTables = new ArrayList<>();
                 for (Column c : depCols) {
                     CatalogType p = c.getParent();
                     if (p instanceof Table) {
                         // if in table then map to it
                         String relatedTblName = p.getName().toLowerCase();
+                        LOG.info(String.format("Table %s is related to %s",tableName,relatedTblName));
+                        relatedTables.add(relatedTblName);
                         if (partitionedTables.contains(relatedTblName)) {
                             LOG.info("parent partitioned table : " + p + " : " + relatedTblName);
                             partitionedTablesByFK.put(tableName, relatedTblName);
@@ -173,6 +179,11 @@ public class TwoTieredRangePartitions implements JSONSerializable {
                             catalog_to_table_map.put(partitionCol, tableName);
                         }
                     }
+                }
+                if(!relatedTables.isEmpty()){
+                    LOG.info("Associating the list of related tables for :"+ tableName);
+                    relatedTables.add(tableName);
+                    relatedTablesMap.put(tableName, relatedTables);
                 }
                 if (!partitionedParentFound) {
                     throw new RuntimeException("No partitioned relationship found for table : " + tableName + " partitioned:" + partitionedTables.toString());
@@ -389,4 +400,7 @@ public class TwoTieredRangePartitions implements JSONSerializable {
 
     }
 
+    public Map<String, List<String>> getRelatedTablesMap() {
+        return relatedTablesMap;
+    }
 }

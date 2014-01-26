@@ -24,7 +24,7 @@ EXP_TYPES=( \
 )
 
 #for b in smallbank tpcc seats; do
-for b in tpcc; do
+for b in ycsb; do
 # for b in seats; do
     PARAMS=( \
         --no-update \

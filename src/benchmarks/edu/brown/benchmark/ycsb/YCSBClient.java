@@ -95,6 +95,9 @@ public class YCSBClient extends BenchmarkComponent {
     private boolean mirrored = false;
     private long interval = VaryingZipfianGenerator.DEFAULT_INTERVAL;
     private long shift = VaryingZipfianGenerator.DEFAULT_SHIFT;
+    private int numHotSpots = 0;
+    private double percentAccessHotSpots = 0.0;
+    private boolean randomShift = false;
     
     
     int run_count = 0; 
@@ -143,9 +146,21 @@ public class YCSBClient extends BenchmarkComponent {
             else if (key.equalsIgnoreCase("interval")) {
                 this.interval = Long.valueOf(value);
             }
-            // How much to shift the distribution each time
+            // Whether to use a random shift
+            else if (key.equalsIgnoreCase("random_shift")) {
+                this.randomShift = Boolean.valueOf(value);
+            }
+            // How much to shift the distribution each time (if not random)
             else if (key.equalsIgnoreCase("shift")) {
                 this.shift = Long.valueOf(value);
+            }
+            // Number of hot spots
+            else if (key.equalsIgnoreCase("num_hot_spots")) {
+                this.numHotSpots = Integer.valueOf(value);
+            }
+            // Percent of access going to the hot spots
+            else if (key.equalsIgnoreCase("percent_accesses_to_hot_spots")) {
+                this.percentAccessHotSpots = Double.valueOf(value);
             }
             else{
                 if(debug.val) LOG.debug("Unknown prop : "  + key);
@@ -181,7 +196,15 @@ public class YCSBClient extends BenchmarkComponent {
             if(debug.val) LOG.debug("Using a default zipfian key distribution");
             //ints are used for keyGens and longs are used for record counts.            
             //TODO check on other zipf params
-            this.keyGenerator = new VaryingZipfianGenerator(init_record_count, skewFactor, scrambled, mirrored, interval, shift);
+            VaryingZipfianGenerator gen = new VaryingZipfianGenerator(init_record_count, skewFactor);
+            gen.setInterval(interval);
+            gen.setMirrored(mirrored);
+            gen.setNumHotSpots(numHotSpots);
+            gen.setPercentAccessHotSpots(percentAccessHotSpots);
+            gen.setRandomShift(randomShift);
+            gen.setScrambled(scrambled);
+            gen.setShift(shift);
+            this.keyGenerator = gen;
         }
         else{
             String msg = "Unsupported YCSB key distribution type :" + requestDistribution;

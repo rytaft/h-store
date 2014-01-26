@@ -13,6 +13,7 @@ public class AsyncDataPullRequestMessage extends InternalMessage {
     private AsyncPullRequest asyncPullRequest;
     private int chunk;
     public long createTime;
+    public String protocol;
     
     
     public AsyncDataPullRequestMessage(AsyncPullRequest asyncPullRequest, RpcCallback<AsyncPullResponse> asyncPullRequestCallback) {
@@ -21,6 +22,7 @@ public class AsyncDataPullRequestMessage extends InternalMessage {
         this.asyncPullRequestCallback = asyncPullRequestCallback;
         this.createTime = System.currentTimeMillis();
         this.chunk = 0;
+        this.protocol = "livePull";
     }
 
     public long getQueueTime(){
@@ -39,5 +41,13 @@ public class AsyncDataPullRequestMessage extends InternalMessage {
         int t = chunk;
         chunk++;
         return t;
+    }
+    
+    public void setProtocol(String protocol){
+    	this.protocol = protocol;
+    }
+    
+    public String getProtocol(){
+    	return this.protocol;
     }
 }
