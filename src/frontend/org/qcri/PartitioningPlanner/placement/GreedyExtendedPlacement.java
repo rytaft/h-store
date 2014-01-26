@@ -79,6 +79,7 @@ public class GreedyExtendedPlacement extends Placement {
 		for(Long i = 0L; i < hotTupleCount; ++i) {
 			getHottestTuple(hotTuplesList);
 			System.out.println("Processing hot tuple id " + _hotTupleId + " with access count " + _hotAccessCount);
+			System.out.println("meanAccesses " + meanAccesses+ "partitionCount " +partitionCount);
 
 			if(partitionTotals.get(_srcPartition) > meanAccesses || _srcPartition >= partitionCount) {
 					dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount);
