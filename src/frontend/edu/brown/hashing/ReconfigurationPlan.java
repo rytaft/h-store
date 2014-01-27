@@ -113,13 +113,13 @@ public class ReconfigurationPlan {
                   // Need to move the old range to new range
                   getReconfigurations().add(new ReconfigurationRange<T>(table_name, old_range.vt, max_old_accounted_for, old_range.max_exclusive,
                       old_range.partition, new_range.partition));
-                  max_old_accounted_for = old_range.max_exclusive;
-                  
-                  //Have we satisfied all of the new range and is there another new range to process
-                  if (max_old_accounted_for.compareTo(new_range.max_exclusive)==0 && new_ranges.hasNext()){
-                    new_range = new_ranges.next();
-                  }
+                  max_old_accounted_for = old_range.max_exclusive;                  
                 }
+		//Have we satisfied all of the new range and is there another new range to process
+		if (max_old_accounted_for.compareTo(new_range.max_exclusive)==0 && new_ranges.hasNext()){
+                    new_range = new_ranges.next();
+		}
+
               } else {
                 // The old range is larger than this new range
                 // keep getting new ranges until old range has been satisfied
