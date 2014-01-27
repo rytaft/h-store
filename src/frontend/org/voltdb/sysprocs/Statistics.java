@@ -44,10 +44,13 @@ import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTableUtil;
 
 import edu.brown.hstore.HStoreConstants;
+import edu.brown.hstore.PartitionExecutor;
 import edu.brown.hstore.PartitionExecutor.SystemProcedureExecutionContext;
 import edu.brown.hstore.internal.UtilityWorkMessage.UpdateMemoryMessage;
+import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator.ReconfigurationState;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import edu.brown.profilers.ReconfigurationProfiler;
 
 /**
  * Access the TABLE, PRCOEDURE, INITIATOR, IOSTATS, or PARTITIONCOUNT statistics.
@@ -273,7 +276,29 @@ public class Statistics extends VoltSystemProcedure {
             	//hstore_conf.site.exec_readwrite_tracking
             	//this.hstore_conf.site.exec_readwrite_tracking
             	//del me
-            	String text = "Original flag is  " + hstore_conf.site.exec_readwrite_tracking +"\n"; 
+                
+                // Cached list of local executors
+                List<PartitionExecutor> local_executors;
+                local_executors = new ArrayList<>();
+                
+                for (int p_id : hstore_site.getLocalPartitionIds().values()) {
+                    local_executors.add(hstore_site.getPartitionExecutor(p_id));
+                    //partitionStates.put(p_id, ReconfigurationState.NORMAL);
+                    //if(hstore_conf.site.reconfig_profiling) 
+                    //    this.profilers[p_id] = new ReconfigurationProfiler();
+                }
+                
+                for (PartitionExecutor executor : local_executors) {
+                    
+                	executor.turnOnOff_readwrite_tracking();
+                	//executorMap.put(executor.getPartitionId(),executor);
+                    //livePullKBMap.put(executor.getPartitionId(),new Integer(0));
+                }
+                
+                
+            	//Essam Turn On Off Read Write Tracker
+                /*
+                String text = "Original flag is  " + hstore_conf.site.exec_readwrite_tracking +"\n"; 
             	    	
             	if(hstore_conf.site.exec_readwrite_tracking == false)
             	  {
@@ -286,7 +311,7 @@ public class Statistics extends VoltSystemProcedure {
             		text = text +" in else true: new flag is "+ hstore_conf.site.exec_readwrite_tracking ;
             	  }
             	   	
-            	
+            	//*/
             	            	
             	///////////////////////////////////
             	return dSet;

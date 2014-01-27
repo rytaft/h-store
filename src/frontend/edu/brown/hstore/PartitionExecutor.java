@@ -3575,6 +3575,25 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param plan
      * @return
      */
+    
+    public void turnOnOff_readwrite_tracking()
+    {
+    	String text = "Original flag is  " + hstore_conf.site.exec_readwrite_tracking +"\n"; 
+    	
+    	if(hstore_conf.site.exec_readwrite_tracking == false)
+    	  {
+    		hstore_conf.site.exec_readwrite_tracking = true; //Essam
+    		text = text +" in if false: new flag is "+ hstore_conf.site.exec_readwrite_tracking;
+    	  }
+    	else 
+    	  {
+    		hstore_conf.site.exec_readwrite_tracking = false; //Essam
+    		text = text +" in else true: new flag is "+ hstore_conf.site.exec_readwrite_tracking ;
+    	  }
+    	
+    	
+    }
+    
     private VoltTable[] executeLocalPlan(LocalTransaction ts,
                                          BatchPlanner.BatchPlan plan,
                                          ParameterSet parameterSets[]) {
