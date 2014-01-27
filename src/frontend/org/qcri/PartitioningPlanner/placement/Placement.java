@@ -92,11 +92,8 @@ public class Placement {
 		
 		// go through the current plan and find old hot tuples by identifying
 		// ranges of size 1
-		ArrayList<List<Plan.Range>> rangesList = new ArrayList<List<Plan.Range>>();
-		rangesList.addAll(plan.getAllRanges().values());
-		int partitionId = 0;
-		for(List<Plan.Range> ranges : rangesList) {
-			for(Plan.Range range : ranges) {
+		for(Integer partitionId : plan.getAllPartitions()) {
+			for(Plan.Range range : plan.getAllRanges(partitionId)) {
 				// test if the old hot tuple is no longer hot
 				if(Plan.getRangeWidth(range) == 1 && !hotTuplesLookup.contains(range.from)) {
 					Long tupleId = range.from;
@@ -115,7 +112,6 @@ public class Placement {
 					}
 				}
 			}
-			partitionId++;
 		}
 		return plan;
 	}

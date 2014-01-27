@@ -64,7 +64,9 @@ public class GreedyExtendedPlacement extends Placement {
 			++partitionId;
 		}
 		
-		
+		// copy hot tuples list
+		ArrayList<Map<Long, Long>> hotTuplesListCopy = new ArrayList<Map<Long, Long>>();
+		hotTuplesListCopy.addAll(hotTuplesList);
 		
 		meanAccesses = totalAccesses / partitionCount;
 
@@ -133,7 +135,7 @@ public class GreedyExtendedPlacement extends Placement {
 			} 
 		} // end for each partition
 
-		aPlan = demoteTuples(hotTuplesList, aPlan);
+		aPlan = demoteTuples(hotTuplesListCopy, aPlan);
 		removeEmptyPartitions(aPlan);
 		return aPlan;
 		
