@@ -201,6 +201,8 @@ void TupleTrackerManager::eraseTupleTrackingInfo(){
 
 	    v_tupleTrackingInfo.clear();
 
+	    m_tableAccesses.clear();
+
 	    isTupleTrackingInfoExtracted = false;
 }
 
