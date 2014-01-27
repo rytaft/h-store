@@ -90,6 +90,7 @@ int64_t TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tuple
 
 	TableIndex *m_index = table->primaryKeyIndex();
 
+
 	std::vector<int> column_indices_vector = m_index->getColumnIndices();
 
 	std::vector<int>::iterator it = column_indices_vector.begin();
