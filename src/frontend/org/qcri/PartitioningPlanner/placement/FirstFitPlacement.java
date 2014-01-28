@@ -41,7 +41,10 @@ public class FirstFitPlacement extends Placement {
 		    partitionTotals.put(i, 0L);
 		}
 		
-		
+		// copy hot tuples list
+		ArrayList<Map<Long, Long>> hotTuplesListCopy = new ArrayList<Map<Long, Long>>();
+		hotTuplesListCopy.addAll(hotTuplesList);
+				
 		targetCapacity = totalAccesses / partitionCount;	
 		//System.out.println("Target capacity " + targetCapacity);
 		
@@ -125,7 +128,7 @@ public class FirstFitPlacement extends Placement {
 			
 		} // end for each partition
 
-		newPlan = demoteTuples(hotTuplesList, newPlan);		
+		newPlan = demoteTuples(hotTuplesListCopy, newPlan);		
 		removeEmptyPartitions(newPlan);
 		return newPlan;
 
