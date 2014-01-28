@@ -17,7 +17,7 @@ using namespace std;
 namespace voltdb {
 
 
-int64_t TupleTrackerManager::summedAccessFreq;
+//int64_t TupleTrackerManager::summedAccessFreq;
 // -------------------------------------------------------------------------
 
 TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx,int32_t partId,VoltDBEngine* vEng) :
@@ -203,6 +203,8 @@ void TupleTrackerManager::eraseTupleTrackingInfo(){
 	    v_tupleTrackingInfo.clear();
 
 	    m_tableAccesses.clear();
+
+	    summedAccessFreq = 0;
 
 	    isTupleTrackingInfoExtracted = false;
 }
