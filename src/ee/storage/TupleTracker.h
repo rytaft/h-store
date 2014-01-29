@@ -28,7 +28,8 @@ typedef struct {
     	//int partitionId;
     	//int64_t txnId;
     	std::string tableName;
-    	uint32_t tupleID;
+    	//uint32_t tupleID;
+    	int64_t tupleID; // for voter
     	int64_t frequency; // access frequency for a tuple
     	//TxnIDs* by; //set of txn accessed this tuple
     	} TupleTrackingInfo;
@@ -43,7 +44,8 @@ typedef struct {
     	} Accesses;
 
 // tupleID > Accesses
-typedef  boost::unordered_map<uint32_t, Accesses*> Map_TupleIdAccesses;
+//typedef  boost::unordered_map<uint32_t, Accesses*> Map_TupleIdAccesses;
+typedef  boost::unordered_map<int64_t, Accesses*> Map_TupleIdAccesses;
 
 //tableName -> <tupleID, Accesses>
 //typedef  boost::unordered_map<std::string, Map_TupleIdAccesses> Map_TableAccesses;
@@ -82,6 +84,7 @@ class TupleTrackerManager {
         void insertTuple(int64_t txnId, const std::string tableName, uint32_t tupleId);
         void getTuples(boost::unordered_map<std::string, RowOffsets*> *map) const;
         
+        int64_t getPhoneNo(std::string tableName,uint32_t tupleId);// for voter int64_t
         int64_t getPrimaryKey(std::string tableName,uint32_t tupleId);
         
 
