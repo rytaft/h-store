@@ -180,7 +180,8 @@ int64_t TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tuple
 void TupleTrackerManager::insertTuple(int64_t txnId, std::string tableName, uint32_t tupleId){
 	   //*/
 
-	if(	tableName == "AREA_CODE_STATE" || tableName == "CONTESTANTS" || tableName == "V_VOTES_BY_PHONE_NUMBER" || tableName == "V_VOTES_BY_CONTESTANT_NUMBER_STATE")
+	//if(	tableName == "AREA_CODE_STATE" || tableName == "CONTESTANTS" || tableName == "V_VOTES_BY_PHONE_NUMBER" || tableName == "V_VOTES_BY_CONTESTANT_NUMBER_STATE")
+	if(	tableName == "AREA_CODE_STATE" || tableName == "CONTESTANTS" || tableName == "V_VOTES_BY_CONTESTANT_NUMBER_STATE")
 		return; // tracks only votes.
 
 
