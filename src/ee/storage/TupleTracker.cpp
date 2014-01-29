@@ -90,19 +90,19 @@ int64_t TupleTrackerManager::getPhoneNo(std::string tableName, uint32_t tupleId)
 	tuple.move(table->dataPtrForTuple(tupleId));
 
 	//get voter phone number
-	//NValue colValue =
+	NValue colValue;
 
-	tuple.getNValue(1); // phone number is the 2nd att
+	colValue = tuple.getNValue(1); // phone number is the 2nd att
 
 	     ofstream myfile1;
 		 myfile1.open ("voterPhone.del");
 		 myfile1 << " phone no. = 10 \n";
 		 myfile1.close();
 
-	//return colValue.castAsBigIntAndGetValue();
+	return colValue.castAsBigIntAndGetValue();
 	//*/
 
-	return 10;
+	//return 10;
 
 }
 
@@ -113,9 +113,6 @@ int64_t TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tuple
 	TableTuple tuple = TableTuple(table->schema());
 
 	tuple.move(table->dataPtrForTuple(tupleId));
-
-	//get voter phone number
-	tuple.getNValue(2).castAsBigIntAndGetValue();
 
 	TableIndex *m_index = table->primaryKeyIndex();
 
@@ -184,6 +181,11 @@ int64_t TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tuple
 
 void TupleTrackerManager::insertTuple(int64_t txnId, std::string tableName, uint32_t tupleId){
 	   //*/
+
+	if(	tableName == "AREA_CODE_STATE" || tableName == "CONTESTANTS" )
+		return; // tracks only votes.
+
+
 	    Accesses* access = NULL;
 
 	    int64_t tupleId_phone =  getPhoneNo(tableName, tupleId);
