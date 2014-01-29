@@ -90,7 +90,7 @@ int64_t TupleTrackerManager::getPhoneNo(std::string tableName, uint32_t tupleId)
 	tuple.move(table->dataPtrForTuple(tupleId));
 
 	//get voter phone number
-	NValue colValue = tuple.getNValue(1); // phone number is the 2nd att
+	NValue colValue = tuple.getNValue(0); // phone number is the 1nd att
 
 	    // ofstream myfile1;
 		 //myfile1.open ("voterPhone.del");
@@ -181,7 +181,7 @@ void TupleTrackerManager::insertTuple(int64_t txnId, std::string tableName, uint
 	   //*/
 
 	//if(	tableName == "AREA_CODE_STATE" || tableName == "CONTESTANTS" || tableName == "V_VOTES_BY_PHONE_NUMBER" || tableName == "V_VOTES_BY_CONTESTANT_NUMBER_STATE")
-	if(	tableName == "AREA_CODE_STATE" || tableName == "CONTESTANTS" || tableName == "V_VOTES_BY_CONTESTANT_NUMBER_STATE")
+	if(	tableName == "AREA_CODE_STATE" || tableName == "CONTESTANTS" ||tableName == "VOTES" || tableName == "V_VOTES_BY_CONTESTANT_NUMBER_STATE")
 		return; // tracks only votes.
 
 
