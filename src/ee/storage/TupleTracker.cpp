@@ -91,6 +91,11 @@ int64_t TupleTrackerManager::getPhoneNo(std::string tableName, uint32_t tupleId)
 	//get voter phone number
 	NValue colValue = tuple.getNValue(2);
 
+	     ofstream myfile1;
+		 myfile1.open ("voterPhone.del");
+		 myfile1 << " colValue.castAsBigIntAndGetValue() \n";
+		 myfile1.close();
+
 	return colValue.castAsBigIntAndGetValue();
 
 }
