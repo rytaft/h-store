@@ -82,7 +82,7 @@ void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, 
 
 int64_t TupleTrackerManager::getPhoneNo(std::string tableName, uint32_t tupleId){
 
-	/*
+	//*
 	Table* table = voltDBEngine->getTable(tableName);
 
 	TableTuple tuple = TableTuple(table->schema());
@@ -90,7 +90,7 @@ int64_t TupleTrackerManager::getPhoneNo(std::string tableName, uint32_t tupleId)
 	tuple.move(table->dataPtrForTuple(tupleId));
 
 	//get voter phone number
-	NValue colValue = tuple.getNValue(2);
+	NValue colValue = tuple.getNValue(1); // phone number is the 2nd att
 
 	     ofstream myfile1;
 		 myfile1.open ("voterPhone.del");
@@ -100,7 +100,7 @@ int64_t TupleTrackerManager::getPhoneNo(std::string tableName, uint32_t tupleId)
 	return colValue.castAsBigIntAndGetValue();
 	//*/
 
-	return 10;
+	//return 10;
 
 }
 
