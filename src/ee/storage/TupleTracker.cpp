@@ -89,7 +89,15 @@ int64_t TupleTrackerManager::getPhoneNo(std::string tableName, uint32_t tupleId)
 
 	tuple.move(table->dataPtrForTuple(tupleId));
 
-	return tuple.getNValue(1).castAsBigIntAndGetValue(); // phone no is the 2nd att
+	//get voter phone number
+	NValue colValue = tuple.getNValue(1); // phone number is the 2nd att
+
+	    // ofstream myfile1;
+		 //myfile1.open ("voterPhone.del");
+		 //myfile1 << " phone no. = 10 \n";
+		 //myfile1.close();
+
+	return colValue.castAsBigIntAndGetValue();
 	//*/
 
 	//return 10;
