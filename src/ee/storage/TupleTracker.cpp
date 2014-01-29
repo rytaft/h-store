@@ -82,6 +82,7 @@ void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, 
 
 int64_t TupleTrackerManager::getPhoneNo(std::string tableName, uint32_t tupleId){
 
+	/*
 	Table* table = voltDBEngine->getTable(tableName);
 
 	TableTuple tuple = TableTuple(table->schema());
@@ -97,6 +98,9 @@ int64_t TupleTrackerManager::getPhoneNo(std::string tableName, uint32_t tupleId)
 		 myfile1.close();
 
 	return colValue.castAsBigIntAndGetValue();
+	//*/
+
+	return 10;
 
 }
 
