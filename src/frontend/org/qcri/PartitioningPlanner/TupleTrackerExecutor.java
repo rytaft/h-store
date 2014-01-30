@@ -96,7 +96,7 @@ private int getNoOfTuples(Long phoneNo, org.voltdb.client.Client client) throws 
 {
 	
 	String query = "select NUM_VOTES from V_VOTES_BY_PHONE_NUMBER where PHONE_NUMBER = " + phoneNo;
-	System.out.printf("Query:: " + query);
+	//System.out.printf("Query:: " + query);
 	ClientResponse cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
@@ -133,7 +133,7 @@ private int getNoOfTuples(Long phoneNo, org.voltdb.client.Client client) throws 
 	            String parts[] = line.split("\t");
 	            //hotTuples.put(Long.parseLong(parts[1]), Long.parseLong(parts[2])); 
 	            hotTuples.put(Long.parseLong(parts[1]), Pair.of(Long.parseLong(parts[2]), 
-	            		                                        Integer.valueOf( getNoOfTuples( Long.parseLong(parts[2]), client ))
+	            		                                        Integer.valueOf( getNoOfTuples( Long.parseLong(parts[1]), client ))
 	            		     ));
 	        }
 			reader.close();
