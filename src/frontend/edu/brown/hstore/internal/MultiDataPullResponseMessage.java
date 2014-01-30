@@ -4,6 +4,7 @@ import com.google.protobuf.RpcCallback;
 
 import edu.brown.hstore.Hstoreservice.MultiPullReplyRequest;
 import edu.brown.hstore.Hstoreservice.MultiPullReplyResponse;
+import edu.brown.profilers.ProfileMeasurement;
 
 public class MultiDataPullResponseMessage extends InternalMessage{
 	private MultiPullReplyRequest multiPullReplyRequest;
@@ -16,11 +17,11 @@ public class MultiDataPullResponseMessage extends InternalMessage{
         super();
         this.multiPullReplyRequest = multiPullReplyRequest;
         this.multiPullReplyCallback = multiPullReplyCallback;
-        this.createTime = System.currentTimeMillis();
+        this.createTime = ProfileMeasurement.getTime();
     }
 
     public long getQueueTime(){
-        return System.currentTimeMillis() - this.createTime;
+        return ProfileMeasurement.getTime() - this.createTime;
     }
 
     public MultiPullReplyRequest getMultiPullReplyRequest() {

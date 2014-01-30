@@ -158,8 +158,8 @@ public class VoterClient extends BenchmarkComponent {
         else {
             if(debug.val) LOG.debug("Using a uniform key distribution");
             //Ints are used for keyGens and longs are used for record counts.
-            this.areaCodeGenerator = new UniformIntegerGenerator(Utils.random(), 0, PhoneCallGenerator.AREA_CODES.length);
-            this.phoneNumberGenerator = new UniformIntegerGenerator(Utils.random(), 0, 10000000);
+            this.areaCodeGenerator = new UniformIntegerGenerator(Utils.random(), 0, PhoneCallGenerator.AREA_CODES.length-1);
+            this.phoneNumberGenerator = new UniformIntegerGenerator(Utils.random(), 0, 10000000-1);
         }
         
     }
