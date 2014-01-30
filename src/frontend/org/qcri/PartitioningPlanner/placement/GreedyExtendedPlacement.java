@@ -99,7 +99,7 @@ public class GreedyExtendedPlacement extends Placement {
 			hotTuplesList.get(_srcPartition).remove(_hotTupleId);
 
 		}
-		
+		System.out.println("LOOP1 DONE");
 		// place the cold tuples from the overloaded or deleted partitions
 		for(Integer i : oldPlan.getAllRanges().keySet()) { // foreach partition
 			if(partitionTotals.get(i) > meanAccesses || i.intValue() >= partitionCount) { 
@@ -135,9 +135,16 @@ public class GreedyExtendedPlacement extends Placement {
 				}
 			} 
 		} // end for each partition
+		
+		System.out.println("LOOP 2 DONE");
 
 		aPlan = demoteTuples(hotTuplesListCopy, aPlan);
+		
+		System.out.println("Demoted DONE");
+		
 		removeEmptyPartitions(aPlan);
+		
+		System.out.println("Removed DONE");
 		return aPlan;
 		
 	}
