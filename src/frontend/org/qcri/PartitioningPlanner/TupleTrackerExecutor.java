@@ -102,7 +102,7 @@ private int getNoOfTuples(Long phoneNo, org.voltdb.client.Client client) throws 
 	
 	int n = (int) count[0].fetchRow(0).getLong(0); 
 	
-	System.out.printf("Phone no %L has %d \n", phoneNo, n );
+	System.out.printf("Phone no %lu has %d \n", phoneNo, n );
 	
 	
 	
