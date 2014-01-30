@@ -100,6 +100,7 @@ public class GreedyExtendedPlacement extends Placement {
 
 		}
 		System.out.println("LOOP1 DONE");
+		
 		// place the cold tuples from the overloaded or deleted partitions
 		for(Integer i : oldPlan.getAllRanges().keySet()) { // foreach partition
 			if(partitionTotals.get(i) > meanAccesses || i.intValue() >= partitionCount) { 

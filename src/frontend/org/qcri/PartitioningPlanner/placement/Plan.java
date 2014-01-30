@@ -550,7 +550,7 @@ public class Plan {
 		JSONObject tableObject = new JSONObject();
 
 		jsonPlan.put("tables", tableNameObject);
-		tableNameObject.put("usertable", partitionDelimiter);
+		tableNameObject.put("votes", partitionDelimiter);
 		partitionDelimiter.put("partitions", tableObject);
 
 
