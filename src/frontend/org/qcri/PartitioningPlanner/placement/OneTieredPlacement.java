@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.voltdb.utils.Pair;
 import org.qcri.PartitioningPlanner.placement.Plan;
 
 
@@ -31,7 +32,7 @@ public class OneTieredPlacement extends Placement {
 	}
 
 	// initialize the private data members based on the input parameters
-	private void init(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan) {
+	private void init(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan) {
 		// ignore hotTuplesList
 
 	        accesses = new ArrayList<Long>();
@@ -66,7 +67,7 @@ public class OneTieredPlacement extends Placement {
 
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount, int timeLimit){
 		// ignore hotTuplesList
 		
 		Plan aPlan = new Plan(planFile);

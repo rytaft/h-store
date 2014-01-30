@@ -20,6 +20,8 @@ import org.jaga.reproduction.greycodedNumbers.SimpleBinaryXOverWithMutation;
 import org.jaga.selection.RouletteWheelSelection;
 import org.jaga.util.DefaultParameterSet;
 import org.jaga.util.FittestIndividualResult;
+
+import org.voltdb.utils.Pair;
 import org.qcri.PartitioningPlanner.placement.Plan;
 
 public class GAPlacement extends Placement {
@@ -39,7 +41,7 @@ public class GAPlacement extends Placement {
 	}
 	
 	// initialize the private data members based on the input parameters
-		private void init(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan, int partitionCount) {
+		private void init(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan, int partitionCount) {
 			tupleIds = new ArrayList<Long>();
 			accesses = new ArrayList<Long>(); 
 			locations = new ArrayList<Integer>(); 
@@ -69,10 +71,10 @@ public class GAPlacement extends Placement {
 			// them in oldLoad and oldPlan
 			tupleCount = 0;
 			Integer partitionId = 0;
-			for(Map<Long, Long>  hotTuples : hotTuplesList) {
+			for(Map<Long, Pair<Long,Integer> >  hotTuples : hotTuplesList) {
 				tupleCount += hotTuples.keySet().size();
 				for(Long i : hotTuples.keySet()) {
-					oldLoad.put(partitionId, oldLoad.get(partitionId) - hotTuples.get(i));
+					oldLoad.put(partitionId, oldLoad.get(partitionId) - hotTuples.get(i).getFirst());
 					oldPlan.removeTupleId(partitionId, i);
 				}
 				++partitionId;
@@ -80,10 +82,11 @@ public class GAPlacement extends Placement {
 
 			// store the ids, access counts, and locations of each of the hot tuples
 			partitionId = 0;
-			for(Map<Long, Long>  hotTuples : hotTuplesList) {
+			for(Map<Long, Pair<Long,Integer> >  hotTuples : hotTuplesList) {
 				for(Long i : hotTuples.keySet()) {
 					tupleIds.add(i);
-					accesses.add(hotTuples.get(i));
+					sliceSizes.add((long) hotTuples.get(i).getSecond().intValue());
+					accesses.add(hotTuples.get(i).getFirst());
 					locations.add(partitionId);
 				}
 				++partitionId;
@@ -111,7 +114,7 @@ public class GAPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit){
 		
 		Plan aPlan = new Plan(planFilename);
 		this.init(hotTuplesList, partitionTotals, aPlan, partitionCount);

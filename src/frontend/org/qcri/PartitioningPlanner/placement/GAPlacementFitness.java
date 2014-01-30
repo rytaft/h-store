@@ -66,14 +66,7 @@ public class GAPlacementFitness implements FitnessEvaluationAlgorithm {
 		// calculate the bandwidth cost of this placement
 		long cost = 0;
 		for(int i = 0; i < placementCount; ++i) {
-			if(i < tupleCount) {
-				// we are moving individual hot tuples so cost is at most 1
-				cost += ((locations.get(i) == newLocations.get(i)) ? 0 : 1); 
-			}
-			else {
-				// we are moving slices of cold tuples 
-				cost += ((locations.get(i) == newLocations.get(i)) ? 0 : sliceSizes.get(i - tupleCount)); 
-			}
+			cost += ((locations.get(i) == newLocations.get(i)) ? 0 : sliceSizes.get(i)); 
 		}
 		
 		// initialize load to 0

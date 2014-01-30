@@ -3,6 +3,7 @@ package org.qcri.PartitioningPlanner.placement;
 
 import org.qcri.PartitioningPlanner.placement.Plan;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
+import org.voltdb.utils.Pair;
 
 import edu.brown.BaseTestCase;
 
@@ -35,7 +36,7 @@ public class TestGreedyPlacement extends BaseTestCase {
 		file.delete();
 	
 		Map<Integer, Long> partitionTotals = new HashMap<Integer, Long>();  // partitionID --> summed access count
-		ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>>();
+		ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList = new ArrayList<Map<Long, Pair<Long,Integer> >>();
 		
 		Long tuplesPerInstance = tupleCount / partitionCount;
 		Long modulusCount = tupleCount % partitionCount;
@@ -56,7 +57,7 @@ public class TestGreedyPlacement extends BaseTestCase {
 			}
 			startRange = endRange + 1;
 			endRange = startRange + tuplesPerInstance - 1;
-			hotTuplesList.add(new HashMap<Long, Long>());  // tupleId --> summed access count
+			hotTuplesList.add(new HashMap<Long, Pair<Long,Integer> >());  // tupleId --> summed access count
 
 		}
 
@@ -73,7 +74,7 @@ public class TestGreedyPlacement extends BaseTestCase {
 			Long tupleId = Math.abs(generator.nextLong()) % tupleCount;
 			Integer tupleLocation = aPlan.getTuplePartition(tupleId);
 			Long accessCount =  Math.abs(generator.nextLong()) % hotTupleRange;
-			hotTuplesList.get(tupleLocation).put(tupleId, accessCount);
+			hotTuplesList.get(tupleLocation).put(tupleId, new Pair<Long, Integer>(accessCount, 1));
 
 			//add capacity for partitionTotals
 			partitionTotals.put(tupleLocation, accessCount + partitionTotals.get(tupleLocation)); 		

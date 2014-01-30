@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.voltdb.utils.Pair;
 import org.qcri.PartitioningPlanner.placement.Plan;
 
 
@@ -19,7 +20,7 @@ public class GreedyPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit){
 		
 		Integer dstPartition = -1;
 		Long totalAccesses = 0L;
@@ -38,14 +39,14 @@ public class GreedyPlacement extends Placement {
 		}
 		
 		// copy hot tuples list
-		ArrayList<Map<Long, Long>> hotTuplesListCopy = new ArrayList<Map<Long, Long>>();
+		ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesListCopy = new ArrayList<Map<Long, Pair<Long,Integer> >>();
 		hotTuplesListCopy.addAll(hotTuplesList);
 		
 		meanAccesses = totalAccesses / partitionCount;
 
 		System.out.println("Mean access count: " + meanAccesses);
 		
-		for(Map<Long, Long> hotTuples : hotTuplesList) {
+		for(Map<Long, Pair<Long,Integer> > hotTuples : hotTuplesList) {
 			hotTupleCount = hotTupleCount + hotTuples.size();
 		}
 

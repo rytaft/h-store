@@ -33,7 +33,7 @@ def genPlanJSON(tables,phases,default_table, onebased=False):
   """
   plan = {}
   plan["default_table"]=default_table
-  plan["partition_plans"]={}
+  plan["partition_plan"]={}
   
   for phase_name,partitions in phases.iteritems():
     plan_out = {}
@@ -58,7 +58,7 @@ def genPlanJSON(tables,phases,default_table, onebased=False):
       plan_out[tablename]["partitions"] = partitionranges
     table_map ={}
     table_map["tables"]=plan_out
-    plan["partition_plans"][phase_name]=table_map
+    plan["partition_plan"]=table_map
   
   plan_json = json.dumps(plan,indent=2)
   return plan_json

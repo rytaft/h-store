@@ -3,6 +3,7 @@ package edu.brown.hstore.reconfiguration;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -60,6 +61,7 @@ import edu.brown.profilers.ReconfigurationProfiler;
 import edu.brown.protorpc.ProtoRpcController;
 import edu.brown.statistics.FastIntHistogram;
 import edu.brown.utils.FileUtil;
+import edu.brown.utils.PartitionSet;
 
 /**
  * @author vaibhav : Reconfiguration Coordinator at each site, responsible for
@@ -72,12 +74,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private static final Logger LOG = Logger.getLogger(ReconfigurationCoordinator.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
+    public static final boolean STATIC_PULL_FILTER = true;
     public static boolean detailed_timing = true;
     private static boolean async_nonchunk_push = false;
     private static boolean async_nonchunk_pull = false;
     private static boolean async_pull_immediately_in_work_queue = false;
     private static boolean async_queue_pulls = false;
     private static boolean live_pull = true;
+    private static boolean abortsEnabledForStopCopy = true;
     
     // Cached list of local executors
     private List<PartitionExecutor> local_executors;
@@ -127,8 +131,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private Map<Integer,Long> dataPullResponseTimes;
     private Map<Integer,PartitionExecutor>  executorMap;
     private Map<Integer,Integer>  livePullKBMap;
+    
+    public static long STOP_COPY_TXNID = -2L;
 
     public ReconfigurationCoordinator(HStoreSite hstore_site, HStoreConf hstore_conf) {        
+        if (FORCE_DESTINATION){
+            LOG.warn("***********\n FORCE PULL IS ON \n *********");
+        }
         this.reconfigurationLeader = -1;
         this.reconfigurationInProgress = new AtomicBoolean(false);
         this.currentReconfigurationPlan = null;
@@ -138,13 +147,15 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.channels = hstore_site.getCoordinator().getChannels();
         this.partitionStates = new ConcurrentHashMap<Integer, ReconfigurationCoordinator.ReconfigurationState>();
         this.hstore_conf = hstore_conf;
-        
+        executorMap = new HashMap<>();
+
         int num_partitions = hstore_site.getCatalogContext().numberOfPartitions;
         this.num_of_sites = hstore_site.getCatalogContext().numberOfSites;
         if(hstore_conf.site.reconfig_profiling) 
             this.profilers = new ReconfigurationProfiler[num_partitions];
         for (int p_id : hstore_site.getLocalPartitionIds().values()) {
             this.local_executors.add(hstore_site.getPartitionExecutor(p_id));
+            executorMap.put(p_id,hstore_site.getPartitionExecutor(p_id));
             this.partitionStates.put(p_id, ReconfigurationState.NORMAL);
             if(hstore_conf.site.reconfig_profiling) 
                 this.profilers[p_id] = new ReconfigurationProfiler();
@@ -229,10 +240,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
         // atomic
         if (this.reconfigurationInProgress.compareAndSet(false, true)) {
             LOG.info("Initializing reconfiguration. New reconfig plan.");
-            executorMap = new HashMap<>();
             livePullKBMap = new HashMap<>();
             for (PartitionExecutor executor : this.local_executors) {
-                executorMap.put(executor.getPartitionId(),executor);
                 livePullKBMap.put(executor.getPartitionId(),new Integer(0));
             }
             if (this.hstore_site.getSiteId() == leaderId) {
@@ -257,6 +266,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             try {
                 // Find reconfig plan
                 reconfig_plan = hasher.changePartitionPlan(partitionPlanFile);
+                FileUtil.appendEventToFile(reconfig_plan.planDebug);
                 this.planned_partitions = hasher.getPartitions();
                 if (reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
                     if (reconfig_plan != null){
@@ -274,7 +284,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         //push outgoing ranges for all local PEs
                         //TODO remove this loop and schedule chunked pulls/ 
                         for (PartitionExecutor executor : this.local_executors) {
-                        	LOG.info("Sechduling async chunked pulls for local PE for Stop and Copy : " + executor.getPartitionId());
+                        	LOG.info("Schduling async chunked pulls for local PE for Stop and Copy : " + executor.getPartitionId());
                         	executor.scheduleInitialAsyncPullRequestsForSC(executor.getIncomingRanges());
                             /** Comment the previous S&C work
                               
@@ -302,8 +312,28 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             
                             **/
                         }
-                        //TODO haltProcessing() at end
-                        //TODO hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId())
+                        // Check here whether S&C has ended
+                        // The checking is done by each partition based on whether they have processed
+                        // all the scheduled async messages or not
+                        boolean reconfigEnds = false;
+                        while(!reconfigEnds){
+                          reconfigEnds = true;
+                          
+                          for (PartitionExecutor executor : this.local_executors) {
+                            if(executor.getPartitionId() == partitionId){
+                              executor.processQueuedLiveReconfigWork(true);
+                            }
+                            reconfigEnds = reconfigEnds && executor.checkAsyncPullMessageQueue();
+                          }
+                        }
+                        
+                        // Halt processing and clear queues at each partition
+                        for (PartitionExecutor executor : this.local_executors) {
+                        	if(abortsEnabledForStopCopy){
+                        		executor.haltProcessing();
+                                hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId());
+                        	}
+                        }
                         
                         //TODO this file is horrible and needs refactoring....
                         //we have an end, reset and finish reconfiguration...
@@ -448,6 +478,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         	} else{
         		this.channels[destinationId].reconfigurationControlMsg(controller, leaderCallback, null);
         		FileUtil.appendEventToFile("RECONFIGURATION_SITE_DONE, siteId="+this.hstore_site.getSiteId());
+                showReconfigurationProfiler(true);
         	}
         }
     }
@@ -485,7 +516,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             LOG.info("Sending a message to notify all sites that reconfiguration has ended");
             FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+", siteId="+this.hstore_site.getSiteId());
             sendReconfigEndAcknowledgementToAllSites();
-            showReconfigurationProfiler();
+            showReconfigurationProfiler(true);
         }
     }
     
@@ -510,7 +541,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      
             sendReconfigEndAcknowledgementToAllSites();
             FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+" , siteId="+this.hstore_site.getSiteId());
-            showReconfigurationProfiler();
+            showReconfigurationProfiler(true);
         }
     }
     
@@ -652,15 +683,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
             if (executor.getPartitionId() == livePullRequest.getOldPartition()) {
                 // Queue the live Pull request to the work queue
                 // TODO : Change the input parameters for the senTuples function
-                if (debug.val)
-                    LOG.debug("Queue the live data Pull Request " + executor.getCurrentExecMode().toString() + " " + executor.toString());
+                if (debug.val) LOG.debug("Queue the live data Pull Request " + executor.getCurrentExecMode().toString() + " " + executor.toString());
                 executor.queueLivePullRequest(livePullRequest, livePullResponseCallback);
             }
         }
         if(detailed_timing){
             this.profilers[livePullRequest.getOldPartition()].src_data_pull_req_init_time.appendTime(now, System.currentTimeMillis());
         }
-        LOG.info("done with queueing  live pull ");
+        if (debug.val) LOG.debug("done with queueing  live pull ");
 
         // TODO : Remove
         /*
@@ -817,6 +847,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
      */
     private void queueAsyncDataPullRequest(AsyncPullRequest asyncPullRequest, RpcCallback<AsyncPullResponse> asyncPullRequestCallback2) {
         AsyncDataPullRequestMessage asyncPullRequestMsg = new AsyncDataPullRequestMessage(asyncPullRequest, asyncPullRequestCallback2);
+        if(asyncPullRequest.getTransactionID() == STOP_COPY_TXNID){
+          // This is a s&c request so set the protocol to stop and copy
+          LOG.info("Stop & Copy transaction");
+          asyncPullRequestMsg.setProtocol("s&c");
+        }
         for (PartitionExecutor executor : this.local_executors) {
             if (executor.getPartitionId() == asyncPullRequest.getOldPartition()) {
                 LOG.info("Queue the async data pull request " + asyncPullRequest.toString());
@@ -1282,65 +1317,76 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
     }
     
     
-    public void reportProfiler(String str, ProfileMeasurement pm, int partitionId){
+    public void reportProfiler(String str, ProfileMeasurement pm, int partitionId, boolean writeToEventLog){
+        if (pm.getInvocations()==0){
+            return;
+        }
         String logMsg = String.format("%s, MS=%s, Count=%s, PartitionId=%s",
                 str,
                 pm.getAverageThinkTimeMS(),
                 pm.getInvocations(), partitionId);
         LOG.info(logMsg);
-        FileUtil.appendEventToFile(logMsg);
+        if (writeToEventLog) FileUtil.appendEventToFile(logMsg);
     }
     
-    public void reportProfiler(String str, FastIntHistogram h, int partitionId){
+    public void reportProfiler(String str, FastIntHistogram h, int partitionId, boolean writeToEventLog){
         String histString = "Histogram=NoEntries";
         if (!h.isEmpty())
             histString = String.format("Histogram=\n%s", h.toString());
+        else
+            return;
         String logMsg = String.format("%s, PartitionId=%s, Histogram=\n%s",
                 str,
                 partitionId,
                 histString);
         LOG.info(logMsg);
-        FileUtil.appendEventToFile(logMsg);
+        if (writeToEventLog) FileUtil.appendEventToFile(logMsg);
     }
     
-    public void reportProfiler(String desc, String valDesc, Number n, int partitionId){
+    public void reportProfiler(String desc, String valDesc, Number n, int partitionId, boolean writeToEventLog){
+        if (n.intValue() == 0)
+            return;
         String logMsg = String.format("%s, %s=%s, PartitionId=%s",
                 desc,
                 valDesc,
                 n,
                 partitionId);
         LOG.info(logMsg);
-        FileUtil.appendEventToFile(logMsg);
+        if (writeToEventLog) FileUtil.appendEventToFile(logMsg);
     }
     
-    public void showReconfigurationProfiler() {
+    public void showReconfigurationProfiler(boolean writeToEventLog) {
         if(hstore_conf.site.reconfig_profiling) {
             for (int p_id : hstore_site.getLocalPartitionIds().values()) {
                 LOG.info("Showing reconfig stats");
                 LOG.info(this.profilers[p_id].toString());
                 
-                reportProfiler("REPORT_AVG_DEMAND_PULL_TIME",this.profilers[p_id].on_demand_pull_time, p_id);
+                reportProfiler("REPORT_AVG_DEMAND_PULL_TIME",this.profilers[p_id].on_demand_pull_time, p_id, writeToEventLog);
                 
-                reportProfiler("REPORT_AVG_ASYNC_PULL_TIME",this.profilers[p_id].async_pull_time, p_id);
-                reportProfiler("REPORT_AVG_ASYNC_DEST_QUEUE_TIME",this.profilers[p_id].async_dest_queue_time, p_id);
-                reportProfiler("REPORT_AVG_LIVE_PULL_RESONSE_QUEUE_TIME",this.profilers[p_id].on_demand_pull_response_queue, p_id);
-                reportProfiler("REPORT_PE_CHECK_TXN_TIME",this.profilers[p_id].pe_check_txn_time, p_id);
-                reportProfiler("REPORT_PE_LIVE_PULL_BLOCK_TIME",this.profilers[p_id].pe_live_pull_block_time, p_id);
+                reportProfiler("REPORT_AVG_ASYNC_PULL_TIME",this.profilers[p_id].async_pull_time, p_id, writeToEventLog);
+                reportProfiler("REPORT_AVG_ASYNC_DEST_QUEUE_TIME",this.profilers[p_id].async_dest_queue_time, p_id, writeToEventLog);
+                reportProfiler("REPORT_AVG_LIVE_PULL_RESPONSE_QUEUE_TIME",this.profilers[p_id].on_demand_pull_response_queue, p_id, writeToEventLog);
+                reportProfiler("REPORT_PE_CHECK_TXN_TIME",this.profilers[p_id].pe_check_txn_time, p_id, writeToEventLog);
+                reportProfiler("REPORT_PE_LIVE_PULL_BLOCK_TIME",this.profilers[p_id].pe_live_pull_block_time, p_id, writeToEventLog);
                 
 
-                reportProfiler("REPORT_EMPTY_LOADS", "Count", this.profilers[p_id].empty_loads, p_id);
+                reportProfiler("REPORT_EMPTY_LOADS", "Count", this.profilers[p_id].empty_loads, p_id, writeToEventLog);
 
-                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE",  this.profilers[p_id].pe_block_queue_size, p_id);
-                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_block_queue_size_growth, p_id);
-                reportProfiler("REPORT_EXTRACT_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_extract_queue_size_growth, p_id);
-                reportProfiler("REPORT_EXTRACT_PROC_TIME",  this.profilers[p_id].src_extract_proc_time, p_id);
+                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE",  this.profilers[p_id].pe_block_queue_size, p_id, writeToEventLog);
+                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_block_queue_size_growth, p_id, writeToEventLog);
+                reportProfiler("REPORT_EXTRACT_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_extract_queue_size_growth, p_id, writeToEventLog);
+                reportProfiler("REPORT_EXTRACT_PROC_TIME",  this.profilers[p_id].src_extract_proc_time, p_id, writeToEventLog);
                 
-                reportProfiler("REPORT_TOTAL_PULL_SIZE", "KB", livePullKBMap.get(p_id), p_id);
+                reportProfiler("REPORT_TOTAL_PULL_SIZE", "KB", livePullKBMap.get(p_id), p_id, writeToEventLog);
 
                 if (detailed_timing) {
-                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id);
-                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_PROC",this.profilers[p_id].src_data_pull_req_proc_time, p_id);                    
+                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id, writeToEventLog);
+                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_PROC",this.profilers[p_id].src_data_pull_req_proc_time, p_id, writeToEventLog);                    
                 }
+                String liveLog = this.executorMap.get(p_id).liveLogData.toString();
+                LOG.info(liveLog);
+                if (writeToEventLog) FileUtil.appendEventToFile(liveLog);
+                
                 
                 
             }
@@ -1369,6 +1415,10 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
     public boolean isLive_pull() {
         return live_pull;
     }
+    
+    public boolean areAbortsEnabledForStopCopy(){
+    	return abortsEnabledForStopCopy;
+    }
 
     /**
      * Return the current partition for the data item if either are local.
@@ -1384,7 +1434,7 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
         if (executorMap.containsKey(expectedPartition)){
             //check with destination if we have it
             try{
-                if (executorMap.get(expectedPartition).getReconfiguration_tracker().checkKeyOwned(catalogItem, value))
+                if (executorMap.get(expectedPartition).getReconfiguration_tracker().quickCheckKeyOwned(catalogItem, value))
                     return expectedPartition;
                 else
                     return previousPartition;
@@ -1393,7 +1443,7 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
             }
         } else if (executorMap.containsKey(previousPartition)) {
             try{
-                if (executorMap.get(previousPartition).getReconfiguration_tracker().checkKeyOwned(catalogItem, value))
+                if (executorMap.get(previousPartition).getReconfiguration_tracker().quickCheckKeyOwned(catalogItem, value))
                     return previousPartition;
                 else
                     return expectedPartition;
@@ -1404,6 +1454,22 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
             return expectedPartition;
         }    
     }
+
+    public static final String[] NEW_ORDER_FILTER = {"order_line","history","new_order"};
+    public static final List<String> NEW_ORDER_FILTER_LIST = Arrays.asList(NEW_ORDER_FILTER);
+    public static final String[] PAYMENT_FILTER = {"order_line","orders","stock","history"};
+    public static final List<String> PAYMENT_FILTER_LIST = Arrays.asList(PAYMENT_FILTER);
+    public static final String[] ORDER_STATUS_FILTER = {"warehouse","history","district","stock"};
+    public static final List<String> ORDER_STATUS_FILTER_LIST = Arrays.asList(ORDER_STATUS_FILTER);
+    public static final String[] STOCK_LEVEL_FILTER = {"warehouse","customer","history","new_order"};
+    public static final List<String> STOCK_LEVEL_FILTER_LIST = Arrays.asList(STOCK_LEVEL_FILTER);
+    public static final String[] DELIVERY_FILTER = {"warehouse","stock","district"};
+    public static final List<String> DELIVERY_FILTER_LIST = Arrays.asList(DELIVERY_FILTER);
+    
+    //Force reconfig look ups to go to destination
+    public static final boolean FORCE_DESTINATION = false;
+    
+
 
 
 

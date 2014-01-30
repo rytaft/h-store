@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.voltdb.utils.Pair;
 import org.qcri.PartitioningPlanner.placement.Plan;
 
 
@@ -37,7 +38,7 @@ public class BinPackerPlacement extends Placement {
 	}
 
 	// initialize the private data members based on the input parameters
-	private void init(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan, int partitionCount) {
+	private void init(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan, int partitionCount) {
 		tupleIds = new ArrayList<Long>();
 		accesses = new ArrayList<Long>(); 
 		locations = new ArrayList<Integer>(); 
@@ -67,10 +68,10 @@ public class BinPackerPlacement extends Placement {
 		// them in oldLoad and oldPlan
 		tupleCount = 0;
 		Integer partitionId = 0;
-		for(Map<Long, Long>  hotTuples : hotTuplesList) {
+		for(Map<Long, Pair<Long,Integer> >  hotTuples : hotTuplesList) {
 			tupleCount += hotTuples.keySet().size();
 			for(Long i : hotTuples.keySet()) {
-				oldLoad.put(partitionId, oldLoad.get(partitionId) - hotTuples.get(i));
+				oldLoad.put(partitionId, oldLoad.get(partitionId) - hotTuples.get(i).getFirst());
 				oldPlan.removeTupleId(partitionId, i);
 			}
 			++partitionId;
@@ -78,10 +79,11 @@ public class BinPackerPlacement extends Placement {
 
 		// store the ids, access counts, and locations of each of the hot tuples
 		partitionId = 0;
-		for(Map<Long, Long>  hotTuples : hotTuplesList) {
+		for(Map<Long, Pair<Long,Integer> >  hotTuples : hotTuplesList) {
 			for(Long i : hotTuples.keySet()) {
 				tupleIds.add(i);
-				accesses.add(hotTuples.get(i));
+				sliceSizes.add((long) hotTuples.get(i).getSecond().intValue());
+				accesses.add(hotTuples.get(i).getFirst());
 				locations.add(partitionId);
 			}
 			++partitionId;
@@ -109,7 +111,7 @@ public class BinPackerPlacement extends Placement {
 
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount, int timeLimit){
 
 		Plan aPlan = new Plan(planFile);
 		this.init(hotTuplesList, partitionTotals, aPlan, partitionCount);
@@ -165,14 +167,7 @@ public class BinPackerPlacement extends Placement {
 			for(i = 0; i < placementCount; ++i) {
 				GLPK.glp_set_col_kind(lp, k, GLPK.GLP_BV); // _IV
 
-				if(i < tupleCount) {
-					// we are moving individual hot tuples so cost is at most 1
-					cost = ((locations.get(i) == j) ? 0 : 1); 
-				}
-				else {
-					// we are moving slices of cold tuples 
-					cost = ((locations.get(i) == j) ? 0 : sliceSizes.get(i - tupleCount)); 
-				}
+				cost = ((locations.get(i) == j) ? 0 : sliceSizes.get(i)); 
 				GLPK.glp_set_obj_coef(lp, k, cost);
 				++k;
 			}
