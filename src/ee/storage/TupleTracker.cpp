@@ -80,6 +80,30 @@ void TupleTrackerManager::insertTupleAccesses(boost::unordered_map<std::string, 
 
 }
 
+int64_t TupleTrackerManager::getPhoneNo(std::string tableName, uint32_t tupleId){
+
+	//*
+	Table* table = voltDBEngine->getTable(tableName);
+
+	TableTuple tuple = TableTuple(table->schema());
+
+	tuple.move(table->dataPtrForTuple(tupleId));
+
+	//get voter phone number
+	NValue colValue = tuple.getNValue(0); // phone number is the 1nd att
+
+	    // ofstream myfile1;
+		 //myfile1.open ("voterPhone.del");
+		 //myfile1 << " phone no. = 10 \n";
+		 //myfile1.close();
+
+	return colValue.castAsBigIntAndGetValue();
+	//*/
+
+	//return 10;
+
+}
+
 int64_t TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tupleId){
 
 	Table* table = voltDBEngine->getTable(tableName);
@@ -155,16 +179,27 @@ int64_t TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tuple
 
 void TupleTrackerManager::insertTuple(int64_t txnId, std::string tableName, uint32_t tupleId){
 	   //*/
+
+	//if(	tableName == "AREA_CODE_STATE" || tableName == "CONTESTANTS" || tableName == "V_VOTES_BY_PHONE_NUMBER" || tableName == "V_VOTES_BY_CONTESTANT_NUMBER_STATE")
+	if(	tableName == "AREA_CODE_STATE" || tableName == "CONTESTANTS" ||tableName == "VOTES" || tableName == "V_VOTES_BY_CONTESTANT_NUMBER_STATE")
+		return; // tracks only votes.
+
+
 	    Accesses* access = NULL;
 
+	    int64_t tupleId_phone =  getPhoneNo(tableName, tupleId);
+
 	    Map_TupleIdAccesses *m_tupIdAccesses = NULL;
-	    boost::unordered_map<uint32_t, Accesses*>::const_iterator tupIter;
+	    //boost::unordered_map<uint32_t, Accesses*>::const_iterator tupIter;
+	    //voter
+	    boost::unordered_map<int64_t, Accesses*>::const_iterator tupIter;
 
 	    boost::unordered_map<std::string, Map_TupleIdAccesses*>::const_iterator tabIter = m_tableAccesses.find(tableName);
 
 	    if (tabIter != m_tableAccesses.end()) {//this table has accessed tuples
 	    	m_tupIdAccesses = tabIter->second;
-	    	tupIter = m_tupIdAccesses->find(tupleId);
+	    	//tupIter = m_tupIdAccesses->find(tupleId);
+	    	tupIter = m_tupIdAccesses->find(tupleId_phone);//voter
 	    	if (tupIter != m_tupIdAccesses->end()) { //tuple ID has a record of accesses
 	    		access = tupIter->second;
 
@@ -173,7 +208,8 @@ void TupleTrackerManager::insertTuple(int64_t txnId, std::string tableName, uint
 	    		access = new Accesses();
 	    		access->frequency = 0;
 	    		access->by = new TxnIDs();
-	    		m_tupIdAccesses->insert(std::make_pair(tupleId, access));
+	    		//m_tupIdAccesses->insert(std::make_pair(tupleId, access));
+	    		m_tupIdAccesses->insert(std::make_pair(tupleId_phone, access)); //voter
 	    	}
 	    } else {//this table does not exist: 1) create access struct 2) insert <tableName, Map_TupleIdAccesses()> 3) insert <tupleID, access>
 	    	access = new Accesses();
@@ -181,7 +217,8 @@ void TupleTrackerManager::insertTuple(int64_t txnId, std::string tableName, uint
 	    	access->by = new TxnIDs();
 	    	m_tupIdAccesses = new Map_TupleIdAccesses();
 	    	m_tableAccesses.insert(std::make_pair(tableName, m_tupIdAccesses));
-	    	m_tupIdAccesses->insert(std::make_pair(tupleId, access));
+	    	//m_tupIdAccesses->insert(std::make_pair(tupleId, access));
+	    	m_tupIdAccesses->insert(std::make_pair(tupleId_phone, access));
 	    }
 
 	    summedAccessFreq = summedAccessFreq + 1; // to report total access count per partition
@@ -229,7 +266,9 @@ void TupleTrackerManager::extractTupleTrackingInfo(){
 
 	TupleTrackingInfo *info = NULL;
 	Map_TupleIdAccesses *m_tupIdAccesses = NULL;
-	boost::unordered_map<uint32_t, Accesses*>::const_iterator tupIter;
+	//boost::unordered_map<uint32_t, Accesses*>::const_iterator tupIter;
+	//voter
+	boost::unordered_map<int64_t, Accesses*>::const_iterator tupIter;
 	boost::unordered_map<std::string, Map_TupleIdAccesses*>::const_iterator tabIter = m_tableAccesses.begin();
 	while (tabIter != m_tableAccesses.end()){
 		m_tupIdAccesses = tabIter->second;
@@ -296,7 +335,8 @@ void TupleTrackerManager::getTopKPerPart(int k){
 
 		HTfile << iter->tableName<<"\t";
 		//HTfile << iter->tupleID<<"("<<getPrimaryKey(iter->tableName,iter->tupleID)<<")"<<"\t"; // offset(PKey)
-		HTfile << getPrimaryKey(iter->tableName,iter->tupleID) <<"\t";
+		//HTfile << getPrimaryKey(iter->tableName,iter->tupleID) <<"\t";
+		HTfile << iter->tupleID <<"\t"; //voter
 		HTfile << iter->frequency<<"\n";
 		i++;
 		iter++;
