@@ -91,7 +91,21 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 		
 	}
    
-	public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Pair<Long,Integer>>> htList) throws Exception {
+
+private int getNoOfTuples(Long phoneNo, org.voltdb.client.Client client) throws Exception
+{
+	
+	String query = "select NUM_VOTES from V_VOTES_BY_PHONE_NUMBER where PHONE_NUMBER = " + phoneNo;
+	ClientResponse cresponse = client.callProcedure("@AdHoc", query);
+	VoltTable[] count = cresponse.getResults(); 
+	
+	
+	System.out.printf("Phone no %L has %d \n", phoneNo, Integer.parseInt(count[0].fetchRow(0).getString(0)) );
+	
+	return Integer.parseInt(count[0].fetchRow(0).getString(0)) ;
+}
+
+	public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Pair<Long,Integer>>> htList, org.voltdb.client.Client client) throws Exception {
 		
 		
 		
@@ -117,7 +131,9 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 			while ((line = reader.readLine()) != null) {
 	            String parts[] = line.split("\t");
 	            //hotTuples.put(Long.parseLong(parts[1]), Long.parseLong(parts[2])); 
-	            hotTuples.put(Long.parseLong(parts[1]), Pair.of(Long.parseLong(parts[2]), Integer.valueOf(1)));
+	            hotTuples.put(Long.parseLong(parts[1]), Pair.of(Long.parseLong(parts[2]), 
+	            		                                        Integer.valueOf( getNoOfTuples( Long.parseLong(parts[2]), client ))
+	            		     ));
 	        }
 			reader.close();
 			htList.add(hotTuples);
