@@ -188,15 +188,15 @@ public class Controller implements Runnable {
 			{
 
 				System.out.println("Provisioning is on");	
-				//currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
-				//		provisioning.noOfSitesRequiredQuery(), timeLimit);
+				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
+						provisioning.noOfSitesRequiredQuery(), timeLimit);
 
 			}
 			else
 			{
 				System.out.println("Provisioning is off");
-				//currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
-				//		no_of_partitions, timeLimit);
+				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
+						no_of_partitions, timeLimit);
 			}
 
 			System.out.println("Calculated new plan");

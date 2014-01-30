@@ -10,6 +10,7 @@ import java.util.Set;
 
 import org.qcri.PartitioningPlanner.placement.Plan.Range;
 import org.voltdb.catalog.Site;
+import org.voltdb.utils.Pair;
 
 public class Placement {
 	Collection<Site> allSites;
@@ -24,7 +25,7 @@ public class Placement {
 	// siteLoads: partitionId --> total access count
 	// partitionCount: number of partitions actually in use
 	// timeLimit - time limit for planner in ms
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> siteLoads, String planFile, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> siteLoads, String planFile, int partitionCount, int timeLimit){
 		return new Plan(planFile);
 	}
 	
@@ -43,7 +44,7 @@ public class Placement {
 		return minPartition;
 	}
 	
-	static void getHottestTuplePartition(Map<Long, Long> hotTuples, Long tupleId, Long accessCount) {
+	static void getHottestTuplePartition(Map<Long, Pair<Long,Integer> > hotTuples, Long tupleId, Long accessCount) {
 		accessCount = 0L;
 		tupleId  = -1L;
 		
@@ -51,7 +52,7 @@ public class Placement {
 	}
 	
 	
-	void getHottestTuple(ArrayList<Map<Long, Long>> hotTuplesList) {
+	void getHottestTuple(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList) {
 
 		_hotAccessCount = 0L;
 		_hotTupleId = -1L;
@@ -63,8 +64,8 @@ public class Placement {
 			Long partitionAccessCount = 0L;
 
 			for(Long j : hotTuplesList.get(i).keySet()) {
-				if(hotTuplesList.get(i).get(j) > partitionAccessCount) {
-					partitionAccessCount = hotTuplesList.get(i).get(j);
+				if(hotTuplesList.get(i).get(j).getFirst() > partitionAccessCount) {
+					partitionAccessCount = hotTuplesList.get(i).get(j).getFirst();
 					partitionTupleId = j;
 				}
 			}
@@ -83,10 +84,10 @@ public class Placement {
 	Long _hotAccessCount;
 		
 	// If tuples are no longer hot, put them back in their enclosing range
-	static public Plan demoteTuples(ArrayList<Map<Long, Long>> hotTuplesList, Plan plan) {
+	static public Plan demoteTuples(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Plan plan) {
 		// Get a lookup table of all currently hot tuples
 		Set<Long> hotTuplesLookup = new HashSet<Long>();
-		for(Map<Long, Long>  hotTuples : hotTuplesList) {
+		for(Map<Long, Pair<Long,Integer> >  hotTuples : hotTuplesList) {
 			hotTuplesLookup.addAll(hotTuples.keySet());
 		}
 		
