@@ -100,10 +100,13 @@ private int getNoOfTuples(Long phoneNo, org.voltdb.client.Client client) throws 
 	ClientResponse cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
+	int n = (int) count[0].fetchRow(0).getLong(0); 
 	
-	System.out.printf("Phone no %L has %d \n", phoneNo, Integer.parseInt(count[0].fetchRow(0).getString(0)) );
+	System.out.printf("Phone no %L has %d \n", phoneNo, n );
 	
-	return Integer.parseInt(count[0].fetchRow(0).getString(0)) ;
+	
+	
+	return n;
 }
 
 	public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Pair<Long,Integer>>> htList, org.voltdb.client.Client client) throws Exception {
