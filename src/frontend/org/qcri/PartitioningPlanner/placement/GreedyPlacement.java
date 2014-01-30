@@ -77,14 +77,17 @@ public class GreedyPlacement extends Placement {
 		// to place the cold tuples from the deleted partitions
 		for(Integer i : aPlan.getAllRanges().keySet()) { // foreach partition
 			if(i.intValue() >= partitionCount) { // in case of shrinking number of partitions
-				List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth);
+				// VOTER HACK: we want each partition slice to contain ~1000 tuples, but we don't know how many tuples
+				// are in a range
+				List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / partitionTotals.get(i));
 				if(partitionSlices.size() > 0) {
-				        Double tupleWeight = ((double) partitionTotals.get(i)) / aPlan.getTupleCount(i); // per tuple
+				        Double tupleWeight = 1.0; // weight per tuple - VOTER HACK
 
 					for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 
 						Boolean placed = false;
-						Integer newWeight = (int) (tupleWeight *  ((double) Plan.getRangeListWidth(slice)));
+						// VOTER HACK
+						Integer newWeight = (int) (tupleWeight *  ((double) Plan.getRangeListWidth(slice) * partitionTotals.get(i) / maxPhoneNumber));
 
 						for(Integer k : partitionTotals.keySet()) {
 							if(partitionTotals.get(k) + newWeight <= meanAccesses) {

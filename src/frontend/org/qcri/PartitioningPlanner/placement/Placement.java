@@ -17,6 +17,10 @@ public class Placement {
 	Map<Site,Collection<Integer>> siteToPartitions;	
 	Map<Integer, Site> partitionToSite;
 	
+	// voter specific stuff
+	Long maxPhoneNumber = 10000000000L;	
+		
+	
 	public Placement(){
 		
 	}

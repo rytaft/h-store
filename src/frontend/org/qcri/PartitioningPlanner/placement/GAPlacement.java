@@ -20,7 +20,6 @@ import org.jaga.reproduction.greycodedNumbers.SimpleBinaryXOverWithMutation;
 import org.jaga.selection.RouletteWheelSelection;
 import org.jaga.util.DefaultParameterSet;
 import org.jaga.util.FittestIndividualResult;
-
 import org.voltdb.utils.Pair;
 import org.qcri.PartitioningPlanner.placement.Plan;
 
@@ -95,12 +94,15 @@ public class GAPlacement extends Placement {
 			// store the ranges, sizes, access counts, and locations of each of the slices of cold tuples
 			sliceCount = 0;
 			for(Integer i : oldPlan.getAllRanges().keySet()) { // for each partition
-				List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i,  coldPartitionWidth);
+				// VOTER HACK: we want each partition slice to contain ~1000 tuples, but we don't know how many tuples
+				// are in a range
+				List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / partitionTotals.get(i));
 				if(partitionSlices.size() > 0) {
 					sliceCount += partitionSlices.size();
-					Double tupleWeight = ((double) oldLoad.get(i)) / oldPlan.getTupleCount(i); // per tuple
+					Double tupleWeight = 1.0; // per tuple - VOTER HACK
 					for(List<Plan.Range> slice : partitionSlices) {  // for each slice
-						Long sliceSize = Plan.getRangeListWidth(slice);
+						// VOTER HACK
+						Long sliceSize = (long) (Plan.getRangeListWidth(slice) * (double) partitionTotals.get(i) / maxPhoneNumber);
 						Long newWeight = (long) (tupleWeight *  ((double) sliceSize));
 						slices.add(slice);
 						sliceSizes.add(sliceSize);

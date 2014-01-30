@@ -97,20 +97,24 @@ public class GreedyExtendedPlacement extends Placement {
 					}
 				}
 			hotTuplesList.get(_srcPartition).remove(_hotTupleId);
-
 		}
 		System.out.println("LOOP1 DONE");
 		
 		// place the cold tuples from the overloaded or deleted partitions
 		for(Integer i : oldPlan.getAllRanges().keySet()) { // foreach partition
 			if(partitionTotals.get(i) > meanAccesses || i.intValue() >= partitionCount) { 
-				List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i,  coldPartitionWidth);
+				
+				// VOTER HACK: we want each partition slice to contain ~1000 tuples, but we don't know how many tuples
+				// are in a range
+				List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / partitionTotals.get(i));
 				if(partitionSlices.size() > 0) {
-					Double tupleWeight = ((double) oldLoad.get(i)) / oldPlan.getTupleCount(i); // per tuple
+					
+					Double tupleWeight = 1.0; // weight per tuple - VOTER HACK
 
 					for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 						for(Plan.Range r : slice) { 
-							Integer newWeight = (int) (tupleWeight *  ((double) Plan.getRangeWidth(r)));
+							// VOTER HACK
+							Integer newWeight = (int) (tupleWeight *  ((double) Plan.getRangeWidth(r) * partitionTotals.get(i) / maxPhoneNumber));
 							dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount);
 							
 							if((partitionTotals.get(i) > meanAccesses || i.intValue() >= partitionCount) && i != dstPartition) { 		
