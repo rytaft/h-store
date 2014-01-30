@@ -15,10 +15,10 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
-    "stopcopy-ycsb-zipf --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand --reconfig=245000:4:0 " \
-    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand --reconfig=245000:4:0 " \
-    "reconfig-ycsb-zipf --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand --reconfig=245000:4:0 " \
-    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand --reconfig=245000:4:0 " \
+    "stopcopy-ycsb-zipf --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand6to8 --reconfig=245000:4:0 " \
+    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand6to8 --reconfig=245000:4:0 " \
+    "reconfig-ycsb-zipf --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand6to8 --reconfig=245000:4:0 " \
+    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand6to8 --reconfig=245000:4:0 " \
 )
 
 #for b in smallbank tpcc seats; do
@@ -38,7 +38,7 @@ for b in ycsb; do
         --client.duration=240000 \
         --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv
-        --global.hasher_plan=scripts/reconfiguration/plans/ycsb-size1000000-8-expand.json \
+        --global.hasher_plan=scripts/reconfiguration/plans/ycsb-size1000000-8-expand-part.json \
     )
     
     i=0

@@ -15,15 +15,8 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-#    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractBase1 --reconfig=155000:1:0" \
-#    "reconfig-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractBase1 --reconfig=155000:1:0" \
-#    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractCopy1 --reconfig=155000:1:0" \
-    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpc4Contract --reconfig=185000:4:0" \
-    "reconfig-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpc4Contract --reconfig=185000:4:0" \
-#    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractMin2 --reconfig=155000:2min:0" \
-#    "reconfig-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractMin2 --reconfig=155000:2min:0" \
-#    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractBase2 --reconfig=155000:2:0" \
-#    "reconfig-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractBase2 --reconfig=155000:2:0" \
+    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpc6to8expand --reconfig=185000:1:0" \
+    "reconfig-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpc6to8expand --reconfig=185000:1:0" \
 )
 
 #for b in smallbank tpcc seats; do
@@ -43,6 +36,7 @@ for b in tpcc; do
         --client.duration=210000 \
         --client.warmup=30000 \
         --client.output_results_csv=interval_res.csv
+        --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size16-8-expand-part.json \
         
     )
     

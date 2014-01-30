@@ -4,6 +4,7 @@ import com.google.protobuf.RpcCallback;
 
 import edu.brown.hstore.Hstoreservice.LivePullRequest;
 import edu.brown.hstore.Hstoreservice.LivePullResponse;
+import edu.brown.profilers.ProfileMeasurement;
 
 public class LivePullRequestMessage extends InternalMessage {
 
@@ -13,7 +14,7 @@ public class LivePullRequestMessage extends InternalMessage {
 
     public LivePullRequestMessage(LivePullRequest livePullRequest, RpcCallback<LivePullResponse> livePullResponseCallback) {
         super();
-        this.startTime = System.currentTimeMillis();
+        this.startTime = ProfileMeasurement.getTime();
         this.livePullRequest = livePullRequest;
         this.livePullResponseCallback = livePullResponseCallback;
     }

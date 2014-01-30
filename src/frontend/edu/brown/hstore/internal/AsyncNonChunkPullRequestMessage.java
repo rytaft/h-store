@@ -1,6 +1,7 @@
 package edu.brown.hstore.internal;
 
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.profilers.ProfileMeasurement;
 
 public class AsyncNonChunkPullRequestMessage extends InternalMessage {
     private ReconfigurationRange<? extends Comparable<?>> pullRange;
@@ -9,11 +10,11 @@ public class AsyncNonChunkPullRequestMessage extends InternalMessage {
     public AsyncNonChunkPullRequestMessage(ReconfigurationRange<? extends Comparable<?>> pullRange) {
         super();
         this.pullRange = pullRange;
-        this.createTime = System.currentTimeMillis();
+        this.createTime = ProfileMeasurement.getTime();
     }
 
     public long getQueueTime(){
-        return System.currentTimeMillis() - this.createTime;
+        return ProfileMeasurement.getTime() - this.createTime;
     }
     
     public ReconfigurationRange<? extends Comparable<?>> getPullRange() {
