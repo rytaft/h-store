@@ -9,8 +9,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.FileSystems;
@@ -35,6 +33,7 @@ import org.voltdb.client.ProcCallException;
 import org.voltdb.catalog.Catalog;
 import org.voltdb.catalog.Site;
 import org.voltdb.processtools.ShellTools;
+import org.voltdb.utils.Pair;
 
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.HStoreConstants;
@@ -155,8 +154,12 @@ public class Controller implements Runnable {
 
 		//Jennie temp for now
 		Map<Integer, Long> mSiteLoad = new HashMap<Integer, Long>();
+		
+		  
 
-		ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>> (no_of_partitions);
+		//ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>> (no_of_partitions);
+		
+		ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList = new ArrayList<Map<Long, Pair<Long,Integer>>> (no_of_partitions);
 
 
 
@@ -185,15 +188,15 @@ public class Controller implements Runnable {
 			{
 
 				System.out.println("Provisioning is on");	
-				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
-						provisioning.noOfSitesRequiredQuery(), timeLimit);
+				//currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
+				//		provisioning.noOfSitesRequiredQuery(), timeLimit);
 
 			}
 			else
 			{
 				System.out.println("Provisioning is off");
-				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
-						no_of_partitions, timeLimit);
+				//currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
+				//		no_of_partitions, timeLimit);
 			}
 
 			System.out.println("Calculated new plan");

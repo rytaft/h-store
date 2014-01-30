@@ -12,6 +12,7 @@ import org.voltdb.VoltTable;
 //import org.voltdb.client.Client;
 //import org.voltdb.client.ClientFactory;
 import org.voltdb.client.ClientResponse;
+import org.voltdb.utils.Pair;
 
 public class TupleTrackerExecutor {
 	//Collection<Site> allSites;
@@ -90,14 +91,17 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 		
 	}
    
-	public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Long>> htList) throws Exception {
+	public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Pair<Long,Integer>>> htList) throws Exception {
 		
 		
 		
 		
 		
 		
-		Map<Long, Long> hotTuples;
+		//Map<Long, Long> hotTuples;
+				
+		Map<Long, Pair<Long,Integer>> hotTuples;
+		
 		BufferedReader reader;
 		String fNPrefix ="./hotTuplesPID_";
 		String line;
@@ -107,12 +111,13 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 		for (int i = 0; i < noPartitions; i++) {
 			
 			reader = new BufferedReader(new FileReader(fNPrefix+i+".del"));
-			hotTuples = new HashMap<Long, Long>();
+			hotTuples = new HashMap<Long, Pair<Long,Integer>>();
 			line = reader.readLine(); // escape first line
 			
 			while ((line = reader.readLine()) != null) {
 	            String parts[] = line.split("\t");
-	            hotTuples.put(Long.parseLong(parts[1]), Long.parseLong(parts[2]));
+	            //hotTuples.put(Long.parseLong(parts[1]), Long.parseLong(parts[2])); 
+	            hotTuples.put(Long.parseLong(parts[1]), Pair.of(Long.parseLong(parts[2]), Integer.valueOf(1)));
 	        }
 			reader.close();
 			htList.add(hotTuples);
