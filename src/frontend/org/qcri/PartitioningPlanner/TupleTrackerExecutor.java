@@ -96,7 +96,7 @@ private int getNoOfTuples(Long phoneNo, org.voltdb.client.Client client) throws 
 {
 	
 	String query = "select NUM_VOTES from V_VOTES_BY_PHONE_NUMBER where PHONE_NUMBER = " + phoneNo;
-	//System.out.printf("Query:: " + query);
+	System.out.printf("Query:: " + query);
 	ClientResponse cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
