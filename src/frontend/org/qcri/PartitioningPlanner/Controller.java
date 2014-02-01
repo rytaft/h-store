@@ -78,6 +78,7 @@ public class Controller implements Runnable {
 
 	public Controller (Catalog catalog, HStoreConf hstore_conf){
 
+		
 		ttExecutor = new TupleTrackerExecutor();
 		// connect to VoltDB server
 		client = ClientFactory.createClient();
