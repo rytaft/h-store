@@ -100,11 +100,9 @@ private int getNoOfTuples(Long phoneNo, org.voltdb.client.Client client) throws 
 	ClientResponse cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
-	int n = (int) count[0].fetchRow(0).getLong(0); 
+	int n = (int) count[0].fetchRow(0).getLong(0); // the NUM_VOTES of a specific phone no
 	
-	System.out.printf("Phone no is " + phoneNo+ " has " + n + " tuples \n" );
-	
-	
+	//System.out.printf("Phone no is " + phoneNo+ " has " + n + " tuples \n" );
 	
 	return n;
 }
