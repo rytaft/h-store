@@ -1376,8 +1376,8 @@ public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId
                 reportProfiler("REPORT_BLOCKED_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_block_queue_size_growth, p_id, writeToEventLog);
                 reportProfiler("REPORT_EXTRACT_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_extract_queue_size_growth, p_id, writeToEventLog);
                 reportProfiler("REPORT_EXTRACT_PROC_TIME",  this.profilers[p_id].src_extract_proc_time, p_id, writeToEventLog);
-                
-                reportProfiler("REPORT_TOTAL_PULL_SIZE", "KB", livePullKBMap.get(p_id), p_id, writeToEventLog);
+                if(livePullKBMap != null && livePullKBMap.containsKey(p_id))
+                    reportProfiler("REPORT_TOTAL_PULL_SIZE", "KB", livePullKBMap.get(p_id), p_id, writeToEventLog);
 
                 if (detailed_timing) {
                     reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id, writeToEventLog);
