@@ -1,6 +1,7 @@
 package edu.brown.hstore.internal;
 
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.profilers.ProfileMeasurement;
 
 public class ScheduleAsyncPullRequestMessage extends InternalMessage {
     private ReconfigurationRange<? extends Comparable<?>> pullRange;
@@ -10,12 +11,12 @@ public class ScheduleAsyncPullRequestMessage extends InternalMessage {
     public ScheduleAsyncPullRequestMessage(ReconfigurationRange<? extends Comparable<?>> pullRange) {
         super();
         this.pullRange = pullRange;
-        this.createTime = System.currentTimeMillis();
+        this.createTime = ProfileMeasurement.getTime();
         this.protocol = "livePull";
     }
 
     public long getQueueTime(){
-        return System.currentTimeMillis() - this.createTime;
+        return ProfileMeasurement.getTime() - this.createTime;
     }
     
     public ReconfigurationRange<? extends Comparable<?>> getPullRange() {

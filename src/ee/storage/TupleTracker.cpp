@@ -17,7 +17,7 @@ using namespace std;
 namespace voltdb {
 
 
-int64_t TupleTrackerManager::summedAccessFreq;
+//int64_t TupleTrackerManager::summedAccessFreq;
 // -------------------------------------------------------------------------
 
 TupleTrackerManager::TupleTrackerManager(ExecutorContext *ctx,int32_t partId,VoltDBEngine* vEng) :
@@ -89,6 +89,7 @@ int64_t TupleTrackerManager::getPrimaryKey(std::string tableName, uint32_t tuple
 	tuple.move(table->dataPtrForTuple(tupleId));
 
 	TableIndex *m_index = table->primaryKeyIndex();
+
 
 	std::vector<int> column_indices_vector = m_index->getColumnIndices();
 
@@ -200,6 +201,10 @@ void TupleTrackerManager::eraseTupleTrackingInfo(){
 	//*/
 
 	    v_tupleTrackingInfo.clear();
+
+	    m_tableAccesses.clear();
+
+	    summedAccessFreq = 0;
 
 	    isTupleTrackingInfoExtracted = false;
 }

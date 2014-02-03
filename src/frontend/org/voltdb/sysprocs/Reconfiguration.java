@@ -61,12 +61,12 @@ public class Reconfiguration extends VoltSystemProcedure {
     String partition_plan = (String) params.toArray()[1];
     String reconfiguration_protocol_string = (String) params.toArray()[2];        
     ReconfigurationProtocols reconfig_protocol = ReconfigurationProtocols.valueOf(reconfiguration_protocol_string.toUpperCase());
-
+    int currentPartitionId = context.getPartitionExecutor().getPartitionId();
     switch (fragmentId) {
 
     case SysProcFragmentId.PF_reconfigurationDistribute: {
       try {
-        hstore_site.getReconfigurationCoordinator().initReconfiguration(coordinator, reconfig_protocol, partition_plan, -1);
+        hstore_site.getReconfigurationCoordinator().initReconfiguration(coordinator, reconfig_protocol, partition_plan, currentPartitionId);
       } catch (Exception ex) {
         throw new ServerFaultException(ex.getMessage(), txn_id);
       }

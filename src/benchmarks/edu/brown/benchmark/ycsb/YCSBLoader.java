@@ -99,7 +99,7 @@ public class YCSBLoader extends Loader {
             this.init_record_count = (int)Math.round(YCSBConstants.NUM_RECORDS * 
                                                      this.getScaleFactor());
         }
-        LOG.info("Initializing database with " + init_record_count + " records.");
+        LOG.info("Initializing database with " + init_record_count + " records. Using " + this.loadthreads + " load threads");
     }
 
     @Override

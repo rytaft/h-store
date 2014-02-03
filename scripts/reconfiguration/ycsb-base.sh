@@ -1,4 +1,4 @@
-#!/bin/bash
+confi#!/bin/bash
 
 # ---------------------------------------------------------------------
 
@@ -10,15 +10,17 @@ function onexit() {
 
 # ---------------------------------------------------------------------
 
-DATA_DIR="out"
+DATA_DIR="y-out"
 FABRIC_TYPE="ssh"
-FIRST_PARAM_OFFSET=1
+FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-    "stopcopy-ycsb-zipf --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand --reconfig=245000:4:0 " \
-    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand --reconfig=245000:4:0 " \
-    "reconfig-ycsb-zipf --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand --reconfig=245000:4:0 " \
-    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=med2expand --reconfig=245000:4:0 " \
+    "reconfig-2b --partitions=4 --benchmark-size=10000000  --exp-suffix=y-s10000000-4" \
+    "reconfig-2b --partitions=8 --benchmark-size=10000000  --exp-suffix=y-s10000000-8" \
+    "reconfig-2b --partitions=8 --benchmark-size=20000000  --exp-suffix=y-s20000000-8" \
+    "reconfig-2b --partitions=12 --benchmark-size=20000000  --exp-suffix=y-s20000000-12" \
+    "reconfig-2b --partitions=12 --benchmark-size=4000000  --exp-suffix=y-s4000000-12" \
+    
 )
 
 #for b in smallbank tpcc seats; do
@@ -32,13 +34,11 @@ for b in ycsb; do
         --exp-trials=1 \
         --exp-attempts=1 \        
         --no-json \
-	      --sweep-reconfiguration \
-        --client.interval=1000 \
+	    --client.interval=10000 \
         --client.output_interval=true \
-        --client.duration=240000 \
-        --client.warmup=10000 \
+        --client.duration=280000 \
+        --client.warmup=30000 \
         --client.output_results_csv=interval_res.csv
-        --global.hasher_plan=scripts/reconfiguration/plans/ycsb-size1000000-8-expand.json \
     )
     
     i=0

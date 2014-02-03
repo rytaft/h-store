@@ -35,6 +35,7 @@ public class ReconfigurationPlan {
     //Helper map of partition ID and outgoing/incoming ranges for this reconfiguration
     protected Map<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> outgoing_ranges;
     protected Map<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> incoming_ranges;
+    public String planDebug = "";
     
     /**
      * @throws Exception 
@@ -49,7 +50,8 @@ public class ReconfigurationPlan {
             tables_map.put(table_name, new ReconfigurationTable(old_phase.getTable(table_name), new_phase.getTable(table_name)));
         }
         registerReconfigurationRanges();
-        LOG.info(String.format("Reconfiguration plan generated \n Out: %s \n In: %s",outgoing_ranges.toString(),incoming_ranges.toString()));
+        planDebug = String.format("Reconfiguration plan generated \n Out: %s \n In: %s",outgoing_ranges.toString(),incoming_ranges.toString());
+        LOG.info(planDebug);
     }
     
     protected void registerReconfigurationRanges(){
@@ -113,13 +115,13 @@ public class ReconfigurationPlan {
                   // Need to move the old range to new range
                   getReconfigurations().add(new ReconfigurationRange<T>(table_name, old_range.vt, max_old_accounted_for, old_range.max_exclusive,
                       old_range.partition, new_range.partition));
-                  max_old_accounted_for = old_range.max_exclusive;
-                  
-                  //Have we satisfied all of the new range and is there another new range to process
-                  if (max_old_accounted_for.compareTo(new_range.max_exclusive)==0 && new_ranges.hasNext()){
-                    new_range = new_ranges.next();
-                  }
+                  max_old_accounted_for = old_range.max_exclusive;                  
                 }
+		//Have we satisfied all of the new range and is there another new range to process
+		if (max_old_accounted_for.compareTo(new_range.max_exclusive)==0 && new_ranges.hasNext()){
+                    new_range = new_ranges.next();
+		}
+
               } else {
                 // The old range is larger than this new range
                 // keep getting new ranges until old range has been satisfied
@@ -247,7 +249,7 @@ public class ReconfigurationPlan {
         
         @Override
         public String toString(){
-          return String.format("ReconfigRange (%s)  [%s,%s) id:%s->%s ",table_name,min_inclusive,max_exclusive,old_partition,new_partition);
+          return String.format("ReconfigRange (%s) keys:[%s,%s) p_id:%s->%s ",table_name,min_inclusive,max_exclusive,old_partition,new_partition);
         }
         
         public boolean inRange(Comparable<?> key){

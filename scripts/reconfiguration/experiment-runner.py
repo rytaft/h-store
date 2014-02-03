@@ -627,6 +627,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
                 LOG.info("Updating the num of records %s" % args["benchmark_size"])
                 fabric.env["benchmark.num_records"] = args["benchmark_size"]
                 plan_base = "%s-size%s" % (plan_base, args["benchmark_size"])
+		fabric.env['benchmark.loadthreads'] = partitions
 
         plan_path = '%s-%s.json' % (plan_base, partitions)
         LOG.info("Using plan: %s" % plan_path)
@@ -747,13 +748,14 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
-        fabric.env["site.reconfig_chunk_size_kb"] = 2048 
+        fabric.env["site.reconfig_chunk_size_kb"] = 20048 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
         fabric.env["site.commandlog_enable"] = False
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
         fabric.env["benchmark.requestdistribution"] = "zipfian"
         fabric.env["benchmark.ReadRecordProportion"] = 0.95
         fabric.env["benchmark.UpdateRecordProportion"] = 0.05
+        fabric.env["benchmark.loadthreads"] = max(16, partitions)
 
     if args['exp_type'] == 'reconfig-ycsb-uniform' or args['exp_type'] == 'stopcopy-ycsb-uniform':
         fabric.env["client.count"] = 4

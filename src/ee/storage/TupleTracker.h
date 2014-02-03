@@ -85,7 +85,9 @@ class TupleTrackerManager {
         int64_t getPrimaryKey(std::string tableName,uint32_t tupleId);
         
 
-        static int64_t summedAccessFreq;
+        //static int64_t summedAccessFreq;
+
+        int64_t summedAccessFreq;
 
 		static bool sortPerPartition(const TupleTrackingInfo& first, const TupleTrackingInfo& second);
        //static bool sortPerPartition(std::vector<TupleTrackingInfo>::iterator first, std::vector<TupleTrackingInfo>::iterator second);

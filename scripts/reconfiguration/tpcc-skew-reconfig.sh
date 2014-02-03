@@ -1,4 +1,4 @@
-confi#!/bin/bash
+#!/bin/bash
 
 # ---------------------------------------------------------------------
 
@@ -12,18 +12,14 @@ function onexit() {
 
 DATA_DIR="out"
 FABRIC_TYPE="ssh"
-FIRST_PARAM_OFFSET=0
+FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
-#    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractBase1 --reconfig=155000:1:0" \
-#    "reconfig-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractBase1 --reconfig=155000:1:0" \
-#    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractCopy1 --reconfig=155000:1:0" \
-    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpc4Contract --reconfig=185000:4:0" \
-    "reconfig-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpc4Contract --reconfig=185000:4:0" \
-#    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractMin2 --reconfig=155000:2min:0" \
-#    "reconfig-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractMin2 --reconfig=155000:2min:0" \
-#    "stopcopy-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractBase2 --reconfig=155000:2:0" \
-#    "reconfig-2b --partitions=8 --benchmark-size=16 --exp-suffix=tpcContractBase2 --reconfig=155000:2:0" \
+#    "reconfig-tpcc-hotspot-0 --partitions=4" \
+#    "reconfig-tpcc-hotspot-20 --partitions=4" \
+#    "reconfig-tpcc-hotspot-50 --partitions=4" \
+    "reconfig-tpcc-hotspot-80 --partitions=8 --benchmark-size=16 --exp-suffix=tpcskew --reconfig=185000:2:0" \
+#    "reconfig-tpcc-hotspot-100 --partitions=4" \
 )
 
 #for b in smallbank tpcc seats; do
@@ -43,7 +39,7 @@ for b in tpcc; do
         --client.duration=210000 \
         --client.warmup=30000 \
         --client.output_results_csv=interval_res.csv
-        
+        --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size16-8-skew.json\
     )
     
     i=0

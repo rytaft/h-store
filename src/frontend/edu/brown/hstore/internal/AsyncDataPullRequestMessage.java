@@ -7,6 +7,7 @@ import com.google.protobuf.RpcCallback;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
+import edu.brown.profilers.ProfileMeasurement;
 
 public class AsyncDataPullRequestMessage extends InternalMessage {
     private RpcCallback<AsyncPullResponse> asyncPullRequestCallback;
@@ -20,13 +21,13 @@ public class AsyncDataPullRequestMessage extends InternalMessage {
         super();
         this.asyncPullRequest = asyncPullRequest;
         this.asyncPullRequestCallback = asyncPullRequestCallback;
-        this.createTime = System.currentTimeMillis();
+        this.createTime = ProfileMeasurement.getTime();
         this.chunk = 0;
         this.protocol = "livePull";
     }
 
     public long getQueueTime(){
-        return System.currentTimeMillis() - this.createTime;
+        return ProfileMeasurement.getTime() - this.createTime;
     }
 
     public RpcCallback<AsyncPullResponse> getAsyncPullRequestCallback() {

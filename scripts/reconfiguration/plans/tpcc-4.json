@@ -1,5 +1,14 @@
 {
   "partition_plans": {
+    "0": {
+      "tables": {
+        "warehouse": {
+          "partitions": {
+            "0": "1-5"
+          }
+        }      
+      }
+    }
     "1": {
       "tables": {
         "warehouse": {
@@ -43,15 +52,6 @@
         } 
       }
     }, 
-    "4": {
-      "tables": {
-        "warehouse": {
-          "partitions": {
-            "0": "1-5"
-          }
-        }      
-      }
-    }
   }, 
   "default_table": "warehouse"
 }
