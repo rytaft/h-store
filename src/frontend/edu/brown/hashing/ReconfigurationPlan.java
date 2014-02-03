@@ -144,11 +144,21 @@ public class ReconfigurationPlan {
 
             }
           }
-          setReconfigurations(splitReconfigurations(getReconfigurations(),new_table.getCatalog_table()));
+          setReconfigurations(
+                  mergeReconfigurations(splitReconfigurations(getReconfigurations(),new_table.getCatalog_table()), new_table.getCatalog_table()));
         }
         
         
-        
+        private List<ReconfigurationRange<T>> mergeReconfigurations(List<ReconfigurationRange<T>> reconfiguration_range, Table catalog_table) {
+            if(catalog_table==null){
+                LOG.info("Catalog table is null. Not splitting reconfigurations");
+                return reconfiguration_range;
+            }
+            boolean modified = false;
+            LOG.error("TODO"); //TODO
+
+            return reconfiguration_range;
+        }
         
         private List<ReconfigurationRange<T>> splitReconfigurations(List<ReconfigurationRange<T>> reconfiguration_range, Table catalog_table) {
             if(catalog_table==null){
