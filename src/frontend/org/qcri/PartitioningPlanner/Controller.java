@@ -73,6 +73,7 @@ public class Controller implements Runnable {
 	private static int partPerSite = 1;
 	private static double highCPU = 160;
 	private static double lowCPU = 110;
+	private static int maxSites = 4;
 
 
 	// used HStoreTerminal as model to handle the catalog
@@ -85,7 +86,7 @@ public class Controller implements Runnable {
 		client.configureBlocking(false);
 		sites = CatalogUtil.getAllSites(catalog);
 		connectToHost();
-		provisioning = new Provisioning(client,no_of_partitions,sitesPerHost,partPerSite,highCPU,lowCPU);
+		provisioning = new Provisioning(client,no_of_partitions,sitesPerHost,partPerSite,highCPU,lowCPU,maxSites);
 
 		if(hstore_conf.global.hasher_plan == null){
 			System.out.println("Must set global.hasher_plan to specify plan file!");
@@ -282,6 +283,7 @@ public class Controller implements Runnable {
 			partPerSite = Integer.parseInt(vargs[8]);
 			highCPU = Double.parseDouble(vargs[9]);
 			lowCPU = Double.parseDouble(vargs[10]);
+			maxSites = Integer.parseInt(vargs[11]);
 		}
 		else // use default
 		{
@@ -295,6 +297,7 @@ public class Controller implements Runnable {
 			partPerSite = 1;
 			highCPU = 160;
 			lowCPU = 110;
+			maxSites = 4;
 		}
 
 
