@@ -22,16 +22,18 @@ public class Provisioning {
 	private final double CPU_THRESHOLD_DOWN;
 	private final int SITES_PER_HOST;
 	private final int PARTITIONS_PER_SITE;
+	private final int MAX_SITES;
 
 	Client client;
 	HashMap<Integer,Double> CPUUtilPerHost = new HashMap<Integer,Double>();
 	private int usedSites;
 
-	public Provisioning(Client client, int partitions, int sitesPerHost, int partitionsPerSite, double highCPU, double lowCPU){
+	public Provisioning(Client client, int partitions, int sitesPerHost, int partitionsPerSite, double highCPU, double lowCPU, int maxSites){
 		this.CPU_THRESHOLD_UP = highCPU;
 		this.CPU_THRESHOLD_DOWN = lowCPU;
 		this.SITES_PER_HOST = sitesPerHost;
 		this.PARTITIONS_PER_SITE = partitionsPerSite;
+		this.MAX_SITES = maxSites;
 		this.client = client;
 		usedSites = (int) Math.floor((double) partitions/ (double) PARTITIONS_PER_SITE); 
 		CPUUtilPerHost = queryCPUUtilPerHost(client, usedSites);
@@ -47,11 +49,11 @@ public class Provisioning {
 		for(Map.Entry<Integer, Double> e : CPUUtilPerHost.entrySet()){
 			if(e.getKey() < usedSites) totalUtil += e.getValue();
 		}
-		if(totalUtil/usedSites > CPU_THRESHOLD_UP){
-			usedSites += SITES_PER_HOST;
+		if(totalUtil/usedSites > CPU_THRESHOLD_UP && usedSites < MAX_SITES){
+			usedSites += SITES_PER_HOST * Math.max(1, (totalUtil/usedSites - CPU_THRESHOLD_UP) * usedSites);
 		}
-		if(totalUtil/usedSites < CPU_THRESHOLD_DOWN){
-			usedSites -= SITES_PER_HOST;
+		else if(totalUtil/usedSites < CPU_THRESHOLD_DOWN && usedSites > 1){
+			usedSites -= SITES_PER_HOST * Math.max(1, (CPU_THRESHOLD_DOWN - totalUtil/usedSites) * usedSites);
 		}
 		System.out.println("Provisioning returns " + usedSites + " sites");
 		return usedSites;
@@ -63,7 +65,7 @@ public class Provisioning {
 			int site = e.getKey(); 
 			if(site < usedSites){
 				double util = e.getValue();
-				if (util < CPU_THRESHOLD_DOWN || util > CPU_THRESHOLD_UP) return true;
+				if ((util < CPU_THRESHOLD_DOWN && noOfSitesRequiredQuery() < usedSites) || util > CPU_THRESHOLD_UP) return true;
 			}
 		}
 		return false;
