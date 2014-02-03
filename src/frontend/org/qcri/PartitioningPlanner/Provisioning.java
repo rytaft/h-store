@@ -49,11 +49,13 @@ public class Provisioning {
 		for(Map.Entry<Integer, Double> e : CPUUtilPerHost.entrySet()){
 			if(e.getKey() < usedSites) totalUtil += e.getValue();
 		}
-		if(totalUtil/usedSites > CPU_THRESHOLD_UP && usedSites < MAX_SITES){
+		if(totalUtil/usedSites > CPU_THRESHOLD_UP){
 			usedSites += SITES_PER_HOST * Math.max(1, (totalUtil/usedSites - CPU_THRESHOLD_UP) * usedSites);
+			usedSites = Math.min(usedSites, MAX_SITES);
 		}
-		else if(totalUtil/usedSites < CPU_THRESHOLD_DOWN && usedSites > 1){
+		else if(totalUtil/usedSites < CPU_THRESHOLD_DOWN){
 			usedSites -= SITES_PER_HOST * Math.max(1, (CPU_THRESHOLD_DOWN - totalUtil/usedSites) * usedSites);
+			usedSites = Math.max(usedSites, 1);
 		}
 		System.out.println("Provisioning returns " + usedSites + " sites");
 		return usedSites;
