@@ -231,10 +231,9 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
     return outputTable;
 }
 
-Table* extractRanges(PersistentTable *table, TableIterator& inputIterator, TableTuple& extract
-		     Tuple, int32_t requestTokenId, int32_t extractTupleLimit, bool& moreData)
+Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& inputIterator, TableTuple& extractTuple, int32_t requestToken, int32_t extractTupleLimit, bool& moreData)
 {
-  std::map<NValue,NValue> rangeMap(NValue.ltNValue);
+  std::map<NValue,NValue,NValue::ltNValue> rangeMap;
   NValue firstKey;
   firstKey.setNull();
   while(inputIterator.next(extractTuple)) {
@@ -324,7 +323,7 @@ Table* extractRanges(PersistentTable *table, TableIterator& inputIterator, Table
       // (cont) should we be using an expression or ok to just do  value check end value on iteration?
         //IF b-Tree
         if (partitionColumnIsIndexed && partitionIndex->getScheme().type == BALANCED_TREE_INDEX){            
-          for(std::map<NValue,NValue>::iterator it=rangeMap.begin(); it!=rangeMap.end(); ++it) {
+          for(std::map<NValue,NValue,NValue::ltNValue>::iterator it=rangeMap.begin(); it!=rangeMap.end(); ++it) {
 	    NValue minKey = it->first;
 	    NValue maxKey = it->second;
 	    if(minKey.compare(maxKey) > 0) {
@@ -379,8 +378,9 @@ Table* extractRanges(PersistentTable *table, TableIterator& inputIterator, Table
 		rowsExamined++;
 		#endif
 
-		NValue minKey = rangeMap.lower_bound(tuple.getNValue(partitionColumn));
-		NValue maxKey = rangeMap[minKey];
+		std::map<NValue,NValue,NValue::ltNValue>::iterator it = rangeMap.lower_bound(tuple.getNValue(partitionColumn)); 
+		NValue minKey = it->first;
+		NValue maxKey = it->second;
 		if(minKey.compare(maxKey) > 0) {
 		  //Min key should never be greater than maxKey
 		  throwFatalException("Max extract key is smaller than min key");

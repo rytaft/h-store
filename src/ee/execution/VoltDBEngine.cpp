@@ -1518,7 +1518,7 @@ int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &seriali
     }
     TableIterator inputIterator = tempExtractTable->tableIterator();
     TableTuple extractTuple(tempExtractTable->schema());
-    it (inputIterator.hasNext()) {
+    if (inputIterator.hasNext()) {
         //TODO ae more than 1 range -> into a single result?
         VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
 	bool moreData = false;

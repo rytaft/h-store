@@ -30,6 +30,7 @@
 #include "catalog/database.h"
 #include "common/tabletuple.h"
 #include "indexes/tableindex.h"
+#include "storage/tableiterator.h"
 
 namespace voltdb {
 
