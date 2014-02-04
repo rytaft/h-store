@@ -67,8 +67,8 @@ public class TestReconfigurationEE extends BaseTestCase {
 
         hstore_conf.site.coordinator_sync_time = false;
         hstore_conf.global.reconfiguration_enable = true;
-        hstore_conf.global.hasher_class = "edu.brown.hashing.TwoTieredRangeHasher";
-        hstore_conf.global.hasher_plan = TwoTieredRangeHasher.YCSB_TEST;
+        hstore_conf.global.hasher_class = "edu.brown.hashing.PlannedHasher";
+        hstore_conf.global.hasher_plan = PlannedHasher.YCSB_TEST;
 
         hstore_conf.site.status_enable = false;
 
@@ -119,7 +119,6 @@ public class TestReconfigurationEE extends BaseTestCase {
         ReconfigurationTable<Long> reconfig = new ReconfigurationTable<>(old_table, new_table);
         long rowCount = 0;
         for (ReconfigurationRange<Long> range : reconfig.getReconfigurations()) {
-
             assertNotNull(range);
             // assertEquals((Long)tuples, range.getMax_exclusive());
 
@@ -161,7 +160,7 @@ public class TestReconfigurationEE extends BaseTestCase {
 
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(ranges);
         int deleteToken = 47;
-        Pair<VoltTable, Boolean> resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken, 1, 10 * 1024);
+        Pair<VoltTable, Boolean> resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken, 1, 20 * 1024);
         assertEquals(13, resTable.getFirst().getRowCount());
         LOG.info("confirming extract request");
     }
@@ -178,11 +177,16 @@ public class TestReconfigurationEE extends BaseTestCase {
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(ranges);
         int deleteToken = 47;
         Pair<VoltTable, Boolean> resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken, 1, 10 * 1024);
-        assertEquals(10, resTable.getFirst().getRowCount());
+	int totalRows = resTable.getFirst().getRowCount();
+        assertEquals(10, totalRows);
         assertTrue(resTable.getSecond());
 
-        // TODO ae or Becca loop over ranges until moreData is false
-        // assertEquals(53, totalRows);
+	while(resTable.getSecond()) {
+	    resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken, 1, 10 * 1024);
+	    totalRows += resTable.getFirst().getRowCount();
+	}
+
+        assertEquals(53, totalRows);
 
     }
 

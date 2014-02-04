@@ -234,19 +234,20 @@ Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKe
 Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& inputIterator, TableTuple& extractTuple, int32_t requestToken, int32_t extractTupleLimit, bool& moreData)
 {
   std::map<NValue,NValue,NValue::ltNValue> rangeMap;
-  NValue firstKey;
-  firstKey.setNull();
+  NValue firstMin;
+  NValue firstMax;
+  firstMin.setNull();
+  firstMax.setNull();
   while(inputIterator.next(extractTuple)) {
     NValue minKey = extractTuple.getNValue(2);
     NValue maxKey = extractTuple.getNValue(3);
-    rangeMap[minKey] = maxKey;
+    rangeMap[maxKey] = minKey; // we have to do it this way because of the way std::map::upper_bound() works
     VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );
-    if(firstKey.isNull()) {
-      firstKey = minKey;
+    if(firstMin.isNull() || firstMax.isNull()) {
+      firstMin = minKey;
+      firstMax = maxKey;
     }
   }
-
-
 
     //Get the right index to use
     //TODO andy ae this should be cached on initialization. do tables exists? when should migration mgr be created? should it exist in dbcontext
@@ -261,10 +262,11 @@ Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& in
     } else {
 	VOLT_DEBUG("partitionColumn is indexed partitionColumn: %d",partitionColumn);
     }
+
     TableTuple tuple(table->schema());
     //TODO ae andy -> How many byes should we set this to? Below is just a silly guess
     int outTableSizeInBytes = 1024; 
-    //int outTableSizeInBytes = (maxKey.op_subtract(firstKey)).castAs(VALUE_TYPE_INTEGER).getInteger() *tuple.maxExportSerializationSize();
+    //int outTableSizeInBytes = (maxKey.op_subtract(firstMin)).castAs(VALUE_TYPE_INTEGER).getInteger() *tuple.maxExportSerializationSize();
 
     //output table
     Table* outputTable = reinterpret_cast<Table*>(TableFactory::getCopiedTempTable(table->databaseId(),
@@ -274,19 +276,20 @@ Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& in
     bool dataLimitReach = false;
     int tuplesExtracted = 0;
     
-    std::vector<ValueType> keyColumnTypes(1, firstKey.getValueType());
-    std::vector<int32_t> keyColumnLengths(1, NValue::getTupleStorageSize(firstKey.getValueType()));
+    std::vector<ValueType> keyColumnTypes(1, firstMin.getValueType());
+    std::vector<int32_t> keyColumnLengths(1, NValue::getTupleStorageSize(firstMin.getValueType()));
     std::vector<bool> keyColumnAllowNull(1, true);
     TupleSchema* keySchema = TupleSchema::createTupleSchema(keyColumnTypes,keyColumnLengths,keyColumnAllowNull,true);
     TableTuple searchkey(keySchema);
     searchkey.move(new char[searchkey.tupleLength()]);
-    searchkey.setNValue(0, firstKey);
+    searchkey.setNValue(0, firstMin);
     #ifdef EXTRACT_STAT_ENABLED
     boost::timer timer;
     int rowsExamined = 0;
     #endif
+
     //Do we have a single key to pull
-    if(rangeMap.size() == 1 && firstKey.compare(rangeMap[firstKey])==0 && partitionColumnIsIndexed){
+    if(rangeMap.size() == 1 && firstMin.compare(firstMax)==0 && partitionColumnIsIndexed){
 	VOLT_DEBUG("Pulling single key on partitionedColumn");
         bool found = partitionIndex->moveToKey(&searchkey);    
         if(found){
@@ -318,14 +321,14 @@ Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& in
             VOLT_INFO("key not found for single key extract");       
         }
     } else { // we have more than one key to pull
-        
+
       //TODO ae andy -> on searching and checking for the max key condition
       // (cont) should we be using an expression or ok to just do  value check end value on iteration?
         //IF b-Tree
         if (partitionColumnIsIndexed && partitionIndex->getScheme().type == BALANCED_TREE_INDEX){            
           for(std::map<NValue,NValue,NValue::ltNValue>::iterator it=rangeMap.begin(); it!=rangeMap.end(); ++it) {
-	    NValue minKey = it->first;
-	    NValue maxKey = it->second;
+	    NValue minKey = it->second;
+	    NValue maxKey = it->first;
 	    if(minKey.compare(maxKey) > 0) {
 	      //Min key should never be greater than maxKey
 	      throwFatalException("Max extract key is smaller than min key");
@@ -371,16 +374,20 @@ Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& in
             VOLT_DEBUG("Pulling one or more key on partitionedColumn hash or array or non-indexed partition column");
             //TODO ae andy -> assume we cannot leverage anything about hashing with ranges, correct?
             //Iterate through results
-            TableIterator iterator(table);           
+            TableIterator iterator(table);
+
             while (iterator.next(tuple))
             {
 		#ifdef EXTRACT_STAT_ENABLED
 		rowsExamined++;
 		#endif
 
-		std::map<NValue,NValue,NValue::ltNValue>::iterator it = rangeMap.lower_bound(tuple.getNValue(partitionColumn)); 
-		NValue minKey = it->first;
-		NValue maxKey = it->second;
+		std::map<NValue,NValue,NValue::ltNValue>::iterator it = rangeMap.upper_bound(tuple.getNValue(partitionColumn)); 
+		NValue minKey = it->second;
+		NValue maxKey = it->first;
+		if(minKey.isNull() || maxKey.isNull()) {
+		  continue;
+		}
 		if(minKey.compare(maxKey) > 0) {
 		  //Min key should never be greater than maxKey
 		  throwFatalException("Max extract key is smaller than min key");
@@ -416,13 +423,14 @@ Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& in
             throwFatalException("Unsupported Index type %d",partitionIndex->getScheme().type );
         }     
     }
+
     VOLT_DEBUG("Tuples extracted: %d, Rows examined: %d  Output Table %s",tuplesExtracted, rowsExamined, outputTable->debug().c_str());
     m_extractedTables[requestToken] = outputTable;
     m_extractedTableNames[requestToken] = table->name();
-    
+
     #ifdef EXTRACT_STAT_ENABLED
-    NValue minKey = rangeMap.begin()->first;
-    NValue maxKey = rangeMap.rbegin()->second;
+    NValue minKey = rangeMap.begin()->second;
+    NValue maxKey = rangeMap.rbegin()->first;
     VOLT_INFO("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );        
     //VOLT_INFO("Extraction Time: %.2f sec. Examined Tuples:%ld Active Tuples: %ld  Approximate Size to serialized: %ld", timer.elapsed(), rowsExamined, outputTable->activeTupleCount(), outputTable->getApproximateSizeToSerialize());
     std::string extract_id = "Extract:"+table->name()+" Range:"+minKey.debug().c_str()+"-"+maxKey.debug().c_str();
