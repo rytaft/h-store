@@ -2590,7 +2590,6 @@ UTILITIES
   	<arg value="${partPerSite}" />
   	<arg value="${highCPU}" />
   	<arg value="${lowCPU}" />
-  	<arg value="${maxSites}" />
 	&common;
         <classpath refid='project.classpath' />
     <assertions><enable/></assertions>
