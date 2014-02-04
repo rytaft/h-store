@@ -22,6 +22,7 @@ import edu.brown.BaseTestCase;
 import edu.brown.benchmark.ycsb.YCSBConstants;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hashing.PlannedHasher;
+import edu.brown.hashing.TwoTieredRangeHasher;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
@@ -66,8 +67,8 @@ public class TestReconfigurationEE extends BaseTestCase {
 
         hstore_conf.site.coordinator_sync_time = false;
         hstore_conf.global.reconfiguration_enable = true;
-        hstore_conf.global.hasher_class = "edu.brown.hashing.PlannedHasher";
-        hstore_conf.global.hasher_plan = PlannedHasher.YCSB_TEST;
+        hstore_conf.global.hasher_class = "edu.brown.hashing.TwoTieredRangeHasher";
+        hstore_conf.global.hasher_plan = TwoTieredRangeHasher.YCSB_TEST;
 
         hstore_conf.site.status_enable = false;
 

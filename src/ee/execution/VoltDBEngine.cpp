@@ -1523,6 +1523,7 @@ int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &seriali
         VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
 	bool moreData = false;
         //Table* outputTable = m_migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3),requestToken, extractTupleLimit, moreData);
+	std::cout << "about to extract ranges" << std::endl;
         Table* outputTable = m_migrationManager->extractRanges(table,inputIterator,extractTuple,requestToken, extractTupleLimit, moreData);
         size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
         if (outputTable != NULL) {
