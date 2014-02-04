@@ -85,7 +85,7 @@ public class Controller implements Runnable {
 		client.configureBlocking(false);
 		sites = CatalogUtil.getAllSites(catalog);
 		connectToHost();
-		provisioning = new Provisioning(client,no_of_partitions,sitesPerHost,partPerSite,highCPU,lowCPU);
+		provisioning = new Provisioning(client,no_of_partitions,sitesPerHost,partPerSite,highCPU,lowCPU,sites.size());
 
 		if(hstore_conf.global.hasher_plan == null){
 			System.out.println("Must set global.hasher_plan to specify plan file!");
@@ -293,8 +293,8 @@ public class Controller implements Runnable {
 			doMonitoring = 0;
 			sitesPerHost = 1;
 			partPerSite = 1;
-			highCPU = 160;
-			lowCPU = 110;
+			highCPU = 1280;
+			lowCPU = 960;
 		}
 
 
