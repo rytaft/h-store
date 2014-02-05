@@ -181,6 +181,7 @@ public class ReconfigurationPlan {
                     	
                     	long max = ((Number)range.max_exclusive).longValue();
                         long min = ((Number)range.min_inclusive).longValue();
+                        LOG.info(String.format("Adding min: %s, max: %s",min,max));
                         partialRange.getMaxList().add(max);
                         partialRange.getMinList().add(min);
                         long max_potential_keys = partialRange.getMaxPotentialKeys();
@@ -367,7 +368,19 @@ public class ReconfigurationPlan {
 
         @Override
         public String toString(){
-          return String.format("ReconfigRange (%s) keys:[%s,%s) p_id:%s->%s ",table_name,min_inclusive,max_exclusive,old_partition,new_partition);
+        	if(min_inclusive != null && max_exclusive != null) {
+        		return String.format("ReconfigRange (%s) keys:[%s,%s) p_id:%s->%s ",table_name,min_inclusive,max_exclusive,old_partition,new_partition);
+        	}
+        	else {
+        		String keys = "";
+        		for(int i = 0; i < min_list.size() && i < max_list.size(); ++i) {
+        			if(i != 0) {
+        				keys += ", ";
+        			}
+        			keys += "[" + min_list.get(i) + "," + max_list.get(i) + ")";
+        		}
+        		return String.format("ReconfigRange (%s) keys:%s p_id:%s->%s ",table_name,keys,old_partition,new_partition);
+        	}
         }
         
         public boolean inRange(Comparable<?> key){
