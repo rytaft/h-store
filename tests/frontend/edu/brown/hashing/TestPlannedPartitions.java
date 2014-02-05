@@ -273,12 +273,7 @@ public class TestPlannedPartitions extends BaseTestCase {
         range = reconfig.getReconfigurations().get(0);
         assertTrue(range.getMinList().size() == 2 && range.getMaxList().size() == 2 && range.old_partition == 1 && range.new_partition == 2);
 
-        range = (ReconfigurationRange<Integer>) reconfig_plan.incoming_ranges.get(2).get(0);
-        assertTrue(range.getMinList().get(0) == 10 && range.getMaxList().get(0) == 20 && 
-        		range.getMinList().get(1) == 20 && range.getMaxList().get(1) == 30 &&
-        		range.old_partition == 1 && range.new_partition == 2);
-
-        range = (ReconfigurationRange<Integer>) reconfig_plan.outgoing_ranges.get(1).get(0);
+        range = (ReconfigurationRange<Integer>) reconfig.getReconfigurations().get(0);
         assertTrue(range.getMinList().get(0) == 10 && range.getMaxList().get(0) == 20 && 
         		range.getMinList().get(1) == 20 && range.getMaxList().get(1) == 30 &&
         		range.old_partition == 1 && range.new_partition == 2);
