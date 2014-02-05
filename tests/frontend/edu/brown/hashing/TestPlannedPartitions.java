@@ -261,22 +261,15 @@ public class TestPlannedPartitions extends BaseTestCase {
 
         olds.add(new PartitionRange<Integer>(VoltType.INTEGER, 1, "1-30"));
         PartitionedTable<Integer> old_table = new PartitionedTable<>(olds, "table", VoltType.INTEGER);
-        Map<String, PartitionedTable<? extends Comparable<?>>> old_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
-        old_table_map.put("table", old_table);
-        PartitionPhase old_phase = new PartitionPhase(old_table_map);
-
+        
         news.add(new PartitionRange<Integer>(VoltType.INTEGER, 2, "1-10"));
         news.add(new PartitionRange<Integer>(VoltType.INTEGER, 1, "10-20"));
         news.add(new PartitionRange<Integer>(VoltType.INTEGER, 2, "20-30"));
         PartitionedTable<Integer> new_table = new PartitionedTable<>(news, "table", VoltType.INTEGER);
-        Map<String, PartitionedTable<? extends Comparable<?>>> new_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
-        new_table_map.put("table", new_table);
-        PartitionPhase new_phase = new PartitionPhase(new_table_map);
-
-        ReconfigurationPlan reconfig_plan = new ReconfigurationPlan(old_phase, new_phase);
-
-        ReconfigurationTable<Integer> reconfig = (ReconfigurationTable<Integer>) reconfig_plan.tables_map.get("table");
+        
+        ReconfigurationTable<Integer> reconfig = new ReconfigurationTable<>(old_table, new_table);
         ReconfigurationRange<Integer> range = null;
+        System.out.println(reconfig.getReconfigurations().toString());
         range = reconfig.getReconfigurations().get(0);
         assertTrue(range.getMinList().size() == 2 && range.getMaxList().size() == 2 && range.old_partition == 1 && range.new_partition == 2);
 
