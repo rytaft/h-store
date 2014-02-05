@@ -181,7 +181,6 @@ public class ReconfigurationPlan {
                     	
                     	long max = ((Number)range.max_exclusive).longValue();
                         long min = ((Number)range.min_inclusive).longValue();
-                        LOG.info(String.format("Adding min: %s, max: %s",min,max));
                         partialRange.getMaxList().add(max);
                         partialRange.getMinList().add(min);
                         long max_potential_keys = partialRange.getMaxPotentialKeys();
