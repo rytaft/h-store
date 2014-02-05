@@ -253,4 +253,42 @@ public class TestPlannedPartitions extends BaseTestCase {
         assertTrue(range.getMin_inclusive() == 20 && range.getMax_exclusive() == 30 && range.old_partition == 1 && range.new_partition == 3);
 
     }
+    
+    @SuppressWarnings("unchecked")
+    public void testReconfigurationPlanMergeRanges() throws Exception {
+        List<PartitionRange<Integer>> olds = new ArrayList<>();
+        List<PartitionRange<Integer>> news = new ArrayList<>();
+
+        olds.add(new PartitionRange<Integer>(VoltType.INTEGER, 1, "1-30"));
+        PartitionedTable<Integer> old_table = new PartitionedTable<>(olds, "table", VoltType.INTEGER);
+        Map<String, PartitionedTable<? extends Comparable<?>>> old_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
+        old_table_map.put("table", old_table);
+        PartitionPhase old_phase = new PartitionPhase(old_table_map);
+
+        news.add(new PartitionRange<Integer>(VoltType.INTEGER, 2, "1-10"));
+        news.add(new PartitionRange<Integer>(VoltType.INTEGER, 1, "10-20"));
+        news.add(new PartitionRange<Integer>(VoltType.INTEGER, 2, "20-30"));
+        PartitionedTable<Integer> new_table = new PartitionedTable<>(news, "table", VoltType.INTEGER);
+        Map<String, PartitionedTable<? extends Comparable<?>>> new_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
+        new_table_map.put("table", new_table);
+        PartitionPhase new_phase = new PartitionPhase(new_table_map);
+
+        ReconfigurationPlan reconfig_plan = new ReconfigurationPlan(old_phase, new_phase);
+
+        ReconfigurationTable<Integer> reconfig = (ReconfigurationTable<Integer>) reconfig_plan.tables_map.get("table");
+        ReconfigurationRange<Integer> range = null;
+        range = reconfig.getReconfigurations().get(0);
+        assertTrue(range.getMinList().size() == 2 && range.getMaxList().size() == 2 && range.old_partition == 1 && range.new_partition == 2);
+
+        range = (ReconfigurationRange<Integer>) reconfig_plan.incoming_ranges.get(2).get(0);
+        assertTrue(range.getMinList().get(0) == 10 && range.getMaxList().get(0) == 20 && 
+        		range.getMinList().get(1) == 20 && range.getMaxList().get(1) == 30 &&
+        		range.old_partition == 1 && range.new_partition == 2);
+
+        range = (ReconfigurationRange<Integer>) reconfig_plan.outgoing_ranges.get(1).get(0);
+        assertTrue(range.getMinList().get(0) == 10 && range.getMaxList().get(0) == 20 && 
+        		range.getMinList().get(1) == 20 && range.getMaxList().get(1) == 30 &&
+        		range.old_partition == 1 && range.new_partition == 2);
+            
+    }
 }
