@@ -10,6 +10,7 @@ import org.jaga.definitions.GAParameterSet;
 import org.jaga.definitions.GAResult;
 import org.jaga.definitions.Individual;
 import org.jaga.definitions.ReproductionAlgorithm;
+import org.jaga.definitions.Fitness;
 import org.jaga.hooks.AnalysisHook;
 import org.jaga.individualRepresentation.greycodedNumbers.NDecimalsIndividual;
 import org.jaga.individualRepresentation.greycodedNumbers.NDecimalsIndividualSimpleFactory;
@@ -18,6 +19,7 @@ import org.jaga.masterAlgorithm.ReusableSimpleGA;
 import org.jaga.masterAlgorithm.InitialPopulationGA;
 import org.jaga.reproduction.greycodedNumbers.SimpleBinaryXOverWithMutation;
 import org.jaga.selection.RouletteWheelSelection;
+import org.jaga.selection.AbsoluteFitness;
 import org.jaga.util.DefaultParameterSet;
 import org.jaga.util.FittestIndividualResult;
 import org.voltdb.utils.Pair;
@@ -161,6 +163,7 @@ public class GAPlacement extends Placement {
 			}
 			initialIndivs[i] = indiv;
 		}
+		System.out.println("Initial plan has fitness: " + fitness.evaluateFitness(initialIndivs[0], 0, null, params).toString());
 		ga.setInitialPopulation(initialIndivs);
 		
 		// Analysis for debugging
@@ -173,6 +176,8 @@ public class GAPlacement extends Placement {
 		// Execute the genetic algorithm
 		GAResult result = ga.exec(params);
 		FittestIndividualResult fittestResult = (FittestIndividualResult) result;
+		AbsoluteFitness fit = (AbsoluteFitness) fittestResult.getBestFitness();
+		System.out.println("Fittest individual found with fitness: " + fit.toString());
 		NDecimalsIndividual indiv = (NDecimalsIndividual) fittestResult.getFittestIndividual();
 
 		// Update the plan based on the results
