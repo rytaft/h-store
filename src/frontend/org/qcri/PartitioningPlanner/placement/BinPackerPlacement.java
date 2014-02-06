@@ -104,7 +104,7 @@ public class BinPackerPlacement extends Placement {
 			List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / denom);
 			if(partitionSlices.size() > 0) {
 				sliceCount += partitionSlices.size();
-				Double tupleWeight = (double) oldLoad.get(i) / meanColdAccesses; // per tuple - VOTER HACK
+				Double tupleWeight = (double) oldLoad.get(i)*1.5 / meanColdAccesses; // per tuple - VOTER HACK
 				for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 					// VOTER HACK
 					Long sliceSize = (long) (Plan.getRangeListWidth(slice) * (double) partitionTotals.get(i) / maxPhoneNumber);
