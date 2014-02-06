@@ -27,7 +27,7 @@ public class Plan {
 
 		public String toString() {
 			String rangeStr = new String();
-			rangeStr = from.toString() + "-" + (to.toString() + 1);
+			rangeStr = from.toString() + "-" + (to + 1);
 			return rangeStr;
 		}
 

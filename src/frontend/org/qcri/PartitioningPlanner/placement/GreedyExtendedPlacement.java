@@ -64,6 +64,12 @@ public class GreedyExtendedPlacement extends Placement {
 			}
 			++partitionId;
 		}
+
+		int coldAccesses = 0;
+		for(Integer i : oldLoad.keySet()) {
+                        coldAccesses += oldLoad.get(i);
+                }
+		int meanColdAccesses = coldAccesses / partitionCount;
 		
 		// copy hot tuples list
 		ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesListCopy = new ArrayList<Map<Long, Pair<Long,Integer> >>();
@@ -98,7 +104,6 @@ public class GreedyExtendedPlacement extends Placement {
 				}
 			hotTuplesList.get(_srcPartition).remove(_hotTupleId);
 		}
-		System.out.println("LOOP1 DONE");
 		
 		// place the cold tuples from the overloaded or deleted partitions
 		for(Integer i : oldPlan.getAllRanges().keySet()) { // foreach partition
@@ -106,15 +111,20 @@ public class GreedyExtendedPlacement extends Placement {
 				
 				// VOTER HACK: we want each partition slice to contain ~1000 tuples, but we don't know how many tuples
 				// are in a range
-				List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / partitionTotals.get(i));
+				long denom = Math.max(partitionTotals.get(i), coldPartitionWidth);
+				List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i, coldPartitionWidth * maxPhoneNumber / denom);
 				if(partitionSlices.size() > 0) {
 					
-					Double tupleWeight = 1.0; // weight per tuple - VOTER HACK
+					Double tupleWeight = (double) oldLoad.get(i) / meanColdAccesses; // weight per tuple - VOTER HACK
 
 					for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 						for(Plan.Range r : slice) { 
 							// VOTER HACK
-							Integer newWeight = (int) (tupleWeight *  ((double) Plan.getRangeWidth(r) * partitionTotals.get(i) / maxPhoneNumber));
+							Integer newWeight = (int) (tupleWeight *  ((double) Plan.getRangeWidth(r) * partitionTotals.get(i) / maxPhoneNumber)); 
+	                                                if(newWeight == 0 && i.intValue() < partitionCount) {
+								continue;
+							}
+
 							dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount);
 							
 							if((partitionTotals.get(i) > meanAccesses || i.intValue() >= partitionCount) && i != dstPartition) { 		
@@ -141,15 +151,8 @@ public class GreedyExtendedPlacement extends Placement {
 			} 
 		} // end for each partition
 		
-		System.out.println("LOOP 2 DONE");
-
 		aPlan = demoteTuples(hotTuplesListCopy, aPlan);
-		
-		System.out.println("Demoted DONE");
-		
 		removeEmptyPartitions(aPlan);
-		
-		System.out.println("Removed DONE");
 		return aPlan;
 		
 	}

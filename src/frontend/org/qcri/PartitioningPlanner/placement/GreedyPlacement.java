@@ -79,9 +79,11 @@ public class GreedyPlacement extends Placement {
 			if(i.intValue() >= partitionCount) { // in case of shrinking number of partitions
 				// VOTER HACK: we want each partition slice to contain ~1000 tuples, but we don't know how many tuples
 				// are in a range
-				List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / partitionTotals.get(i));
+				long denom = Math.max(partitionTotals.get(i), coldPartitionWidth);
+				List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / denom);
 				if(partitionSlices.size() > 0) {
-				        Double tupleWeight = 1.0; // weight per tuple - VOTER HACK
+				        
+					Double tupleWeight = (double) partitionTotals.get(i) / meanAccesses; // weight per tuple - VOTER HACK
 
 					for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 

@@ -90,12 +90,19 @@ public class FirstFitPlacement extends Placement {
 		
 		
 		
+			int coldAccesses = 0;
+               		for(Integer i : oldLoad.keySet()) {
+                        	coldAccesses += oldLoad.get(i);
+                	}
+               		int meanColdAccesses = coldAccesses / partitionCount;
+
 		for(Integer i : aPlan.getAllRanges().keySet()) { // foreach partition
 			// VOTER HACK: we want each partition slice to contain ~1000 tuples, but we don't know how many tuples
 			// are in a range
-			List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / partitionTotals.get(i));
+			long denom = Math.max(partitionTotals.get(i), coldPartitionWidth);
+			List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / denom);
 			if(partitionSlices.size() > 0) {
-				Double tupleWeight = 1.0; // per tuple - VOTER HACK
+				Double tupleWeight = (double) oldLoad.get(i) / meanColdAccesses; // weight per tuple - VOTER HACK
 
 				for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 

@@ -7,5 +7,5 @@ public abstract class ReconfigurationConstants {
     LIVEPULL
   }
   
-  public static long MAX_TRANSFER_BYTES = 1024*1024*9; //9 MB
+  public static long MAX_TRANSFER_BYTES = 1024*1024*1024*10*9; //90 GB
 }
