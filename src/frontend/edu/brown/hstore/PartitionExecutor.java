@@ -4033,7 +4033,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.info(String.format("(%s) PullId:%s pulling number of ranges and then blocking: %s",partitionId, pullID, pullRequestsNeeded.size()));
                 if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.start();
                 //Issue the pull
-                this.reconfiguration_coordinator.pullRanges(pullID, this.currentTxnId, this.partitionId, pullRequestsNeeded, pullBlockSemaphore);
+		if(this.currentTxnId == null) {
+			if (debug.val) LOG.debug("Casting currentTxnId to -1");
+			this.currentTxnId = -1L;
+		}
+		this.reconfiguration_coordinator.pullRanges(pullID, this.currentTxnId, this.partitionId, pullRequestsNeeded, pullBlockSemaphore);
                 if (debug.val) LOG.debug("Blocking on ranges " + pullRequestsNeeded.size());
                 try {
                     //Block until pull is returned
