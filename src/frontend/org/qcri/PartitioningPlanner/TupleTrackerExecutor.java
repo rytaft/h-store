@@ -67,21 +67,20 @@ private void getTuplesPerPart(org.voltdb.client.Client client) throws Exception 
 		VoltTableRow row;
 		int partition;
 		int numOfPhones;
-		int r = 0;
-		row = results[0].fetchRow(r);
-		while (row !=null)
+
+		System.out.printf("results[0].getRowCount() = " +results[0].getRowCount()+"\n");
+		
+		for(int r = 0;r<10;r++)
 		{
+			row = results[0].fetchRow(r);
+			
 			if (row.getString(5) == "V_VOTES_BY_PHONE_NUMBER")
 			{
 			partition = (int) row.getLong(4);
 			numOfPhones   =  (int) row.getLong(8);
 			System.out.printf(partition +", "+numOfPhones+"\n");
 			}
-			
-			
-			r++;
-			row = results[0].fetchRow(r);
-			
+					
 		}
 		
        		
