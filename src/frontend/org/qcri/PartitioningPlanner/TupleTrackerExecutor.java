@@ -135,9 +135,9 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 	int num;
 	for (int r = 0 ; r< i; r++)
 	{
-		phone =  reslt[0].fetchRow(r).getLong(0);
-		num   =  (int) reslt[0].fetchRow(r).getLong(1);
-		PhoneNUM_VOTES.put(phone,num);
+		phone =  reslt[r].fetchRow(r).getLong(0);
+		num   =  (int) reslt[r].fetchRow(r).getLong(1);
+		PhoneNUM_VOTES.put(Long.valueOf(phone),Integer.valueOf(num));
 		
 	}
 
