@@ -121,14 +121,14 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 	PhoneNUM_VOTES = new HashMap<Long,Integer>();
 	
 	query = "select count(*) from V_VOTES_BY_PHONE_NUMBER";
-	System.out.printf("Query:: " + query);
+	//System.out.printf("Query:: " + query);
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
 	int i = (int) (count[0].fetchRow(0).getLong(0))/100 ; // no phone numbers
 	
 	query = "select PHONE_NUMBER, NUM_VOTES from V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES DESC Limit " + i;
-	System.out.printf("Query:: " + query);
+	//System.out.printf("Query:: " + query);
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] reslt = cresponse.getResults(); 
 	
@@ -136,16 +136,16 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 	long phone;
 	int num;
 	int r = 0;
-	//for (int r = 0 ; r< i; r++)
+	for (r = 0 ; r< i; r++)
 	{
 		row = reslt[r].fetchRow(r);
-		System.out.printf("Got Row");
+		//System.out.printf("Got Row");
 		phone =  row.getLong(0);
-		System.out.printf("Got Phone " + phone);
+		//System.out.printf("Got Phone " + phone);
 		num   =  (int) row.getLong(1);
-		System.out.printf("Got Votes " + num);
+		//System.out.printf("Got Votes " + num);
 		PhoneNUM_VOTES.put(Long.valueOf(phone),Integer.valueOf(num));
-		System.out.printf("Put KEY");
+		//System.out.printf("Put KEY");
 		
 	}
 
