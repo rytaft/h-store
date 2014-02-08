@@ -128,7 +128,7 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 	int i = (int) (count[0].fetchRow(0).getLong(0))/100 ; // no phone numbers
 	
 	query = "select PHONE_NUMBER, NUM_VOTES from V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES DESC Limit " + i;
-	//System.out.printf("Query:: " + query);
+	System.out.printf("Query:: " + query);
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] reslt = cresponse.getResults(); 
 	
@@ -145,7 +145,7 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 		num   =  (int) row.getLong(1);
 		//System.out.printf("Got Votes " + num);
 		PhoneNUM_VOTES.put(phone,num);
-		System.out.printf("Put KEY Value" +phone +", "+num);
+		System.out.printf(phone +", "+num+"\n");
 		
 	}
 
