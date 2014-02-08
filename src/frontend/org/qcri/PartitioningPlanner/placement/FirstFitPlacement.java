@@ -102,7 +102,7 @@ public class FirstFitPlacement extends Placement {
 			long denom = Math.max(partitionTotals.get(i), coldPartitionWidth);
 			List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / denom);
 			if(partitionSlices.size() > 0) {
-				Double tupleWeight = (double) oldLoad.get(i) / meanColdAccesses; // weight per tuple - VOTER HACK
+				Double tupleWeight = (double) oldLoad.get(i)*1.5 / meanColdAccesses; // weight per tuple - VOTER HACK
 
 				for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 

@@ -57,8 +57,7 @@ public class OneTieredPlacement extends Placement {
 			List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / denom);
 			if(partitionSlices.size() > 0) {
 				sliceCount += partitionSlices.size();
-				Double tupleWeight = (double) partitionTotals.get(i) / meanAccesses; // per tuple - VOTER HACK
-				System.out.println("TUPLEWEIGHT:" + tupleWeight + ", partition: " + i);
+				Double tupleWeight = (double) partitionTotals.get(i)*3 / meanAccesses; // per tuple - VOTER HACK
 				for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 					// VOTER HACK
 					Long sliceSize = (long) (Plan.getRangeListWidth(slice) * (double) partitionTotals.get(i) / maxPhoneNumber);

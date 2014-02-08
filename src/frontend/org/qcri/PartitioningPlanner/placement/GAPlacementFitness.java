@@ -87,8 +87,8 @@ public class GAPlacementFitness implements FitnessEvaluationAlgorithm {
 			loadDeviation += Math.abs(load - meanAccesses);
 		}
 		
-		// 1000 was chosen by trial and error to be a good balance
-		long f = (long) (cost + 1000.0 * loadDeviation/totalAccesses);
+		// 100000 was chosen by trial and error to be a good balance
+		long f = (long) (cost + 100000.0 * loadDeviation/totalAccesses);
 		
 		Fitness fit = new AbsoluteFitness(-f);
 		return fit;
