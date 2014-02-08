@@ -138,7 +138,7 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 	int r = 0;
 	for (r = 0 ; r< i; r++)
 	{
-		row = reslt[r].fetchRow(r);
+		row = reslt[0].fetchRow(r);
 		//System.out.printf("Got Row");
 		phone =  row.getLong(0);
 		//System.out.printf("Got Phone " + phone);
