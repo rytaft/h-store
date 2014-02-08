@@ -144,8 +144,8 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 		//System.out.printf("Got Phone " + phone);
 		num   =  (int) row.getLong(1);
 		//System.out.printf("Got Votes " + num);
-		PhoneNUM_VOTES.put(Long.valueOf(phone),Integer.valueOf(num));
-		//System.out.printf("Put KEY");
+		PhoneNUM_VOTES.put(phone,num);
+		System.out.printf("Put KEY Value" +phone +", "+num);
 		
 	}
 
