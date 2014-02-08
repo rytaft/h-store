@@ -118,7 +118,7 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 {
 	String query;
 	ClientResponse cresponse;
-	
+	PhoneNUM_VOTES = new HashMap<Long,Integer>();
 	
 	query = "select count(*) from V_VOTES_BY_PHONE_NUMBER";
 	System.out.printf("Query:: " + query);
@@ -141,9 +141,9 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 		row = reslt[r].fetchRow(r);
 		System.out.printf("Got Row");
 		phone =  row.getLong(0);
-		System.out.printf("Got Phone");
+		System.out.printf("Got Phone " + phone);
 		num   =  (int) row.getLong(1);
-		System.out.printf("Got Votes");
+		System.out.printf("Got Votes " + num);
 		PhoneNUM_VOTES.put(Long.valueOf(phone),Integer.valueOf(num));
 		System.out.printf("Put KEY");
 		
