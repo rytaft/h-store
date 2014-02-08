@@ -76,7 +76,7 @@ private void getTuplesPerPart(org.voltdb.client.Client client) throws Exception 
 		{
 			row = results[0].fetchRow(r);
 			
-			if (row.getString(5).contains("V_VOTES_BY_PHONE_NUMBER") )
+			if (row.getString(5).equalsIgnoreCase("VOTES") )
 			{
 			partition = (int) row.getLong(4);
 			numOfPhones   =  (int) row.getLong(8);
