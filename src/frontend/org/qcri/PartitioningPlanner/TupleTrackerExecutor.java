@@ -96,10 +96,13 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 private int getNoOfTuples(Long phoneNo, org.voltdb.client.Client client) throws Exception
 {
 	int n ;
+	/*
 	Integer noVotes = PhoneNUM_VOTES.get(phoneNo);
 	if (noVotes != null) // does exist
 	  n = noVotes.intValue();
-	else {
+	else 
+	//*/
+	{
 	
 	
 	String query = "select NUM_VOTES from V_VOTES_BY_PHONE_NUMBER where PHONE_NUMBER = " + phoneNo;
@@ -125,9 +128,11 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
+	System.out.printf("Phone Count is " + count[0].fetchRow(0).getLong(0));
+	
 	int i = (int) ((count[0].fetchRow(0).getLong(0)) / 100) ; // no phone numbers
 	
-	query = "select PHONE_NUMBER, NUM_VOTES from V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES DESC";
+	query = "select PHONE_NUMBER, NUM_VOTES from V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES DESC Limit " + i;
 	System.out.printf("Query:: " + query+"\n");
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] reslt = cresponse.getResults(); 
