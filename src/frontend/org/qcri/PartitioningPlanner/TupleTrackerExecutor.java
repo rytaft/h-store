@@ -128,7 +128,7 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
-	System.out.printf("Phone Count is " + count[0].fetchRow(0).getLong(0));
+	System.out.printf("Phone Count is " + count[0].fetchRow(0).getLong(0) +"\n");
 	
 	int i = (int) ((count[0].fetchRow(0).getLong(0)) / 100) ; // no phone numbers
 	

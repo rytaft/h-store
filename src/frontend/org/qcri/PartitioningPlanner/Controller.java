@@ -173,20 +173,20 @@ public class Controller implements Runnable {
 
 			ttExecutor.turnOnOff(time_window,client);	// turn on tuple tracking for time window of X seconds
 			
-			System.out.printf("Fetching ...");
-			ttExecutor.fetchNoOfTuples(client); // get the top 1% of phone no and its num of votes
-			System.out.printf("Fetching Done");
+			//System.out.printf("Fetching ...");
+			//ttExecutor.fetchNoOfTuples(client); // get the top 1% of phone no and its num of votes
+			//System.out.printf("Fetching Done");
 			
 			// here we get top K
 			ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList, client);
-			System.out.printf("TopKPerPart Done");
+			System.out.printf("TopKPerPart has been fetched");
 
 			// here we get load per site
 			ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
 
-			System.out.println("Got list of hot tuples");	
+			System.out.println("Got list of hot tuples and partition load");	
 			
-			ttExecutor.eraseNoOfTuples();
+			//ttExecutor.eraseNoOfTuples();
 
 			// here we call the planner
 			// @todo - last parameter should be the number of partitions in use - may be less than
