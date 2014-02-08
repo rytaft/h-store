@@ -7,6 +7,7 @@ import java.util.Map;
 import java.io.*;
 
 import org.voltdb.VoltTable;
+import org.voltdb.VoltTableRow;
 //import org.voltdb.VoltTableRow;
 //import org.voltdb.client.ClientConfig;
 //import org.voltdb.client.Client;
@@ -131,14 +132,20 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] reslt = cresponse.getResults(); 
 	
+	VoltTableRow row;
 	long phone;
 	int num;
 	int r = 0;
 	//for (int r = 0 ; r< i; r++)
 	{
-		phone =  reslt[r].fetchRow(r).getLong(0);
-		num   =  (int) reslt[r].fetchRow(r).getLong(1);
+		row = reslt[r].fetchRow(r);
+		System.out.printf("Got Row");
+		phone =  row.getLong(0);
+		System.out.printf("Got Phone");
+		num   =  (int) row.getLong(1);
+		System.out.printf("Got Votes");
 		PhoneNUM_VOTES.put(Long.valueOf(phone),Integer.valueOf(num));
+		System.out.printf("Put KEY");
 		
 	}
 
