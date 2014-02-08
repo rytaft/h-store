@@ -22,7 +22,7 @@ public class TupleTrackerExecutor {
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
  	
-		
+	private Map<Long, Integer> PhoneNUM_VOTES; 	
 	public TupleTrackerExecutor(){
 		
 	}
@@ -94,18 +94,56 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 
 private int getNoOfTuples(Long phoneNo, org.voltdb.client.Client client) throws Exception
 {
+	int n ;
+	Integer noVotes = PhoneNUM_VOTES.get(phoneNo);
+	if (noVotes != null) // does exist
+	  n = noVotes.intValue();
+	else {
+	
 	
 	String query = "select NUM_VOTES from V_VOTES_BY_PHONE_NUMBER where PHONE_NUMBER = " + phoneNo;
-	System.out.printf("Query:: " + query);
+	//System.out.printf("Query:: " + query);
 	ClientResponse cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
-	int n = (int) count[0].fetchRow(0).getLong(0); // the NUM_VOTES of a specific phone no
+	n = (int) count[0].fetchRow(0).getLong(0); // the NUM_VOTES of a specific phone no
 	
 	//System.out.printf("Phone no is " + phoneNo+ " has " + n + " tuples \n" );
-	
+	}
 	return n;
 }
+
+public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
+{
+	String query;
+	ClientResponse cresponse;
+	
+	query = "select count(*) from V_VOTES_BY_PHONE_NUMBER";
+	//System.out.printf("Query:: " + query);
+	cresponse = client.callProcedure("@AdHoc", query);
+	VoltTable[] count = cresponse.getResults(); 
+	
+	long i = count[0].fetchRow(0).getLong(0); // no phone numbers
+	
+	query = "select PHONE_NUMBER, NUM_VOTES from V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES DESC Limit " + (long) i/100;
+	//System.out.printf("Query:: " + query);
+	cresponse = client.callProcedure("@AdHoc", query);
+	VoltTable[] reslt = cresponse.getResults(); 
+	
+	long phone;
+	int num;
+	for (i = (long) i/100; i > 0; i--)
+	{
+		phone =  reslt[0].fetchRow(0).getLong(0);
+		num   =  (int) reslt[0].fetchRow(0).getLong(1);
+		PhoneNUM_VOTES.put(phone,num);
+		
+	}
+
+	
+}
+
+public void eraseNoOfTuples(){PhoneNUM_VOTES.clear();}
 
 	public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Pair<Long,Integer>>> htList, org.voltdb.client.Client client) throws Exception {
 		
@@ -133,6 +171,7 @@ private int getNoOfTuples(Long phoneNo, org.voltdb.client.Client client) throws 
 			while ((line = reader.readLine()) != null) {
 	            String parts[] = line.split("\t");
 	            //hotTuples.put(Long.parseLong(parts[1]), Long.parseLong(parts[2])); 
+	           
 	            hotTuples.put(Long.parseLong(parts[1]), Pair.of(Long.parseLong(parts[2]), 
 	            		                                        Integer.valueOf( getNoOfTuples( Long.parseLong(parts[1]), client ))
 	            		     ));

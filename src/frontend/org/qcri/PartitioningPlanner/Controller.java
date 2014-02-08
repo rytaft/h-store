@@ -172,6 +172,8 @@ public class Controller implements Runnable {
 			System.out.println("Starting tuple tracking");	
 
 			ttExecutor.turnOnOff(time_window,client);	// turn on tuple tracking for time window of X seconds
+			
+			ttExecutor.fetchNoOfTuples(client); // get the top 1% of phone no and its num of votes
 
 			
 			// here we get top K
@@ -181,6 +183,8 @@ public class Controller implements Runnable {
 			ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
 
 			System.out.println("Got list of hot tuples");	
+			
+			ttExecutor.eraseNoOfTuples();
 
 			// here we call the planner
 			// @todo - last parameter should be the number of partitions in use - may be less than
