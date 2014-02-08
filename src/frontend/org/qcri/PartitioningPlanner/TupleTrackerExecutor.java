@@ -56,6 +56,38 @@ public class TupleTrackerExecutor {
 		
 	}
 	
+
+private void getTuplesPerPart(org.voltdb.client.Client client) throws Exception {
+		
+		String statsType = "TABLE";
+		int interval = 0;
+		
+		VoltTable[] results = client.callProcedure("@Statistics", statsType, interval).getResults();
+		
+		VoltTableRow row;
+		int partition;
+		int numOfPhones;
+		int r = 0;
+		row = results[0].fetchRow(r);
+		while (row !=null)
+		{
+			if (row.getString(5) == "V_VOTES_BY_PHONE_NUMBER")
+			{
+			partition = (int) row.getLong(4);
+			numOfPhones   =  (int) row.getLong(8);
+			System.out.printf(partition +", "+numOfPhones+"\n");
+			}
+			
+			
+			r++;
+			row = results[0].fetchRow(r);
+			
+		}
+		
+       		
+		
+		
+	}	
 	
 	
 public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Exception {
@@ -204,7 +236,9 @@ public void eraseNoOfTuples(){PhoneNUM_VOTES.clear();}
 	}
 	
 	
-    public void getSiteLoadPerPart(int noPartitions, Map<Integer, Long> mSLoad) throws Exception  {
+    public void getSiteLoadPerPart(int noPartitions, Map<Integer, Long> mSLoad, org.voltdb.client.Client client) throws Exception  {
+    	
+    	getTuplesPerPart(client);
     	
     	BufferedReader reader;
 		String fNPrefix ="./siteLoadPID_";

@@ -179,12 +179,12 @@ public class Controller implements Runnable {
 			
 			// here we get top K
 			ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList, client);
-			System.out.printf("TopKPerPart has been fetched");
+			System.out.printf("TopKPerPart has been fetched\n");
 
 			// here we get load per site
-			ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad);
+			ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad, client);
 
-			System.out.println("Got list of hot tuples and partition load");	
+			System.out.println("Load per Partion has been fetched\n");	
 			
 			//ttExecutor.eraseNoOfTuples();
 
