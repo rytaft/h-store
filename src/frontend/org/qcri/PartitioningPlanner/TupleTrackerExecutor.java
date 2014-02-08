@@ -141,7 +141,7 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 		
 	}
 
-	
+	System.out.printf("the Top 1% of V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES is Fetched");
 }
 
 public void eraseNoOfTuples(){PhoneNUM_VOTES.clear();}

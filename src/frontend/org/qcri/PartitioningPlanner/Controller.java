@@ -189,6 +189,9 @@ public class Controller implements Runnable {
 			// here we call the planner
 			// @todo - last parameter should be the number of partitions in use - may be less than
 			// hotTuplesList.size()
+			
+			
+			System.out.println("******* Start Partitioning Planning ***********");
 
 			if(doProvisioning == 1)
 			{
