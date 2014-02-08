@@ -124,19 +124,19 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
-	long i = count[0].fetchRow(0).getLong(0); // no phone numbers
+	int i = (int) (count[0].fetchRow(0).getLong(0))/100 ; // no phone numbers
 	
-	query = "select PHONE_NUMBER, NUM_VOTES from V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES DESC Limit " + (long) i/100;
+	query = "select PHONE_NUMBER, NUM_VOTES from V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES DESC Limit " + i;
 	//System.out.printf("Query:: " + query);
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] reslt = cresponse.getResults(); 
 	
 	long phone;
 	int num;
-	for (i = (long) i/100; i > 0; i--)
+	for (int r = 0 ; r< i; r++)
 	{
-		phone =  reslt[0].fetchRow(0).getLong(0);
-		num   =  (int) reslt[0].fetchRow(0).getLong(1);
+		phone =  reslt[0].fetchRow(r).getLong(0);
+		num   =  (int) reslt[0].fetchRow(r).getLong(1);
 		PhoneNUM_VOTES.put(phone,num);
 		
 	}
