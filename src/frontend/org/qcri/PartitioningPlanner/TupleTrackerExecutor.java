@@ -125,10 +125,10 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
-	int i = (int) (count[0].fetchRow(0).getLong(0))/100 ; // no phone numbers
+	int i = (int) ((count[0].fetchRow(0).getLong(0)) / 100) ; // no phone numbers
 	
 	query = "select PHONE_NUMBER, NUM_VOTES from V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES DESC Limit " + i;
-	System.out.printf("Query:: " + query);
+	System.out.printf("Query:: " + query+"\n");
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] reslt = cresponse.getResults(); 
 	
@@ -149,7 +149,7 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 		
 	}
 
-	System.out.printf("the Top 1% of V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES is Fetched");
+	System.out.printf("the top 1 percent of V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES is Fetched");
 }
 
 public void eraseNoOfTuples(){PhoneNUM_VOTES.clear();}
