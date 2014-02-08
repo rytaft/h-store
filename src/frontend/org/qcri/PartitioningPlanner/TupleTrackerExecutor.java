@@ -118,6 +118,7 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 	String query;
 	ClientResponse cresponse;
 	
+	
 	query = "select count(*) from V_VOTES_BY_PHONE_NUMBER";
 	//System.out.printf("Query:: " + query);
 	cresponse = client.callProcedure("@AdHoc", query);
