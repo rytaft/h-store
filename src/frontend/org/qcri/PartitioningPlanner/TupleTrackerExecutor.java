@@ -134,7 +134,7 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 	
 	VoltTableRow row;
 	long phone;
-	int num;
+	long num;
 	int r = 0;
 	for (r = 0 ; r< i; r++)
 	{
@@ -142,9 +142,9 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 		//System.out.printf("Got Row");
 		phone =  row.getLong(0);
 		//System.out.printf("Got Phone " + phone);
-		num   =  (int) row.getLong(1);
+		num   =   row.getLong(1);
 		//System.out.printf("Got Votes " + num);
-		PhoneNUM_VOTES.put(phone,num);
+		//PhoneNUM_VOTES.put(phone,num);
 		System.out.printf(phone +", "+num+"\n");
 		
 	}
