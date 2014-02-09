@@ -206,7 +206,7 @@ private void fetchTuplesPerPhone(Map<Long, Integer> PhoneNUM_VOTES, org.voltdb.c
 		
 	}
 
-	System.out.printf("the top 1 percent of V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES is Fetched");
+	//System.out.printf("the top 1 percent of V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES is Fetched");
 }
 
 
