@@ -153,8 +153,9 @@ public class Controller implements Runnable {
 
 	public void doReconfiguration(){
 
-		//Jennie temp for now
-		Map<Integer, Long> mSiteLoad = new HashMap<Integer, Long>();
+		//Load per partition in terms of <tuple accesses, num of tuples>
+		//Map<Integer, Long> mPartitionLoad = new HashMap<Integer, Long>();
+		Map<Integer, Pair<Long,Integer>> mPartitionLoad = new HashMap<Integer, Pair<Long,Integer>>();
 		
 		  
 
@@ -178,7 +179,7 @@ public class Controller implements Runnable {
 			System.out.printf("TopKPerPart has been fetched\n");
 
 			// here we get load per site
-			ttExecutor.getSiteLoadPerPart(no_of_partitions,mSiteLoad, client);
+			ttExecutor.getPartitionLoad(no_of_partitions,mPartitionLoad, client);
 
 			System.out.println("Load per Partion has been fetched\n");	
 			
@@ -195,15 +196,15 @@ public class Controller implements Runnable {
 			{
 
 				System.out.println("Provisioning is on");	
-				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
-						provisioning.noOfSitesRequiredQuery(), timeLimit);
+				//currentPlan = algo.computePlan(hotTuplesList, mPartitionLoad, planFile.toString(), 
+				//		provisioning.noOfSitesRequiredQuery(), timeLimit);
 
 			}
 			else
 			{
 				System.out.println("Provisioning is off");
-				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
-						no_of_partitions, timeLimit);
+				//currentPlan = algo.computePlan(hotTuplesList, mPartitionLoad, planFile.toString(), 
+				//		no_of_partitions, timeLimit);
 			}
 
 			System.out.println("Calculated new plan");

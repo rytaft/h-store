@@ -59,7 +59,7 @@ public class TupleTrackerExecutor {
 	}
 	
 
-private void getTuplesPerPart(Map<Integer, Integer> PartNUM_VOTES, org.voltdb.client.Client client) throws Exception {
+private void fetchTuplesPerPart(Map<Integer, Integer> PartNUM_VOTES, org.voltdb.client.Client client) throws Exception {
 	
 	    
 		
@@ -85,6 +85,7 @@ private void getTuplesPerPart(Map<Integer, Integer> PartNUM_VOTES, org.voltdb.cl
 			partition = (int) row.getLong(4);
 			numOfPhones   =  (int) row.getLong(8);
 			System.out.printf(partition +", "+numOfPhones+"\n");
+			PartNUM_VOTES.put(partition, numOfPhones);
 			}
 					
 		}
@@ -129,6 +130,23 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 		
 	}
    
+
+private int getNoOfTuplesPart(Map<Integer, Integer> PartNUM_VOTES, Integer pID) throws Exception
+{
+	int n = 0;
+	//*
+	Integer noVotes = PartNUM_VOTES.get(pID);
+	if (noVotes != null) // does exist
+	{ n = noVotes.intValue();
+	//System.out.printf("Partition NumVotes is fected from the Map \n");
+	}
+	else 
+	{
+	
+		System.out.printf("Phone NumVotes is fected from the Map \n");
+	}
+	return n;
+}
 
 private int getNoOfTuples(Map<Long, Integer> PhoneNUM_VOTES, Long phoneNo, org.voltdb.client.Client client) throws Exception
 {
@@ -244,13 +262,13 @@ public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Pair<Long,Integ
 	}
 	
 	
-    public void getSiteLoadPerPart(int noPartitions, Map<Integer, Long> mSLoad, org.voltdb.client.Client client) throws Exception  {
+    public void getPartitionLoad(int noPartitions, Map<Integer, Pair<Long,Integer>> mPLoad, org.voltdb.client.Client client) throws Exception  {
     	
     	Map<Integer, Integer> PartNUM_VOTES;
     	PartNUM_VOTES = new HashMap<Integer, Integer>();
     	
     	
-    	getTuplesPerPart(PartNUM_VOTES, client);
+    	fetchTuplesPerPart(PartNUM_VOTES, client);
     	
     	BufferedReader reader;
 		String fNPrefix ="./siteLoadPID_";
@@ -263,11 +281,12 @@ public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Pair<Long,Integ
 			reader = new BufferedReader(new FileReader(fNPrefix+i+".del"));
 			if ((line = reader.readLine()) != null) {
 	            String parts[] = line.split("\t");
-	            mSLoad.put(Integer.parseInt(parts[0]), Long.parseLong(parts[1]));
+	            getNoOfTuplesPart(PartNUM_VOTES, Integer.parseInt(parts[0]));
+	            mPLoad.put(Integer.parseInt(parts[0]), Pair.of( Long.parseLong(parts[1]), getNoOfTuplesPart(PartNUM_VOTES, Integer.parseInt(parts[0]))	));
 	        }
 			reader.close();
 			
-		    
+			PartNUM_VOTES.clear();
 		}
 	   
 	   
