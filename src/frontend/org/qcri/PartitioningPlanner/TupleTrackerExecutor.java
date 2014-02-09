@@ -59,43 +59,6 @@ public class TupleTrackerExecutor {
 	}
 	
 
-private void fetchTuplesPerPart(Map<Integer, Integer> PartNUM_VOTES, org.voltdb.client.Client client) throws Exception {
-	
-	    
-		
-		String statsType = "TABLE";
-		int interval = 0;
-		
-		VoltTable[] results = client.callProcedure("@Statistics", statsType, interval).getResults();
-		
-		VoltTableRow row;
-		int partition;
-		int numOfPhones;
-		
-		int rowCount = results[0].getRowCount();
-
-		//System.out.printf("results[0].getRowCount() = " +results[0].getRowCount()+"\n");
-		
-		for(int r = 0;r<rowCount;r++)
-		{
-			row = results[0].fetchRow(r);
-			
-			if (row.getString(5).equalsIgnoreCase("VOTES") )
-			{
-			partition = (int) row.getLong(4);
-			numOfPhones   =  (int) row.getLong(8);
-			System.out.printf(partition +", "+numOfPhones+"\n");
-			PartNUM_VOTES.put(partition, numOfPhones);
-			}
-					
-		}
-		
-       		
-		
-		
-	}	
-	
-	
 public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Exception {
 		
 		String statsType = "TUPLE";
@@ -143,7 +106,7 @@ private int getNoOfTuplesPart(Map<Integer, Integer> PartNUM_VOTES, Integer pID) 
 	else 
 	{
 	
-		System.out.printf("Phone NumVotes is fected from the Map \n");
+		System.out.printf("Partition " + pID.intValue() + "does not have a record in PartNUM_VOTES.\n");
 	}
 	return n;
 }
@@ -155,7 +118,7 @@ private int getNoOfTuples(Map<Long, Integer> PhoneNUM_VOTES, Long phoneNo, org.v
 	Integer noVotes = PhoneNUM_VOTES.get(phoneNo);
 	if (noVotes != null) // does exist
 	{ n = noVotes.intValue();
-	System.out.printf("Phone NumVotes is fected from the Map \n");
+	//System.out.printf("Phone NumVotes is fected from the Map \n");
 	}
 	else 
 	//*/
@@ -174,7 +137,39 @@ private int getNoOfTuples(Map<Long, Integer> PhoneNUM_VOTES, Long phoneNo, org.v
 	return n;
 }
 
-private void fetchNoOfTuples(Map<Long, Integer> PhoneNUM_VOTES, org.voltdb.client.Client client) throws Exception
+private void fetchTuplesPerPart(Map<Integer, Integer> PartNUM_VOTES, org.voltdb.client.Client client) throws Exception {
+	
+    
+	
+	String statsType = "TABLE";
+	int interval = 0;
+	
+	VoltTable[] results = client.callProcedure("@Statistics", statsType, interval).getResults();
+	
+	VoltTableRow row;
+	int partition;
+	int numOfPhones;
+	
+	int rowCount = results[0].getRowCount();
+
+	//System.out.printf("results[0].getRowCount() = " +results[0].getRowCount()+"\n");
+	
+	for(int r = 0;r<rowCount;r++)
+	{
+		row = results[0].fetchRow(r);
+		
+		if (row.getString(5).equalsIgnoreCase("VOTES") )
+		{
+		partition = (int) row.getLong(4);
+		numOfPhones   =  (int) row.getLong(8);
+		//System.out.printf(partition +", "+numOfPhones+"\n");
+		PartNUM_VOTES.put(partition, numOfPhones);
+		}
+				
+	}
+}	
+
+private void fetchTuplesPerPhone(Map<Long, Integer> PhoneNUM_VOTES, org.voltdb.client.Client client) throws Exception
 {
 	String query;
 	ClientResponse cresponse;
@@ -185,12 +180,12 @@ private void fetchNoOfTuples(Map<Long, Integer> PhoneNUM_VOTES, org.voltdb.clien
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
-	System.out.printf("Phone Count is " + count[0].fetchRow(0).getLong(0) +"\n");
+	//System.out.printf("Phone Count is " + count[0].fetchRow(0).getLong(0) +"\n");
 	
 	int i = (int) ((count[0].fetchRow(0).getLong(0)) / 100) ; // no phone numbers
 	
 	query = "select PHONE_NUMBER, NUM_VOTES from V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES DESC Limit " + i;
-	System.out.printf("Query:: " + query+"\n");
+	//System.out.printf("Query:: " + query+"\n");
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] reslt = cresponse.getResults(); 
 	
@@ -207,7 +202,7 @@ private void fetchNoOfTuples(Map<Long, Integer> PhoneNUM_VOTES, org.voltdb.clien
 		num   =  (int) row.getLong(1);
 		//System.out.printf("Got Votes " + num);
 		PhoneNUM_VOTES.put(phone,num);
-		System.out.printf(phone +", "+num+"\n");
+		//System.out.printf(phone +", "+num+"\n");
 		
 	}
 
@@ -220,7 +215,7 @@ public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Pair<Long,Integ
 		
 	Map<Long, Integer> PhoneNUM_VOTES;
 	PhoneNUM_VOTES = new HashMap<Long,Integer>();
-	fetchNoOfTuples(PhoneNUM_VOTES, client);
+	fetchTuplesPerPhone(PhoneNUM_VOTES, client);
 		
 		
 		

@@ -160,7 +160,6 @@ public class Controller implements Runnable {
 		  
 
 		//ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>> (no_of_partitions);
-		
 		ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList = new ArrayList<Map<Long, Pair<Long,Integer>>> (no_of_partitions);
 
 
@@ -168,28 +167,18 @@ public class Controller implements Runnable {
 
 		try {
 
-			//ttExecutor.runTestCase(); 	
-			//System.out.println("Essam Before: hotTuplesList size is " + hotTuplesList.size());
 			System.out.println("Starting tuple tracking");	
-
 			ttExecutor.turnOnOff(time_window,client);	// turn on tuple tracking for time window of X seconds
 			
 			// here we get top K
 			ttExecutor.getTopKPerPart(no_of_partitions,hotTuplesList, client);
 			System.out.printf("TopKPerPart has been fetched\n");
 
-			// here we get load per site
+			// here we get load per partition
 			ttExecutor.getPartitionLoad(no_of_partitions,mPartitionLoad, client);
-
 			System.out.println("Load per Partion has been fetched\n");	
 			
-			//ttExecutor.eraseNoOfTuples();
-
-			// here we call the planner
-			// @todo - last parameter should be the number of partitions in use - may be less than
-			// hotTuplesList.size()
-			
-			
+					
 			System.out.println("******* Start Partitioning Planning ***********");
 
 			if(doProvisioning == 1)
