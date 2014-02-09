@@ -23,7 +23,9 @@ public class TupleTrackerExecutor {
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
  	
-	private Map<Long, Integer> PhoneNUM_VOTES; 	
+	
+	
+	
 	public TupleTrackerExecutor(){
 		
 	}
@@ -57,7 +59,9 @@ public class TupleTrackerExecutor {
 	}
 	
 
-private void getTuplesPerPart(org.voltdb.client.Client client) throws Exception {
+private void getTuplesPerPart(Map<Integer, Integer> PartNUM_VOTES, org.voltdb.client.Client client) throws Exception {
+	
+	    
 		
 		String statsType = "TABLE";
 		int interval = 0;
@@ -126,13 +130,15 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 	}
    
 
-private int getNoOfTuples(Long phoneNo, org.voltdb.client.Client client) throws Exception
+private int getNoOfTuples(Map<Long, Integer> PhoneNUM_VOTES, Long phoneNo, org.voltdb.client.Client client) throws Exception
 {
 	int n ;
-	/*
+	//*
 	Integer noVotes = PhoneNUM_VOTES.get(phoneNo);
 	if (noVotes != null) // does exist
-	  n = noVotes.intValue();
+	{ n = noVotes.intValue();
+	System.out.printf("Phone NumVotes is fected from the Map \n");
+	}
 	else 
 	//*/
 	{
@@ -150,11 +156,11 @@ private int getNoOfTuples(Long phoneNo, org.voltdb.client.Client client) throws 
 	return n;
 }
 
-public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
+private void fetchNoOfTuples(Map<Long, Integer> PhoneNUM_VOTES, org.voltdb.client.Client client) throws Exception
 {
 	String query;
 	ClientResponse cresponse;
-	PhoneNUM_VOTES = new HashMap<Long,Integer>();
+	
 	
 	query = "select count(*) from V_VOTES_BY_PHONE_NUMBER";
 	//System.out.printf("Query:: " + query);
@@ -190,12 +196,13 @@ public void fetchNoOfTuples(org.voltdb.client.Client client) throws Exception
 	System.out.printf("the top 1 percent of V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES is Fetched");
 }
 
-public void eraseNoOfTuples(){PhoneNUM_VOTES.clear();}
 
-	public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Pair<Long,Integer>>> htList, org.voltdb.client.Client client) throws Exception {
+
+public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Pair<Long,Integer>>> htList, org.voltdb.client.Client client) throws Exception {
 		
-		
-		
+	Map<Long, Integer> PhoneNUM_VOTES;
+	PhoneNUM_VOTES = new HashMap<Long,Integer>();
+	fetchNoOfTuples(PhoneNUM_VOTES, client);
 		
 		
 		
@@ -220,7 +227,7 @@ public void eraseNoOfTuples(){PhoneNUM_VOTES.clear();}
 	            //hotTuples.put(Long.parseLong(parts[1]), Long.parseLong(parts[2])); 
 	           
 	            hotTuples.put(Long.parseLong(parts[1]), Pair.of(Long.parseLong(parts[2]), 
-	            		                                        Integer.valueOf( getNoOfTuples( Long.parseLong(parts[1]), client ))
+	            		                                        Integer.valueOf( getNoOfTuples(PhoneNUM_VOTES, Long.parseLong(parts[1]), client ))
 	            		     ));
 	        }
 			reader.close();
@@ -232,14 +239,18 @@ public void eraseNoOfTuples(){PhoneNUM_VOTES.clear();}
 		
 		
 	   
-	   
+		PhoneNUM_VOTES.clear();
 		
 	}
 	
 	
     public void getSiteLoadPerPart(int noPartitions, Map<Integer, Long> mSLoad, org.voltdb.client.Client client) throws Exception  {
     	
-    	getTuplesPerPart(client);
+    	Map<Integer, Integer> PartNUM_VOTES;
+    	PartNUM_VOTES = new HashMap<Integer, Integer>();
+    	
+    	
+    	getTuplesPerPart(PartNUM_VOTES, client);
     	
     	BufferedReader reader;
 		String fNPrefix ="./siteLoadPID_";
