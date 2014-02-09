@@ -162,8 +162,8 @@ private void fetchTuplesPerPart(Map<Integer, Integer> PartNUM_VOTES, org.voltdb.
 		{
 		partition = (int) row.getLong(4);
 		numOfPhones   =  (int) row.getLong(8);
-		System.out.printf(partition +", "+numOfPhones+"\n");
 		PartNUM_VOTES.put(partition, numOfPhones);
+		//System.out.printf(partition +", "+numOfPhones+"\n");
 		}
 				
 	}
@@ -278,7 +278,7 @@ public void getTopKPerPart(int noPartitions, ArrayList<Map<Long, Pair<Long,Integ
 	            String parts[] = line.split("\t");
 	            mPLoad.put(Integer.parseInt(parts[0]), Pair.of( Long.parseLong(parts[1]), getNoOfTuplesPart(PartNUM_VOTES, Integer.parseInt(parts[0]))	));
 	            
-	            System.out.println("Partition "+Integer.parseInt(parts[0])+"has < "+Long.parseLong(parts[1])+", "+ getNoOfTuplesPart(PartNUM_VOTES, Integer.parseInt(parts[0])) +">.\n");
+	            System.out.println("Partition "+Integer.parseInt(parts[0])+" has <freq: "+Long.parseLong(parts[1])+", numTuple: "+ getNoOfTuplesPart(PartNUM_VOTES, Integer.parseInt(parts[0])) +">.\n");
 	            
 	        }
 			reader.close();
