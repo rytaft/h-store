@@ -29,18 +29,18 @@ public class Placement {
 	// siteLoads: partitionId --> total access count
 	// partitionCount: number of partitions actually in use
 	// timeLimit - time limit for planner in ms
-	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> siteLoads, String planFile, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Pair<Long,Integer>> siteLoads, String planFile, int partitionCount, int timeLimit){
 		return new Plan(planFile);
 	}
 	
-	static Integer getMostUnderloadedPartitionId(Map<Integer, Long> partitionTotals, int partitionCount) {
+	static Integer getMostUnderloadedPartitionId(Map<Integer, Pair<Long,Integer>> partitionTotals, int partitionCount) {
 		Long minTotal = java.lang.Long.MAX_VALUE; 
 		Integer minPartition = -1;
 
 		for(Integer i : partitionTotals.keySet()) {
-			if(i < partitionCount && partitionTotals.get(i) < minTotal) {
+			if(i < partitionCount && partitionTotals.get(i).getFirst() < minTotal) {
 				minPartition = i;
-				minTotal = partitionTotals.get(i);
+				minTotal = partitionTotals.get(i).getFirst();
 			}
 			
 		}
@@ -61,15 +61,18 @@ public class Placement {
 		_hotAccessCount = 0L;
 		_hotTupleId = -1L;
 		_srcPartition = -1;
+		_hotSize = 0;
 		
 		
 		for(Integer i = 0; i < hotTuplesList.size(); ++i) {
 			Long partitionTupleId = 0L;
 			Long partitionAccessCount = 0L;
+			Integer partitionSize = 0;
 
 			for(Long j : hotTuplesList.get(i).keySet()) {
 				if(hotTuplesList.get(i).get(j).getFirst() > partitionAccessCount) {
 					partitionAccessCount = hotTuplesList.get(i).get(j).getFirst();
+					partitionSize = hotTuplesList.get(i).get(j).getSecond();
 					partitionTupleId = j;
 				}
 			}
@@ -78,7 +81,7 @@ public class Placement {
 				_hotAccessCount = partitionAccessCount;
 				_hotTupleId = partitionTupleId;
 				_srcPartition = i;
-
+				_hotSize = partitionSize;
 			}
 		}
 	}
@@ -86,6 +89,7 @@ public class Placement {
 	Integer _srcPartition; 
 	Long _hotTupleId; 
 	Long _hotAccessCount;
+	Integer _hotSize;
 		
 	// If tuples are no longer hot, put them back in their enclosing range
 	static public Plan demoteTuples(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Plan plan) {

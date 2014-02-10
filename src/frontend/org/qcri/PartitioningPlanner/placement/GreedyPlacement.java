@@ -20,7 +20,7 @@ public class GreedyPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Pair<Long,Integer>> partitionTotals, String planFilename, int partitionCount, int timeLimit){
 		
 		Integer dstPartition = -1;
 		Long totalAccesses = 0L;
@@ -30,11 +30,11 @@ public class GreedyPlacement extends Placement {
 		Plan aPlan = new Plan(planFilename);
 
 		for(Integer i : partitionTotals.keySet()) {
-			totalAccesses = totalAccesses + partitionTotals.get(i);			
+			totalAccesses = totalAccesses + partitionTotals.get(i).getFirst();			
 		}
 		for(int i = 0; i < partitionCount; ++i) {
 		    if(partitionTotals.get(i) == null) {
-			partitionTotals.put(i, 0L);
+		    	partitionTotals.put(i, new Pair<Long, Integer>(0L, 0));
 		    }
 		}
 		
@@ -56,12 +56,14 @@ public class GreedyPlacement extends Placement {
 			getHottestTuple(hotTuplesList);
 			//System.out.println("Processing hot tuple id " + _hotTupleId + " with access count " + _hotAccessCount);
 
-			if(partitionTotals.get(_srcPartition) > meanAccesses || _srcPartition >= partitionCount) {
+			if(partitionTotals.get(_srcPartition).getFirst() > meanAccesses || _srcPartition >= partitionCount) {
 					dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount);
 					if(dstPartition != _srcPartition) {
 					        //System.out.println(" sending it to " + dstPartition);
-						partitionTotals.put(_srcPartition, partitionTotals.get(_srcPartition)  - _hotAccessCount);
-						partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + _hotAccessCount);
+						partitionTotals.put(_srcPartition, new Pair<Long, Integer>(partitionTotals.get(_srcPartition).getFirst()  - _hotAccessCount, 
+								partitionTotals.get(_srcPartition).getSecond()  - _hotSize));
+						partitionTotals.put(dstPartition, new Pair<Long, Integer>(partitionTotals.get(dstPartition).getFirst()  + _hotAccessCount, 
+								partitionTotals.get(dstPartition).getSecond()  + _hotSize));
 						aPlan.removeTupleId(_srcPartition, _hotTupleId);
 						if(!aPlan.hasPartition(dstPartition)) {
 							aPlan.addPartition(dstPartition);
@@ -79,20 +81,21 @@ public class GreedyPlacement extends Placement {
 			if(i.intValue() >= partitionCount) { // in case of shrinking number of partitions
 				// VOTER HACK: we want each partition slice to contain ~1000 tuples, but we don't know how many tuples
 				// are in a range
-				long denom = Math.max(partitionTotals.get(i), coldPartitionWidth);
-				List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / denom);
+				Double tuplesPerKey = (double) partitionTotals.get(i).getSecond() / Plan.getRangeListWidth(aPlan.getAllRanges(i));
+				List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  (long) (coldPartitionWidth / tuplesPerKey));
 				if(partitionSlices.size() > 0) {
 				        
-					Double tupleWeight = (double) partitionTotals.get(i)*1.5 / meanAccesses; // weight per tuple - VOTER HACK
-
+					Double tupleWeight = (double) partitionTotals.get(i).getFirst() / partitionTotals.get(i).getSecond(); // per tuple - VOTER HACK
+					
 					for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 
 						Boolean placed = false;
 						// VOTER HACK
-						Integer newWeight = (int) (tupleWeight *  ((double) Plan.getRangeListWidth(slice) * partitionTotals.get(i) / maxPhoneNumber));
-
+						Integer sliceSize = (int) (Plan.getRangeListWidth(slice) * tuplesPerKey);
+						Long newWeight = (long) (tupleWeight *  ((double) sliceSize));
+						
 						for(Integer k : partitionTotals.keySet()) {
-							if(partitionTotals.get(k) + newWeight <= meanAccesses) {
+							if(partitionTotals.get(k).getFirst() + newWeight <= meanAccesses) {
 								dstPartition = k;
 								placed = true;
 								break;
@@ -108,7 +111,8 @@ public class GreedyPlacement extends Placement {
 							aPlan.removeRange(i, r.from);
 							aPlan.addRange(dstPartition, r.from, r.to);
 						}
-						partitionTotals.put(dstPartition, partitionTotals.get(dstPartition) + newWeight);
+						partitionTotals.put(dstPartition, new Pair<Long, Integer>(partitionTotals.get(dstPartition).getFirst() + newWeight, 
+								partitionTotals.get(dstPartition).getSecond() + sliceSize));
 
 					} // end for each slice
 				}

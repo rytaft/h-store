@@ -32,7 +32,7 @@ public class OneTieredPlacement extends Placement {
 	}
 
 	// initialize the private data members based on the input parameters
-	private void init(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan, int partitionCount) {
+	private void init(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Pair<Long,Integer>> partitionTotals, Plan aPlan, int partitionCount) {
 		// ignore hotTuplesList
 
 	        accesses = new ArrayList<Long>();
@@ -43,24 +43,22 @@ public class OneTieredPlacement extends Placement {
 		// count total accesses
 		totalAccesses = 0L;
 		for(Integer i : partitionTotals.keySet()) {
-			totalAccesses += partitionTotals.get(i);	
+			totalAccesses += partitionTotals.get(i).getFirst();	
 		}
 
-		long meanAccesses = totalAccesses / partitionCount;
-		
 		// store the ranges, sizes, access counts, and locations of each of the slices of cold tuples
 		sliceCount = 0;
 		for(Integer i : aPlan.getAllRanges().keySet()) { // for each partition
 			// VOTER HACK: we want each partition slice to contain ~1000 tuples, but we don't know how many tuples
 			// are in a range
-			long denom = Math.max(partitionTotals.get(i), coldPartitionWidth);
-			List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / denom);
+			Double tuplesPerKey = (double) partitionTotals.get(i).getSecond() / Plan.getRangeListWidth(aPlan.getAllRanges(i));
+			List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  (long) (coldPartitionWidth / tuplesPerKey));
 			if(partitionSlices.size() > 0) {
 				sliceCount += partitionSlices.size();
-				Double tupleWeight = (double) partitionTotals.get(i)*3 / meanAccesses; // per tuple - VOTER HACK
+				Double tupleWeight = (double) partitionTotals.get(i).getFirst() / partitionTotals.get(i).getSecond(); // per tuple - VOTER HACK
 				for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 					// VOTER HACK
-					Long sliceSize = (long) (Plan.getRangeListWidth(slice) * (double) partitionTotals.get(i) / maxPhoneNumber);
+					Long sliceSize = (long) (Plan.getRangeListWidth(slice) * tuplesPerKey);
 					Long newWeight = (long) (tupleWeight *  ((double) sliceSize));
 					slices.add(slice);
 					sliceSizes.add(sliceSize);
@@ -73,7 +71,7 @@ public class OneTieredPlacement extends Placement {
 
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Pair<Long,Integer>> partitionTotals, String planFile, int partitionCount, int timeLimit){
 		// ignore hotTuplesList
 		
 		Plan aPlan = new Plan(planFile);

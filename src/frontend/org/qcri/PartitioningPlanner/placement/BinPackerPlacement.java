@@ -38,7 +38,7 @@ public class BinPackerPlacement extends Placement {
 	}
 
 	// initialize the private data members based on the input parameters
-	private void init(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> partitionTotals, Plan aPlan, int partitionCount) {
+	private void init(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Pair<Long,Integer>> partitionTotals, Plan aPlan, int partitionCount) {
 		tupleIds = new ArrayList<Long>();
 		accesses = new ArrayList<Long>(); 
 		locations = new ArrayList<Integer>(); 
@@ -47,9 +47,9 @@ public class BinPackerPlacement extends Placement {
 
 		// copy partitionTotals into oldLoad
 		totalAccesses = 0L;
-		Map<Integer, Long> oldLoad = new HashMap<Integer, Long> ();
+		Map<Integer, Pair<Long,Integer>> oldLoad = new HashMap<Integer, Pair<Long,Integer>> ();
 		for(Integer i : partitionTotals.keySet()) {
-			totalAccesses += partitionTotals.get(i);
+			totalAccesses += partitionTotals.get(i).getFirst();
 			oldLoad.put(i,  partitionTotals.get(i));
 		}
 
@@ -71,19 +71,14 @@ public class BinPackerPlacement extends Placement {
 		for(Map<Long, Pair<Long,Integer> >  hotTuples : hotTuplesList) {
 			tupleCount += hotTuples.keySet().size();
 			for(Long i : hotTuples.keySet()) {
-				oldLoad.put(partitionId, oldLoad.get(partitionId) - hotTuples.get(i).getFirst());
+				oldLoad.put(partitionId, new Pair<Long, Integer>(oldLoad.get(partitionId).getFirst() - hotTuples.get(i).getFirst(), 
+						oldLoad.get(partitionId).getSecond() - hotTuples.get(i).getSecond()));
 				oldPlan.removeTupleId(partitionId, i);
 			}
 			++partitionId;
 		}
 
-	        int coldAccesses = 0;
-          	for(Integer i : oldLoad.keySet()) {
-                	coldAccesses += oldLoad.get(i);
-                }
-                int meanColdAccesses = coldAccesses / partitionCount;
-
-		// store the ids, access counts, and locations of each of the hot tuples
+	    // store the ids, access counts, and locations of each of the hot tuples
 		partitionId = 0;
 		for(Map<Long, Pair<Long,Integer> >  hotTuples : hotTuplesList) {
 			for(Long i : hotTuples.keySet()) {
@@ -100,14 +95,14 @@ public class BinPackerPlacement extends Placement {
 		for(Integer i : oldPlan.getAllRanges().keySet()) { // for each partition
 			// VOTER HACK: we want each partition slice to contain ~1000 tuples, but we don't know how many tuples
 			// are in a range
-			long denom = Math.max(partitionTotals.get(i), coldPartitionWidth);	
-			List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / denom);
+			Double tuplesPerKey = (double) oldLoad.get(i).getSecond() / Plan.getRangeListWidth(oldPlan.getAllRanges(i));
+			List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i,  (long) (coldPartitionWidth / tuplesPerKey));
 			if(partitionSlices.size() > 0) {
 				sliceCount += partitionSlices.size();
-				Double tupleWeight = (double) oldLoad.get(i)*1.5 / meanColdAccesses; // per tuple - VOTER HACK
+				Double tupleWeight = (double) oldLoad.get(i).getFirst() / oldLoad.get(i).getSecond(); // per tuple - VOTER HACK
 				for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 					// VOTER HACK
-					Long sliceSize = (long) (Plan.getRangeListWidth(slice) * (double) partitionTotals.get(i) / maxPhoneNumber);
+					Long sliceSize = (long) (Plan.getRangeListWidth(slice) * tuplesPerKey);
 					Long newWeight = (long) (tupleWeight *  ((double) sliceSize));
 					slices.add(slice);
 					sliceSizes.add(sliceSize);
@@ -121,7 +116,7 @@ public class BinPackerPlacement extends Placement {
 
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Pair<Long,Integer>> partitionTotals, String planFile, int partitionCount, int timeLimit){
 
 		Plan aPlan = new Plan(planFile);
 		this.init(hotTuplesList, partitionTotals, aPlan, partitionCount);

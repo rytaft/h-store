@@ -20,26 +20,26 @@ public class FirstFitPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Pair<Long,Integer>> partitionTotals, String planFilename, int partitionCount, int timeLimit){
 		
 
 		Integer dstPartition = -1;
 		Long totalAccesses = 0L;
 		Long targetCapacity;
-		Map<Integer, Long> oldLoad = new HashMap<Integer, Long> ();
+		Map<Integer, Pair<Long,Integer>> oldLoad = new HashMap<Integer, Pair<Long,Integer>> ();
 		Plan aPlan = new Plan(planFilename);
 		Plan newPlan = new Plan();
 		Long hotTupleCount = 0L;
 		
 
 		for(Integer i : partitionTotals.keySet()) {
-			totalAccesses = totalAccesses + partitionTotals.get(i);			
+			totalAccesses = totalAccesses + partitionTotals.get(i).getFirst();			
 			oldLoad.put(i,  partitionTotals.get(i));
 		}
 
 		for(int i = 0; i < partitionCount; ++i) {
 		    // zero out the load for a plan
-		    partitionTotals.put(i, 0L);
+		    partitionTotals.put(i, new Pair<Long, Integer>(0L, 0));
 		}
 		
 		// copy hot tuples list
@@ -64,7 +64,7 @@ public class FirstFitPlacement extends Placement {
 
 				Boolean placed = false;
 				for(Integer j : partitionTotals.keySet()) {
-					if(partitionTotals.get(j) + _hotAccessCount <= targetCapacity) {
+					if(partitionTotals.get(j).getFirst() + _hotAccessCount <= targetCapacity) {
 						dstPartition = j;
 						placed = true;
 						break;
@@ -78,8 +78,10 @@ public class FirstFitPlacement extends Placement {
 			
 				//System.out.println("Processing hot tuple id " + _hotTupleId + " with access count " + _hotAccessCount + " sending it to " + dstPartition);
 
-				partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + _hotAccessCount);
-				oldLoad.put(_srcPartition, oldLoad.get(_srcPartition) - _hotAccessCount);
+				partitionTotals.put(dstPartition, new Pair<Long, Integer>(partitionTotals.get(dstPartition).getFirst()  + _hotAccessCount,
+						partitionTotals.get(dstPartition).getSecond()  + _hotSize));
+				oldLoad.put(_srcPartition, new Pair<Long, Integer>(oldLoad.get(_srcPartition).getFirst() - _hotAccessCount,
+						oldLoad.get(_srcPartition).getSecond() - _hotSize));
 				hotTuplesList.get(_srcPartition).remove(_hotTupleId);
 				aPlan.removeTupleId(_srcPartition, _hotTupleId);
 				if(!newPlan.hasPartition(dstPartition)) {
@@ -89,29 +91,23 @@ public class FirstFitPlacement extends Placement {
 			} // end outer-for
 		
 		
-		
-			int coldAccesses = 0;
-               		for(Integer i : oldLoad.keySet()) {
-                        	coldAccesses += oldLoad.get(i);
-                	}
-               		int meanColdAccesses = coldAccesses / partitionCount;
-
 		for(Integer i : aPlan.getAllRanges().keySet()) { // foreach partition
 			// VOTER HACK: we want each partition slice to contain ~1000 tuples, but we don't know how many tuples
 			// are in a range
-			long denom = Math.max(partitionTotals.get(i), coldPartitionWidth);
-			List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  coldPartitionWidth * maxPhoneNumber / denom);
+			Double tuplesPerKey = (double) oldLoad.get(i).getSecond() / Plan.getRangeListWidth(aPlan.getAllRanges(i));
+			List<List<Plan.Range>> partitionSlices = aPlan.getRangeSlices(i,  (long) (coldPartitionWidth / tuplesPerKey));
 			if(partitionSlices.size() > 0) {
-				Double tupleWeight = (double) oldLoad.get(i)*1.5 / meanColdAccesses; // weight per tuple - VOTER HACK
-
+				Double tupleWeight = (double) oldLoad.get(i).getFirst() / oldLoad.get(i).getSecond(); // per tuple - VOTER HACK
+				
 				for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 
 						Boolean placed = false;
 						// VOTER HACK
-						Integer newWeight = (int) (tupleWeight *  ((double) Plan.getRangeListWidth(slice) * partitionTotals.get(i) / maxPhoneNumber));
-
+						Integer sliceSize = (int) (Plan.getRangeListWidth(slice) * tuplesPerKey);
+						Long newWeight = (long) (tupleWeight *  ((double) sliceSize));
+						
 						for(Integer k : partitionTotals.keySet()) {
-							if(partitionTotals.get(k) + newWeight <= targetCapacity) {
+							if(partitionTotals.get(k).getFirst() + newWeight <= targetCapacity) {
 								dstPartition = k;
 								placed = true;
 								break;
@@ -126,7 +122,8 @@ public class FirstFitPlacement extends Placement {
 							}
 							newPlan.addRange(dstPartition, r.from, r.to);
 						}
-						partitionTotals.put(dstPartition, partitionTotals.get(dstPartition) + newWeight);
+						partitionTotals.put(dstPartition, new Pair<Long, Integer>(partitionTotals.get(dstPartition).getFirst() + newWeight,
+								partitionTotals.get(dstPartition).getSecond() + sliceSize));
 
 				} // end destination partition selection 
 
