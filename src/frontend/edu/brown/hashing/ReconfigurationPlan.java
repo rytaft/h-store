@@ -471,7 +471,11 @@ public class ReconfigurationPlan {
             if(!single_range) 
                 throw new RuntimeException("Trying to get max_exclusive when multiple ranges exists");
             return max_exclusive;
-        }   
+        } 
+        
+        public boolean isSingleRange() {
+        	return single_range;
+        }
     }
       
 
