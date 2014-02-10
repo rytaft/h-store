@@ -31,7 +31,7 @@ public class TestFirstFitPlacement extends BaseTestCase {
 		Random generator = new Random(seed);
 		FirstFitPlacement aPlacement = new FirstFitPlacement();
 
-		Map<Integer, Long> partitionTotals = new HashMap<Integer, Long>();  // partitionID --> summed access count
+		Map<Integer, Pair<Long, Integer>> partitionTotals = new HashMap<Integer, Pair<Long, Integer>>();  // partitionID --> summed access count
 		ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList = new ArrayList<Map<Long, Pair<Long,Integer> >>();
 
 		File file = new File("test.txt");
@@ -65,7 +65,7 @@ public class TestFirstFitPlacement extends BaseTestCase {
 		aPlan.toJSON("test.txt");
 	
 		for(Integer i = 0; i < partitionCount; ++i) {
-			partitionTotals.put(i, Math.abs(generator.nextLong()) % accessRange);			
+			partitionTotals.put(i, new Pair<Long, Integer>(Math.abs(generator.nextLong()) % accessRange, Plan.getRangeListWidth(aPlan.getAllRanges(i)).intValue()));			
 		}
 
 		System.out.println("Starting with load:");
@@ -81,8 +81,8 @@ public class TestFirstFitPlacement extends BaseTestCase {
 
 			System.out.println("Adding hot tuple " + tupleId + " at " + tupleLocation + " with access count " + accessCount);
 			//add capacity for partitionTotals
-			partitionTotals.put(tupleLocation, accessCount + partitionTotals.get(tupleLocation)); 		
-				
+			partitionTotals.put(tupleLocation, new Pair<Long, Integer>(accessCount + partitionTotals.get(tupleLocation).getFirst(), 1 + partitionTotals.get(tupleLocation).getSecond())); 		
+							
 		}
 
 		System.out.println("After hot tuple insert have load:");

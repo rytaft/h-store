@@ -34,7 +34,7 @@ public class TestOneTieredPlacement extends BaseTestCase {
 		File file = new File("test.txt");
 		file.delete();
 	
-		Map<Integer, Long> partitionTotals = new HashMap<Integer, Long>();  // partitionID --> summed access count
+		Map<Integer, Pair<Long, Integer>> partitionTotals = new HashMap<Integer, Pair<Long, Integer>>();  // partitionID --> summed access count
 		ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList = new ArrayList<Map<Long, Pair<Long,Integer> >>();
 		
 		Long tuplesPerInstance = tupleCount / partitionCount;
@@ -65,7 +65,7 @@ public class TestOneTieredPlacement extends BaseTestCase {
 		aPlan.toJSON("test.txt");
 
 		for(Integer i = 0; i < partitionCount; ++i) {
-			partitionTotals.put(i, Math.abs(generator.nextLong()) % accessRange);			
+			partitionTotals.put(i, new Pair<Long, Integer>(Math.abs(generator.nextLong()) % accessRange, Plan.getRangeListWidth(aPlan.getAllRanges(i)).intValue()));			
 		}
 		
 		for(Integer i = 0; i < hotTupleCount; ++i) {
@@ -75,7 +75,7 @@ public class TestOneTieredPlacement extends BaseTestCase {
 			hotTuplesList.get(tupleLocation).put(tupleId, new Pair<Long, Integer>(accessCount, 1));
 
 			//add capacity for partitionTotals
-			partitionTotals.put(tupleLocation, accessCount + partitionTotals.get(tupleLocation)); 		
+			partitionTotals.put(tupleLocation, new Pair<Long, Integer>(accessCount + partitionTotals.get(tupleLocation).getFirst(), 1 + partitionTotals.get(tupleLocation).getSecond())); 		
 			System.out.println("Adding hot tuple " + tupleId + " at " + tupleLocation + " with access count " + accessCount);
 							
 		}
