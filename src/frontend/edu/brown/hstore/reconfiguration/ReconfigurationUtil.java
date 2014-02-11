@@ -20,7 +20,15 @@ public class ReconfigurationUtil {
 
         VoltTable vt = new VoltTable(extractTableColumns);
         // vt.addRow(range.table_name,range.getVt().toString(),range.getMin_inclusive(),range.getMax_exclusive());
-        vt.addRow(1, 1, range.getMin_inclusive(), range.getMax_exclusive());
+        
+        if(range.isSingleRange()) {
+        	vt.addRow(1, 1, range.getMin_inclusive(), range.getMax_exclusive());
+        }
+        else {
+        	for (int i = 0; i < range.getMinList().size(); i++) {
+                vt.addRow(1, 1, range.getMinList().get(i), range.getMaxList().get(i));
+            }
+        }
 
         return vt;
     }
@@ -55,7 +63,14 @@ public class ReconfigurationUtil {
         VoltTable vt = new VoltTable(extractTableColumns);
         // vt.addRow(range.table_name,range.getVt().toString(),range.getMin_inclusive(),range.getMax_exclusive());
         for (ReconfigurationRange range : ranges) {
-            vt.addRow(1, 1, range.getMin_inclusive(), range.getMax_exclusive());
+            if(range.isSingleRange()) {
+            	vt.addRow(1, 1, range.getMin_inclusive(), range.getMax_exclusive());
+            }
+            else {
+            	for (int i = 0; i < range.getMinList().size(); i++) {
+                    vt.addRow(1, 1, range.getMinList().get(i), range.getMaxList().get(i));
+                }
+            }
         }
 
         return vt;
