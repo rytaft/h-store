@@ -203,6 +203,8 @@ public class Controller implements Runnable {
 
 			ClientResponse cresponse = null;
 			try {
+				System.out.println("******* Start Reconfiguration ***********");
+				
 				cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "livepull");
 				//cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "stopcopy");
 				System.out.println("Controller: received response: " + cresponse);
