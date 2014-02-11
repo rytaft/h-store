@@ -348,11 +348,11 @@ public class ReconfigurationPlan {
             super(vt);
             //FIXME change to be type generic
 
-            min_inclusive_long = (min_inclusive.size() > 0 ? min_inclusive.get(0).longValue() : null);
-            max_exclusive_long = (max_exclusive.size() > 0 ? max_exclusive.get(max_exclusive.size() - 1).longValue() : null);
-            Pair<Long,Long> minMax = new Pair<Long, Long>(min_inclusive_long, max_exclusive_long);
             ranges = new ArrayList<>();
-            ranges.add(minMax);
+            for(int i = 0; i < min_inclusive.size() && i < max_exclusive.size(); ++i) {
+            	Pair<Long,Long> minMax = new Pair<Long, Long>(min_inclusive.get(i), max_exclusive.get(i));
+                ranges.add(minMax);
+            }
             
             min_list = new ArrayList<>();
             min_list.addAll(min_inclusive);
