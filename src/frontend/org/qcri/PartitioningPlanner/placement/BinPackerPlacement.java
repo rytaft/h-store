@@ -134,10 +134,11 @@ public class BinPackerPlacement extends Placement {
 		GLPK.intArray_setitem(idxY, 0, 0);
 		GLPK.doubleArray_setitem(idxR, 0, 0);
 
+		getHottestTuple(hotTuplesList);
 		Long meanAccesses = totalAccesses / partitionCount;
 		System.out.println("Mean access count: " + meanAccesses);
 
-		double partitionUpperBound = meanAccesses * 1.05; // slightly over target
+		double partitionUpperBound = Math.max(meanAccesses, _hotAccessCount) * 1.05; // slightly over target
 
 		// one constraint for each partition for load balancing, one for each placement s.t. it appears exactly once
 		GLPK.glp_add_rows(lp, partitionCount + placementCount);
