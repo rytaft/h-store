@@ -118,6 +118,7 @@ public class GAPlacement extends Placement {
 
 		int placementCount = tupleCount + sliceCount; // number of placements we will make
 		Long meanAccesses = totalAccesses / partitionCount;
+		getHottestTuple(hotTuplesList);
 
 		System.out.println("Mean access count: " + meanAccesses);
 		
@@ -126,7 +127,7 @@ public class GAPlacement extends Placement {
 		params.setPopulationSize(50);
 		GAPlacementFitness fitness = new GAPlacementFitness();
 		fitness.initialize(tupleIds,accesses,locations,slices,sliceSizes,tupleCount,
-				sliceCount,totalAccesses,partitionCount); 
+				sliceCount,totalAccesses,partitionCount,_hotAccessCount); 
 		params.setFitnessEvaluationAlgorithm(fitness);
 		params.setSelectionAlgorithm(new RouletteWheelSelection(-10E10));
 		params.setMaxGenerationNumber(50);
