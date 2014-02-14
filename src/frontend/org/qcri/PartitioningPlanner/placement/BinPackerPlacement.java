@@ -18,7 +18,7 @@ import org.qcri.PartitioningPlanner.placement.Plan;
 
 public class BinPackerPlacement extends Placement {
 
-	Long coldPartitionWidth = 1000L; // redistribute cold tuples in chunks of 1000
+	Long coldPartitionWidth = 100000L; // redistribute cold tuples in chunks of 100000
 	ArrayList<Long> tupleIds = null;
 	ArrayList<Long> accesses = null; 
 	ArrayList<Integer> locations = null; 

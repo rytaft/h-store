@@ -39,7 +39,7 @@ public class GAPlacementFitness implements FitnessEvaluationAlgorithm {
 
 	public GAPlacementFitness() {}
 	
-	Long coldPartitionWidth = 1000L; // redistribute cold tuples in chunks of 1000
+	Long coldPartitionWidth = 100000L; // redistribute cold tuples in chunks of 100000
 	ArrayList<Long> tupleIds = null;
 	ArrayList<Long> accesses = null; 
 	ArrayList<Integer> locations = null; 
@@ -96,7 +96,7 @@ public class GAPlacementFitness implements FitnessEvaluationAlgorithm {
 		}
 		
 		// seriously penalize plans that deviate from a balanced load
-		long f = (long) (cost + 1000000000.0 * loadDeviation/totalAccesses);
+		long f = (long) (cost + 10000000.0 * loadDeviation/totalAccesses);
 		
 		Fitness fit = new AbsoluteFitness(-f);
 		return fit;
