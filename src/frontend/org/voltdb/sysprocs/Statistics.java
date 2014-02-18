@@ -61,6 +61,8 @@ import edu.brown.profilers.ReconfigurationProfiler;
 )
 
 public class Statistics extends VoltSystemProcedure {
+	
+	private static long tuple_turnOnOff ; // Essam turn on or off tracking
     private static final Logger HOST_LOG = Logger.getLogger(Statistics.class);
     private static final LoggerBoolean debug = new LoggerBoolean();
     private static final LoggerBoolean trace = new LoggerBoolean();
@@ -277,10 +279,21 @@ public class Statistics extends VoltSystemProcedure {
             	//this.hstore_conf.site.exec_readwrite_tracking
             	//del me
                 
+               
+                
+                if (tuple_turnOnOff == 1) // turn on
+                
+                	hstore_conf.site.exec_readwrite_tracking = true;
+                else 
+                	hstore_conf.site.exec_readwrite_tracking = false;
+                
+                
                 // Cached list of local executors
+                /*
                 List<PartitionExecutor> local_executors;
                 local_executors = new ArrayList<>();
                 
+                                
                 for (int p_id : hstore_site.getLocalPartitionIds().values()) {
                     local_executors.add(hstore_site.getPartitionExecutor(p_id));
                     //partitionStates.put(p_id, ReconfigurationState.NORMAL);
@@ -294,6 +307,8 @@ public class Statistics extends VoltSystemProcedure {
                 	//executorMap.put(executor.getPartitionId(),executor);
                     //livePullKBMap.put(executor.getPartitionId(),new Integer(0));
                 }
+               //*/ 
+                
                 
                 
             	//Essam Turn On Off Read Write Tracker
@@ -459,7 +474,10 @@ public class Statistics extends VoltSystemProcedure {
      * @throws VoltAbortException
      */
     public VoltTable[] run(String selector, long interval) throws VoltAbortException {
-        VoltTable[] results;
+       
+    	tuple_turnOnOff = interval; //Essam interval has value 0 for off and 1 for on
+    	
+    	VoltTable[] results;
         final long now = System.currentTimeMillis();
         selector = selector.toUpperCase();
         
