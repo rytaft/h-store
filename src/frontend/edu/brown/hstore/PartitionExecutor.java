@@ -3626,10 +3626,16 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @return
      */
     
-    public void turnOnOff_readwrite_tracking() //Essam
+    public void turnOnOff_readwrite_tracking(long flagOnOff) //Essam
     {
-    	String text = "Original flag is  " + hstore_conf.site.exec_readwrite_tracking +"\n"; 
+    	//String text = "Original flag is  " + hstore_conf.site.exec_readwrite_tracking +"\n"; 
     	
+    	if (flagOnOff == 1) // turn on tracking 
+    		hstore_conf.site.exec_readwrite_tracking = true;
+    	else // turn off tracking
+    		hstore_conf.site.exec_readwrite_tracking = false;
+    	
+    	/*
     	if(hstore_conf.site.exec_readwrite_tracking == false)
     	  {
     		hstore_conf.site.exec_readwrite_tracking = true; //Essam
@@ -3640,7 +3646,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     		hstore_conf.site.exec_readwrite_tracking = false; //Essam
     		text = text +" in else true: new flag is "+ hstore_conf.site.exec_readwrite_tracking ;
     	  }
-    	
+    	//*/
     	
     }
     

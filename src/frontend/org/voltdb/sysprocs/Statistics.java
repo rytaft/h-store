@@ -280,16 +280,16 @@ public class Statistics extends VoltSystemProcedure {
             	//del me
                 
                
-                
+               /* 
                 if (tuple_turnOnOff == 1) // turn on
                 
                 	hstore_conf.site.exec_readwrite_tracking = true;
                 else 
                 	hstore_conf.site.exec_readwrite_tracking = false;
-                
+                //*/
                 
                 // Cached list of local executors
-                /*
+                //*
                 List<PartitionExecutor> local_executors;
                 local_executors = new ArrayList<>();
                 
@@ -303,9 +303,8 @@ public class Statistics extends VoltSystemProcedure {
                 
                 for (PartitionExecutor executor : local_executors) {
                     
-                	executor.turnOnOff_readwrite_tracking();
-                	//executorMap.put(executor.getPartitionId(),executor);
-                    //livePullKBMap.put(executor.getPartitionId(),new Integer(0));
+                	executor.turnOnOff_readwrite_tracking(tuple_turnOnOff);
+                	
                 }
                //*/ 
                 
