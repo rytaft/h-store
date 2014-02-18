@@ -38,14 +38,17 @@ import org.voltdb.VoltTable;
 import org.voltdb.VoltTable.ColumnInfo;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.CatalogMap;
+import org.voltdb.catalog.Partition;
 import org.voltdb.catalog.Table;
 import org.voltdb.exceptions.ServerFaultException;
 import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTableUtil;
 
 import edu.brown.hstore.HStoreConstants;
+import edu.brown.hstore.HStoreSite;
 import edu.brown.hstore.PartitionExecutor;
 import edu.brown.hstore.PartitionExecutor.SystemProcedureExecutionContext;
+import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.internal.UtilityWorkMessage.UpdateMemoryMessage;
 import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator.ReconfigurationState;
 import edu.brown.logging.LoggerUtil;
@@ -280,7 +283,27 @@ public class Statistics extends VoltSystemProcedure {
             	//del me
                 
                
-               /* 
+               //*
+                
+                List<PartitionExecutor> all_executors;
+                all_executors = new ArrayList<>();
+                
+                
+                                
+                for (int p_id : hstore_site.getCatalogContext().getAllPartitionIds().values()) {
+                    all_executors.add(hstore_site.getPartitionExecutor(p_id));
+                    
+                }
+                
+                for (PartitionExecutor executor : all_executors) {
+                    
+                	executor.turnOnOff_readwrite_tracking(tuple_turnOnOff);
+                	
+                }
+               
+                
+               
+                /*
                 if (tuple_turnOnOff == 1) // turn on
                 
                 	hstore_conf.site.exec_readwrite_tracking = true;
@@ -288,14 +311,20 @@ public class Statistics extends VoltSystemProcedure {
                 	hstore_conf.site.exec_readwrite_tracking = false;
                 //*/
                 
+                
+                
+                
+                
                 // Cached list of local executors
-                //*
+                /*
                 List<PartitionExecutor> local_executors;
                 local_executors = new ArrayList<>();
+                
                 
                                 
                 for (int p_id : hstore_site.getLocalPartitionIds().values()) {
                     local_executors.add(hstore_site.getPartitionExecutor(p_id));
+                    
                     //partitionStates.put(p_id, ReconfigurationState.NORMAL);
                     //if(hstore_conf.site.reconfig_profiling) 
                     //    this.profilers[p_id] = new ReconfigurationProfiler();
