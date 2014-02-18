@@ -500,7 +500,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         	} else {
         		receiveReconfigurationCompleteFromLeader();
         	}
-        	
+        	LOG.info("Sent reconfig end acknowledgement to site " + i);
         }
     }
     
