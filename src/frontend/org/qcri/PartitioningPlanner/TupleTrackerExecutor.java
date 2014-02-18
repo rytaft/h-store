@@ -59,7 +59,7 @@ public class TupleTrackerExecutor {
 public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Exception {
 		
 		String statsType = "TUPLE";
-		int interval = 0;
+		int interval ;
 		
 		//ClientConfig clientConfig = new ClientConfig("program", "none");
         //org.voltdb.client.Client client =   org.voltdb.client.ClientFactory.createClient();
@@ -73,6 +73,7 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 		
 		//ClientResponse results = client.callProcedure("@Statistics", statsType, interval);
         
+		interval = 1; //turn on the tracking
         client.callProcedure("@Statistics", statsType, interval);
         System.out.println("Tuple Tracking has been turned on for "+seconds+" seconds");
 		
@@ -85,6 +86,7 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 		  System.out.println(ie.getMessage());
 		  }
 		
+		interval = 0; //turn off the tracking
 		client.callProcedure("@Statistics", statsType, interval);
 		System.out.println("Tuple Tracking collectted hot tuples and has been turned off");
 		
