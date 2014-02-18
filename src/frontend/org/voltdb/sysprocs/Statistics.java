@@ -283,7 +283,7 @@ public class Statistics extends VoltSystemProcedure {
             	//del me
                 
                
-               //*
+               /*
                 
                 List<PartitionExecutor> all_executors;
                 all_executors = new ArrayList<>();
@@ -300,10 +300,10 @@ public class Statistics extends VoltSystemProcedure {
                 	executor.turnOnOff_readwrite_tracking(tuple_turnOnOff);
                 	
                 }
-               
+               //*/
                 
                
-                /*
+                //*
                 if (tuple_turnOnOff == 1) // turn on
                 
                 	hstore_conf.site.exec_readwrite_tracking = true;
@@ -504,6 +504,8 @@ public class Statistics extends VoltSystemProcedure {
     public VoltTable[] run(String selector, long interval) throws VoltAbortException {
        
     	tuple_turnOnOff = interval; //Essam interval has value 0 for off and 1 for on
+    	
+    	interval = 0;
     	
     	VoltTable[] results;
         final long now = System.currentTimeMillis();
