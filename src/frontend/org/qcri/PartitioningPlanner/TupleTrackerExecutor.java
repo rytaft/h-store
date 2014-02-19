@@ -59,7 +59,7 @@ public class TupleTrackerExecutor {
 public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Exception {
 		
 		String statsType = "TUPLE";
-		int interval ;
+		int interval = 0;
 		
 		//ClientConfig clientConfig = new ClientConfig("program", "none");
         //org.voltdb.client.Client client =   org.voltdb.client.ClientFactory.createClient();
@@ -73,10 +73,16 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 		
 		//ClientResponse results = client.callProcedure("@Statistics", statsType, interval);
         
-		interval = 1; //turn on the tracking
-        client.callProcedure("@Statistics", statsType, interval);
-        System.out.println("Tuple Tracking has been turned on for "+seconds+" seconds");
-		
+		//interval = 1; //turn on the tracking
+        //client.callProcedure("@Statistics", statsType, interval);
+        //System.out.println("Tuple Tracking has been turned on for "+seconds+" seconds");
+        
+		//turning on 
+        String confNames[] = { "site.exec_readwrite_tracking"};
+        String confValuesOn[] = {"true"};
+        String confValuesOff[] = {"false"};
+        client.callProcedure("@SetConfiguration", confNames, confValuesOn);
+        		
 		try
 		  {
 		  Thread.sleep(seconds*1000);  
@@ -86,8 +92,11 @@ public void turnOnOff(int seconds, org.voltdb.client.Client client) throws Excep
 		  System.out.println(ie.getMessage());
 		  }
 		
-		interval = 0; //turn off the tracking
+		
 		client.callProcedure("@Statistics", statsType, interval);
+		
+		client.callProcedure("@SetConfiguration", confNames, confValuesOff);
+		
 		System.out.println("Tuple Tracking collectted hot tuples and has been turned off");
 		
 	}

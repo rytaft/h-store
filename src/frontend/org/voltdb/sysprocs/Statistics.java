@@ -65,7 +65,7 @@ import edu.brown.profilers.ReconfigurationProfiler;
 
 public class Statistics extends VoltSystemProcedure {
 	
-	private static long tuple_turnOnOff ; // Essam turn on or off tracking
+	//private static long tuple_turnOnOff ; // Essam turn on or off tracking
     private static final Logger HOST_LOG = Logger.getLogger(Statistics.class);
     private static final LoggerBoolean debug = new LoggerBoolean();
     private static final LoggerBoolean trace = new LoggerBoolean();
@@ -274,6 +274,7 @@ public class Statistics extends VoltSystemProcedure {
                //return new DependencySet(DEP_tupleData, result); 
                 
                 DependencySet dSet = new DependencySet(DEP_tupleData, result);
+                
               //Essam turn on/off tuple tracking
             	///////////////////////////////////
             	// Essam Enable read/write set tracking 
@@ -303,7 +304,7 @@ public class Statistics extends VoltSystemProcedure {
                //*/
                 
                
-                //*
+                /*
                 if (tuple_turnOnOff == 1) // turn on
                 
                 	hstore_conf.site.exec_readwrite_tracking = true;
@@ -503,9 +504,10 @@ public class Statistics extends VoltSystemProcedure {
      */
     public VoltTable[] run(String selector, long interval) throws VoltAbortException {
        
-    	tuple_turnOnOff = interval; //Essam interval has value 0 for off and 1 for on
+    	//tuple_turnOnOff = interval; //Essam interval has value 0 for off and 1 for on
     	
-    	interval = 0;
+    	//if(selector.contains("TUPLE"))
+    	//interval = 0;
     	
     	VoltTable[] results;
         final long now = System.currentTimeMillis();
