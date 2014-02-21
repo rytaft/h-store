@@ -96,7 +96,7 @@ public class GAPlacementFitness implements FitnessEvaluationAlgorithm {
 		}
 		
 		// seriously penalize plans that deviate from a balanced load
-		long f = (long) (cost + 10000000.0 * loadDeviation/totalAccesses);
+		long f = (long) (cost + 100000000000.0 * loadDeviation/totalAccesses);
 		
 		Fitness fit = new AbsoluteFitness(-f);
 		return fit;
