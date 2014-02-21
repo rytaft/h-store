@@ -1,6 +1,7 @@
 package edu.brown.hstore.reconfiguration;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -43,10 +44,14 @@ public class ReconfigurationUtil {
         }
         LOG.info(String.format("Pairs(%s): %s ",migrationPairs.size(), StringUtils.join(migrationPairs, ",")));
 
+        // Sort the migration pairs to make sure we get the same set of splits each time
+        ArrayList<Pair<Integer,Integer>> migrationPairsList = new ArrayList<>();
+        migrationPairsList.addAll(migrationPairs);
+        Collections.sort(migrationPairsList);
         
         //Split pairs into groups based on numSplits paramt
         int pairCounter = 0;
-        for(Pair<Integer,Integer> mPair : migrationPairs){
+        for(Pair<Integer,Integer> mPair : migrationPairsList){
             pairToSplitMapping.put(mPair, pairCounter % numberOfSplits);
             pairCounter++;
         }
