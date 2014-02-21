@@ -5,6 +5,8 @@ package edu.brown.hstore.reconfiguration;
 
 import java.io.File;
 
+import org.junit.Test;
+
 import edu.brown.BaseTestCase;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.TwoTieredRangePartitions;
@@ -25,10 +27,13 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
     /**
      * 
      */
-    public TestReconfigurationPlanSplitter() throws Exception{
+    @Test
+    public void testReconfigurationPlanSplitter() throws Exception{
         TwoTieredRangePartitions p = new TwoTieredRangePartitions(catalogContext, json_path1);
         p.setPartitionPlan(json_path1);    
         ReconfigurationPlan plan = p.setPartitionPlan(json_path2);
+        
+        ReconfigurationUtil.naiveSplitReconfigurationPlan(plan, 5);
     }
     
     
