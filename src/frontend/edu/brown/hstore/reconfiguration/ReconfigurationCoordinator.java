@@ -265,6 +265,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             
             try {
                 // Find reconfig plan
+               
                 reconfig_plan = hasher.changePartitionPlan(partitionPlanFile);
                 FileUtil.appendEventToFile(reconfig_plan.planDebug);
                 this.planned_partitions = hasher.getPartitions();
@@ -351,6 +352,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
                 } else if (reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL) {
                     if (reconfig_plan != null) {
+                        //TODO split plan & put into queue
+                        //TODO set reconfig_plan = 1st split
+                        
                         if (this.hstore_site.getSiteId() == leaderId) {
                             this.num_sites_complete = 0;
                             this.sites_complete = new HashSet<Integer>();
@@ -517,9 +521,16 @@ public class ReconfigurationCoordinator implements Shutdownable {
             FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+", siteId="+this.hstore_site.getSiteId());
             sendReconfigEndAcknowledgementToAllSites();
             showReconfigurationProfiler(true);
+            checkForAdditionalReconfigs();
         }
     }
     
+    private void checkForAdditionalReconfigs() {
+        // TODO Auto-generated method stub
+        //TODO check queue and if found initialize
+        
+    }
+
     /**
      * Called for the reconfiguration leader to signify that
      * @siteId is done with reconfiguration
@@ -542,6 +553,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             sendReconfigEndAcknowledgementToAllSites();
             FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+" , siteId="+this.hstore_site.getSiteId());
             showReconfigurationProfiler(true);
+            checkForAdditionalReconfigs();
         }
     }
     
