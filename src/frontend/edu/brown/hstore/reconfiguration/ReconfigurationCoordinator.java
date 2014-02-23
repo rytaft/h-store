@@ -178,10 +178,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
         live_pull = hstore_conf.site.reconfig_live;
 
         if (hstore_conf.site.reconfig_async == true){
-            LOG.debug("Updating transfer bytes");
-            ReconfigurationConstants.MAX_TRANSFER_BYTES = 
-                    Math.min(hstore_conf.site.reconfig_async_chunk_size_kb * 1024, ReconfigurationConstants.MAX_TRANSFER_BYTES) ;
-            LOG.info("update transfer bytes to :  " + ReconfigurationConstants.MAX_TRANSFER_BYTES);
+            // Commenting out for VOTER
+	    //LOG.debug("Updating transfer bytes");
+            //ReconfigurationConstants.MAX_TRANSFER_BYTES = 
+            //        Math.min(hstore_conf.site.reconfig_async_chunk_size_kb * 1024, ReconfigurationConstants.MAX_TRANSFER_BYTES) ;
+            //LOG.info("update transfer bytes to :  " + ReconfigurationConstants.MAX_TRANSFER_BYTES);
         }
         if (hstore_conf.site.reconfig_async == false){ 
           LOG.info("Disabling all async pulls");
