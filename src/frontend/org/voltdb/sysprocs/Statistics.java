@@ -278,6 +278,7 @@ public class Statistics extends VoltSystemProcedure {
             	//del me
                 
                 // Cached list of local executors
+                /*
                 List<PartitionExecutor> local_executors;
                 local_executors = new ArrayList<>();
                 
@@ -294,7 +295,7 @@ public class Statistics extends VoltSystemProcedure {
                 	//executorMap.put(executor.getPartitionId(),executor);
                     //livePullKBMap.put(executor.getPartitionId(),new Integer(0));
                 }
-                
+                //*/
                 
             	//Essam Turn On Off Read Write Tracker
                 /*
