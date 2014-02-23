@@ -136,6 +136,19 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private int reconfig_split = 25;
     
     public static long STOP_COPY_TXNID = -2L;
+    
+    public class SendNextPlan extends Thread {
+    	public void run() {
+    		long sleep_time = 100;
+    		try {
+                Thread.sleep(sleep_time);
+            } catch (InterruptedException e) {
+                LOG.error("Error sleeping", e);
+            }
+    		
+    		sendNextPlanToAllSites();
+    	}
+    }
 
     public ReconfigurationCoordinator(HStoreSite hstore_site, HStoreConf hstore_conf) {        
         if (FORCE_DESTINATION){
@@ -533,11 +546,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 if (this.hstore_site.getSiteId() == this.reconfigurationLeader) {
                     this.num_sites_complete = 0;
                     this.sites_complete = new HashSet<Integer>();
-		    this.reconfigurationDonePartitionIds = new HashSet<Integer>();
-		    this.reconfigurationDoneSites = new HashSet<Integer>();
+                    this.reconfigurationDonePartitionIds = new HashSet<Integer>();
+                    this.reconfigurationDoneSites = new HashSet<Integer>();
                 }
                 FileUtil.appendEventToFile("RECONFIGURATION_INIT_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
-                sendNextPlanToAllSites();
+                //sendNextPlanToAllSites();
+                SendNextPlan send = new SendNextPlan();
+                send.start();
             } else { 
                 LOG.info("All sites have reported that reconfiguration is complete "); 
                 LOG.info("Sending a message to notify all sites that reconfiguration has ended");
@@ -600,11 +615,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 if (this.hstore_site.getSiteId() == this.reconfigurationLeader) {
                     this.num_sites_complete = 0;
                     this.sites_complete = new HashSet<Integer>();
-		    this.reconfigurationDonePartitionIds = new HashSet<Integer>();
+                    this.reconfigurationDonePartitionIds = new HashSet<Integer>();
                     this.reconfigurationDoneSites = new HashSet<Integer>();
                 }
                 FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
-                sendNextPlanToAllSites();
+                //sendNextPlanToAllSites();
+                SendNextPlan send = new SendNextPlan();
+                send.start();
             } else { 
                 sendReconfigEndAcknowledgementToAllSites();
                 FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+" , siteId="+this.hstore_site.getSiteId());
