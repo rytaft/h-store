@@ -6332,7 +6332,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (this.reconfig_plan != null) {
             String msg = "Reconfiguration plan already set. Cannot set until previous reconfig plan is complete. Current state: " + reconfig_state;
             LOG.error(msg);
-            throw new Exception(msg);
+            //throw new Exception(msg);
 
         }
         if (debug.val) {

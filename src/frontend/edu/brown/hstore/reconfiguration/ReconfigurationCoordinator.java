@@ -133,7 +133,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private Map<Integer,Integer>  livePullKBMap;
     
     private List<ReconfigurationPlan> reconfigPlanQueue;
-    private int reconfig_split = 2;
+    private int reconfig_split = 25;
     
     public static long STOP_COPY_TXNID = -2L;
 
@@ -533,6 +533,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 if (this.hstore_site.getSiteId() == this.reconfigurationLeader) {
                     this.num_sites_complete = 0;
                     this.sites_complete = new HashSet<Integer>();
+		    this.reconfigurationDonePartitionIds = new HashSet<Integer>();
+		    this.reconfigurationDoneSites = new HashSet<Integer>();
                 }
                 FileUtil.appendEventToFile("RECONFIGURATION_INIT_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
                 sendNextPlanToAllSites();
@@ -559,7 +561,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
         ReconfigurationPlan rplan = checkForAdditionalReconfigs();
         try {            
             if(rplan != null) {
-                for (PartitionExecutor executor : this.local_executors) {
+                this.reconfigurationDonePartitionIds = new HashSet<Integer>();
+		for (PartitionExecutor executor : this.local_executors) {
                     executor.initReconfiguration(rplan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);                    
                     this.partitionStates.put(executor.getPartitionId(), ReconfigurationState.PREPARE);
                 }
@@ -597,6 +600,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 if (this.hstore_site.getSiteId() == this.reconfigurationLeader) {
                     this.num_sites_complete = 0;
                     this.sites_complete = new HashSet<Integer>();
+		    this.reconfigurationDonePartitionIds = new HashSet<Integer>();
+                    this.reconfigurationDoneSites = new HashSet<Integer>();
                 }
                 FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
                 sendNextPlanToAllSites();
