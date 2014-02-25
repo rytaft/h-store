@@ -7,10 +7,8 @@ import org.json.JSONObject;
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Column;
-import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Procedure;
 import org.voltdb.catalog.Statement;
-import org.voltdb.catalog.Table;
 import org.voltdb.utils.NotImplementedException;
 
 import edu.brown.hstore.conf.HStoreConf;
@@ -147,8 +145,8 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
         throw new NotImplementedException("Hashing without Catalog not supported");
     }
 
-    public synchronized PlannedPartitions getPlanned_partitions() {
-        return planned_partitions;
+    public synchronized ExplicitPartitions getPartitions() {
+        return (ExplicitPartitions)planned_partitions;
     }
 
     public void setReconfigCoord(ReconfigurationCoordinator reconfigCoord) {

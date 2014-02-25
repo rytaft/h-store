@@ -14,6 +14,7 @@ import org.voltdb.exceptions.ReconfigurationException;
 import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 
 import edu.brown.BaseTestCase;
+import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.PlannedPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.TwoTieredRangePartitions;
@@ -88,7 +89,7 @@ public String test_json2 = "{"
     @SuppressWarnings("unchecked")
     @Test
     public void testTrackReconfigurationRange() throws Exception{
-        TwoTieredRangePartitions p = new TwoTieredRangePartitions(catalogContext, json_path1);
+        ExplicitPartitions p = new TwoTieredRangePartitions(catalogContext, json_path1);
         p.setPartitionPlan(json_path1);    
         ReconfigurationPlan plan = p.setPartitionPlan(json_path2);
         //PE 1
@@ -222,7 +223,7 @@ public String test_json2 = "{"
     @SuppressWarnings("unchecked")
     @Test
     public void testTrackReconfigurationKey() throws Exception{
-        TwoTieredRangePartitions p = new TwoTieredRangePartitions(catalogContext, json_path1);
+        ExplicitPartitions p = new TwoTieredRangePartitions(catalogContext, json_path1);
         p.setPartitionPlan(json_path1);    
         ReconfigurationPlan plan = p.setPartitionPlan(json_path2);
         //PE 1

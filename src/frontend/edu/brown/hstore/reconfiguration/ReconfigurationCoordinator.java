@@ -24,15 +24,18 @@ import org.voltdb.catalog.CatalogType;
 import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.messaging.FastSerializer;
-import org.voltdb.utils.Pair;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
 
-import edu.brown.hashing.TwoTieredRangeHasher;
-import edu.brown.hashing.TwoTieredRangePartitions;
+import edu.brown.hashing.AbstractHasher;
+import edu.brown.hashing.ExplicitHasher;
+import edu.brown.hashing.ExplicitPartitions;
+import edu.brown.hashing.PlannedHasher;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.hashing.TwoTieredRangeHasher;
+import edu.brown.hashing.TwoTieredRangePartitions;
 import edu.brown.hstore.HStoreSite;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
@@ -61,7 +64,6 @@ import edu.brown.profilers.ReconfigurationProfiler;
 import edu.brown.protorpc.ProtoRpcController;
 import edu.brown.statistics.FastIntHistogram;
 import edu.brown.utils.FileUtil;
-import edu.brown.utils.PartitionSet;
 
 /**
  * @author vaibhav : Reconfiguration Coordinator at each site, responsible for
@@ -117,7 +119,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     // map of requests a PE is blocked on
     private Map<Integer, Semaphore> blockedRequests;
-    private TwoTieredRangePartitions planned_partitions;
+    private ExplicitPartitions planned_partitions;
     public ReconfigurationProfiler profilers[];
     private HStoreConf hstore_conf;
     
@@ -273,7 +275,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
             this.reconfigurationLeader = leaderId;
             this.reconfigurationProtocol = reconfigurationProtocol;
             this.currentPartitionPlan = partitionPlanFile;
-            TwoTieredRangeHasher hasher = (TwoTieredRangeHasher) this.hstore_site.getHasher();
+            ExplicitHasher hasher = null;; 
+            AbstractHasher absHasher = this.hstore_site.getHasher();
+            if (absHasher instanceof TwoTieredRangeHasher) {
+                hasher = (TwoTieredRangeHasher) absHasher;
+            } else if (absHasher instanceof PlannedHasher) {
+                hasher = (PlannedHasher) absHasher;
+            } 
+            
             ReconfigurationPlan reconfig_plan;
             
             //Used by the leader to track the reconfiguration state of each partition and each site respectively 
@@ -282,8 +291,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
             
             try {
                 // Find reconfig plan
-               
-                reconfig_plan = hasher.changePartitionPlan(partitionPlanFile);
+                if (absHasher instanceof TwoTieredRangeHasher) {
+                    reconfig_plan = hasher.changePartitionPlan(partitionPlanFile);
+                } else if (absHasher instanceof PlannedHasher) {
+                    reconfig_plan = hasher.changePartitionPhase(partitionPlanFile);
+                } else {
+                    throw new Exception("Unsupported hasher : " + absHasher.getClass());
+                }
                 FileUtil.appendEventToFile(reconfig_plan.planDebug);
                 this.planned_partitions = hasher.getPartitions();
                 if (reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {

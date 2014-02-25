@@ -124,7 +124,7 @@ import com.google.protobuf.RpcCallback;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.catalog.PlanFragmentIdGenerator;
 import edu.brown.catalog.special.CountedStatement;
-import edu.brown.hashing.TwoTieredRangePartitions;
+import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
@@ -6343,7 +6343,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     public void initReconfiguration(ReconfigurationPlan reconfig_plan, ReconfigurationProtocols reconfig_protocol, 
-            ReconfigurationState reconfig_state, TwoTieredRangePartitions planned_partitions)
+            ReconfigurationState reconfig_state, ExplicitPartitions planned_partitions)
             throws Exception {
         // FIXME (ae) We need to check with Andy about concurrency issues here
         LOG.info(String.format("PE %s InitReconfiguration plan  %s %s", this.partitionId, reconfig_protocol, reconfig_state));

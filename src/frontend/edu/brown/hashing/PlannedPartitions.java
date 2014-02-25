@@ -60,7 +60,7 @@ import edu.brown.utils.StringUtil;
  *         </ul>
  */
 
-public class PlannedPartitions implements JSONSerializable {
+public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
     private static final Logger LOG = Logger.getLogger(PlannedPartitions.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
@@ -222,7 +222,7 @@ public class PlannedPartitions implements JSONSerializable {
      * @param planned_partition_json
      * @return the set of tables in the partition plan
      */
-    public static Set<String> getExplicitPartitionedTables(JSONObject planned_partition_json) {
+    public Set<String> getExplicitPartitionedTables(JSONObject planned_partition_json) {
         try {
             Set<String> tables = null;
             if (planned_partition_json.has(PLANNED_PARTITIONS)) {
@@ -698,6 +698,29 @@ public class PlannedPartitions implements JSONSerializable {
 
     public Map<String, List<String>> getRelatedTablesMap() {
         return relatedTablesMap;
+    }
+
+    @Override
+    public ReconfigurationPlan setPartitionPlan(File partition_json_file) throws Exception {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public ReconfigurationPlan setPartitionPlan(JSONObject partition_json) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public synchronized PartitionPhase getCurrentPlan() {
+        
+        return partition_phase_map.get(this.current_phase);
+    }
+
+    @Override
+    public synchronized PartitionPhase getPreviousPlan() {
+        return partition_phase_map.get(this.previous_phase);
     }
 
 }

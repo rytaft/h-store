@@ -38,7 +38,7 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
             "       }"+
             "}";
     
-    private TwoTieredRangePartitions partitions = null;
+    private ExplicitPartitions partitions = null;
 
     /**
      * Update the current partition plan
@@ -119,8 +119,8 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
         throw new NotImplementedException("Hashing without Catalog not supported");
     }
 
-    public synchronized TwoTieredRangePartitions getPartitions() {
-        return partitions;
+    public synchronized ExplicitPartitions getPartitions() {
+        return (ExplicitPartitions)partitions;
     }
 
     @Override

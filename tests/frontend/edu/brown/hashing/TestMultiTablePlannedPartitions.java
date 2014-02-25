@@ -62,7 +62,8 @@ public class TestMultiTablePlannedPartitions extends BaseTestCase {
 
     public void testExtractTableNames() throws Exception {
         JSONObject test_json = new JSONObject(tpcc_json);
-        Set<String> tbls = PlannedPartitions.getExplicitPartitionedTables(test_json);
+        PlannedPartitions p = new PlannedPartitions(catalogContext, test_json);
+        Set<String> tbls = p.getExplicitPartitionedTables(test_json);
         assertTrue(tbls.contains("warehouse"));
         assertFalse(tbls.contains("district"));
     }

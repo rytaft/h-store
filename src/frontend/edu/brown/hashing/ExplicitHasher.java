@@ -61,5 +61,7 @@ public interface ExplicitHasher {
     public ReconfigurationPlan changePartitionPhase(String partition_plan) throws Exception;
     
     public ReconfigurationPlan changePartitionPlan(String partition_json_file) throws Exception;
+    
+    public ExplicitPartitions getPartitions();
 
 }
