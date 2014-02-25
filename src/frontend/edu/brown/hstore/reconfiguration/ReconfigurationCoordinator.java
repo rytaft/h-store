@@ -133,13 +133,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private Map<Integer,Integer>  livePullKBMap;
     
     private List<ReconfigurationPlan> reconfigPlanQueue;
-    private int reconfig_split = 25;
+    private int reconfig_split = 100;
     
     public static long STOP_COPY_TXNID = -2L;
     
     public class SendNextPlan extends Thread {
     	public void run() {
-    		long sleep_time = 2000;
+    		long sleep_time = 500;
     		try {
                 Thread.sleep(sleep_time);
             } catch (InterruptedException e) {

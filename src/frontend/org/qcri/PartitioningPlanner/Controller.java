@@ -95,8 +95,10 @@ public class Controller implements Runnable {
 		else{
 			planFile = FileSystems.getDefault().getPath(hstore_conf.global.hasher_plan);
 		}
+		System.out.println("Input plan: " + planFile.toAbsolutePath().toString());
 
 		outputPlanFile = FileSystems.getDefault().getPath("plan_out.json");
+		System.out.println("Output plan: " + outputPlanFile.toAbsolutePath().toString());
 
 		try {
 			Files.copy(planFile, outputPlanFile, StandardCopyOption.REPLACE_EXISTING);				
