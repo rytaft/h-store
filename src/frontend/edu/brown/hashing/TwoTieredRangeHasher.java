@@ -20,7 +20,7 @@ import edu.brown.utils.FileUtil;
 /**
  * @author rytaft, aelmore
  */
-public class TwoTieredRangeHasher extends DefaultHasher {
+public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHasher {
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
     public static final String YCSB_TEST = "YCSB_TEST";
@@ -121,6 +121,11 @@ public class TwoTieredRangeHasher extends DefaultHasher {
 
     public synchronized TwoTieredRangePartitions getPartitions() {
         return partitions;
+    }
+
+    @Override
+    public ReconfigurationPlan changePartitionPhase(String partition_plan) throws Exception {
+        throw new NotImplementedException("TODO");
     }
 
 }
