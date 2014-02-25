@@ -9,8 +9,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.FileSystems;
@@ -42,6 +40,7 @@ import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.ArgumentsParser;
 import edu.brown.utils.CollectionUtil;
+import edu.brown.utils.FileUtil;
 
 public class Controller implements Runnable {
 
@@ -201,12 +200,12 @@ public class Controller implements Runnable {
 			System.out.println("Calculated new plan");
 
 			currentPlan.toJSON(outputPlanFile.toString());
-
+			String outputPlan = FileUtil.readFile(outputPlanFile.toString());
 
 			ClientResponse cresponse = null;
 			try {
-				cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "livepull");
-				//cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "stopcopy");
+				cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
+				//cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
 				System.out.println("Controller: received response: " + cresponse);
 			} catch (NoConnectionsException e) {
 				System.out.println("Controller: lost connection");

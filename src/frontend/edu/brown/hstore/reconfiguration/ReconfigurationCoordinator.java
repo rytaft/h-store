@@ -239,10 +239,26 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param partitionId
      * @return the reconfiguration plan or null if plan already set
      */
-    public ReconfigurationPlan initReconfiguration(Integer leaderId, ReconfigurationProtocols reconfigurationProtocol, String partitionPlanFile, int partitionId) {
+    public ReconfigurationPlan initReconfigurationLocal(Integer leaderId, ReconfigurationProtocols reconfigurationProtocol, String partitionPlanFile, int partitionId) {
+    	String partitionPlan = FileUtil.readFile(partitionPlanFile);
+    	return this.initReconfiguration(leaderId, reconfigurationProtocol, partitionPlan, partitionId);
+    }
+    
+    /**
+     * Initialize a reconfiguration. May be called by multiple PEs, so first
+     * request initializes and caches plan. Additional requests will be given
+     * cached plan.
+     * 
+     * @param leaderId
+     * @param reconfigurationProtocol
+     * @param partitionPlan
+     * @param partitionId
+     * @return the reconfiguration plan or null if plan already set
+     */
+    public ReconfigurationPlan initReconfiguration(Integer leaderId, ReconfigurationProtocols reconfigurationProtocol, String partitionPlan, int partitionId) {
 
         // TODO ae start timing
-        if (this.reconfigurationInProgress.get() == false && partitionPlanFile == this.currentPartitionPlan) {
+        if (this.reconfigurationInProgress.get() == false && partitionPlan == this.currentPartitionPlan) {
             LOG.info("Ignoring initReconfiguration request. Requested plan is already set");
             return null;
         }
@@ -272,7 +288,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             }
             this.reconfigurationLeader = leaderId;
             this.reconfigurationProtocol = reconfigurationProtocol;
-            this.currentPartitionPlan = partitionPlanFile;
+            this.currentPartitionPlan = partitionPlan;
             TwoTieredRangeHasher hasher = (TwoTieredRangeHasher) this.hstore_site.getHasher();
             ReconfigurationPlan reconfig_plan;
             
@@ -283,7 +299,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
             try {
                 // Find reconfig plan
                
-                reconfig_plan = hasher.changePartitionPlan(partitionPlanFile);
+            	
+                reconfig_plan = hasher.changePartitionPlan(partitionPlan);
                 FileUtil.appendEventToFile(reconfig_plan.planDebug);
                 this.planned_partitions = hasher.getPartitions();
                 if (reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
