@@ -9,6 +9,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.FileSystems;
@@ -23,9 +25,6 @@ import org.qcri.PartitioningPlanner.placement.FirstFitPlacement;
 import org.qcri.PartitioningPlanner.placement.OneTieredPlacement;
 import org.qcri.PartitioningPlanner.placement.GAPlacement;
 import org.qcri.PartitioningPlanner.placement.Plan;
-import org.voltdb.VoltTable;
-import org.voltdb.VoltTableRow;
-import org.voltdb.client.Client;
 import org.voltdb.client.ClientFactory;
 import org.voltdb.client.ClientResponse;
 import org.voltdb.client.NoConnectionsException;
@@ -40,7 +39,6 @@ import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.ArgumentsParser;
 import edu.brown.utils.CollectionUtil;
-import edu.brown.utils.FileUtil;
 
 public class Controller implements Runnable {
 
@@ -84,7 +82,7 @@ public class Controller implements Runnable {
 		client.configureBlocking(false);
 		sites = CatalogUtil.getAllSites(catalog);
 		connectToHost();
-		provisioning = new Provisioning(client,no_of_partitions,sitesPerHost,partPerSite,highCPU,lowCPU,sites.size());
+		provisioning = new Provisioning(sites, no_of_partitions, sitesPerHost, partPerSite, highCPU, lowCPU);
 
 		if(hstore_conf.global.hasher_plan == null){
 			System.out.println("Must set global.hasher_plan to specify plan file!");
@@ -95,10 +93,8 @@ public class Controller implements Runnable {
 		else{
 			planFile = FileSystems.getDefault().getPath(hstore_conf.global.hasher_plan);
 		}
-		System.out.println("Input plan: " + planFile.toAbsolutePath().toString());
 
 		outputPlanFile = FileSystems.getDefault().getPath("plan_out.json");
-		System.out.println("Output plan: " + outputPlanFile.toAbsolutePath().toString());
 
 		try {
 			Files.copy(planFile, outputPlanFile, StandardCopyOption.REPLACE_EXISTING);				
@@ -188,8 +184,11 @@ public class Controller implements Runnable {
 			{
 
 				System.out.println("Provisioning is on");	
+				int numberOfPartitions = provisioning.partitionsRequired();
+				System.out.println("Provisioning requires " + numberOfPartitions + " partitions");
 				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
-						provisioning.noOfSitesRequiredQuery(), timeLimit);
+						numberOfPartitions, timeLimit);
+				provisioning.setPartitions(numberOfPartitions);
 
 			}
 			else
@@ -202,12 +201,12 @@ public class Controller implements Runnable {
 			System.out.println("Calculated new plan");
 
 			currentPlan.toJSON(outputPlanFile.toString());
-			String outputPlan = FileUtil.readFile(outputPlanFile.toString());
+
 
 			ClientResponse cresponse = null;
 			try {
-				cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
-				//cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
+				cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "livepull");
+				//cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "stopcopy");
 				System.out.println("Controller: received response: " + cresponse);
 			} catch (NoConnectionsException e) {
 				System.out.println("Controller: lost connection");
@@ -288,6 +287,7 @@ public class Controller implements Runnable {
 		}
 		else // use default
 		{
+			System.out.println("Using default parameters");
 			no_of_partitions = 4;
 			time_window = 10;
 			planner_selector = 0;
@@ -299,8 +299,6 @@ public class Controller implements Runnable {
 			highCPU = 1280;
 			lowCPU = 960;
 		}
-
-
 
 
 		Controller c = new Controller(args.catalog, hstore_conf);
