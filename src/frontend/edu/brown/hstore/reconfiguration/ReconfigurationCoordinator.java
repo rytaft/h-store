@@ -133,7 +133,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private Map<Integer,Integer>  livePullKBMap;
     
     private List<ReconfigurationPlan> reconfigPlanQueue;
-    private int reconfig_split = 100;
+    private int reconfig_split = 200;
     
     public static long STOP_COPY_TXNID = -2L;
     
