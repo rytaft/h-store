@@ -25,10 +25,13 @@ def sinewave(steps, max_factor, frequency = 2.0):
 		print "ERROR: frequency must be greater than one"
 		exit(1)
 
-	for current in range(steps):
+	lastRate = 1.0
+	for current in range(1, steps+1):
 		ampl = (max_factor - 1.0) / 2.0
 		radians = math.pi * 2 * (frequency * float(current)/float(steps))
-		res.append(ampl * math.sin(radians + 1.5 * math.pi) + ampl + 1.0)
+		currentRate = ampl * math.sin(radians + 1.5 * math.pi) + ampl + 1.0
+		res.append(currentRate/lastRate)
+		lastRate = currentRate
 		
 	return res
 	
@@ -50,9 +53,12 @@ def linear(steps, max_factor):
 		print "ERROR: steps must be greater than one"
 		exit(1)
 
-	increment = (max_factor - 1.0) / float(steps)
-	for current in range(steps):
-		res.append(1.0 + float(current) * increment);
+	lastRate = 1.0
+	stepIncrement = (max_factor - 1.0) / (float(steps) - 1)
+	for current in range(1, steps+1):
+		currentRate = 1.0 + float(current) * stepIncrement
+		res.append(currentRate / lastRate);
+		lastRate = currentRate	
 		
 	return res
 	
@@ -85,16 +91,16 @@ def spike(steps, max_factor, period, duration):
 		exit(1)
 
 	in_spike = False
+	last_spike = 0
 	for current in range(1,steps+1):
-		if not in_spike and current % period == 0:
+		if not in_spike and (current - last_spike) % period == 0:
 			in_spike = True
 			spike_started = current
 			res.append(max_factor)
-		elif in_spike and (current - spike_started) < duration:
-			res.append(max_factor)
 		elif in_spike and (current - spike_started) >= duration:
 			in_spike = False
-			res.append(1.0)
+			last_spike = current
+			res.append(1.0 / max_factor)
 		else:
 			res.append(1.0)
 		
