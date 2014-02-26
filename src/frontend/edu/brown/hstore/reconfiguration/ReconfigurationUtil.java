@@ -49,6 +49,12 @@ public class ReconfigurationUtil {
         migrationPairsList.addAll(migrationPairs);
         Collections.sort(migrationPairsList);
         
+        //Limit the number of splits to number of pais
+        if (numberOfSplits > migrationPairsList.size()){
+            LOG.info("Limiting number of pair splits ");
+            numberOfSplits = migrationPairsList.size();
+        }
+        
         //Split pairs into groups based on numSplits paramt
         int pairCounter = 0;
         for(Pair<Integer,Integer> mPair : migrationPairsList){
