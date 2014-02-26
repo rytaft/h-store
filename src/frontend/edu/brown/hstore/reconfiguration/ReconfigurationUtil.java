@@ -15,7 +15,7 @@ import org.voltdb.VoltTable;
 import org.voltdb.VoltTable.ColumnInfo;
 import org.voltdb.utils.Pair;
 import org.voltdb.VoltType;
-import org.voltdb.Pair;
+import org.voltdb.utils.Pair;
 
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
@@ -54,6 +54,17 @@ public class ReconfigurationUtil {
             return String.format("(%s->%s)", from, to);
         }
     	
+        /**
+        * @param o Object to compare to.
+        * @return Is the object equal to a value in the pair.
+        */
+        public boolean contains(Object o) {
+            if ((from != null) && (from.equals(o))) return true;
+            if ((to != null) && (to.equals(o))) return true;
+            if (o != null) return false;
+            return ((from == null) || (to == null));
+        }
+      
         public boolean equals(Object o) {
             if (this == o) {
                 return true;
