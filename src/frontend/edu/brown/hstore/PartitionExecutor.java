@@ -1245,10 +1245,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 		this.work_queue.offer(asyncRequestPullQueue.remove());
 	    }
             else if (reconfiguration_coordinator.getReconfigurationInProgress() 
-		    //&& asyncOutstanding.get() == false 
 		    && reconfiguration_coordinator.queueAsyncPull() 
                     && this.scheduleAsyncPullQueue.isEmpty() == false
-                    && (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )){
+                    && ((idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS && asyncOutstanding.get() == false)  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )){
                 if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS) {
                     LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
                 } else {
