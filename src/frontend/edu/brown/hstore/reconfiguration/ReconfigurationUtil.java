@@ -13,6 +13,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTable.ColumnInfo;
+import org.voltdb.utils.Pair;
 import org.voltdb.VoltType;
 
 import edu.brown.hashing.ReconfigurationPlan;
@@ -31,6 +32,7 @@ public class ReconfigurationUtil {
         }
     	
     	// order the pairs so that the lowest partition sends to the highest partition first
+    	@Override
     	public int compareTo(ReconfigurationPair other) {
             if(this.from < other.from) {
             	return -1;
@@ -45,6 +47,25 @@ public class ReconfigurationUtil {
             	return -1;
             }
             return 0;
+        }
+    	
+    	public String toString() {
+            return String.format("(%s->%s)", from, to);
+        }
+    	
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || !(getClass().isInstance(o))) {
+                return false;
+            }
+
+            @SuppressWarnings("unchecked")
+            ReconfigurationPair other = (ReconfigurationPair) o;
+
+            return (from == null ? other.from == null : from.equals(other.from))
+                    && (to == null ? other.to == null : to.equals(other.to));
         }
     }
 
