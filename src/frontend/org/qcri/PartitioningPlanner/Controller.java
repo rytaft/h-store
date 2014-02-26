@@ -39,6 +39,7 @@ import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.ArgumentsParser;
 import edu.brown.utils.CollectionUtil;
+import edu.brown.utils.FileUtil;
 
 public class Controller implements Runnable {
 
@@ -150,7 +151,6 @@ public class Controller implements Runnable {
 
 	public void doReconfiguration(){
 
-		//Jennie temp for now
 		Map<Integer, Long> mSiteLoad = new HashMap<Integer, Long>();
 
 		ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>> (no_of_partitions);
@@ -177,12 +177,9 @@ public class Controller implements Runnable {
 			System.out.println("Got list of hot tuples");	
 
 			// here we call the planner
-			// @todo - last parameter should be the number of partitions in use - may be less than
-			// hotTuplesList.size()
 
 			if(doProvisioning == 1)
 			{
-
 				System.out.println("Provisioning is on");	
 				int numberOfPartitions = provisioning.partitionsRequired();
 				System.out.println("Provisioning requires " + numberOfPartitions + " partitions");
@@ -201,13 +198,13 @@ public class Controller implements Runnable {
 			System.out.println("Calculated new plan");
 
 			currentPlan.toJSON(outputPlanFile.toString());
-
+			String outputPlan = FileUtil.readFile(outputPlanFile.toString());
 
 			ClientResponse cresponse = null;
 			try {
-				cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "livepull");
-				//cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "stopcopy");
-				System.out.println("Controller: received response: " + cresponse);
+				cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
+                                //cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
+                                System.out.println("Controller: received response: " + cresponse);
 			} catch (NoConnectionsException e) {
 				System.out.println("Controller: lost connection");
 				e.printStackTrace();
