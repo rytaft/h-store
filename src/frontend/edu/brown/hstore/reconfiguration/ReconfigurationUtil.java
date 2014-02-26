@@ -21,6 +21,29 @@ import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 
 public class ReconfigurationUtil {
     private static final Logger LOG = Logger.getLogger(ReconfigurationUtil.class);
+    
+    public static class ReconfigurationPair<T,U> extends Pair<T,U> {
+    	public ReconfigurationPair(T first, U second) {
+            super(first, second, true);
+        }
+    	
+    	// order the pairs so that the lowest partition sends to the highest partition first
+    	public int compareTo(ReconfigurationPair<T, U> other) {
+            if(this.get(0).hashCode() < other.get(0).hashCode()) {
+            	return 1;
+            }
+            else if(this.get(0).hashCode() > other.get(0).hashCode()) {
+            	return -1;
+            }
+            else if(this.get(1).hashCode() < other.get(1).hashCode()) {
+            	return -1;
+            }
+            else if(this.get(1).hashCode() > other.get(1).hashCode()) {
+            	return 1;
+            }
+            return 0;
+        }
+    }
 
     public static List<ReconfigurationPlan> naiveSplitReconfigurationPlan(ReconfigurationPlan plan, int numberOfSplits){
         List<ReconfigurationPlan> splitPlans = new ArrayList<>();
@@ -28,24 +51,24 @@ public class ReconfigurationUtil {
             splitPlans.add(new ReconfigurationPlan());
         }
         //The list of partition pairs that exchange data
-        Set<Pair<Integer, Integer>> migrationPairs = new HashSet<>();
+        Set<ReconfigurationPair<Integer, Integer>> migrationPairs = new HashSet<>();
         
         //How we are going to split up the pairs
-        Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = new HashMap<>();
+        Map<ReconfigurationPair<Integer, Integer>, Integer> pairToSplitMapping = new HashMap<>();
         
         //Calculate pairs
         for(Entry<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> entry : plan.getIncoming_ranges().entrySet()){
             Set<Integer> partitionsSendingData = new HashSet<>();
             for(ReconfigurationRange<? extends Comparable<?>> range : entry.getValue()){
                 partitionsSendingData.add(range.old_partition);
-                migrationPairs.add(new Pair<Integer, Integer>(range.old_partition, range.new_partition));
+                migrationPairs.add(new ReconfigurationPair<Integer, Integer>(range.old_partition, range.new_partition));
             }
             LOG.info(String.format("Partition: %s is receiving data from :%s",entry.getKey(),StringUtils.join(partitionsSendingData, ",")));
         }
         LOG.info(String.format("Pairs(%s): %s ",migrationPairs.size(), StringUtils.join(migrationPairs, ",")));
 
         // Sort the migration pairs to make sure we get the same set of splits each time
-        ArrayList<Pair<Integer,Integer>> migrationPairsList = new ArrayList<>();
+        ArrayList<ReconfigurationPair<Integer,Integer>> migrationPairsList = new ArrayList<>();
         migrationPairsList.addAll(migrationPairs);
         Collections.sort(migrationPairsList);
         
@@ -57,7 +80,7 @@ public class ReconfigurationUtil {
         
         //Split pairs into groups based on numSplits paramt
         int pairCounter = 0;
-        for(Pair<Integer,Integer> mPair : migrationPairsList){
+        for(ReconfigurationPair<Integer,Integer> mPair : migrationPairsList){
             pairToSplitMapping.put(mPair, pairCounter % numberOfSplits);
             pairCounter++;
         }
@@ -66,7 +89,7 @@ public class ReconfigurationUtil {
         for(Entry<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> entry : plan.getIncoming_ranges().entrySet()){
             for(ReconfigurationRange<? extends Comparable<?>> range : entry.getValue()){
                 //find which split this range is going into
-                Integer splitIndex = pairToSplitMapping.get(new Pair<Integer,Integer>(range.old_partition, range.new_partition));
+                Integer splitIndex = pairToSplitMapping.get(new ReconfigurationPair<Integer,Integer>(range.old_partition, range.new_partition));
                 //add it
                 splitPlans.get(splitIndex).addRange(range);
             }
@@ -75,10 +98,10 @@ public class ReconfigurationUtil {
         //DEBUG
         for (int j = 0; j < numberOfSplits; j++){
             
-            Set<Pair<Integer, Integer>> debugSendingData = new HashSet<>();
+            Set<ReconfigurationPair<Integer, Integer>> debugSendingData = new HashSet<>();
             for(Entry<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> entry : splitPlans.get(j).getIncoming_ranges().entrySet()){
                 for(ReconfigurationRange<? extends Comparable<?>> range : entry.getValue()){
-                    debugSendingData.add(new Pair<Integer, Integer>(range.old_partition, range.new_partition));
+                    debugSendingData.add(new ReconfigurationPair<Integer, Integer>(range.old_partition, range.new_partition));
                 }
             }
             LOG.info(String.format("PlanSplit:%s has the pairs(%s): %s", j, debugSendingData.size(), StringUtils.join(debugSendingData,",")));
