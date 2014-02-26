@@ -15,6 +15,7 @@ import org.voltdb.VoltTable;
 import org.voltdb.VoltTable.ColumnInfo;
 import org.voltdb.utils.Pair;
 import org.voltdb.VoltType;
+import org.voltdb.Pair;
 
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
@@ -23,8 +24,8 @@ public class ReconfigurationUtil {
     private static final Logger LOG = Logger.getLogger(ReconfigurationUtil.class);
     
     public static class ReconfigurationPair implements Comparable<ReconfigurationPair> {
-    	private Integer from;
-    	private Integer to;
+    	public Integer from;
+    	public Integer to;
     	
     	public ReconfigurationPair(Integer from, Integer to) {
     		this.from = from;
@@ -78,7 +79,7 @@ public class ReconfigurationUtil {
         Set<ReconfigurationPair> migrationPairs = new HashSet<>();
         
         //How we are going to split up the pairs
-        Map<ReconfigurationPair, Integer> pairToSplitMapping = new HashMap<>();
+        Map<Pair<Integer,Integer>, Integer> pairToSplitMapping = new HashMap<>();
         
         //Calculate pairs
         for(Entry<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> entry : plan.getIncoming_ranges().entrySet()){
@@ -96,16 +97,16 @@ public class ReconfigurationUtil {
         migrationPairsList.addAll(migrationPairs);
         Collections.sort(migrationPairsList);
         
-        //Limit the number of splits to number of pais
+        //Limit the number of splits to number of pairs
         if (numberOfSplits > migrationPairsList.size()){
-            LOG.info("Limiting number of pair splits ");
             numberOfSplits = migrationPairsList.size();
+            LOG.info("Limiting number of pair splits to " + numberOfSplits);
         }
         
         //Split pairs into groups based on numSplits paramt
         int pairCounter = 0;
         for(ReconfigurationPair mPair : migrationPairsList){
-            pairToSplitMapping.put(mPair, pairCounter % numberOfSplits);
+            pairToSplitMapping.put(new Pair(mPair.from, mPair.to), pairCounter % numberOfSplits);
             pairCounter++;
         }
         
@@ -113,7 +114,7 @@ public class ReconfigurationUtil {
         for(Entry<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> entry : plan.getIncoming_ranges().entrySet()){
             for(ReconfigurationRange<? extends Comparable<?>> range : entry.getValue()){
                 //find which split this range is going into
-                Integer splitIndex = pairToSplitMapping.get(new ReconfigurationPair(range.old_partition, range.new_partition));
+                Integer splitIndex = pairToSplitMapping.get(new Pair(range.old_partition, range.new_partition));
                 //add it
                 splitPlans.get(splitIndex).addRange(range);
             }
@@ -122,10 +123,10 @@ public class ReconfigurationUtil {
         //DEBUG
         for (int j = 0; j < numberOfSplits; j++){
             
-            Set<ReconfigurationPair> debugSendingData = new HashSet<>();
+            Set<Pair<Integer,Integer>> debugSendingData = new HashSet<>();
             for(Entry<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> entry : splitPlans.get(j).getIncoming_ranges().entrySet()){
                 for(ReconfigurationRange<? extends Comparable<?>> range : entry.getValue()){
-                    debugSendingData.add(new ReconfigurationPair(range.old_partition, range.new_partition));
+                    debugSendingData.add(new Pair(range.old_partition, range.new_partition));
                 }
             }
             LOG.info(String.format("PlanSplit:%s has the pairs(%s): %s", j, debugSendingData.size(), StringUtils.join(debugSendingData,",")));
