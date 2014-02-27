@@ -115,7 +115,7 @@ public class Provisioning {
 		HashMap<Partition,Double> res = new HashMap<Partition,Double>();
 		for(Partition part : partitions){
 //			System.out.format("Polling site %d and partition %d with ip %s", site.getId(), part.getId(), ip);
-//			String command = String.format("ssh -t -t %s /home/mserafini/git/h-store/scripts/partitioning/cpu_partition_monitor.sh %02d %03d", ip, site.getId(), part.getId());
+			// TODO there should be a way to find the home directory of hstore
 			String command = String.format("ssh -t -t %s /home/mserafini/git/h-store/scripts/partitioning/cpu_partition_monitor.sh %02d %03d", ip, site.getId(), part.getId());
 			String result = ShellTools.cmd(command);
 			try{
