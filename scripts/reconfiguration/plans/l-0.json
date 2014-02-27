@@ -1,5 +1,5 @@
 {
-  "partition_plans": {
+  "partition_plan": {
       "tables": {
         "usertable": {
           "partitions": {
