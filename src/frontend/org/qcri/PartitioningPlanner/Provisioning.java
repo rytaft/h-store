@@ -3,9 +3,12 @@ package org.qcri.PartitioningPlanner;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Map;
 
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
+import org.voltdb.catalog.CatalogMap;
+import org.voltdb.catalog.Partition;
 import org.voltdb.catalog.Site;
 import org.voltdb.client.Client;
 import org.voltdb.client.ClientResponse;
@@ -40,10 +43,11 @@ public class Provisioning {
 		for(Site site : sites){
 			if(site.getId() < (usedPartitions/PARTITIONS_PER_SITE)){
 				System.out.println("Polling site " + site.getId() + " with IP " + site.getHost().getIpaddr());
-				double[] CPUUtilPerPartition = getCPUPerPartitionSsh(site.getHost().getIpaddr(), PARTITIONS_PER_SITE);
-				for(int i = 0; i <  CPUUtilPerPartition.length; i++){
-					System.out.println("Examining partition " + i + " with load " + CPUUtilPerPartition[i]);
-					if ((CPUUtilPerPartition[i] < CPU_THRESHOLD_DOWN && partitionsRequired() < usedPartitions) || CPUUtilPerPartition[i] > CPU_THRESHOLD_UP){
+				Map<Partition,Double> CPUUtilPerPartition = getCPUPerPartitionSsh(site);
+				for(Map.Entry<Partition,Double> cpu : CPUUtilPerPartition.entrySet()){
+					double utilization = cpu.getValue();
+					System.out.println("Examining partition " + cpu.getKey().getId() + " with utilization " + utilization);
+					if ((utilization < CPU_THRESHOLD_DOWN && partitionsRequired() < usedPartitions) || utilization > CPU_THRESHOLD_UP){
 						System.out.println("Need to reconfigure");	 					
 						return true;
 					}
@@ -54,21 +58,20 @@ public class Provisioning {
 	}
 
 	// ======== NOTE!! =================
-	// assumes that site 0-7 go to server 0, 8-15 to server 2 and so on
-	// and one partition per server
+	// assumes that partitions 0-7 go to site 0, 8-15 to site 1 and so on
 	//
 	public int partitionsRequired(){
 		double totalUtil = 0;
 
 		for(Site site : sites){
 			if(site.getId() < (usedPartitions/PARTITIONS_PER_SITE)){
-				double[] CPUUtilPerPartition = getCPUPerPartitionSsh(site.getHost().getIpaddr(), PARTITIONS_PER_SITE);
-				for(int i = 0; i <  CPUUtilPerPartition.length; i++){
-					totalUtil += CPUUtilPerPartition[i];
+				Map<Partition,Double> CPUUtilPerPartition = getCPUPerPartitionSsh(site);
+				for(Double util : CPUUtilPerPartition.values()){
+					totalUtil += util;
 				}
 			}
 		}
-		
+
 		double avgUtilPerPartition = totalUtil/usedPartitions;
 
 		if(avgUtilPerPartition > CPU_THRESHOLD_UP){
@@ -89,41 +92,63 @@ public class Provisioning {
 			}
 			return Math.max(newSites, 1) * PARTITIONS_PER_SITE;
 		}
-//		System.out.println("Provisioning returns " + usedSites + " sites");
+		//		System.out.println("Provisioning returns " + usedSites + " sites");
 		return usedPartitions;
 	}
-	
+
 	public void setPartitions(int partitions){
 		usedPartitions = partitions;
 	}
 
 	public void refreshCPUStats(){
 		for(Site site : sites){
-			getCPUPerPartitionSsh(site.getHost().getIpaddr(), PARTITIONS_PER_SITE);
+			getCPUPerPartitionSsh(site);
 		}
 	}
 
-	
-// ======== THE FOLLOWING METHODS USE SSH AND PS TO GET CPU UTILIZATION =================
-	
-//	public static int noOfSitesRequiredSSH(Collection<Site> sites, int usedSites){
-//		double cpuUsage = 0;
-//		for(Site site : sites){
-//			if(site.getId() % SITES_PER_HOST == 0 && site.getId() < usedSites){
-//				String ip = site.getHost().getIpaddr();
-//				cpuUsage += getCPUSsh(ip);
-//			}
-//		}
-//		if ((cpuUsage / usedSites) > CPU_THRESHOLD_UP){
-//			// currently adds only one server at a time
-//			return usedSites + SITES_PER_HOST;
-//		}
-//		if ((cpuUsage / usedSites) < CPU_THRESHOLD_DOWN){
-//			return usedSites - SITES_PER_HOST;
-//		}
-//		return usedSites;
-//	}
-	
+
+	// ======== THE FOLLOWING METHODS USE SSH AND PS TO GET CPU UTILIZATION =================
+
+	public static Map<Partition,Double> getCPUPerPartitionSsh(Site site){
+		String ip = site.getHost().getIpaddr();
+		CatalogMap<Partition> partitions = site.getPartitions();
+		HashMap<Partition,Double> res = new HashMap<Partition,Double>();
+		for(Partition part : partitions){
+//			System.out.format("Polling site %d and partition %d with ip %s", site.getId(), part.getId(), ip);
+//			String command = String.format("ssh -t -t %s /home/mserafini/git/h-store/scripts/partitioning/cpu_partition_monitor.sh %02d %03d", ip, site.getId(), part.getId());
+			String command = String.format("ssh -t -t %s /home/mserafini/git/h-store/scripts/partitioning/cpu_partition_monitor.sh %02d %03d", ip, site.getId(), part.getId());
+			String result = ShellTools.cmd(command);
+			try{
+				res.put(part, Double.parseDouble(result.split("\n")[0]));
+			} catch(NumberFormatException e1){
+				System.out.println("Problem reading CPU utilization from ip " + ip);
+				System.out.println("top returned the following response. It could not be parsed");
+				System.out.println(result);
+				e1.printStackTrace();
+				System.exit(-1);
+			}
+		}
+		return res;
+	}
+
+	//	public static int noOfSitesRequiredSSH(Collection<Site> sites, int usedSites){
+	//	double cpuUsage = 0;
+	//	for(Site site : sites){
+	//		if(site.getId() % SITES_PER_HOST == 0 && site.getId() < usedSites){
+	//			String ip = site.getHost().getIpaddr();
+	//			cpuUsage += getCPUSsh(ip);
+	//		}
+	//	}
+	//	if ((cpuUsage / usedSites) > CPU_THRESHOLD_UP){
+	//		// currently adds only one server at a time
+	//		return usedSites + SITES_PER_HOST;
+	//	}
+	//	if ((cpuUsage / usedSites) < CPU_THRESHOLD_DOWN){
+	//		return usedSites - SITES_PER_HOST;
+	//	}
+	//	return usedSites;
+	//}
+
 	public static double getCPUPerSiteSsh(String ip){
 		System.out.println("Polling " + ip);
 		String results = ShellTools.cmd("ssh " + ip + " ps -eo pcpu");
@@ -148,46 +173,6 @@ public class Provisioning {
 		return cpuUsage;
 	}
 
-	// assumes that the numPartitions java threads with the highest CPU utilization are the ones associated with partition execution 
-	// alternative would be to monitor CPU utilization per core (e.g. /proc/stat or top and type 1), or the CPU load, but then we should make sure that we do core pinning correctly
-	public static double[] getCPUPerPartitionSsh(String ip, int numPartitions){
-		double[] res = new double [numPartitions];
-//		System.out.println("Polling " + ip);
-		String results = ShellTools.cmd("ssh " + ip + " top -H -b -n 1 | grep java | head -n " + numPartitions);
-		// TODO: test the following to avoid the ugly fix. the problem is related with using top and cut together http://nurkiewicz.blogspot.com/2012/08/which-java-thread-consumes-my-cpu.html
-//		String results = ShellTools.cmd("ssh " + ip + " top -H -b -n 1 | grep -m " + numPartitions + " java | perl -pe 's/\\e\\[?.*?[\\@-~] ?//g'  | cut -d' ' -f 14");
-		String[] lines = results.split("\n");
-		if (lines.length < numPartitions){
-			System.out.println("Controller: Problem while polling CPU usage for host " + ip);
-			System.out.println("Returned string: " + results);
-			System.exit(-1);
-		}
-//		System.out.println("CPU usage of host " + ip + ":");
-		for (int i = 0; i < lines.length; ++i){
-			//TODO should simply to the following (with todo above)
-			//res[i] = Double.parseDouble(lines[i]);
-			String[] fields = lines[i].split("\\s+");
-			try{
-				res[i] = Double.parseDouble(fields[8]);
-//				System.out.println("Partition " + i + " " + res[i]);
-			} catch(NumberFormatException e){
-				// sometimes the first field is an empty string so the cpu utilization is not number 8 
-				// this is a dirty fix but it's good enough for now - see the TODO above
-				try{
-					res[i] = Double.parseDouble(fields[9]);
-				}
-				catch(NumberFormatException e1){
-					System.out.println("Problem reading CPU utilization from ip " + ip);
-					System.out.println("top returned the following response. It could not be parsed");
-					System.out.println(results);
-					e1.printStackTrace();
-					System.exit(-1);
-				}
-			}
-		}
-		return res;
-	}
-	
 	// ======== THE FOLLOWING METHODS USE CPUSTATS TO GET CPU UTILIZATION *PER SITE* =================
 
 	private HashMap<Integer, Double> queryCPUUtilPerHost(Client client, int usedSites){
@@ -222,7 +207,7 @@ public class Provisioning {
 			System.out.println("Controller: lost connection");
 			e.printStackTrace();
 			System.exit(1);
-				
+
 		} catch (IOException e) {
 			System.out.println("Controller: IO Exception while connecting to host");
 			e.printStackTrace();
@@ -238,9 +223,9 @@ public class Provisioning {
 		}
 		return cresponse;
 	}
-	
-// ====================================================================================================
-	
+
+	// ====================================================================================================
+
 	// TODO not used yet. could be used to tune the CPU threshold dynamically based on SLAs
 	public static boolean queryLatencies(Client client){
 		//		if(connectedHost == null){
