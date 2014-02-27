@@ -57,7 +57,7 @@ public class Controller implements Runnable {
 	private Provisioning provisioning;
 
 	private static final int POLL_FREQUENCY = 3000;
-	private static String HSTORE_HOME = "~/h-store";
+	private static String HSTORE_HOME = "/localdisk/rytaft/h-store";
 
 	private static int time_window = 10; // time window for tuple tracking
 
