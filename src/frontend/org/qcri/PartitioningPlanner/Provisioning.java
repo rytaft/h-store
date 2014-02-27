@@ -40,6 +40,7 @@ public class Provisioning {
 	}
 
 	public boolean needReconfiguration(){
+		boolean res = false;
 		for(Site site : sites){
 			if(site.getId() < (usedPartitions/PARTITIONS_PER_SITE)){
 				System.out.println("Polling site " + site.getId() + " with IP " + site.getHost().getIpaddr());
@@ -49,12 +50,12 @@ public class Provisioning {
 					System.out.println("Examining partition " + cpu.getKey().getId() + " with utilization " + utilization);
 					if ((utilization < CPU_THRESHOLD_DOWN && partitionsRequired() < usedPartitions) || utilization > CPU_THRESHOLD_UP){
 						System.out.println("Need to reconfigure");	 					
-						return true;
+						res = true;
 					}
 				}
 			}
 		}
-		return false;
+		return res;
 	}
 
 	// ======== NOTE!! =================
