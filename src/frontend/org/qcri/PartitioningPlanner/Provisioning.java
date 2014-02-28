@@ -117,7 +117,7 @@ public class Provisioning {
 		for(Partition part : partitions){
 //			System.out.format("Polling site %d and partition %d with ip %s", site.getId(), part.getId(), ip);
 			// TODO there should be a way to find the home directory of hstore
-			String command = String.format("ssh -t -t %s /localdisk/rytaft/h-store/scripts/partitioning/cpu_partition_monitor.sh %02d %03d", ip, site.getId(), part.getId());
+			String command = String.format("ssh -t -t %s $HSTORE_HOME/scripts/partitioning/cpu_partition_monitor.sh %02d %03d", ip, site.getId(), part.getId());
 			String result = ShellTools.cmd(command);
 			try{
 				res.put(part, Double.parseDouble(result.split("\n")[0]));
