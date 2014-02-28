@@ -57,6 +57,7 @@ public class Controller implements Runnable {
 	private Provisioning provisioning;
 
 	private static final int POLL_FREQUENCY = 3000;
+	public static String HSTORE_HOME="/localdisk/mserafini/h-store";
 
 	private static int time_window = 10; // time window for tuple tracking
 
@@ -127,11 +128,11 @@ public class Controller implements Runnable {
 					doReconfiguration();
 					System.out.println("Waiting until reconfiguration has completed");
 					String ip = sites.iterator().next().getHost().getIpaddr();
-					String response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END $HSTORE_HOME/hevent.log");
+					String response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
 					int previousReconfigurations = response.split("\n").length; 
 					while(true){
 						Thread.sleep(1000);
-						response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END $HSTORE_HOME/hevent.log");
+						response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
 						if(response.split("\n").length > previousReconfigurations) break;
 					}
 					System.out.println("Reconfiguration has completed");
