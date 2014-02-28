@@ -116,18 +116,30 @@ public class Provisioning {
 		HashMap<Partition,Double> res = new HashMap<Partition,Double>();
 		for(Partition part : partitions){
 //			System.out.format("Polling site %d and partition %d with ip %s", site.getId(), part.getId(), ip);
-			// TODO there should be a way to find the home directory of hstore
+			// TODO use an environment variable $HSTORE_HOME in the command. to be used when .bashrc becomes accessible
+			// TODO very system specific. it should parse all "lines" entries and find the one with "java"
 			String command = String.format("ssh -t -t %s " + Controller.HSTORE_HOME + "/scripts/partitioning/cpu_partition_monitor.sh %02d %03d", ip, site.getId(), part.getId());
 			String result = ShellTools.cmd(command);
-			try{
-				res.put(part, Double.parseDouble(result.split("\n")[0]));
-			} catch(NumberFormatException e1){
-				System.out.println("Problem reading CPU utilization from ip " + ip);
-				System.out.println("top returned the following response. It could not be parsed");
-				System.out.println(result);
-				e1.printStackTrace();
-				System.exit(-1);
-			}
+			String[] lines = result.split("\n");
+            String[] fields = lines[1].split("\\s+");
+            try{
+                    res.put(part, Double.parseDouble(fields[8]));
+                    System.out.println("Got result " + Double.parseDouble(fields[8]));
+            } catch(NumberFormatException e){
+            	//sometimes the first field is an empty string so the cpu utilization is not number 8
+            	//this is because of top
+                    try{
+                            res.put(part, Double.parseDouble(fields[9]));
+                            System.out.println("Got result " + Double.parseDouble(fields[9]));
+                    }
+                    catch(NumberFormatException e1){
+                            System.out.println("Problem reading CPU utilization from ip " + ip);
+                            System.out.println("top returned the following response. It could not be parsed");
+                            System.out.println(result);
+                            e1.printStackTrace();
+                            System.exit(-1);
+                    }
+            }
 		}
 		return res;
 	}
