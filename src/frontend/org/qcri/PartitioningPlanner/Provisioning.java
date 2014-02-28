@@ -47,7 +47,7 @@ public class Provisioning {
 				Map<Partition,Double> CPUUtilPerPartition = getCPUPerPartitionSsh(site);
 				for(Map.Entry<Partition,Double> cpu : CPUUtilPerPartition.entrySet()){
 					double utilization = cpu.getValue();
-					System.out.println("Examining partition " + cpu.getKey().getId() + " with utilization " + utilization);
+					System.out.println("Partition " + cpu.getKey().getId() + " has utilization " + utilization);
 					if ((utilization < CPU_THRESHOLD_DOWN && partitionsRequired() < usedPartitions) || utilization > CPU_THRESHOLD_UP){
 						System.out.println("Need to reconfigure");	 					
 						res = true;
@@ -124,13 +124,11 @@ public class Provisioning {
             String[] fields = lines[1].split("\\s+");
             try{
                     res.put(part, Double.parseDouble(fields[8]));
-                    System.out.println("Got result " + Double.parseDouble(fields[8]));
             } catch(NumberFormatException e){
             	//sometimes the first field is an empty string so the cpu utilization is not number 8
             	//this is because of top
                     try{
                             res.put(part, Double.parseDouble(fields[9]));
-                            System.out.println("Got result " + Double.parseDouble(fields[9]));
                     }
                     catch(NumberFormatException e1){
                             System.out.println("Problem reading CPU utilization from ip " + ip);
