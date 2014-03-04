@@ -60,7 +60,7 @@ public class Controller implements Runnable {
 
 	private static int time_window = 10; // time window for tuple tracking
 
-	private static int planner_selector = 0; // planner ID from 0 to 4, Greedy - GreedyEx - FFit - BP - BP one tier 
+	private static int planner_selector = 0; // planner ID from 0 to 6, Greedy - GreedyEx - FFit - BP - BP one tier - GA - GreedyEx one tier
 
 	private static int no_of_partitions = 4; 
 	private static int doProvisioning = 0;
@@ -112,6 +112,7 @@ public class Controller implements Runnable {
 		case 3:  algo = new BinPackerPlacement(); System.out.println("BinPackerPlacement is selected"); break;
 		case 4:  algo = new OneTieredPlacement(); System.out.println("OneTieredPlacement is selected"); break;
 		case 5:  algo = new GAPlacement(); System.out.println("GAPlacement is selected"); break;
+		case 6:  algo = new GreedyExtendedOneTieredPlacement(); System.out.println("GreedyExtendedOneTieredPlacement is selected"); break;
 		}
 
 	}
