@@ -20,6 +20,7 @@ import java.nio.file.StandardCopyOption;
 import org.qcri.PartitioningPlanner.placement.Placement;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
 import org.qcri.PartitioningPlanner.placement.GreedyExtendedPlacement;
+import org.qcri.PartitioningPlanner.placement.GreedyExtendedOneTieredPlacement;
 import org.qcri.PartitioningPlanner.placement.BinPackerPlacement;
 import org.qcri.PartitioningPlanner.placement.FirstFitPlacement;
 import org.qcri.PartitioningPlanner.placement.OneTieredPlacement;
