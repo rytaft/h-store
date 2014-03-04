@@ -39,7 +39,7 @@ public class GAPlacementFitness implements FitnessEvaluationAlgorithm {
 
 	public GAPlacementFitness() {}
 	
-	Long coldPartitionWidth = 1000L; // redistribute cold tuples in chunks of 1000
+	Long coldPartitionWidth = 100000L; // redistribute cold tuples in chunks of 100000
 	ArrayList<Long> tupleIds = null;
 	ArrayList<Long> accesses = null; 
 	ArrayList<Integer> locations = null; 
@@ -51,6 +51,7 @@ public class GAPlacementFitness implements FitnessEvaluationAlgorithm {
 	Long totalAccesses = 0L;
 	int partitionCount = 0;
 	long meanAccesses = 0L;
+	Long hottestTuple = 0L;
 
 	public Class getApplicableClass() {
 		return NDecimalsIndividual.class;
@@ -66,7 +67,14 @@ public class GAPlacementFitness implements FitnessEvaluationAlgorithm {
 		// calculate the bandwidth cost of this placement
 		long cost = 0;
 		for(int i = 0; i < placementCount; ++i) {
-			cost += ((locations.get(i) == newLocations.get(i)) ? 0 : sliceSizes.get(i)); 
+			if(i < tupleCount) {
+				// we are moving individual hot tuples so cost is at most 1
+				cost += ((locations.get(i) == newLocations.get(i)) ? 0 : 1); 
+			}
+			else {
+				// we are moving slices of cold tuples 
+				cost += ((locations.get(i) == newLocations.get(i)) ? 0 : sliceSizes.get(i - tupleCount)); 
+			}
 		}
 		
 		// initialize load to 0
@@ -84,11 +92,11 @@ public class GAPlacementFitness implements FitnessEvaluationAlgorithm {
 		// calculate the total load deviation over all partitions
 		long loadDeviation = 0;
 		for(Long load : loadPerPartition) {
-			loadDeviation += Math.abs(load - meanAccesses);
+			loadDeviation += (load > Math.max(meanAccesses, hottestTuple) * 1.05 ? load - meanAccesses : 0);
 		}
 		
-		// 1000000 was chosen by trial and error to be a good balance
-		long f = (long) (cost + 1000000.0 * loadDeviation/totalAccesses);
+		// seriously penalize plans that deviate from a balanced load
+		long f = (long) (cost + 100000000000.0 * loadDeviation/totalAccesses);
 		
 		Fitness fit = new AbsoluteFitness(-f);
 		return fit;
@@ -102,7 +110,8 @@ public class GAPlacementFitness implements FitnessEvaluationAlgorithm {
 			int tupleCount,
 			int sliceCount,
 			Long totalAccesses,
-			int partitionCount) {
+			int partitionCount,
+			Long hottestTuple) {
 		this.tupleIds = tupleIds;
 		this.accesses = accesses;
 		this.locations = locations;
@@ -113,6 +122,7 @@ public class GAPlacementFitness implements FitnessEvaluationAlgorithm {
 		this.totalAccesses = totalAccesses;	
 		this.placementCount = tupleCount + sliceCount;
 		this.partitionCount = partitionCount;
+		this.hottestTuple = hottestTuple;
 		this.meanAccesses = totalAccesses/partitionCount;
 	}
 
