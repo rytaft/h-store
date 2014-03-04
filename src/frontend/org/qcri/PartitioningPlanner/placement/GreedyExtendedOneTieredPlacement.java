@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.voltdb.utils.Pair;
 import org.qcri.PartitioningPlanner.placement.Plan;
 
 
@@ -20,7 +21,7 @@ public class GreedyExtendedOneTieredPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Pair<Long,Integer>> partitionTotals, String planFilename, int partitionCount, int timeLimit){
 		
 		// ignore the hotTuplesList!
 		
@@ -32,14 +33,14 @@ public class GreedyExtendedOneTieredPlacement extends Placement {
 
 		for(int i = 0; i < partitionCount; ++i) {
 		    if(partitionTotals.get(i) == null) {
-			partitionTotals.put(i, 0L);
+		    	partitionTotals.put(i, new Pair<Long, Integer>(0L, 0));
 		    }
 		}
 		
 		// copy partitionTotals into oldLoad
-		Map<Integer, Long> oldLoad = new HashMap<Integer, Long> ();
+		Map<Integer, Pair<Long,Integer>> oldLoad = new HashMap<Integer, Pair<Long,Integer>> ();
 		for(Integer i : partitionTotals.keySet()) {
-			totalAccesses += partitionTotals.get(i);
+			totalAccesses += partitionTotals.get(i).getFirst();
 			oldLoad.put(i,  partitionTotals.get(i));
 		}
 		
@@ -53,24 +54,35 @@ public class GreedyExtendedOneTieredPlacement extends Placement {
 				oldPlan.addRange(i, range.from, range.to);
 			}
 		}
-				
+		
 		meanAccesses = totalAccesses / partitionCount;
 
 		System.out.println("Mean access count: " + meanAccesses);
-				
+		
 		// place the cold tuples from the overloaded or deleted partitions
 		for(Integer i : oldPlan.getAllRanges().keySet()) { // foreach partition
-			if(partitionTotals.get(i) > meanAccesses || i.intValue() >= partitionCount) { 
-				List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i,  coldPartitionWidth);
+			if(partitionTotals.get(i).getFirst() > meanAccesses || i.intValue() >= partitionCount) { 
+				
+				// VOTER HACK: we want each partition slice to contain ~1000 tuples, but we don't know how many tuples
+				// are in a range
+				Double tuplesPerKey = (double) oldLoad.get(i).getSecond() / Plan.getRangeListWidth(oldPlan.getAllRanges(i));
+				List<List<Plan.Range>> partitionSlices = oldPlan.getRangeSlices(i,  (long) (coldPartitionWidth / tuplesPerKey));
 				if(partitionSlices.size() > 0) {
-					Double tupleWeight = ((double) oldLoad.get(i)) / oldPlan.getTupleCount(i); // per tuple
-
+					
+					Double tupleWeight = (double) oldLoad.get(i).getFirst() / oldLoad.get(i).getSecond(); // per tuple - VOTER HACK
+					
 					for(List<Plan.Range> slice : partitionSlices) {  // for each slice
 						for(Plan.Range r : slice) { 
-							Integer newWeight = (int) (tupleWeight *  ((double) Plan.getRangeWidth(r)));
+							// VOTER HACK
+							Integer sliceSize = (int) (Plan.getRangeListWidth(slice) * tuplesPerKey);
+							Long newWeight = (long) (tupleWeight *  ((double) sliceSize));
+							if(newWeight == 0 && i.intValue() < partitionCount) {
+								continue;
+							}
+
 							dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount);
 							
-							if((partitionTotals.get(i) > meanAccesses || i.intValue() >= partitionCount) && i != dstPartition) { 		
+							if((partitionTotals.get(i).getFirst() > meanAccesses || i.intValue() >= partitionCount) && i != dstPartition) { 		
 								
 								List<Plan.Range> oldRanges = aPlan.getRangeValues(i, r.from, r.to);
 								for(Plan.Range oldRange : oldRanges) {
@@ -85,15 +97,17 @@ public class GreedyExtendedOneTieredPlacement extends Placement {
 									}
 								}
 								
-								partitionTotals.put(i, partitionTotals.get(i) - newWeight);
-								partitionTotals.put(dstPartition, partitionTotals.get(dstPartition) + newWeight);
+								partitionTotals.put(i, new Pair<Long, Integer>(partitionTotals.get(i).getFirst() - newWeight, 
+										partitionTotals.get(i).getSecond() - sliceSize));
+								partitionTotals.put(dstPartition, new Pair<Long, Integer>(partitionTotals.get(dstPartition).getFirst() + newWeight, 
+										partitionTotals.get(dstPartition).getSecond() + sliceSize));
 							}
 						}
 					} // end for each slice
 				}
 			} 
 		} // end for each partition
-
+		
 		removeEmptyPartitions(aPlan);
 		return aPlan;
 		
