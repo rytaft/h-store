@@ -183,7 +183,7 @@ public class Controller implements Runnable {
 			if(doProvisioning == 1)
 			{
 				System.out.println("Provisioning is on");	
-				int numberOfPartitions = provisioning.partitionsRequired();
+				int numberOfPartitions = provisioning.partitionsRequired(provisioning.getCPUUtilPerPartition());
 				System.out.println("Provisioning requires " + numberOfPartitions + " partitions");
 				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
 						numberOfPartitions, timeLimit);
