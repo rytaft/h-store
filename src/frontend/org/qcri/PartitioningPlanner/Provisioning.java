@@ -41,14 +41,16 @@ public class Provisioning {
 
 	public boolean needReconfiguration(){
 		boolean res = false;
-		for(Site site : sites){
+		Map<Site,Map<Partition,Double>> CPUUtilPerPartitionMap = getCPUUtilPerPartition();
+		int partitionsRequired = partitionsRequired(CPUUtilPerPartitionMap);
+		for(Site site : CPUUtilPerPartitionMap.keySet()){
 			if(site.getId() < (usedPartitions/PARTITIONS_PER_SITE)){
 				System.out.println("Polling site " + site.getId() + " with IP " + site.getHost().getIpaddr());
-				Map<Partition,Double> CPUUtilPerPartition = getCPUPerPartitionSsh(site);
+				Map<Partition,Double> CPUUtilPerPartition = CPUUtilPerPartitionMap.get(site);
 				for(Map.Entry<Partition,Double> cpu : CPUUtilPerPartition.entrySet()){
 					double utilization = cpu.getValue();
 					System.out.println("Partition " + cpu.getKey().getId() + " has utilization " + utilization);
-					if ((utilization < CPU_THRESHOLD_DOWN && partitionsRequired() < usedPartitions) || utilization > CPU_THRESHOLD_UP){
+					if ((utilization < CPU_THRESHOLD_DOWN && partitionsRequired < usedPartitions) || utilization > CPU_THRESHOLD_UP){
 						System.out.println("Need to reconfigure");	 					
 						res = true;
 					}
@@ -57,16 +59,27 @@ public class Provisioning {
 		}
 		return res;
 	}
+	
+	public Map<Site,Map<Partition,Double>> getCPUUtilPerPartition() {
+		Map<Site,Map<Partition,Double>> CPUUtilPerPartitionMap = new HashMap<>();
+		for(Site site : sites){
+			if(site.getId() < (usedPartitions/PARTITIONS_PER_SITE)){
+				Map<Partition,Double> CPUUtilPerPartition = getCPUPerPartitionSsh(site);
+				CPUUtilPerPartitionMap.put(site, CPUUtilPerPartition);
+			}
+		}
+		return CPUUtilPerPartitionMap;
+	}
 
 	// ======== NOTE!! =================
 	// assumes that partitions 0-7 go to site 0, 8-15 to site 1 and so on
 	//
-	public int partitionsRequired(){
+	public int partitionsRequired(Map<Site,Map<Partition,Double>> CPUUtilPerPartitionMap){
 		double totalUtil = 0;
 
-		for(Site site : sites){
+		for(Site site : CPUUtilPerPartitionMap.keySet()){
 			if(site.getId() < (usedPartitions/PARTITIONS_PER_SITE)){
-				Map<Partition,Double> CPUUtilPerPartition = getCPUPerPartitionSsh(site);
+				Map<Partition,Double> CPUUtilPerPartition = CPUUtilPerPartitionMap.get(site);
 				for(Double util : CPUUtilPerPartition.values()){
 					totalUtil += util;
 				}

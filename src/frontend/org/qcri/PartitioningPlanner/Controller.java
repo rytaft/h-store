@@ -138,7 +138,7 @@ public class Controller implements Runnable {
 						if(response.split("\n").length > previousReconfigurations) break;
 					}
 					System.out.println("Reconfiguration has completed");
-					provisioning.refreshCPUStats();
+					//provisioning.refreshCPUStats();
 				}
 			} catch (InterruptedException e) {
 				System.out.println("Controller was interrupted");
