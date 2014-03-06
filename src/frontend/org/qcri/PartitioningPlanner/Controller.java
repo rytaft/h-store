@@ -29,6 +29,7 @@ import org.voltdb.client.ClientResponse;
 import org.voltdb.client.NoConnectionsException;
 import org.voltdb.client.ProcCallException;
 import org.voltdb.catalog.Catalog;
+import org.voltdb.catalog.Partition;
 import org.voltdb.catalog.Site;
 import org.voltdb.processtools.ShellTools;
 
