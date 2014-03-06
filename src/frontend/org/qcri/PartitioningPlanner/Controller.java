@@ -9,8 +9,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.FileSystems;
@@ -56,6 +54,7 @@ public class Controller implements Runnable {
 
 	private TupleTrackerExecutor ttExecutor;
 	private Provisioning provisioning;
+	private Map<Site,Map<Partition,Double>> CPUUtilPerPartitionMap;
 
 	private static final int POLL_FREQUENCY = 3000;
 	public static String HSTORE_HOME="/localdisk/rytaft/h-store";
@@ -125,7 +124,8 @@ public class Controller implements Runnable {
 				while(true){
 					Thread.sleep(POLL_FREQUENCY);
 					System.out.println("\nPolling");
-					if(!provisioning.needReconfiguration()) continue;
+					CPUUtilPerPartitionMap = provisioning.getCPUUtilPerPartition();
+					if(!provisioning.needReconfiguration(CPUUtilPerPartitionMap)) continue;
 					System.out.println("Starting reconfiguration");
 					doReconfiguration();
 					System.out.println("Waiting until reconfiguration has completed");
@@ -183,7 +183,7 @@ public class Controller implements Runnable {
 			if(doProvisioning == 1)
 			{
 				System.out.println("Provisioning is on");	
-				int numberOfPartitions = provisioning.partitionsRequired(provisioning.getCPUUtilPerPartition());
+				int numberOfPartitions = provisioning.partitionsRequired(CPUUtilPerPartitionMap);
 				System.out.println("Provisioning requires " + numberOfPartitions + " partitions");
 				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
 						numberOfPartitions, timeLimit);

@@ -39,9 +39,8 @@ public class Provisioning {
 		this.usedPartitions = initialPartitions; 
 	}
 
-	public boolean needReconfiguration(){
+	public boolean needReconfiguration(Map<Site,Map<Partition,Double>> CPUUtilPerPartitionMap){
 		boolean res = false;
-		Map<Site,Map<Partition,Double>> CPUUtilPerPartitionMap = getCPUUtilPerPartition();
 		int partitionsRequired = partitionsRequired(CPUUtilPerPartitionMap);
 		for(Site site : CPUUtilPerPartitionMap.keySet()){
 			if(site.getId() < (usedPartitions/PARTITIONS_PER_SITE)){
