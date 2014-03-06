@@ -20,6 +20,7 @@ import java.nio.file.StandardCopyOption;
 import org.qcri.PartitioningPlanner.placement.Placement;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
 import org.qcri.PartitioningPlanner.placement.GreedyExtendedPlacement;
+import org.qcri.PartitioningPlanner.placement.GreedyExtendedOneTieredPlacement;
 import org.qcri.PartitioningPlanner.placement.BinPackerPlacement;
 import org.qcri.PartitioningPlanner.placement.FirstFitPlacement;
 import org.qcri.PartitioningPlanner.placement.OneTieredPlacement;
@@ -39,6 +40,7 @@ import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.ArgumentsParser;
 import edu.brown.utils.CollectionUtil;
+import edu.brown.utils.FileUtil;
 
 public class Controller implements Runnable {
 
@@ -56,11 +58,11 @@ public class Controller implements Runnable {
 	private Provisioning provisioning;
 
 	private static final int POLL_FREQUENCY = 3000;
-	private static String HSTORE_HOME = "~/h-store";
+	public static String HSTORE_HOME="/localdisk/rytaft/h-store";
 
 	private static int time_window = 10; // time window for tuple tracking
 
-	private static int planner_selector = 0; // planner ID from 0 to 4, Greedy - GreedyEx - FFit - BP - BP one tier 
+	private static int planner_selector = 0; // planner ID from 0 to 6, Greedy - GreedyEx - FFit - BP - BP one tier - GA - GreedyEx one tier
 
 	private static int no_of_partitions = 4; 
 	private static int doProvisioning = 0;
@@ -111,6 +113,7 @@ public class Controller implements Runnable {
 		case 3:  algo = new BinPackerPlacement(); System.out.println("BinPackerPlacement is selected"); break;
 		case 4:  algo = new OneTieredPlacement(); System.out.println("OneTieredPlacement is selected"); break;
 		case 5:  algo = new GAPlacement(); System.out.println("GAPlacement is selected"); break;
+		case 6:  algo = new GreedyExtendedOneTieredPlacement(); System.out.println("GreedyExtendedOneTieredPlacement is selected"); break;
 		}
 
 	}
@@ -135,7 +138,7 @@ public class Controller implements Runnable {
 						if(response.split("\n").length > previousReconfigurations) break;
 					}
 					System.out.println("Reconfiguration has completed");
-					provisioning.refreshCPUStats();
+					//provisioning.refreshCPUStats();
 				}
 			} catch (InterruptedException e) {
 				System.out.println("Controller was interrupted");
@@ -150,7 +153,6 @@ public class Controller implements Runnable {
 
 	public void doReconfiguration(){
 
-		//Jennie temp for now
 		Map<Integer, Long> mSiteLoad = new HashMap<Integer, Long>();
 
 		ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>> (no_of_partitions);
@@ -177,14 +179,11 @@ public class Controller implements Runnable {
 			System.out.println("Got list of hot tuples");	
 
 			// here we call the planner
-			// @todo - last parameter should be the number of partitions in use - may be less than
-			// hotTuplesList.size()
 
 			if(doProvisioning == 1)
 			{
-
 				System.out.println("Provisioning is on");	
-				int numberOfPartitions = provisioning.partitionsRequired();
+				int numberOfPartitions = provisioning.partitionsRequired(provisioning.getCPUUtilPerPartition());
 				System.out.println("Provisioning requires " + numberOfPartitions + " partitions");
 				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
 						numberOfPartitions, timeLimit);
@@ -201,13 +200,13 @@ public class Controller implements Runnable {
 			System.out.println("Calculated new plan");
 
 			currentPlan.toJSON(outputPlanFile.toString());
-
+			String outputPlan = FileUtil.readFile(outputPlanFile.toString());
 
 			ClientResponse cresponse = null;
 			try {
-				cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "livepull");
-				//cresponse = client.callProcedure("@Reconfiguration", 0, outputPlanFile.toString(), "stopcopy");
-				System.out.println("Controller: received response: " + cresponse);
+				cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
+                                //cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
+                                System.out.println("Controller: received response: " + cresponse);
 			} catch (NoConnectionsException e) {
 				System.out.println("Controller: lost connection");
 				e.printStackTrace();

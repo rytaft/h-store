@@ -598,7 +598,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     executor.initReconfiguration(rplan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);                    
                     this.partitionStates.put(executor.getPartitionId(), ReconfigurationState.PREPARE);
                 }
-                FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
+                FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId() + " plansRemaining=" + this.reconfigPlanQueue.size());
             } else {
                 LOG.error("Leader expected next reconfig plan, but planQueue was empty");
             }
