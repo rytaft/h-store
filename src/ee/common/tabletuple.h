@@ -41,6 +41,9 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
+ *
+ *
+ * Essam Mansour Tuple tracking
  */
 
 #ifndef HSTORETABLETUPLE_H
@@ -94,6 +97,7 @@ namespace voltdb {
     
 #define DELETED_MASK 1
 #define DIRTY_MASK 2
+#define MIGRATED_MASK 3
 #define EVICTED_MASK 4
 
 class TableColumn;
@@ -113,7 +117,21 @@ class TableTuple {
     template<std::size_t keySize> friend class IntsKey;
     template<std::size_t keySize> friend class GenericKey;
 
+    ///Essam Tuple tracking
+    // int64_t m_tupleAccessFreq;
+
 public:
+    //Essam
+    /*
+    inline int64_t getTupleAccessFreq() const {
+            return m_tupleAccessFreq;
+        }
+    inline void updateTupleAccessFreq() {
+    	m_tupleAccessFreq++;
+        }
+    /////////////End/////////////
+    //*/
+
     /** Initialize a tuple unassociated with a table (bad idea... dangerous) */
     explicit TableTuple();
 
@@ -381,6 +399,15 @@ protected:
         *(reinterpret_cast<char*> (m_data)) &= static_cast<char>(~DELETED_MASK);
     }
 
+	inline void setMigratedTrue() {
+		// treat the first "value" as a boolean flag
+		*(reinterpret_cast<char*> (m_data)) |= static_cast<char>(MIGRATED_MASK);
+	}
+	inline void setMigratedFalse() {
+		// treat the first "value" as a boolean flag
+		*(reinterpret_cast<char*> (m_data)) &= static_cast<char>(~MIGRATED_MASK);
+	}
+
     inline void setDirtyTrue() {
         // treat the first "value" as a boolean flag
         *(reinterpret_cast<char*> (m_data)) |= static_cast<char>(DIRTY_MASK);
@@ -426,19 +453,23 @@ private:
 
 inline TableTuple::TableTuple() :
     m_schema(NULL), m_data(NULL) {
+
 }
 
 inline TableTuple::TableTuple(const TableTuple &rhs) :
     m_schema(rhs.m_schema), m_data(rhs.m_data) {
+
 }
 
 inline TableTuple::TableTuple(const TupleSchema *schema) :
     m_schema(schema), m_data(NULL) {
+
     assert (m_schema);
 }
 
 /** Setup the tuple given the specified data location and schema **/
 inline TableTuple::TableTuple(char *data, const voltdb::TupleSchema *schema) {
+	//m_tupleAccessFreq = 0; //Essam
     assert(data);
     assert(schema);
     m_data = data;

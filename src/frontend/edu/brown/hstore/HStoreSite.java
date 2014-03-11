@@ -80,6 +80,7 @@ import com.google.protobuf.RpcCallback;
 
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hashing.AbstractHasher;
+import edu.brown.hashing.PlannedHasher;
 import edu.brown.hstore.ClientInterface.ClientInputHandler;
 import edu.brown.hstore.HStoreThreadManager.ThreadGroupType;
 import edu.brown.hstore.Hstoreservice.QueryEstimate;
@@ -97,15 +98,20 @@ import edu.brown.hstore.estimators.TransactionEstimator;
 import edu.brown.hstore.estimators.remote.RemoteEstimator;
 import edu.brown.hstore.estimators.remote.RemoteEstimatorState;
 import edu.brown.hstore.internal.SetDistributedTxnMessage;
+import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator;
+import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
 import edu.brown.hstore.stats.AntiCacheManagerProfilerStats;
 import edu.brown.hstore.stats.BatchPlannerProfilerStats;
 import edu.brown.hstore.stats.MarkovEstimatorProfilerStats;
 import edu.brown.hstore.stats.PartitionExecutorProfilerStats;
+import edu.brown.hstore.stats.PartitionRates;
 import edu.brown.hstore.stats.SiteProfilerStats;
 import edu.brown.hstore.stats.SpecExecProfilerStats;
 import edu.brown.hstore.stats.TransactionCounterStats;
 import edu.brown.hstore.stats.TransactionProfilerStats;
 import edu.brown.hstore.stats.TransactionQueueManagerProfilerStats;
+import edu.brown.hstore.stats.TransactionRTStats;
+import edu.brown.hstore.stats.CPUStats; //Essam
 import edu.brown.hstore.txns.AbstractTransaction;
 import edu.brown.hstore.txns.DependencyTracker;
 import edu.brown.hstore.txns.LocalTransaction;
@@ -243,6 +249,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     private final StatsAgent statsAgent = new StatsAgent();
     private TransactionProfilerStats txnProfilerStats;
     private MemoryStats memoryStats;
+    private CPUStats cpuStats; // Essam
+    private TransactionRTStats rtStats; // Marco
+    private PartitionRates partStats; // Marco
     
     // ----------------------------------------------------------------------------
     // NETWORKING STUFF
@@ -343,6 +352,12 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
      * threads spawned by this HStoreSite
      */
     private final EventObservableExceptionHandler exceptionHandler = new EventObservableExceptionHandler();
+    
+    /*
+     * Reconfiguration coordinator 
+     */
+    private ReconfigurationCoordinator reconfiguration_coordinator = null;
+
     
     // ----------------------------------------------------------------------------
     // INTERNAL STATE OBSERVABLES
@@ -449,9 +464,19 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         this.depTrackers = new DependencyTracker[num_partitions];
         
         // Get the hasher we will use for this HStoreSite
+        // check if reconfiguration is enabled and that plan is set
+        if(hstore_conf.global.reconfiguration_enable){
+            if(hstore_conf.global.hasher_plan == null){
+                LOG.warn("Reconfiguration enabled but no plan set. Disabling reconfiguration and using default hasher");
+                hstore_conf.global.reconfiguration_enable = false;
+                hstore_conf.global.hasher_class  = "edu.brown.hashing.DefaultHasher";                
+            }
+        }
+        
+        LOG.info("Using hasher class: " + hstore_conf.global.hasher_class );     
         this.hasher = ClassUtil.newInstance(hstore_conf.global.hasher_class,
-                                             new Object[]{ this.catalogContext, num_partitions },
-                                             new Class<?>[]{ CatalogContext.class, int.class });
+                                             new Object[]{ this.catalogContext, num_partitions , this.hstore_conf },
+                                             new Class<?>[]{ CatalogContext.class, int.class, HStoreConf.class });
         this.p_estimator = new PartitionEstimator(this.catalogContext, this.hasher);
         this.remoteTxnEstimator = new RemoteEstimator(this.p_estimator);
 
@@ -606,6 +631,8 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         this.status_monitor = new HStoreSiteStatus(this, hstore_conf);
         
         LoggerUtil.refreshLogging(hstore_conf.global.log_refresh);
+
+        
     }
     
     // ----------------------------------------------------------------------------
@@ -620,6 +647,14 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         if (debug.val)
             LOG.debug("Initializing HStoreSite " + this.getSiteName());
         this.hstore_coordinator = this.initHStoreCoordinator();
+        
+        if(hstore_conf.global.reconfiguration_enable){
+            LOG.info("Initializing Reconfiguration Coordinator");
+            this.reconfiguration_coordinator = this.initReconfigCoordinator();
+            if(this.hasher instanceof PlannedHasher){
+                ((PlannedHasher)this.hasher).setReconfigCoord(this.reconfiguration_coordinator);
+            }
+        }
         
         // First we need to tell the HStoreCoordinator to start-up and initialize its connections
         if (debug.val)
@@ -680,7 +715,10 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                       this.local_partitions.size(), this.getSiteName()));
         for (int partition : this.local_partitions.values()) {
             PartitionExecutor executor = this.getPartitionExecutor(partition);
-            // executor.initHStoreSite(this);
+            if (hstore_conf.global.reconfiguration_enable) {
+                executor.setReconfigurationCoordinator(reconfiguration_coordinator);
+            }
+            //executor.initHStoreSite(this);
             
             t = new Thread(this.threadManager.getThreadGroup(ThreadGroupType.EXECUTION), executor);
             t.setDaemon(true);
@@ -794,6 +832,11 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         this.memoryStats = new MemoryStats();
         this.statsAgent.registerStatsSource(SysProcSelector.MEMORY, 0, this.memoryStats);
         
+       // CPU Usage by Essam
+        this.cpuStats = new CPUStats();
+        this.statsAgent.registerStatsSource(SysProcSelector.CPUUSAGE, 0, this.cpuStats);
+
+        
         // TXN COUNTERS
         statsSource = new TransactionCounterStats(this.catalogContext);
         this.statsAgent.registerStatsSource(SysProcSelector.TXNCOUNTER, 0, statsSource);
@@ -826,6 +869,14 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         statsSource = new BatchPlannerProfilerStats(this, this.catalogContext);
         this.statsAgent.registerStatsSource(SysProcSelector.PLANNERPROFILER, 0, statsSource);
         
+
+        // TRANSACTION RESPONSE TIME COUNTERS - Marco
+        this.rtStats = new TransactionRTStats(hstore_conf.global.nanosecond_latencies);
+        this.statsAgent.registerStatsSource(SysProcSelector.TXNRESPONSETIME, 0, this.rtStats);
+
+        // PARTITION COUNTERS - Marco
+        this.partStats = new PartitionRates(this.catalogContext, getSiteId());
+        this.statsAgent.registerStatsSource(SysProcSelector.PARTITIONRATES, 0, this.partStats);
     }
     
     /**
@@ -956,6 +1007,11 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         return new HStoreCoordinator(this);        
     }
     
+    protected ReconfigurationCoordinator initReconfigCoordinator() {
+        assert(this.shutdown_state != ShutdownState.STARTED);
+        return new ReconfigurationCoordinator(this, hstore_conf);
+    }
+    
     protected void setTransactionIdManagerTimeDelta(long delta) {
         for (TransactionIdManager t : this.txnIdManagers) {
             if (t != null) t.setTimeDelta(delta);
@@ -1078,6 +1134,16 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     }
     
     // ----------------------------------------------------------------------------
+    // RECONFIGURATION METHODS
+    // ----------------------------------------------------------------------------
+
+    
+    public ReconfigurationCoordinator getReconfigurationCoordinator(){
+      return this.reconfiguration_coordinator;
+    }
+    
+    
+    // ----------------------------------------------------------------------------
     // UTILITY METHODS
     // ----------------------------------------------------------------------------
 
@@ -1171,6 +1237,11 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     
     public MemoryStats getMemoryStatsSource() {
         return (this.memoryStats);
+    }
+    
+    // Essam 
+    public CPUStats getCPUStatsSource() {
+        return (this.cpuStats);
     }
     
     public Collection<TransactionPreProcessor> getTransactionPreProcessors() {
@@ -1505,6 +1576,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
             this.clientInterface.shutdown();
         }
         
+        if(hstore_conf.site.reconfig_profiling && hstore_conf.global.reconfiguration_enable) {
+            this.reconfiguration_coordinator.showReconfigurationProfiler(false);
+        }
         LOG.info(String.format("Completed shutdown process at %s [instanceId=%d]",
                                this.getSiteName(), this.instanceId));
     }
@@ -1722,7 +1796,8 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         // SHUTDOWN
         // TODO: Execute as a regular sysproc transaction
         // -------------------------------
-        if (catalog_proc.getName().equalsIgnoreCase("@Shutdown")) {
+        if (catalog_proc.getName().equalsIgnoreCase("@Shutdown")) 
+        {
             ClientResponseImpl cresponse = new ClientResponseImpl(
                     -1,
                     client_handle,
@@ -1730,7 +1805,10 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                     Status.OK,
                     HStoreConstants.EMPTY_RESULT,
                     "");
-            this.responseSend(cresponse, clientCallback, EstTime.currentTimeMillis(), 0);
+            
+            this.responseSend(cresponse, clientCallback, EstTime.currentTimeMillis(), 0
+            		,null // Marco
+            		);
 
             // Non-blocking....
             Exception error = new Exception("Shutdown command received at " + this.getSiteName());
@@ -1763,7 +1841,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                     Status.OK,
                     HStoreConstants.EMPTY_RESULT,
                     "");
-            this.responseSend(cresponse, clientCallback, EstTime.currentTimeMillis(), 0);
+            this.responseSend(cresponse, clientCallback, EstTime.currentTimeMillis(), 0
+            		,null // Marco
+            		);
             return (true);
         }
         
@@ -2484,7 +2564,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                 this.responseSend(cresponse,
                                   ts.getClientCallback(),
                                   ts.getInitiateTime(),
-                                  ts.getRestartCounter());
+                                  ts.getRestartCounter()
+                                  ,ts.getProcedure() // Marco
+                                  );
             }
         } else if (debug.val) { 
             LOG.debug(String.format("%s - Holding the ClientResponse until logged to disk", ts));
@@ -2504,6 +2586,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
             LOG.debug(String.format("Adding ClientResponse for %s from partition %d " +
                       "to processing queue [status=%s, size=%d]",
                       ts, ts.getBasePartition(), cresponse.getStatus(), this.postProcessorQueue.size()));
+        this.rtStats.addResponseTime(ts.getProcedure(), cresponse.getClusterRoundtrip()); // Marco
         this.postProcessorQueue.add(new Object[]{
                                             cresponse,
                                             ts.getClientCallback(),
@@ -2522,7 +2605,13 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     public void responseQueue(ClientResponseImpl cresponse,
                               RpcCallback<ClientResponseImpl> clientCallback,
                               long initiateTime,
-                              int restartCounter) {
+                              int restartCounter
+                              , Procedure catalog_proc
+                              ) 
+    { // Marco
+        
+    	this.rtStats.addResponseTime(catalog_proc, cresponse.getClusterRoundtrip()); // Marco
+        
         this.postProcessorQueue.add(new Object[]{
                                             cresponse,
                                             clientCallback,
@@ -2551,7 +2640,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                                             status,
                                             HStoreConstants.EMPTY_RESULT,
                                             message);
-        this.responseSend(cresponse, clientCallback, initiateTime, 0);
+        this.responseSend(cresponse, clientCallback, initiateTime, 0
+        		,null // Marco
+        		);
     }
     
     /**
@@ -2565,7 +2656,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
     public void responseSend(ClientResponseImpl cresponse,
                              RpcCallback<ClientResponseImpl> clientCallback,
                              long initiateTime,
-                             int restartCounter) {
+                             int restartCounter
+                             ,Procedure catalog_proc // Marco
+                             ) {
         Status status = cresponse.getStatus();
  
         // If the txn committed/aborted, then we can send the response directly back to the
@@ -2592,6 +2685,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
             EstTimeUpdater.update(now);
         }
         cresponse.setClusterRoundtrip((int)(now - initiateTime));
+        if (catalog_proc != null) this.rtStats.addResponseTime(catalog_proc, now - initiateTime); // Marco
         cresponse.setRestartCounter(restartCounter);
         try {
             clientCallback.run(cresponse);
@@ -2603,7 +2697,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                 LOG.warn("Failed to send back ClientResponse for txn #" + cresponse.getTransactionId(), ex);
         }
     }
-    
+
     // ----------------------------------------------------------------------------
     // DELETE TRANSACTION METHODS
     // ----------------------------------------------------------------------------
@@ -2653,6 +2747,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                      ts, ts.getClass().getSimpleName(), ts.hashCode()));
             this.deletable_last.add(String.format("%s :: %s", ts, status));
         }
+        
         return;
     }
 
@@ -2720,6 +2815,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                     if (hstore_conf.site.txn_counters || hstore_conf.site.status_kill_if_hung) {
                         TransactionCounter.COMPLETED.inc(catalog_proc);
                     }
+                    this.partStats.addAccesses(ts.getTouchedPartitions()); // Marco
                     break;
                 case ABORT_USER:
                     if (t_estimator != null) {

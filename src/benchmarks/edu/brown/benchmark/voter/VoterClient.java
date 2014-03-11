@@ -41,14 +41,30 @@ import org.voltdb.client.ClientResponse;
 import org.voltdb.client.ProcedureCallback;
 
 import weka.classifiers.meta.Vote;
-
 import edu.brown.api.BenchmarkComponent;
+import edu.brown.benchmark.ycsb.distributions.Utils;
+import edu.brown.benchmark.ycsb.distributions.IntegerGenerator;
+import edu.brown.benchmark.ycsb.distributions.UniformIntegerGenerator;
+import edu.brown.benchmark.ycsb.distributions.VaryingZipfianGenerator;
 import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 
 public class VoterClient extends BenchmarkComponent {
     private static final Logger LOG = Logger.getLogger(VoterClient.class);
     private static final LoggerBoolean debug = new LoggerBoolean();
+    
+    // parameters for zipfian skew
+    private double skewFactor = VaryingZipfianGenerator.ZIPFIAN_CONSTANT;
+    private boolean scrambled = false;
+    private boolean mirrored = false;
+    private long interval = VaryingZipfianGenerator.DEFAULT_INTERVAL;
+    private long shift = VaryingZipfianGenerator.DEFAULT_SHIFT;
+    private boolean zipfian = false;
+    private int numHotSpots = 0;
+    private double percentAccessHotSpots = 0.0;
+    private boolean randomShift = false;
+    private final IntegerGenerator areaCodeGenerator;
+    private final IntegerGenerator phoneNumberGenerator;
 
     // Phone number generator
     PhoneCallGenerator switchboard;
@@ -73,6 +89,79 @@ public class VoterClient extends BenchmarkComponent {
         super(args);
         int numContestants = VoterUtil.getScaledNumContestants(this.getScaleFactor());
         this.switchboard = new PhoneCallGenerator(this.getClientId(), numContestants);
+        
+        for (String key : m_extraParams.keySet()) {
+            String value = m_extraParams.get(key);
+
+            // Zipfian Skew Factor
+            if (key.equalsIgnoreCase("skew_factor")) {
+                this.skewFactor = Double.valueOf(value);
+                this.zipfian = true;
+            }
+            // Whether or not to scramble the zipfian distribution
+            else if (key.equalsIgnoreCase("scrambled")) {
+                this.scrambled = Boolean.valueOf(value);
+            }
+            // Whether or not to mirror the zipfian distribution
+            else if (key.equalsIgnoreCase("mirrored")) {
+                this.mirrored = Boolean.valueOf(value);
+            }
+            // Interval for changing skew distribution
+            else if (key.equalsIgnoreCase("interval")) {
+                this.interval = Long.valueOf(value);
+            }
+            // Whether to use a random shift
+            else if (key.equalsIgnoreCase("random_shift")) {
+                this.randomShift = Boolean.valueOf(value);
+            }
+            // How much to shift the distribution each time
+            else if (key.equalsIgnoreCase("shift")) {
+                this.shift = Long.valueOf(value);
+            }
+            // Number of hot spots
+            else if (key.equalsIgnoreCase("num_hot_spots")) {
+                this.numHotSpots = Integer.valueOf(value);
+            }
+            // Percent of access going to the hot spots
+            else if (key.equalsIgnoreCase("percent_accesses_to_hot_spots")) {
+                this.percentAccessHotSpots = Double.valueOf(value);
+            }
+            else{
+                if(debug.val) LOG.debug("Unknown prop : "  + key);
+            }
+        } // FOR
+        
+        if(zipfian) {
+            if(debug.val) LOG.debug("Using a default zipfian key distribution");
+            //ints are used for keyGens and longs are used for record counts.            
+            //TODO check on other zipf params
+            VaryingZipfianGenerator areaCodeGen = new VaryingZipfianGenerator(PhoneCallGenerator.AREA_CODES.length, skewFactor);
+            areaCodeGen.setInterval(interval);
+            areaCodeGen.setMirrored(mirrored);
+            areaCodeGen.setNumHotSpots(numHotSpots);
+            areaCodeGen.setPercentAccessHotSpots(percentAccessHotSpots);
+            areaCodeGen.setRandomShift(randomShift);
+            areaCodeGen.setScrambled(scrambled);
+            areaCodeGen.setShift(shift);
+            this.areaCodeGenerator = areaCodeGen;
+            
+            VaryingZipfianGenerator phoneNumberGen = new VaryingZipfianGenerator(10000000, skewFactor);
+            phoneNumberGen.setInterval(interval);
+            phoneNumberGen.setMirrored(mirrored);
+            phoneNumberGen.setNumHotSpots(numHotSpots);
+            phoneNumberGen.setPercentAccessHotSpots(percentAccessHotSpots);
+            phoneNumberGen.setRandomShift(randomShift);
+            phoneNumberGen.setScrambled(scrambled);
+            phoneNumberGen.setShift(shift);
+            this.phoneNumberGenerator = phoneNumberGen;
+        }
+        else {
+            if(debug.val) LOG.debug("Using a uniform key distribution");
+            //Ints are used for keyGens and longs are used for record counts.
+            this.areaCodeGenerator = new UniformIntegerGenerator(Utils.random(), 0, PhoneCallGenerator.AREA_CODES.length-1);
+            this.phoneNumberGenerator = new UniformIntegerGenerator(Utils.random(), 0, 10000000-1);
+        }
+        
     }
 
     @Override
@@ -96,7 +185,8 @@ public class VoterClient extends BenchmarkComponent {
     @Override
     protected boolean runOnce() throws IOException {
         // Get the next phone call
-        PhoneCallGenerator.PhoneCall call = switchboard.receive();
+        //PhoneCallGenerator.PhoneCall call = switchboard.receive();
+    	PhoneCallGenerator.PhoneCall call = switchboard.receive(areaCodeGenerator, phoneNumberGenerator, numHotSpots);
 
         Client client = this.getClientHandle();
         boolean response = client.callProcedure(callback,

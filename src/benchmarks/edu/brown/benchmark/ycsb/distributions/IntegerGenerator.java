@@ -43,6 +43,17 @@ public abstract class IntegerGenerator extends Generator
 	public abstract int nextInt();
 	
 	/**
+	 * Return the next value as an int. When overriding this method, be sure to call setLastString() properly, or the lastString() call won't work.
+	 * 
+	 * This variation is needed for VaryingZipfianGenerator
+	 */
+	public int nextInt(double r1, double r2, int r3) 
+	{
+		// as a default, ignore the random numbers passed in
+		return nextInt();
+	}
+	
+	/**
 	 * Generate the next string in the distribution.
 	 */
 	public String nextString()

@@ -59,6 +59,16 @@ public class SysProcFragmentId {
     public static final int PF_plannerProfilerAggregator = 37;
     public static final int PF_anticacheProfilerData = 38;
     public static final int PF_anticacheProfilerAggregator = 39;
+    
+    public static final int PF_txnRTData = 40; // Marco
+    public static final int PF_txnRTAggregator = 41; // Marco
+    public static final int PF_cpuUsageData = 42; // Essam
+    public static final int PF_cpuUsageAggregator = 43; // Essam
+    
+    public static final int PF_tupleData = 44; // Essam
+    public static final int PF_tupleAggregator = 45; // Essam
+    public static final int PF_partRatesData = 46; // Marco
+    public static final int PF_partRatesAggregator = 47; // Marco
 
     // @Shutdown
     public static final int PF_shutdownCommand = 50;
@@ -177,4 +187,20 @@ public class SysProcFragmentId {
     // @SetConfiguration
     public static final int PF_setConfDistribute = 300;
     public static final int PF_setConfAggregate = 301;
+    
+    // @ChangePartitionPlan 
+    public static final int PF_changePartitionPlanDistribute = 400;
+    public static final int PF_changePartitionPlanAggregate = 401;
+    
+    // @Reconfiguration 
+    public static final int PF_reconfigurationDistribute = 402;
+    public static final int PF_reconfigurationAggregate = 403;
+    
+    // @StopCopy
+    public static final int PF_stopCopyDistribute = 404;
+    public static final int PF_stopCopyAggregate = 405;
+
+    // @ReconfigurationRemote 
+    public static final int PF_reconfigurationRemoteDistribute = 406;
+    public static final int PF_reconfigurationRemoteAggregate = 407;
 }

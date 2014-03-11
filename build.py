@@ -289,6 +289,11 @@ CTX.INPUT['storage'] = """
  TupleStreamWrapper.cpp
  RecoveryContext.cpp
  ReadWriteTracker.cpp
+ TupleTracker.cpp
+"""
+
+CTX.INPUT['migration'] = """
+ MigrationManager.cpp
 """
 
 CTX.INPUT['stats'] = """

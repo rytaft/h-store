@@ -166,6 +166,49 @@ TupleSchema* TupleSchema::createEvictedTupleSchema() {
     return (blockids_schema);
 }
 
+std::string* TupleSchema::createMigrateColumnNames() {
+	std::string *migrateColumnNames = new std::string[4];
+			migrateColumnNames[0] = std::string("TABLE_NAME");
+			migrateColumnNames[1] = std::string("KEY_TYPE");
+			migrateColumnNames[2] = std::string("MIN_INCLUSIVE");
+			migrateColumnNames[3] = std::string("MAX_EXCLUSIVE");
+	return migrateColumnNames;
+}
+
+TupleSchema* TupleSchema::createMigrateTupleSchema() {
+    std::vector<ValueType> columnTypes(4);
+    std::vector<int32_t> columnSizes(4);
+    std::vector<bool> allowNull(4);
+
+    // create a schema containing a single column for the block_id
+
+    //TABLE NAME
+    columnTypes[0] = VALUE_TYPE_INTEGER;
+    //columnSizes[0] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_VARCHAR));
+    columnSizes[0] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER));
+    allowNull[0] = false;
+
+    //KEY TYPE
+    columnTypes[1] = VALUE_TYPE_INTEGER;
+    columnSizes[1] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER));
+    allowNull[1] = false;
+
+    //MIN INCLUSIVE
+    columnTypes[2] = VALUE_TYPE_BIGINT;
+    columnSizes[2] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_BIGINT));
+    allowNull[2] = false;
+
+    //MAX EXCLUSIVE
+    columnTypes[3] = VALUE_TYPE_BIGINT;
+    columnSizes[3] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_BIGINT));
+    allowNull[3] = false;
+
+    TupleSchema *blockids_schema = TupleSchema::createTupleSchema(columnTypes, columnSizes, allowNull, false);
+
+    return (blockids_schema);
+}
+
+
 TupleSchema* TupleSchema::createTrackerTupleSchema() {
     std::vector<ValueType> columnTypes(2);
     std::vector<int32_t> columnSizes(2);

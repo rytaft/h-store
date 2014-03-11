@@ -248,4 +248,13 @@ public class TestPartitionExecutor extends BaseTestCase {
         
     }
     
+    public void testGetNextRequestToken() throws Exception{
+        executor.resetRequestCounter();
+        int counter = executor.getNextRequestToken();
+        int expectedCounter = 1<<24;
+        assertEquals(counter, expectedCounter);
+        counter = executor.getNextRequestToken();
+        assertEquals(counter, expectedCounter+1);
+    }
+    
 }

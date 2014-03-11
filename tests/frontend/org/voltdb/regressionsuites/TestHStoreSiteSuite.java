@@ -60,8 +60,8 @@ public class TestHStoreSiteSuite extends RegressionSuite {
         
         cr = client.callProcedure(procName, "INSERT INTO NEW_ORDER VALUES (1, 1, 1);");
         VoltTable modCount = cr.getResults()[0];
-        assertTrue(modCount.getRowCount() == 1);
-        assertTrue(modCount.asScalarLong() == 1);
+        assertEquals(1, modCount.getRowCount());
+        assertEquals(1, modCount.asScalarLong());
 
         cr = client.callProcedure(procName, "SELECT * FROM NEW_ORDER;");
         VoltTable result = cr.getResults()[0];

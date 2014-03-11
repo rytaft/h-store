@@ -43,6 +43,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+
 #include <iostream>
 #include <stdio.h>
 #include <fstream>
@@ -100,6 +101,7 @@
 #include "stats/StatsAgent.h"
 #include "voltdbipc.h"
 #include "common/FailureInjection.h"
+#include "migration/MigrationManager.h"
 
 using namespace std;
 namespace voltdb {
@@ -117,7 +119,8 @@ VoltDBEngine::VoltDBEngine(Topend *topend, LogProxy *logProxy)
       m_numResultDependencies(0),
       m_logManager(logProxy),
       m_templateSingleLongTable(NULL),
-      m_topend(topend)
+      m_topend(topend),
+      m_migrationManager(NULL)
 {
     m_currentUndoQuantum = new DummyUndoQuantum();
 
@@ -126,6 +129,9 @@ VoltDBEngine::VoltDBEngine(Topend *topend, LogProxy *logProxy)
 
     // require a site id, at least, to inititalize.
     m_executorContext = NULL;
+
+    //Essam Tuple Tracker Manager have a tracker per partition
+    //tupletrackerMgr = NULL;
 }
 
 bool VoltDBEngine::initialize(
@@ -165,16 +171,37 @@ bool VoltDBEngine::initialize(
                                             0, /* epoch not yet known */
                                             hostname,
                                             hostId);
+
+
+
+
+    //Essam enable tuple tracker per partition
+    //*/
+    m_executorContext->enableTupleTracking(partitionId,this);
+    //*/
     return true;
 }
 
 VoltDBEngine::~VoltDBEngine() {
+
+
     // WARNING WARNING WARNING
     // The sequence below in which objects are cleaned up/deleted is
     // fragile.  Reordering or adding additional destruction below
     // greatly increases the risk of accidentally freeing the same
     // object multiple times.  Change at your own risk.
     // --izzy 8/19/2009
+
+
+
+	//Essam Print Tuple Tracker Per Partition
+	/*/
+	 m_executorContext->getTupleTrackerManager()->print();
+	 ofstream myfile1;
+	 myfile1.open ("_VoltDBEngine.del");
+	 myfile1 << " end of _VoltDBEngine \n";
+	 myfile1.close();
+    //*/
 
     // Get rid of any dummy undo quantum first so m_undoLog.clear()
     // doesn't wipe this out before we do it.
@@ -215,6 +242,13 @@ VoltDBEngine::~VoltDBEngine() {
         tidPair.second->decrementRefcount();
     }
     m_exportingTables.clear();
+    
+    if (m_migrationManager != NULL) {
+        delete m_migrationManager;
+    }
+
+
+
 
     delete m_topend;
     delete m_executorContext;
@@ -568,6 +602,9 @@ bool VoltDBEngine::loadCatalog(const string &catalogPayload) {
     // load the plan fragments from the catalog
     if (!rebuildPlanFragmentCollections())
         return false;
+    
+    // Initialize MigrationManager
+    m_migrationManager = new MigrationManager(m_executorContext, m_database);
 
     VOLT_DEBUG("Loaded catalog...");
     return true;
@@ -694,7 +731,6 @@ VoltDBEngine::loadTable(bool allowExport, int32_t tableId,
     m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
                                              txnId,
                                              lastCommittedTxnId);
-
     Table* ret = getTable(tableId);
     if (ret == NULL) {
         VOLT_ERROR("Table ID %d doesn't exist. Could not load data",
@@ -732,6 +768,9 @@ bool VoltDBEngine::rebuildTableCollections() {
     // need to re-map all the table ids.
     getStatsManager().unregisterStatsSource(STATISTICS_SELECTOR_TYPE_TABLE);
 
+    // Essam need to re-map all the tuples ids.
+        getStatsManager().unregisterStatsSource(STATISTICS_SELECTOR_TYPE_TUPLE);
+
     //map<string, catalog::Table*>::const_iterator it = m_database->tables().begin();
     map<string, CatalogDelegate*>::iterator cdIt = m_catalogDelegates.begin();
 
@@ -747,6 +786,11 @@ bool VoltDBEngine::rebuildTableCollections() {
                                                   catTable->relativeIndex(),
                                                   tcd->getTable()->getTableStats());
             
+            //Essam Tuple tracking
+            getStatsManager().registerStatsSource(STATISTICS_SELECTOR_TYPE_TUPLE,
+                                                              catTable->relativeIndex(),
+                                                              tcd->getTable()->getTableStats());
+
             // add all of the indexes to the stats source
             std::vector<TableIndex*> tindexes = tcd->getTable()->allIndexes();
             for (int i = 0; i < tindexes.size(); i++) {
@@ -1023,8 +1067,9 @@ void VoltDBEngine::printReport() {
 
 bool VoltDBEngine::isLocalSite(const NValue& value)
 {
-    int index = TheHashinator::hashinate(value, m_totalPartitions);
-    return index == m_partitionId;
+    //int index = TheHashinator::hashinate(value, m_totalPartitions);
+    //return index == m_partitionId;
+    return true;
 }
 
 /** Perform once per second, non-transactional work. */
@@ -1100,7 +1145,9 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
 
     try {
         switch (selector) {
+
         case STATISTICS_SELECTOR_TYPE_TABLE:
+        {
             for (int ii = 0; ii < numLocators; ii++) {
                 CatalogId locator = static_cast<CatalogId>(locators[ii]);
                 if (m_tables.find(locator) == m_tables.end()) {
@@ -1113,9 +1160,11 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
                 }
             }
 
+
             resultTable = m_statsManager.getStats(
                 (StatisticsSelectorType) selector,
                 locatorIds, interval, now);
+        }
             break;
         case STATISTICS_SELECTOR_TYPE_INDEX:
             for (int ii = 0; ii < numLocators; ii++) {
@@ -1134,6 +1183,36 @@ int VoltDBEngine::getStats(int selector, int locators[], int numLocators,
                 (StatisticsSelectorType) selector,
                 locatorIds, interval, now);
             break;
+
+            //Essam's code starts
+                    case STATISTICS_SELECTOR_TYPE_TUPLE:
+                    {
+                                for (int ii = 0; ii < numLocators; ii++) {
+                                    CatalogId locator = static_cast<CatalogId>(locators[ii]);
+                                    if (m_tables.find(locator) == m_tables.end()) {
+                                        char message[256];
+                                        snprintf(message, 256,  "getStats() called with selector %d, and"
+                                                " an invalid locator %d that does not correspond to"
+                                                " a table", selector, locator);
+                                        throw SerializableEEException(VOLT_EE_EXCEPTION_TYPE_EEEXCEPTION,
+                                                                      message);
+                                    }
+                                }
+
+
+                                //Essam Print Tuple Tracker Per Partition
+                                //*/
+                                 m_executorContext->getTupleTrackerManager()->print();
+                                //*/
+
+                                resultTable = m_statsManager.getStats(
+                                    (StatisticsSelectorType) selector,
+                                    locatorIds, interval, now);
+                    }
+                                break;
+                    //Essam's code ends
+
+
         default:
             char message[256];
             snprintf(message, 256, "getStats() called with an unrecognized selector"
@@ -1387,6 +1466,87 @@ size_t VoltDBEngine::tableHashCode(int32_t tableId) {
 }
 
 // -------------------------------------------------
+// RECONFIGURATION FUNCTIONS
+// -------------------------------------------------
+bool VoltDBEngine::updateExtractRequest(int32_t requestToken, bool confirmDelete){
+    VOLT_DEBUG("UpdateExtractRequest %d, %d",requestToken,confirmDelete);
+    if(confirmDelete == true)
+        return m_migrationManager->confirmExtractDelete(requestToken);
+    else
+        return m_migrationManager->undoExtractDelete(requestToken);            
+}
+
+int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken, int32_t extractTupleLimit){
+    VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
+    m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
+                                            txnId,
+                                            lastCommittedTxnId);
+    Table* ret = getTable(tableId);
+    if (ret == NULL) {
+        VOLT_ERROR("Table ID %d doesn't exist. Could not load data", (int) tableId);
+        return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
+    }
+
+    //TODO move some computation to external manager?
+    PersistentTable *table = dynamic_cast<PersistentTable*>(ret);
+    if (table == NULL) {
+        VOLT_ERROR("Table ID %d(name '%s') is not a persistent table."
+                " Could not load data",
+                (int) tableId, ret->name().c_str());
+        return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
+    }
+
+    //TODO ae andy how to get databaseId?
+    std::string tableName = "EXTRACT_TABLE";
+    CatalogId databaseId = 1;
+
+    std::string* colNames = TupleSchema::createMigrateColumnNames();
+    TupleSchema *extractMigrateSchema = TupleSchema::createMigrateTupleSchema();
+
+    Table* tempExtractTable = reinterpret_cast<Table*>(TableFactory::getTempTable(
+            databaseId,
+            tableName,
+            extractMigrateSchema,
+            &colNames[0],
+            NULL));
+
+    VOLT_DEBUG("Extract table: %s", tempExtractTable->name().c_str());
+    try {
+        tempExtractTable->loadTuplesFrom(false, serialize_io);
+    } catch (SerializableEEException e) {
+        throwFatalException("%s", e.message().c_str());
+    }
+    TableIterator inputIterator = tempExtractTable->tableIterator();
+    TableTuple extractTuple(tempExtractTable->schema());
+    if (inputIterator.hasNext()) {
+        //TODO ae more than 1 range -> into a single result?
+        VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
+	bool moreData = false;
+        //Table* outputTable = m_migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3),requestToken, extractTupleLimit, moreData);
+        Table* outputTable = m_migrationManager->extractRanges(table,inputIterator,extractTuple,requestToken, extractTupleLimit, moreData);
+        size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));
+        if (outputTable != NULL) {
+            outputTable->serializeTo(m_resultOutput);
+            m_resultOutput.writeIntAt(lengthPosition,static_cast<int32_t>(m_resultOutput.size()- sizeof(int32_t)));        
+            //TODO delete keySchema,partitionIndex
+            //delete colNames;
+            
+            TupleSchema::freeTupleSchema(extractMigrateSchema);
+	    if (moreData == true)
+	      return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS_MORE_DATA;
+	    else
+	      return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
+        } 
+        else{
+            return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
+        }
+    }
+    
+    return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
+}
+
+
+// -------------------------------------------------
 // READ/WRITE SET TRACKING FUNCTIONS
 // -------------------------------------------------
 
@@ -1399,18 +1559,23 @@ void VoltDBEngine::trackingEnable(int64_t txnId) {
     }
     VOLT_INFO("Creating ReadWriteTracker for txn #%ld at Partition %d", txnId, m_partitionId);
     ReadWriteTrackerManager *trackerMgr = m_executorContext->getTrackerManager();
+    //trackerMgr->enableTracking(txnId, m_partitionId);//Essam Tuple Tracking
     trackerMgr->enableTracking(txnId);
 }
 
 void VoltDBEngine::trackingFinish(int64_t txnId) {
     if (m_executorContext->isTrackingEnabled() == false) {
         VOLT_WARN("Tracking is not enable for txn #%ld at Partition %d", txnId, m_partitionId);
-        return;
+      return;
     }
     ReadWriteTrackerManager *trackerMgr = m_executorContext->getTrackerManager();
-    VOLT_INFO("Deleting ReadWriteTracker for txn #%ld at Partition %d",
-              txnId, m_partitionId);
+    VOLT_INFO("Deleting ReadWriteTracker for txn #%ld at Partition %d",txnId, m_partitionId);
+
+    //Essam Tuple Tracker
+    m_executorContext->getTupleTrackerManager()->insertReadWriteTracker(trackerMgr->getTracker(txnId));
+
     trackerMgr->removeTracker(txnId);
+
     return;
 }
 

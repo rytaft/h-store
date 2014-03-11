@@ -14,6 +14,7 @@
 <arg value="global.hasher_plan=${global.hasher_plan}" />
 <arg value="global.log_refresh=${global.log_refresh}" />
 <arg value="global.nanosecond_latencies=${global.nanosecond_latencies}" />
+<arg value="global.reconfiguration_enable=${global.reconfiguration_enable}" />
 
 <!-- CLIENT -->
 <arg value="client.log_dir=${client.log_dir}" />
@@ -154,6 +155,17 @@
 <arg value="site.anticache_max_evicted_blocks=${site.anticache_max_evicted_blocks}" />
 <arg value="site.anticache_blocks_per_eviction=${site.anticache_blocks_per_eviction}" />
 <arg value="site.anticache_eviction_distribution=${site.anticache_eviction_distribution}" />
+<arg value="site.reconfig_profiling=${site.reconfig_profiling}" />
+<arg value="site.reconfig_detailed_profiling=${site.reconfig_detailed_profiling}" />
+<arg value="site.reconfig_async_pull=${site.reconfig_async_pull}" />
+<arg value="site.reconfig_async_nonchunk_pull=${site.reconfig_async_nonchunk_pull}" />
+<arg value="site.reconfig_async_nonchunk_push=${site.reconfig_async_nonchunk_push}" />
+<arg value="site.reconfig_async=${site.reconfig_async}" />
+<arg value="site.reconfig_live=${site.reconfig_live}" />
+<arg value="site.reconfig_initial_plan=${site.reconfig_initial_plan}" />
+<arg value="site.reconfig_replication_delay=${site.reconfig_replication_delay}" />
+<arg value="site.reconfig_chunk_size_kb=${site.reconfig_chunk_size_kb}" />
+<arg value="site.reconfig_async_chunk_size_kb=${site.reconfig_async_chunk_size_kb}" />
 <arg value="site.storage_mmap=${site.storage_mmap}" />
 <arg value="site.storage_mmap_dir=${site.storage_mmap_dir}" />
 <arg value="site.mr_map_blocking=${site.mr_map_blocking}" />

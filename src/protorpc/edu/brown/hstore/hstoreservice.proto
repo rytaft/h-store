@@ -482,6 +482,289 @@ message TimeSyncResponse {
     required int64 t1_s = 4;
 }
 
+//------------------------------------
+// RECONFIGURATION MESSAGE
+//------------------------------------
+
+message ReconfigurationRequest {
+    // The id of the HStoreSite sending this reconfiguration request
+    required int32 sender_site = 1;
+    // The time when the local HStoreSite sent this reconfiguration request
+    required int64 t0_s = 2; 
+}
+
+message ReconfigurationResponse {
+    // The id of the HStoreSite responding to this reconfiguration request
+    required int32 sender_site = 1;
+    // The time when the local HStoreSite sent this request
+    required int64 t0_s = 2;
+}
+
+//------------------------------------
+// DATA TRANSFER MESSAGE
+//------------------------------------
+
+message DataTransferRequest {
+    // The id of the HStoreSite sending this data transfer message
+    required int32 sender_site = 1;
+    // The time when the local HStoreSite sent this request
+    required int64 t0_s = 2;
+    // This is the old partition this data was associated with 
+    required int32 old_partition = 3; 
+    // This is the new partition this data is associated with 
+    required int32 new_partition = 4;   
+     // This is the table name
+    required string volt_table_name = 5; 
+    // This is the minimum inclusive range for the pull
+    // Set to long for now, generalize later  
+    repeated int64 min_inclusive = 6 [packed=true];
+    // This is the maximum exclusive range for the pull 
+    repeated int64 max_exclusive = 7 [packed=true];
+    // This is the data (in form of serialized volt table)
+    required bytes volt_table_data = 8; 
+}
+
+message DataTransferResponse {
+    // The id of the HStoreSite responding to data transfer message
+    required int32 sender_site = 1;
+    // The time when the remote HStoreSite sent this request
+    required int64 t0_s = 2;
+    // This is the old partition this data was associated with 
+    required int32 old_partition = 3; 
+    // This is the new partition this data is associated with 
+    required int32 new_partition = 4; 
+    // This is the table name
+    required string volt_table_name = 5; 
+    // This is the minimum inclusive range for the pull
+    // Set to long for now, generalize later  
+    repeated int64 min_inclusive = 6  [packed=true];
+    // This is the maximum exclusive range for the pull 
+    repeated int64 max_exclusive = 7 [packed=true];
+}
+
+//------------------------------------
+// LIVE PULL MESSAGE
+//------------------------------------
+
+message LivePullRequest {
+    // The unique id of the requested pull
+    required int32 live_pull_identifier = 1;
+    // The id of the HStoreSite sending this live pull message
+    required int32 sender_site = 2;
+    // The time when the local HStoreSite sent this request
+    required int64 t0_s = 3;
+    // The transaction id of the Request sending this live pull message
+    required int64 transactionID = 4;
+    // This is the old partition pull is associated with 
+    required int32 old_partition = 5; 
+    // This is the new partition for the pull request  
+    required int32 new_partition = 6; 
+    // This is the table name to be pulled
+    required string volt_table_name = 7; 
+    // This is the minimum inclusive range for the pull
+    // Set to long for now, generalize later  
+    repeated int64 min_inclusive = 8 [packed=true];
+    // This is the maximum exclusive range for the pull 
+    repeated int64 max_exclusive = 9 [packed=true];
+}
+
+message LivePullResponse {
+     // The unique id associated with the pull
+    required int32 live_pull_identifier = 1;
+     // The chunk id of the message
+    optional int32 chunk_id = 12;
+    // The id of the HStoreSite responding to live pull message
+    required int32 sender_site = 2;
+    // The time when the remote HStoreSite sent this request
+    required int64 t0_s = 3;
+    // The transaction id of the Request 
+    required int64 transactionID = 4;
+      // This is the old partition pull is associated with 
+    required int32 old_partition = 5; 
+    // This is the new partition for the pull request  
+    required int32 new_partition = 6; 
+    // This is the table name to be pulled
+    required string volt_table_name = 7; 
+    // This is the minimum inclusive range for the pull
+    // Set to long for now, generalize later
+    repeated int64 min_inclusive = 8 [packed=true];
+    // This is the maximum exclusive range for the pull 
+    repeated int64 max_exclusive = 9 [packed=true];
+    // This is the data returned (in form of serialized volt table)
+    required bytes volt_table_data = 10;
+    //This  indicates whether more data is still left ot be pulled
+    // It will be useful if live pull is chunked into pieces
+    optional bool more_data_needed = 11;
+}
+
+//----------------------------------------------------
+//ASYNC PULL message
+//---------------------------------------------------
+
+message AsyncPullRequest {
+    // The unique id of the async requested pull
+    required int32 async_pull_identifier = 1;
+    // The id of the HStoreSite sending this live pull message
+    required int32 sender_site = 2;
+    // The time when the local HStoreSite sent this request
+    required int64 t0_s = 3;
+    // The transaction id of the Request sending this live pull message
+    required int64 transactionID = 4;
+    // This is the old partition pull is associated with 
+    required int32 old_partition = 5; 
+    // This is the new partition for the pull request  
+    required int32 new_partition = 6; 
+    // This is the table name to be pulled
+    required string volt_table_name = 7; 
+    // This is the minimum inclusive range for the pull
+    // Set to long for now, generalize later  
+    repeated int64 min_inclusive = 8 [packed=true];
+    // This is the maximum exclusive range for the pull 
+    repeated int64 max_exclusive = 9 [packed=true];
+}
+
+message AsyncPullResponse {
+     // The unique id associated with the pull
+    required int32 async_pull_identifier = 1;
+    // The chunk id of the message
+    required int32 chunk_id = 12;
+    // The id of the HStoreSite responding to live pull message
+    required int32 sender_site = 2;
+    // The time when the remote HStoreSite sent this request
+    required int64 t0_s = 3;
+    // The transaction id of the Request 
+    required int64 transactionID = 4;
+      // This is the old partition pull is associated with 
+    required int32 old_partition = 5; 
+    // This is the new partition for the pull request  
+    required int32 new_partition = 6; 
+    // This is the table name to be pulled
+    required string volt_table_name = 7; 
+    // This is the minimum inclusive range for the pull
+    // Set to long for now, generalize later
+    repeated int64 min_inclusive = 8 [packed=true];
+    // This is the maximum exclusive range for the pull 
+    repeated int64 max_exclusive = 9 [packed=true];
+    // This is the data returned (in form of serialized volt table)
+    required bytes volt_table_data = 10;
+    //This  indicates whether more data is still left to be pulled
+    // It will be useful as async pull is chunked into pieces
+    required bool more_data_needed = 11;
+}
+//---------------------------
+//CHUNKED ASYNC PULL REPLY
+//----------------------------
+
+message MultiPullReplyRequest {
+    // The unique id of the requested pull
+    required int32 pull_identifier = 1;
+    // This indicated whether this is a live pull reply or a async reply
+    required bool is_async = 2;
+    // The chunk id of the message
+    required int32 chunk_id = 3;
+    // The id of the HStoreSite sending this pull message
+    required int32 sender_site = 4;
+    // The time when the local HStoreSite sent this request
+    required int64 t0_s = 5;
+    // The transaction id of the Request sending this pull message
+    required int64 transactionID = 6;
+    // This is the old partition pull is associated with 
+    required int32 old_partition = 7; 
+    // This is the new partition for the pull request  
+    required int32 new_partition = 8; 
+    // This is the table name to be pulled
+    required string volt_table_name = 9; 
+    // This is the minimum inclusive range for the pull
+    // Set to long for now, generalize later  
+    repeated int64 min_inclusive = 10 [packed=true];
+    // This is the maximum exclusive range for the pull 
+    repeated int64 max_exclusive = 11 [packed=true];
+    // This is the data returned (in form of serialized volt table)
+    required bytes volt_table_data = 12;
+    //This  indicates whether more data is still left to be pulled
+    // It will be useful as async pull is chunked into pieces
+    required bool more_data_needed = 13;
+}
+
+message MultiPullReplyResponse {
+     // The unique id associated with the pull
+    required int32 pull_identifier = 1;
+    // This indicated whether this is a live pull reply or a async reply
+    required bool is_async = 2;
+    // The chunk id of the message
+    required int32 chunk_id = 3;
+    // The id of the HStoreSite responding to pull message
+    required int32 sender_site = 4;
+    // The time when the remote HStoreSite sent this request
+    required int64 t0_s = 5;
+    // The transaction id of the Request 
+    required int64 transactionID = 6;
+     // This is the old partition pull is associated with pull request
+    required int32 old_partition = 7; 
+    // This is the new partition for the pull request  
+    required int32 new_partition = 8; 
+    // This is the table name to be pulled
+    required string volt_table_name = 9; 
+    // This is the minimum inclusive range for the pull
+    // Set to long for now, generalize later
+    repeated int64 min_inclusive = 10 [packed=true];
+    // This is the maximum exclusive range for the pull 
+    repeated int64 max_exclusive = 11 [packed=true];
+}
+
+//------------------------------------
+// RECONFIGURATION CONTROL MESSAGE
+//------------------------------------
+enum ReconfigurationControlType{
+  // This is for the acknowledgment of the callback of the pull so
+  // that the source of the tuple can delete the tuple, it saves it 
+  // in temp buffer upto that point
+  PULL_RECEIVED = 0;
+  // This is the message to signal the end of reconfiguration send by each site 
+  // to the leader
+  RECONFIGURATION_DONE = 1;
+  //A message to acknowledge that reconfiguration has been finished from the leader 
+  // so the nodes have the reconfiguration finished
+  RECONFIGURATION_DONE_RECEIVED = 2;
+  // This is for the acknowledgment of the callback of the pull so
+  // that the source of the tuple can delete the chunk, it saves it 
+  // in temp buffer upto that point
+  CHUNK_RECEIVED = 3;
+  // This is sent from the leader to move to the next reconfiguration plan
+  // if they were split
+  NEXT_RECONFIGURATION_PLAN = 4;
+}
+
+message ReconfigurationControlRequest {
+    // The unique id of the control message
+    required int32 message_identifier = 1;
+    // The id of the HStoreSite sending this control message
+    required int32 sender_site = 2;
+    // The id of the HStoreSite receiving this control message
+    required int32 receiver_site = 3;
+    // This is the old partition control is associated with 
+    required int32 src_partition = 4; 
+    // This is the new partition for the reconfiguration control msg
+    required int32 dest_partition = 5; 
+    // This is type of control message
+    required ReconfigurationControlType reconfigControlType = 6;
+}
+
+message ReconfigurationControlResponse {
+   // The unique id of the control message
+    required int32 message_identifier = 1;
+    // The id of the HStoreSite sending this control message
+    required int32 sender_site = 2;
+    // The id of the HStoreSite receiving this control message
+    required int32 receiver_site = 3;
+    // This is the old partition control is associated with 
+    required int32 src_partition = 4; 
+    // This is the new partition for the reconfiguration control msg
+    required int32 dest_partition = 5; 
+    // This is type of control message
+    required ReconfigurationControlType reconfigControlType = 6;
+}
+
 
 // -----------------------------------
 // SERVICE
@@ -503,4 +786,10 @@ service HStoreService {
     rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
     rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
     rpc TimeSync(TimeSyncRequest) returns (TimeSyncResponse);
+    rpc Reconfiguration(ReconfigurationRequest) returns (ReconfigurationResponse);
+    rpc DataTransfer(DataTransferRequest) returns (DataTransferResponse);
+    rpc LivePull(LivePullRequest) returns (LivePullResponse);
+    rpc AsyncPull(AsyncPullRequest) returns (AsyncPullResponse);
+    rpc ReconfigurationControlMsg(ReconfigurationControlRequest) returns (ReconfigurationControlResponse);
+    rpc MultiPullReply(MultiPullReplyRequest) returns (MultiPullReplyResponse);
 }

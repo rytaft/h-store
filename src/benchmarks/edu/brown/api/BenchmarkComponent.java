@@ -53,6 +53,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.net.UnknownHostException;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -60,6 +61,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Semaphore;
@@ -67,6 +69,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.collections15.map.ListOrderedMap;
 import org.apache.log4j.Logger;
+import org.jfree.util.Log;
 import org.voltdb.CatalogContext;
 import org.voltdb.ClientResponseImpl;
 import org.voltdb.VoltSystemProcedure;
@@ -246,7 +249,9 @@ public abstract class BenchmarkComponent {
      * will be controlled by the derived class. Rate is in transactions per
      * second
      */
-    final int m_txnRate;
+//    final int m_txnRate;
+    volatile int m_txnRate; // Marco
+    Scanner m_incrementsTxnRate; // Marco
     
     private final boolean m_blocking;
 
@@ -254,7 +259,8 @@ public abstract class BenchmarkComponent {
      * Number of transactions to generate for every millisecond of time that
      * passes
      */
-    final double m_txnsPerMillisecond;
+//    final double m_txnsPerMillisecond;
+    double m_txnsPerMillisecond; // Marco
 
     /**
      * Additional parameters (benchmark specific)
@@ -436,6 +442,18 @@ public abstract class BenchmarkComponent {
         boolean tableStats = m_hstoreConf.client.tablestats;
         String tableStatsDir = m_hstoreConf.client.tablestats_dir;
         int tickInterval = m_hstoreConf.client.tick_interval;
+        
+        // Marco - begin
+        try {
+			m_incrementsTxnRate = new Scanner(Paths.get("txnrates.txt"));
+		} catch (IOException e) {
+			Log.info("File txnrates.txt not found. Using constant transaction rate per client");
+		}
+//        if (m_incrementsTxnRate != null){
+//        	System.out.println("Using variable request rates"); 
+//        }
+        
+        // Marco - end
         
         // default values
         String username = "user";
@@ -1261,8 +1279,27 @@ public abstract class BenchmarkComponent {
      * This will invoke the tick() method that can be implemented benchmark clients 
      * @param counter
      */
-    protected final void invokeTickCallback(int counter) {
+    protected synchronized final void invokeTickCallback(int counter) {
         if (debug.val) LOG.debug("New Tick Update: " + counter);
+    	// Marco - begin
+        if(m_incrementsTxnRate!= null){
+        	if(m_incrementsTxnRate.hasNextLine()){
+        		double increment = Double.parseDouble(m_incrementsTxnRate.nextLine());
+        		if (increment != 1){
+        			LOG.info("Thread " + Thread.currentThread() 
+        					+ " modify load by factor of " + increment 
+//        					+ " for counter " + counter
+//        					+ " txn rate " + m_txnRate 
+        					+ " txn rate per millisecond " + m_txnsPerMillisecond);
+        			m_txnRate = (int) ((double) m_txnRate * increment);
+        			m_txnsPerMillisecond = m_txnsPerMillisecond * increment;
+        		}
+        	}
+        	else{
+        		LOG.info("Warning: no increment for tick number " + counter);
+        	}
+        }
+    	// Marco - end
         this.tickCallback(counter);
         
         if (debug.val) {

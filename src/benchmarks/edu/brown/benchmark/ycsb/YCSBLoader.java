@@ -99,7 +99,7 @@ public class YCSBLoader extends Loader {
             this.init_record_count = (int)Math.round(YCSBConstants.NUM_RECORDS * 
                                                      this.getScaleFactor());
         }
-        LOG.info("Initializing database with " + init_record_count + " records.");
+        LOG.info("Initializing database with " + init_record_count + " records. Using " + this.loadthreads + " load threads");
     }
 
     @Override
@@ -126,7 +126,7 @@ public class YCSBLoader extends Loader {
                     VoltTable table = CatalogUtil.getVoltTable(catalog_tbl);
                     Object row[] = new Object[table.getColumnCount()];
 
-                    for (int i = start; i < stop; i++) {
+                    for (int i = start; i < stop && i < init_record_count; i++) {
                         row[0] = i;
 
                         // randomly generate strings for each column

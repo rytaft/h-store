@@ -1050,6 +1050,62 @@ public class PartitionEstimator {
     // ----------------------------------------------------------------------------
 
     /**
+     * Populate the list of partitioning key and offset pairs for the given PlanFragment.
+     * For each pair, the Column is the partitioning key for a particular table referenced
+     * in the PlanFragment and its corresponding Integer is the offset in the StmtParameters
+     * to use to determine what partition to execute the PlanFragment on.
+     * Note that this method does not consider how the parameter is being used in the
+     * predicate (e.g., it does not check whether the parameter is used in an equality expression
+     * or a range expression).
+     * @param catalog_frag
+     * @param offsets
+     * @return true if the offsets collection was successfully updated.
+     */
+    public boolean getPlanFragmentEstimationParameters(final PlanFragment catalog_frag, final Collection<Pair<Column, Integer>> offsets) {
+        if (debug.val)
+            LOG.debug("Retrieving estimation parameter offsets for " + catalog_frag.fullName());
+        PartitionEstimator.CacheEntry cache_entry = null;
+        try {
+            cache_entry = this.getFragmentCacheEntry(catalog_frag);
+        } catch (Exception ex) {
+            throw new RuntimeException("Failed to retrieve CacheEntry for " + catalog_frag.fullName());
+        }
+
+        // If this PlanFragment has a broadcast, then this statement
+        // can't be used for fast look-ups
+        if (cache_entry.hasBroadcast()) {
+            if (debug.val)
+                LOG.warn(String.format("%s contains an operation that must be broadcast. " +
+                		 "Cannot be used for fast look-ups",
+                		 catalog_frag.fullName()));
+            return (false);
+        }
+
+        for (Table catalog_tbl : cache_entry.getTables()) {
+            if (catalog_tbl.getMaterializer() != null) {
+                catalog_tbl = catalog_tbl.getMaterializer();
+            }
+            Column partition_col = catalog_tbl.getPartitioncolumn();
+            if (partition_col instanceof MultiColumn) {
+                if (debug.val)
+                    LOG.warn(String.format("%s references %s, which is partitioned on %s. " +
+                    		 "Cannot be used for fast look-ups",
+                             catalog_frag.fullName(), catalog_tbl.getName(), partition_col.fullName()));
+                // Do nothing?
+            }
+            else if (partition_col != null && cache_entry.predicates.containsKey(partition_col)) {
+                for (Pair<ExpressionType, CatalogType> pair : cache_entry.predicates.get(partition_col)) {
+                    if (pair.getFirst() == ExpressionType.COMPARE_EQUAL &&
+                            pair.getSecond() instanceof StmtParameter) {
+                        offsets.add(Pair.of(partition_col,((StmtParameter)pair.getSecond()).getIndex()));
+                    }
+                } // FOR
+            }
+        } // FOR
+        return (true);
+    }
+    
+    /**
      * Return the set of StmtParameter offsets that can be used to figure out
      * what partitions the Statement invocation will touch. This is used to
      * quickly figure out whether that invocation is single-partition or not. If

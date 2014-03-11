@@ -32,6 +32,10 @@ package edu.brown.benchmark.voter;
 
 import java.util.Random;
 
+import edu.brown.benchmark.ycsb.distributions.IntegerGenerator;
+import edu.brown.benchmark.ycsb.distributions.UniformIntegerGenerator;
+import edu.brown.benchmark.ycsb.distributions.Utils;
+
 public class PhoneCallGenerator {
 	
     private long nextVoteId;
@@ -61,7 +65,7 @@ public class PhoneCallGenerator {
 													",253,715,920,262,414,608,304,307").split(",");
 	
 	// convert the area code array to a list of digits
-    private static final long[] AREA_CODES = new long[AREA_CODE_STRS.length];
+    public static final long[] AREA_CODES = new long[AREA_CODE_STRS.length];
     static {
         for (int i = 0; i < AREA_CODES.length; i++)
             AREA_CODES[i] = Long.parseLong(AREA_CODE_STRS[i]);
@@ -92,17 +96,27 @@ public class PhoneCallGenerator {
         }
     }
 	
+	public PhoneCall receive() {
+		return receive(new UniformIntegerGenerator(rand, 0, AREA_CODES.length), new UniformIntegerGenerator(rand, 0, 10000000), 0);
+	}
+	
 	/**
      * Receives/generates a simulated voting call
      * @return Call details (calling number and contestant to whom the vote is given)
      */
-    public PhoneCall receive()
+    public PhoneCall receive(IntegerGenerator areaCodeGen, IntegerGenerator phoneNumberGen, int numHotSpots)
     {
         // For the purpose of a benchmark, issue random voting activity
-        // (including invalid votes to demonstrate transaction validationg in the database)
+        // (including invalid votes to demonstrate transaction validation in the database)
 		
+    	// Choose random doubles to use for area code and phone number to keep the
+    	// skew zipfian (if the generators are VaryingZipfianGenerator)
+    	double r1 = Utils.random().nextDouble();
+    	double r2 = Utils.random().nextDouble();
+    	int r3 = (numHotSpots > 0 ? Utils.random().nextInt(numHotSpots) : 0);
+    	
         // Pick a random area code for the originating phone call
-        int areaCodeIndex = rand.nextInt(AREA_CODES.length);
+        int areaCodeIndex = areaCodeGen.nextInt(r1, r2, r3);
 		
         // Pick a contestant number
         int contestantNumber = votingMap[areaCodeIndex];
@@ -117,7 +131,7 @@ public class PhoneCallGenerator {
         }
 		
         // Build the phone number
-        long phoneNumber = AREA_CODES[areaCodeIndex] * 10000000L + rand.nextInt(10000000);
+        long phoneNumber = AREA_CODES[areaCodeIndex] * 10000000L + phoneNumberGen.nextInt(r1, r2, r3);
 		
         // This needs to be globally unique
         

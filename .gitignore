@@ -63,3 +63,8 @@ src/catgen/out
 .classpath
 .project
 .settings
+.pydevproject
+
+
+## KDevelop
+*.kdev*

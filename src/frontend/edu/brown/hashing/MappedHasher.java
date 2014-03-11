@@ -14,6 +14,7 @@ import org.voltdb.TheHashinator;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Database;
 
+import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.JSONUtil;
 
 /**
@@ -34,8 +35,8 @@ public class MappedHasher extends AbstractHasher {
      * @param catalog_db
      * @param num_partitions
      */
-    public MappedHasher(CatalogContext catalogContext, int num_partitions) {
-        super(catalogContext, num_partitions);
+    public MappedHasher(CatalogContext catalogContext, int num_partitions, HStoreConf hstore_conf) {
+        super(catalogContext, num_partitions, hstore_conf);
     }
     
     @Override

@@ -54,6 +54,7 @@
 <property name='build.testobjects.dir'       location='${build.dir}/testobjects' />
 <property name='build.protorpc.dir'          location='${build.dir}/protorpc' />
 <property name='thirdpartylib.dir'              location='third_party/java/jars' />
+<property name='thirdpartydynlib.dir'              location='third_party/java/lib' />
 <property name='thirdpartysrc.dir'              location='third_party/java/src'  />
 <property name='m1catalog'                   location='${src.test.dir}/org/voltdb/catalog/catalog.txt' />
 <property name='depcache'                    value='.depcache' />
@@ -884,7 +885,7 @@ TEST CASES
     <property name="build.dir.suffix" value="" /> <!-- Default -->
     <property name='classpath' refid='project.classpath' />
     <property name='echoserver.command' value="java
-    -Djava.library.path=${build.dir}${build.dir.suffix}/nativelibs -classpath
+    -Djava.library.path=${build.dir}${build.dir.suffix}/nativelibs:${thirdpartydynlib.dir} -classpath
     ${classpath} -server -Xmx64m -XX:+AggressiveOpts -ea
     org.voltdb.messaging.EchoServer" />
     <exec dir='tests/scripts/' executable='python' failonerror='true'>
@@ -935,14 +936,14 @@ TEST CASES
             failureproperty="junit.failures"
             printsummary="@{printsummary}"
             timeout="@{timeout}"
-            maxmemory='2600M'
+            maxmemory='7600M'
             showoutput="@{showoutput}"
         >
             <classpath refid='project.classpath' />
-            <jvmarg value="-Djava.library.path=${build.dir}/nativelibs" />
+            <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
             <jvmarg value="-server" />
             <jvmarg value="-Xcheck:jni" />
-            <jvmarg value="-Xmx2600m"/>
+            <jvmarg value="-Xmx7600m"/>
             <jvmarg value="-XX:+HeapDumpOnOutOfMemoryError"/>
 
             <env key="ENABLE_JAR_REUSE" value="${junit.reusejars}"/>
@@ -1052,7 +1053,7 @@ TEST CASES
                 <exclude name="**/TestMapReduceTransactionSuite.class" />
                 <exclude name="**/TestWikipediaSuite.class" />
                 <exclude name="**/TestWikipediaLoader.class" />
-<!--                 <exclude name="**/TestAntiCache*.class" /> -->
+                <exclude name="**/TestAntiCache*.class" /> 
                 
                 <!-- Misc VoltDB stuff -->
                 <exclude name='org/voltdb/TestHSQLBackend*'/>
@@ -1134,7 +1135,7 @@ TEST CASES
                 <exclude name="**/TestMapReduceTransactionSuite.class" />
                 <exclude name="**/TestWikipediaSuite.class" />
                 <exclude name="**/TestWikipediaLoader.class" />
-<!--                 <exclude name="**/TestAntiCache*.class" /> -->
+                 <exclude name="**/TestAntiCache*.class" /> 
 
                 <!-- Tests that use too much memory -->
                 <exclude name='edu/brown/benchmark/tpce/*'/>
@@ -1211,7 +1212,7 @@ TEST CASES
                     <exclude name="**/TestMapReduceTransactionSuite.class" />
                     <exclude name="**/TestWikipediaSuite.class" />
                     <exclude name="**/TestWikipediaLoader.class" />
-<!--                     <exclude name="**/TestAntiCache*.class" /> -->
+                     <exclude name="**/TestAntiCache*.class" /> 
                 </fileset>
             </tests>
         </run_junit>
@@ -1435,7 +1436,7 @@ TEST CASES
 <target name='m1test_pre' depends='ee, compile'>
     <mkdir dir='${build.testoutput.dir}' />
     <junit fork="yes" printsummary='yes' haltonfailure="yes" showoutput='true'>
-        <jvmarg value="-Djava.library.path=${build.dir}/nativelibs" />
+        <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
         <env key="TEST_DIR" value="${build.testobjects.dir}" />
         <env key="PLANNER" value="${planner}" />
         <classpath refid='project.classpath' />
@@ -1515,7 +1516,7 @@ TEST CASES
     </condition>
     <property name='classpath' refid='project.classpath' />
     <property name='simpleserver.command' value='java
-    -Djava.library.path=${build.dir}${build.dir.suffix}/nativelibs -classpath
+    -Djava.library.path=${build.dir}${build.dir.suffix}/nativelibs:${thirdpartydynlib.dir} -classpath
     ${classpath} -server -Xmx512m -XX:+AggressiveOpts -ea
     org.voltdb.sqlgenerator.SimpleServer hosts=${hosts}
     sitesperhost=${sitesperhost} replicas=${replicas}
@@ -1695,7 +1696,7 @@ TEST CASES
         <jvmarg value="-server" />
         <jvmarg value="-Xmx2048m" />
         <jvmarg value="-Xcheck:jni"/>
-        <jvmarg value="-Djava.library.path=${build.dir}/nativelibs" />
+        <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
         <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
         
         <assertions refid="site.assertions"/>
@@ -1785,7 +1786,7 @@ TEST CASES
     <java fork="true" failonerror="true"
         classname="org.voltdb.ProcedureCallMicrobench" >
         <arg value='${clients}' />
-        <jvmarg value="-Djava.library.path=${build.dir}/nativelibs" />
+        <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
         <jvmarg value="-server" />
         <jvmarg value="-Xmx512m" />
         <classpath refid='project.classpath' />
@@ -2489,7 +2490,7 @@ UTILITIES
         <!-- Other JVM Options -->
         <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
         <jvmarg value="-server" />
-        <jvmarg value="-Djava.library.path=${build.dir}/nativelibs" />
+        <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
 
         <arg value="catalog.jar=${jar}" />
         <arg value="conf=${conf}" />
@@ -2569,6 +2570,32 @@ UTILITIES
         <assertions><enable/></assertions>
     </java>
 </target>
+	
+<target name='elastic-controller'
+        description="H-Store Elasticity Controller">
+  <java fork="yes" failonerror="true" classname="org.qcri.PartitioningPlanner.Controller">
+        <jvmarg value="-client" />
+        <jvmarg value="-Xms256m" />
+        <jvmarg value="-Xmx${client.memory}m" />
+        <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
+        <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
+        <arg value="catalog.jar=${benchmark.jar}" />
+        <arg value="${numPart}" />
+        <arg value="${tWindow}" />
+        <arg value="${plannerID}" />
+        <arg value="${provisioning}" />
+  	<arg value="${timeLimit}" />
+  	<arg value="${monitoring}" />
+  	<arg value="${sitesPerHost}" />
+  	<arg value="${partPerSite}" />
+  	<arg value="${highCPU}" />
+  	<arg value="${lowCPU}" />
+	&common;
+        <classpath refid='project.classpath' />
+    <assertions><enable/></assertions>
+    </java>
+</target>
+
 
 <!-- END PROJECT -->
 </project>

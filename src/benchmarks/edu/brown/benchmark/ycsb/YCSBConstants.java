@@ -35,8 +35,8 @@ public abstract class YCSBConstants {
     
     public static final double ZIPFIAN_CONSTANT = .5;
 
-    public static final int HOT_DATA_WORKLOAD_SKEW = 50;
-    public static final int HOT_DATA_SIZE = 50;
+    public static final int HOT_DATA_WORKLOAD_SKEW = 95;
+    public static final int HOT_DATA_SIZE = 1;
 
     public static final int WARM_DATA_SIZE = 0;
     public static final int WARM_DATA_WORKLOAD_SKEW = 0;
@@ -55,4 +55,58 @@ public abstract class YCSBConstants {
     public static final int FREQUENCY_READ_RECORD = 50;
     public static final int FREQUENCY_SCAN_RECORD = 0;
     public static final int FREQUENCY_UPDATE_RECORD = 50;
+    
+    
+
+    /**
+     * Uniform distribution.
+     */
+    public static final String UNIFORM_DISTRIBUTION = "uniform";
+    
+    /**
+     * Zipfian distribution
+     */
+    public static final String ZIPFIAN_DISTRIBUTION = "zipfian";
+    
+    /**
+     * Zipfian scrambled distribution
+     */
+    public static final String ZIPFIAN_SCRAMBLED_DISTRIBUTION = "zipfianscrambled";
+    
+    /**
+     * Zipfian distribution (varying)
+     */
+    public static final String ZIPFIAN_VARYING_DISTRIBUTION = "zipfianvarying";
+    
+    /**
+     * Zipfian scrambled distribution (varying)
+     */
+    public static final String ZIPFIAN_SCRAMBLED_VARYING_DISTRIBUTION = "zipfianscrambledvarying";
+    
+    /**
+     * Latest distributions.
+     */
+    public static final String LATEST_DISTRIBUTION = "latest";
+    
+    /**
+     * Hotspot distribution.
+     */
+    public static final String HOTSPOT_DISTRIBUTION = "hotspot";
+
+    /**
+     * Hotspot distribution.
+     */
+    public static final String CUSTOM_DISTRIBUTION = "custom";
+    
+    /**
+     * The name of the property for the the distribution of requests across the
+     * keyspace. Options are "uniform", "zipfian", "hotspot", "custom" and "latest"
+     */
+    public static final String REQUEST_DISTRIBUTION_PROPERTY = "requestdistribution";
+
+    /**
+     * The default distribution of requests across the keyspace
+     */
+    public static final String REQUEST_DISTRIBUTION_PROPERTY_DEFAULT = CUSTOM_DISTRIBUTION;
+    
 }

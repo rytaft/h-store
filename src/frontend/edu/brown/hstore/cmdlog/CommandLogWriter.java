@@ -87,12 +87,14 @@ public class CommandLogWriter extends ExceptionHandlingRunnable implements Shutd
         protected RpcCallback<ClientResponseImpl> clientCallback;
         protected long initiateTime;
         protected int restartCounter;
+        protected Procedure catalog_proc ; // Marco
         
         public LogEntry init(LocalTransaction ts, ClientResponseImpl cresponse) {
             this.cresponse = cresponse;
             this.clientCallback = ts.getClientCallback();
             this.initiateTime = ts.getInitiateTime();
             this.restartCounter = ts.getRestartCounter();
+            this.catalog_proc = ts.getProcedure();	// Marco
             return super.init(ts);
         }
         
@@ -504,13 +506,17 @@ public class CommandLogWriter extends ExceptionHandlingRunnable implements Shutd
                             hstore_site.responseQueue(entry.cresponse,
                                                       entry.clientCallback,
                                                       entry.initiateTime,
-                                                      entry.restartCounter);
+                                                      entry.restartCounter
+                                                      ,  entry.catalog_proc
+                                                      ); // Marco
                         }
                         else {
                             hstore_site.responseSend(entry.cresponse,
                                                      entry.clientCallback,
                                                      entry.initiateTime,
-                                                     entry.restartCounter);
+                                                     entry.restartCounter
+                                                     ,entry.catalog_proc // Marco
+                                                     );
                         }
                     } else {
                         LOG.warn("Unexpected unintialized " + entry.getClass().getSimpleName());

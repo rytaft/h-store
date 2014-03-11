@@ -106,12 +106,14 @@ private:
 
     voltdb::NValue m_tableType;
 
+    int64_t m_tupleID; //Essam Tuple
+
     int64_t m_lastTupleCount;
     int64_t m_lastTupleAccessCount;
     int64_t m_lastAllocatedTupleMemory;
     int64_t m_lastOccupiedTupleMemory;
     int64_t m_lastStringDataMemory;
-    
+
     #ifdef ANTICACHE
     // ACTIVE
     int32_t m_lastTuplesEvicted;
@@ -122,7 +124,7 @@ private:
     int32_t m_lastTuplesWritten;
     int32_t m_lastBlocksWritten;
     int64_t m_lastBytesWritten;
-    
+
     // GLOBAL READ
     int32_t m_lastTuplesRead;
     int32_t m_lastBlocksRead;

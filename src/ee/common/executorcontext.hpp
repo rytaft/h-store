@@ -21,6 +21,7 @@
 #include "Topend.h"
 #include "common/UndoQuantum.h"
 #include "storage/ReadWriteTracker.h"
+#include "storage/TupleTracker.h"//Essam
 
 #ifdef ANTICACHE
 #include "anticache/AntiCacheDB.h"
@@ -31,6 +32,8 @@ namespace voltdb {
     
     class ReadWriteTrackerManager;
     
+    class TupleTrackerManager;//Essam
+
     #ifdef ANTICACHE
     class AntiCacheDB;
     class AntiCacheEvictionManager; 
@@ -50,6 +53,10 @@ namespace voltdb {
     class ExecutorContext {
     public:
         ~ExecutorContext() {
+
+        	if (m_tupleTrackingEnabled) {
+        	    delete m_tupleTrackingManager;
+        	 }
             
             if (m_trackingEnabled) {
                 delete m_trackingManager;
@@ -81,7 +88,12 @@ namespace voltdb {
             m_lastCommittedTxnId = 0;
             m_lastTickTime = 0;
             m_antiCacheEnabled = false;
+
             m_trackingEnabled = false;
+
+            m_tupleTrackingEnabled = false;
+
+            m_tupleTrackingManager = NULL;
         }
         
         // not always known at initial construction
@@ -209,6 +221,31 @@ namespace voltdb {
             m_trackingManager = new ReadWriteTrackerManager(this);
         }
         
+        // ------------------------------------------------------------------
+        // Essam Tuple TRACKERS
+        // ------------------------------------------------------------------
+
+                inline bool isTupleTrackingEnabled() const {
+                    return (m_tupleTrackingEnabled);
+                }
+
+                inline TupleTrackerManager* getTupleTrackerManager() const {
+                    return (m_tupleTrackingManager);
+                }
+
+                /**
+                 * Essam Enable the tuple tracking feature in the EE.
+                 */
+                void enableTupleTracking(int32_t partId, VoltDBEngine* vEng) {
+                    assert(m_tupleTrackingEnabled == false);
+                    // enableTracking();
+                    m_tupleTrackingEnabled = true;
+                    m_tupleTrackingManager = new TupleTrackerManager(this,partId,vEng);
+                }
+
+
+
+
     private:
         Topend *m_topEnd;
         UndoQuantum *m_undoQuantum;
@@ -223,6 +260,11 @@ namespace voltdb {
         bool m_trackingEnabled;
         ReadWriteTrackerManager *m_trackingManager;
         
+        /** Essam Tuple Trackers */
+        bool m_tupleTrackingEnabled;
+        TupleTrackerManager *m_tupleTrackingManager;
+
+
     public:
         int64_t m_lastCommittedTxnId;
         int64_t m_lastTickTime;
