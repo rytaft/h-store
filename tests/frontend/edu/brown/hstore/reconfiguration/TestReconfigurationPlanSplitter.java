@@ -24,6 +24,18 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
 
     private File json_path2;
 
+    @Test
+    public void testReconfigurationPair() throws Exception{
+        ReconfigurationPair pair1 = new ReconfigurationPair(1,2);
+        ReconfigurationPair pair2 = new ReconfigurationPair(2,1);
+        ReconfigurationPair pair3 = new ReconfigurationPair(1,3);
+        ReconfigurationPair pair4 = new ReconfigurationPair(1,2);
+        assertTrue(pair1 < pair2);
+        assertTrue(pair1 > pair3);
+        assertTrue(pair1.equals(pair4));
+        assertFalse(pair2.equals(pair3));
+    }
+    
     /**
      * 
      */
