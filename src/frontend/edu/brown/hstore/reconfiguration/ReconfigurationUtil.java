@@ -54,6 +54,12 @@ public class ReconfigurationUtil {
             return String.format("(%s->%s)", from, to);
         }
     	
+	@Override
+	public final int hashCode() {
+	    return (from == null ? 0 : from.hashCode() * 31) +
+		(to == null ? 0 : to.hashCode());
+	}
+
         /**
         * @param o Object to compare to.
         * @return Is the object equal to a value in the pair.
