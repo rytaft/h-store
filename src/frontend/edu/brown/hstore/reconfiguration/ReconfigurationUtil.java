@@ -88,10 +88,6 @@ public class ReconfigurationUtil {
     }
 
     public static List<ReconfigurationPlan> naiveSplitReconfigurationPlan(ReconfigurationPlan plan, int numberOfSplits){
-        List<ReconfigurationPlan> splitPlans = new ArrayList<>();
-        for(int i = 0; i < numberOfSplits; i++){
-            splitPlans.add(new ReconfigurationPlan());
-        }
         //The list of partition pairs that exchange data
         Set<ReconfigurationPair> migrationPairs = new HashSet<>();
         
@@ -126,6 +122,12 @@ public class ReconfigurationUtil {
             pairToSplitMapping.put(new Pair(mPair.from, mPair.to), pairCounter % numberOfSplits);
             pairCounter++;
         }
+
+	List<ReconfigurationPlan> splitPlans = new ArrayList<>();
+        for(int i = 0; i < numberOfSplits; i++){
+            splitPlans.add(new ReconfigurationPlan());
+        }
+
         
         //put ranges into split rangePLans
         for(Entry<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> entry : plan.getIncoming_ranges().entrySet()){
@@ -136,7 +138,7 @@ public class ReconfigurationUtil {
                 splitPlans.get(splitIndex).addRange(range);
             }
         }
-        
+
         //DEBUG
         for (int j = 0; j < numberOfSplits; j++){
             
