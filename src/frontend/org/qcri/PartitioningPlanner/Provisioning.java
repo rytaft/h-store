@@ -39,16 +39,17 @@ public class Provisioning {
 		this.usedPartitions = initialPartitions; 
 	}
 
-	public boolean needReconfiguration(){
+	public boolean needReconfiguration(Map<Site,Map<Partition,Double>> CPUUtilPerPartitionMap){
 		boolean res = false;
-		for(Site site : sites){
+		int partitionsRequired = partitionsRequired(CPUUtilPerPartitionMap);
+		for(Site site : CPUUtilPerPartitionMap.keySet()){
 			if(site.getId() < (usedPartitions/PARTITIONS_PER_SITE)){
 				System.out.println("Polling site " + site.getId() + " with IP " + site.getHost().getIpaddr());
-				Map<Partition,Double> CPUUtilPerPartition = getCPUPerPartitionSsh(site);
+				Map<Partition,Double> CPUUtilPerPartition = CPUUtilPerPartitionMap.get(site);
 				for(Map.Entry<Partition,Double> cpu : CPUUtilPerPartition.entrySet()){
 					double utilization = cpu.getValue();
 					System.out.println("Partition " + cpu.getKey().getId() + " has utilization " + utilization);
-					if ((utilization < CPU_THRESHOLD_DOWN && partitionsRequired() < usedPartitions) || utilization > CPU_THRESHOLD_UP){
+					if ((utilization < CPU_THRESHOLD_DOWN && partitionsRequired < usedPartitions) || utilization > CPU_THRESHOLD_UP){
 						System.out.println("Need to reconfigure");	 					
 						res = true;
 					}
@@ -57,16 +58,27 @@ public class Provisioning {
 		}
 		return res;
 	}
+	
+	public Map<Site,Map<Partition,Double>> getCPUUtilPerPartition() {
+		Map<Site,Map<Partition,Double>> CPUUtilPerPartitionMap = new HashMap<>();
+		for(Site site : sites){
+			if(site.getId() < (usedPartitions/PARTITIONS_PER_SITE)){
+				Map<Partition,Double> CPUUtilPerPartition = getCPUPerPartitionSsh(site);
+				CPUUtilPerPartitionMap.put(site, CPUUtilPerPartition);
+			}
+		}
+		return CPUUtilPerPartitionMap;
+	}
 
 	// ======== NOTE!! =================
 	// assumes that partitions 0-7 go to site 0, 8-15 to site 1 and so on
 	//
-	public int partitionsRequired(){
+	public int partitionsRequired(Map<Site,Map<Partition,Double>> CPUUtilPerPartitionMap){
 		double totalUtil = 0;
 
-		for(Site site : sites){
+		for(Site site : CPUUtilPerPartitionMap.keySet()){
 			if(site.getId() < (usedPartitions/PARTITIONS_PER_SITE)){
-				Map<Partition,Double> CPUUtilPerPartition = getCPUPerPartitionSsh(site);
+				Map<Partition,Double> CPUUtilPerPartition = CPUUtilPerPartitionMap.get(site);
 				for(Double util : CPUUtilPerPartition.values()){
 					totalUtil += util;
 				}
@@ -119,7 +131,7 @@ public class Provisioning {
 			// TODO use an environment variable $HSTORE_HOME in the command. to be used when .bashrc becomes accessible
 			// TODO very system specific. it should parse all "lines" entries and find the one with "java"
 			// TODO should split the script into (i) one script that finds the PID of the threads per partition and (ii) one command that calls top and grep (from java)
-			String command = String.format("ssh -t -t %s " + Controller.HSTORE_HOME + "/scripts/partitioning/cpu_partition_monitor.sh %02d %03d", ip, site.getId(), part.getId());
+			String command = String.format("ssh -t -t %s $HSTORE_HOME/scripts/partitioning/cpu_partition_monitor.sh %02d %03d", ip, site.getId(), part.getId());
 			String result = ShellTools.cmd(command);
 			String[] lines = result.split("\n");
             String[] fields = lines[1].split("\\s+");

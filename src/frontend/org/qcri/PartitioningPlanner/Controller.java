@@ -29,6 +29,7 @@ import org.voltdb.client.ClientResponse;
 import org.voltdb.client.NoConnectionsException;
 import org.voltdb.client.ProcCallException;
 import org.voltdb.catalog.Catalog;
+import org.voltdb.catalog.Partition;
 import org.voltdb.catalog.Site;
 import org.voltdb.processtools.ShellTools;
 import org.voltdb.utils.Pair;
@@ -55,9 +56,9 @@ public class Controller implements Runnable {
 
 	private TupleTrackerExecutor ttExecutor;
 	private Provisioning provisioning;
+	private Map<Site,Map<Partition,Double>> CPUUtilPerPartitionMap;
 
 	private static final int POLL_FREQUENCY = 3000;
-	public static String HSTORE_HOME="/localdisk/rytaft/h-store";
 
 	private static int time_window = 10; // time window for tuple tracking
 
@@ -125,20 +126,21 @@ public class Controller implements Runnable {
 				while(true){
 					Thread.sleep(POLL_FREQUENCY);
 					System.out.println("\nPolling");
-					if(!provisioning.needReconfiguration()) continue;
+					CPUUtilPerPartitionMap = provisioning.getCPUUtilPerPartition();
+					if(!provisioning.needReconfiguration(CPUUtilPerPartitionMap)) continue;
 					System.out.println("Starting reconfiguration");
 					doReconfiguration();
 					System.out.println("Waiting until reconfiguration has completed");
 					String ip = sites.iterator().next().getHost().getIpaddr();
-					String response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
+					String response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END $HSTORE_HOME/hevent.log");
 					int previousReconfigurations = response.split("\n").length; 
 					while(true){
 						Thread.sleep(1000);
-						response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
+						response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END $HSTORE_HOME/hevent.log");
 						if(response.split("\n").length > previousReconfigurations) break;
 					}
 					System.out.println("Reconfiguration has completed");
-					provisioning.refreshCPUStats();
+					//provisioning.refreshCPUStats();
 				}
 			} catch (InterruptedException e) {
 				System.out.println("Controller was interrupted");
@@ -185,7 +187,7 @@ public class Controller implements Runnable {
 			if(doProvisioning == 1)
 			{
 				System.out.println("Provisioning is on");	
-				int numberOfPartitions = provisioning.partitionsRequired();
+				int numberOfPartitions = provisioning.partitionsRequired(CPUUtilPerPartitionMap);
 				System.out.println("Provisioning requires " + numberOfPartitions + " partitions");
 				currentPlan = algo.computePlan(hotTuplesList, mPartitionLoad, planFile.toString(), 
 						numberOfPartitions, timeLimit);

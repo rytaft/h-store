@@ -130,7 +130,10 @@ public class GreedyExtendedPlacement extends Placement {
 								List<Plan.Range> oldRanges = aPlan.getRangeValues(i, r.from, r.to);
 								for(Plan.Range oldRange : oldRanges) {
 									aPlan.removeRange(i, oldRange.from);
-									aPlan.addRange(dstPartition, Math.max(oldRange.from, r.from), Math.min(oldRange.to, r.to));
+									if(!aPlan.hasPartition(dstPartition)) {
+									    aPlan.addPartition(dstPartition);
+                                                                        }
+                                                                        aPlan.addRange(dstPartition, Math.max(oldRange.from, r.from), Math.min(oldRange.to, r.to));
 
 									if(oldRange.from < r.from) {
 										aPlan.addRange(i, oldRange.from, r.from - 1);

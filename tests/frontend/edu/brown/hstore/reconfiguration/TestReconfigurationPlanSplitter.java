@@ -4,12 +4,15 @@
 package edu.brown.hstore.reconfiguration;
 
 import java.io.File;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.junit.Test;
 
 import edu.brown.BaseTestCase;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.TwoTieredRangePartitions;
+import edu.brown.hstore.reconfiguration.ReconfigurationUtil.ReconfigurationPair;
 import edu.brown.utils.FileUtil;
 import edu.brown.utils.ProjectType;
 
@@ -24,6 +27,27 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
 
     private File json_path2;
 
+    @Test
+    public void testReconfigurationPair() throws Exception{
+        ReconfigurationPair pair1 = new ReconfigurationPair(1,2);
+        ReconfigurationPair pair2 = new ReconfigurationPair(2,1);
+        ReconfigurationPair pair3 = new ReconfigurationPair(1,3);
+        ReconfigurationPair pair4 = new ReconfigurationPair(1,2);
+        assertTrue(pair1.compareTo(pair2) < 0);
+        assertTrue(pair1.compareTo(pair3) > 0);
+        assertTrue(pair1.compareTo(pair4) == 0);
+        assertTrue(pair1.equals(pair4));
+        assertFalse(pair2.equals(pair3));
+
+	Set<ReconfigurationPair> reconfigPairs = new HashSet<>();
+	reconfigPairs.add(pair1);
+	reconfigPairs.add(pair2);
+	reconfigPairs.add(pair3);
+	reconfigPairs.add(pair4);
+	assertTrue(reconfigPairs.size() == 3);
+
+    }
+    
     /**
      * 
      */
