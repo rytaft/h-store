@@ -144,8 +144,13 @@ private int getNoOfTuples(Map<Long, Integer> PhoneNUM_VOTES, Long phoneNo, org.v
 	ClientResponse cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
-	n = (int) count[0].fetchRow(0).getLong(0); // the NUM_VOTES of a specific phone no
-	
+	if (count[0].getRowCount() == 0) {
+                n = 0;
+        }
+        else {
+                n = (int) count[0].fetchRow(0).getLong(0); // the NUM_VOTES of a specific phone no
+	}	
+
 	//System.out.printf("Phone no is " + phoneNo+ " has " + n + " tuples \n" );
 	}
 	return n;
