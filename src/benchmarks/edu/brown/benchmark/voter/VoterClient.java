@@ -144,7 +144,12 @@ public class VoterClient extends BenchmarkComponent {
             areaCodeGen.setInterval(interval);
             areaCodeGen.setMirrored(mirrored);
             areaCodeGen.setRandomHotSpots(randomHotSpots);
-            areaCodeGen.setNumHotSpots(numHotSpots);
+            if(!randomHotSpots) {
+            	areaCodeGen.setNumHotSpots(1);
+            } 
+            else {
+            	areaCodeGen.setNumHotSpots(numHotSpots);
+            }
             areaCodeGen.setPercentAccessHotSpots(percentAccessHotSpots);
             areaCodeGen.setRandomShift(randomShift);
             areaCodeGen.setScrambled(scrambled);
