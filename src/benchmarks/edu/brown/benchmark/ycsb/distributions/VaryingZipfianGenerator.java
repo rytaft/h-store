@@ -519,7 +519,7 @@ public class VaryingZipfianGenerator extends IntegerGenerator
 
 		if(r2 < this.percentAccessHotSpots) {
 			int index = r3;
-			ret = hotSpots.get(index);
+			ret = hotSpots.get(index % hotSpots.size());
 		}
 		else if(theta >= 1) {
 			if(u < 0.95) {
