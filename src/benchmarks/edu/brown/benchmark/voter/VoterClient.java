@@ -63,6 +63,7 @@ public class VoterClient extends BenchmarkComponent {
     private int numHotSpots = 0;
     private double percentAccessHotSpots = 0.0;
     private boolean randomShift = false;
+    private boolean randomHotSpots = false;
     private final IntegerGenerator areaCodeGenerator;
     private final IntegerGenerator phoneNumberGenerator;
 
@@ -126,6 +127,10 @@ public class VoterClient extends BenchmarkComponent {
             else if (key.equalsIgnoreCase("percent_accesses_to_hot_spots")) {
                 this.percentAccessHotSpots = Double.valueOf(value);
             }
+            // Whether to make the location of the hot spots random
+            else if (key.equalsIgnoreCase("random_hot_spots")) {
+                this.randomHotSpots = Boolean.valueOf(value);
+            }
             else{
                 if(debug.val) LOG.debug("Unknown prop : "  + key);
             }
@@ -138,6 +143,7 @@ public class VoterClient extends BenchmarkComponent {
             VaryingZipfianGenerator areaCodeGen = new VaryingZipfianGenerator(PhoneCallGenerator.AREA_CODES.length, skewFactor);
             areaCodeGen.setInterval(interval);
             areaCodeGen.setMirrored(mirrored);
+            areaCodeGen.setRandomHotSpots(randomHotSpots);
             areaCodeGen.setNumHotSpots(numHotSpots);
             areaCodeGen.setPercentAccessHotSpots(percentAccessHotSpots);
             areaCodeGen.setRandomShift(randomShift);
@@ -148,6 +154,7 @@ public class VoterClient extends BenchmarkComponent {
             VaryingZipfianGenerator phoneNumberGen = new VaryingZipfianGenerator(10000000, skewFactor);
             phoneNumberGen.setInterval(interval);
             phoneNumberGen.setMirrored(mirrored);
+            phoneNumberGen.setRandomHotSpots(randomHotSpots);
             phoneNumberGen.setNumHotSpots(numHotSpots);
             phoneNumberGen.setPercentAccessHotSpots(percentAccessHotSpots);
             phoneNumberGen.setRandomShift(randomShift);
