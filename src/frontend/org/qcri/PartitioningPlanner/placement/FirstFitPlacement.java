@@ -77,11 +77,14 @@ public class FirstFitPlacement extends Placement {
 				}		
 			
 				//System.out.println("Processing hot tuple id " + _hotTupleId + " with access count " + _hotAccessCount + " sending it to " + dstPartition);
-
+				int size = _hotSize;
+				if (size > 1000) {
+					size = _hotAccessCount.intValue();
+				}
 				partitionTotals.put(dstPartition, new Pair<Long, Integer>(partitionTotals.get(dstPartition).getFirst()  + _hotAccessCount,
-						partitionTotals.get(dstPartition).getSecond()  + _hotSize));
+						partitionTotals.get(dstPartition).getSecond()  + size));
 				oldLoad.put(_srcPartition, new Pair<Long, Integer>(oldLoad.get(_srcPartition).getFirst() - _hotAccessCount,
-						oldLoad.get(_srcPartition).getSecond() - _hotSize));
+						oldLoad.get(_srcPartition).getSecond() - size));
 				hotTuplesList.get(_srcPartition).remove(_hotTupleId);
 				aPlan.removeTupleId(_srcPartition, _hotTupleId);
 				if(!newPlan.hasPartition(dstPartition)) {
