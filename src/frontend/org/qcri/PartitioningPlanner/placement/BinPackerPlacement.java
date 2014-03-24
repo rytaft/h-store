@@ -16,6 +16,8 @@ import java.util.Set;
 import org.voltdb.utils.Pair;
 import org.qcri.PartitioningPlanner.placement.Plan;
 
+import edu.brown.benchmark.voter.VoterConstants;
+
 
 public class BinPackerPlacement extends Placement {
 
@@ -71,8 +73,13 @@ public class BinPackerPlacement extends Placement {
 		for(Map<Long, Pair<Long,Integer> >  hotTuples : hotTuplesList) {
 			tupleCount += hotTuples.keySet().size();
 			for(Long i : hotTuples.keySet()) {
+				int size = hotTuples.get(i).getSecond();
+				if (size > VoterConstants.MAX_VOTES) {
+					// we need this check because of a bug in the Voter benchmark
+					size = hotTuples.get(i).getFirst().intValue();
+				}
 				oldLoad.put(partitionId, new Pair<Long, Integer>(oldLoad.get(partitionId).getFirst() - hotTuples.get(i).getFirst(), 
-						oldLoad.get(partitionId).getSecond() - hotTuples.get(i).getSecond()));
+						oldLoad.get(partitionId).getSecond() - size));
 				oldPlan.removeTupleId(partitionId, i);
 			}
 			++partitionId;
@@ -82,8 +89,13 @@ public class BinPackerPlacement extends Placement {
 		partitionId = 0;
 		for(Map<Long, Pair<Long,Integer> >  hotTuples : hotTuplesList) {
 			for(Long i : hotTuples.keySet()) {
+				long size = hotTuples.get(i).getSecond();
+				if (size > VoterConstants.MAX_VOTES) {
+					// we need this check because of a bug in the Voter benchmark
+					size = hotTuples.get(i).getFirst().longValue();
+				}
 				tupleIds.add(i);
-				sliceSizes.add((long) hotTuples.get(i).getSecond().intValue());
+				sliceSizes.add(size);
 				accesses.add(hotTuples.get(i).getFirst());
 				locations.add(partitionId);
 			}
