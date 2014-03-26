@@ -131,8 +131,9 @@ public class Provisioning {
 			// TODO use an environment variable $HSTORE_HOME in the command. to be used when .bashrc becomes accessible
 			// TODO very system specific. it should parse all "lines" entries and find the one with "java"
 			// TODO should split the script into (i) one script that finds the PID of the threads per partition and (ii) one command that calls top and grep (from java)
-			String command = String.format("ssh -t -t %s $HSTORE_HOME/scripts/partitioning/cpu_partition_monitor.sh %02d %03d", ip, site.getId(), part.getId());
+			String command = String.format("ssh -t -t %s /localdisk/rytaft/h-store/scripts/partitioning/cpu_partition_monitor.sh %02d %03d", ip, site.getId(), part.getId());
 			String result = ShellTools.cmd(command);
+			System.out.println("result: " + result);
 			String[] lines = result.split("\n");
             String[] fields = lines[1].split("\\s+");
             try{
