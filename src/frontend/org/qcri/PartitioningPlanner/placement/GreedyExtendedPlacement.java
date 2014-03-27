@@ -9,8 +9,6 @@ import java.util.Map;
 import org.voltdb.utils.Pair;
 import org.qcri.PartitioningPlanner.placement.Plan;
 
-import edu.brown.benchmark.voter.VoterConstants;
-
 
 public class GreedyExtendedPlacement extends Placement {
 	
@@ -62,7 +60,7 @@ public class GreedyExtendedPlacement extends Placement {
 		for(Map<Long, Pair<Long,Integer> >  hotTuples : hotTuplesList) {
 			for(Long i : hotTuples.keySet()) {
 				int size = hotTuples.get(i).getSecond();
-				if (size > VoterConstants.MAX_VOTES) {
+				if (size > MAX_VOTES) {
 					// we need this check because of a bug in the Voter benchmark
 					size = hotTuples.get(i).getFirst().intValue();
 				}
@@ -96,7 +94,7 @@ public class GreedyExtendedPlacement extends Placement {
 					if(dstPartition != _srcPartition) {
 					        //System.out.println(" sending it to " + dstPartition);
 						int size = _hotSize;
-						if (size > VoterConstants.MAX_VOTES) {
+						if (size > MAX_VOTES) {
 							// we need this check because of a bug in the Voter benchmark
 							size = _hotAccessCount.intValue();
 						}

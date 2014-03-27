@@ -9,8 +9,6 @@ import java.util.List;
 import org.voltdb.utils.Pair;
 import org.qcri.PartitioningPlanner.placement.Plan;
 
-import edu.brown.benchmark.voter.VoterConstants;
-
 
 public class FirstFitPlacement extends Placement {
 	
@@ -80,7 +78,7 @@ public class FirstFitPlacement extends Placement {
 			
 				//System.out.println("Processing hot tuple id " + _hotTupleId + " with access count " + _hotAccessCount + " sending it to " + dstPartition);
 				int size = _hotSize;
-				if (size > VoterConstants.MAX_VOTES) {
+				if (size > MAX_VOTES) {
 					// we need this check because of a bug in the Voter benchmark
 					size = _hotAccessCount.intValue();
 				}
