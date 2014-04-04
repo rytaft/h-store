@@ -18,19 +18,18 @@ import java.nio.file.StandardCopyOption;
 import org.qcri.PartitioningPlanner.placement.Placement;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
 import org.qcri.PartitioningPlanner.placement.GreedyExtendedPlacement;
+import org.qcri.PartitioningPlanner.placement.GreedyExtendedOneTieredPlacement;
 import org.qcri.PartitioningPlanner.placement.BinPackerPlacement;
 import org.qcri.PartitioningPlanner.placement.FirstFitPlacement;
 import org.qcri.PartitioningPlanner.placement.OneTieredPlacement;
 import org.qcri.PartitioningPlanner.placement.GAPlacement;
 import org.qcri.PartitioningPlanner.placement.Plan;
-import org.voltdb.VoltTable;
-import org.voltdb.VoltTableRow;
-import org.voltdb.client.Client;
 import org.voltdb.client.ClientFactory;
 import org.voltdb.client.ClientResponse;
 import org.voltdb.client.NoConnectionsException;
 import org.voltdb.client.ProcCallException;
 import org.voltdb.catalog.Catalog;
+import org.voltdb.catalog.Partition;
 import org.voltdb.catalog.Site;
 import org.voltdb.processtools.ShellTools;
 
@@ -56,13 +55,13 @@ public class Controller implements Runnable {
 
 	private TupleTrackerExecutor ttExecutor;
 	private Provisioning provisioning;
+	private Map<Site,Map<Partition,Double>> CPUUtilPerPartitionMap;
 
 	private static final int POLL_FREQUENCY = 3000;
-	private static String HSTORE_HOME = "~/h-store";
 
 	private static int time_window = 10; // time window for tuple tracking
 
-	private static int planner_selector = 0; // planner ID from 0 to 4, Greedy - GreedyEx - FFit - BP - BP one tier 
+	private static int planner_selector = 0; // planner ID from 0 to 6, Greedy - GreedyEx - FFit - BP - BP one tier - GA - GreedyEx one tier
 
 	private static int no_of_partitions = 4; 
 	private static int doProvisioning = 0;
@@ -84,7 +83,7 @@ public class Controller implements Runnable {
 		client.configureBlocking(false);
 		sites = CatalogUtil.getAllSites(catalog);
 		connectToHost();
-		provisioning = new Provisioning(client,no_of_partitions,sitesPerHost,partPerSite,highCPU,lowCPU,sites.size());
+		provisioning = new Provisioning(sites, no_of_partitions, sitesPerHost, partPerSite, highCPU, lowCPU);
 
 		if(hstore_conf.global.hasher_plan == null){
 			System.out.println("Must set global.hasher_plan to specify plan file!");
@@ -95,10 +94,8 @@ public class Controller implements Runnable {
 		else{
 			planFile = FileSystems.getDefault().getPath(hstore_conf.global.hasher_plan);
 		}
-		System.out.println("Input plan: " + planFile.toAbsolutePath().toString());
 
 		outputPlanFile = FileSystems.getDefault().getPath("plan_out.json");
-		System.out.println("Output plan: " + outputPlanFile.toAbsolutePath().toString());
 
 		try {
 			Files.copy(planFile, outputPlanFile, StandardCopyOption.REPLACE_EXISTING);				
@@ -115,6 +112,7 @@ public class Controller implements Runnable {
 		case 3:  algo = new BinPackerPlacement(); System.out.println("BinPackerPlacement is selected"); break;
 		case 4:  algo = new OneTieredPlacement(); System.out.println("OneTieredPlacement is selected"); break;
 		case 5:  algo = new GAPlacement(); System.out.println("GAPlacement is selected"); break;
+		case 6:  algo = new GreedyExtendedOneTieredPlacement(); System.out.println("GreedyExtendedOneTieredPlacement is selected"); break;
 		}
 
 	}
@@ -126,20 +124,21 @@ public class Controller implements Runnable {
 				while(true){
 					Thread.sleep(POLL_FREQUENCY);
 					System.out.println("\nPolling");
-					if(!provisioning.needReconfiguration()) continue;
+					CPUUtilPerPartitionMap = provisioning.getCPUUtilPerPartition();
+					if(!provisioning.needReconfiguration(CPUUtilPerPartitionMap)) continue;
 					System.out.println("Starting reconfiguration");
 					doReconfiguration();
 					System.out.println("Waiting until reconfiguration has completed");
 					String ip = sites.iterator().next().getHost().getIpaddr();
-					String response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
+					String response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END /localdisk/rytaft/h-store/hevent.log");
 					int previousReconfigurations = response.split("\n").length; 
 					while(true){
 						Thread.sleep(1000);
-						response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END " + HSTORE_HOME + "/hevent.log");
+						response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END /localdisk/rytaft/h-store/hevent.log");
 						if(response.split("\n").length > previousReconfigurations) break;
 					}
 					System.out.println("Reconfiguration has completed");
-					provisioning.refreshCPUStats();
+					//provisioning.refreshCPUStats();
 				}
 			} catch (InterruptedException e) {
 				System.out.println("Controller was interrupted");
@@ -154,7 +153,6 @@ public class Controller implements Runnable {
 
 	public void doReconfiguration(){
 
-		//Jennie temp for now
 		Map<Integer, Long> mSiteLoad = new HashMap<Integer, Long>();
 
 		ArrayList<Map<Long, Long>> hotTuplesList = new ArrayList<Map<Long, Long>> (no_of_partitions);
@@ -181,15 +179,15 @@ public class Controller implements Runnable {
 			System.out.println("Got list of hot tuples");	
 
 			// here we call the planner
-			// @todo - last parameter should be the number of partitions in use - may be less than
-			// hotTuplesList.size()
 
 			if(doProvisioning == 1)
 			{
-
 				System.out.println("Provisioning is on");	
+				int numberOfPartitions = provisioning.partitionsRequired(CPUUtilPerPartitionMap);
+				System.out.println("Provisioning requires " + numberOfPartitions + " partitions");
 				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
-						provisioning.noOfSitesRequiredQuery(), timeLimit);
+						numberOfPartitions, timeLimit);
+				provisioning.setPartitions(numberOfPartitions);
 
 			}
 			else
@@ -207,8 +205,8 @@ public class Controller implements Runnable {
 			ClientResponse cresponse = null;
 			try {
 				cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
-				//cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
-				System.out.println("Controller: received response: " + cresponse);
+                                //cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
+                                System.out.println("Controller: received response: " + cresponse);
 			} catch (NoConnectionsException e) {
 				System.out.println("Controller: lost connection");
 				e.printStackTrace();
@@ -288,6 +286,7 @@ public class Controller implements Runnable {
 		}
 		else // use default
 		{
+			System.out.println("Using default parameters");
 			no_of_partitions = 4;
 			time_window = 10;
 			planner_selector = 0;
@@ -299,8 +298,6 @@ public class Controller implements Runnable {
 			highCPU = 1280;
 			lowCPU = 960;
 		}
-
-
 
 
 		Controller c = new Controller(args.catalog, hstore_conf);

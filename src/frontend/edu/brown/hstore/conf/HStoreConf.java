@@ -803,6 +803,13 @@ public final class HStoreConf {
         )
         public int reconfig_async_chunk_size_kb;
         
+        @ConfigProperty(
+                description="How many subplans should a reconfiguration be split into.",
+                defaultInt=1,
+                experimental=true
+        )
+        public int reconfig_subplan_split;
+        
         // ----------------------------------------------------------------------------
         // Storage Options
         // ----------------------------------------------------------------------------

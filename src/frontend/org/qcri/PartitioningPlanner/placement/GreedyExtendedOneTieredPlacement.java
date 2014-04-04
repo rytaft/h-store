@@ -9,11 +9,11 @@ import java.util.Map;
 import org.qcri.PartitioningPlanner.placement.Plan;
 
 
-public class GreedyExtendedPlacement extends Placement {
+public class GreedyExtendedOneTieredPlacement extends Placement {
 	
 	Long coldPartitionWidth = 100000L; // redistribute cold tuples in chunks of 100000
 	
-	public GreedyExtendedPlacement(){
+	public GreedyExtendedOneTieredPlacement(){
 		
 	}
 	
@@ -22,10 +22,11 @@ public class GreedyExtendedPlacement extends Placement {
 	// siteLoads: partitionId --> total access count
 	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit){
 		
+		// ignore the hotTuplesList!
+		
 		Integer dstPartition = -1;
 		Long totalAccesses = 0L;
 		Long meanAccesses;
-		Long hotTupleCount = 0L;
 		
 		Plan aPlan = new Plan(planFilename);
 
@@ -52,53 +53,11 @@ public class GreedyExtendedPlacement extends Placement {
 				oldPlan.addRange(i, range.from, range.to);
 			}
 		}
-		
-		// calculate the load and plan if the hot tuples were removed, store
-		// them in oldLoad and oldPlan
-		Integer partitionId = 0;
-		for(Map<Long, Long>  hotTuples : hotTuplesList) {
-			for(Long i : hotTuples.keySet()) {
-				oldLoad.put(partitionId, oldLoad.get(partitionId) - hotTuples.get(i));
-				oldPlan.removeTupleId(partitionId, i);
-			}
-			++partitionId;
-		}
-		
-		// copy hot tuples list
-		ArrayList<Map<Long, Long>> hotTuplesListCopy = new ArrayList<Map<Long, Long>>();
-		hotTuplesListCopy.addAll(hotTuplesList);
-		
+				
 		meanAccesses = totalAccesses / partitionCount;
 
 		System.out.println("Mean access count: " + meanAccesses);
-		
-		for(Map<Long, Long> hotTuples : hotTuplesList) {
-			hotTupleCount = hotTupleCount + hotTuples.size();
-		}
-
-		System.out.println("Received " + hotTupleCount + " hot tuples.");
-		
-		for(Long i = 0L; i < hotTupleCount; ++i) {
-			getHottestTuple(hotTuplesList);
-			//System.out.println("Processing hot tuple id " + _hotTupleId + " with access count " + _hotAccessCount);
-
-			if(partitionTotals.get(_srcPartition) > meanAccesses || _srcPartition >= partitionCount) {
-					dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount);
-					if(dstPartition != _srcPartition) {
-					        //System.out.println(" sending it to " + dstPartition);
-						partitionTotals.put(_srcPartition, partitionTotals.get(_srcPartition)  - _hotAccessCount);
-						partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + _hotAccessCount);
-						aPlan.removeTupleId(_srcPartition, _hotTupleId);
-						if(!aPlan.hasPartition(dstPartition)) {
-							aPlan.addPartition(dstPartition);
-						}
-						aPlan.addRange(dstPartition, _hotTupleId, _hotTupleId);
-					}
-				}
-			hotTuplesList.get(_srcPartition).remove(_hotTupleId);
-
-		}
-		
+				
 		// place the cold tuples from the overloaded or deleted partitions
 		for(Integer i : oldPlan.getAllRanges().keySet()) { // foreach partition
 			if(partitionTotals.get(i) > meanAccesses || i.intValue() >= partitionCount) { 
@@ -117,9 +76,9 @@ public class GreedyExtendedPlacement extends Placement {
 								for(Plan.Range oldRange : oldRanges) {
 									aPlan.removeRange(i, oldRange.from);
 									if(!aPlan.hasPartition(dstPartition)) {
-									    aPlan.addPartition(dstPartition);
-                                                                        }
-                                                                        aPlan.addRange(dstPartition, Math.max(oldRange.from, r.from), Math.min(oldRange.to, r.to));
+                                                       	 			aPlan.addPartition(dstPartition);
+                                                			}
+									aPlan.addRange(dstPartition, Math.max(oldRange.from, r.from), Math.min(oldRange.to, r.to));
 
 									if(oldRange.from < r.from) {
 										aPlan.addRange(i, oldRange.from, r.from - 1);
@@ -138,7 +97,6 @@ public class GreedyExtendedPlacement extends Placement {
 			} 
 		} // end for each partition
 
-		aPlan = demoteTuples(hotTuplesListCopy, aPlan);
 		removeEmptyPartitions(aPlan);
 		return aPlan;
 		

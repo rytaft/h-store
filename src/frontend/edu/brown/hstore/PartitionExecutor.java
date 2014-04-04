@@ -64,6 +64,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Random;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
@@ -234,7 +235,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     private static final UtilityWorkMessage UTIL_WORK_MSG = new UtilityWorkMessage();
     private static final UpdateMemoryMessage STATS_WORK_MSG = new UpdateMemoryMessage();
-    private static  long MIN_MS_BETWEEN_ASYNC_PULLS = 500;
+    private static int MIN_MS_BETWEEN_ASYNC_PULLS = 100;
+    private static int RAND_MS_BETWEEN_ASYNC_PULLS = 200;
+    private static Random rand = new Random();
 
     private ReconfigurationState reconfig_state;
     
@@ -1237,15 +1240,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 }
             
 		this.idle_click_count = 0;
-		nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS;
+		nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
 
 		this.work_queue.offer(asyncRequestPullQueue.remove());
 	    }
             else if (reconfiguration_coordinator.getReconfigurationInProgress() 
-		    //&& asyncOutstanding.get() == false 
 		    && reconfiguration_coordinator.queueAsyncPull() 
                     && this.scheduleAsyncPullQueue.isEmpty() == false
-                    && (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )){
+                    && ((idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS && asyncOutstanding.get() == false)  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )){
                 if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS) {
                     LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
                 } else {
@@ -1257,7 +1259,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 		}           
 	
                 this.idle_click_count = 0;
-		nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS;
+		nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                 ScheduleAsyncPullRequestMessage pullMsg = scheduleAsyncPullQueue.poll();
                 if (pullMsg != null){
                     this.work_queue.offer(pullMsg);
@@ -6507,14 +6509,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         if (moreDataComing) {
                             this.reconfiguration_tracker.markRangeAsPartiallyReceived(new ReconfigurationRange<Long>
                                 (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
-			    nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS;
+			    nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                         } else {
                             this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>
                                 (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
                             if(isAsyncRequest){
                                 LOG.info("Last chunk received for async request, unsetting async in progress");
                                 asyncOutstanding.set(false);
-                                nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS;
+                                nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                             }
                         }
                         
