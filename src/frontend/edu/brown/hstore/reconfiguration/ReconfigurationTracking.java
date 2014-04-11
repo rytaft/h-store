@@ -23,6 +23,7 @@ import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 
 /**
@@ -34,8 +35,12 @@ import edu.brown.logging.LoggerUtil.LoggerBoolean;
 public class ReconfigurationTracking implements ReconfigurationTrackingInterface {
 
     private static final Logger LOG = Logger.getLogger(ReconfigurationTracking.class);
-    private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
-    private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
+    private static final LoggerBoolean debug = new LoggerBoolean();
+    private static final LoggerBoolean trace = new LoggerBoolean();
+    static {
+        LoggerUtil.setupLogging();
+        LoggerUtil.attachObserver(LOG, debug, trace);
+    }
     public static boolean PULL_SINGLE_KEY = true;
     private List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges;
     private List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges;

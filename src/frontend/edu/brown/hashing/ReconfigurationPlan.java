@@ -20,6 +20,7 @@ import edu.brown.designer.MemoryEstimator;
 import edu.brown.hashing.PlannedPartitions.PartitionPhase;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
+import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants;
 import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
 
@@ -82,8 +83,11 @@ public class ReconfigurationPlan {
     public static class ReconfigurationTable<T extends Comparable<T>> {
         private List<ReconfigurationRange<T>> reconfigurations;
         String table_name;
+        HStoreConf conf = null;
+        
         public ReconfigurationTable(PartitionedTable<T> old_table, PartitionedTable<T> new_table) throws Exception {
           table_name = old_table.table_name;
+          this.conf = HStoreConf.singleton(false);
           setReconfigurations(new ArrayList<ReconfigurationRange<T>>());
           Iterator<PartitionRange<T>> old_ranges = old_table.partitions.iterator();
           Iterator<PartitionRange<T>> new_ranges = new_table.partitions.iterator();
@@ -161,16 +165,25 @@ public class ReconfigurationPlan {
         
         private List<ReconfigurationRange<T>> mergeReconfigurations(List<ReconfigurationRange<T>> reconfiguration_range, Table catalog_table) {
             if(catalog_table==null){
-                LOG.info("Catalog table is null. Not merging reconfigurations");
+                LOG.debug("Catalog table is null. Not merging reconfigurations");
                 return reconfiguration_range;
             }
             List<ReconfigurationRange<T>> res = new ArrayList<>();
+            
+            //Check if we should merge
+            if (conf == null)
+                return reconfiguration_range;
+            long currentMin = conf.site.reconfig_min_transfer_bytes;
+            if (currentMin <= 1){
+                LOG.debug(String.format("Not merging reconfiguration plan. Min transfer bytes: %s", conf.site.reconfig_min_transfer_bytes));
+                return reconfiguration_range;   
+            }
+            
             try{
                 
                 long tupleBytes = MemoryEstimator.estimateTupleSize(catalog_table);
-                long currentMin = ReconfigurationConstants.MIN_TRANSFER_BYTES;
                 long minRows = currentMin/tupleBytes;
-                LOG.info(String.format("Trying to merge on table:%s  TupleBytes:%s  CurrentMin:%s  MinRows:%s MinTransferBytes:%s", catalog_table.fullName(),tupleBytes,currentMin,minRows, currentMin));
+                LOG.debug(String.format("Trying to merge on table:%s  TupleBytes:%s  CurrentMin:%s  MinRows:%s MinTransferBytes:%s", catalog_table.fullName(),tupleBytes,currentMin,minRows, currentMin));
                 
                 Comparable<?> sampleKey = reconfiguration_range.get(0).getMin_inclusive() ;
                 if (sampleKey instanceof Short || sampleKey instanceof Integer || sampleKey instanceof Long  ){
@@ -198,7 +211,7 @@ public class ReconfigurationPlan {
                         if(max_potential_keys >= minRows) {
                         	int num_ranges = partialRange.getMaxList().size();
                         	if(num_ranges > 1) {
-                        		LOG.info(String.format("Merging %s ranges. Table:%s",num_ranges,table_name));
+                        		LOG.debug(String.format("Merging %s ranges. Table:%s",num_ranges,table_name));
                         	}
                         	
                             res.add(partialRange);
@@ -212,7 +225,7 @@ public class ReconfigurationPlan {
                 	for(Map.Entry<String, ReconfigurationRange<T>> rangeEntry : rangeMap.entrySet()) {
                 		int num_ranges = rangeEntry.getValue().getMaxList().size();
                     	if(num_ranges > 1) {
-                    		LOG.info(String.format("Merging %s ranges. Table:%s",num_ranges,table_name));
+                    		LOG.debug(String.format("Merging %s ranges. Table:%s",num_ranges,table_name));
                     	}
                     	
                         res.add(rangeEntry.getValue());
@@ -235,11 +248,19 @@ public class ReconfigurationPlan {
                 LOG.info("Catalog table is null. Not splitting reconfigurations");
                 return reconfiguration_range;
             }
+            
+            //Check if we should split
+            if (conf == null)
+                return reconfiguration_range;
+            long currentMax = conf.site.reconfig_max_transfer_bytes;
+            if (currentMax <= 1)
+                return reconfiguration_range;
+            
             boolean modified = false;
             try{
                 
                 long tupleBytes = MemoryEstimator.estimateTupleSize(catalog_table);
-                long currentMax = ReconfigurationConstants.MAX_TRANSFER_BYTES;
+                
                 long maxRows = currentMax/tupleBytes;
                 LOG.info(String.format("Trying to split on table:%s  TupleBytes:%s  CurrentMax:%s  MaxRows:%s MaxTransferBytes:%s", catalog_table.fullName(),tupleBytes,currentMax,maxRows, currentMax));
                 

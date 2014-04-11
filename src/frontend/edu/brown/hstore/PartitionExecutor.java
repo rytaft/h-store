@@ -211,6 +211,7 @@ import edu.brown.utils.ClassUtil;
 import edu.brown.utils.CollectionUtil;
 import edu.brown.utils.EventObservable;
 import edu.brown.utils.EventObserver;
+import edu.brown.utils.FileUtil;
 import edu.brown.utils.PartitionEstimator;
 import edu.brown.utils.PartitionSet;
 import edu.brown.utils.StringBoxUtil;
@@ -250,6 +251,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     //Only schedule on async pull at a time
     private AtomicBoolean asyncOutstanding = new AtomicBoolean(false);
     private long nextAsyncPullTimeMS = 0;
+    private Map<Integer, Long> pullStartTime;
 
     private int tempPullCounter=0;
     private int tempPullResponseCounter=0;
@@ -777,6 +779,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.tmp_transactionRequestBuilders = null;
         this.reconfig_state = ReconfigurationState.NORMAL;
         this.liveLogData = new StringBuilder();
+        this.pullStartTime = new HashMap<>();
     }
 
     /**
@@ -893,6 +896,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // Initialize temporary data structures
         int num_sites = this.catalogContext.numberOfSites;
         this.tmp_transactionRequestBuilders = new TransactionWorkRequestBuilder[num_sites];
+        
+
+        this.pullStartTime = new HashMap<>();
     }
 
     /**
@@ -1228,45 +1234,43 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.idle_click_count+=1;
             //LOG.info("idle click count : " + idle_click_count);
             
-	    if (reconfiguration_coordinator.getReconfigurationInProgress() && reconfiguration_coordinator.queueAsyncPull()
-		&& this.asyncRequestPullQueue.isEmpty() == false
-		&& (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )){
-		if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS) {
+            if (reconfiguration_coordinator.getReconfigurationInProgress() && reconfiguration_coordinator.queueAsyncPull() 
+                    && this.asyncRequestPullQueue.isEmpty() == false 
+                    && (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )){
+                if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS) {
                     LOG.info(String.format(" ### Adding the next async pull from the asyncRequestPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s",
 					   asyncRequestPullQueue.size(),idle_click_count));
                 } else {
                     LOG.info(String.format(" ### Adding the next async pull from the asyncRequestPullQueue due to time. Items : %s  IdleCount:%s", 
 					   asyncRequestPullQueue.size(),idle_click_count));
                 }
-            
-		this.idle_click_count = 0;
-		nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
-
-		this.work_queue.offer(asyncRequestPullQueue.remove());
-	    }
-            else if (reconfiguration_coordinator.getReconfigurationInProgress() 
-		    && reconfiguration_coordinator.queueAsyncPull() 
+                this.idle_click_count = 0;
+                nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+                this.work_queue.offer(asyncRequestPullQueue.remove());
+                FileUtil.appendEventToFile("SCHEDULE_ASYNC, T=1");
+            } else if (reconfiguration_coordinator.getReconfigurationInProgress() && reconfiguration_coordinator.queueAsyncPull() 
                     && this.scheduleAsyncPullQueue.isEmpty() == false
-                    && ((idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS && asyncOutstanding.get() == false)  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )){
+                    && ((idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS && asyncOutstanding.get() == false)  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )) {
                 if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS) {
                     LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
                 } else {
                     LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to time. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
                 }     
-
-		if(asyncOutstanding.get()) {
-		    LOG.warn("Offering async request to the work queue when there is already an async request in progress");
-		}           
-	
+                if(asyncOutstanding.get()) {
+                    LOG.warn("Offering async request to the work queue when there is already an async request in progress");
+                }           
+                
                 this.idle_click_count = 0;
-		nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+        		nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                 ScheduleAsyncPullRequestMessage pullMsg = scheduleAsyncPullQueue.poll();
                 if (pullMsg != null){
                     this.work_queue.offer(pullMsg);
                     asyncOutstanding.set(true);
                 }
-            }
 
+                FileUtil.appendEventToFile("SCHEDULE_ASYNC, T=2");
+            }
+            
             if (this.currentDtxn != null) {
                 return processQueuedLiveReconfigWork(true);
             }          
@@ -1484,7 +1488,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 //TODO : Process async pull using chunk id
                 LOG.info("TODO verify chunk id order");
                 receiveTuples(pull.getTransactionID(), pull.getOldPartition(), pull.getNewPartition(), pull.getVoltTableName(), 
-                        pull.getMinInclusiveList(), pull.getMaxExclusiveList(), vt, pull.getMoreDataNeeded(), true);
+                        pull.getMinInclusiveList(), pull.getMaxExclusiveList(), vt, pull.getMoreDataNeeded(), true, pull.getAsyncPullIdentifier());
                 
                 //Commenting these lines as we have to unblock the semaphore when we get a callback because otherwise the queued job is never unblocked 
                 
@@ -1570,7 +1574,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.info("TODO verify chunk id order");
                 
                 receiveTuples(pullReply.getTransactionID(), pullReply.getOldPartition(), pullReply.getNewPartition(), pullReply.getVoltTableName(), 
-                    		pullReply.getMinInclusiveList(), pullReply.getMaxExclusiveList(), vt, pullReply.getMoreDataNeeded(), true);
+                    		pullReply.getMinInclusiveList(), pullReply.getMaxExclusiveList(), vt, pullReply.getMoreDataNeeded(), 
+                    		pullReply.getIsAsync(), pullReply.getPullIdentifier());
                 
                 
                 //Commenting these lines as we have to unblock the semaphore when we get a callback because otherwise the queued job is never unblocked 
@@ -3293,7 +3298,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             		try {
             		  receiveTuples(multiPullTxnId, multiPullReplyRequest.getOldPartition(), multiPullReplyRequest.getNewPartition(),
             		      multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusiveList(), 
-            		      multiPullReplyRequest.getMaxExclusiveList(), vt, multiPullReplyRequest.getMoreDataNeeded(), false);
+            		      multiPullReplyRequest.getMaxExclusiveList(), vt, multiPullReplyRequest.getMoreDataNeeded(), false, multiPullReplyRequest.getPullIdentifier());
 						      this.work_queue.remove(work);
 	                workDone = true;
             		} catch (Exception e) {
@@ -3302,21 +3307,20 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             		
             	} else if(multiPullReplyRequest.getIsAsync() && multiPullReplyRequest.getTransactionID() == ReconfigurationCoordinator.STOP_COPY_TXNID){
             	  
-            	  LOG.info(String.format("Processing a pull for Stop and Copy Async:%s PullTxnID:%s  DistTxn:%s CurrentTxn:%s ",multiPullReplyRequest.getIsAsync(),multiPullTxnId, this.currentDtxn, this.currentTxnId ) );
-                
-            	  VoltTable vt = null;
-                try {
-                    vt = FastDeserializer.deserialize(multiPullReplyRequest.getVoltTableData().toByteArray(), VoltTable.class);
-                } catch (IOException e) {
-                    LOG.error("Error in deserializing volt table");
-                }
-                try {
-                   receiveTuples(multiPullTxnId, multiPullReplyRequest.getOldPartition(), multiPullReplyRequest.getNewPartition(),
-                       multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusiveList(), 
-                       multiPullReplyRequest.getMaxExclusiveList(), vt, multiPullReplyRequest.getMoreDataNeeded(), false);
-                   this.work_queue.remove(work);
-                  workDone = true;
-                } catch (Exception e) {
+                    LOG.info(String.format("Processing a pull for Stop and Copy Async:%s PullTxnID:%s  DistTxn:%s CurrentTxn:%s ",multiPullReplyRequest.getIsAsync(),multiPullTxnId, this.currentDtxn, this.currentTxnId ) );
+                    VoltTable vt = null;
+                    try {
+                        vt = FastDeserializer.deserialize(multiPullReplyRequest.getVoltTableData().toByteArray(), VoltTable.class);
+                    } catch (IOException e) {
+                        LOG.error("Error in deserializing volt table");
+                    }
+                    try {
+                       receiveTuples(multiPullTxnId, multiPullReplyRequest.getOldPartition(), multiPullReplyRequest.getNewPartition(),
+                           multiPullReplyRequest.getVoltTableName(), multiPullReplyRequest.getMinInclusiveList(), 
+                           multiPullReplyRequest.getMaxExclusiveList(), vt, multiPullReplyRequest.getMoreDataNeeded(), false, multiPullReplyRequest.getPullIdentifier());
+                       this.work_queue.remove(work);
+                      workDone = true;
+                    } catch (Exception e) {
                
                 LOG.error("Error is loading the tuples for the live Pull");
                 }
@@ -3439,7 +3443,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // source lying around
         
         ReconfigurationRange<? extends Comparable<?>> pullRange = scheduleAsyncPullMsg.getPullRange();
-        LOG.info("A chunked asynch pull message being scheduled for range " + pullRange.toString());
+        LOG.trace("A chunked asynch pull message being scheduled for range " + pullRange.toString());
         //How long did it sit in the queue for
         this.reconfiguration_coordinator.profilers[this.partitionId].async_dest_queue_time.appendTime(scheduleAsyncPullMsg.getQueueTime());
         //TODO : For now the function is called for each range being pulled, check if we should move the logic of breaking the requests here
@@ -3452,10 +3456,16 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if(scheduleAsyncPullMsg.getProtocol().equals("s&c")){
           txnID = -2L;
         }
-        this.reconfiguration_coordinator.asyncPullRequestFromPE(getNextRequestToken(), txnID, this.partitionId, pullRequests);
-
-        LOG.info("("+ this.partitionId + ") ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
-       
+        int pullID = getNextRequestToken();
+        if(ReconfigurationCoordinator.detailed_timing){
+            if (pullStartTime.containsKey(pullID)){
+                LOG.error("Overwriting current async pull");
+            }
+            pullStartTime.put(pullID, System.currentTimeMillis());
+            FileUtil.appendEventToFile(String.format("ASYNC_PULL_INIT, PULL_ID=%s",pullID));
+        } 
+        this.reconfiguration_coordinator.asyncPullRequestFromPE(pullID, txnID, this.partitionId, pullRequests);
+        LOG.debug("("+ this.partitionId + ") ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());       
     }
     
     
@@ -6461,6 +6471,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     	this.reconfig_plan = null;
     	this.reconfig_state = ReconfigurationState.END;
     }
+    
     /**
      * Receiving tuples for the asynchronous pull operation made as well as the
      * Stop and Copy
@@ -6471,7 +6482,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @throws Exception
      */
     public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, List<Long> minInclusiveList, 
-            List<Long> maxExclusiveList, VoltTable vt, boolean moreDataComing, boolean isAsyncRequest) throws Exception {
+            List<Long> maxExclusiveList, VoltTable vt, boolean moreDataComing, boolean isAsyncRequest, int pullId) throws Exception {
         
         if (debug.val) LOG.debug(String.format("PE (%s) Received tuples for %s txnId:%s Rows(%s) partitions(%s->%s) for range, " + "[%s-%s)", this.partitionId,table_name, txnId, vt.getRowCount(), 
                  oldPartitionId, newPartitionId, minInclusiveList.toString(), maxExclusiveList.toString()));
@@ -6482,7 +6493,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             replicationDelay();
         }
         assert(minInclusiveList.size() == maxExclusiveList.size());
-        
+        FileUtil.appendEventToFile(String.format("RECEIVE_TUPLES, MORE=%s, ASYNC=%s, PULLID=%s",moreDataComing,isAsyncRequest,pullId ));
         //Iterate over the ranges for this receive to mark all as received (partially or full)
         for(int i =0; i < minInclusiveList.size();i++) {
             Long minInclusive = minInclusiveList.get(i);
@@ -6495,28 +6506,42 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 if (minInclusive.compareTo(maxExclusive) == 0) {
                     // We have received a single key
                     if(moreDataComing == false) {
-                        LOG.info(String.format("(%s) marking key as received %s %s ", this.partitionId, table_name, minInclusive));                    
+                        LOG.debug(String.format("(%s) marking key as received %s %s ", this.partitionId, table_name, minInclusive));                          
                         this.reconfiguration_tracker.markKeyAsReceived(table_name, minInclusive);
+                        if(isAsyncRequest){
+                            LOG.trace("Last chunk received for async request, unsetting async in progress");
+                            asyncOutstanding.set(false);
+                            nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+                        }
+                        Long startTime = pullStartTime.remove(pullId);
+                        if (isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
+                            long timeTaken = System.currentTimeMillis() - startTime;
+                            FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s",timeTaken, pullId));
+                        }
                     } else {
                         if (debug.val) LOG.debug(String.format("PE (%s) keyreceived, but more data is coming. %s %s ", this.partitionId, table_name, minInclusive));     
                     }                
                     this.reconfiguration_tracker.markRangeAsPartiallyReceived(new ReconfigurationRange<Long>
                                 (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
                 } else {
-                    // TODO ae can we just receive range?
-                    LOG.info(String.format("PE (%s) marking range as received %s %s-%s ", this.partitionId, table_name, minInclusive, maxExclusive));
+                    LOG.debug(String.format("PE (%s) marking range as received %s %s-%s ", this.partitionId, table_name, minInclusive, maxExclusive));
                     try {
                         if (moreDataComing) {
-                            this.reconfiguration_tracker.markRangeAsPartiallyReceived(new ReconfigurationRange<Long>
-                                (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
-			    nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+                            this.reconfiguration_tracker.markRangeAsPartiallyReceived(
+                                    new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
+                            nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                         } else {
-                            this.reconfiguration_tracker.markRangeAsReceived(new ReconfigurationRange<Long>
-                                (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
+                            this.reconfiguration_tracker.markRangeAsReceived(
+                                    new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
                             if(isAsyncRequest){
-                                LOG.info("Last chunk received for async request, unsetting async in progress");
+                                LOG.trace("Last chunk received for async request, unsetting async in progress");
                                 asyncOutstanding.set(false);
                                 nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+                            }
+                            Long startTime = pullStartTime.remove(pullId);
+                            if (isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
+                                long timeTaken = System.currentTimeMillis() - startTime;
+                                FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s",timeTaken, pullId));
                             }
                         }
                         
