@@ -2111,6 +2111,16 @@ public class BenchmarkController {
                 clientParams.put(parts[0].toLowerCase(), parts[1]);
             }
         }
+        
+        if(params != null) {
+        	ArrayList<Object> paramsList = new ArrayList<Object>();
+        	for(Object param : params) {
+        		if(param != null) {
+        			paramsList.add(param);
+        		}
+        	}
+        	params = paramsList.toArray();
+        }
 
         // Initialize HStoreConf
         assert(hstore_conf_path != null) : "Missing HStoreConf file";
