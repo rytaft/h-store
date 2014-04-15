@@ -1732,6 +1732,21 @@ TEST CASES
 
         &common;
 
+        <!-- Optional sysproc -->
+        <arg value="PROC=${proc}" />
+        <arg value="PROCSTARTTIME=${proc_start_time}" />
+        <arg value="PARAMS=${params}" />
+        <arg value="PARAM0=${param0}" />
+        <arg value="PARAM1=${param1}" />
+        <arg value="PARAM2=${param2}" />
+        <arg value="PARAM3=${param3}" />
+	<arg value="PARAM4=${param4}" />
+        <arg value="PARAM5=${param5}" />
+        <arg value="PARAM6=${param6}" />
+        <arg value="PARAM7=${param7}" />
+        <arg value="PARAM8=${param8}" />
+        <arg value="PARAM9=${param9}" />
+
         <!-- Benchmark Parameters -->
         <arg value="benchmark.conf=${benchmark.conf}" />
         <arg value="benchmark.builder=${benchmark.builder}" />

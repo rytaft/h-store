@@ -107,6 +107,10 @@ public class BenchmarkConfig {
     public boolean dumpDatabase;
     public String dumpDatabaseDir;
     
+    public String procName;
+    public int procStartTime;
+    public Object[] params;
+    
     public final Map<String, String> clientParameters = new TreeMap<String, String>();
     public final Map<String, String> siteParameters = new TreeMap<String, String>();
 
@@ -225,7 +229,10 @@ public class BenchmarkConfig {
             String evictable[],
             String deferrable[],
             boolean dumpDatabase,
-            String dumpDatabaseDir
+            String dumpDatabaseDir,
+            String procName,
+            int procStartTime,
+            Object[] params          
         ) {
         
         this.projectBuilderClass = benchmarkClient;
@@ -291,6 +298,10 @@ public class BenchmarkConfig {
         
         this.dumpDatabase = dumpDatabase;
         this.dumpDatabaseDir = dumpDatabaseDir;
+        
+        this.procName = procName;
+        this.procStartTime = procStartTime;
+        this.params = params;
         
         this.hstore_conf = hstore_conf;
         this.hstore_conf_path = hstore_conf_path;

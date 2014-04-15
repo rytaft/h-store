@@ -63,6 +63,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -274,6 +275,58 @@ public class BenchmarkController {
             }
         }
     };
+    
+    public class RunSysProc extends Thread {
+    	public final int waitTime;
+    	public final Client client;
+    	public final String procName;
+    	public final Object[] params;
+    	
+    	public RunSysProc(int waitTime, Client client, String procName, Object[] params) {
+    		this.waitTime = waitTime;
+        	this.client = client;
+        	this.procName = procName;
+        	this.params = params;
+    	}
+    	
+    	public void run() {
+    		long nowTime = System.currentTimeMillis();
+            long startTime = nowTime + waitTime;
+            while (nowTime < startTime) {
+    			long sleepTime = startTime - nowTime;
+    			try {
+    				Thread.sleep(sleepTime);
+    			} catch (InterruptedException e) {
+    				LOG.error("Error sleeping", e);
+    			}
+    			
+    			nowTime = System.currentTimeMillis();
+    		}
+    		
+    		// run sysproc
+            ClientResponse cr = null;
+            try {
+                cr = client.callProcedure(procName, params);
+            } catch (Exception ex) {
+                LOG.error("Failed to execute sysproc " + procName, ex);
+            }
+            
+            if(cr != null) {
+            	Map<String, Object> m = new LinkedHashMap<String, Object>();
+            	for (int i = 0; i < cr.getResults().length; i++) {
+            		VoltTable vt = cr.getResults()[i];
+            		m.put(String.format("  [%02d]", i), vt);
+            	} // FOR
+            
+            	LOG.info(StringUtil.repeat("-", 50));
+            	LOG.info(String.format("%s Txn #%d - Status %s\n%s",
+                                   		procName,
+                                   		cr.getTransactionId(),
+                                   		cr.getStatus(),
+                                   		cr.toString()));
+            }
+    	}
+    }
     
     @SuppressWarnings("unchecked")
     public BenchmarkController(BenchmarkConfig config, CatalogContext catalogContext) {
@@ -1199,6 +1252,15 @@ public class BenchmarkController {
         }
         
         // 
+        if(m_config.procName != null) {
+        	Object[] params = m_config.params;
+        	if(params == null) {
+        		params = new Object[]{};
+        	}
+        	RunSysProc runSysProc = new RunSysProc(m_config.procStartTime, local_client, m_config.procName, params);
+        	runSysProc.start();
+        } 
+        
         long startTime = System.currentTimeMillis();
         nextIntervalTime += startTime;
         long nowTime = startTime;
@@ -1787,6 +1849,10 @@ public class BenchmarkController {
         boolean dumpDatabase = false;
         String dumpDatabaseDir = null;
         
+        String procName = null;
+        Object[] params = null;
+        int procStartTime = 0;
+        
         // List of SiteIds that we won't start because they'll be started by the profiler
         Set<Integer> profileSiteIds = new HashSet<Integer>();
 
@@ -2026,6 +2092,19 @@ public class BenchmarkController {
             } else if (parts[0].equalsIgnoreCase("DUMPDATABASEDIR")) {
                 dumpDatabaseDir = parts[1];
                 
+            } else if (parts[0].equalsIgnoreCase("PROC")) {
+                procName = parts[1];                
+            } else if (parts[0].equalsIgnoreCase("PROCSTARTTIME")) {
+                procStartTime = Integer.parseInt(parts[1]);                
+            } else if (parts[0].equalsIgnoreCase("PARAMS")) {
+                params = new Object[]{ parts[1] }; 
+            } else if (parts[0].matches("(?i)PARAM[0-9]")) {
+                if(params == null) {
+                	params = new Object[10];
+                }
+            	int paramIndex = Integer.parseInt(parts[0].substring(5));
+            	params[paramIndex] = parts[1];
+                
             } else if (parts[0].equalsIgnoreCase(HStoreConstants.BENCHMARK_PARAM_PREFIX +  "INITIAL_POLLING_DELAY")) {
                 clientInitialPollingDelay = Integer.parseInt(parts[1]);
             } else {
@@ -2147,7 +2226,10 @@ public class BenchmarkController {
                 evictable,
                 deferrable,
                 dumpDatabase,
-                dumpDatabaseDir
+                dumpDatabaseDir,
+                procName,
+                procStartTime,
+                params
         );
         
         // Always pass these parameters
