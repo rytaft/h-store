@@ -120,6 +120,7 @@ import edu.brown.benchmark.AbstractProjectBuilder;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.HStoreThreadManager;
+import edu.brown.hstore.VoltProcedureInvoker;
 import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.logging.LoggerUtil;
@@ -280,9 +281,9 @@ public class BenchmarkController {
     	public final int waitTime;
     	public final Client client;
     	public final String procName;
-    	public final Object[] params;
+    	public final String[] params;
     	
-    	public RunSysProc(int waitTime, Client client, String procName, Object[] params) {
+    	public RunSysProc(int waitTime, Client client, String procName, String[] params) {
     		this.waitTime = waitTime;
         	this.client = client;
         	this.procName = procName;
@@ -306,9 +307,10 @@ public class BenchmarkController {
     		// run sysproc
             ClientResponse cr = null;
             try {
-                cr = client.callProcedure(procName, params);
-            } catch (Exception ex) {
-                LOG.error("Failed to execute sysproc " + procName, ex);
+            	cr = VoltProcedureInvoker.invoke(getCatalog(), client, procName, params);
+            } 
+            catch(Exception ex) {
+            	LOG.error("Failed to execute sysproc " + procName, ex);
             }
             
             if(cr != null) {
@@ -1253,9 +1255,9 @@ public class BenchmarkController {
         
         // 
         if(m_config.procName != null) {
-        	Object[] params = m_config.params;
+        	String[] params = m_config.params;
         	if(params == null) {
-        		params = new Object[]{};
+        		params = new String[]{};
         	}
         	RunSysProc runSysProc = new RunSysProc(m_config.procStartTime, local_client, m_config.procName, params);
         	runSysProc.start();
@@ -1850,7 +1852,7 @@ public class BenchmarkController {
         String dumpDatabaseDir = null;
         
         String procName = null;
-        Object[] params = null;
+        String[] params = null;
         int procStartTime = 0;
         
         // List of SiteIds that we won't start because they'll be started by the profiler
@@ -2097,10 +2099,10 @@ public class BenchmarkController {
             } else if (parts[0].equalsIgnoreCase("PROCSTARTTIME")) {
                 procStartTime = Integer.parseInt(parts[1]);                
             } else if (parts[0].equalsIgnoreCase("PARAMS")) {
-                params = new Object[]{ parts[1] }; 
+                params = new String[]{ parts[1] }; 
             } else if (parts[0].matches("(?i)PARAM[0-9]")) {
                 if(params == null) {
-                	params = new Object[10];
+                	params = new String[10];
                 }
             	int paramIndex = Integer.parseInt(parts[0].substring(5));
             	params[paramIndex] = parts[1];
@@ -2113,13 +2115,13 @@ public class BenchmarkController {
         }
         
         if(params != null) {
-        	ArrayList<Object> paramsList = new ArrayList<Object>();
-        	for(Object param : params) {
+        	ArrayList<String> paramsList = new ArrayList<String>();
+        	for(String param : params) {
         		if(param != null) {
         			paramsList.add(param);
         		}
         	}
-        	params = paramsList.toArray();
+        	params = paramsList.toArray(new String[]{});
         }
 
         // Initialize HStoreConf

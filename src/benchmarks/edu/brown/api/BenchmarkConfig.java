@@ -109,7 +109,7 @@ public class BenchmarkConfig {
     
     public String procName;
     public int procStartTime;
-    public Object[] params;
+    public String[] params;
     
     public final Map<String, String> clientParameters = new TreeMap<String, String>();
     public final Map<String, String> siteParameters = new TreeMap<String, String>();
@@ -232,7 +232,7 @@ public class BenchmarkConfig {
             String dumpDatabaseDir,
             String procName,
             int procStartTime,
-            Object[] params          
+            String[] params          
         ) {
         
         this.projectBuilderClass = benchmarkClient;
