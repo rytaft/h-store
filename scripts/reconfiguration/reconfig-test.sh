@@ -12,20 +12,20 @@ function onexit() {
 
 DATA_DIR="out"
 FABRIC_TYPE="ssh"
-FIRST_PARAM_OFFSET=1
+FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-    "reconfig-.5 --partitions=2" \
-    "reconfig-1 --partitions=2" \
-    "reconfig-2 --partitions=2" \
-    "reconfig-4 --partitions=2" \
+#    "reconfig-.5 --partitions=2" \
+#    "reconfig-1 --partitions=2" \
+    "reconfig-slow --partitions=2 --benchmark-size=100000" \
+#    "reconfig-4 --partitions=2" \
 #    "reconfig-2 --partitions=4" \
-    "stopcopy-2 --partitions=2" \
+#    "stopcopy-2 --partitions=2" \
 #    "stopcopy-2 --partitions=4" \
 )
 
 #for b in smallbank tpcc seats; do
-for b in tpcc ycsb; do
+for b in ycsb; do
 # for b in seats; do
     PARAMS=( \
         --no-update \

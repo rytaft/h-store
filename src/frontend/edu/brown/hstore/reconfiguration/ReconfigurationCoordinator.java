@@ -235,10 +235,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 async_nonchunk_push = false;
             }
         
-        String debugConfig = String.format("Reconfig configuration. DetailedTiming: %s AsyncPush:%s AysncPull:%s AsyncQueuePulls:%s LivePulls:%s AsyncPullSizeKB:%s LivePullSizeKB:%s", 
-                detailed_timing, async_nonchunk_push, async_nonchunk_pull, async_queue_pulls, live_pull, hstore_conf.site.reconfig_async_chunk_size_kb, hstore_conf.site.reconfig_chunk_size_kb);
+        String debugConfig = String.format("Reconfig configuration. DetailedTiming: %s AsyncPush:%s AysncPull:%s AsyncQueuePulls:%s LivePulls:%s AsyncPullSizeKB:%s LivePullSizeKB:%s ForceDestination:%s", 
+                detailed_timing, async_nonchunk_push, async_nonchunk_pull, async_queue_pulls, live_pull, hstore_conf.site.reconfig_async_chunk_size_kb, hstore_conf.site.reconfig_chunk_size_kb, FORCE_DESTINATION);
         LOG.info(debugConfig);
         FileUtil.appendEventToFile(debugConfig);
+        if(FORCE_DESTINATION){
+            FileUtil.appendEventToFile("WARNING=FORCE_DESTINATION_ON");
+        }
         
     }
 
@@ -1268,10 +1271,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
         @Override
         public void run(MultiPullReplyResponse msg) {
         	LOG.info(String.format("Callback for multi pull ID:%s chunkID:%s reply for partition %s isAsync:%s ", msg.getPullIdentifier(), msg.getChunkId(), msg.getOldPartition(),msg.getIsAsync()));
-        	if(msg.getIsAsync()){
-        		queueAsyncDataRequestMessageToWorkQueue(msg.getOldPartition());  
-        	}
-        	    	
         }
     };
 
@@ -1282,7 +1281,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         if(localSiteId != receiverId){
         	channels[receiverId].reconfigurationControlMsg(controller, acknowledgingCallback, null); 
         } else {
-        	queueAsyncDataRequestMessageToWorkQueue(acknowledgingCallback.getDestPartition());
+            
         }
     
     };
@@ -1307,14 +1306,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     // -------------------------------------------
     //  SCHEDULING FUNCTIONS 
     // -------------------------------------------
-    
-    public void queueAsyncDataRequestMessageToWorkQueue(int destPartition){
-    	LOG.info("Async pull reply has been received and acknowledged. Now queue the job for extracting next chunk for partition: " + destPartition);
-        PartitionExecutor executor = executorMap.get(destPartition);
-        assert(executor != null);
-    	// Call PE to get the message from the queue
-    	executor.queueAsyncDataRequestMessageToWorkQueue();
-    }
+
 
     public boolean scheduleAsyncNonChunkPush() {
         return async_nonchunk_push;

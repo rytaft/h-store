@@ -12,14 +12,14 @@ function onexit() {
 
 DATA_DIR="out"
 FABRIC_TYPE="ssh"
-FIRST_PARAM_OFFSET=0
+FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
     "reconfig-localhost --partitions=2" 
 )
 
 #for b in smallbank tpcc seats; do
-for b in ycsb; do
+for b in tpcc; do
 # for b in seats; do
     PARAMS=( \
         --no-update \

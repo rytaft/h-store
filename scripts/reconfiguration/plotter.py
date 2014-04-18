@@ -97,6 +97,10 @@ def getReconfigEvents(hevent_log):
                         event = "INIT"
                     elif "END" in line:
                         event = "END"
+                    elif "ASYNC_PULL_REQUESTED" in line:
+                        event = "ASYNC_PULL_REQUESTED"
+                    elif "LIVE_PULL_REQUESTED" in line:
+                        event = "LIVE_PULL_REQUESTED"    
                     else:
                         event = "UNKNOWN"
                     if event != "UNKNOWN":
@@ -139,6 +143,9 @@ def addReconfigEvent(df, reconfig_events):
     df['RECONFIG'] = ''
     df['IN_RECONFIG'] = False
     df['MISSING_DATA'] = False
+    df['ASYNC_PULLS'] = 0
+    df['LIVE_PULLS'] = 0
+    
     start, end = getReconfigStartEnd(reconfig_events)
     if not reconfig_events:
         return 
@@ -150,17 +157,26 @@ def addReconfigEvent(df, reconfig_events):
         ts += 1000
       #find the index last row that has a smaller physical TS
       _i = df[(df['TIMESTAMP'] <= (ts) ) ][-1:].index
-
-      #LATENCY.isnull()
-      #if we have new event set, otherwise append      
-      if df.RECONFIG[_i] == "":
-         df.RECONFIG[_i] = event[1]
+      if "ASYNC_PULL_REQUESTED" == event[1]:
+        df.ASYNC_PULLS[_i] = df.ASYNC_PULLS[_i] + 1
+      elif "LIVE_PULL_REQUESTED" == event[1]:
+        df.LIVE_PULLS[_i] = df.LIVE_PULLS[_i] + 1
       else:
-         df.RECONFIG[_i] = df.RECONFIG[_i] + "-" + event[1]
+        #LATENCY.isnull()
+        #if we have new event set, otherwise append      
+        if df.RECONFIG[_i] == "":
+           df.RECONFIG[_i] = event[1]
+        else:
+           df.RECONFIG[_i] = df.RECONFIG[_i] + "-" + event[1]
+
+       
     df['IN_RECONFIG'][(df.TIMESTAMP >= start-1000) & (df.TIMESTAMP <= end)] = True
     df['MISSING_DATA'] = df.LATENCY.isnull()
     df['DOWNTIME'] = df['MISSING_DATA'].sum()
     df['RECONFIG_TIME'] = end-start
+    print df['ASYNC_PULLS'].values
+    print df['LIVE_PULLS'].values
+    print df['IN_RECONFIG'].values
     #df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].mean()
     
 def getIntStats(interval_file):
@@ -383,6 +399,21 @@ def plotResults(args, files, ax):
 
     plotGraph(args)
 
+def plotReconfigs(args, d, ax):
+    ymean = np.mean(ax.get_ylim())
+    y1 = ymean + ax.get_ylim()[1]*0.1
+    y2 = ymean - ax.get_ylim()[1]*0.1
+    lives = d[d.LIVE_PULLS>0]['LIVE_PULLS']
+    asyncs = d[d.ASYNC_PULLS>0]['ASYNC_PULLS']
+    label = 'Live Pull'
+    for z in lives.iteritems():
+        plot.plot(z[0],y1,'^',ms=z[1]*2,color='black',label=label)
+        label = None
+    label = 'Async Pull'
+    for z in asyncs.iteritems():
+        plot.plot(z[0],y2,'D',ms=z[1]*2,color='blue',label=label)
+        label = None
+
 ## ==============================================
 ## tsd
 ## ==============================================
@@ -416,6 +447,7 @@ def plotTSD(args, files, ax):
                 reconfig_events = getReconfigEvents(_file.replace("interval_res.csv", "hevent.log"))
                 if reconfig_events:
                     addReconfigEvent(df, reconfig_events)
+                     
                     if len(df[df.RECONFIG.str.contains('TXN')]) == 1:
                         ax.axvline(df[df.RECONFIG.str.contains('TXN')].index[0], color=color, lw=1.5, linestyle="--",label=init_legend)
                         if any(df.RECONFIG.str.contains('END')):
@@ -441,6 +473,8 @@ def plotTSD(args, files, ax):
             if args.type == "line":
                 #plot the line with the same color 
                 ax.plot(df.index, data[name], color=color,label=name,ls=linestyle, lw=2.0)
+                if reconfig_events:
+                    plotReconfigs(args, df, ax)
             x+=1 # FOR
     plotFrame = pandas.DataFrame(data=data)
     if args.type == "line":

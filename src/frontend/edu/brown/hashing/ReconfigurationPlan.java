@@ -252,7 +252,7 @@ public class ReconfigurationPlan {
             //Check if we should split
             if (conf == null)
                 return reconfiguration_range;
-            long currentMax = conf.site.reconfig_max_transfer_bytes;
+            long currentMax = Math.min(conf.site.reconfig_max_transfer_bytes, conf.site.reconfig_chunk_size_kb*1024);
             if (currentMax <= 1)
                 return reconfiguration_range;
             
