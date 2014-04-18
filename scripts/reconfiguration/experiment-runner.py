@@ -850,7 +850,7 @@ def saveCSVResults(inst, fabric, args, benchmark, partitions, filename):
     contents = fabric.get_file(inst, filename)
     if len(contents) > 0:
         # We'll prefix the name with the number of partitions
-        suffix =''            
+        suffix =''
         if args['exp_suffix']:
             suffix = "-%s" % (args['exp_suffix'])
         localName = "%s-%02dp%s-%s" % (benchmark, partitions, suffix, os.path.basename(filename))
@@ -984,13 +984,28 @@ def createFabricHandle(name, env):
 ## reconfiguration
 ## ==============================================
 def sweepReconfiguration(client_inst, fabric, args, benchmark, partitions):
-    LOG.info("Sweeping the reconfiguration events")
-    for inst in fabric.getRunningInstances():
-       sweepHevent(inst, client_inst, fabric, args, benchmark, partitions)
-     
-def sweepHevent(inst, client_inst, fabric, args, benchmark, partitions):
-    LOG.info("Sweeping the event file for inst %s" % inst)
+    LOG.info("Sweeping the reconfiguration events ")
+    swept_inst = set()
     filename = "hevent.log"
+    suffix =''
+    if args['exp_suffix']:
+        suffix = "-%s" % (args['exp_suffix'])
+    localName = "%s-%02dp%s-%s" % (benchmark, partitions, suffix, os.path.basename(filename))
+    resultsDir = os.path.join(args['results_dir'], args['exp_type'])
+    localFile = os.path.join(resultsDir, localName)
+    if os.path.exists(localFile):
+        LOG.info("Removing local event file %s" % localFile)
+        os.remove(localFile)
+    for inst in fabric.getRunningInstances():
+        if str(inst) not in swept_inst:
+            LOG.info("Swepts :%s " % ",".join(swept_inst))
+            sweepHevent(inst, client_inst, fabric, args, benchmark, partitions, localFile, filename)
+            swept_inst.add(str(inst))  
+        else:
+            LOG.info("Skipping inst:%s due to already swept"% inst)
+     
+def sweepHevent(inst, client_inst, fabric, args, benchmark, partitions, localFile, filename):
+    LOG.info("Sweeping the event file for inst %s" % inst)
     complete_filename = os.path.join(fabric.hstore_dir, filename)
     LOG.info("Going to retrieve remote reconfiguration event file '%s'" % complete_filename)
     if inst != client_inst:
@@ -998,12 +1013,6 @@ def sweepHevent(inst, client_inst, fabric, args, benchmark, partitions):
         contents = fabric.get_file(inst, complete_filename)
         if len(contents) > 0:
             # Prefix the name with the number of partitions
-            suffix =''            
-            if args['exp_suffix']:
-                suffix = "-%s" % (args['exp_suffix'])
-            localName = "%s-%02dp%s-%s" % (benchmark, partitions, suffix, os.path.basename(filename))
-            resultsDir = os.path.join(args['results_dir'], args['exp_type'])
-            localFile = os.path.join(resultsDir, localName)
             with open(localFile, "a") as f:
                 f.write(contents)
             LOG.info("Saved reconfiguration events to '%s'" % os.path.realpath(localFile))

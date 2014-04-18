@@ -20,9 +20,10 @@ import org.voltdb.catalog.CatalogType;
 import org.voltdb.exceptions.ReconfigurationException;
 import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 
-import edu.brown.hashing.TwoTieredRangePartitions;
+import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 
 /**
@@ -34,8 +35,12 @@ import edu.brown.logging.LoggerUtil.LoggerBoolean;
 public class ReconfigurationTracking implements ReconfigurationTrackingInterface {
 
     private static final Logger LOG = Logger.getLogger(ReconfigurationTracking.class);
-    private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
-    private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
+    private static final LoggerBoolean debug = new LoggerBoolean();
+    private static final LoggerBoolean trace = new LoggerBoolean();
+    static {
+        LoggerUtil.setupLogging();
+        LoggerUtil.attachObserver(LOG, debug, trace);
+    }
     public static boolean PULL_SINGLE_KEY = true;
     private List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges;
     private List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges;
@@ -54,10 +59,10 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     public Map<String,Set<Comparable>> migratedKeyOut;
     
     private int partition_id;
-    private TwoTieredRangePartitions partitionPlan;
+    private ExplicitPartitions partitionPlan;
     
     
-    public ReconfigurationTracking(TwoTieredRangePartitions partitionPlan,List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges,
+    public ReconfigurationTracking(ExplicitPartitions partitionPlan,List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges,
             List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges, int partition_id) {
         super();
         this.partitionPlan = partitionPlan;
@@ -92,7 +97,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         this.dataPartiallyMigratedIn = new ArrayList<>();
     }
     
-    public ReconfigurationTracking(TwoTieredRangePartitions partitionPlan, ReconfigurationPlan plan, int partition_id){
+    public ReconfigurationTracking(ExplicitPartitions partitionPlan, ReconfigurationPlan plan, int partition_id){
         this(partitionPlan,plan.getOutgoing_ranges().get(partition_id), plan.getIncoming_ranges().get(partition_id),partition_id);
         /*this.partitionPlan = partitionPlan;
         this.outgoing_ranges = new ArrayList<ReconfigurationRange<? extends Comparable<?>>>();

@@ -203,4 +203,8 @@ public class SysProcFragmentId {
     // @ReconfigurationRemote 
     public static final int PF_reconfigurationRemoteDistribute = 406;
     public static final int PF_reconfigurationRemoteAggregate = 407;
+
+    // @ReconfigurationStatic
+    public static final int PF_reconfigurationStaticDistribute = 408;
+    public static final int PF_reconfigurationStaticAggregate = 409;
 }

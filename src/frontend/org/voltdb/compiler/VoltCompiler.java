@@ -98,6 +98,7 @@ import org.voltdb.sysprocs.NoOp;
 import org.voltdb.sysprocs.Quiesce;
 import org.voltdb.sysprocs.Reconfiguration;
 import org.voltdb.sysprocs.ReconfigurationRemote;
+import org.voltdb.sysprocs.ReconfigurationStatic;
 import org.voltdb.sysprocs.ResetProfiling;
 import org.voltdb.sysprocs.SetConfiguration;
 import org.voltdb.sysprocs.Shutdown;
@@ -1296,7 +1297,8 @@ public class VoltCompiler {
             {ChangePartitionPlan.class,             true,       true},
             {Reconfiguration.class,                 false,      true},
             {StopCopy.class,                        false,      true},
-            {ReconfigurationRemote.class,           false,      true},            
+            {ReconfigurationRemote.class,           false,      true},
+            {ReconfigurationStatic.class,           false,      true},
          
 //         {"org.voltdb.sysprocs.StartSampler",                 false,    false},
 //         {"org.voltdb.sysprocs.SystemInformation",            true,     false},

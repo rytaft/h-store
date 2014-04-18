@@ -10,6 +10,7 @@ import java.util.HashSet;
 import org.junit.Test;
 
 import edu.brown.BaseTestCase;
+import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.TwoTieredRangePartitions;
 import edu.brown.hstore.reconfiguration.ReconfigurationUtil.ReconfigurationPair;
@@ -53,7 +54,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
      */
     @Test
     public void testReconfigurationPlanSplitter() throws Exception{
-        TwoTieredRangePartitions p = new TwoTieredRangePartitions(catalogContext, json_path1);
+        ExplicitPartitions p = new TwoTieredRangePartitions(catalogContext, json_path1);
         p.setPartitionPlan(json_path1);    
         ReconfigurationPlan plan = p.setPartitionPlan(json_path2);
         

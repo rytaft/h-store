@@ -87,7 +87,8 @@ public class TestPlannedPartitions extends BaseTestCase {
 
     public void testExtractTableNames() throws Exception {
         JSONObject test_json = new JSONObject(test_json1);
-        Set<String> tbls = PlannedPartitions.getExplicitPartitionedTables(test_json);
+        PlannedPartitions p = new PlannedPartitions(catalogContext, test_json);
+        Set<String> tbls = p.getExplicitPartitionedTables(test_json);
         assertTrue(tbls.contains("usertable"));
     }
 

@@ -221,7 +221,7 @@ class AbstractFabric(object):
         LOG.info("****  Starting Reconfigs")
         for reconfig in reconfigEvents:
             time.sleep(float(reconfig['delayTimeMS'])/1000)
-            cmd = "ant hstore-invoke -Dproc='@Reconfiguration' -Dproject=%s -Dparam0=%s -Dparam1=%s -Dparam2=%s" % (project, reconfig['leaderID'], reconfig['planID'], reconfig['reconfigType'])
+            cmd = "ant hstore-invoke -Dproc='@ReconfigurationStatic' -Dproject=%s -Dparam0=%s -Dparam1=%s -Dparam2=%s" % (project, reconfig['leaderID'], reconfig['planID'], reconfig['reconfigType'])
             LOG.info("**** %s " % cmd)
             run("touch hereIam.txt")
             output = run(cmd, combine_stderr=True)

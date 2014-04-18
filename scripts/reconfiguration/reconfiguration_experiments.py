@@ -19,9 +19,10 @@ RECONFIG_EXPERIMENTS = [
     "stopcopy-tpcc-small",
     "reconfig-fast",
     "stopcopy-fast",
+    "reconfig-slow",
 ]
 
-RECONFIG_CLIENT_COUNT = 5
+RECONFIG_CLIENT_COUNT = 1
 
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
@@ -168,8 +169,8 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = min(50, int(partitions * 4))
-	args["reconfig"] = None
+        fabric.env["client.threads_per_host"] = min(50, int(partitions * 4))	    
+        args["reconfig"] = None
 
     if 'reconfig-tpcc-small' in  args['exp_type'] or 'stopcopy-tpcc-small' in args['exp_type']:
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
@@ -181,10 +182,24 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         fabric.env["client.threads_per_host"] = 50 #partitions * 2  # max(1, int(partitions/2))
-	fabric.env["client.txnrate"] = 10
+        fabric.env["client.txnrate"] = 10
         fabric.env["site.reconfig_chunk_size_kb"] = 20048
         fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
         fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.neworder_multip"] = False
         fabric.env["benchmark.payment_multip"] = False
+
+    if 'reconfig-slow' == args['exp_type']:
+        fabric.env["client.blocking_concurrent"] = 1 # * int(partitions/8)
+        fabric.env["client.count"] = 1
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.threads_per_host"] = 2
+        fabric.env["site.reconfig_chunk_size_kb"] = 2048 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
+        fabric.env["site.commandlog_enable"] = False
+        fabric.env["client.txnrate"] = 100
+        #fabric.env["site.reconfig_async"] = False
+        fabric.env["benchmark.loadthreads"] = 1
+        fabric.env["benchmark.requestdistribution"] = "uniform"
 
