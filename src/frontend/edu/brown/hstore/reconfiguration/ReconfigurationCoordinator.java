@@ -327,7 +327,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 } else {
                     throw new Exception("Unsupported hasher : " + absHasher.getClass());
                 }
-                FileUtil.appendEventToFile(reconfig_plan.planDebug);
+                if (reconfig_plan!=null) {
+                    FileUtil.appendEventToFile(reconfig_plan.planDebug);
+                } else {
+                    FileUtil.appendEventToFile("Null Reconfig plan");
+                }
                 this.planned_partitions = hasher.getPartitions();
                 if (reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
                     if (reconfig_plan != null){
