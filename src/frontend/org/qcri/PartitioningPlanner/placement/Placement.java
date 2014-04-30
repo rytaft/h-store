@@ -17,8 +17,6 @@ public class Placement {
 	Map<Site,Collection<Integer>> siteToPartitions;	
 	Map<Integer, Site> partitionToSite;
 
-	final int MAX_VOTES = 1000;
-	
 	public Placement(){
 		
 	}

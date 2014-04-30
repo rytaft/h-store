@@ -134,13 +134,13 @@ private int getNoOfTuples(Map<Long, Integer> PhoneNUM_VOTES, Long phoneNo, org.v
 	{ n = noVotes.intValue();
 	//System.out.printf("Phone NumVotes is fected from the Map \n");
 	}
-	/*else 
+	else 
 	//
 	{
 	
 	
 	String query = "select NUM_VOTES from V_VOTES_BY_PHONE_NUMBER where PHONE_NUMBER = " + phoneNo;
-	System.out.printf("Query:: " + query);
+	//System.out.println("Query:: " + query);
 	ClientResponse cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
@@ -151,8 +151,8 @@ private int getNoOfTuples(Map<Long, Integer> PhoneNUM_VOTES, Long phoneNo, org.v
                 n = (int) count[0].fetchRow(0).getLong(0); // the NUM_VOTES of a specific phone no
 	}	
 
-	System.out.printf("Phone no is " + phoneNo+ " has " + n + " tuples \n" );
-	}*/
+	//System.out.printf("Phone no is " + phoneNo+ " has " + n + " tuples \n" );
+	}
 	return n;
 }
 
@@ -193,19 +193,18 @@ private void fetchTuplesPerPhone(Map<Long, Integer> PhoneNUM_VOTES, org.voltdb.c
 	String query;
 	ClientResponse cresponse;
 	
-	/*
+	
 	query = "select count(*) from V_VOTES_BY_PHONE_NUMBER";
-	System.out.printf("Query:: " + query);
+	//System.out.println("Query:: " + query);
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] count = cresponse.getResults(); 
 	
-	System.out.printf("Phone Count is " + count[0].fetchRow(0).getLong(0) +"\n");
+	//System.out.printf("Phone Count is " + count[0].fetchRow(0).getLong(0) +"\n");
 	
 	int i = (int) ((count[0].fetchRow(0).getLong(0)) / 100) ; // no phone numbers
-	*/
-	int i = 50000;
-	query = "select PHONE_NUMBER, NUM_VOTES from V_VOTES_BY_PHONE_NUMBER WHERE NUM_VOTES <= 1000 Order By NUM_VOTES DESC Limit " + i;
-	System.out.printf("Query:: " + query+"\n");
+	
+	query = "select PHONE_NUMBER, NUM_VOTES from V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES DESC Limit " + i;
+	System.out.println("Query:: " + query);
 	cresponse = client.callProcedure("@AdHoc", query);
 	VoltTable[] reslt = cresponse.getResults(); 
 	
@@ -226,7 +225,7 @@ private void fetchTuplesPerPhone(Map<Long, Integer> PhoneNUM_VOTES, org.voltdb.c
 		
 	}
 
-	System.out.printf("the top 1 percent of V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES is Fetched");
+	//System.out.printf("the top 1 percent of V_VOTES_BY_PHONE_NUMBER Order By NUM_VOTES is Fetched");
 }
 
 

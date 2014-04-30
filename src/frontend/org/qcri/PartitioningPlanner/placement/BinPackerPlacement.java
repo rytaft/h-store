@@ -71,13 +71,8 @@ public class BinPackerPlacement extends Placement {
 		for(Map<Long, Pair<Long,Integer> >  hotTuples : hotTuplesList) {
 			tupleCount += hotTuples.keySet().size();
 			for(Long i : hotTuples.keySet()) {
-				int size = hotTuples.get(i).getSecond();
-				if (size > MAX_VOTES) {
-					// we need this check because of a bug in the Voter benchmark
-					size = hotTuples.get(i).getFirst().intValue();
-				}
 				oldLoad.put(partitionId, new Pair<Long, Integer>(oldLoad.get(partitionId).getFirst() - hotTuples.get(i).getFirst(), 
-						oldLoad.get(partitionId).getSecond() - size));
+						oldLoad.get(partitionId).getSecond() - hotTuples.get(i).getSecond()));
 				oldPlan.removeTupleId(partitionId, i);
 			}
 			++partitionId;
@@ -87,13 +82,8 @@ public class BinPackerPlacement extends Placement {
 		partitionId = 0;
 		for(Map<Long, Pair<Long,Integer> >  hotTuples : hotTuplesList) {
 			for(Long i : hotTuples.keySet()) {
-				long size = hotTuples.get(i).getSecond();
-				if (size > MAX_VOTES) {
-					// we need this check because of a bug in the Voter benchmark
-					size = hotTuples.get(i).getFirst().longValue();
-				}
 				tupleIds.add(i);
-				sliceSizes.add(size);
+				sliceSizes.add(hotTuples.get(i).getSecond().longValue());
 				accesses.add(hotTuples.get(i).getFirst());
 				locations.add(partitionId);
 			}

@@ -60,15 +60,10 @@ public class GreedyPlacement extends Placement {
 					dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount);
 					if(dstPartition != _srcPartition) {
 					        //System.out.println(" sending it to " + dstPartition);
-						int size = _hotSize;
-						if (size > MAX_VOTES) {
-							// we need this check because of a bug in the Voter benchmark
-							size = _hotAccessCount.intValue();
-						}
 						partitionTotals.put(_srcPartition, new Pair<Long, Integer>(partitionTotals.get(_srcPartition).getFirst()  - _hotAccessCount, 
-								partitionTotals.get(_srcPartition).getSecond()  - size));
+								partitionTotals.get(_srcPartition).getSecond()  - _hotSize));
 						partitionTotals.put(dstPartition, new Pair<Long, Integer>(partitionTotals.get(dstPartition).getFirst()  + _hotAccessCount, 
-								partitionTotals.get(dstPartition).getSecond()  + size));
+								partitionTotals.get(dstPartition).getSecond()  + _hotSize));
 						aPlan.removeTupleId(_srcPartition, _hotTupleId);
 						if(!aPlan.hasPartition(dstPartition)) {
 							aPlan.addPartition(dstPartition);
