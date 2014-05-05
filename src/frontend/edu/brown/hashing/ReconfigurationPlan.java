@@ -236,7 +236,7 @@ public class ReconfigurationPlan {
                     throw new NotImplementedException("Can only handle types of small, long, int. Class: " +sampleKey.getClass().getName());
                 }
             } catch(Exception ex){
-              LOG.error("Exception splitting reconfiguration ranges, returning original list",ex);  
+              LOG.error("Exception merging reconfiguration ranges, returning original list",ex);  
               return reconfiguration_range;
             }
 

@@ -14,6 +14,7 @@ import org.voltdb.catalog.Table;
 import org.voltdb.utils.NotImplementedException;
 
 import edu.brown.hstore.conf.HStoreConf;
+import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.utils.FileUtil;
 
@@ -40,6 +41,7 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
     
     private ExplicitPartitions partitions = null;
 
+    private ReconfigurationCoordinator reconfigCoord = null;
     /**
      * Update the current partition plan
      * 
@@ -104,10 +106,24 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
     public int hash(Object value, CatalogType catalogItem) {
         if (catalogItem instanceof Column || catalogItem instanceof Procedure || catalogItem instanceof Statement) {
             try {
-                if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s",catalogItem,value,partitions.getPartitionId(catalogItem, value)));
-                return partitions.getPartitionId(catalogItem, value);
+                //If we do not have an RC, or there is an RC but no reconfig is in progress
+                if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !reconfigCoord.getReconfigurationInProgress())){
+                	if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s",catalogItem,value,partitions.getPartitionId(catalogItem, value)));
+                    return partitions.getPartitionId(catalogItem, value);
+                } else {
+                    int expectedPartition = partitions.getPartitionId(catalogItem, value);
+                    int previousPartition = partitions.getPreviousPartitionId(catalogItem, value);
+                    if (expectedPartition == previousPartition) {
+                        //The item isn't moving
+                        return expectedPartition;
+                    } else {
+                        //the item is moving
+                        //check with RC on which partition. 
+                        return reconfigCoord.getPartitionId(previousPartition, expectedPartition, catalogItem, value);
+                    }
+                }
             } catch (Exception e) {
-                LOG.error("Error on looking up partitionId from partition plan", e);
+                LOG.error("Error on looking up partitionId from planned partition", e);
                 throw new RuntimeException(e);
             }
         }
@@ -123,6 +139,10 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
         return (ExplicitPartitions)partitions;
     }
 
+    public void setReconfigCoord(ReconfigurationCoordinator reconfigCoord) {
+        this.reconfigCoord = reconfigCoord;
+    }
+    
     @Override
     public ReconfigurationPlan changePartitionPhase(String partition_plan) throws Exception {
         throw new NotImplementedException("TODO");
