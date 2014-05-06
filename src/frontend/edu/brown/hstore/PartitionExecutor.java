@@ -3294,7 +3294,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.error("Overwriting current async pull");
             }
             pullStartTime.put(pullID, System.currentTimeMillis());
-            FileUtil.appendEventToFile(String.format("ASYNC_PULL_REQUESTED, PULL_ID=%s, PARTITIONID=%s",pullID, partitionId));
+            FileUtil.appendEventToFile(String.format("ASYNC_PULL_REQUESTED, PULL_ID=%s, PARTITIONID=%s, TABLE=%s",pullID, partitionId, pullRange.table_name));
         } 
         this.reconfiguration_coordinator.asyncPullRequestFromPE(pullID, txnID, this.partitionId, pullRequests);
         LOG.debug("("+ this.partitionId + ") ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());       
@@ -6354,7 +6354,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         Long startTime = pullStartTime.remove(pullId);
                         if (isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
                             long timeTaken = System.currentTimeMillis() - startTime;
-                            FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s",timeTaken, pullId));
+                            FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%s",timeTaken, pullId, table_name));
                         }
                         this.reconfiguration_tracker.markKeyAsReceived(table_name, minInclusive);
                     } else {
@@ -6378,7 +6378,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             Long startTime = pullStartTime.remove(pullId);
                             if (isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
                                 long timeTaken = System.currentTimeMillis() - startTime;
-                                FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s",timeTaken, pullId));
+                                FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, MIN=%s, MAX=%s",timeTaken, pullId,table_name, minInclusive, maxExclusive));
                             }
                             this.reconfiguration_tracker.markRangeAsReceived(
                                     new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
