@@ -41,7 +41,7 @@ for b in ycsb; do
         --client.duration=120000 \
         --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv
-        --reconfig=95000:2:0
+        --reconfig=15000:2:0
     )
     
     i=0

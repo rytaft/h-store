@@ -345,7 +345,8 @@ class AbstractFabric(object):
                 if reconfigEvents:
                     if len(reconfigEvents) > 1:
                       raise NotImplementedError()
-                    cmd = "-Dproc='@ReconfigurationStatic' -Dproc_start_time=%s -Dparam0=%s -Dparam1=%s -Dparam2=%s" % (reconfig['delayTimeMS'], reconfig['leaderID'], reconfig['planID'], reconfig['reconfigType'])
+                    reconfig = reconfigEvents[0]
+                    reconfig_cmd = "-Dproc=@ReconfigurationStatic -Dproc_start_time=%d -Dparam0=%s -Dparam1=%s -Dparam2=%s" % (reconfig['delayTimeMS'], reconfig['leaderID'], reconfig['planID'], reconfig['reconfigType'])
            
                 cmd = "ant %s hstore-benchmark %s %s" % (prefix, hstore_opts_cmd, reconfig_cmd)
                 output = run(cmd)
