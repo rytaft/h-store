@@ -31,6 +31,7 @@ namespace catalog {
 class Column;
 class Index;
 class Constraint;
+class ColumnRef;
 class MaterializedViewInfo;
 /**
  * A table (relation) in the database
@@ -46,6 +47,7 @@ protected:
     CatalogMap<Constraint> m_constraints;
     bool m_isreplicated;
     CatalogType* m_partitioncolumn;
+    CatalogMap<ColumnRef> m_partitioncolumns;
     int32_t m_estimatedtuplecount;
     CatalogMap<MaterializedViewInfo> m_views;
     CatalogType* m_materializer;
@@ -72,6 +74,8 @@ public:
     bool isreplicated() const;
     /** GETTER: On which column is the table horizontally partitioned */
     const Column * partitioncolumn() const;
+    /** GETTER: On which columns is the table horizontally partitioned */
+    const CatalogMap<ColumnRef> & partitioncolumns() const;
     /** GETTER: A rough estimate of the number of tuples in the table; used for planning */
     int32_t estimatedtuplecount() const;
     /** GETTER: Information about materialized views based on this table's content */
