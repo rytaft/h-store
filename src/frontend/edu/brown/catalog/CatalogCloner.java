@@ -22,6 +22,7 @@ import org.voltdb.catalog.Index;
 import org.voltdb.catalog.MaterializedViewInfo;
 import org.voltdb.catalog.PlanFragment;
 import org.voltdb.catalog.ProcParameter;
+import org.voltdb.catalog.ProcParameterRef;
 import org.voltdb.catalog.Procedure;
 import org.voltdb.catalog.Site;
 import org.voltdb.catalog.Statement;
@@ -97,6 +98,13 @@ public abstract class CatalogCloner {
                 }
             }
             assert (catalog_proc.getParameters().size() == clone_proc.getParameters().size()) : catalog_proc.getParameters() + " != " + clone_proc.getParameters();
+
+            // Partitioning parameters for composite key partitioning
+            if (catalog_proc.getPartitionparameters() != null) {
+                for (ProcParameterRef param : catalog_proc.getPartitionparameters()) {
+                	clone_proc.getPartitionparameters().add(param);
+                }
+            }
         } // FOR
 
         return (clone_db);
@@ -253,12 +261,18 @@ public abstract class CatalogCloner {
                         dest_cols[i] = dest_tbl.getColumns().get(mc.get(i).getName());
                     } // FOR
                     dest_part_col = MultiColumn.get(dest_cols);
-
                 } else {
                     dest_part_col = dest_tbl.getColumns().get(src_part_col.getName());
                 }
                 assert (dest_part_col != null) : "Missing partitioning column " + CatalogUtil.getDisplayName(src_part_col);
                 dest_tbl.setPartitioncolumn(dest_part_col);
+            }
+            
+            // Partitioning Columns for composite key partitioning
+            if (src_tbl.getPartitioncolumns() != null) {
+                for (ColumnRef col : src_tbl.getPartitioncolumns()) {
+                	dest_tbl.getPartitioncolumns().add(col);
+                }
             }
         // MaterializedViewInfo
         } else if (src_item instanceof MaterializedViewInfo) {

@@ -32,6 +32,8 @@ class UserRef;
 class GroupRef;
 class Table;
 class Column;
+class ColumnRef;
+class ProcParameterRef;
 class AuthProgram;
 class Statement;
 class ProcParameter;
@@ -63,7 +65,9 @@ protected:
     bool m_hasjava;
     CatalogType* m_partitiontable;
     CatalogType* m_partitioncolumn;
+    CatalogMap<ColumnRef> m_partitioncolumns;
     int32_t m_partitionparameter;
+    CatalogMap<ProcParameterRef> m_partitionparameters;
     CatalogMap<AuthProgram> m_authPrograms;
     CatalogMap<Statement> m_statements;
     CatalogMap<ProcParameter> m_parameters;
@@ -114,8 +118,12 @@ public:
     const Table * partitiontable() const;
     /** GETTER: Which column in the partitioned table is this procedure mapped on? */
     const Column * partitioncolumn() const;
+    /** GETTER: Which columns in the partitioned table is this procedure mapped on? */
+    const CatalogMap<ColumnRef> & partitioncolumns() const;
     /** GETTER: Which parameter identifies the partition column? */
     int32_t partitionparameter() const;
+    /** GETTER: Which parameters identify the partition columns? */
+    const CatalogMap<ProcParameterRef> & partitionparameters() const;
     /** GETTER: The set of authorized programs for this procedure (users) */
     const CatalogMap<AuthProgram> & authPrograms() const;
     /** GETTER: The set of SQL statements this procedure may call */

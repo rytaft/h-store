@@ -42,7 +42,9 @@ public class Procedure extends CatalogType {
     String m_reduceInputQuery = new String();
     String m_reduceEmitTable = new String();
     boolean m_hasjava;
+    CatalogMap<ColumnRef> m_partitioncolumns;
     int m_partitionparameter;
+    CatalogMap<ProcParameterRef> m_partitionparameters;
     CatalogMap<AuthProgram> m_authPrograms;
     CatalogMap<Statement> m_statements;
     CatalogMap<ProcParameter> m_parameters;
@@ -70,7 +72,11 @@ public class Procedure extends CatalogType {
         m_fields.put("hasjava", m_hasjava);
         m_fields.put("partitiontable", null);
         m_fields.put("partitioncolumn", null);
+        m_partitioncolumns = new CatalogMap<ColumnRef>(catalog, this, path + "/" + "partitioncolumns", ColumnRef.class);
+        m_childCollections.put("partitioncolumns", m_partitioncolumns);
         m_fields.put("partitionparameter", m_partitionparameter);
+        m_partitionparameters = new CatalogMap<ProcParameterRef>(catalog, this, path + "/" + "partitionparameters", ProcParameterRef.class);
+        m_childCollections.put("partitionparameters", m_partitionparameters);
         m_authPrograms = new CatalogMap<AuthProgram>(catalog, this, path + "/" + "authPrograms", AuthProgram.class);
         m_childCollections.put("authPrograms", m_authPrograms);
         m_statements = new CatalogMap<Statement>(catalog, this, path + "/" + "statements", Statement.class);
@@ -205,9 +211,19 @@ public class Procedure extends CatalogType {
         return (Column) o;
     }
 
+    /** GETTER: Which columns in the partitioned table is this procedure mapped on? */
+    public CatalogMap<ColumnRef> getPartitioncolumns() {
+        return m_partitioncolumns;
+    }
+
     /** GETTER: Which parameter identifies the partition column? */
     public int getPartitionparameter() {
         return m_partitionparameter;
+    }
+
+    /** GETTER: Which parameters identify the partition columns? */
+    public CatalogMap<ProcParameterRef> getPartitionparameters() {
+        return m_partitionparameters;
     }
 
     /** GETTER: The set of authorized programs for this procedure (users) */
