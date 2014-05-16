@@ -1325,4 +1325,9 @@ size_t PersistentTable::hashCode() {
     return hashCode;
 }
 
+void PersistentTable::setPartitionColumns(const std::vector<int>& columns) {
+    m_partitionColumns.clear();
+    m_partitionColumns.insert(m_partitionColumns.begin(), columns.begin(), columns.end());
+}
+
 }
