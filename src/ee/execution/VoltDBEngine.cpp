@@ -1500,8 +1500,9 @@ int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &seriali
     std::string tableName = "EXTRACT_TABLE";
     CatalogId databaseId = 1;
 
-    std::string* colNames = TupleSchema::createMigrateColumnNames();
-    TupleSchema *extractMigrateSchema = TupleSchema::createMigrateTupleSchema();
+    size_t nCols = table->partitionColumns().size();
+    std::string* colNames = TupleSchema::createMigrateColumnNames(nCols);
+    TupleSchema *extractMigrateSchema = TupleSchema::createMigrateTupleSchema(nCols);
 
     Table* tempExtractTable = reinterpret_cast<Table*>(TableFactory::getTempTable(
             databaseId,

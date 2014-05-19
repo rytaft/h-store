@@ -60,405 +60,321 @@ MigrationManager::MigrationManager(ExecutorContext *executorContext, catalog::Da
     
     m_extractedTables.clear();
     m_extractedTableNames.clear();
+
 }
 
 MigrationManager::~MigrationManager() {
     // TODO
 }
 
-Table* MigrationManager::extractRange(PersistentTable *table, const NValue minKey, const NValue maxKey, int32_t requestToken, int32_t extractTupleLimit, bool& moreData) {
-    VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );        
-    //Get the right index to use
-    //TODO andy ae this should be cached on initialization. do tables exists? when should migration mgr be created? should it exist in dbcontext
-    
-    TableIndex* partitionIndex = getPartitionColumnIndex(table);    
-    int partitionColumn = table->partitionColumn();
-    bool partitionColumnIsIndexed=true;
-    if(partitionIndex == NULL){
-	VOLT_DEBUG("partitionColumn is not indexed partitionColumn: %d",partitionColumn);
-        //TODO ae what do we do when we have no index for the partition colum?
-        partitionColumnIsIndexed = false;
-    } else {
-	VOLT_DEBUG("partitionColumn is indexed partitionColumn: %d",partitionColumn);
-    }
-    TableTuple tuple(table->schema());
-    //TODO ae andy -> How many byes should we set this to? Below is just a silly guess
-    int outTableSizeInBytes = 1024; 
-    //int outTableSizeInBytes = (maxKey.op_subtract(minKey)).castAs(VALUE_TYPE_INTEGER).getInteger() *tuple.maxExportSerializationSize();
+  
+typedef std::map<NValue,std::pair<NValue, RecursiveRangeMap>,NValue::ltNValue> RecursiveRangeType; 
 
-    //output table
-    Table* outputTable = reinterpret_cast<Table*>(TableFactory::getCopiedTempTable(table->databaseId(),
-            table->name(),table,&outTableSizeInBytes));
+void MigrationManager::init(PersistentTable *table) {
+  m_table = table;
+
+  //Get the right index to use
+  //TODO andy ae this should be cached on initialization. do tables exists? when should migration mgr be created? should it exist in dbcontext
+  m_partitionColumns = m_table->partitionColumns();    
+  m_partitionIndex = getPartitionColumnsIndex(); 
+
+  if(m_partitionIndex == NULL) {
+    VOLT_DEBUG("partitionColumn is not indexed partitionColumn: %d",m_partitionColumns[0]);
+    //TODO ae what do we do when we have no index for the partition colum?
+    m_partitionColumnsIndexed = false;
+  } else {
+    VOLT_DEBUG("partitionColumn is indexed partitionColumn: %d",m_partitionColumns[0]);
+    m_partitionColumnsIndexed = true;
+  }
+
+  //TODO ae andy -> How many byes should we set this to? Below is just a silly guess
+  int outTableSizeInBytes = 1024; 
+
+  //output table
+  m_outputTable = reinterpret_cast<Table*>(TableFactory::getCopiedTempTable(m_table->databaseId(),
+							   m_table->name(),m_table,&outTableSizeInBytes));
     
-    //Extract Limit 
-    bool dataLimitReach = false;
-    int tuplesExtracted = 0;
+  //Extract Limit 
+  m_dataLimitReach = false;
+  m_tuplesExtracted = 0;
     
-    std::vector<ValueType> keyColumnTypes(1, minKey.getValueType());
-    std::vector<int32_t> keyColumnLengths(1, NValue::getTupleStorageSize(minKey.getValueType()));
-    std::vector<bool> keyColumnAllowNull(1, true);
-    TupleSchema* keySchema = TupleSchema::createTupleSchema(keyColumnTypes,keyColumnLengths,keyColumnAllowNull,true);
-    TableTuple searchkey(keySchema);
-    searchkey.move(new char[searchkey.tupleLength()]);
-    searchkey.setNValue(0, minKey);
-    #ifdef EXTRACT_STAT_ENABLED
-    boost::timer timer;
-    int rowsExamined = 0;
-    #endif
-    //Do we have a single key to pull
-    if(minKey.compare(maxKey)==0 && partitionColumnIsIndexed){
-	VOLT_DEBUG("Pulling single key on partitionedColumn");
-        bool found = partitionIndex->moveToKey(&searchkey);    
-        if(found){
-            VOLT_INFO("Found");
-            while(!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()){
-		#ifdef EXTRACT_STAT_ENABLED
-		rowsExamined++;
-		#endif
-		if (dataLimitReach == true){
-		  moreData = true;
-		  break;
-		}		
-                if (!outputTable->insertTuple(tuple))
-                {
-                    VOLT_ERROR("Failed to insert tuple from table '%s' into"
-                            " output table '%s'",
-                            table->name().c_str(),
-                            outputTable->name().c_str());
-                    return NULL;
-                }                
-                table->deleteTuple(tuple,true);
-		//Count if we have taken the max tuples
-		if (++tuplesExtracted >= extractTupleLimit){
-		  dataLimitReach = true;
-		}		
-            }           
-        }
-        else{
-            VOLT_INFO("key not found for single key extract");       
-        }
-    } else if(minKey.compare(maxKey)<=0){
-        //TODO ae andy -> on searching and checking for the max key condition
-            // (cont) should we be using an expression or ok to just do  value check end value on iteration?
-        //IF b-Tree
-        if (partitionColumnIsIndexed && partitionIndex->getScheme().type == BALANCED_TREE_INDEX){            
-            //We have a range to check
-	    VOLT_DEBUG("Pulling one or more keys on partitionedColumn BTREE");
-            partitionIndex->moveToKeyOrGreater(&searchkey);    
-            while(((!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()) ||
-            (!(tuple = partitionIndex->nextValue()).isNullTuple())) && (maxKey.compare(tuple.getNValue(partitionColumn)) >0)){                
-                #ifdef EXTRACT_STAT_ENABLED
-		rowsExamined++;
-		#endif
-		
-		//Have we reached our datalimit and found another tuple
-		if (dataLimitReach == true){
-		    VOLT_DEBUG("more tuples with limit");
-		    moreData = true;
-		    break;
-		}
-		
-                if (!outputTable->insertTuple(tuple))
-                {
-                    VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",table->name().c_str(),outputTable->name().c_str());
-                    return NULL;
-                }
-                table->deleteTuple(tuple,true);
-		//Count if we have taken the max tuples
-		if (++tuplesExtracted >= extractTupleLimit){
-		      VOLT_DEBUG("tuple limit reached b-tree");
-		      dataLimitReach = true;
-		}
-            }
-        }  // Else if hash index
-        else if (!partitionColumnIsIndexed || partitionIndex->getScheme().type == HASH_TABLE_INDEX
-	  ||  partitionIndex->getScheme().type == ARRAY_INDEX) {
-            //find key
-            VOLT_DEBUG("Pulling one or more key on partitionedColumn hash or array or non-indexed partition column");
-            //TODO ae andy -> assume we cannot leverage anything about hashing with ranges, correct?
-            //Iterate through results
-            TableIterator iterator(table);           
-            while (iterator.next(tuple))
-            {
-		#ifdef EXTRACT_STAT_ENABLED
-		rowsExamined++;
-		#endif
-                //Is the partitionColumn in the range between min inclusive and max exclusive
-		//VOLT_DEBUG("Val:%s  MinKey:%s MaxKey:%s MinCompare:%d MaxCompare:%d", tuple.getNValue(partitionColumn).debug().c_str(), minKey.debug().c_str(), maxKey.debug().c_str(), minKey.compare(tuple.getNValue(partitionColumn)), maxKey.compare(tuple.getNValue(partitionColumn))); 
-		//MinKey <= val && (maxKey > val || (min==max && maxKey == val))
-                if ((minKey.compare(tuple.getNValue(partitionColumn)) <= 0) && 
-		  ((maxKey.compare(tuple.getNValue(partitionColumn)) > 0) || ((minKey.compare(maxKey) == 0) && maxKey.compare(tuple.getNValue(partitionColumn)) == 0))){
-                  
-		  //Have we reached our datalimit and found another tuple
-		  if (dataLimitReach == true){
-		      VOLT_DEBUG("more tuples with limit");
-		      moreData = true;
-		      break;
-		  }		  
-		  
-		  if (!outputTable->insertTuple(tuple))
-                    {
-                        VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",table->name().c_str(),outputTable->name().c_str());
-                        return NULL;
-                    }
-                    table->deleteTuple(tuple,true);
-		    //Count if we have taken the max tuples
-		    if (++tuplesExtracted >= extractTupleLimit){
-			VOLT_DEBUG("tuple limit reached - hash table %d", tuplesExtracted);
-			dataLimitReach = true;
-		    }
-                }
-            }
-        } else {
-	    VOLT_ERROR("Unsupported Index type");
-            throwFatalException("Unsupported Index type %d",partitionIndex->getScheme().type );
-        }     
-    } else {
-        //Min key should never be greater than maxKey        
-        throwFatalException("Max extract key is smaller than min key");
-    } 
-    VOLT_DEBUG("Tuples extracted: %d, Rows examined: %d  Output Table %s",tuplesExtracted, rowsExamined, outputTable->debug().c_str());
-    m_extractedTables[requestToken] = outputTable;
-    m_extractedTableNames[requestToken] = table->name();
-    #ifdef EXTRACT_STAT_ENABLED
-    VOLT_INFO("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );        
-    //VOLT_INFO("Extraction Time: %.2f sec. Examined Tuples:%ld Active Tuples: %ld  Approximate Size to serialized: %ld", timer.elapsed(), rowsExamined, outputTable->activeTupleCount(), outputTable->getApproximateSizeToSerialize());
-    
-    std::string extract_id = "Extract:"+table->name()+" Range:"+minKey.debug().c_str()+"-"+maxKey.debug().c_str();
-    m_timingResults[extract_id] = (int32_t)timer.elapsed();
-    timer.restart();	
-    #endif
-    return outputTable;
+#ifdef EXTRACT_STAT_ENABLED
+  m_timer.restart();
+  m_rowsExamined = 0;
+#endif
 }
 
-Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& inputIterator, TableTuple& extractTuple, int32_t requestToken, int32_t extractTupleLimit, bool& moreData)
-{
-  std::map<NValue,NValue,NValue::ltNValue> rangeMap;
-  NValue firstMin;
-  NValue firstMax;
-  firstMin.setNull();
-  firstMax.setNull();
-  while(inputIterator.next(extractTuple)) {
-    NValue minKey = extractTuple.getNValue(2);
-    NValue maxKey = extractTuple.getNValue(3);
-    rangeMap[maxKey] = minKey; // we have to do it this way because of the way std::map::upper_bound() works
-    VOLT_DEBUG("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );
-    if(firstMin.isNull() || firstMax.isNull()) {
-      firstMin = minKey;
-      firstMax = maxKey;
+TupleSchema* MigrationManager::getKeySchema(TableTuple& sample) {
+  std::vector<ValueType> keyColumnTypes;
+  std::vector<int32_t> keyColumnLengths;
+  std::vector<bool> keyColumnAllowNull;
+
+  keyColumnTypes.reserve(m_matchingIndexCols);
+  keyColumnLengths.reserve(m_matchingIndexCols);
+  keyColumnAllowNull.reserve(m_matchingIndexCols);
+
+  int size = sample.sizeInValues();
+  for(int i = 2, j = 0; i < size && j < m_matchingIndexCols; i+=3, j++) {
+    ValueType type = sample.getType(i);
+    keyColumnTypes.push_back(type);
+    keyColumnLengths.push_back(NValue::getTupleStorageSize(type));
+    keyColumnAllowNull.push_back(true);
+  }
+  return TupleSchema::createTupleSchema(keyColumnTypes,keyColumnLengths,keyColumnAllowNull,true);
+}
+
+TableTuple MigrationManager::initKeys(TupleSchema* keySchema) {
+  TableTuple keys(keySchema);
+  keys.move(new char[keys.tupleLength()]);
+  return keys;
+}
+
+bool MigrationManager::inRange(const TableTuple& tuple, const TableTuple& maxKeys) {
+  for(int i = 0; i < maxKeys.sizeInValues() && !maxKeys.isNull(i); i++) {
+    if(maxKeys.getNValue(i).compare(tuple.getNValue(m_partitionColumns[i])) <= 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+
+bool MigrationManager::inRange(const TableTuple& tuple, const RecursiveRangeMap& rangeMap, int keyIndex) {
+  const RecursiveRangeType* r = &rangeMap.r;	
+  bool inRange = true;
+  for(int i = keyIndex; i < m_partitionColumns.size() && r->size() > 0; i++) {
+    RecursiveRangeType::const_iterator it = r->upper_bound(tuple.getNValue(m_partitionColumns[i]));
+    NValue minKey = it->second.first;
+    NValue maxKey = it->first;
+    r = &(it->second.second.r);
+    
+    if(minKey.isNull() || maxKey.isNull()) {
+      break;
+    }
+    if(minKey.compare(maxKey) > 0) {
+      //Min key should never be greater than maxKey
+      throwFatalException("Max extract key is smaller than min key");
+    }
+    
+    //Is the partitionColumn in the range between min inclusive and max exclusive
+    if ((minKey.compare(tuple.getNValue(m_partitionColumns[i])) <= 0) && 
+	((maxKey.compare(tuple.getNValue(m_partitionColumns[i])) > 0) || 
+	 ((minKey.compare(maxKey) == 0) && maxKey.compare(tuple.getNValue(m_partitionColumns[i])) == 0))){
+      inRange = true;
+    } else {
+      inRange = false;
+      break;
     }
   }
 
-    //Get the right index to use
-    //TODO andy ae this should be cached on initialization. do tables exists? when should migration mgr be created? should it exist in dbcontext
-    
-    TableIndex* partitionIndex = getPartitionColumnIndex(table);    
-    int partitionColumn = table->partitionColumn();
-    bool partitionColumnIsIndexed=true;
-    if(partitionIndex == NULL){
-	VOLT_DEBUG("partitionColumn is not indexed partitionColumn: %d",partitionColumn);
-        //TODO ae what do we do when we have no index for the partition colum?
-        partitionColumnIsIndexed = false;
-    } else {
-	VOLT_DEBUG("partitionColumn is indexed partitionColumn: %d",partitionColumn);
-    }
-
-    TableTuple tuple(table->schema());
-    //TODO ae andy -> How many byes should we set this to? Below is just a silly guess
-    int outTableSizeInBytes = 1024; 
-    //int outTableSizeInBytes = (maxKey.op_subtract(firstMin)).castAs(VALUE_TYPE_INTEGER).getInteger() *tuple.maxExportSerializationSize();
-
-    //output table
-    Table* outputTable = reinterpret_cast<Table*>(TableFactory::getCopiedTempTable(table->databaseId(),
-            table->name(),table,&outTableSizeInBytes));
-    
-    //Extract Limit 
-    bool dataLimitReach = false;
-    int tuplesExtracted = 0;
-    
-    std::vector<ValueType> keyColumnTypes(1, firstMin.getValueType());
-    std::vector<int32_t> keyColumnLengths(1, NValue::getTupleStorageSize(firstMin.getValueType()));
-    std::vector<bool> keyColumnAllowNull(1, true);
-    TupleSchema* keySchema = TupleSchema::createTupleSchema(keyColumnTypes,keyColumnLengths,keyColumnAllowNull,true);
-    TableTuple searchkey(keySchema);
-    searchkey.move(new char[searchkey.tupleLength()]);
-    searchkey.setNValue(0, firstMin);
-    #ifdef EXTRACT_STAT_ENABLED
-    boost::timer timer;
-    int rowsExamined = 0;
-    #endif
-
-    //Do we have a single key to pull
-    if(rangeMap.size() == 1 && firstMin.compare(firstMax)==0 && partitionColumnIsIndexed){
-	VOLT_DEBUG("Pulling single key on partitionedColumn");
-        bool found = partitionIndex->moveToKey(&searchkey);    
-        if(found){
-            VOLT_INFO("Found");
-            while(!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()){
-		#ifdef EXTRACT_STAT_ENABLED
-		rowsExamined++;
-		#endif
-		if (dataLimitReach == true){
-		  moreData = true;
-		  break;
-		}		
-                if (!outputTable->insertTuple(tuple))
-                {
-                    VOLT_ERROR("Failed to insert tuple from table '%s' into"
-                            " output table '%s'",
-                            table->name().c_str(),
-                            outputTable->name().c_str());
-                    return NULL;
-                }                
-                table->deleteTuple(tuple,true);
-		//Count if we have taken the max tuples
-		if (++tuplesExtracted >= extractTupleLimit){
-		  dataLimitReach = true;
-		}		
-            }           
-        }
-        else{
-            VOLT_INFO("key not found for single key extract");       
-        }
-    } else { // we have more than one key to pull
-
-      //TODO ae andy -> on searching and checking for the max key condition
-      // (cont) should we be using an expression or ok to just do  value check end value on iteration?
-        //IF b-Tree
-        if (partitionColumnIsIndexed && partitionIndex->getScheme().type == BALANCED_TREE_INDEX){            
-          for(std::map<NValue,NValue,NValue::ltNValue>::iterator it=rangeMap.begin(); it!=rangeMap.end(); ++it) {
-	    NValue minKey = it->second;
-	    NValue maxKey = it->first;
-	    if(minKey.compare(maxKey) > 0) {
-	      //Min key should never be greater than maxKey
-	      throwFatalException("Max extract key is smaller than min key");
-	    }
-	    searchkey.setNValue(0, minKey);
-
-	  //We have a range to check
-	    VOLT_DEBUG("Pulling one or more keys on partitionedColumn BTREE");
-            partitionIndex->moveToKeyOrGreater(&searchkey);    
-            while(((!(tuple = partitionIndex->nextValueAtKey()).isNullTuple()) ||
-            (!(tuple = partitionIndex->nextValue()).isNullTuple())) && (maxKey.compare(tuple.getNValue(partitionColumn)) >0)){                
-                #ifdef EXTRACT_STAT_ENABLED
-		rowsExamined++;
-		#endif
-		
-		//Have we reached our datalimit and found another tuple
-		if (dataLimitReach == true){
-		    VOLT_DEBUG("more tuples with limit");
-		    moreData = true;
-		    break;
-		}
-		
-                if (!outputTable->insertTuple(tuple))
-                {
-                    VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",table->name().c_str(),outputTable->name().c_str());
-                    return NULL;
-                }
-                table->deleteTuple(tuple,true);
-		//Count if we have taken the max tuples
-		if (++tuplesExtracted >= extractTupleLimit){
-		      VOLT_DEBUG("tuple limit reached b-tree");
-		      dataLimitReach = true;
-		}
-            }
-	    if(moreData) {
-	      break; // break out of the second loop
-	    }
-	  }
-        }  // Else if hash index
-        else if (!partitionColumnIsIndexed || partitionIndex->getScheme().type == HASH_TABLE_INDEX
-	  ||  partitionIndex->getScheme().type == ARRAY_INDEX) {
-            //find key
-            VOLT_DEBUG("Pulling one or more key on partitionedColumn hash or array or non-indexed partition column");
-            //TODO ae andy -> assume we cannot leverage anything about hashing with ranges, correct?
-            //Iterate through results
-            TableIterator iterator(table);
-
-            while (iterator.next(tuple))
-            {
-		#ifdef EXTRACT_STAT_ENABLED
-		rowsExamined++;
-		#endif
-
-		std::map<NValue,NValue,NValue::ltNValue>::iterator it = rangeMap.upper_bound(tuple.getNValue(partitionColumn)); 
-		NValue minKey = it->second;
-		NValue maxKey = it->first;
-		if(minKey.isNull() || maxKey.isNull()) {
-		  continue;
-		}
-		if(minKey.compare(maxKey) > 0) {
-		  //Min key should never be greater than maxKey
-		  throwFatalException("Max extract key is smaller than min key");
-		}
-            
-		//Is the partitionColumn in the range between min inclusive and max exclusive
-		if ((minKey.compare(tuple.getNValue(partitionColumn)) <= 0) && 
-		  ((maxKey.compare(tuple.getNValue(partitionColumn)) > 0) || ((minKey.compare(maxKey) == 0) && maxKey.compare(tuple.getNValue(partitionColumn)) == 0))){
-                  
-		  //Have we reached our datalimit and found another tuple
-		  if (dataLimitReach == true){
-		      VOLT_DEBUG("more tuples with limit");
-		      moreData = true;
-		      break;
-		  }		  
-		  
-		  if (!outputTable->insertTuple(tuple))
-                    {
-                        VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",table->name().c_str(),outputTable->name().c_str());
-                        return NULL;
-                    }
-                    table->deleteTuple(tuple,true);
-		    //Count if we have taken the max tuples
-		    if (++tuplesExtracted >= extractTupleLimit){
-			VOLT_DEBUG("tuple limit reached - hash table %d", tuplesExtracted);
-			dataLimitReach = true;
-		    }
-                }
-
-            }
-        } else {
-	    VOLT_ERROR("Unsupported Index type");
-            throwFatalException("Unsupported Index type %d",partitionIndex->getScheme().type );
-        }     
-    }
-
-    VOLT_DEBUG("Tuples extracted: %d, Rows examined: %d  Output Table %s",tuplesExtracted, rowsExamined, outputTable->debug().c_str());
-    m_extractedTables[requestToken] = outputTable;
-    m_extractedTableNames[requestToken] = table->name();
-
-    #ifdef EXTRACT_STAT_ENABLED
-    NValue minKey = rangeMap.begin()->second;
-    NValue maxKey = rangeMap.rbegin()->first;
-    VOLT_INFO("ExtractRange %s %s - %s ", table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );        
-    //VOLT_INFO("Extraction Time: %.2f sec. Examined Tuples:%ld Active Tuples: %ld  Approximate Size to serialized: %ld", timer.elapsed(), rowsExamined, outputTable->activeTupleCount(), outputTable->getApproximateSizeToSerialize());
-    std::string extract_id = "Extract:"+table->name()+" Range:"+minKey.debug().c_str()+"-"+maxKey.debug().c_str();
-    m_timingResults[extract_id] = (int32_t)timer.elapsed();
-    timer.restart();	
-    #endif
-
-    return outputTable;
+  return inRange;
 }
 
 
-TableIndex* MigrationManager::getPartitionColumnIndex(PersistentTable *table) {
-    int partitionColumn = table->partitionColumn();
-    std::vector<TableIndex*> tableIndexes = table->allIndexes();
+bool MigrationManager::extractTuple(TableTuple& tuple) {
+  //Have we reached our datalimit and found another tuple
+  if (m_dataLimitReach == true){
+    VOLT_DEBUG("more tuples with limit");
+    return true;
+  }
+      
+  if (!m_outputTable->insertTuple(tuple)) {
+    VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",m_table->name().c_str(),m_outputTable->name().c_str());
+    throw SerializableEEException(VOLT_EE_EXCEPTION_TYPE_EEEXCEPTION, "Failed to insert tuple");
+  }
+  
+  m_table->deleteTuple(tuple, true);
+  //Count if we have taken the max tuples
+  if (++m_tuplesExtracted >= m_extractTupleLimit) {
+    VOLT_DEBUG("tuple limit reached: %d", m_tuplesExtracted);
+    m_dataLimitReach = true;
+  }
+
+  return false;
+}
+
+bool MigrationManager::searchBTree(const RecursiveRangeMap& rangeMap, TableTuple& minKeys, TableTuple& maxKeys, int keyIndex) {
+
+  if(rangeMap.r.size() > 0 || keyIndex < m_matchingIndexCols) { // recursion
+    for(RecursiveRangeType::const_iterator it=rangeMap.r.begin(); it!=rangeMap.r.end(); ++it) {
+      NValue minKey = it->second.first;
+      NValue maxKey = it->first;
     
-    for (int i = 0; i < table->indexCount(); ++i) {
+      if(minKey.compare(maxKey) > 0) {
+	//Min key should never be greater than maxKey
+	throwFatalException("Max extract key is smaller than min key");
+      }
+
+      minKeys.setNValue(keyIndex, minKey);
+      maxKeys.setNValue(keyIndex, maxKey);
+
+      if(searchBTree(it->second.second, minKeys, maxKeys, keyIndex + 1)) {
+	return true;
+      }
+    }
+  }
+  else { // base case
+
+    VOLT_DEBUG("Pulling one or more keys on partitionedColumn BTREE");
+
+    TableTuple tuple(m_table->schema());
+    m_partitionIndex->moveToKeyOrGreater(&minKeys);    
+
+    while(((!(tuple = m_partitionIndex->nextValueAtKey()).isNullTuple()) ||
+	   (!(tuple = m_partitionIndex->nextValue()).isNullTuple())) && inRange(tuple, maxKeys)) {
+
+#ifdef EXTRACT_STAT_ENABLED
+      m_rowsExamined++;
+#endif
+      if(inRange(tuple, rangeMap, keyIndex)) {
+	if(extractTuple(tuple)) {
+	  return true;
+	}
+      }
+    }
+  }
+
+  return false;
+}
+
+bool MigrationManager::scanTable(const RecursiveRangeMap& rangeMap) {
+  //find key
+  VOLT_DEBUG("Pulling one or more key on partitionedColumn hash or array or non-indexed partition column");
+  //TODO ae andy -> assume we cannot leverage anything about hashing with ranges, correct?
+  //Iterate through results
+  TableIterator iterator(m_table);
+  TableTuple tuple(m_table->schema());
+  while (iterator.next(tuple)) {
+#ifdef EXTRACT_STAT_ENABLED
+    m_rowsExamined++;
+#endif
+
+    if(inRange(tuple, rangeMap, 0)) {
+      if(extractTuple(tuple)) {
+	return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+void MigrationManager::getRecursiveRangeMap(RecursiveRangeMap& rangeMap, TableIterator& inputIterator, TableTuple& extractTuple) {
+  int size = extractTuple.sizeInValues(); 
+  while(inputIterator.next(extractTuple)) {
+    RecursiveRangeType& r = rangeMap.r;
+    for(int i = 0; i < size; i+=3) {
+      NValue minKey = extractTuple.getNValue(i+2);
+      NValue maxKey = extractTuple.getNValue(i+3);
+
+      if(minKey.isNull() || maxKey.isNull()) {
+	break;
+      }
+
+      if(r.find(maxKey) == r.end()) {
+	// we have to key on max key rather than min key because of the way std::map::upper_bound() works
+	r[maxKey] = std::make_pair(minKey, RecursiveRangeMap()); 
+      }
+
+      if(i == 0) {
+	VOLT_DEBUG("ExtractRange %s %s - %s ", m_table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );
+      }
+
+      r = r[maxKey].second.r;
+    }
+  }
+}
+
+// this version of extractRanges() is for composite key partitioning 
+Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& inputIterator, TableTuple& extractTuple, int32_t requestToken, int32_t extractTupleLimit, bool& moreData)
+{
+  init(table);
+  m_extractTupleLimit = extractTupleLimit;
+
+  RecursiveRangeMap rangeMap;
+  getRecursiveRangeMap(rangeMap, inputIterator, extractTuple);
+
+  TupleSchema* keySchema = getKeySchema(extractTuple);
+  TableTuple minKeys = initKeys(keySchema);
+  TableTuple maxKeys = initKeys(keySchema);
+
+  //TODO ae andy -> on searching and checking for the max key condition
+  // (cont) should we be using an expression or ok to just do  value check end value on iteration?
+  //IF b-Tree
+  try {
+    if (m_partitionColumnsIndexed && m_partitionIndex->getScheme().type == BALANCED_TREE_INDEX){
+      moreData = searchBTree(rangeMap, minKeys, maxKeys, 0);
+    }  
+    else if (!m_partitionColumnsIndexed || m_partitionIndex->getScheme().type == HASH_TABLE_INDEX
+	     ||  m_partitionIndex->getScheme().type == ARRAY_INDEX) {
+      // TODO: if the maximum number of keys is small, we may want to actually use the hash index to find
+      // the values rather than scanning the table
+      moreData = scanTable(rangeMap);
+    } else {
+      VOLT_ERROR("Unsupported Index type");
+      throwFatalException("Unsupported Index type %d",m_partitionIndex->getScheme().type );
+    }    
+  } catch (SerializableEEException &e) {
+    return NULL; // failed to insert into output table
+  } 
+  
+  VOLT_DEBUG("Tuples extracted: %d, Output Table %s",m_tuplesExtracted, m_outputTable->debug().c_str());
+  m_extractedTables[requestToken] = m_outputTable;
+  m_extractedTableNames[requestToken] = m_table->name();
+
+#ifdef EXTRACT_STAT_ENABLED
+  NValue globalMin = rangeMap.r.begin()->second.first;
+  NValue globalMax = rangeMap.r.rbegin()->first;
+
+  VOLT_DEBUG("Rows examined: %d", m_rowsExamined);
+  VOLT_INFO("ExtractRange %s %s - %s ", m_table->name().c_str(),globalMin.debug().c_str(),globalMax.debug().c_str() );        
+  std::string extract_id = "Extract:"+m_table->name()+" Range:"+globalMin.debug().c_str()+"-"+globalMax.debug().c_str();
+  m_timingResults[extract_id] = (int32_t)m_timer.elapsed();
+  m_timer.restart();	
+#endif
+
+  return m_outputTable;
+}
+
+TableIndex* MigrationManager::getPartitionColumnsIndex() {
+    std::vector<TableIndex*> tableIndexes = m_table->allIndexes();
+    
+    TableIndex *bestIndex = NULL;
+    int bestMatchingIndexCols = 0;
+
+    for (int i = 0; i < m_table->indexCount(); ++i) {
         TableIndex *index = tableIndexes[i];
         
         VOLT_DEBUG("Index %s ", index->debug().substr(0,20).c_str());
-        //One column in this index
-        if(index->getColumnCount() == 1) {
-            if (index->getColumnIndices()[0] == partitionColumn){
-                VOLT_DEBUG("Index matches");
-                return index;
-            }
-        }
+
+	if(index->getScheme().type == BALANCED_TREE_INDEX) { // tree index
+	  for(int i = 0; i < index->getColumnIndices().size() && i < m_partitionColumns.size(); i++) {
+	     if (index->getColumnIndices()[i] != m_partitionColumns[i]){
+	       if(i >= bestMatchingIndexCols) {
+		 VOLT_DEBUG("Index matches");
+		 bestMatchingIndexCols = i;
+		 bestIndex = index;
+	       }
+
+	       break;
+	     }
+	   }
+	}
+        else if (index->getColumnCount() == 1) { // hash or array index with one column
+	  // Note: this check is only necessary for range partitioning in which we might not have
+	  // the value for every partitioning column.  If we were to switch to hash partitioning, 
+	  // then we know we'll always have the value for every one of the partitionColumns, so 
+	  // the column count doesn't have to be 1
+	  if (bestIndex == NULL && index->getColumnIndices()[0] == m_partitionColumns[0]){
+	    VOLT_DEBUG("Index matches");
+	    bestMatchingIndexCols = 1;
+	    bestIndex = index;
+	  }	  
+	}
     }
-    return NULL;
+
+    m_matchingIndexCols = bestMatchingIndexCols;
+    return bestIndex;
 }
 
 
