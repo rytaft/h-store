@@ -24,6 +24,7 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
     public static final String YCSB_TEST = "YCSB_TEST";
+    public static final String TPCC_TEST = "TPCC_TEST";
 
     String ycsb_plan = "{"+
             "       \"default_table\":\"usertable\"," +        
@@ -60,6 +61,21 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
             "        }"+
             "}";
     
+    String tpcc_plan = "{"+
+            "       \"default_table\":\"warehouse\"," +        
+            "       \"partition_plans\":{"+
+            "          \"0\" : {"+
+            "            \"tables\":{"+
+            "              \"warehouse\":{"+
+            "                \"partitions\":{"+
+            "                  0 : \"1-17\""+
+            "                }     "+
+            "              }"+
+            "            }"+
+            "          }"+
+            "        }"+
+            "}";
+    
     private PlannedPartitions planned_partitions = null;
 
     private ReconfigurationCoordinator reconfigCoord = null;
@@ -85,6 +101,9 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
             if(hstore_conf != null && hstore_conf.global.hasher_plan.equalsIgnoreCase(YCSB_TEST)){
                 LOG.info("Using YCSB test plan");
                 partition_json = new JSONObject(ycsb_plan);
+            } else if(hstore_conf != null && hstore_conf.global.hasher_plan.equalsIgnoreCase(TPCC_TEST)){
+                LOG.info("Using TPCC test plan");
+                partition_json = new JSONObject(tpcc_plan);
             } else if(hstore_conf != null && hstore_conf.global.hasher_plan != null){
                 LOG.info("Attempting to use partition plan at : " + hstore_conf.global.hasher_plan);
                 partition_json = new JSONObject(FileUtil.readFile(hstore_conf.global.hasher_plan));
