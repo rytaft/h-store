@@ -222,7 +222,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 "    	}";
     
     @Test
-    public void testMultiColumnPartitioning() throws Exception {
+    public void testSingleColumnRange() throws Exception {
     	JSONObject json = new JSONObject(partitionPlan);
     	
     	PartitionPlan pplan = new PartitionPlan();
@@ -235,25 +235,17 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	
         this.loadData(17l);
         assertTrue(true);
-//        List<ReconfigurationRange> ranges = new ArrayList<>();
-//
-//        ranges.add(new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(1), new Long(50), 1, 2));
-//        ranges.add(new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(104), 1, 2));
-//
-//        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(ranges);
-//        int deleteToken = 47;
-//        Pair<VoltTable, Boolean> resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken, 1, 10 * 1024);
-//        int totalRows = resTable.getFirst().getRowCount();
-//        assertEquals(10, totalRows);
-//        assertTrue(resTable.getSecond());
-//
-//        while(resTable.getSecond()) {
-//        	resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken, 1, 10 * 1024);
-//        	totalRows += resTable.getFirst().getRowCount();
-//        }
-//
-//        assertEquals(53, totalRows);
+        List<ReconfigurationRange> ranges = new ArrayList<>();
 
+        ranges.add(new ReconfigurationRange<Long>("warehouse", VoltType.BIGINT, new Long(1), new Long(5), 1, 2));
+
+        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(ranges);
+        int deleteToken = 47;
+        Pair<VoltTable, Boolean> resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken, 1, 10 * 1024);
+        int totalRows = resTable.getFirst().getRowCount();
+        System.out.println("Results:" + resTable.getFirst().toString());
+        assertEquals(4, totalRows);
+        assertFalse(resTable.getSecond());
     }
 
 }
