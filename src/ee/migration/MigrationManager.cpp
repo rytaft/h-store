@@ -61,6 +61,7 @@ MigrationManager::MigrationManager(ExecutorContext *executorContext, catalog::Da
     m_extractedTables.clear();
     m_extractedTableNames.clear();
 
+    init(NULL);
 }
 
 MigrationManager::~MigrationManager() {
@@ -73,26 +74,38 @@ typedef std::map<NValue,std::pair<NValue, RecursiveRangeMap>,NValue::ltNValue> R
 void MigrationManager::init(PersistentTable *table) {
   m_table = table;
 
-  //Get the right index to use
-  //TODO andy ae this should be cached on initialization. do tables exists? when should migration mgr be created? should it exist in dbcontext
-  m_partitionColumns = m_table->partitionColumns();    
-  m_partitionIndex = getPartitionColumnsIndex(); 
-
-  if(m_partitionIndex == NULL) {
-    VOLT_DEBUG("partitionColumn is not indexed partitionColumn: %d",m_partitionColumns[0]);
-    //TODO ae what do we do when we have no index for the partition colum?
+  if(m_table == NULL) {
+    m_partitionIndex = NULL;
     m_partitionColumnsIndexed = false;
-  } else {
-    VOLT_DEBUG("partitionColumn is indexed partitionColumn: %d",m_partitionColumns[0]);
-    m_partitionColumnsIndexed = true;
+    m_outputTable = NULL;
+    m_outTableSizeInBytes = 0; 
   }
+  else {
 
-  //TODO ae andy -> How many byes should we set this to? Below is just a silly guess
-  int outTableSizeInBytes = 1024; 
+    //Get the right index to use
+    //TODO andy ae this should be cached on initialization. do tables exists? when should migration mgr be created? should it exist in dbcontext
+    m_partitionColumns = m_table->partitionColumns();    
+    if(m_partitionColumns.size() == 0) {
+      m_partitionColumns.push_back(m_table->partitionColumn());
+    }
+    m_partitionIndex = getPartitionColumnsIndex(); 
+    
+    if(m_partitionIndex == NULL) {
+      VOLT_DEBUG("partitionColumn is not indexed partitionColumn: %d",m_partitionColumns[0]);
+      //TODO ae what do we do when we have no index for the partition colum?
+      m_partitionColumnsIndexed = false;
+    } else {
+      VOLT_DEBUG("partitionColumn is indexed partitionColumn: %d",m_partitionColumns[0]);
+      m_partitionColumnsIndexed = true;
+    }
 
-  //output table
-  m_outputTable = reinterpret_cast<Table*>(TableFactory::getCopiedTempTable(m_table->databaseId(),
-							   m_table->name(),m_table,&outTableSizeInBytes));
+    //TODO ae andy -> How many byes should we set this to? Below is just a silly guess
+    m_outTableSizeInBytes = 1024; 
+
+    //output table
+    m_outputTable = reinterpret_cast<Table*>(TableFactory::getCopiedTempTable(m_table->databaseId(),
+							   m_table->name(),m_table,&m_outTableSizeInBytes));
+  }
     
   //Extract Limit 
   m_dataLimitReach = false;
@@ -141,9 +154,17 @@ bool MigrationManager::inRange(const TableTuple& tuple, const TableTuple& maxKey
 
 bool MigrationManager::inRange(const TableTuple& tuple, const RecursiveRangeMap& rangeMap, int keyIndex) {
   const RecursiveRangeType* r = &rangeMap.r;	
-  bool inRange = true;
+  bool inRange = false;
+  if(keyIndex > 0) {
+    inRange = true;
+  }
   for(int i = keyIndex; i < m_partitionColumns.size() && r->size() > 0; i++) {
     RecursiveRangeType::const_iterator it = r->upper_bound(tuple.getNValue(m_partitionColumns[i]));
+    if(it == r->end()) {
+      inRange = false;
+      break;
+    }
+
     NValue minKey = it->second.first;
     NValue maxKey = it->first;
     r = &(it->second.second.r);
@@ -177,7 +198,7 @@ bool MigrationManager::extractTuple(TableTuple& tuple) {
     VOLT_DEBUG("more tuples with limit");
     return true;
   }
-      
+
   if (!m_outputTable->insertTuple(tuple)) {
     VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",m_table->name().c_str(),m_outputTable->name().c_str());
     throw SerializableEEException(VOLT_EE_EXCEPTION_TYPE_EEEXCEPTION, "Failed to insert tuple");
@@ -254,6 +275,7 @@ bool MigrationManager::scanTable(const RecursiveRangeMap& rangeMap) {
 	return true;
       }
     }
+
   }
 
   return false;
@@ -262,25 +284,25 @@ bool MigrationManager::scanTable(const RecursiveRangeMap& rangeMap) {
 void MigrationManager::getRecursiveRangeMap(RecursiveRangeMap& rangeMap, TableIterator& inputIterator, TableTuple& extractTuple) {
   int size = extractTuple.sizeInValues(); 
   while(inputIterator.next(extractTuple)) {
-    RecursiveRangeType& r = rangeMap.r;
-    for(int i = 0; i < size; i+=3) {
+    RecursiveRangeType* r = &(rangeMap.r);
+    for(int i = 0; i+3 < size; i+=3) {
       NValue minKey = extractTuple.getNValue(i+2);
       NValue maxKey = extractTuple.getNValue(i+3);
-
+  
       if(minKey.isNull() || maxKey.isNull()) {
 	break;
       }
 
-      if(r.find(maxKey) == r.end()) {
+      if(r->find(maxKey) == r->end()) {
 	// we have to key on max key rather than min key because of the way std::map::upper_bound() works
-	r[maxKey] = std::make_pair(minKey, RecursiveRangeMap()); 
+	r->insert(std::make_pair(maxKey, std::make_pair(minKey, RecursiveRangeMap()))); 
       }
 
       if(i == 0) {
 	VOLT_DEBUG("ExtractRange %s %s - %s ", m_table->name().c_str(),minKey.debug().c_str(),maxKey.debug().c_str() );
       }
 
-      r = r[maxKey].second.r;
+      r = &(r->find(maxKey)->second.second.r);
     }
   }
 }

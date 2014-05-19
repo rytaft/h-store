@@ -32,7 +32,13 @@
 #include "indexes/tableindex.h"
 #include "storage/tableiterator.h"
 
+#ifndef EXTRACT_STAT_ENABLED
+#define EXTRACT_STAT_ENABLED
+#endif
+
+#ifdef EXTRACT_STAT_ENABLED
 #include "boost/timer.hpp"
+#endif
 
 namespace voltdb {
 
@@ -81,11 +87,12 @@ private:
     std::vector<int> m_partitionColumns;
     bool m_partitionColumnsIndexed;
     Table* m_outputTable;
+    int m_outTableSizeInBytes;
 
-    //#ifdef EXTRACT_STAT_ENABLED
+#ifdef EXTRACT_STAT_ENABLED
     boost::timer m_timer;
     int m_rowsExamined;
-    //#endif
+#endif
 
     TableIndex* getPartitionColumnsIndex();
     void init(PersistentTable *table); 

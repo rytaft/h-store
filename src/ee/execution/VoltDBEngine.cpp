@@ -1501,6 +1501,9 @@ int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &seriali
     CatalogId databaseId = 1;
 
     size_t nCols = table->partitionColumns().size();
+    if(nCols == 0) {
+      nCols = 1; // partitionColumns() was not set
+    }
     std::string* colNames = TupleSchema::createMigrateColumnNames(nCols);
     TupleSchema *extractMigrateSchema = TupleSchema::createMigrateTupleSchema(nCols);
 
