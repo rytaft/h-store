@@ -293,6 +293,11 @@ void MigrationManager::getRecursiveRangeMap(RecursiveRangeMap& rangeMap, TableIt
 	break;
       }
 
+      // special case for range of 1
+      if(minKey.compare(maxKey) == 0) {
+	maxKey = maxKey.op_increment();
+      }
+
       if(r->find(maxKey) == r->end()) {
 	// we have to key on max key rather than min key because of the way std::map::upper_bound() works
 	r->insert(std::make_pair(maxKey, std::make_pair(minKey, RecursiveRangeMap()))); 
