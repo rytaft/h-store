@@ -61,8 +61,8 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     //private Table catalog_tbl;
     private Table customer_tbl;
     private Table neworder_tbl;
-    private ArrayList<Integer> neworder_p_index;
-    private ArrayList<Integer> cust_p_index;
+    private int[] neworder_p_index;
+    private int[] cust_p_index;
     private int undo=1;
 
     // private int ycsbTableId(Catalog catalog) {
@@ -87,15 +87,15 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         
         // Just make sure that the Table has the evictable flag set to true
         this.customer_tbl = getTable(CUSTOMER_TABLE_NAME);
-        this.cust_p_index = new ArrayList<Integer>(this.customer_tbl.getPartitioncolumns().size());
+        this.cust_p_index = new int[this.customer_tbl.getPartitioncolumns().size()];
         for(ColumnRef colRef : this.customer_tbl.getPartitioncolumns().values()) {
-        	this.cust_p_index.set(colRef.getIndex(), colRef.getColumn().getIndex());
+        	this.cust_p_index[colRef.getIndex()] = colRef.getColumn().getIndex();
     	}
         
         this.neworder_tbl = getTable(NEW_ORDER_TABLE_NAME);
-        this.neworder_p_index = new ArrayList<Integer>(this.neworder_tbl.getPartitioncolumns().size());
+        this.neworder_p_index = new int[this.neworder_tbl.getPartitioncolumns().size()];
         for(ColumnRef colRef : this.neworder_tbl.getPartitioncolumns().values()) {
-        	this.neworder_p_index.set(colRef.getIndex(), colRef.getColumn().getIndex());
+        	this.neworder_p_index[colRef.getIndex()] = colRef.getColumn().getIndex();
     	}
         
         Site catalog_site = CollectionUtil.first(CatalogUtil.getCluster(catalog).getSites());
@@ -125,17 +125,15 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
             this.hstore_site.shutdown();
     }
 
-    private void loadTPCCData(Long numTuples, Table table, List<Integer> keyIndexes, List<Integer> keys ) throws Exception {
+    private void loadTPCCData(Long numTuples, Table table, int[] keyIndexes, int[] keys ) throws Exception {
     	// Load in a bunch of dummy data for this table
         VoltTable vt = CatalogUtil.getVoltTable(table);
         assertNotNull(vt);
         for (int i = 0; i < numTuples; i++) {
             Object row[] = VoltTableUtil.getRandomRow(table);
             row[0] = i;
-            Iterator<Integer> it = keyIndexes.iterator();
-            Iterator<Integer> itk = keys.iterator();
-            while(it.hasNext() && itk.hasNext()) {
-            	row[it.next()] = itk.next();
+            for(int j = 0; j < keyIndexes.length && j < keys.length; j++) {
+            	row[keyIndexes[j]] = keys[j];
             }
             vt.addRow(row);
         } // FOR
@@ -264,9 +262,8 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     @Test
     public void testSingleColumnRangeExtractAll() throws Exception {  
     	int wid = 2; // warehouse id
-    	ArrayList<Integer> keys = new ArrayList<Integer>();
-        keys.add(wid); 
-    	
+    	int[] keys = new int[]{ wid };
+        
     	ReconfigurationRange<Long> range; 
         VoltTable extractTable;
         range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2);
@@ -300,12 +297,9 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = DEFAULT_LIMIT;
 
         for (int i=0; i< scales.length; i++) {
-        	ArrayList<Integer> keys = new ArrayList<Integer>();
-            keys.add(scales[i]); 
-        	
         	long tuples = NUM_TUPLES * scales[i];
             LOG.info(String.format("Loading %s tuples for customers with W_ID :%s ", tuples,scales[i]));
-            this.loadTPCCData(tuples, this.customer_tbl,this.cust_p_index,keys);
+            this.loadTPCCData(tuples, this.customer_tbl,this.cust_p_index,new int[]{ scales[i] });
                 
         }
         LOG.info("load done");
@@ -354,13 +348,11 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     public void testTwoColumnRangeExtractAll() throws Exception {
     	int wid = 2; // warehouse id
     	int did = 3; // district id
-    	ArrayList<Integer> keys = new ArrayList<Integer>();
-        keys.add(wid); 
-    	keys.add(did); 
+    	int[] keys = new int[]{ wid, did };
         
-    	ReconfigurationRange<Long> districtRange = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index.get(1)).getName(),
+    	ReconfigurationRange<Long> districtRange = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index[1]).getName(),
     			VoltType.SMALLINT, new Long(did), new Long(did+1), 1, 2, null);
-        ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index.get(0)).getName(),
+        ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index[0]).getName(),
         		VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2, districtRange);
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
         this.loadTPCCData(NUM_TUPLES * 10, this.customer_tbl,this.cust_p_index, keys);
@@ -393,13 +385,9 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 
         for (int i=0; i< scales.length; i++) {
         	for (int j = 0; j < scales.length; j++) {
-	        	ArrayList<Integer> keys = new ArrayList<Integer>();
-	            keys.add(scales[i]); 
-	            keys.add(scales[j]); 
-	        	
 	        	long tuples = NUM_TUPLES * scales[i] * scales[j];
 	            LOG.info(String.format("Loading %s tuples for customers with W_ID:%s and D_ID:%s", tuples,scales[i],scales[j]));
-	            this.loadTPCCData(tuples, this.customer_tbl,this.cust_p_index,keys);
+	            this.loadTPCCData(tuples, this.customer_tbl,this.cust_p_index,new int[]{ scales[i], scales[j] });
         	}
         }
         LOG.info("load done");
@@ -418,9 +406,9 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	    	    int district_scale = scales[j];
 	    	    LOG.info("Testing for warehouse scale : " + warehouse_scale + ", district scale : " + district_scale);
 	    	    //extract
-	    	    ReconfigurationRange<Long> districtRange = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index.get(1)).getName(),
+	    	    ReconfigurationRange<Long> districtRange = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index[1]).getName(),
 	        			VoltType.SMALLINT, new Long(district_scale), new Long(district_scale+1), 1, 2, null);
-	    	    ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index.get(0)).getName(),
+	    	    ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index[0]).getName(),
 	            		VoltType.SMALLINT, new Long(warehouse_scale), new Long(warehouse_scale+1), 1, 2, districtRange);
 	            extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
 	            start = System.currentTimeMillis();
