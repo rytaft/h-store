@@ -103,8 +103,8 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         
         hstore_conf.site.coordinator_sync_time = false;
         hstore_conf.global.reconfiguration_enable = true;
-        hstore_conf.global.hasher_class = "edu.brown.hashing.PlannedHasher";
-        hstore_conf.global.hasher_plan = PlannedHasher.TPCC_TEST;
+        //hstore_conf.global.hasher_class = "edu.brown.hashing.PlannedHasher";
+        //hstore_conf.global.hasher_plan = PlannedHasher.TPCC_TEST;
 
         hstore_conf.site.status_enable = false;
 
@@ -267,7 +267,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	ReconfigurationRange<Long> range; 
         VoltTable extractTable;
         range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2);
-        extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.cust_p_index.length);   
         this.loadTPCCData(NUM_TUPLES * 10, this.customer_tbl,this.cust_p_index, keys);
         int EXTRACT_LIMIT = 2048;
         ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
@@ -318,7 +318,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	    LOG.info("Testing for scale : " + scale);
     	    //extract
             range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale+1), 1, 2);
-            extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
+            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.cust_p_index.length);   
             start = System.currentTimeMillis();
             resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
             extract = System.currentTimeMillis()-start; 
@@ -354,7 +354,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     			VoltType.SMALLINT, new Long(did), new Long(did+1), 1, 2, null);
         ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index[0]).getName(),
         		VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2, districtRange);
-        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
+        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.cust_p_index.length);   
         this.loadTPCCData(NUM_TUPLES * 10, this.customer_tbl,this.cust_p_index, keys);
         int EXTRACT_LIMIT = 2048;
         ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
@@ -410,7 +410,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	        			VoltType.SMALLINT, new Long(district_scale), new Long(district_scale+1), 1, 2, null);
 	    	    ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index[0]).getName(),
 	            		VoltType.SMALLINT, new Long(warehouse_scale), new Long(warehouse_scale+1), 1, 2, districtRange);
-	            extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
+	            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.cust_p_index.length);   
 	            start = System.currentTimeMillis();
 	            resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
 	            extract = System.currentTimeMillis()-start; 
