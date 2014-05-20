@@ -167,10 +167,11 @@ TupleSchema* TupleSchema::createEvictedTupleSchema() {
 }
 
 std::string* TupleSchema::createMigrateColumnNames(size_t nCols) {
-    std::string *migrateColumnNames = new std::string[nCols*3 + 1];
+    size_t nSchemaCols = nCols*3 + 1;
+    std::string *migrateColumnNames = new std::string[nSchemaCols];
     migrateColumnNames[0] = std::string("TABLE_NAME");
   
-    for(int i = 0; i < nCols; i+=3) {		
+    for(int i = 0; i+3 < nSchemaCols; i+=3) {		
         migrateColumnNames[i+1] = std::string("KEY_TYPE");
 	migrateColumnNames[i+2] = std::string("MIN_INCLUSIVE");
 	migrateColumnNames[i+3] = std::string("MAX_EXCLUSIVE");
@@ -192,7 +193,7 @@ TupleSchema* TupleSchema::createMigrateTupleSchema(size_t nCols) {
     columnSizes[0] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER));
     allowNull[0] = false;
 
-    for(int i = 0; i < nCols; i+=3) {
+    for(int i = 0; i+3 < nSchemaCols; i+=3) {
       //KEY TYPE
       columnTypes[i+1] = VALUE_TYPE_INTEGER;
       columnSizes[i+1] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER));

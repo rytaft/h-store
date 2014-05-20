@@ -153,27 +153,69 @@ public class ReconfigurationUtil {
         
         return splitPlans;
     }
-
+    
     public static VoltTable getExtractVoltTable(ReconfigurationRange range) {
-        ColumnInfo extractTableColumns[] = new ColumnInfo[4];
+    	return getExtractVoltTable(range, 1);
+    }
+
+    public static VoltTable getExtractVoltTable(ReconfigurationRange range, int nCols) {
+    	int nSchemaCols = nCols * 3 + 1;
+    	ColumnInfo[] extractTableColumns = new ColumnInfo[nSchemaCols];
 
         extractTableColumns[0] = new ColumnInfo("TABLE_NAME", VoltType.INTEGER);
-        extractTableColumns[1] = new ColumnInfo("KEY_TYPE", VoltType.INTEGER);
-        extractTableColumns[2] = new ColumnInfo("MIN_INCLUSIVE", VoltType.BIGINT); // range.getVt());
-        extractTableColumns[3] = new ColumnInfo("MAX_EXCLUSIVE", VoltType.BIGINT);// range.getVt());
-
+        for(int i = 0; i+3 < nSchemaCols; i+=3) {
+        	extractTableColumns[i+1] = new ColumnInfo("KEY_TYPE", VoltType.INTEGER);
+            extractTableColumns[i+2] = new ColumnInfo("MIN_INCLUSIVE", VoltType.BIGINT); // range.getVt());
+            extractTableColumns[i+3] = new ColumnInfo("MAX_EXCLUSIVE", VoltType.BIGINT); // range.getVt());
+        }  
+        
         VoltTable vt = new VoltTable(extractTableColumns);
         // vt.addRow(range.table_name,range.getVt().toString(),range.getMin_inclusive(),range.getMax_exclusive());
         
-        if(range.isSingleRange()) {
-        	vt.addRow(1, 1, range.getMin_inclusive(), range.getMax_exclusive());
+        ArrayList<Object[]> rows = new ArrayList<>();
+        Object[] baseRow = new Object[nSchemaCols];
+        baseRow[0] = 1;
+        
+        ReconfigurationRange<Long> r = range;
+        for(int i = 0; i+3 < nSchemaCols; i+=3) {
+        	if(r != null) {
+        		if(r.isSingleRange()) {
+        			baseRow[i+1] = 1;
+        			baseRow[i+2] = r.getMin_inclusive();
+        			baseRow[i+3] = r.getMax_exclusive();
+        		}
+        		else if(r.getMinList().size() == 1) {
+        			baseRow[i+1] = 1;
+        			baseRow[i+2] = r.getMinList().get(0);
+        			baseRow[i+3] = r.getMaxList().get(0);
+    			}
+    			else {
+        			for (int j = 0; j < r.getMinList().size(); j++) {
+	            		Object[] row = baseRow.clone();
+	            		row[i+1] = 1;
+	            		row[i+2] = r.getMinList().get(j);
+	            		row[i+3] = r.getMaxList().get(j);
+	            		rows.add(row);
+	                }
+        			break;
+    			}
+        		
+        		r = r.getSubRange();
+        	}
+        	else {
+        		break;
+        	}
+        }  
+        
+        if(rows.size() == 0) {
+        	vt.addRow(baseRow);
+		}
+        
+        for(Object[] row : rows) {
+        	vt.addRow(row);
         }
-        else {
-        	for (int i = 0; i < range.getMinList().size(); i++) {
-                vt.addRow(1, 1, range.getMinList().get(i), range.getMaxList().get(i));
-            }
-        }
-
+        
+        
         return vt;
     }
 

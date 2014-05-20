@@ -330,6 +330,9 @@ public class ReconfigurationPlan {
        * may actually hold a set of ranges. A range is the granual of 
        * migration / reconfiguration.
        * 
+       * As of 5/20/14 a range may also contain a sub-range on a different key 
+       * in the case of multi-column partitioning
+       * 
        * @author aelmore
        * 
        * @param <T>
@@ -348,7 +351,9 @@ public class ReconfigurationPlan {
         private Long max_exclusive_long;
         
         public String table_name;
+        public String column_name;
         private boolean single_range = false; //single range or multi
+        ReconfigurationRange<Long> sub_range;
          
         
         public ReconfigurationRange(String table_name, VoltType vt, T min_inclusive, T max_exclusive, int old_partition, int new_partition)  {
@@ -394,11 +399,47 @@ public class ReconfigurationPlan {
             this.table_name = table_name;
             this.single_range = false;
         }
+        
+        public ReconfigurationRange(String table_name, String column_name, VoltType vt, T min_inclusive, T max_exclusive, 
+        		int old_partition, int new_partition, ReconfigurationRange<Long> sub_range) {
+        	this(table_name, vt, min_inclusive, max_exclusive, old_partition, new_partition);
+        	if(sub_range != null) {
+        		assert(sub_range.old_partition == old_partition);
+        		assert(sub_range.new_partition == new_partition);
+        		assert(min_inclusive.equals(max_exclusive) || 
+        				min_inclusive.equals((Long)max_exclusive - 1));
+        	}
+        	this.sub_range = sub_range;
+        	this.column_name = column_name;
+        }
+        
+        public ReconfigurationRange(String table_name, String column_name, VoltType vt, List<Long> min_inclusive, List<Long> max_exclusive, 
+        		int old_partition, int new_partition, ReconfigurationRange<Long> sub_range) {
+        	this(table_name, vt, min_inclusive, max_exclusive, old_partition, new_partition);
+        	if(sub_range != null) {
+        		assert(sub_range.old_partition == old_partition);
+        		assert(sub_range.new_partition == new_partition);
+        		assert(min_inclusive.size() == 1 && max_exclusive.size() == 1);
+        		assert(min_inclusive.get(0).equals(max_exclusive.get(0)) || 
+        				min_inclusive.get(0).equals(max_exclusive.get(0) - 1));
+        	}
+        	this.sub_range = sub_range;
+        	this.column_name = column_name;
+        }
 
         @Override
         public String toString(){
+        	String sub_range_string = "";
+        	if(sub_range != null) {
+        		sub_range_string = "sub_range:{" + sub_range.toString() + "} ";
+        	}
+        	String table_string = table_name;
+        	if(column_name != null) {
+        		table_string += ":" + column_name;
+        	}
         	if(min_inclusive != null && max_exclusive != null) {
-        		return String.format("ReconfigRange (%s) keys:[%s,%s) p_id:%s->%s ",table_name,min_inclusive,max_exclusive,old_partition,new_partition);
+        		return String.format("ReconfigRange (%s) keys:[%s,%s) p_id:%s->%s %s",table_string,
+        				min_inclusive,max_exclusive,old_partition,new_partition,sub_range_string);
         	}
         	else {
         		String keys = "";
@@ -408,7 +449,8 @@ public class ReconfigurationPlan {
         			}
         			keys += "[" + min_list.get(i) + "," + max_list.get(i) + ")";
         		}
-        		return String.format("ReconfigRange (%s) keys:%s p_id:%s->%s ",table_name,keys,old_partition,new_partition);
+        		return String.format("ReconfigRange (%s) keys:%s p_id:%s->%s %s",table_string,keys,
+        				old_partition,new_partition,sub_range_string);
         	}
         }
         
@@ -423,6 +465,38 @@ public class ReconfigurationPlan {
                         return true;
                     }
                 }
+            } catch(Exception e){
+                LOG.error("TODO only number keys supported");
+                LOG.error(e);
+            }
+            return false;
+        }
+        
+        // for multi-column partitioning
+        public boolean inRange(List<Comparable<?>> keys){
+            try{
+            	List<Pair<Long,Long>> r = this.ranges;
+            	boolean inRange = false;
+            	for(Comparable<?> key : keys) {
+	                long keyL = ((Number)key).longValue();
+	                for(Pair<Long,Long> range : r) {
+	                    long min_long = range.getFirst();
+	                    long max_long = range.getSecond();
+	                    if(min_long <= keyL && (max_long > keyL || 
+	                            (max_long == min_long && min_long == keyL))){
+	                        inRange = true;
+	                        break;
+	                    } else {
+	                    	return false;
+	                    }
+	                }
+	                if(this.sub_range == null) {
+	                	break;
+	                } else {
+	                	r = this.sub_range.ranges;
+	                }
+            	}
+            	return inRange;
             } catch(Exception e){
                 LOG.error("TODO only number keys supported");
                 LOG.error(e);
@@ -472,6 +546,16 @@ public class ReconfigurationPlan {
                     return false;
             } else if (!table_name.equals(other.table_name))
                 return false;
+            if (column_name == null) {
+                if (other.column_name != null)
+                    return false;
+            } else if (!column_name.equals(other.column_name))
+                return false;
+            if (sub_range == null) {
+            	if (other.sub_range != null)
+                    return false;
+            } else if (!sub_range.equals(other.sub_range))
+                return false;
             return true;
         }
 
@@ -505,6 +589,10 @@ public class ReconfigurationPlan {
         
         public boolean isSingleRange() {
         	return single_range;
+        }
+        
+        public ReconfigurationRange<Long> getSubRange() {
+        	return sub_range;
         }
     }
       
