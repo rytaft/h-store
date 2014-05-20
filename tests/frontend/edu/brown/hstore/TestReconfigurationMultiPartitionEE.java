@@ -17,6 +17,7 @@ import org.voltdb.catalog.Site;
 import org.voltdb.catalog.Table;
 import org.voltdb.client.Client;
 import org.voltdb.jni.ExecutionEngine;
+import org.voltdb.jni.ExecutionEngineJNI;
 import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTableUtil;
 
@@ -24,6 +25,7 @@ import edu.brown.BaseTestCase;
 import edu.brown.benchmark.AbstractProjectBuilder;
 import edu.brown.benchmark.ycsb.YCSBConstants;
 import edu.brown.catalog.CatalogUtil;
+import edu.brown.designer.MemoryEstimator;
 import edu.brown.designer.partitioners.plan.PartitionPlan;
 import edu.brown.hashing.PlannedHasher;
 import edu.brown.hashing.TwoTieredRangeHasher;
@@ -43,15 +45,23 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 
     private static final Logger LOG = Logger.getLogger(TestReconfigurationMultiPartitionEE.class);
     private static final int NUM_PARTITIONS = 1;
-    private static final long NUM_TUPLES = 1000;
-
+    private static final long NUM_TUPLES = 100;
+    private static final String CUSTOMER_TABLE_NAME = TPCCConstants.TABLENAME_CUSTOMER;
+    private static final String NEW_ORDER_TABLE_NAME = TPCCConstants.TABLENAME_NEW_ORDER;
+    private static final int DEFAULT_LIMIT = ExecutionEngineJNI.DEFAULT_EXTRACT_LIMIT_BYTES;
+    
     private HStoreSite hstore_site;
     private HStoreConf hstore_conf;
     private Client client;
 
     private PartitionExecutor executor;
     private ExecutionEngine ee;
-    private Table catalog_tbl;
+    //private Table catalog_tbl;
+    private Table customer_tbl;
+    private Table neworder_tbl;
+    private int neworder_p_index;
+    private int cust_p_index;
+    private int undo=1;
 
     // private int ycsbTableId(Catalog catalog) {
     // return
@@ -61,13 +71,16 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     public void setUp() throws Exception {
         super.setUp(ProjectType.TPCC);
         initializeCatalog(1, 1, NUM_PARTITIONS);
-
+        
         // Just make sure that the Table has the evictable flag set to true
-        this.catalog_tbl = getTable(TPCCConstants.TABLENAME_WAREHOUSE);
-
+        this.customer_tbl = getTable(CUSTOMER_TABLE_NAME);
+        this.cust_p_index = this.customer_tbl.getPartitioncolumn().getIndex();
+        this.neworder_tbl = getTable(NEW_ORDER_TABLE_NAME);
+        this.neworder_p_index = this.neworder_tbl.getPartitioncolumn().getIndex();
+        
         Site catalog_site = CollectionUtil.first(CatalogUtil.getCluster(catalog).getSites());
         hstore_conf = HStoreConf.singleton();
-
+        
         hstore_conf.site.coordinator_sync_time = false;
         hstore_conf.global.reconfiguration_enable = true;
         hstore_conf.global.hasher_class = "edu.brown.hashing.PlannedHasher";
@@ -92,16 +105,17 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
             this.hstore_site.shutdown();
     }
 
-    private void loadData(Long numTuples) throws Exception {
+    private void loadTPCCData(Long numTuples, Table table, int widIndex, int wid ) throws Exception {
         // Load in a bunch of dummy data for this table
-        VoltTable vt = CatalogUtil.getVoltTable(catalog_tbl);
+        VoltTable vt = CatalogUtil.getVoltTable(table);
         assertNotNull(vt);
         for (int i = 0; i < numTuples; i++) {
-            Object row[] = VoltTableUtil.getRandomRow(catalog_tbl);
+            Object row[] = VoltTableUtil.getRandomRow(table);
             row[0] = i;
+            row[widIndex] = wid;
             vt.addRow(row);
         } // FOR
-        this.executor.loadTable(1000L, catalog_tbl, vt, false);
+        this.executor.loadTable(1000L, table, vt, false);
 
     }
     
@@ -233,19 +247,33 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         LOG.info(String.format("Applying PartitionPlan to catalog [enableSecondaryIndexes=%s]", secondaryIndexes));
         pplan.apply(this.catalog_db, secondaryIndexes);
     	
-        this.loadData(17l);
-        assertTrue(true);
-        List<ReconfigurationRange> ranges = new ArrayList<>();
-
-        ranges.add(new ReconfigurationRange<Long>("warehouse", VoltType.BIGINT, new Long(1), new Long(5), 1, 2));
-
-        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(ranges);
-        int deleteToken = 47;
-        Pair<VoltTable, Boolean> resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken, 1, 10 * 1024);
-        int totalRows = resTable.getFirst().getRowCount();
-        System.out.println("Results:" + resTable.getFirst().toString());
-        assertEquals(4, totalRows);
-        assertFalse(resTable.getSecond());
+        int wid = 2;
+        ReconfigurationRange<Long> range; 
+        VoltTable extractTable;
+        range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2);
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
+        this.loadTPCCData(NUM_TUPLES * 10, this.customer_tbl,this.cust_p_index, wid);
+        int EXTRACT_LIMIT = 2048;
+        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
+        
+        long tupleBytes = MemoryEstimator.estimateTupleSize(this.customer_tbl);
+        int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
+        int expectedChunks = ((int)(NUM_TUPLES * 10)/tuplesInChunk);
+        int resCount = 0;
+        int chunks = 0;
+        Pair<VoltTable,Boolean> resTable = 
+                this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+        assertTrue(resTable.getSecond());
+        resCount += resTable.getFirst().getRowCount();
+        chunks++;
+        while(resTable.getSecond()){
+            resTable = 
+                    this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+            resCount += resTable.getFirst().getRowCount();
+            chunks++;
+        }
+        assertEquals(expectedChunks, chunks);
+        assertEquals(NUM_TUPLES*10, resCount);
     }
-
+    
 }

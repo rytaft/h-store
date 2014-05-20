@@ -68,7 +68,7 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
             "            \"tables\":{"+
             "              \"warehouse\":{"+
             "                \"partitions\":{"+
-            "                  0 : \"1-17\""+
+            "                  0 : \"1-10000\""+
             "                }     "+
             "              }"+
             "            }"+
