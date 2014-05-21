@@ -64,6 +64,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     private int[] neworder_p_index;
     private int[] cust_p_index;
     private int undo=1;
+    private static boolean init = false;
 
     // private int ycsbTableId(Catalog catalog) {
     // return
@@ -74,11 +75,8 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         super.setUp(ProjectType.TPCC);
         initializeCatalog(1, 1, NUM_PARTITIONS);
         
-        // HACK! If we already have this many partitions in the catalog, then we won't recreate it
-        // This fixes problems where we need to reference the same catalog objects in multiple test cases
-        if (catalogContext.numberOfHosts != 1 ||
-                catalogContext.numberOfSites != 1 ||
-                catalogContext.numberOfPartitions != NUM_PARTITIONS) {
+	// This stuff only gets initialized once
+        if (!this.init) {
 	    	JSONObject json = new JSONObject(partitionPlan);
 	    	
 	    	PartitionPlan pplan = new PartitionPlan();
@@ -88,6 +86,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	        boolean secondaryIndexes = false;
 	        LOG.info(String.format("Applying PartitionPlan to catalog [enableSecondaryIndexes=%s]", secondaryIndexes));
 	        pplan.apply(this.catalog_db, secondaryIndexes);
+		this.init = true;
         }
         
         // Just make sure that the Table has the evictable flag set to true
