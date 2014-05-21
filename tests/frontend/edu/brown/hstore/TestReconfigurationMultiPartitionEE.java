@@ -72,18 +72,23 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     @Before
     public void setUp() throws Exception {
         super.setUp(ProjectType.TPCC);
-        
-    	JSONObject json = new JSONObject(partitionPlan);
-    	
-    	PartitionPlan pplan = new PartitionPlan();
-        pplan.fromJSON(json, this.catalog_db);
-
-        // Apply!
-        boolean secondaryIndexes = false;
-        LOG.info(String.format("Applying PartitionPlan to catalog [enableSecondaryIndexes=%s]", secondaryIndexes));
-        pplan.apply(this.catalog_db, secondaryIndexes);
-        
         initializeCatalog(1, 1, NUM_PARTITIONS);
+        
+        // HACK! If we already have this many partitions in the catalog, then we won't recreate it
+        // This fixes problems where we need to reference the same catalog objects in multiple test cases
+        if (catalogContext.numberOfHosts != 1 ||
+                catalogContext.numberOfSites != 1 ||
+                catalogContext.numberOfPartitions != NUM_PARTITIONS) {
+	    	JSONObject json = new JSONObject(partitionPlan);
+	    	
+	    	PartitionPlan pplan = new PartitionPlan();
+	        pplan.fromJSON(json, this.catalog_db);
+	
+	        // Apply!
+	        boolean secondaryIndexes = false;
+	        LOG.info(String.format("Applying PartitionPlan to catalog [enableSecondaryIndexes=%s]", secondaryIndexes));
+	        pplan.apply(this.catalog_db, secondaryIndexes);
+        }
         
         // Just make sure that the Table has the evictable flag set to true
         this.customer_tbl = getTable(CUSTOMER_TABLE_NAME);
