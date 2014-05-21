@@ -61,8 +61,10 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     //private Table catalog_tbl;
     private Table customer_tbl;
     private Table neworder_tbl;
+    private Table orderline_tbl;
     private int[] neworder_p_index;
     private int[] cust_p_index;
+    private int[] orderline_p_index;
     private int undo=1;
     private static boolean init = false;
 
@@ -75,8 +77,8 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         super.setUp(ProjectType.TPCC);
         initializeCatalog(1, 1, NUM_PARTITIONS);
         
-	// This stuff only gets initialized once
-        if (!this.init) {
+        // This stuff only gets initialized once
+        if (!init) {
 	    	JSONObject json = new JSONObject(partitionPlan);
 	    	
 	    	PartitionPlan pplan = new PartitionPlan();
@@ -86,7 +88,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	        boolean secondaryIndexes = false;
 	        LOG.info(String.format("Applying PartitionPlan to catalog [enableSecondaryIndexes=%s]", secondaryIndexes));
 	        pplan.apply(this.catalog_db, secondaryIndexes);
-		this.init = true;
+	        init = true;
         }
         
         // Just make sure that the Table has the evictable flag set to true
@@ -100,6 +102,12 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         this.neworder_p_index = new int[this.neworder_tbl.getPartitioncolumns().size()];
         for(ColumnRef colRef : this.neworder_tbl.getPartitioncolumns().values()) {
         	this.neworder_p_index[colRef.getIndex()] = colRef.getColumn().getIndex();
+    	}
+        
+        this.orderline_tbl = getTable(NEW_ORDER_TABLE_NAME);
+        this.orderline_p_index = new int[this.orderline_tbl.getPartitioncolumns().size()];
+        for(ColumnRef colRef : this.orderline_tbl.getPartitioncolumns().values()) {
+        	this.orderline_p_index[colRef.getIndex()] = colRef.getColumn().getIndex();
     	}
         
         Site catalog_site = CollectionUtil.first(CatalogUtil.getCluster(catalog).getSites());
@@ -441,5 +449,60 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 
     }
     
+    public void testBTreeSearch() throws Exception {
+    	((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = DEFAULT_LIMIT;
+
+        for (int i=0; i< scales.length; i++) {
+        	for (int j = 0; j < scales.length; j++) {
+	        	long tuples = NUM_TUPLES * scales[i] * scales[j];
+	            LOG.info(String.format("Loading %s tuples for order lines with W_ID:%s and D_ID:%s", tuples,scales[i],scales[j]));
+	            this.loadTPCCData(tuples, this.orderline_tbl,this.orderline_p_index,new int[]{ scales[i], scales[j] });
+        	}
+        }
+        LOG.info("load done");
+       
+    	assertTrue(true);
+    	
+    	VoltTable extractTable;
+        long start, extract, load;
+    	Pair<VoltTable,Boolean> resTable;
+    	Pair<VoltTable,Boolean> resTableVerify;
+        
+    	
+    	for (int i=0; i< scales.length; i++) {
+    		for (int j=0; j< scales.length; j++) {
+	    	    int warehouse_scale = scales[i];
+	    	    int district_scale = scales[j];
+	    	    LOG.info("Testing for warehouse scale : " + warehouse_scale + ", district scale : " + district_scale);
+	    	    //extract
+	    	    ReconfigurationRange<Long> districtRange = new ReconfigurationRange<Long>(this.orderline_tbl.getName(), this.orderline_tbl.getColumns().get(this.orderline_p_index[1]).getName(),
+	        			VoltType.SMALLINT, new Long(district_scale), new Long(district_scale+1), 1, 2, null);
+	    	    ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.orderline_tbl.getName(), this.orderline_tbl.getColumns().get(this.orderline_p_index[0]).getName(),
+	            		VoltType.SMALLINT, new Long(warehouse_scale), new Long(warehouse_scale+1), 1, 2, districtRange);
+	            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.orderline_p_index.length);   
+	            start = System.currentTimeMillis();
+	            resTable= this.ee.extractTable(this.orderline_tbl, this.orderline_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+	            extract = System.currentTimeMillis()-start; 
+	            assertFalse(resTable.getSecond());
+	            LOG.info("Tuples : " + resTable.getFirst().getRowCount());
+	            assertTrue(resTable.getFirst().getRowCount()==NUM_TUPLES * warehouse_scale * district_scale);
+	            
+	            //assert empty     
+	            resTableVerify= this.ee.extractTable(this.orderline_tbl, this.orderline_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+	            assertTrue(resTableVerify.getFirst().getRowCount()==0);
+	            
+	            
+	            //load
+	            start = System.currentTimeMillis();
+	            this.executor.loadTable(2000L, this.orderline_tbl, resTable.getFirst(), false);
+	            load = System.currentTimeMillis() - start;
+	            LOG.info(String.format("size=%s Extract=%s Load=%s Diff:%s", NUM_TUPLES * warehouse_scale * district_scale, extract, load, load-extract));
+	
+	            //re extract and check its there
+	            resTableVerify= this.ee.extractTable(this.orderline_tbl, this.orderline_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+	            assertTrue(resTableVerify.getFirst().getRowCount()==NUM_TUPLES * warehouse_scale * district_scale);
+    		}
+    	}
+    }
     
 }
