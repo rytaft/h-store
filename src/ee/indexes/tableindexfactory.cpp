@@ -148,6 +148,7 @@ namespace voltdb {
                 VOLT_INFO("Producing a tree index for %s: "
                           "hash index not currently supported for this index key.\n",
                           scheme.name.c_str());
+		schemeCopy.type = BALANCED_TREE_INDEX;
             }
             
             if (keySize <= 4) {
@@ -186,6 +187,7 @@ namespace voltdb {
                 VOLT_INFO("Producing a tree index for %s: "
                           "hash index not currently supported for this index key.\n",
                           scheme.name.c_str());
+		schemeCopy.type = BALANCED_TREE_INDEX;
             }
             
             if (keySize <= 4) {
