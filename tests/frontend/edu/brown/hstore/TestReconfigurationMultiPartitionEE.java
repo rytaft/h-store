@@ -287,7 +287,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         
         long tupleBytes = MemoryEstimator.estimateTupleSize(this.customer_tbl);
         int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
-        int expectedChunks = ((int)(NUM_TUPLES * 10)/tuplesInChunk);
+        int expectedChunks = (int) Math.ceil((double)(NUM_TUPLES * 10)/tuplesInChunk);
         int resCount = 0;
         int chunks = 0;
         Pair<VoltTable,Boolean> resTable = 
@@ -374,7 +374,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         
         long tupleBytes = MemoryEstimator.estimateTupleSize(this.customer_tbl);
         int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
-        int expectedChunks = ((int)(NUM_TUPLES * 10)/tuplesInChunk);
+        int expectedChunks = (int) Math.ceil((double)(NUM_TUPLES * 10)/tuplesInChunk);
         int resCount = 0;
         int chunks = 0;
         Pair<VoltTable,Boolean> resTable = 
@@ -465,7 +465,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         
         long tupleBytes = MemoryEstimator.estimateTupleSize(this.orders_tbl);
         int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
-        int expectedChunks = ((int)(NUM_TUPLES * 10)/tuplesInChunk);
+        int expectedChunks = (int) Math.ceil((double)(NUM_TUPLES * 10)/tuplesInChunk);
         int resCount = 0;
         int chunks = 0;
         Pair<VoltTable,Boolean> resTable = 
@@ -552,7 +552,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         
         long tupleBytes = MemoryEstimator.estimateTupleSize(this.orders_tbl);
         int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
-        int expectedChunks = ((int)(NUM_TUPLES * 10)/tuplesInChunk);
+        int expectedChunks = (int) Math.ceil((double)(NUM_TUPLES * 10)/tuplesInChunk);
         int resCount = 0;
         int chunks = 0;
         Pair<VoltTable,Boolean> resTable = 
