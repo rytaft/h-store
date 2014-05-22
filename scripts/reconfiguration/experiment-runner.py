@@ -1019,6 +1019,10 @@ def sweepReconfiguration(client_inst, fabric, args, benchmark, partitions):
     if os.path.exists(localFile):
         LOG.info("Removing local event file %s" % localFile)
         os.remove(localFile)
+    configFile = os.path.join(resultsDir,"config.txt")
+    with open(configFile,'w') as outf:
+        pretty_args = {z:y for z,y in args.iteritems() if y}
+	outf.write(str(pretty_args))
     for inst in fabric.getRunningInstances():
         if str(inst) not in swept_inst:
             LOG.info("Swepts :%s " % ",".join(swept_inst))
