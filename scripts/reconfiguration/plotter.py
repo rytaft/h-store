@@ -52,7 +52,8 @@ def getParser():
     
     parser.add_argument("--no-display", action="store_true", help="Do not display the graph")
     parser.add_argument("-v","--save", dest="save",  help="filename to save the generated plot")
-   
+    parser.add_argument("--csv", dest="csv", help="filename to save csv results in")
+
     parser.add_argument("--tsd", action="store_true", help="Plot Time Series Data (intervals)")
     parser.add_argument("-r","--recursive", dest="recursive", action="store_true", help="Check directories recursively")
     parser.add_argument("--reconfig", dest="reconfig", action="store_true", help="Plot reconfig bars") 
@@ -164,7 +165,7 @@ def addReconfigEvent(df, reconfig_events):
       else:
         #LATENCY.isnull()
         #if we have new event set, otherwise append      
-        if df.RECONFIG[_i] == "":
+        if df.RECONFIG[_i].empty:
            df.RECONFIG[_i] = event[1]
         else:
            df.RECONFIG[_i] = df.RECONFIG[_i] + "-" + event[1]
@@ -174,9 +175,6 @@ def addReconfigEvent(df, reconfig_events):
     df['MISSING_DATA'] = df.LATENCY.isnull()
     df['DOWNTIME'] = df['MISSING_DATA'].sum()
     df['RECONFIG_TIME'] = end-start
-    print df['ASYNC_PULLS'].values
-    print df['LIVE_PULLS'].values
-    print df['IN_RECONFIG'].values
     #df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].mean()
     
 def getIntStats(interval_file):
@@ -217,9 +215,9 @@ def getDirStat(directory,reconfigs, stops, show="mean", keepfilter=None, display
     print "No interval file found in %s %s" % (directory,','.join(os.listdir(directory)))
     return
   for interval_file in interval_files:  
-    print  
+    #print
     df = getIntStats(interval_file)
-    print interval_file 
+    #print interval_file
 
     if "recon" in interval_file:
       alt_version = interval_file.replace("reconfig","stopcopy")
@@ -465,15 +463,17 @@ def plotTSD(args, files, ax):
                         LOG.error("NO reconfig event found!")
                     else:
                         LOG.error("Multiple reconfig events not currently supported")
-            print name     
-            print "="*80
-            print df
+            #print name
+            #print "="*80
+            #print df
             #print df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].mean()
-            print ""
+            #print ""
+            if args.csv:
+                df.to_csv(args.csv)
             if args.type == "line":
                 #plot the line with the same color 
                 ax.plot(df.index, data[name], color=color,label=name,ls=linestyle, lw=2.0)
-                if reconfig_events:
+                if args.reconfig and reconfig_events:
                     plotReconfigs(args, df, ax)
             x+=1 # FOR
     plotFrame = pandas.DataFrame(data=data)
@@ -521,7 +521,7 @@ if __name__=="__main__":
     parser = getParser()
     args = parser.parse_args()
     
-    print args
+    #print args
     files = []
     if args.dir:
         if args.recursive:

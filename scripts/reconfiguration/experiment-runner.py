@@ -40,6 +40,7 @@ import string
 import math
 import types
 import subprocess
+import shlex
 import csv
 from datetime import datetime
 from pprint import pprint, pformat
@@ -980,6 +981,28 @@ def createFabricHandle(name, env):
     return klass(env)
 ## DEF
 
+
+## ==============================================
+## plotResults
+## ==============================================
+def plotResults(args):
+    LOG.info("Plotting")
+    resultsDir = os.path.join(args['results_dir'], args['exp_type'])
+    reconfig = ""
+    if args and args['sweep_reconfiguration']:
+        reconfig = " --reconfig "
+    base = "python plotter.py --tsd %s -d %s -s %s -t line --no-display -v %s %s"
+    csv = "--csv %s" % os.path.join(resultsDir,"results.csv")
+    for show_type in ["tps", "lat50","lat","lat95"]:
+        _file_name = "%s-%s" % (args['exp_type'], show_type)
+        _file = os.path.join(resultsDir, _file_name )
+        _cmd = base % (reconfig, resultsDir, show_type, _file, csv)
+        LOG.info("Executing:\n\t %s"% _cmd)
+        _res = subprocess.call(shlex.split(_cmd))
+        csv = ""
+        if _res != 0:
+            LOG.error("Error code %s when running %s" % (_res, _cmd))
+
 ## ==============================================
 ## reconfiguration
 ## ==============================================
@@ -1100,6 +1123,7 @@ if __name__ == '__main__':
     agroup.add_argument("--reconfig", action="append", help="Configuration for an optional reconfig event [delayTimeMS]:[planId]:[optLeaderId]. Can accept multiple")
     agroup.add_argument("--sweep-reconfiguration", action='store_true',default=False, help='Collect hevent.log from servers')
     agroup.add_argument("--benchmark-size", type=int, help="The size of a benchmark (usertable size, warehouses, etc)")
+    agroup.add_argument("--plot", action='store_true',default=False, help='Plot results')
     
     ## Experiment Parameters
     agroup = aparser.add_argument_group('Experiment Parameters')
@@ -1383,6 +1407,9 @@ if __name__ == '__main__':
                             sweepReconfiguration(client_inst, fabric, args, benchmark, partitions)
                         # Only compile for the very first invocation
                         needCompile = False
+
+                        if args["plot"]:
+                            plotResults(args)
                     except KeyboardInterrupt:
                         stop = True
                         break
