@@ -49,7 +49,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     private static final int NUM_PARTITIONS = 1;
     private static final long NUM_TUPLES = 100;
     private static final String CUSTOMER_TABLE_NAME = TPCCConstants.TABLENAME_CUSTOMER;
-    private static final String NEW_ORDER_TABLE_NAME = TPCCConstants.TABLENAME_NEW_ORDER;
+    private static final String ORDERS_TABLE_NAME = TPCCConstants.TABLENAME_ORDERS;
     private static final String ORDER_LINE_TABLE_NAME = TPCCConstants.TABLENAME_ORDER_LINE;
     private static final int DEFAULT_LIMIT = ExecutionEngineJNI.DEFAULT_EXTRACT_LIMIT_BYTES;
     
@@ -61,9 +61,9 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     private ExecutionEngine ee;
     //private Table catalog_tbl;
     private Table customer_tbl;
-    private Table neworder_tbl;
+    private Table orders_tbl;
     private Table orderline_tbl;
-    private int[] neworder_p_index;
+    private int[] orders_p_index;
     private int[] cust_p_index;
     private int[] orderline_p_index;
     private int undo=1;
@@ -99,10 +99,10 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         	this.cust_p_index[colRef.getIndex()] = colRef.getColumn().getIndex();
     	}
         
-        this.neworder_tbl = getTable(NEW_ORDER_TABLE_NAME);
-        this.neworder_p_index = new int[this.neworder_tbl.getPartitioncolumns().size()];
-        for(ColumnRef colRef : this.neworder_tbl.getPartitioncolumns().values()) {
-        	this.neworder_p_index[colRef.getIndex()] = colRef.getColumn().getIndex();
+        this.orders_tbl = getTable(ORDERS_TABLE_NAME);
+        this.orders_p_index = new int[this.orders_tbl.getPartitioncolumns().size()];
+        for(ColumnRef colRef : this.orders_tbl.getPartitioncolumns().values()) {
+        	this.orders_p_index[colRef.getIndex()] = colRef.getColumn().getIndex();
     	}
         
         this.orderline_tbl = getTable(ORDER_LINE_TABLE_NAME);
@@ -444,6 +444,184 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	
 	            //re extract and check its there
 	            resTableVerify= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+	            assertTrue(resTableVerify.getFirst().getRowCount()==NUM_TUPLES * warehouse_scale * district_scale);
+    		}
+    	}
+
+    }
+    
+    @Test
+    public void testSingleColumnRangeExtractAllOrders() throws Exception {  
+    	int wid = 2; // warehouse id
+    	int[] keys = new int[]{ wid };
+        
+    	ReconfigurationRange<Long> range; 
+        VoltTable extractTable;
+        range = new ReconfigurationRange<Long>(this.orders_tbl.getName(), VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2);
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.orders_p_index.length);   
+        this.loadTPCCData(NUM_TUPLES * 10, this.orders_tbl,this.orders_p_index, keys);
+        int EXTRACT_LIMIT = 2048;
+        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
+        
+        long tupleBytes = MemoryEstimator.estimateTupleSize(this.orders_tbl);
+        int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
+        int expectedChunks = ((int)(NUM_TUPLES * 10)/tuplesInChunk);
+        int resCount = 0;
+        int chunks = 0;
+        Pair<VoltTable,Boolean> resTable = 
+                this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+        assertTrue(resTable.getSecond());
+        resCount += resTable.getFirst().getRowCount();
+        chunks++;
+        while(resTable.getSecond()){
+            resTable = 
+                    this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+            resCount += resTable.getFirst().getRowCount();
+            chunks++;
+        }
+        assertEquals(expectedChunks, chunks);
+        assertEquals(NUM_TUPLES*10, resCount);
+    }
+    
+    @Test
+    public void testSingleColumnRangeOrders() throws Exception {  
+    	((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = DEFAULT_LIMIT;
+
+        for (int i=0; i< scales.length; i++) {
+        	long tuples = NUM_TUPLES * scales[i];
+            LOG.info(String.format("Loading %s tuples for orders with W_ID :%s ", tuples,scales[i]));
+            this.loadTPCCData(tuples, this.orders_tbl,this.orders_p_index,new int[]{ scales[i] });
+                
+        }
+        LOG.info("load done");
+       
+    	assertTrue(true);
+    	
+    	ReconfigurationRange<Long> range; 
+        VoltTable extractTable;
+        long start, extract, load;
+    	Pair<VoltTable,Boolean> resTable;
+    	Pair<VoltTable,Boolean> resTableVerify;
+        
+    	
+    	for (int i=0; i< scales.length; i++) {
+    	    int scale = scales[i];
+    	    LOG.info("Testing for scale : " + scale);
+    	    //extract
+            range = new ReconfigurationRange<Long>(this.orders_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale+1), 1, 2);
+            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.orders_p_index.length);   
+            start = System.currentTimeMillis();
+            resTable= this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+            extract = System.currentTimeMillis()-start; 
+            assertFalse(resTable.getSecond());
+            LOG.info("Tuples : " + resTable.getFirst().getRowCount());
+            assertTrue(resTable.getFirst().getRowCount()==NUM_TUPLES *scale);
+            
+            //assert empty     
+            resTableVerify= this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+            assertTrue(resTableVerify.getFirst().getRowCount()==0);
+            
+            
+            //load
+            start = System.currentTimeMillis();
+            this.executor.loadTable(2000L, this.orders_tbl, resTable.getFirst(), false);
+            load = System.currentTimeMillis() - start;
+            LOG.info(String.format("size=%s Extract=%s Load=%s Diff:%s", NUM_TUPLES*scale, extract, load, load-extract));
+
+            //re extract and check its there
+            resTableVerify= this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+            assertTrue(resTableVerify.getFirst().getRowCount()==NUM_TUPLES *scale);
+    	}
+
+    }
+    
+    @Test
+    public void testTwoColumnRangeExtractAllOrders() throws Exception {
+    	int wid = 2; // warehouse id
+    	int did = 3; // district id
+    	int[] keys = new int[]{ wid, did };
+        
+    	ReconfigurationRange<Long> districtRange = new ReconfigurationRange<Long>(this.orders_tbl.getName(), this.orders_tbl.getColumns().get(this.orders_p_index[1]).getName(),
+    			VoltType.SMALLINT, new Long(did), new Long(did+1), 1, 2, null);
+        ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.orders_tbl.getName(), this.orders_tbl.getColumns().get(this.orders_p_index[0]).getName(),
+        		VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2, districtRange);
+        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.orders_p_index.length);   
+        this.loadTPCCData(NUM_TUPLES * 10, this.orders_tbl,this.orders_p_index, keys);
+        int EXTRACT_LIMIT = 2048;
+        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
+        
+        long tupleBytes = MemoryEstimator.estimateTupleSize(this.orders_tbl);
+        int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
+        int expectedChunks = ((int)(NUM_TUPLES * 10)/tuplesInChunk);
+        int resCount = 0;
+        int chunks = 0;
+        Pair<VoltTable,Boolean> resTable = 
+                this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+        assertTrue(resTable.getSecond());
+        resCount += resTable.getFirst().getRowCount();
+        chunks++;
+        while(resTable.getSecond()){
+            resTable = 
+                    this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+            resCount += resTable.getFirst().getRowCount();
+            chunks++;
+        }
+        assertEquals(expectedChunks, chunks);
+        assertEquals(NUM_TUPLES*10, resCount);
+    }
+    
+    @Test
+    public void testTwoColumnRangeOrders() throws Exception {
+    	((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = DEFAULT_LIMIT;
+
+        for (int i=0; i< scales.length; i++) {
+        	for (int j = 0; j < scales.length; j++) {
+	        	long tuples = NUM_TUPLES * scales[i] * scales[j];
+	            LOG.info(String.format("Loading %s tuples for orders with W_ID:%s and D_ID:%s", tuples,scales[i],scales[j]));
+	            this.loadTPCCData(tuples, this.orders_tbl,this.orders_p_index,new int[]{ scales[i], scales[j] });
+        	}
+        }
+        LOG.info("load done");
+       
+    	assertTrue(true);
+    	
+    	VoltTable extractTable;
+        long start, extract, load;
+    	Pair<VoltTable,Boolean> resTable;
+    	Pair<VoltTable,Boolean> resTableVerify;
+        
+    	
+    	for (int i=0; i< scales.length; i++) {
+    		for (int j=0; j< scales.length; j++) {
+	    	    int warehouse_scale = scales[i];
+	    	    int district_scale = scales[j];
+	    	    LOG.info("Testing for warehouse scale : " + warehouse_scale + ", district scale : " + district_scale);
+	    	    //extract
+	    	    ReconfigurationRange<Long> districtRange = new ReconfigurationRange<Long>(this.orders_tbl.getName(), this.orders_tbl.getColumns().get(this.orders_p_index[1]).getName(),
+	        			VoltType.SMALLINT, new Long(district_scale), new Long(district_scale+1), 1, 2, null);
+	    	    ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.orders_tbl.getName(), this.orders_tbl.getColumns().get(this.orders_p_index[0]).getName(),
+	            		VoltType.SMALLINT, new Long(warehouse_scale), new Long(warehouse_scale+1), 1, 2, districtRange);
+	            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.orders_p_index.length);   
+	            start = System.currentTimeMillis();
+	            resTable= this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+	            extract = System.currentTimeMillis()-start; 
+	            assertFalse(resTable.getSecond());
+	            LOG.info("Tuples : " + resTable.getFirst().getRowCount());
+	            assertTrue(resTable.getFirst().getRowCount()==NUM_TUPLES * warehouse_scale * district_scale);
+	            
+	            //assert empty     
+	            resTableVerify= this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+	            assertTrue(resTableVerify.getFirst().getRowCount()==0);
+	            
+	            
+	            //load
+	            start = System.currentTimeMillis();
+	            this.executor.loadTable(2000L, this.orders_tbl, resTable.getFirst(), false);
+	            load = System.currentTimeMillis() - start;
+	            LOG.info(String.format("size=%s Extract=%s Load=%s Diff:%s", NUM_TUPLES * warehouse_scale * district_scale, extract, load, load-extract));
+	
+	            //re extract and check its there
+	            resTableVerify= this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
 	            assertTrue(resTableVerify.getFirst().getRowCount()==NUM_TUPLES * warehouse_scale * district_scale);
     		}
     	}
