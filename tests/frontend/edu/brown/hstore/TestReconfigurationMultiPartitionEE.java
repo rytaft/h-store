@@ -50,6 +50,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     private static final long NUM_TUPLES = 100;
     private static final String CUSTOMER_TABLE_NAME = TPCCConstants.TABLENAME_CUSTOMER;
     private static final String NEW_ORDER_TABLE_NAME = TPCCConstants.TABLENAME_NEW_ORDER;
+    private static final String ORDER_LINE_TABLE_NAME = TPCCConstants.TABLENAME_ORDER_LINE;
     private static final int DEFAULT_LIMIT = ExecutionEngineJNI.DEFAULT_EXTRACT_LIMIT_BYTES;
     
     private HStoreSite hstore_site;
@@ -104,7 +105,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         	this.neworder_p_index[colRef.getIndex()] = colRef.getColumn().getIndex();
     	}
         
-        this.orderline_tbl = getTable(NEW_ORDER_TABLE_NAME);
+        this.orderline_tbl = getTable(ORDER_LINE_TABLE_NAME);
         this.orderline_p_index = new int[this.orderline_tbl.getPartitioncolumns().size()];
         for(ColumnRef colRef : this.orderline_tbl.getPartitioncolumns().values()) {
         	this.orderline_p_index[colRef.getIndex()] = colRef.getColumn().getIndex();
