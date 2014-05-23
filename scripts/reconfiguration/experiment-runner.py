@@ -1038,7 +1038,7 @@ def sweepReconfiguration(client_inst, fabric, args, benchmark, partitions):
     if os.path.exists(localFile):
         LOG.info("Removing local event file %s" % localFile)
         os.remove(localFile)
-    configFile = os.path.join(resultsDir,"config.txt")
+    configFile = os.path.join(resultsDir,"%s-config.txt" % args['exp_type'] )
     with open(configFile,'w') as outf:
         pretty_args = {z:y for z,y in args.iteritems() if y}
 	outf.write(str(pretty_args))
