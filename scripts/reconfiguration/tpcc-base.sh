@@ -37,7 +37,7 @@ for b in tpcc; do
         --plot \
 	--client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=300000 \
+        --client.duration=100000 \
         --client.warmup=30000 \
         --client.output_results_csv=interval_res.csv \
         --sweep-reconfiguration 
