@@ -43,6 +43,8 @@ import subprocess
 import shlex
 import csv
 from datetime import datetime
+import time
+import zipfile
 from pprint import pprint, pformat
 from types import *
 from reconfiguration_experiments import *
@@ -1002,6 +1004,22 @@ def plotResults(args):
         csv = ""
         if _res != 0:
             LOG.error("Error code %s when running %s" % (_res, _cmd))
+            
+            
+#Used from http://stackoverflow.com/questions/1855095/how-to-create-a-zip-archive-of-a-directory-in-python
+def zipdir(path, zip):
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            zip.write(os.path.join(root, file))
+
+def saveResults(args):
+    resultsDir = os.path.join(args['results_dir'], args['exp_type'])
+    st = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H:%M')
+    zipname = "%s-%s.zip" %( args['exp_type'],st)
+    zipf = zipfile.ZipFile(zipname, 'w')
+    zipdir(resultsDir, zipf)
+    zipf.close()    
+    
 
 ## ==============================================
 ## reconfiguration
@@ -1128,6 +1146,7 @@ if __name__ == '__main__':
     agroup.add_argument("--sweep-reconfiguration", action='store_true',default=False, help='Collect hevent.log from servers')
     agroup.add_argument("--benchmark-size", type=int, help="The size of a benchmark (usertable size, warehouses, etc)")
     agroup.add_argument("--plot", action='store_true',default=False, help='Plot results')
+    agroup.add_argument("--no-zip", action='store_true',default=False, help='Do not zip and save results')
     
     ## Experiment Parameters
     agroup = aparser.add_argument_group('Experiment Parameters')
@@ -1414,6 +1433,9 @@ if __name__ == '__main__':
 
                         if args["plot"]:
                             plotResults(args)
+                        if not args["no_zip"]:
+                            saveResults(args)
+
                     except KeyboardInterrupt:
                         stop = True
                         break
