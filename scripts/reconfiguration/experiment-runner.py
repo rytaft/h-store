@@ -994,7 +994,8 @@ def plotResults(args):
     if args and args['sweep_reconfiguration']:
         reconfig = " --reconfig "
     base = "python plotter.py --tsd %s -d %s -s %s -t line --no-display -v %s %s"
-    csv = "--csv %s" % os.path.join(resultsDir,"results.csv")
+    csv_base = "%s-results.csv" % args['exp_type']
+    csv = "--csv %s" % os.path.join(resultsDir,csv_base)
     for show_type in ["tps", "lat50","lat","lat95"]:
         _file_name = "%s-%s" % (args['exp_type'], show_type)
         _file = os.path.join(resultsDir, _file_name )
