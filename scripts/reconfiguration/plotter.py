@@ -165,11 +165,12 @@ def addReconfigEvent(df, reconfig_events):
       else:
         #LATENCY.isnull()
         #if we have new event set, otherwise append      
-        if df.RECONFIG[_i].empty:
-           df.RECONFIG[_i] = event[1]
+        if hasattr(df.RECONFIG,'empty') and df.RECONFIG[_i].empty:
+               df.RECONFIG[_i] = event[1]
+        elif not hasattr(df.RECONFIG,'empty') and df.RECONFIG[_i] == "":        
+               df.RECONFIG[_i] = event[1]
         else:
            df.RECONFIG[_i] = df.RECONFIG[_i] + "-" + event[1]
-
        
     df['IN_RECONFIG'][(df.TIMESTAMP >= start-1000) & (df.TIMESTAMP <= end)] = True
     df['MISSING_DATA'] = df.LATENCY.isnull()
