@@ -10,6 +10,7 @@ RECONFIG_EXPERIMENTS = [
     "reconfig-2l",
     "reconfig-4",
     "reconfig-10",
+    "reconfig-10b",
     "stopcopy-1",
     "stopcopy-2",
     "stopcopy-2b",
@@ -22,7 +23,7 @@ RECONFIG_EXPERIMENTS = [
     "reconfig-slow",
 ]
 
-RECONFIG_CLIENT_COUNT = 1
+RECONFIG_CLIENT_COUNT = 2
 
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
@@ -93,6 +94,23 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
         fabric.env["site.reconfig_chunk_size_kb"] = 2048 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
+        fabric.env["site.commandlog_enable"] = False
+        fabric.env["benchmark.loadthread_per_warehouse"] = False
+        fabric.env["benchmark.loadthreads"] = max(16, partitions)
+
+    if 'reconfig-10b' in  args['exp_type'] or 'stopcopy-10b' in args['exp_type']:
+        fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
+        fabric.env["client.blocking_concurrent"] = 1
+        #fabric.env["client.txnrate"] = 100000
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.output_exec_profiling"] = "execprofile.csv"
+        fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
+        fabric.env["client.output_txn_profiling_combine"] = True
+        fabric.env["client.output_txn_counters"] = "txncounters.csv"
+        fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
+        fabric.env["site.reconfig_chunk_size_kb"] = 10000 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
         fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.loadthread_per_warehouse"] = False
