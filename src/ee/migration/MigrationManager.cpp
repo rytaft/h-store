@@ -91,11 +91,11 @@ void MigrationManager::init(PersistentTable *table) {
     m_partitionIndex = getPartitionColumnsIndex(); 
     
     if(m_partitionIndex == NULL) {
-      VOLT_DEBUG("partitionColumn is not indexed partitionColumn: %d",m_partitionColumns[0]);
+      VOLT_DEBUG("partitionColumn is not indexed. partitionColumn[0]: %d",m_partitionColumns[0]);
       //TODO ae what do we do when we have no index for the partition colum?
       m_partitionColumnsIndexed = false;
     } else {
-      VOLT_DEBUG("partitionColumn is indexed partitionColumn: %d",m_partitionColumns[0]);
+      VOLT_DEBUG("partitionColumn is indexed. partitionColumn[0]: %d",m_partitionColumns[0]);
       m_partitionColumnsIndexed = true;
     }
 
@@ -128,6 +128,25 @@ TupleSchema* MigrationManager::getKeySchema(TableTuple& sample) {
 
   int size = sample.sizeInValues();
   for(int i = 2, j = 0; i < size && j < m_matchingIndexCols; i+=3, j++) {
+    ValueType type = sample.getType(i);
+    keyColumnTypes.push_back(type);
+    keyColumnLengths.push_back(NValue::getTupleStorageSize(type));
+    keyColumnAllowNull.push_back(true);
+  }
+  return TupleSchema::createTupleSchema(keyColumnTypes,keyColumnLengths,keyColumnAllowNull,true);
+}
+
+TupleSchema* MigrationManager::getKeySchema(TableTuple& sample, int nCols) {
+  std::vector<ValueType> keyColumnTypes;
+  std::vector<int32_t> keyColumnLengths;
+  std::vector<bool> keyColumnAllowNull;
+
+  keyColumnTypes.reserve(nCols);
+  keyColumnLengths.reserve(nCols);
+  keyColumnAllowNull.reserve(nCols);
+
+  int size = sample.sizeInValues();
+  for(int i = 0; i < nCols && i < size; i++) {
     ValueType type = sample.getType(i);
     keyColumnTypes.push_back(type);
     keyColumnLengths.push_back(NValue::getTupleStorageSize(type));
@@ -216,11 +235,11 @@ bool MigrationManager::extractTuple(TableTuple& tuple) {
 
 bool MigrationManager::searchBTree(const RecursiveRangeMap& rangeMap, TableTuple& minKeys, TableTuple& maxKeys, int keyIndex) {
 
-  if(rangeMap.r.size() > 0 || keyIndex < m_matchingIndexCols) { // recursion
+  if(rangeMap.r.size() > 0 && keyIndex < m_matchingIndexCols) { // recursion
     for(RecursiveRangeType::const_iterator it=rangeMap.r.begin(); it!=rangeMap.r.end(); ++it) {
       NValue minKey = it->second.first;
       NValue maxKey = it->first;
-    
+
       if(minKey.compare(maxKey) > 0) {
 	//Min key should never be greater than maxKey
 	throwFatalException("Max extract key is smaller than min key");
@@ -239,10 +258,34 @@ bool MigrationManager::searchBTree(const RecursiveRangeMap& rangeMap, TableTuple
     VOLT_DEBUG("Pulling one or more keys on partitionedColumn BTREE");
 
     TableTuple tuple(m_table->schema());
-    m_partitionIndex->moveToKeyOrGreater(&minKeys);    
 
+    // create a new tuple with only the valid keys from minKeys
+    TableTuple newMinKeys;
+    TableTuple newMaxKeys;
+    if(keyIndex < m_matchingIndexCols) {
+      TupleSchema* keySchema = getKeySchema(minKeys, keyIndex);
+      newMinKeys = initKeys(keySchema);   
+      newMaxKeys = initKeys(keySchema);   
+
+      for(int i = 0; i < keyIndex; i++) {
+	newMinKeys.setNValue(i, minKeys.getNValue(i));
+	newMaxKeys.setNValue(i, maxKeys.getNValue(i));
+      }
+    } else {
+      newMinKeys = minKeys;
+      newMaxKeys = maxKeys;
+    }
+
+    VOLT_DEBUG("minKeys: %s, newMinKeys: %s, maxKeys: %s, newMaxKeys: %s", 
+	       minKeys.debugNoHeader().c_str(), newMinKeys.debugNoHeader().c_str(), 
+	       maxKeys.debugNoHeader().c_str(), newMaxKeys.debugNoHeader().c_str());
+
+    // actually find the key(s) in the B-Tree
+    m_partitionIndex->moveToKeyOrGreater(&newMinKeys);    
+
+    // look through each tuple at this key and see if it's in our range
     while(((!(tuple = m_partitionIndex->nextValueAtKey()).isNullTuple()) ||
-	   (!(tuple = m_partitionIndex->nextValue()).isNullTuple())) && inRange(tuple, maxKeys)) {
+	   (!(tuple = m_partitionIndex->nextValue()).isNullTuple())) && inRange(tuple, newMaxKeys)) {
 
 #ifdef EXTRACT_STAT_ENABLED
       m_rowsExamined++;
@@ -321,21 +364,22 @@ Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& in
   RecursiveRangeMap rangeMap;
   getRecursiveRangeMap(rangeMap, inputIterator, extractTuple);
 
-  TupleSchema* keySchema = getKeySchema(extractTuple);
-  TableTuple minKeys = initKeys(keySchema);
-  TableTuple maxKeys = initKeys(keySchema);
-
   //TODO ae andy -> on searching and checking for the max key condition
   // (cont) should we be using an expression or ok to just do  value check end value on iteration?
   //IF b-Tree
   try {
     if (m_partitionColumnsIndexed && m_partitionIndex->getScheme().type == BALANCED_TREE_INDEX){
+      VOLT_INFO("Searching for ranges to extract with B-Tree index %s", m_partitionIndex->getName().c_str());
+      TupleSchema* keySchema = getKeySchema(extractTuple);
+      TableTuple minKeys = initKeys(keySchema);
+      TableTuple maxKeys = initKeys(keySchema);
       moreData = searchBTree(rangeMap, minKeys, maxKeys, 0);
     }  
     else if (!m_partitionColumnsIndexed || m_partitionIndex->getScheme().type == HASH_TABLE_INDEX
 	     ||  m_partitionIndex->getScheme().type == ARRAY_INDEX) {
       // TODO: if the maximum number of keys is small, we may want to actually use the hash index to find
       // the values rather than scanning the table
+      VOLT_INFO("Searching for ranges to extract by scanning the table");
       moreData = scanTable(rangeMap);
     } else {
       VOLT_ERROR("Unsupported Index type");
@@ -353,8 +397,8 @@ Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& in
   NValue globalMin = rangeMap.r.begin()->second.first;
   NValue globalMax = rangeMap.r.rbegin()->first;
 
-  VOLT_DEBUG("Rows examined: %d", m_rowsExamined);
-  VOLT_INFO("ExtractRange %s %s - %s ", m_table->name().c_str(),globalMin.debug().c_str(),globalMax.debug().c_str() );        
+  VOLT_INFO("Rows examined: %d", m_rowsExamined);
+  VOLT_INFO("ExtractRange %s:%s %s - %s ", m_table->name().c_str(),m_table->columnName(m_partitionColumns[0]).c_str(),globalMin.debug().c_str(),globalMax.debug().c_str() );        
   std::string extract_id = "Extract:"+m_table->name()+" Range:"+globalMin.debug().c_str()+"-"+globalMax.debug().c_str();
   m_timingResults[extract_id] = (int32_t)m_timer.elapsed();
   m_timer.restart();	
@@ -372,17 +416,17 @@ TableIndex* MigrationManager::getPartitionColumnsIndex() {
     for (int i = 0; i < m_table->indexCount(); ++i) {
         TableIndex *index = tableIndexes[i];
         
-        VOLT_DEBUG("Index %s ", index->debug().substr(0,20).c_str());
+        VOLT_DEBUG("Index %s ", index->debug().c_str());
 
 	if(index->getScheme().type == BALANCED_TREE_INDEX) { // tree index
 	  for(int i = 0; i < index->getColumnIndices().size() && i < m_partitionColumns.size(); i++) {
-	     if (index->getColumnIndices()[i] != m_partitionColumns[i]){
+	     if (index->getColumnIndices()[i] == m_partitionColumns[i]){
 	       if(i >= bestMatchingIndexCols) {
 		 VOLT_DEBUG("Index matches");
-		 bestMatchingIndexCols = i;
+		 bestMatchingIndexCols = i+1;
 		 bestIndex = index;
 	       }
-
+	     } else {
 	       break;
 	     }
 	   }
@@ -400,6 +444,12 @@ TableIndex* MigrationManager::getPartitionColumnsIndex() {
 	}
     }
 
+    if(bestIndex == NULL) {
+      VOLT_INFO("No index matches");
+    }
+    else {
+      VOLT_INFO("Best index %s has %d matching columns", bestIndex->getName().c_str(), bestMatchingIndexCols);
+    }
     m_matchingIndexCols = bestMatchingIndexCols;
     return bestIndex;
 }
