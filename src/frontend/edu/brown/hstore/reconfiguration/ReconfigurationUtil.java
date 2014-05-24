@@ -155,7 +155,9 @@ public class ReconfigurationUtil {
     }
     
     public static VoltTable getExtractVoltTable(ReconfigurationRange range) {
-    	return getExtractVoltTable(range, 1);
+    	ArrayList<VoltType> types = new ArrayList<>();
+    	types.add(VoltType.BIGINT);
+    	return getExtractVoltTable(range, 1, types);
     }
 
     public static VoltTable getExtractVoltTable(ReconfigurationRange range, int nCols, List<VoltType> types) {
