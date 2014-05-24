@@ -117,45 +117,7 @@ void MigrationManager::init(PersistentTable *table) {
 #endif
 }
 
-TupleSchema* MigrationManager::getKeySchema(TableTuple& sample) {
-  std::vector<ValueType> keyColumnTypes;
-  std::vector<int32_t> keyColumnLengths;
-  std::vector<bool> keyColumnAllowNull;
-
-  keyColumnTypes.reserve(m_matchingIndexCols);
-  keyColumnLengths.reserve(m_matchingIndexCols);
-  keyColumnAllowNull.reserve(m_matchingIndexCols);
-
-  int size = sample.sizeInValues();
-  for(int i = 2, j = 0; i < size && j < m_matchingIndexCols; i+=3, j++) {
-    ValueType type = sample.getType(i);
-    keyColumnTypes.push_back(type);
-    keyColumnLengths.push_back(NValue::getTupleStorageSize(type));
-    keyColumnAllowNull.push_back(true);
-  }
-  return TupleSchema::createTupleSchema(keyColumnTypes,keyColumnLengths,keyColumnAllowNull,true);
-}
-
-TupleSchema* MigrationManager::getKeySchema(TableTuple& sample, int nCols) {
-  std::vector<ValueType> keyColumnTypes;
-  std::vector<int32_t> keyColumnLengths;
-  std::vector<bool> keyColumnAllowNull;
-
-  keyColumnTypes.reserve(nCols);
-  keyColumnLengths.reserve(nCols);
-  keyColumnAllowNull.reserve(nCols);
-
-  int size = sample.sizeInValues();
-  for(int i = 0; i < nCols && i < size; i++) {
-    ValueType type = sample.getType(i);
-    keyColumnTypes.push_back(type);
-    keyColumnLengths.push_back(NValue::getTupleStorageSize(type));
-    keyColumnAllowNull.push_back(true);
-  }
-  return TupleSchema::createTupleSchema(keyColumnTypes,keyColumnLengths,keyColumnAllowNull,true);
-}
-
-TableTuple MigrationManager::initKeys(TupleSchema* keySchema) {
+TableTuple MigrationManager::initKeys(const TupleSchema* keySchema) {
   TableTuple keys(keySchema);
   keys.move(new char[keys.tupleLength()]);
   return keys;
@@ -259,37 +221,21 @@ bool MigrationManager::searchBTree(const RecursiveRangeMap& rangeMap, TableTuple
 
     TableTuple tuple(m_table->schema());
 
-    // create a new tuple with only the valid keys from minKeys
-    TableTuple newMinKeys;
-    TableTuple newMaxKeys;
-    if(keyIndex < m_matchingIndexCols) {
-      TupleSchema* keySchema = getKeySchema(minKeys, keyIndex);
-      newMinKeys = initKeys(keySchema);   
-      newMaxKeys = initKeys(keySchema);   
-
-      for(int i = 0; i < keyIndex; i++) {
-	newMinKeys.setNValue(i, minKeys.getNValue(i));
-	newMaxKeys.setNValue(i, maxKeys.getNValue(i));
-      }
-    } else {
-      newMinKeys = minKeys;
-      newMaxKeys = maxKeys;
+    for(int i = keyIndex; i < minKeys.sizeInValues() && i < maxKeys.sizeInValues(); i++) {
+      minKeys.setNValue(i, NValue::getNullValue(minKeys.getType(i)));
+      maxKeys.setNValue(i, NValue::getNullValue(maxKeys.getType(i)));
     }
 
-    VOLT_DEBUG("minKeys: %s, newMinKeys: %s, maxKeys: %s, newMaxKeys: %s", 
-	       minKeys.debugNoHeader().c_str(), newMinKeys.debugNoHeader().c_str(), 
-	       maxKeys.debugNoHeader().c_str(), newMaxKeys.debugNoHeader().c_str());
-
-    // actually find the key(s) in the B-Tree
-    m_partitionIndex->moveToKeyOrGreater(&newMinKeys);    
+    m_partitionIndex->moveToKeyOrGreater(&minKeys);    
 
     // look through each tuple at this key and see if it's in our range
     while(((!(tuple = m_partitionIndex->nextValueAtKey()).isNullTuple()) ||
-	   (!(tuple = m_partitionIndex->nextValue()).isNullTuple())) && inRange(tuple, newMaxKeys)) {
+	   (!(tuple = m_partitionIndex->nextValue()).isNullTuple())) && inRange(tuple, maxKeys)) {
 
 #ifdef EXTRACT_STAT_ENABLED
       m_rowsExamined++;
 #endif
+
       if(inRange(tuple, rangeMap, keyIndex)) {
 	if(extractTuple(tuple)) {
 	  return true;
@@ -370,7 +316,7 @@ Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& in
   try {
     if (m_partitionColumnsIndexed && m_partitionIndex->getScheme().type == BALANCED_TREE_INDEX){
       VOLT_INFO("Searching for ranges to extract with B-Tree index %s", m_partitionIndex->getName().c_str());
-      TupleSchema* keySchema = getKeySchema(extractTuple);
+      const TupleSchema* keySchema = m_partitionIndex->getKeySchema();
       TableTuple minKeys = initKeys(keySchema);
       TableTuple maxKeys = initKeys(keySchema);
       moreData = searchBTree(rangeMap, minKeys, maxKeys, 0);

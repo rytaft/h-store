@@ -179,7 +179,7 @@ std::string* TupleSchema::createMigrateColumnNames(size_t nCols) {
     return migrateColumnNames;
 }
 
-TupleSchema* TupleSchema::createMigrateTupleSchema(size_t nCols) {
+TupleSchema* TupleSchema::createMigrateTupleSchema(size_t nCols, const std::vector<ValueType>& keyColumnTypes) {
     size_t nSchemaCols = nCols*3 + 1;
     std::vector<ValueType> columnTypes(nSchemaCols);
     std::vector<int32_t> columnSizes(nSchemaCols);
@@ -199,14 +199,19 @@ TupleSchema* TupleSchema::createMigrateTupleSchema(size_t nCols) {
       columnSizes[i+1] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_INTEGER));
       allowNull[i+1] = false;
 
+      ValueType type = keyColumnTypes[i/3];
       //MIN INCLUSIVE
-      columnTypes[i+2] = VALUE_TYPE_BIGINT;
-      columnSizes[i+2] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_BIGINT));
+      //columnTypes[i+2] = VALUE_TYPE_BIGINT;
+      //columnSizes[i+2] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_BIGINT));
+      columnTypes[i+2] = type;
+      columnSizes[i+2] = static_cast<int32_t>(NValue::getTupleStorageSize(type));
       allowNull[i+2] = false;
 
       //MAX EXCLUSIVE
-      columnTypes[i+3] = VALUE_TYPE_BIGINT;
-      columnSizes[i+3] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_BIGINT));
+      //columnTypes[i+3] = VALUE_TYPE_BIGINT;
+      //columnSizes[i+3] = static_cast<int32_t>(NValue::getTupleStorageSize(VALUE_TYPE_BIGINT));
+      columnTypes[i+3] = type;
+      columnSizes[i+3] = static_cast<int32_t>(NValue::getTupleStorageSize(type));
       allowNull[i+3] = false;
     }
 

@@ -1501,11 +1501,17 @@ int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &seriali
     CatalogId databaseId = 1;
 
     size_t nCols = table->partitionColumns().size();
+    std::vector<ValueType> columnTypes;
+    for(int i = 0; i < nCols; i++) {
+      columnTypes.push_back(table->schema()->columnType(table->partitionColumns()[i]));
+    }
     if(nCols == 0) {
       nCols = 1; // partitionColumns() was not set
+      columnTypes.push_back(table->schema()->columnType(table->partitionColumn()));
     }
+
     std::string* colNames = TupleSchema::createMigrateColumnNames(nCols);
-    TupleSchema *extractMigrateSchema = TupleSchema::createMigrateTupleSchema(nCols);
+    TupleSchema *extractMigrateSchema = TupleSchema::createMigrateTupleSchema(nCols, columnTypes);
 
     Table* tempExtractTable = reinterpret_cast<Table*>(TableFactory::getTempTable(
             databaseId,

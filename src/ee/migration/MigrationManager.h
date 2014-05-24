@@ -96,9 +96,7 @@ private:
 
     TableIndex* getPartitionColumnsIndex();
     void init(PersistentTable *table); 
-    TupleSchema* getKeySchema(TableTuple& sample);
-    TupleSchema* getKeySchema(TableTuple& sample, int nCols);
-    TableTuple initKeys(TupleSchema* keySchema);
+    TableTuple initKeys(const TupleSchema* keySchema);
     void setKeys(const RecursiveRangeMap& rangeMap, TableTuple& minKeys, TableTuple& maxKeys, int keyIndex);
     bool inRange(const TableTuple& tuple, const TableTuple& maxKeys);
     bool inRange(const TableTuple& tuple, const RecursiveRangeMap& rangeMap, int keyIndex);
