@@ -280,7 +280,11 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	ReconfigurationRange<Long> range; 
         VoltTable extractTable;
         range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2);
-        extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.cust_p_index.length);   
+        ArrayList<VoltType> types = new ArrayList<>();
+	    for(int col : cust_p_index) {
+	    	types.add(VoltType.get((byte) this.customer_tbl.getColumns().get(col).getType()));
+	    }
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.cust_p_index.length, types);   
         this.loadTPCCData(NUM_TUPLES * 10, this.customer_tbl,this.cust_p_index, keys);
         int EXTRACT_LIMIT = 2048;
         ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
@@ -331,7 +335,11 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	    LOG.info("Testing for scale : " + scale);
     	    //extract
             range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale+1), 1, 2);
-            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.cust_p_index.length);   
+            ArrayList<VoltType> types = new ArrayList<>();
+    	    for(int col : cust_p_index) {
+    	    	types.add(VoltType.get((byte) this.customer_tbl.getColumns().get(col).getType()));
+    	    }
+            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.cust_p_index.length, types);   
             start = System.currentTimeMillis();
             resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
             extract = System.currentTimeMillis()-start; 
@@ -367,7 +375,11 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     			VoltType.SMALLINT, new Long(did), new Long(did+1), 1, 2, null);
         ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index[0]).getName(),
         		VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2, districtRange);
-        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.cust_p_index.length);   
+        ArrayList<VoltType> types = new ArrayList<>();
+	    for(int col : cust_p_index) {
+	    	types.add(VoltType.get((byte) this.customer_tbl.getColumns().get(col).getType()));
+	    }
+        VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.cust_p_index.length, types);   
         this.loadTPCCData(NUM_TUPLES * 10, this.customer_tbl,this.cust_p_index, keys);
         int EXTRACT_LIMIT = 2048;
         ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
@@ -423,7 +435,11 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	        			VoltType.SMALLINT, new Long(district_scale), new Long(district_scale+1), 1, 2, null);
 	    	    ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index[0]).getName(),
 	            		VoltType.SMALLINT, new Long(warehouse_scale), new Long(warehouse_scale+1), 1, 2, districtRange);
-	            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.cust_p_index.length);   
+	    	    ArrayList<VoltType> types = new ArrayList<>();
+	    	    for(int col : cust_p_index) {
+	    	    	types.add(VoltType.get((byte) this.customer_tbl.getColumns().get(col).getType()));
+	    	    }
+	            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.cust_p_index.length, types);   
 	            start = System.currentTimeMillis();
 	            resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
 	            extract = System.currentTimeMillis()-start; 
@@ -458,7 +474,11 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	ReconfigurationRange<Long> range; 
         VoltTable extractTable;
         range = new ReconfigurationRange<Long>(this.orders_tbl.getName(), VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2);
-        extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.orders_p_index.length);   
+        ArrayList<VoltType> types = new ArrayList<>();
+	    for(int col : orders_p_index) {
+	    	types.add(VoltType.get((byte) this.orders_tbl.getColumns().get(col).getType()));
+	    }
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.orders_p_index.length, types);   
         this.loadTPCCData(NUM_TUPLES * 10, this.orders_tbl,this.orders_p_index, keys);
         int EXTRACT_LIMIT = 2048;
         ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
@@ -509,7 +529,11 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	    LOG.info("Testing for scale : " + scale);
     	    //extract
             range = new ReconfigurationRange<Long>(this.orders_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale+1), 1, 2);
-            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.orders_p_index.length);   
+            ArrayList<VoltType> types = new ArrayList<>();
+    	    for(int col : orders_p_index) {
+    	    	types.add(VoltType.get((byte) this.orders_tbl.getColumns().get(col).getType()));
+    	    }
+            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.orders_p_index.length, types);   
             start = System.currentTimeMillis();
             resTable= this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
             extract = System.currentTimeMillis()-start; 
@@ -601,7 +625,11 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	        			VoltType.SMALLINT, new Long(district_scale), new Long(district_scale+1), 1, 2, null);
 	    	    ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.orders_tbl.getName(), this.orders_tbl.getColumns().get(this.orders_p_index[0]).getName(),
 	            		VoltType.SMALLINT, new Long(warehouse_scale), new Long(warehouse_scale+1), 1, 2, districtRange);
-	            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.orders_p_index.length);   
+	    	    ArrayList<VoltType> types = new ArrayList<>();
+	    	    for(int col : orders_p_index) {
+	    	    	types.add(VoltType.get((byte) this.orders_tbl.getColumns().get(col).getType()));
+	    	    }
+	            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.orders_p_index.length, types);   
 	            start = System.currentTimeMillis();
 	            resTable= this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
 	            extract = System.currentTimeMillis()-start; 
@@ -658,7 +686,11 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	        			VoltType.SMALLINT, new Long(district_scale), new Long(district_scale+1), 1, 2, null);
 	    	    ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.orderline_tbl.getName(), this.orderline_tbl.getColumns().get(this.orderline_p_index[0]).getName(),
 	            		VoltType.SMALLINT, new Long(warehouse_scale), new Long(warehouse_scale+1), 1, 2, districtRange);
-	            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.orderline_p_index.length);   
+	    	    ArrayList<VoltType> types = new ArrayList<>();
+	    	    for(int col : orderline_p_index) {
+	    	    	types.add(VoltType.get((byte) this.orderline_tbl.getColumns().get(col).getType()));
+	    	    }
+	            extractTable = ReconfigurationUtil.getExtractVoltTable(range, this.orderline_p_index.length, types);   
 	            start = System.currentTimeMillis();
 	            resTable= this.ee.extractTable(this.orderline_tbl, this.orderline_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
 	            extract = System.currentTimeMillis()-start; 

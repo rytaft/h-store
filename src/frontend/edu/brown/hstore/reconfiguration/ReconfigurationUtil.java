@@ -158,15 +158,16 @@ public class ReconfigurationUtil {
     	return getExtractVoltTable(range, 1);
     }
 
-    public static VoltTable getExtractVoltTable(ReconfigurationRange range, int nCols) {
+    public static VoltTable getExtractVoltTable(ReconfigurationRange range, int nCols, List<VoltType> types) {
     	int nSchemaCols = nCols * 3 + 1;
     	ColumnInfo[] extractTableColumns = new ColumnInfo[nSchemaCols];
 
         extractTableColumns[0] = new ColumnInfo("TABLE_NAME", VoltType.INTEGER);
         for(int i = 0; i+3 < nSchemaCols; i+=3) {
+        	VoltType type = types.get(i/3);
         	extractTableColumns[i+1] = new ColumnInfo("KEY_TYPE", VoltType.INTEGER);
-            extractTableColumns[i+2] = new ColumnInfo("MIN_INCLUSIVE", VoltType.BIGINT); // range.getVt());
-            extractTableColumns[i+3] = new ColumnInfo("MAX_EXCLUSIVE", VoltType.BIGINT); // range.getVt());
+            extractTableColumns[i+2] = new ColumnInfo("MIN_INCLUSIVE", type); // range.getVt());
+            extractTableColumns[i+3] = new ColumnInfo("MAX_EXCLUSIVE", type); // range.getVt());
         }  
         
         VoltTable vt = new VoltTable(extractTableColumns);
