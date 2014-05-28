@@ -64,6 +64,7 @@ import edu.brown.profilers.ReconfigurationProfiler;
 import edu.brown.protorpc.ProtoRpcController;
 import edu.brown.statistics.FastIntHistogram;
 import edu.brown.utils.FileUtil;
+import edu.brown.utils.CompositeKey;
 
 /**
  * @author vaibhav : Reconfiguration Coordinator at each site, responsible for
@@ -1399,6 +1400,42 @@ public class ReconfigurationCoordinator implements Shutdownable {
         } else if (executorMap.containsKey(previousPartition)) {
             try{
                 if (executorMap.get(previousPartition).getReconfiguration_tracker().quickCheckKeyOwned(catalogItem, value))
+                    return previousPartition;
+                else
+                    return expectedPartition;
+            } catch(Exception e) {
+                return expectedPartition;
+            }
+        } else {
+            return expectedPartition;
+        }    
+    }
+
+    
+    /**
+     * Return the current partition for the data item if either are local.
+     * If not return the expected
+     * @param previousPartition
+     * @param expectedPartition
+     * @param catalogItem
+     * @param value
+     * @return
+     */
+    public int getPartitionId(int previousPartition, int expectedPartition, List<CatalogType> catalogItems, List<Object> values) {
+        //TODO add a fast lookup with no exception
+        if (executorMap.containsKey(expectedPartition)){
+            //check with destination if we have it
+            try{
+                if (executorMap.get(expectedPartition).getReconfiguration_tracker().quickCheckKeyOwned(catalogItems.get(0), new CompositeKey(values)))
+                    return expectedPartition;
+                else
+                    return previousPartition;
+            } catch(Exception e) {
+                return previousPartition;
+            }
+        } else if (executorMap.containsKey(previousPartition)) {
+            try{
+                if (executorMap.get(previousPartition).getReconfiguration_tracker().quickCheckKeyOwned(catalogItems.get(0), new CompositeKey(values)))
                     return previousPartition;
                 else
                     return expectedPartition;

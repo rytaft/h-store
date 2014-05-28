@@ -39,6 +39,7 @@ import edu.brown.hstore.HStoreConstants;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.mappings.ParameterMappingsSet;
+import edu.brown.utils.CompositeKey;
 import edu.brown.utils.FileUtil;
 import edu.brown.utils.JSONSerializable;
 import edu.brown.utils.StringUtil;
@@ -272,6 +273,9 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
      */
     @Override
     public int getPartitionId(String table_name, Object id) throws Exception {
+    	if (id instanceof CompositeKey) {
+    		return getPartitionId(table_name, ((CompositeKey) id).getValues());
+    	}
         PartitionPhase plan = this.getCurrentPlan();
         PartitionedTable<?> table = plan.getTable(table_name);
         if (table == null) {
@@ -337,6 +341,9 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
      */
     @Override
     public int getPreviousPartitionId(String table_name, Object id) throws Exception {
+    	if (id instanceof CompositeKey) {
+    		return getPreviousPartitionId(table_name, ((CompositeKey) id).getValues());
+    	}
         PartitionPhase previousPlan = this.getPreviousPlan();
         if (previousPlan == null)
             return -1;

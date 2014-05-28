@@ -25,6 +25,7 @@ import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import edu.brown.utils.CompositeKey;
 
 /**
  * Class to track the reconfiguration state and progress for a single partition
@@ -172,8 +173,13 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         if(migratedMapSet.containsKey(table_name) == false){
             migratedMapSet.put(table_name, new HashSet());
         }
-        assert(key instanceof Number);
-        return migratedMapSet.get(table_name).add(((Number)key).longValue());
+        assert(key instanceof Number || key instanceof CompositeKey);
+        if(key instanceof Number) {
+        	return migratedMapSet.get(table_name).add(((Number)key).longValue());
+        } else {
+        	return migratedMapSet.get(table_name).add((CompositeKey)key);
+        }
+        	
     }
 
     private boolean checkMigratedMapSet(Map<String,Set<Comparable>> migratedMapSet, String table_name, Object key){
@@ -181,8 +187,12 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
            if (debug.val) LOG.debug("Checking a key for which there is no table tracking for yet " + table_name); 
            return false;
         }
-        assert(key instanceof Number);
-        return migratedMapSet.get(table_name).contains(((Number)key).longValue());
+        assert(key instanceof Number || key instanceof CompositeKey);
+        if(key instanceof Number) {
+        	return migratedMapSet.get(table_name).contains(((Number)key).longValue());
+        } else {
+        	return migratedMapSet.get(table_name).contains((CompositeKey)key);
+        }
     }
     
     @Override
@@ -208,7 +218,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     @Override
     public boolean checkKeyOwned(CatalogType catalog, Object key) throws ReconfigurationException{
         
-        if(key instanceof Number){
+        if(key instanceof Number || key instanceof CompositeKey){
             String tableName = this.partitionPlan.getTableName(catalog);
             if (debug.val) LOG.debug(String.format("Checking Key owned for catalog:%s table:%s",catalog.toString(),tableName));
             return checkKeyOwned(tableName, (Comparable)key);

@@ -23,6 +23,7 @@ import edu.brown.hashing.PlannedPartitions.PartitionedTable;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants;
 import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
+import edu.brown.utils.CompositeKey;
 
 /**
  * The delta between two partition plans
@@ -455,6 +456,9 @@ public class ReconfigurationPlan {
         }
         
         public boolean inRange(Comparable<?> key){
+        	if(key instanceof CompositeKey) {
+        		return inRange(((CompositeKey) key).getValues());
+        	}
             try{
                 long keyL = ((Number)key).longValue();
                 for(Pair<Long,Long> range : ranges) {

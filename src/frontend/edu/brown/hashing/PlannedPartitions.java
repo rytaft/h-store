@@ -39,6 +39,7 @@ import edu.brown.mappings.ParameterMappingsSet;
 import edu.brown.utils.FileUtil;
 import edu.brown.utils.JSONSerializable;
 import edu.brown.utils.StringUtil;
+import edu.brown.utils.CompositeKey;
 
 //       TODO This class likely needs to be relocated (ae)
 /**
@@ -295,6 +296,9 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
      * @throws Exception
      */
     public int getPartitionId(String table_name, Object id) throws Exception {
+    	if (id instanceof CompositeKey) {
+    		return getPartitionId(table_name, ((CompositeKey) id).getValues());
+    	}
         PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
         PartitionedTable<?> table = phase.getTable(table_name);
         if (table == null) {
@@ -360,6 +364,9 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
      * @throws Exception
      */
     public int getPreviousPartitionId(String table_name, Object id) throws Exception {
+    	if (id instanceof CompositeKey) {
+    		return getPreviousPartitionId(table_name, ((CompositeKey) id).getValues());
+    	}
         String previousPhase = this.getPreviousPhase_phase();
         if (previousPhase == null)
             return -1;
