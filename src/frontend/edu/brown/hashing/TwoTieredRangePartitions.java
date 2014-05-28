@@ -128,8 +128,8 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
             	partitionCol = cols[0];
             	table_partition_cols_map.put(tableName, cols);
             }
-            if (partitionCol == null) {
-                LOG.info(String.format("Partition col for table %s is null. Skipping", tableName));
+            if (partitionCol == null || table.getIsreplicated()) {
+                LOG.info(String.format("Partition col for table %s is null or table is replicated. Skipping", tableName));
             } else {
                 LOG.info(String.format("Adding table:%s partitionCol:%s %s", tableName, partitionCol, VoltType.get(partitionCol.getType())));
                 this.table_vt_map.put(tableName, VoltType.get(partitionCol.getType()));
