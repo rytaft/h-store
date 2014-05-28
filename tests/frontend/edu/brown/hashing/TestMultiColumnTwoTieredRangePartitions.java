@@ -44,6 +44,12 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
             "          \"0\": \"1:1-3\", "+
             "          \"1\": \"1:3-11,2\""+
             "        }"+
+            "      },"+
+            "      \"stock\": {"+
+            "        \"partitions\": {"+
+            "          \"0\": \"1\", "+
+            "          \"1\": \"2\""+
+            "        }"+
             "      }"+
             "    }"+
             "  }, "+
@@ -54,6 +60,12 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
             "  \"partition_plan\": {"+
             "    \"tables\": {"+
             "      \"district\": {"+
+            "        \"partitions\": {"+
+            "          \"0\": \"1-2\", "+
+            "          \"1\": \"2-3\""+
+            "        }"+
+            "      },"+
+            "      \"stock\": {"+
             "        \"partitions\": {"+
             "          \"0\": \"1-2\", "+
             "          \"1\": \"2-3\""+
@@ -128,8 +140,8 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
 "    	   \"PARENT_ATTRIBUTE\": null," +
 "    	   \"PARENT\": null," +
 "    	   \"METHOD\": \"HASH\"," +
-"    	   \"ATTRIBUTE\": \"{'STOCK#*MultiColumn*':[{'STOCK':'S_I_ID'},{'STOCK':'S_W_ID'}]}\"," +
-"    	   \"ATTRIBUTE_class\": \"edu.brown.catalog.special.MultiColumn\"" +
+"    	   \"ATTRIBUTE\": \"{'STOCK':'S_W_ID'}\"," +
+"    	   \"ATTRIBUTE_class\": \"org.voltdb.catalog.Column\"" +
 "    	  }," +
 "    	  \"{'database':'WAREHOUSE'}\": {" +
 "    	   \"PARENT_ATTRIBUTE\": null," +
