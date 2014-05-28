@@ -36,7 +36,11 @@ public interface ExplicitPartitions {
      */
     public abstract int getPartitionId(String table_name, Object id) throws Exception;
 
+    public abstract int getPartitionId(String table_name, List<Object> ids) throws Exception;
+    
     public abstract int getPartitionId(CatalogType catalog, Object id) throws Exception;
+
+    public abstract int getPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception;
 
     public abstract String getTableName(CatalogType catalog);
 
@@ -51,7 +55,11 @@ public interface ExplicitPartitions {
      */
     public abstract int getPreviousPartitionId(String table_name, Object id) throws Exception;
 
+    public abstract int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception;
+
     public abstract int getPreviousPartitionId(CatalogType catalog, Object id) throws Exception;
+
+    public abstract int getPreviousPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception;
 
     public abstract ReconfigurationPlan setPartitionPlan(File partition_json_file) throws Exception;
 

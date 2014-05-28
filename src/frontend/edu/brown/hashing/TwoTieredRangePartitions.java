@@ -24,6 +24,7 @@ import org.voltdb.CatalogContext;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Column;
+import org.voltdb.catalog.ColumnRef;
 import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Procedure;
 import org.voltdb.catalog.Statement;
@@ -83,6 +84,7 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
     private Set<String> plan_tables;
     private Map<String, String> partitionedTablesByFK;
     private Map<CatalogType, String> catalog_to_table_map;
+    private Map<String, Column[]> table_partition_cols_map;
     private String default_table = null;
     private Map<String, List<String>> relatedTablesMap;
 
@@ -93,10 +95,11 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
     public TwoTieredRangePartitions(CatalogContext catalog_context, JSONObject partition_json) throws Exception {
         this.catalog_context = catalog_context;
         this.catalog_to_table_map = new HashMap<>();
+        this.table_partition_cols_map = new HashMap<>();
         this.old_partition_plan = null;
         this.partition_plan = null;
         this.plan_tables = null;
-	this.relatedTablesMap = new HashMap<>();
+        this.relatedTablesMap = new HashMap<>();
         Set<String> partitionedTables = getExplicitPartitionedTables(partition_json);
         // TODO find catalogContext.getParameter mapping to find
         // statement_column
@@ -106,7 +109,24 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
         this.table_vt_map = new HashMap<>();
         for (Table table : catalog_context.getDataTables()) {
             String tableName = table.getName().toLowerCase();
-            Column partitionCol = table.getPartitioncolumn();
+          
+            Column[] cols = new Column[table.getPartitioncolumns().size()];
+            for(ColumnRef colRef : table.getPartitioncolumns().values()) {
+            	cols[colRef.getIndex()] = colRef.getColumn();
+        	}
+            
+            // partition columns may not have been set
+            Column partitionCol;
+            if (cols.length == 0) {
+            	partitionCol = table.getPartitioncolumn();
+            	if (partitionCol != null) {
+            		table_partition_cols_map.put(tableName, new Column[]{partitionCol});
+            	}
+            }
+            else {
+            	partitionCol = cols[0];
+            	table_partition_cols_map.put(tableName, cols);
+            }
             if (partitionCol == null) {
                 LOG.info(String.format("Partition col for table %s is null. Skipping", tableName));
             } else {
@@ -118,7 +138,21 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
 
         for (Procedure proc : catalog_context.procedures) {
             if (!proc.getSystemproc()) {
-                String table_name = this.catalog_to_table_map.get(proc.getPartitioncolumn());
+            	Column[] cols = new Column[proc.getPartitioncolumns().size()];
+                for(ColumnRef colRef : proc.getPartitioncolumns().values()) {
+                	cols[colRef.getIndex()] = colRef.getColumn();
+            	}
+                
+                // partition columns may not have been set
+                Column partitionCol;
+                if (cols.length == 0) {
+                	partitionCol = proc.getPartitioncolumn();
+                }
+                else {
+                	partitionCol = cols[0];
+                }
+            	
+            	String table_name = this.catalog_to_table_map.get(partitionCol);
                 if ((table_name == null) || (table_name.equals("null")) || (table_name.trim().length() == 0)) {
                     LOG.info(String.format("Using default table %s for procedure: %s ", this.default_table, proc.toString()));
                     table_name = this.default_table;
@@ -146,17 +180,18 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
             // verify this
             if (partitionedTables.contains(tableName) == false) {
 
-                Column partitionCol = table.getPartitioncolumn();
-                if (partitionCol == null) {
+                Column[] partitionCols = this.table_partition_cols_map.get(tableName);
+                if (partitionCols == null) {
                     LOG.info(tableName + " is not partitioned and has no partition column. skipping");
                     continue;
                 } else {
                     LOG.info(tableName + " is not explicitly partitioned.");
                 }
 
+                Column partitionCol = partitionCols[0];
                 List<Column> depCols = dependUtil.getAncestors(partitionCol);
                 boolean partitionedParentFound = false;
-		List<String> relatedTables = new ArrayList<>();
+                List<String> relatedTables = new ArrayList<>();
                 for (Column c : depCols) {
                     CatalogType p = c.getParent();
                     if (p instanceof Table) {
@@ -252,12 +287,41 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
     }
 
     /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(java.lang.String, java.lang.Object)
+     */
+    @Override
+    public int getPartitionId(String table_name, List<Object> ids) throws Exception {
+        PartitionPhase plan = this.getCurrentPlan();
+        PartitionedTable<?> table = plan.getTable(table_name);
+        if (table == null) {
+            if (debug.val)
+                LOG.debug(String.format("Table not found: %s, using default:%s ", table_name, this.default_table));
+            table = plan.getTable(this.default_table);
+            if (table == null) {
+                throw new RuntimeException(String.format("Default partition table is null. Lookup table:%s Default Table:%s", table_name, this.default_table));
+            }
+        }
+        assert table != null : "Table not found " + table_name;
+        return table.findPartition(ids);
+    }
+
+    
+    /* (non-Javadoc)
      * @see edu.brown.hashing.ExplicitPartition#getPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
      */
     @Override
     public int getPartitionId(CatalogType catalog, Object id) throws Exception {
         String table_name = this.catalog_to_table_map.get(catalog);
         return this.getPartitionId(table_name, id);
+    }
+    
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
+     */
+    @Override
+    public int getPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception {
+    	String table_name = this.catalog_to_table_map.get(catalogs.get(0));
+        return this.getPartitionId(table_name, ids);
     }
 
     /* (non-Javadoc)
@@ -282,12 +346,34 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
     }
 
     /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPreviousPartitionId(java.lang.String, java.lang.Object)
+     */
+    @Override
+    public int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception {
+        PartitionPhase previousPlan = this.getPreviousPlan();
+        if (previousPlan == null)
+            return -1;
+        PartitionedTable<?> table = previousPlan.getTable(table_name);
+        assert table != null : "Table not found " + table_name;
+        return table.findPartition(ids);
+    }
+
+    /* (non-Javadoc)
      * @see edu.brown.hashing.ExplicitPartition#getPreviousPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
      */
     @Override
     public int getPreviousPartitionId(CatalogType catalog, Object id) throws Exception {
         String table_name = this.catalog_to_table_map.get(catalog);
-        return this.getPartitionId(table_name, id);
+        return this.getPreviousPartitionId(table_name, id);
+    }
+
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPreviousPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
+     */
+    @Override
+    public int getPreviousPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception {
+        String table_name = this.catalog_to_table_map.get(catalogs.get(0));
+        return this.getPreviousPartitionId(table_name, ids);
     }
 
     /* (non-Javadoc)

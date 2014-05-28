@@ -3,6 +3,8 @@
  */
 package edu.brown.hashing;
 
+import java.util.List;
+
 import org.json.JSONObject;
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
@@ -157,6 +159,37 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
             }
         }
         throw new NotImplementedException("TODO");
+    }
+    
+    public int hash(List<Object> values, List<CatalogType> catalogItems) {
+    	for (CatalogType catalogItem : catalogItems) {
+    		if (!(catalogItem instanceof Column) && !(catalogItem instanceof Procedure) && !(catalogItem instanceof Statement)) {
+    			throw new NotImplementedException("TODO");
+    		}
+    	}
+    
+        try {
+            //If we do not have an RC, or there is an RC but no reconfig is in progress
+            if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !reconfigCoord.getReconfigurationInProgress())){
+            	if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s",catalogItems.get(0),values.get(0),planned_partitions.getPartitionId(catalogItems, values)));
+                return planned_partitions.getPartitionId(catalogItems, values);
+            } else {
+                int expectedPartition = planned_partitions.getPartitionId(catalogItems, values);
+                int previousPartition = planned_partitions.getPreviousPartitionId(catalogItems, values);
+                if (expectedPartition == previousPartition) {
+                    //The item isn't moving
+                    return expectedPartition;
+                } else {
+                    //the item is moving
+                    //check with RC on which partition. 
+                    return reconfigCoord.getPartitionId(previousPartition, expectedPartition, catalogItems, values);
+                }
+            }
+        } catch (Exception e) {
+            LOG.error("Error on looking up partitionId from planned partition", e);
+            throw new RuntimeException(e);
+        }
+        
     }
 
     @Override

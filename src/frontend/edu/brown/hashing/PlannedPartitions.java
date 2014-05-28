@@ -24,6 +24,7 @@ import org.voltdb.CatalogContext;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Column;
+import org.voltdb.catalog.ColumnRef;
 import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Procedure;
 import org.voltdb.catalog.Statement;
@@ -78,6 +79,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
     private Map<String, VoltType> table_vt_map;
     private Map<String, PartitionPhase> partition_phase_map;
     private Map<CatalogType, String> catalog_to_table_map;
+    private Map<String, Column[]> table_partition_cols_map;
     private Map<String, List<String>> relatedTablesMap;
     private ParameterMappingsSet paramMappings;
     private String current_phase;
@@ -94,6 +96,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         this.catalog_context = catalog_context;
         this.partition_phase_map = new HashMap<>();
         this.catalog_to_table_map = new HashMap<>();
+        this.table_partition_cols_map = new HashMap<>();
         this.paramMappings = catalog_context.paramMappings;
         this.relatedTablesMap = new HashMap<>();
 
@@ -106,7 +109,23 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         this.table_vt_map = new HashMap<>();
         for (Table table : catalog_context.getDataTables()) {
             String tableName = table.getName().toLowerCase();
-            Column partitionCol = table.getPartitioncolumn();
+            Column[] cols = new Column[table.getPartitioncolumns().size()];
+            for(ColumnRef colRef : table.getPartitioncolumns().values()) {
+            	cols[colRef.getIndex()] = colRef.getColumn();
+        	}
+            
+            // partition columns may not have been set
+            Column partitionCol;
+            if (cols.length == 0) {
+            	partitionCol = table.getPartitioncolumn();
+            	if (partitionCol != null) {
+            		table_partition_cols_map.put(tableName, new Column[]{partitionCol});
+            	}
+            }
+            else {
+            	partitionCol = cols[0];
+            	table_partition_cols_map.put(tableName, cols);
+            }
             if (partitionCol == null) {
                 LOG.info(String.format("Partition col for table %s is null. Skipping", tableName));
             } else {
@@ -118,7 +137,21 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
 
         for (Procedure proc : catalog_context.procedures) {
             if (!proc.getSystemproc()) {
-                String table_name = this.catalog_to_table_map.get(proc.getPartitioncolumn());
+            	Column[] cols = new Column[proc.getPartitioncolumns().size()];
+                for(ColumnRef colRef : proc.getPartitioncolumns().values()) {
+                	cols[colRef.getIndex()] = colRef.getColumn();
+            	}
+                
+                // partition columns may not have been set
+                Column partitionCol;
+                if (cols.length == 0) {
+                	partitionCol = proc.getPartitioncolumn();
+                }
+                else {
+                	partitionCol = cols[0];
+                }
+            	
+            	String table_name = this.catalog_to_table_map.get(partitionCol);
                 if ((table_name == null) || (table_name.equals("null")) || (table_name.trim().length() == 0)) {
                     LOG.info(String.format("Using default table %s for procedure: %s ", this.default_table, proc.toString()));
                     table_name = this.default_table;
@@ -276,9 +309,41 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         return table.findPartition(id);
     }
 
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(java.lang.String, java.lang.Object)
+     */
+    @Override
+    public int getPartitionId(String table_name, List<Object> ids) throws Exception {
+    	PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
+        PartitionedTable<?> table = phase.getTable(table_name);
+        if (table == null) {
+            if (debug.val)
+                LOG.debug(String.format("Table not found: %s, using default:%s ", table_name, this.default_table));
+            table = phase.getTable(this.default_table);
+            if (table == null) {
+                throw new RuntimeException(String.format("Default partition table is null. Lookup table:%s Default Table:%s", table_name, this.default_table));
+            }
+        }
+        assert table != null : "Table not found " + table_name;
+        return table.findPartition(ids);
+    }
+
+    
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
+     */
     public int getPartitionId(CatalogType catalog, Object id) throws Exception {
         String table_name = this.catalog_to_table_map.get(catalog);
         return this.getPartitionId(table_name, id);
+    }
+
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
+     */
+    @Override
+    public int getPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception {
+    	String table_name = this.catalog_to_table_map.get(catalogs.get(0));
+        return this.getPartitionId(table_name, ids);
     }
 
     public String getTableName(CatalogType catalog) {
@@ -310,6 +375,26 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         return table.findPartition(id);
     }
 
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPreviousPartitionId(java.lang.String, java.lang.Object)
+     */
+    @Override
+    public int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception {
+    	String previousPhase = this.getPreviousPhase_phase();
+        if (previousPhase == null)
+            return -1;
+        PartitionPhase phase = this.partition_phase_map.get(previousPhase);
+        PartitionedTable<?> table = phase.getTable(table_name);
+        if (table == null){
+            table = phase.getTable(table_name.toLowerCase());
+            if (table == null) {
+                throw new Exception("Unable to find table "+ table_name + " in phase  " + previousPhase);
+            }
+        }
+        assert table != null : "Table not found " + table_name;
+        return table.findPartition(ids);
+    }
+
     public int getPreviousPartitionId(CatalogType catalog, Object id) throws Exception {
         String previousPhase = this.getPreviousPhase_phase();
         if (previousPhase == null)
@@ -327,6 +412,30 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         assert table != null : "Table not found " + table_name;
         return table.findPartition(id);
     }
+    
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPreviousPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
+     */
+    @Override
+    public int getPreviousPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception {
+    	String previousPhase = this.getPreviousPhase_phase();
+        if (previousPhase == null)
+            return -1;
+
+        String table_name = this.catalog_to_table_map.get(catalogs.get(0));
+        PartitionPhase phase = this.partition_phase_map.get(previousPhase);
+        PartitionedTable<?> table = phase.getTable(table_name);
+        if (table == null){
+            table = phase.getTable(table_name.toLowerCase());
+            if (table == null) {
+                throw new Exception("Unable to find table "+ table_name + " in phase  " + previousPhase);
+            }
+        }
+        assert table != null : "Table not found " + table_name;
+        return table.findPartition(ids);
+    }
+
+    
 
     // ******** Containers *****************************************/
 
@@ -480,6 +589,75 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             LOG.error(String.format("Partition not found for ID:%s.  Type:%s  TableType", cast_id, cast_id.getClass().toString(), this.vt.getClass().toString()));
             return HStoreConstants.NULL_PARTITION_ID;
         }
+        
+        /**
+         * Find the partition for a key
+         * 
+         * @param id
+         * @return the partition id or null partition id if no match could be
+         *         found
+         */
+        @SuppressWarnings("unchecked")
+        public int findPartition(List<Object> ids) throws Exception {
+            if (trace.val) {
+                LOG.trace(String.format("Looking up key %s on table %s during phase %s", ids.get(0), this.table_name));
+            }
+            
+            ArrayList<Long> cast_ids = new ArrayList<Long>();
+            for (Object id : ids) {
+            	assert (id instanceof Number);
+
+            	// TODO I am sure there is a better way to do this... Andy? (ae)
+            	// TODO fix partitiontype
+            	cast_ids.add(((Number) id).longValue());
+            }
+
+            try {
+                for (PartitionRange<T> p : this.partitions) {
+                    // if this greater than or equal to the min inclusive val
+                    // and
+                    // less than
+                    // max_exclusive or equal to both min and max (singleton)
+                    // TODO fix partitiontype
+                	PartitionRange<Long> r = (PartitionRange<Long>) p;
+                	boolean inRange = false;
+                	boolean moreSubRanges = true;
+                	for (Long cast_id : cast_ids) {
+	                    if ((r.min_inclusive_long.compareTo(cast_id) <= 0 && r.max_exclusive_long.compareTo(cast_id) > 0)
+	                            || (r.min_inclusive_long.compareTo(cast_id) == 0 && r.max_exclusive_long.compareTo(cast_id) == 0)) {
+	                        inRange = true;
+	                    }
+	                    else {
+	                    	inRange = false;
+	                    	break;
+	                    }
+	                    
+	                    if (r.sub_range != null) {
+	                    	r = r.sub_range;
+	                    }
+	                    else {
+	                    	moreSubRanges = false;
+	                    	break;
+	                    }
+                	}
+                	if (inRange && !moreSubRanges) {
+                		return p.partition;
+                	}
+                }
+            } catch (Exception e) {
+                LOG.error("Error looking up partition", e);
+            }
+
+            String id_str = "";
+            for(Long cast_id : cast_ids) {
+            	if(id_str != "") {
+            		id_str += ", ";
+            	}
+            	id_str += cast_id;
+            }
+            LOG.error(String.format("Partition not found for ID:%s.  Type:%s  TableType", id_str, cast_ids.get(0).getClass().toString(), this.vt.getClass().toString()));
+            return HStoreConstants.NULL_PARTITION_ID;
+        }
 
         /**
          * Associate a partition with a set of values in the form of val or
@@ -515,7 +693,13 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         protected Long max_exclusive_long;
         protected int partition;
         protected VoltType vt;
+        protected PartitionRange<Long> sub_range;
 
+        public PartitionRange(VoltType vt, T min_inclusive, T max_exclusive, PartitionRange<Long> sub_range) {
+        	this(vt, min_inclusive, max_exclusive);
+        	this.sub_range = sub_range;
+        }
+        
         public PartitionRange(VoltType vt, T min_inclusive, T max_exclusive) {
             this.vt = vt;
             if (min_inclusive.compareTo(max_exclusive) > 0) {
@@ -530,15 +714,29 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             this.max_exclusive_long = ((Number) max_exclusive).longValue();
             this.partition = -1;
         }
-
+        
         @SuppressWarnings("unchecked")
-        public PartitionRange(VoltType vt, int partition_id, String range) throws ParseException {
+        public PartitionRange(VoltType vt, int partition_id, String range, PartitionRange<Long> sub_range) throws ParseException {
             this.vt = vt;
             this.partition = partition_id;
-
+            
             // TODO add support for open ranges ie -100 (< 100) and 100-
             // (anything >=
             // 100)
+            
+            // multi-key partitioning
+            if (range.contains(":")) {
+            	assert(sub_range == null);
+            	String vals[] = range.split(":");
+            	PartitionRange<Long> subr = null;
+            	for (int i = vals.length - 1; i > 0; i--) {
+            		subr = new PartitionRange<Long>(vt, partition_id, vals[i], subr);
+            	}
+            	this.sub_range = subr;
+            	range = vals[0];
+            } else {
+            	this.sub_range = sub_range;
+            }
 
             // x-y
             if (range.contains("-")) {
@@ -563,13 +761,22 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             this.max_exclusive_long = ((Number) max_exclusive).longValue();
         }
 
+        @SuppressWarnings("unchecked")
+        public PartitionRange(VoltType vt, int partition_id, String range) throws ParseException {
+        	this(vt, partition_id, range, null);
+        }
+
         public PartitionRange(VoltType vt) {
             this.vt = vt;            
         }
 
         @Override
         public String toString() {
-            return "PartitionRange [" + this.min_inclusive + "-" + this.max_exclusive + ") p_id=" + this.partition + "]";
+        	String sub_range_string = "";
+        	if (this.sub_range != null) {
+        		sub_range_string = " sub_range: " + this.sub_range.toString();
+        	}
+            return "PartitionRange [" + this.min_inclusive + "-" + this.max_exclusive + ") p_id=" + this.partition + sub_range_string + "]";
         }
 
         @Override
@@ -577,7 +784,13 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             if (this.min_inclusive.compareTo(o.min_inclusive) < 0) {
                 return -1;
             } else if (this.min_inclusive.compareTo(o.min_inclusive) == 0) {
-                return (this.max_exclusive.compareTo(o.max_exclusive));
+            	int rc = 0;
+                if ((rc = this.max_exclusive.compareTo(o.max_exclusive)) == 0) {
+                	if(this.sub_range != null && o.sub_range != null) {
+                		return this.sub_range.compareTo(o.sub_range);
+                	}
+                }
+                return rc;
             } else {
                 return 1;
             }
@@ -595,6 +808,9 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             return this.vt;
         }
 
+        public PartitionRange<Long> getSubRange() {
+        	return this.sub_range;
+        }
     }
 
     // ********End Containers **************************************/
