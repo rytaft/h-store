@@ -109,7 +109,9 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
         this.default_table = partition_json.getString(DEFAULT_TABLE);
         this.table_vt_map = new HashMap<>();
         for (Table table : catalog_context.getDataTables()) {
-            String tableName = table.getName().toLowerCase();
+            if (table.getIsreplicated()) continue;
+        	
+        	String tableName = table.getName().toLowerCase();
           
             Column[] cols = new Column[table.getPartitioncolumns().size()];
             for(ColumnRef colRef : table.getPartitioncolumns().values()) {
@@ -128,8 +130,8 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
             	partitionCol = cols[0];
             	table_partition_cols_map.put(tableName, cols);
             }
-            if (partitionCol == null || table.getIsreplicated()) {
-                LOG.info(String.format("Partition col for table %s is null or table is replicated. Skipping", tableName));
+            if (partitionCol == null) {
+                LOG.info(String.format("Partition col for table %s is null. Skipping", tableName));
             } else {
                 LOG.info(String.format("Adding table:%s partitionCol:%s %s", tableName, partitionCol, VoltType.get(partitionCol.getType())));
                 this.table_vt_map.put(tableName, VoltType.get(partitionCol.getType()));
