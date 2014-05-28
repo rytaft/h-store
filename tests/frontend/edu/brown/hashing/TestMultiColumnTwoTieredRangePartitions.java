@@ -45,7 +45,8 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
             "          \"1\": \"1:3-11,2\""+
             "        }"+
             "      }"+
-            "    }, "+
+            "    }"+
+            "  }, "+
             "  \"default_table\": \"warehouse\""+
             "}";
   
@@ -58,7 +59,8 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
             "          \"1\": \"2-3\""+
             "        }"+
             "      }"+
-            "    }, "+
+            "    }"+
+            "  }, "+
             "  \"default_table\": \"warehouse\""+
             "}";
 
