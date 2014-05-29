@@ -12,9 +12,15 @@ import java.util.Map;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
+import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
+import org.voltdb.catalog.Column;
+import org.voltdb.catalog.ColumnRef;
 import org.voltdb.catalog.Table;
+import org.voltdb.types.SortDirectionType;
+import org.voltdb.utils.CatalogUtil;
 import org.voltdb.utils.Pair;
+import org.voltdb.utils.VoltTableComparator;
 
 import edu.brown.designer.MemoryEstimator;
 import edu.brown.hashing.PlannedPartitions.PartitionPhase;
@@ -94,61 +100,89 @@ public class ReconfigurationPlan {
           Iterator<PartitionRange<T>> new_ranges = new_table.partitions.iterator();
 
           PartitionRange<T> new_range = new_ranges.next();
-          T max_old_accounted_for = null;
+          
+          // get a volt table and volt table comparator
+          Table table = old_table.getCatalog_table();
+          ArrayList<Column> cols = new ArrayList<Column>(table.getPartitioncolumns().size());
+          for(ColumnRef colRef : table.getPartitioncolumns()) {
+          	cols.add(colRef.getIndex(), colRef.getColumn());
+          }
+          VoltTable voltTable = CatalogUtil.getVoltTable(cols);
+          
+          ArrayList<Pair<Integer, SortDirectionType>> sortCol = new ArrayList<Pair<Integer, SortDirectionType>>();
+          for(int i = 0; i < voltTable.getColumnCount(); i++) {
+          	sortCol.add(Pair.of(i, SortDirectionType.ASC));
+          }
+          VoltTableComparator cmp = new VoltTableComparator(voltTable, (Pair<Integer, SortDirectionType>[]) sortCol.toArray());
+          
+          // get a row representing the max accounted for
+          // We have not accounted for any range yet
+          Object[] max_old_accounted_for = new Object[voltTable.getColumnCount()];
+          int non_null_cols = 0;
+          for (int i = 0 ; i < voltTable.getColumnCount(); i++) {
+          	VoltType vt = voltTable.getColumnType(i);
+          	max_old_accounted_for[i] = vt.getNullValue();
+          }
+          
           PartitionRange<T> old_range = null;
           // Iterate through the old partition ranges.
           // Only move to the next old rang
-          while (old_ranges.hasNext() || (max_old_accounted_for != null && max_old_accounted_for.compareTo(old_range.max_exclusive)!=0) ) {
+          while (old_ranges.hasNext() || (old_range != null && (cmp.compare(max_old_accounted_for, old_range.max_excl.getRowArray())) != 0 )) {
             // only move to the next element if first time, or all of the previous
             // range has been accounted for
-            if (old_range == null || old_range.max_exclusive.compareTo(max_old_accounted_for) <= 0) {
+            if (old_range == null || cmp.compare(old_range.max_excl.getRowArray(), max_old_accounted_for) <= 0) {
               old_range = old_ranges.next();
             }
 
-            if (max_old_accounted_for == null) {
-              // We have not accounted for any range yet
-              max_old_accounted_for = old_range.min_inclusive;
-            }
             if (old_range.compareTo(new_range) == 0) {
               if (old_range.partition == new_range.partition) {
                 // No change do nothing
               } else {
                 // Same range new partition
-                getReconfigurations().add(new ReconfigurationRange<T>(table_name, old_range.vt, old_range.min_inclusive, old_range.max_exclusive,
+            	getReconfigurations().add(new ReconfigurationRange<T>(old_range.getTable(), old_range.min_incl, old_range.max_excl, old_range.non_null_cols,
                     old_range.partition, new_range.partition));
               }
-              max_old_accounted_for = old_range.max_exclusive;
+              max_old_accounted_for = old_range.max_excl.getRowArray();
+              non_null_cols = old_range.non_null_cols;
               if(new_ranges.hasNext())
                   new_range = new_ranges.next();
             } else {
-              if (old_range.max_exclusive.compareTo(new_range.max_exclusive) <= 0) {
+              if (cmp.compare(old_range.max_excl.getRowArray(), new_range.max_excl.getRowArray()) <= 0) {
                 // The old range is a subset of the new range
                 if (old_range.partition == new_range.partition) {
                   // Same partitions no reconfiguration needed here
-                  max_old_accounted_for = old_range.max_exclusive;
+                  max_old_accounted_for = old_range.max_excl.getRowArray();
+                  non_null_cols = old_range.non_null_cols;
                 } else {
                   // Need to move the old range to new range
-                  getReconfigurations().add(new ReconfigurationRange<T>(table_name, old_range.vt, max_old_accounted_for, old_range.max_exclusive,
+                  VoltTable new_min = voltTable.clone(0);
+                  new_min.addRow(max_old_accounted_for);
+                  getReconfigurations().add(new ReconfigurationRange<T>(old_range.getTable(), new_min, old_range.max_excl, Math.max(old_range.non_null_cols, non_null_cols),
                       old_range.partition, new_range.partition));
-                  max_old_accounted_for = old_range.max_exclusive;                  
+                  max_old_accounted_for = old_range.max_excl.getRowArray();    
+                  non_null_cols = old_range.non_null_cols;
                 }
-		//Have we satisfied all of the new range and is there another new range to process
-		if (max_old_accounted_for.compareTo(new_range.max_exclusive)==0 && new_ranges.hasNext()){
-                    new_range = new_ranges.next();
-		}
+                //Have we satisfied all of the new range and is there another new range to process
+                if (cmp.compare(max_old_accounted_for, new_range.max_excl.getRowArray())==0 && new_ranges.hasNext()){
+                	new_range = new_ranges.next();
+                }
 
               } else {
                 // The old range is larger than this new range
                 // keep getting new ranges until old range has been satisfied
-                while (old_range.max_exclusive.compareTo(new_range.max_exclusive) > 0) {
+                while (cmp.compare(old_range.max_excl.getRowArray(), new_range.max_excl.getRowArray()) > 0) {
                   if (old_range.partition == new_range.partition) {
                     // No need to move this range
-                    max_old_accounted_for = new_range.max_exclusive;
+                    max_old_accounted_for = new_range.max_excl.getRowArray();
+                    non_null_cols = new_range.non_null_cols;
                   } else {
                     // move
-                    getReconfigurations().add(new ReconfigurationRange<T>(table_name, old_range.vt, max_old_accounted_for, new_range.max_exclusive,
+                	VoltTable new_min = voltTable.clone(0);
+                    new_min.addRow(max_old_accounted_for);
+                    getReconfigurations().add(new ReconfigurationRange<T>(new_range.getTable(), new_min, new_range.max_excl, Math.max(new_range.non_null_cols, non_null_cols),
                         old_range.partition, new_range.partition));
-                    max_old_accounted_for = new_range.max_exclusive;
+                    max_old_accounted_for = new_range.max_excl.getRowArray();
+                    non_null_cols = new_range.non_null_cols;
                   }
                   if (new_ranges.hasNext() == false) {
                     throw new RuntimeException("Not all ranges accounted for");
@@ -162,7 +196,6 @@ public class ReconfigurationPlan {
           setReconfigurations(
                   mergeReconfigurations(splitReconfigurations(getReconfigurations(),new_table.getCatalog_table()), new_table.getCatalog_table()));
         }
-        
         
         private List<ReconfigurationRange<T>> mergeReconfigurations(List<ReconfigurationRange<T>> reconfiguration_range, Table catalog_table) {
             if(catalog_table==null){
@@ -186,56 +219,52 @@ public class ReconfigurationPlan {
                 long minRows = currentMin/tupleBytes;
                 LOG.debug(String.format("Trying to merge on table:%s  TupleBytes:%s  CurrentMin:%s  MinRows:%s MinTransferBytes:%s", catalog_table.fullName(),tupleBytes,currentMin,minRows, currentMin));
                 
-                Comparable<?> sampleKey = reconfiguration_range.get(0).getMin_inclusive() ;
-                if (sampleKey instanceof Short || sampleKey instanceof Integer || sampleKey instanceof Long  ){
-                	HashMap<String, ReconfigurationRange<T>> rangeMap = new HashMap<>();
-                	for(ReconfigurationRange<T> range : reconfiguration_range){
-                        
-                		// only merge ranges that have the same old partition and same new partition
-                    	int old_partition = range.old_partition;
-                    	int new_partition = range.new_partition;
-                    	String key = new String(old_partition + "->" + new_partition);
-                    	ReconfigurationRange<T> partialRange = rangeMap.get(key);
-                    	if(partialRange == null) {
-                    		partialRange = new ReconfigurationRange<T>(
-                                    range.table_name, range.vt, new ArrayList<Long>(), new ArrayList<Long>(), old_partition, new_partition);
-                    		rangeMap.put(key, partialRange);
-                    	}
-                    	
-                    	long max = ((Number)range.max_exclusive).longValue();
-                        long min = ((Number)range.min_inclusive).longValue();
-                        partialRange.getMaxList().add(max);
-                        partialRange.getMinList().add(min);
-                        long max_potential_keys = partialRange.getMaxPotentialKeys();
-                        
-                        // once we have reached the minimum number of rows, we can add this set of ranges to the output
-                        if(max_potential_keys >= minRows) {
-                        	int num_ranges = partialRange.getMaxList().size();
-                        	if(num_ranges > 1) {
-                        		LOG.debug(String.format("Merging %s ranges. Table:%s",num_ranges,table_name));
-                        	}
-                        	
-                            res.add(partialRange);
-                            partialRange = null;
-                            rangeMap.remove(key);
-                        }
-                        
-                    }
+                HashMap<String, ReconfigurationRange<T>> rangeMap = new HashMap<>();
+            	for(ReconfigurationRange<T> range : reconfiguration_range){
                     
-                	// and don't forget to add the remaining sets of ranges that didn't reach the minimum number of rows
-                	for(Map.Entry<String, ReconfigurationRange<T>> rangeEntry : rangeMap.entrySet()) {
-                		int num_ranges = rangeEntry.getValue().getMaxList().size();
+            		// only merge ranges that have the same old partition and same new partition
+                	int old_partition = range.old_partition;
+                	int new_partition = range.new_partition;
+                	String key = new String(old_partition + "->" + new_partition);
+                	ReconfigurationRange<T> partialRange = rangeMap.get(key);
+                	if(partialRange == null) {
+                		VoltTable newMin = range.clone.clone(0);
+                		VoltTable newMax = range.clone.clone(0);
+                		partialRange = new ReconfigurationRange<T>(range.getTable(), newMin, newMax, 0, old_partition, new_partition);
+                		rangeMap.put(key, partialRange);
+                	}
+                	
+                	VoltTable max = range.getMaxExcl();
+                	VoltTable min = range.getMinIncl();
+                    partialRange.getMaxExcl().add(max);
+                    partialRange.getMinIncl().add(min);
+                    partialRange.non_null_cols = Math.max(partialRange.non_null_cols, range.non_null_cols);
+                    long max_potential_keys = partialRange.getMaxPotentialKeys();
+                    
+                    // once we have reached the minimum number of rows, we can add this set of ranges to the output
+                    if(max_potential_keys >= minRows) {
+                    	int num_ranges = partialRange.getMaxExcl().getRowCount();
                     	if(num_ranges > 1) {
                     		LOG.debug(String.format("Merging %s ranges. Table:%s",num_ranges,table_name));
                     	}
                     	
-                        res.add(rangeEntry.getValue());
+                        res.add(partialRange);
+                        partialRange = null;
+                        rangeMap.remove(key);
                     }
                     
-                } else{
-                
-                    throw new NotImplementedException("Can only handle types of small, long, int. Class: " +sampleKey.getClass().getName());
                 }
+                
+            	// and don't forget to add the remaining sets of ranges that didn't reach the minimum number of rows
+            	for(Map.Entry<String, ReconfigurationRange<T>> rangeEntry : rangeMap.entrySet()) {
+            		int num_ranges = rangeEntry.getValue().getMaxExcl().getRowCount();
+                	if(num_ranges > 1) {
+                		LOG.debug(String.format("Merging %s ranges. Table:%s",num_ranges,table_name));
+                	}
+                	
+                    res.add(rangeEntry.getValue());
+                }
+
             } catch(Exception ex){
               LOG.error("Exception merging reconfiguration ranges, returning original list",ex);  
               return reconfiguration_range;
@@ -266,40 +295,68 @@ public class ReconfigurationPlan {
                 LOG.info(String.format("Trying to split on table:%s  TupleBytes:%s  CurrentMax:%s  MaxRows:%s MaxTransferBytes:%s", catalog_table.fullName(),tupleBytes,currentMax,maxRows, currentMax));
                 
                 List<ReconfigurationRange<T>> res = new ArrayList<>();
-                Comparable<?> sampleKey = reconfiguration_range.get(0).getMin_inclusive() ;
-                if (sampleKey instanceof Short || sampleKey instanceof Integer || sampleKey instanceof Long  ){
-                    for(ReconfigurationRange<T> range : reconfiguration_range){
-                        long max = ((Number)range.max_exclusive).longValue();
-                        long min = ((Number)range.min_inclusive).longValue();
-                        long max_potential_keys = max - min;
-                        if (max_potential_keys > maxRows){
-                            LOG.info(String.format("Splitting up a range %s-%s. Max row:%s. Table:%s",min,max,maxRows,table_name));
-                            long orig_max = max;
-                            Class<?> keyclass =  sampleKey.getClass();
-                            long keysRemaining = max_potential_keys;
+                for(ReconfigurationRange<T> range : reconfiguration_range){
+                	long max_potential_keys = range.getMaxPotentialKeys();
+                	if (max_potential_keys > maxRows){
+                		long orig_max = range.getMaxExcl().getLong(0);
+                		long orig_min = range.getMinIncl().getLong(0);
+                		LOG.info(String.format("Splitting up a range %s-%s. Max row:%s. Table:%s",orig_min,orig_max,maxRows,table_name));
+                		long new_max, new_min;
+                		new_min = orig_min;
+                		long keysRemaining = max_potential_keys;
 
-                            //We need to split up this range
-                            while(keysRemaining > 0) {
-                                max = Math.min(min+maxRows,orig_max);
-                                LOG.info(String.format("New range %s-%s",min,max));
-                                ReconfigurationRange<T> newRange = new ReconfigurationRange<T>(
-                                        range.table_name, range.vt, (T)keyclass.cast(min), (T)keyclass.cast(max), range.old_partition, range.new_partition);
-                                min = max;
-                                keysRemaining-=maxRows;
-                                modified = true;
-                                res.add(newRange);
-                            }
-                            
-                        } else {
-                            //This range is ok to keep
-                            res.add(range);
-                        }
-                        
-                    }
-                } else{
-                
-                    throw new NotImplementedException("Can only handle types of small, long, int. Class: " +sampleKey.getClass().getName());
+                		//We need to split up this range
+                		while(keysRemaining > 0) {
+                			new_max = Math.min(new_min+maxRows,orig_max);
+                			LOG.info(String.format("New range %s-%s",orig_min,new_max));
+                			VoltTable max, min;
+                			int non_null_cols = 0;
+                			
+                			if(new_max == orig_max) {
+                				max = range.getMaxExcl();
+                				non_null_cols = Math.max(non_null_cols, range.non_null_cols);
+                			} else {
+                				max = range.getClone().clone(0);
+                				Object[] values = new Object[max.getColumnCount()];
+                				values[0] = new_max;
+                				for (int i = 1; i < max.getColumnCount(); i++) {
+                					VoltType vt = max.getColumnType(i);
+                					values[i] = vt.getNullValue();
+                				}
+                				max.addRow(values);
+                				non_null_cols = Math.max(non_null_cols, 1);
+                			}
+                			
+                			if(new_min == orig_min) {
+                				min = range.getMinIncl();
+                				non_null_cols = Math.max(non_null_cols, range.non_null_cols);
+                			} else {
+                				min = range.getClone().clone(0);
+                				Object[] values = new Object[min.getColumnCount()];
+                				values[0] = new_min;
+                				for (int i = 1; i < min.getColumnCount(); i++) {
+                					VoltType vt = min.getColumnType(i);
+                					values[i] = vt.getNullValue();
+                				}
+                				min.addRow(values);
+                				non_null_cols = Math.max(non_null_cols, 1);
+                			}
+                			
+                			ReconfigurationRange<T> newRange = new ReconfigurationRange<T>(
+                					range.getTable(), min, max, non_null_cols, range.old_partition, range.new_partition);
+                			new_min = new_max;
+                			keysRemaining-=maxRows;
+                			modified = true;
+                			res.add(newRange);
+                		}
+
+                	} else {
+                		//This range is ok to keep
+                		res.add(range);
+                	}
+
                 }
+
                 if(modified){
                     return res;
                 }
@@ -352,10 +409,16 @@ public class ReconfigurationPlan {
         private Long max_exclusive_long;
         
         public String table_name;
-        public String column_name;
         private boolean single_range = false; //single range or multi
-        ReconfigurationRange<Long> sub_range;
-         
+        
+        // new stuff!
+        private VoltTable clone;
+        private VoltTable min_incl;
+        private VoltTable max_excl;
+        private int non_null_cols;
+        private VoltTableComparator cmp;
+        private Table catalog_table;
+        // end new stuff 
         
         public ReconfigurationRange(String table_name, VoltType vt, T min_inclusive, T max_exclusive, int old_partition, int new_partition)  {
           super(vt, min_inclusive, max_exclusive);
@@ -401,46 +464,92 @@ public class ReconfigurationPlan {
             this.single_range = false;
         }
         
-        public ReconfigurationRange(String table_name, String column_name, VoltType vt, T min_inclusive, T max_exclusive, 
-        		int old_partition, int new_partition, ReconfigurationRange<Long> sub_range) {
-        	this(table_name, vt, min_inclusive, max_exclusive, old_partition, new_partition);
-        	if(sub_range != null) {
-        		assert(sub_range.old_partition == old_partition);
-        		assert(sub_range.new_partition == new_partition);
-        		assert(min_inclusive.equals(max_exclusive) || 
-        				min_inclusive.equals((Long)max_exclusive - 1));
-        	}
-        	this.sub_range = sub_range;
-        	this.column_name = column_name;
-        }
+//        public ReconfigurationRange(String table_name, String column_name, VoltType vt, T min_inclusive, T max_exclusive, 
+//        		int old_partition, int new_partition, ReconfigurationRange<?> sub_range) {
+//        	this(table_name, vt, min_inclusive, max_exclusive, old_partition, new_partition);
+//        	if(sub_range != null) {
+//        		assert(sub_range.old_partition == old_partition);
+//        		assert(sub_range.new_partition == new_partition);
+//        		assert(min_inclusive.equals(max_exclusive) || 
+//        				min_inclusive.equals((Long)max_exclusive - 1));
+//        	}
+//        	this.sub_range = sub_range;
+//        	this.column_name = column_name;
+//        }
+//        
+//        public ReconfigurationRange(String table_name, String column_name, VoltType vt, List<Long> min_inclusive, List<Long> max_exclusive, 
+//        		int old_partition, int new_partition, ReconfigurationRange<?> sub_range) {
+//        	this(table_name, vt, min_inclusive, max_exclusive, old_partition, new_partition);
+//        	if(sub_range != null) {
+//        		assert(sub_range.old_partition == old_partition);
+//        		assert(sub_range.new_partition == new_partition);
+//        		assert(min_inclusive.size() == 1 && max_exclusive.size() == 1);
+//        		assert(min_inclusive.get(0).equals(max_exclusive.get(0)) || 
+//        				min_inclusive.get(0).equals(max_exclusive.get(0) - 1));
+//        	}
+//        	this.sub_range = sub_range;
+//        	this.column_name = column_name;
+//        }
         
-        public ReconfigurationRange(String table_name, String column_name, VoltType vt, List<Long> min_inclusive, List<Long> max_exclusive, 
-        		int old_partition, int new_partition, ReconfigurationRange<Long> sub_range) {
-        	this(table_name, vt, min_inclusive, max_exclusive, old_partition, new_partition);
-        	if(sub_range != null) {
-        		assert(sub_range.old_partition == old_partition);
-        		assert(sub_range.new_partition == new_partition);
-        		assert(min_inclusive.size() == 1 && max_exclusive.size() == 1);
-        		assert(min_inclusive.get(0).equals(max_exclusive.get(0)) || 
-        				min_inclusive.get(0).equals(max_exclusive.get(0) - 1));
-        	}
-        	this.sub_range = sub_range;
-        	this.column_name = column_name;
+        
+        public ReconfigurationRange(Table table, VoltTable min_incl, VoltTable max_excl, int non_null_cols, int old_partition, int new_partition) {
+            super(VoltType.BIGINT);
+            
+            this.catalog_table = table;
+            ArrayList<Column> cols = new ArrayList<Column>(table.getPartitioncolumns().size());
+            for(ColumnRef colRef : table.getPartitioncolumns()) {
+            	cols.add(colRef.getIndex(), colRef.getColumn());
+            }
+            this.clone = CatalogUtil.getVoltTable(cols);
+            
+            ArrayList<Pair<Integer, SortDirectionType>> sortCol = new ArrayList<Pair<Integer, SortDirectionType>>();
+            for(int i = 0; i < this.clone.getColumnCount(); i++) {
+            	sortCol.add(Pair.of(i, SortDirectionType.ASC));
+            }
+            this.cmp = new VoltTableComparator(this.clone, (Pair<Integer, SortDirectionType>[]) sortCol.toArray());
+            
+            this.min_incl = min_incl;
+            this.max_excl = max_excl;
+            this.non_null_cols = non_null_cols;
+            
+            this.old_partition = old_partition;
+            this.new_partition = new_partition;
+            this.single_range = false;
         }
 
         @Override
         public String toString(){
-        	String sub_range_string = "";
-        	if(sub_range != null) {
-        		sub_range_string = "sub_range:{" + sub_range.toString() + "} ";
-        	}
-        	String table_string = table_name;
-        	if(column_name != null) {
-        		table_string += ":" + column_name;
-        	}
-        	if(min_inclusive != null && max_exclusive != null) {
-        		return String.format("ReconfigRange (%s) keys:[%s,%s) p_id:%s->%s %s",table_string,
-        				min_inclusive,max_exclusive,old_partition,new_partition,sub_range_string);
+        	if(min_incl != null && max_excl != null) {
+        		this.min_incl.resetRowPosition();
+                this.max_excl.resetRowPosition();
+                String keys = "";
+                int row = 0;
+                while(this.min_incl.advanceRow() && this.max_excl.advanceRow()) {
+                	if(row != 0) {
+        				keys += ", ";
+        			}
+                	
+                	String range_str = "";
+            		for(int i = 0; i < this.non_null_cols; i++) {
+            			if(i != 0) {
+            				range_str += ":";
+            			}
+            			Object min = this.min_incl.get(i);
+            			Object max = this.max_excl.get(i);
+            			if(min.equals(max)) {
+            				range_str += min.toString();
+            			} else {
+            				range_str += min.toString() + "-" + max.toString();
+            			}
+            		}
+        			keys += "[" + range_str + ")";
+        			row++;
+                }
+                return String.format("ReconfigRange (%s) keys:%s p_id:%s->%s ",table_name,keys,
+        				old_partition,new_partition);
+        	} else if(min_inclusive != null && max_exclusive != null) {
+        		return String.format("ReconfigRange (%s) keys:[%s,%s) p_id:%s->%s ",table_name,
+        				min_inclusive,max_exclusive,old_partition,new_partition);
         	}
         	else {
         		String keys = "";
@@ -450,16 +559,13 @@ public class ReconfigurationPlan {
         			}
         			keys += "[" + min_list.get(i) + "," + max_list.get(i) + ")";
         		}
-        		return String.format("ReconfigRange (%s) keys:%s p_id:%s->%s %s",table_string,keys,
-        				old_partition,new_partition,sub_range_string);
+        		return String.format("ReconfigRange (%s) keys:%s p_id:%s->%s ",table_name,keys,
+        				old_partition,new_partition);
         	}
         }
         
         public boolean inRange(Comparable<?> key){
-        	if(key instanceof CompositeKey) {
-        		return inRange(((CompositeKey) key).getValues());
-        	}
-            try{
+        	try{
                 long keyL = ((Number)key).longValue();
                 for(Pair<Long,Long> range : ranges) {
                     long min_long = range.getFirst();
@@ -476,34 +582,48 @@ public class ReconfigurationPlan {
             return false;
         }
         
-        // for multi-column partitioning
-        public boolean inRange(List<Comparable<?>> keys){
-            try{
-            	List<Pair<Long,Long>> r = this.ranges;
-            	boolean inRange = false;
-            	for(Comparable<?> key : keys) {
-	                long keyL = ((Number)key).longValue();
-	                for(Pair<Long,Long> range : r) {
-	                    long min_long = range.getFirst();
-	                    long max_long = range.getSecond();
-	                    if(min_long <= keyL && (max_long > keyL || 
-	                            (max_long == min_long && min_long == keyL))){
-	                        inRange = true;
-	                        break;
-	                    } else {
-	                    	return false;
-	                    }
-	                }
-	                if(this.sub_range == null) {
-	                	break;
-	                } else {
-	                	r = this.sub_range.ranges;
-	                }
-            	}
-            	return inRange;
-            } catch(Exception e){
-                LOG.error("TODO only number keys supported");
-                LOG.error(e);
+//        // for multi-column partitioning
+//        public boolean inRange(List<Comparable<?>> keys){
+//            try{
+//            	List<Pair<Long,Long>> r = this.ranges;
+//            	boolean inRange = false;
+//            	for(Comparable<?> key : keys) {
+//	                long keyL = ((Number)key).longValue();
+//	                for(Pair<Long,Long> range : r) {
+//	                    long min_long = range.getFirst();
+//	                    long max_long = range.getSecond();
+//	                    if(min_long <= keyL && (max_long > keyL || 
+//	                            (max_long == min_long && min_long == keyL))){
+//	                        inRange = true;
+//	                        break;
+//	                    } else {
+//	                    	return false;
+//	                    }
+//	                }
+//	                if(this.sub_range == null) {
+//	                	break;
+//	                } else {
+//	                	r = this.sub_range.ranges;
+//	                }
+//            	}
+//            	return inRange;
+//            } catch(Exception e){
+//                LOG.error("TODO only number keys supported");
+//                LOG.error(e);
+//            }
+//            return false;
+//        }
+        
+        public boolean inRange(Object[] keys) {
+        	this.min_incl.resetRowPosition();
+            this.max_excl.resetRowPosition();
+            while(this.min_incl.advanceRow() && this.max_excl.advanceRow()) {
+            	if(cmp.compare(min_incl.getRowArray(), keys) <= 0 && 
+            			(cmp.compare(max_excl.getRowArray(), keys) > 0 || 
+                        (cmp.compare(min_incl.getRowArray(), max_excl.getRowArray()) == 0 && 
+                        cmp.compare(min_incl.getRowArray(), keys) == 0))){
+                    return true;
+                }
             }
             return false;
         }
@@ -550,15 +670,17 @@ public class ReconfigurationPlan {
                     return false;
             } else if (!table_name.equals(other.table_name))
                 return false;
-            if (column_name == null) {
-                if (other.column_name != null)
+            if (min_incl == null) {
+                if (other.min_incl != null)
                     return false;
-            } else if (!column_name.equals(other.column_name))
+            } else if (!min_incl.equals(other.min_incl))
                 return false;
-            if (sub_range == null) {
-            	if (other.sub_range != null)
+            if (max_excl == null) {
+                if (other.max_excl != null)
                     return false;
-            } else if (!sub_range.equals(other.sub_range))
+            } else if (!max_excl.equals(other.max_excl))
+                return false;
+            if (non_null_cols != other.non_null_cols)
                 return false;
             return true;
         }
@@ -572,6 +694,17 @@ public class ReconfigurationPlan {
         }
         
         public Long getMaxPotentialKeys() {
+            if(min_incl != null && max_excl != null) {
+            	this.min_incl.resetRowPosition();
+            	this.max_excl.resetRowPosition();
+            	min_list = new ArrayList<>();
+            	max_list = new ArrayList<>();
+            	while(this.min_incl.advanceRow() && this.max_excl.advanceRow()) {
+            		min_list.add(this.min_incl.getLong(0));
+            		max_list.add(this.max_excl.getLong(0));
+            	}
+        	}
+        	
         	Long max_potential_keys = 0L;
         	for(int i = 0; i < min_list.size() && i < max_list.size(); ++i) {
         		max_potential_keys += max_list.get(i) - min_list.get(i);
@@ -595,9 +728,26 @@ public class ReconfigurationPlan {
         	return single_range;
         }
         
-        public ReconfigurationRange<Long> getSubRange() {
-        	return sub_range;
+        public VoltTable getMinIncl() {
+        	return this.min_incl;
         }
+        
+        public VoltTable getMaxExcl() {
+        	return this.max_excl;
+        }
+        
+        public VoltTable getClone() {
+        	return this.clone;
+        }
+        
+        public int getNonNullCols() {
+        	return this.non_null_cols;
+        }
+        
+        public Table getTable() {
+        	return this.catalog_table;
+        }
+        
     }
       
 

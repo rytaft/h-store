@@ -22,6 +22,7 @@ import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.voltdb.CatalogContext;
 import org.voltdb.VoltType;
+import org.voltdb.VoltTable;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Column;
 import org.voltdb.catalog.ColumnRef;
@@ -29,7 +30,11 @@ import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Procedure;
 import org.voltdb.catalog.Statement;
 import org.voltdb.catalog.Table;
+import org.voltdb.types.SortDirectionType;
+import org.voltdb.utils.CatalogUtil;
+import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTypeUtil;
+import org.voltdb.utils.VoltTableComparator;
 
 import edu.brown.catalog.DependencyUtil;
 import edu.brown.hstore.HStoreConstants;
@@ -609,15 +614,6 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             if (trace.val) {
                 LOG.trace(String.format("Looking up key %s on table %s during phase %s", ids.get(0), this.table_name));
             }
-            
-            ArrayList<Long> cast_ids = new ArrayList<Long>();
-            for (Object id : ids) {
-            	assert (id instanceof Number);
-
-            	// TODO I am sure there is a better way to do this... Andy? (ae)
-            	// TODO fix partitiontype
-            	cast_ids.add(((Number) id).longValue());
-            }
 
             try {
                 for (PartitionRange<T> p : this.partitions) {
@@ -626,28 +622,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
-                	PartitionRange<Long> r = (PartitionRange<Long>) p;
-                	boolean inRange = false;
-                	boolean moreSubRanges = true;
-                	for (Long cast_id : cast_ids) {
-	                    if ((r.min_inclusive_long.compareTo(cast_id) <= 0 && r.max_exclusive_long.compareTo(cast_id) > 0)
-	                            || (r.min_inclusive_long.compareTo(cast_id) == 0 && r.max_exclusive_long.compareTo(cast_id) == 0)) {
-	                        inRange = true;
-	                    }
-	                    else {
-	                    	inRange = false;
-	                    	break;
-	                    }
-	                    
-	                    if (r.sub_range != null) {
-	                    	r = r.sub_range;
-	                    }
-	                    else {
-	                    	moreSubRanges = false;
-	                    	break;
-	                    }
-                	}
-                	if (inRange && !moreSubRanges) {
+                	if (p.inRange(ids)) {
                 		return p.partition;
                 	}
                 }
@@ -655,14 +630,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
                 LOG.error("Error looking up partition", e);
             }
 
-            String id_str = "";
-            for(Long cast_id : cast_ids) {
-            	if(id_str != "") {
-            		id_str += ", ";
-            	}
-            	id_str += cast_id;
-            }
-            LOG.error(String.format("Partition not found for ID:%s.  Type:%s  TableType", id_str, cast_ids.get(0).getClass().toString(), this.vt.getClass().toString()));
+            LOG.error("Partition not found");
             return HStoreConstants.NULL_PARTITION_ID;
         }
 
@@ -700,12 +668,15 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         protected Long max_exclusive_long;
         protected int partition;
         protected VoltType vt;
-        protected PartitionRange<Long> sub_range;
-
-        public PartitionRange(VoltType vt, T min_inclusive, T max_exclusive, PartitionRange<Long> sub_range) {
-        	this(vt, min_inclusive, max_exclusive);
-        	this.sub_range = sub_range;
-        }
+        
+        // new stuff!!
+        protected VoltTable min_incl;
+        protected VoltTable max_excl;
+        protected int non_null_cols;
+        protected VoltTableComparator cmp;
+        protected Table catalog_table;
+        //protected PartitionRange<?> sub_range;
+        // end new stuff!!
         
         public PartitionRange(VoltType vt, T min_inclusive, T max_exclusive) {
             this.vt = vt;
@@ -723,7 +694,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         }
         
         @SuppressWarnings("unchecked")
-        public PartitionRange(VoltType vt, int partition_id, String range, PartitionRange<Long> sub_range) throws ParseException {
+        public PartitionRange(VoltType vt, int partition_id, String range) throws ParseException {
             this.vt = vt;
             this.partition = partition_id;
             
@@ -731,20 +702,6 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             // (anything >=
             // 100)
             
-            // multi-key partitioning
-            if (range.contains(":")) {
-            	assert(sub_range == null);
-            	String vals[] = range.split(":");
-            	PartitionRange<Long> subr = null;
-            	for (int i = vals.length - 1; i > 0; i--) {
-            		subr = new PartitionRange<Long>(vt, partition_id, vals[i], subr);
-            	}
-            	this.sub_range = subr;
-            	range = vals[0];
-            } else {
-            	this.sub_range = sub_range;
-            }
-
             // x-y
             if (range.contains("-")) {
                 String vals[] = range.split("-", 2);
@@ -767,40 +724,150 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             this.min_inclusive_long = ((Number) min_inclusive).longValue();
             this.max_exclusive_long = ((Number) max_exclusive).longValue();
         }
-
-        @SuppressWarnings("unchecked")
-        public PartitionRange(VoltType vt, int partition_id, String range) throws ParseException {
-        	this(vt, partition_id, range, null);
-        }
-
+        
         public PartitionRange(VoltType vt) {
             this.vt = vt;            
         }
 
+        // new stuff!!
+        @SuppressWarnings("unchecked")
+        public PartitionRange(Table table, int partition_id, String range_str) throws ParseException {
+            this.partition = partition_id;
+            this.catalog_table = table;
+            
+            // TODO add support for open ranges ie -100 (< 100) and 100-
+            // (anything >=
+            // 100)
+            
+            ArrayList<Column> cols = new ArrayList<Column>(table.getPartitioncolumns().size());
+            for(ColumnRef colRef : table.getPartitioncolumns()) {
+            	cols.add(colRef.getIndex(), colRef.getColumn());
+            }
+            VoltTable voltTable = CatalogUtil.getVoltTable(cols);
+            
+            String ranges[];
+            // multi-key partitioning
+            if (range_str.contains(":")) {
+            	ranges = range_str.split(":");
+            } else {
+            	ranges = new String[]{ range_str };
+            }
+
+            int col = 0;
+            Object[] min_row = new Object[voltTable.getColumnCount()];
+            Object[] max_row = new Object[voltTable.getColumnCount()];
+            for(String range : ranges) {
+            	assert(col < voltTable.getColumnCount());
+            	VoltType vt = voltTable.getColumnType(col);
+            	
+        		// x-y
+                if (range.contains("-")) {
+                	if(col < ranges.length - 1) {
+                		throw new ParseException("keys with sub-ranges cannot span more than one key", -1);
+                	}
+            		String vals[] = range.split("-", 2);
+            		min_row[col] = VoltTypeUtil.getObjectFromString(vt, vals[0]);
+            		max_row[col] = VoltTypeUtil.getObjectFromString(vt, vals[1]);
+            	}
+            	// x
+            	else {
+            		Object obj = VoltTypeUtil.getObjectFromString(vt, range);
+            		min_row[col] = obj;
+            		max_row[col] = obj;
+            	}
+            	col++;
+            }
+            
+            this.non_null_cols = col;
+            for ( ; col < voltTable.getColumnCount(); col++) {
+            	VoltType vt = voltTable.getColumnType(col);
+            	Object obj = vt.getNullValue();
+            	min_row[col] = obj;
+            	max_row[col] = obj;
+            }
+            
+            ArrayList<Pair<Integer, SortDirectionType>> sortCol = new ArrayList<Pair<Integer, SortDirectionType>>();
+            for(int i = 0; i < voltTable.getColumnCount(); i++) {
+            	sortCol.add(Pair.of(i, SortDirectionType.ASC));
+            }
+            this.cmp = new VoltTableComparator(voltTable, (Pair<Integer, SortDirectionType>[]) sortCol.toArray());
+            if (cmp.compare(min_row, max_row) > 0) {
+    			throw new ParseException("Min cannot be greater than max", -1);
+    		}
+            
+            this.min_incl = voltTable.clone(0);
+            this.max_excl = voltTable.clone(0);
+            this.min_incl.addRow(min_row);
+            this.max_excl.addRow(max_row);
+            this.min_incl.advanceToRow(0);
+            this.max_excl.advanceToRow(0);
+        }
+
         @Override
         public String toString() {
-        	String sub_range_string = "";
-        	if (this.sub_range != null) {
-        		sub_range_string = " sub_range: " + this.sub_range.toString();
+        	if(this.min_incl != null && this.max_excl != null) {
+        		String range_str = "";
+        		for(int i = 0; i < this.non_null_cols; i++) {
+        			if(i != 0) {
+        				range_str += ":";
+        			}
+        			Object min = this.min_incl.get(i);
+        			Object max = this.max_excl.get(i);
+        			if(min.equals(max)) {
+        				range_str += min.toString();
+        			} else {
+        				range_str += min.toString() + "-" + max.toString();
+        			}
+        		}
+        		return "PartitionRange [" + range_str + ") p_id=" + this.partition + "]";
+        	} else {
+        		return "PartitionRange [" + this.min_inclusive + "-" + this.max_exclusive + ") p_id=" + this.partition + "]";
         	}
-            return "PartitionRange [" + this.min_inclusive + "-" + this.max_exclusive + ") p_id=" + this.partition + sub_range_string + "]";
         }
 
         @Override
         public int compareTo(PartitionRange<T> o) {
-            if (this.min_inclusive.compareTo(o.min_inclusive) < 0) {
-                return -1;
-            } else if (this.min_inclusive.compareTo(o.min_inclusive) == 0) {
-            	int rc = 0;
-                if ((rc = this.max_exclusive.compareTo(o.max_exclusive)) == 0) {
-                	if(this.sub_range != null && o.sub_range != null) {
-                		return this.sub_range.compareTo(o.sub_range);
-                	}
-                }
-                return rc;
-            } else {
-                return 1;
-            }
+        	if (this.min_incl != null && o.min_incl != null) {
+        		if (cmp.compare(this.min_incl.getRowArray(), o.min_incl.getRowArray()) < 0) {
+        			return -1;
+        		} else if (cmp.compare(this.min_incl.getRowArray(), o.min_incl.getRowArray()) == 0) {
+        			return cmp.compare(this.max_excl.getRowArray(), o.max_excl.getRowArray());
+        		} else {
+        			return 1;
+        		}
+        	} else {
+        		if (this.min_inclusive.compareTo(o.min_inclusive) < 0) {
+        			return -1;
+        		} else if (this.min_inclusive.compareTo(o.min_inclusive) == 0) {
+        			return this.max_exclusive.compareTo(o.max_exclusive);
+        		} else {
+        			return 1;
+        		}
+        	}
+        }
+        
+        public boolean inRange(List<Object> ids) {
+        	Object[] keys = new Object[this.min_incl.getColumnCount()];
+        	int col = 0;
+        	for(Object id : ids) {
+        		keys[col] = id;
+        		col++;
+        	}
+        	for( ; col < this.min_incl.getColumnCount(); col++) {
+        		VoltType vt = this.min_incl.getColumnType(col);
+            	keys[col] = vt.getNullValue();
+        	}
+        	return inRange(keys);
+        }
+        
+        public boolean inRange(Object[] keys) {
+        	if(cmp.compare(min_incl.getRowArray(), keys) <= 0 && 
+        			(cmp.compare(max_excl.getRowArray(), keys) > 0 || 
+        					(cmp.compare(min_incl.getRowArray(), max_excl.getRowArray()) == 0 && 
+        					cmp.compare(min_incl.getRowArray(), keys) == 0))){
+        		return true;
+        	}
+            return false;
         }
 
         public T getMin_inclusive() {
@@ -814,10 +881,23 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         public VoltType getVt() {
             return this.vt;
         }
-
-        public PartitionRange<Long> getSubRange() {
-        	return this.sub_range;
+        
+        public VoltTable getMinIncl() {
+        	return this.min_incl;
         }
+        
+        public VoltTable getMaxExcl() {
+        	return this.max_excl;
+        }
+        
+        public int getNonNullCols() {
+        	return this.non_null_cols;
+        }
+        
+        public Table getTable() {
+        	return this.catalog_table;
+        }
+
     }
 
     // ********End Containers **************************************/
