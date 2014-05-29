@@ -155,62 +155,35 @@ public class ReconfigurationUtil {
     }
     
     public static VoltTable getExtractVoltTable(ReconfigurationRange range) {
-    	ArrayList<VoltType> types = new ArrayList<>();
-    	types.add(VoltType.BIGINT);
-    	return getExtractVoltTable(range, 1, types);
-    }
-
-    public static VoltTable getExtractVoltTable(ReconfigurationRange range, int nCols, List<VoltType> types) {
+    	int nCols = range.getMinIncl().getColumnCount();
     	int nSchemaCols = nCols * 3 + 1;
     	ColumnInfo[] extractTableColumns = new ColumnInfo[nSchemaCols];
 
         extractTableColumns[0] = new ColumnInfo("TABLE_NAME", VoltType.INTEGER);
-        for(int i = 0; i+3 < nSchemaCols; i+=3) {
-        	VoltType type = types.get(i/3);
-        	extractTableColumns[i+1] = new ColumnInfo("KEY_TYPE", VoltType.INTEGER);
-            extractTableColumns[i+2] = new ColumnInfo("MIN_INCLUSIVE", type); // range.getVt());
-            extractTableColumns[i+3] = new ColumnInfo("MAX_EXCLUSIVE", type); // range.getVt());
+        for(int i = 0; i < nCols; i++) {
+        	VoltType type = range.getMinIncl().getColumnType(i);
+        	extractTableColumns[i*3+1] = new ColumnInfo("KEY_TYPE", VoltType.INTEGER);
+            extractTableColumns[i*3+2] = new ColumnInfo("MIN_INCLUSIVE", type); // range.getVt());
+            extractTableColumns[i*3+3] = new ColumnInfo("MAX_EXCLUSIVE", type); // range.getVt());
         }  
         
         VoltTable vt = new VoltTable(extractTableColumns);
         // vt.addRow(range.table_name,range.getVt().toString(),range.getMin_inclusive(),range.getMax_exclusive());
         
-        ArrayList<Object[]> rows = new ArrayList<>();
-        Object[] baseRow = new Object[nSchemaCols];
-        baseRow[0] = 1;
-        
-        for(int i = 0, j = 0; i+3 < nSchemaCols && j < range.getNonNullCols(); i+=3, j++) {
-        	if(range.getMinIncl().getRowCount() == 1) {
-        		range.getMinIncl().advanceToRow(0);
-        		range.getMaxExcl().advanceToRow(0);
-        		baseRow[i+1] = 1;
-        		baseRow[i+2] = range.getMinIncl().get(j);
-        		baseRow[i+3] = range.getMaxExcl().get(j);
+        range.getMinIncl().resetRowPosition();
+		range.getMaxExcl().resetRowPosition();
+		while(range.getMinIncl().advanceRow() && range.getMaxExcl().advanceRow()) {
+			Object[] row = new Object[nSchemaCols];
+    		row[0] = 1;
+    		for(int i = 0; i < nCols; i++) {	
+        		row[i*3+1] = 1;
+        		row[i*3+2] = range.getMinIncl().get(i);
+        		row[i*3+3] = range.getMaxExcl().get(i);
         	}
-        	else {
-        		range.getMinIncl().resetRowPosition();
-        		range.getMaxExcl().resetRowPosition();
-        		while(range.getMinIncl().advanceRow() && range.getMaxExcl().advanceRow()) {
-        			Object[] row = baseRow.clone();
-        			row[i+1] = 1;
-        			row[i+2] = range.getMinIncl().get(j);
-        			row[i+3] = range.getMaxExcl().get(j);
-        			rows.add(row);
-        		}
-        		break;
-        	}
+    		vt.addRow(row);
         }  
         
-        if(rows.size() == 0) {
-        	vt.addRow(baseRow);
-		}
-        
-        for(Object[] row : rows) {
-        	vt.addRow(row);
-        }
-        
-        
-        return vt;
+		return vt;
     }
 
     public static VoltTable getExtractVoltTable(List<Long> minInclusives, List<Long> maxExclusives) {
