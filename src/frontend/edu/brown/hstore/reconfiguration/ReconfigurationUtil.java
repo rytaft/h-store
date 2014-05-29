@@ -179,33 +179,24 @@ public class ReconfigurationUtil {
         Object[] baseRow = new Object[nSchemaCols];
         baseRow[0] = 1;
         
-        ReconfigurationRange<Long> r = range;
-        for(int i = 0; i+3 < nSchemaCols; i+=3) {
-        	if(r != null) {
-        		if(r.isSingleRange()) {
-        			baseRow[i+1] = 1;
-        			baseRow[i+2] = r.getMin_inclusive();
-        			baseRow[i+3] = r.getMax_exclusive();
-        		}
-        		else if(r.getMinList().size() == 1) {
-        			baseRow[i+1] = 1;
-        			baseRow[i+2] = r.getMinList().get(0);
-        			baseRow[i+3] = r.getMaxList().get(0);
-    			}
-    			else {
-        			for (int j = 0; j < r.getMinList().size(); j++) {
-	            		Object[] row = baseRow.clone();
-	            		row[i+1] = 1;
-	            		row[i+2] = r.getMinList().get(j);
-	            		row[i+3] = r.getMaxList().get(j);
-	            		rows.add(row);
-	                }
-        			break;
-    			}
-        		
-        		r = r.getSubRange();
+        for(int i = 0, j = 0; i+3 < nSchemaCols && j < range.getNonNullCols(); i+=3, j++) {
+        	if(range.getMinIncl().getRowCount() == 1) {
+        		range.getMinIncl().advanceToRow(0);
+        		range.getMaxExcl().advanceToRow(0);
+        		baseRow[i+1] = 1;
+        		baseRow[i+2] = range.getMinIncl().get(j);
+        		baseRow[i+3] = range.getMaxExcl().get(j);
         	}
         	else {
+        		range.getMinIncl().resetRowPosition();
+        		range.getMaxExcl().resetRowPosition();
+        		while(range.getMinIncl().advanceRow() && range.getMaxExcl().advanceRow()) {
+        			Object[] row = baseRow.clone();
+        			row[i+1] = 1;
+        			row[i+2] = range.getMinIncl().get(j);
+        			row[i+3] = range.getMaxExcl().get(j);
+        			rows.add(row);
+        		}
         		break;
         	}
         }  
