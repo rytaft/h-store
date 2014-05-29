@@ -112,7 +112,7 @@ public class ReconfigurationPlan {
           for(int i = 0; i < voltTable.getColumnCount(); i++) {
           	sortCol.add(Pair.of(i, SortDirectionType.ASC));
           }
-          VoltTableComparator cmp = new VoltTableComparator(voltTable, (Pair<Integer, SortDirectionType>[]) sortCol.toArray());
+          VoltTableComparator cmp = createComparator(voltTable, sortCol, sortCol.get(0));
           
           // get a row representing the max accounted for
           // We have not accounted for any range yet
@@ -194,6 +194,10 @@ public class ReconfigurationPlan {
           }
           setReconfigurations(
                   mergeReconfigurations(splitReconfigurations(getReconfigurations(),new_table.getCatalog_table()), new_table.getCatalog_table()));
+        }
+        
+        private VoltTableComparator createComparator(VoltTable voltTable, ArrayList<Pair<Integer, SortDirectionType>> sortCol, Pair<Integer, SortDirectionType>...pairs ) {
+        	return new VoltTableComparator(voltTable, sortCol.toArray(pairs));
         }
         
         private List<ReconfigurationRange<T>> mergeReconfigurations(List<ReconfigurationRange<T>> reconfiguration_range, Table catalog_table) {

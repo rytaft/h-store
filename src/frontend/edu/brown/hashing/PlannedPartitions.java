@@ -789,7 +789,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             for(int i = 0; i < clone.getColumnCount(); i++) {
             	sortCol.add(Pair.of(i, SortDirectionType.ASC));
             }
-            this.cmp = new VoltTableComparator(clone, (Pair<Integer, SortDirectionType>[]) sortCol.toArray());
+            this.cmp = createComparator(sortCol, sortCol.get(0));
             if (cmp.compare(min_row, max_row) > 0) {
     			throw new ParseException("Min cannot be greater than max", -1);
     		}
@@ -800,6 +800,10 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             this.max_excl.addRow(max_row);
             this.min_incl.advanceToRow(0);
             this.max_excl.advanceToRow(0);
+        }
+        
+        private VoltTableComparator createComparator(ArrayList<Pair<Integer, SortDirectionType>> sortCol, Pair<Integer, SortDirectionType>...pairs ) {
+        	return new VoltTableComparator(clone, sortCol.toArray(pairs));
         }
 
         @Override
