@@ -42,8 +42,8 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
             "    \"tables\": {"+
             "      \"district\": {"+
             "        \"partitions\": {"+
-            "          \"0\": \"1-2:1-3\", "+
-            "          \"1\": \"1-2:3-11,2-3\""+
+            "          \"0\": \"1:1-3\", "+
+            "          \"1\": \"1:3-11,2-3\""+
             "        }"+
             "      },"+
             "      \"stock\": {"+
@@ -282,9 +282,9 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         old_table_map.put("table", old_table);
         PartitionPhase old_phase = new PartitionPhase(old_table_map);
 
-        news.add(new PartitionRange<Integer>(table, 1, "1-2:1-10"));
-        news.add(new PartitionRange<Integer>(table, 2, "1-2:10-20"));
-        news.add(new PartitionRange<Integer>(table, 3, "1-2:20-30"));
+        news.add(new PartitionRange<Integer>(table, 1, "1:1-10"));
+        news.add(new PartitionRange<Integer>(table, 2, "1:10-20"));
+        news.add(new PartitionRange<Integer>(table, 3, "1:20-30"));
         PartitionedTable<Integer> new_table = new PartitionedTable<>(news, "table", VoltType.INTEGER, table);
         it = new_table.partitions.iterator();
         while(it.hasNext()) {
