@@ -866,6 +866,9 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         	Object[] keys = new Object[this.min_incl.getColumnCount()];
         	int col = 0;
         	for(Object id : ids) {
+        		if(col >= this.non_null_cols) {
+        			break;
+        		}
         		keys[col] = id;
         		col++;
         	}
