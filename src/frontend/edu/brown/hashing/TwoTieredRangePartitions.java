@@ -350,10 +350,7 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
      */
     @Override
     public int getPreviousPartitionId(String table_name, Object id) throws Exception {
-    	if (id instanceof CompositeKey) {
-    		return getPreviousPartitionId(table_name, ((CompositeKey) id).getValues());
-    	}
-        PartitionPhase previousPlan = this.getPreviousPlan();
+    	PartitionPhase previousPlan = this.getPreviousPlan();
         if (previousPlan == null)
             return -1;
         PartitionedTable<?> table = previousPlan.getTable(table_name);
