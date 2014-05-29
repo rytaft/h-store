@@ -772,18 +772,13 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             	
         		// x-y
                 if (range.contains("-")) {
-                	if(col < ranges.length - 1) {
-                		throw new ParseException("keys with sub-ranges cannot span more than one key: " + range_str, -1);
-                	}
-            		String vals[] = range.split("-", 2);
+                	String vals[] = range.split("-", 2);
             		min_row[col] = VoltTypeUtil.getObjectFromString(vt, vals[0]);
             		max_row[col] = VoltTypeUtil.getObjectFromString(vt, vals[1]);
             	}
             	// x
             	else {
-            		Object obj = VoltTypeUtil.getObjectFromString(vt, range);
-            		min_row[col] = obj;
-            		max_row[col] = obj;
+            		throw new ParseException("range must have a min and max, e.g. min-max. provided range: " + range_str, -1);
             	}
             	col++;
             }
@@ -866,9 +861,6 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         	Object[] keys = new Object[this.min_incl.getColumnCount()];
         	int col = 0;
         	for(Object id : ids) {
-        		if(col >= this.non_null_cols) {
-        			break;
-        		}
         		keys[col] = id;
         		col++;
         	}
