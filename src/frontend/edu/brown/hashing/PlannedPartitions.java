@@ -644,7 +644,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
          */
         public void addPartitionRanges(int partition_id, String partition_values) throws ParseException {
             for (String range : partition_values.split(",")) {
-                this.partitions.add(new PartitionRange<T>(this.vt, partition_id, range));
+                this.partitions.add(new PartitionRange<T>(this.catalog_table, partition_id, range));
             }
         }
 
