@@ -165,12 +165,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         for(ColumnRef colRef : table.getPartitioncolumns()) {
         	cols[colRef.getIndex()] = colRef.getColumn();
         }
-        ArrayList<Column> colsList = new ArrayList<Column>();
-        for(Column col : cols) {
-        	colsList.add(col);
-        }
-        
-        VoltTable clone = CatalogUtil.getVoltTable(colsList);
+        VoltTable clone = CatalogUtil.getVoltTable(Arrays.asList(cols));
 
         ArrayList<Object[]> min_rows = new ArrayList<Object[]>();
         ArrayList<Object[]> max_rows = new ArrayList<Object[]>();
@@ -205,6 +200,10 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         	max_excl.addRow(row);
         }
 
+        LOG.info("min_incl: " + min_incl.toString());
+        LOG.info("max_excl: " + max_excl.toString());
+        LOG.info("non_null_cols: " + non_null_cols);
+        
         return new ReconfigurationRange<Long>(clone, min_incl, max_excl, non_null_cols, old_partition, new_partition);
     }
     
