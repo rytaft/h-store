@@ -627,7 +627,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
-                	if (p.inRange(ids)) {
+                	if (p.inRange(ids) && ids.size() >= p.non_null_cols) {
                 		return p.partition;
                 	}
                 }
