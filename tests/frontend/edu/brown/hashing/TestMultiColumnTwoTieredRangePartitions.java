@@ -269,15 +269,15 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         List<PartitionRange<Integer>> olds = new ArrayList<>();
         List<PartitionRange<Integer>> news = new ArrayList<>();
 
-        olds.add(new PartitionRange<Integer>(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1-3"));
+        olds.add(new PartitionRange<Integer>(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1"));
         PartitionedTable<Integer> old_table = new PartitionedTable<>(olds, "table", VoltType.INTEGER);
         Map<String, PartitionedTable<? extends Comparable<?>>> old_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
         old_table_map.put("table", old_table);
         PartitionPhase old_phase = new PartitionPhase(old_table_map);
 
-        news.add(new PartitionRange<Integer>(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1:1-10,2:1-10"));
-        news.add(new PartitionRange<Integer>(getTable(TPCCConstants.TABLENAME_DISTRICT), 2, "1:10-20,2:10-30"));
-        news.add(new PartitionRange<Integer>(getTable(TPCCConstants.TABLENAME_DISTRICT), 3, "1:20-30,3"));
+        news.add(new PartitionRange<Integer>(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1:1-10"));
+        news.add(new PartitionRange<Integer>(getTable(TPCCConstants.TABLENAME_DISTRICT), 2, "1:10-20"));
+        news.add(new PartitionRange<Integer>(getTable(TPCCConstants.TABLENAME_DISTRICT), 3, "1:20-30"));
         PartitionedTable<Integer> new_table = new PartitionedTable<>(news, "table", VoltType.INTEGER);
         Map<String, PartitionedTable<? extends Comparable<?>>> new_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
         new_table_map.put("table", new_table);
