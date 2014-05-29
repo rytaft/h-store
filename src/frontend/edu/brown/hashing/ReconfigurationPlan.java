@@ -102,11 +102,15 @@ public class ReconfigurationPlan {
           
           // get a volt table and volt table comparator
           Table table = old_table.getCatalog_table();
-          ArrayList<Column> cols = new ArrayList<Column>(table.getPartitioncolumns().size());
+          Column[] cols = new Column[table.getPartitioncolumns().size()];
           for(ColumnRef colRef : table.getPartitioncolumns()) {
-          	cols.add(colRef.getIndex(), colRef.getColumn());
+          	cols[colRef.getIndex()] = colRef.getColumn();
           }
-          VoltTable voltTable = CatalogUtil.getVoltTable(cols);
+          ArrayList<Column> colsList = new ArrayList<Column>();
+          for(Column col : cols) {
+          	colsList.add(col);
+          }
+          VoltTable voltTable = CatalogUtil.getVoltTable(colsList);
           
           ArrayList<Pair<Integer, SortDirectionType>> sortCol = new ArrayList<Pair<Integer, SortDirectionType>>();
           for(int i = 0; i < voltTable.getColumnCount(); i++) {
