@@ -3,7 +3,9 @@
  */
 package edu.brown.hstore;
 
+import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Iterator;
 
@@ -14,14 +16,17 @@ import org.junit.Test;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 import org.voltdb.benchmark.tpcc.TPCCConstants;
+import org.voltdb.catalog.Column;
 import org.voltdb.catalog.Site;
 import org.voltdb.catalog.Table;
 import org.voltdb.catalog.ColumnRef;
 import org.voltdb.client.Client;
 import org.voltdb.jni.ExecutionEngine;
 import org.voltdb.jni.ExecutionEngineJNI;
+import org.voltdb.types.SortDirectionType;
 import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTableUtil;
+import org.voltdb.utils.VoltTypeUtil;
 
 import edu.brown.BaseTestCase;
 import edu.brown.benchmark.AbstractProjectBuilder;
@@ -154,6 +159,55 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 
     }
     
+    private ReconfigurationRange<Long> getReconfigurationRange(Table table, Long[][] mins, 
+    		Long[][] maxs, int old_partition, int new_partition) {
+    	Column[] cols = new Column[table.getPartitioncolumns().size()];
+        for(ColumnRef colRef : table.getPartitioncolumns()) {
+        	cols[colRef.getIndex()] = colRef.getColumn();
+        }
+        ArrayList<Column> colsList = new ArrayList<Column>();
+        for(Column col : cols) {
+        	colsList.add(col);
+        }
+        
+        VoltTable clone = CatalogUtil.getVoltTable(colsList);
+
+        ArrayList<Object[]> min_rows = new ArrayList<Object[]>();
+        ArrayList<Object[]> max_rows = new ArrayList<Object[]>();
+        int non_null_cols = 0;
+        for(int i = 0; i < mins.length && i < maxs.length; i++) {
+        	Long[] minsSubKeys = mins[i];
+        	Long[] maxsSubKeys = maxs[i];
+        	Object[] min_row = new Object[clone.getColumnCount()];
+    		Object[] max_row = new Object[clone.getColumnCount()];
+    		int col = 0;
+    		for( ; col < minsSubKeys.length && col < maxsSubKeys.length && col < clone.getColumnCount(); col++) {
+        		min_row[col] = minsSubKeys[col];
+        		max_row[col] = maxsSubKeys[col];
+        	}
+    		non_null_cols = Math.max(non_null_cols, col);
+    		for ( ; col < clone.getColumnCount(); col++) {
+            	VoltType vt = clone.getColumnType(col);
+            	Object obj = vt.getNullValue();
+            	min_row[col] = obj;
+            	max_row[col] = obj;
+            }
+    		min_rows.add(min_row);
+    		max_rows.add(max_row);
+        }
+        
+        VoltTable min_incl = clone.clone(0);
+        VoltTable max_excl = clone.clone(0);
+        for(Object[] row : min_rows) {
+        	min_incl.addRow(row);
+        }
+        for(Object[] row : max_rows) {
+        	max_excl.addRow(row);
+        }
+
+        return new ReconfigurationRange<Long>(clone, min_incl, max_excl, non_null_cols, old_partition, new_partition);
+    }
+    
     String partitionPlan = "{" +
 "    		 \"TABLE_ENTRIES\": {" +
 "    	  \"{'database':'CUSTOMER'}\": {" +
@@ -279,7 +333,9 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         
     	ReconfigurationRange<Long> range; 
         VoltTable extractTable;
-        range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2);
+        Long[][] mins = new Long[][]{{ new Long(wid) }};
+    	Long[][] maxs = new Long[][]{{ new Long(wid+1) }};
+    	range = getReconfigurationRange(this.customer_tbl, mins, maxs, 1, 2);
         ArrayList<VoltType> types = new ArrayList<>();
 	    for(int col : cust_p_index) {
 	    	types.add(VoltType.get((byte) this.customer_tbl.getColumns().get(col).getType()));
@@ -334,7 +390,10 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	    int scale = scales[i];
     	    LOG.info("Testing for scale : " + scale);
     	    //extract
-            range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale+1), 1, 2);
+    	    
+    	    Long[][] mins = new Long[][]{{ new Long(scale) }};
+        	Long[][] maxs = new Long[][]{{ new Long(scale+1) }};
+        	range = getReconfigurationRange(this.customer_tbl, mins, maxs, 1, 2);
             ArrayList<VoltType> types = new ArrayList<>();
     	    for(int col : cust_p_index) {
     	    	types.add(VoltType.get((byte) this.customer_tbl.getColumns().get(col).getType()));
@@ -365,16 +424,17 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 
     }
     
+    
+    
     @Test
     public void testTwoColumnRangeExtractAll() throws Exception {
     	int wid = 2; // warehouse id
     	int did = 3; // district id
     	int[] keys = new int[]{ wid, did };
         
-    	ReconfigurationRange<Long> districtRange = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index[1]).getName(),
-    			VoltType.SMALLINT, new Long(did), new Long(did+1), 1, 2, null);
-        ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index[0]).getName(),
-        		VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2, districtRange);
+    	Long[][] mins = new Long[][]{{ new Long(wid), new Long(did) }};
+    	Long[][] maxs = new Long[][]{{ new Long(wid+1), new Long(did+1) }};
+    	ReconfigurationRange<Long> range = getReconfigurationRange(this.customer_tbl, mins, maxs, 1, 2);
         ArrayList<VoltType> types = new ArrayList<>();
 	    for(int col : cust_p_index) {
 	    	types.add(VoltType.get((byte) this.customer_tbl.getColumns().get(col).getType()));
@@ -431,11 +491,10 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	    	    int district_scale = scales[j];
 	    	    LOG.info("Testing for warehouse scale : " + warehouse_scale + ", district scale : " + district_scale);
 	    	    //extract
-	    	    ReconfigurationRange<Long> districtRange = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index[1]).getName(),
-	        			VoltType.SMALLINT, new Long(district_scale), new Long(district_scale+1), 1, 2, null);
-	    	    ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), this.customer_tbl.getColumns().get(this.cust_p_index[0]).getName(),
-	            		VoltType.SMALLINT, new Long(warehouse_scale), new Long(warehouse_scale+1), 1, 2, districtRange);
-	    	    ArrayList<VoltType> types = new ArrayList<>();
+	    	    Long[][] mins = new Long[][]{{ new Long(warehouse_scale), new Long(district_scale) }};
+	        	Long[][] maxs = new Long[][]{{ new Long(warehouse_scale+1), new Long(district_scale+1) }};
+	        	ReconfigurationRange<Long> range = getReconfigurationRange(this.customer_tbl, mins, maxs, 1, 2);
+	            ArrayList<VoltType> types = new ArrayList<>();
 	    	    for(int col : cust_p_index) {
 	    	    	types.add(VoltType.get((byte) this.customer_tbl.getColumns().get(col).getType()));
 	    	    }
@@ -473,7 +532,9 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         
     	ReconfigurationRange<Long> range; 
         VoltTable extractTable;
-        range = new ReconfigurationRange<Long>(this.orders_tbl.getName(), VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2);
+        Long[][] mins = new Long[][]{{ new Long(wid) }};
+    	Long[][] maxs = new Long[][]{{ new Long(wid+1) }};
+    	range = getReconfigurationRange(this.orders_tbl, mins, maxs, 1, 2);
         ArrayList<VoltType> types = new ArrayList<>();
 	    for(int col : orders_p_index) {
 	    	types.add(VoltType.get((byte) this.orders_tbl.getColumns().get(col).getType()));
@@ -528,7 +589,9 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	    int scale = scales[i];
     	    LOG.info("Testing for scale : " + scale);
     	    //extract
-            range = new ReconfigurationRange<Long>(this.orders_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale+1), 1, 2);
+    	    Long[][] mins = new Long[][]{{ new Long(scale) }};
+        	Long[][] maxs = new Long[][]{{ new Long(scale+1) }};
+        	range = getReconfigurationRange(this.orders_tbl, mins, maxs, 1, 2);
             ArrayList<VoltType> types = new ArrayList<>();
     	    for(int col : orders_p_index) {
     	    	types.add(VoltType.get((byte) this.orders_tbl.getColumns().get(col).getType()));
@@ -565,10 +628,9 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	int did = 3; // district id
     	int[] keys = new int[]{ wid, did };
         
-    	ReconfigurationRange<Long> districtRange = new ReconfigurationRange<Long>(this.orders_tbl.getName(), this.orders_tbl.getColumns().get(this.orders_p_index[1]).getName(),
-    			VoltType.SMALLINT, new Long(did), new Long(did+1), 1, 2, null);
-        ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.orders_tbl.getName(), this.orders_tbl.getColumns().get(this.orders_p_index[0]).getName(),
-        		VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2, districtRange);
+    	Long[][] mins = new Long[][]{{ new Long(wid), new Long(did) }};
+    	Long[][] maxs = new Long[][]{{ new Long(wid+1), new Long(did+1) }};
+    	ReconfigurationRange<Long> range = getReconfigurationRange(this.orders_tbl, mins, maxs, 1, 2);
         ArrayList<VoltType> types = new ArrayList<>();
 	for(int col : orders_p_index) {
 	    types.add(VoltType.get((byte) this.orders_tbl.getColumns().get(col).getType()));
@@ -625,11 +687,10 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	    	    int district_scale = scales[j];
 	    	    LOG.info("Testing for warehouse scale : " + warehouse_scale + ", district scale : " + district_scale);
 	    	    //extract
-	    	    ReconfigurationRange<Long> districtRange = new ReconfigurationRange<Long>(this.orders_tbl.getName(), this.orders_tbl.getColumns().get(this.orders_p_index[1]).getName(),
-	        			VoltType.SMALLINT, new Long(district_scale), new Long(district_scale+1), 1, 2, null);
-	    	    ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.orders_tbl.getName(), this.orders_tbl.getColumns().get(this.orders_p_index[0]).getName(),
-	            		VoltType.SMALLINT, new Long(warehouse_scale), new Long(warehouse_scale+1), 1, 2, districtRange);
-	    	    ArrayList<VoltType> types = new ArrayList<>();
+	    	    Long[][] mins = new Long[][]{{ new Long(warehouse_scale), new Long(district_scale) }};
+	        	Long[][] maxs = new Long[][]{{ new Long(warehouse_scale+1), new Long(district_scale+1) }};
+	        	ReconfigurationRange<Long> range = getReconfigurationRange(this.orders_tbl, mins, maxs, 1, 2);
+	            ArrayList<VoltType> types = new ArrayList<>();
 	    	    for(int col : orders_p_index) {
 	    	    	types.add(VoltType.get((byte) this.orders_tbl.getColumns().get(col).getType()));
 	    	    }
@@ -691,24 +752,17 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	    	    int order_scale = scales[k];
 	    	    LOG.info("Testing for warehouse scale : " + warehouse_scale + ", district scale : " + district_scale + ", order scale : " + order_scale);
 	    	    //extract
-		    long[] ol_mins = new long[]{ 2, 37, 90 };
-		    long[] ol_maxs = new long[]{ 20, 38, 95 };
-		    ArrayList<Long> ol_min_list = new ArrayList<>();
-		    ArrayList<Long> ol_max_list = new ArrayList<>();
-		    for(long min : ol_mins) {
-			ol_min_list.add(min);
-		    }
-		    for(long max : ol_maxs) {
-			ol_max_list.add(max);
-		    }
-	    	    ReconfigurationRange<Long> olRange = new ReconfigurationRange<Long>(this.orderline_tbl.getName(), this.orderline_tbl.getColumns().get(this.orderline_p_index[3]).getName(),
-	        			VoltType.SMALLINT, ol_min_list, ol_max_list, 1, 2, null);
-	    	    ReconfigurationRange<Long> orderRange = new ReconfigurationRange<Long>(this.orderline_tbl.getName(), this.orderline_tbl.getColumns().get(this.orderline_p_index[2]).getName(),
-	        			VoltType.SMALLINT, new Long(order_scale), new Long(order_scale+1), 1, 2, olRange);
-	    	    ReconfigurationRange<Long> districtRange = new ReconfigurationRange<Long>(this.orderline_tbl.getName(), this.orderline_tbl.getColumns().get(this.orderline_p_index[1]).getName(),
-	        			VoltType.SMALLINT, new Long(district_scale), new Long(district_scale+1), 1, 2, orderRange);
-	    	    ReconfigurationRange<Long> range = new ReconfigurationRange<Long>(this.orderline_tbl.getName(), this.orderline_tbl.getColumns().get(this.orderline_p_index[0]).getName(),
-	            		VoltType.SMALLINT, new Long(warehouse_scale), new Long(warehouse_scale+1), 1, 2, districtRange);
+		    
+	    	    Long[][] mins = new Long[][]{
+	    	    		{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(2) },
+		    			{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(37) },
+		    			{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(90) }};
+	    	    Long[][] maxs = new Long[][]{
+	    	    		{ new Long(warehouse_scale+1), new Long(district_scale+1), new Long(order_scale+1), new Long(20) },
+        				{ new Long(warehouse_scale+1), new Long(district_scale+1), new Long(order_scale+1), new Long(38) },
+        				{ new Long(warehouse_scale+1), new Long(district_scale+1), new Long(order_scale+1), new Long(95) }};
+	    	    ReconfigurationRange<Long> range = getReconfigurationRange(this.orderline_tbl, mins, maxs, 1, 2);
+        
 	    	    ArrayList<VoltType> types = new ArrayList<>();
 	    	    for(int col : orderline_p_index) {
 	    	    	types.add(VoltType.get((byte) this.orderline_tbl.getColumns().get(col).getType()));
