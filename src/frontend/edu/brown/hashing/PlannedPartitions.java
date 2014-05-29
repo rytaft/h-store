@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -734,26 +735,16 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             this.vt = vt;            
         }
 
-        // new stuff!!
         @SuppressWarnings("unchecked")
         public PartitionRange(Table table, int partition_id, String range_str) throws ParseException {
             this.partition = partition_id;
             this.catalog_table = table;
             
-            // TODO add support for open ranges ie -100 (< 100) and 100-
-            // (anything >=
-            // 100)
-            
             Column[] cols = new Column[table.getPartitioncolumns().size()];
             for(ColumnRef colRef : table.getPartitioncolumns()) {
             	cols[colRef.getIndex()] = colRef.getColumn();
             }
-            ArrayList<Column> colsList = new ArrayList<Column>();
-            for(Column col : cols) {
-            	colsList.add(col);
-            }
-            
-            this.clone = CatalogUtil.getVoltTable(colsList);
+            this.clone = CatalogUtil.getVoltTable(Arrays.asList(cols));
             
             String ranges[];
             // multi-key partitioning

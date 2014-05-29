@@ -42,8 +42,8 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
             "    \"tables\": {"+
             "      \"district\": {"+
             "        \"partitions\": {"+
-            "          \"0\": \"1:1-3\", "+
-            "          \"1\": \"1:3-11,2-3\""+
+            "          \"0\": \"1:-3\", "+
+            "          \"1\": \"1-2:3-,2-3\""+
             "        }"+
             "      },"+
             "      \"stock\": {"+
@@ -290,11 +290,9 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         ReconfigurationTable<Integer> reconfig = (ReconfigurationTable<Integer>) reconfig_plan.tables_map.get("table");
         ReconfigurationRange<Integer> range = null;
         range = reconfig.getReconfigurations().get(0);
-        LOG.info("reconfiguration range 1: mins: " + range.getMinIncl().toString() + " maxs: " + range.getMaxExcl().toString() + " partition: " + range.partition);
         assertTrue(range.getMinIncl().getLong(1) == 10 && range.getMaxExcl().getLong(1) == 20 && range.old_partition == 1 && range.new_partition == 2);
 
         range = reconfig.getReconfigurations().get(1);
-        LOG.info("reconfiguration range 2: mins: " + range.getMinIncl().toString() + " maxs: " + range.getMaxExcl().toString() + " partition: " + range.partition);
         assertTrue(range.getMinIncl().getLong(1) == 20 && range.getMaxExcl().wasNull() && range.old_partition == 1 && range.new_partition == 3);
 
     }

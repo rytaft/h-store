@@ -5,6 +5,7 @@ package edu.brown.hashing;
 
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -106,11 +107,7 @@ public class ReconfigurationPlan {
           for(ColumnRef colRef : table.getPartitioncolumns()) {
           	cols[colRef.getIndex()] = colRef.getColumn();
           }
-          ArrayList<Column> colsList = new ArrayList<Column>();
-          for(Column col : cols) {
-          	colsList.add(col);
-          }
-          VoltTable voltTable = CatalogUtil.getVoltTable(colsList);
+          VoltTable voltTable = CatalogUtil.getVoltTable(Arrays.asList(cols));
           
           ArrayList<Pair<Integer, SortDirectionType>> sortCol = new ArrayList<Pair<Integer, SortDirectionType>>();
           for(int i = 0; i < voltTable.getColumnCount(); i++) {
@@ -470,34 +467,6 @@ public class ReconfigurationPlan {
             this.single_range = false;
         }
         
-//        public ReconfigurationRange(String table_name, String column_name, VoltType vt, T min_inclusive, T max_exclusive, 
-//        		int old_partition, int new_partition, ReconfigurationRange<?> sub_range) {
-//        	this(table_name, vt, min_inclusive, max_exclusive, old_partition, new_partition);
-//        	if(sub_range != null) {
-//        		assert(sub_range.old_partition == old_partition);
-//        		assert(sub_range.new_partition == new_partition);
-//        		assert(min_inclusive.equals(max_exclusive) || 
-//        				min_inclusive.equals((Long)max_exclusive - 1));
-//        	}
-//        	this.sub_range = sub_range;
-//        	this.column_name = column_name;
-//        }
-//        
-//        public ReconfigurationRange(String table_name, String column_name, VoltType vt, List<Long> min_inclusive, List<Long> max_exclusive, 
-//        		int old_partition, int new_partition, ReconfigurationRange<?> sub_range) {
-//        	this(table_name, vt, min_inclusive, max_exclusive, old_partition, new_partition);
-//        	if(sub_range != null) {
-//        		assert(sub_range.old_partition == old_partition);
-//        		assert(sub_range.new_partition == new_partition);
-//        		assert(min_inclusive.size() == 1 && max_exclusive.size() == 1);
-//        		assert(min_inclusive.get(0).equals(max_exclusive.get(0)) || 
-//        				min_inclusive.get(0).equals(max_exclusive.get(0) - 1));
-//        	}
-//        	this.sub_range = sub_range;
-//        	this.column_name = column_name;
-//        }
-        
-        
         public ReconfigurationRange(VoltTable clone, VoltTable min_incl, VoltTable max_excl, int non_null_cols, int old_partition, int new_partition) {
             super(VoltType.BIGINT);
             
@@ -586,38 +555,6 @@ public class ReconfigurationPlan {
             }
             return false;
         }
-        
-//        // for multi-column partitioning
-//        public boolean inRange(List<Comparable<?>> keys){
-//            try{
-//            	List<Pair<Long,Long>> r = this.ranges;
-//            	boolean inRange = false;
-//            	for(Comparable<?> key : keys) {
-//	                long keyL = ((Number)key).longValue();
-//	                for(Pair<Long,Long> range : r) {
-//	                    long min_long = range.getFirst();
-//	                    long max_long = range.getSecond();
-//	                    if(min_long <= keyL && (max_long > keyL || 
-//	                            (max_long == min_long && min_long == keyL))){
-//	                        inRange = true;
-//	                        break;
-//	                    } else {
-//	                    	return false;
-//	                    }
-//	                }
-//	                if(this.sub_range == null) {
-//	                	break;
-//	                } else {
-//	                	r = this.sub_range.ranges;
-//	                }
-//            	}
-//            	return inRange;
-//            } catch(Exception e){
-//                LOG.error("TODO only number keys supported");
-//                LOG.error(e);
-//            }
-//            return false;
-//        }
         
         public boolean inRange(Object[] keys) {
         	this.min_incl.resetRowPosition();
