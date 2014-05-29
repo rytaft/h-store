@@ -200,10 +200,6 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         	max_excl.addRow(row);
         }
 
-        LOG.info("min_incl: " + min_incl.toString());
-        LOG.info("max_excl: " + max_excl.toString());
-        LOG.info("non_null_cols: " + non_null_cols);
-        
         return new ReconfigurationRange<Long>(clone, min_incl, max_excl, non_null_cols, old_partition, new_partition);
     }
     
