@@ -44,7 +44,6 @@ import edu.brown.mappings.ParameterMappingsSet;
 import edu.brown.utils.FileUtil;
 import edu.brown.utils.JSONSerializable;
 import edu.brown.utils.StringUtil;
-import edu.brown.utils.CompositeKey;
 
 //       TODO This class likely needs to be relocated (ae)
 /**
@@ -301,10 +300,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
      * @throws Exception
      */
     public int getPartitionId(String table_name, Object id) throws Exception {
-    	if (id instanceof CompositeKey) {
-    		return getPartitionId(table_name, ((CompositeKey) id).getValues());
-    	}
-        PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
+    	PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
         PartitionedTable<?> table = phase.getTable(table_name);
         if (table == null) {
             if (debug.val)
@@ -369,10 +365,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
      * @throws Exception
      */
     public int getPreviousPartitionId(String table_name, Object id) throws Exception {
-    	if (id instanceof CompositeKey) {
-    		return getPreviousPartitionId(table_name, ((CompositeKey) id).getValues());
-    	}
-        String previousPhase = this.getPreviousPhase_phase();
+    	String previousPhase = this.getPreviousPhase_phase();
         if (previousPhase == null)
             return -1;
         PartitionPhase phase = this.partition_phase_map.get(previousPhase);
@@ -670,6 +663,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         protected VoltType vt;
         
         // new stuff!!
+        protected VoltTable clone;
         protected VoltTable min_incl;
         protected VoltTable max_excl;
         protected int non_null_cols;
@@ -739,11 +733,16 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             // (anything >=
             // 100)
             
-            ArrayList<Column> cols = new ArrayList<Column>(table.getPartitioncolumns().size());
+            Column[] cols = new Column[table.getPartitioncolumns().size()];
             for(ColumnRef colRef : table.getPartitioncolumns()) {
-            	cols.add(colRef.getIndex(), colRef.getColumn());
+            	cols[colRef.getIndex()] = colRef.getColumn();
             }
-            VoltTable voltTable = CatalogUtil.getVoltTable(cols);
+            ArrayList<Column> colsList = new ArrayList<Column>();
+            for(Column col : cols) {
+            	colsList.add(col);
+            }
+            
+            this.clone = CatalogUtil.getVoltTable(colsList);
             
             String ranges[];
             // multi-key partitioning
@@ -754,11 +753,11 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             }
 
             int col = 0;
-            Object[] min_row = new Object[voltTable.getColumnCount()];
-            Object[] max_row = new Object[voltTable.getColumnCount()];
+            Object[] min_row = new Object[clone.getColumnCount()];
+            Object[] max_row = new Object[clone.getColumnCount()];
             for(String range : ranges) {
-            	assert(col < voltTable.getColumnCount());
-            	VoltType vt = voltTable.getColumnType(col);
+            	assert(col < clone.getColumnCount());
+            	VoltType vt = clone.getColumnType(col);
             	
         		// x-y
                 if (range.contains("-")) {
@@ -779,24 +778,24 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             }
             
             this.non_null_cols = col;
-            for ( ; col < voltTable.getColumnCount(); col++) {
-            	VoltType vt = voltTable.getColumnType(col);
+            for ( ; col < clone.getColumnCount(); col++) {
+            	VoltType vt = clone.getColumnType(col);
             	Object obj = vt.getNullValue();
             	min_row[col] = obj;
             	max_row[col] = obj;
             }
             
             ArrayList<Pair<Integer, SortDirectionType>> sortCol = new ArrayList<Pair<Integer, SortDirectionType>>();
-            for(int i = 0; i < voltTable.getColumnCount(); i++) {
+            for(int i = 0; i < clone.getColumnCount(); i++) {
             	sortCol.add(Pair.of(i, SortDirectionType.ASC));
             }
-            this.cmp = new VoltTableComparator(voltTable, (Pair<Integer, SortDirectionType>[]) sortCol.toArray());
+            this.cmp = new VoltTableComparator(clone, (Pair<Integer, SortDirectionType>[]) sortCol.toArray());
             if (cmp.compare(min_row, max_row) > 0) {
     			throw new ParseException("Min cannot be greater than max", -1);
     		}
             
-            this.min_incl = voltTable.clone(0);
-            this.max_excl = voltTable.clone(0);
+            this.min_incl = clone.clone(0);
+            this.max_excl = clone.clone(0);
             this.min_incl.addRow(min_row);
             this.max_excl.addRow(max_row);
             this.min_incl.advanceToRow(0);
@@ -888,6 +887,10 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         
         public VoltTable getMaxExcl() {
         	return this.max_excl;
+        }
+        
+        public VoltTable getClone() {
+        	return this.clone;
         }
         
         public int getNonNullCols() {
