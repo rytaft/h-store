@@ -295,7 +295,7 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
 
         range = reconfig.getReconfigurations().get(1);
         LOG.info("reconfiguration range 2: mins: " + range.getMinIncl().toString() + " maxs: " + range.getMaxExcl().toString() + " partition: " + range.partition);
-        assertTrue(range.getMinIncl().getLong(1) == 20 && range.getMaxExcl().getLong(1) == 30 && range.old_partition == 1 && range.new_partition == 3);
+        assertTrue(range.getMinIncl().getLong(1) == 20 && range.getMaxExcl().wasNull() && range.old_partition == 1 && range.new_partition == 3);
 
     }
 }
