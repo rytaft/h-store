@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Iterator;
 
 import org.apache.log4j.Logger;
 import org.json.JSONObject;
@@ -272,6 +273,11 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         Table table = getTable(TPCCConstants.TABLENAME_DISTRICT);
         olds.add(new PartitionRange<Integer>(table, 1, "1"));
         PartitionedTable<Integer> old_table = new PartitionedTable<>(olds, "table", VoltType.INTEGER, table);
+        Iterator<PartitionRange<Integer>> it = old_table.partitions.iterator();
+        while(it.hasNext()) {
+        	PartitionRange<Integer> range = it.next();
+        	LOG.info("old table: mins: " + range.min_incl.toString() + " maxs: " + range.max_excl.toString() + " partition: " + range.partition);
+        }
         Map<String, PartitionedTable<? extends Comparable<?>>> old_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
         old_table_map.put("table", old_table);
         PartitionPhase old_phase = new PartitionPhase(old_table_map);
@@ -280,6 +286,11 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         news.add(new PartitionRange<Integer>(table, 2, "1:10-20"));
         news.add(new PartitionRange<Integer>(table, 3, "1:20-30"));
         PartitionedTable<Integer> new_table = new PartitionedTable<>(news, "table", VoltType.INTEGER, table);
+        it = new_table.partitions.iterator();
+        while(it.hasNext()) {
+        	PartitionRange<Integer> range = it.next();
+        	LOG.info("new table: mins: " + range.min_incl.toString() + " maxs: " + range.max_excl.toString() + " partition: " + range.partition);
+        }
         Map<String, PartitionedTable<? extends Comparable<?>>> new_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
         new_table_map.put("table", new_table);
         PartitionPhase new_phase = new PartitionPhase(new_table_map);
