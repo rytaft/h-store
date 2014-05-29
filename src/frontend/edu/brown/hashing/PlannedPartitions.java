@@ -773,18 +773,18 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         		// x-y
                 if (range.contains("-")) {
                 	if(col < ranges.length - 1) {
-                		throw new ParseException("keys with sub-ranges cannot span more than one key. range: " + range_str, -1);
+                		LOG.warn("key with sub-range spans more than one key. range: " + range_str);
                 	}
             		String vals[] = range.split("-", 2);
-            		min_row[col] = VoltTypeUtil.getObjectFromString(vt, vals[0]);
-            		max_row[col] = VoltTypeUtil.getObjectFromString(vt, vals[1]);
+            		min_row[col] = parseValue(vt, vals[0]);
+            		max_row[col] = parseValue(vt, vals[1]);
             	}
             	// x
             	else {
             		if(col == ranges.length - 1) {
                 		throw new ParseException("keys without sub-ranges must be specified as min-max. range: " + range_str, -1);
                 	}
-            		Object obj = VoltTypeUtil.getObjectFromString(vt, range);
+            		Object obj = parseValue(vt, range);
             		min_row[col] = obj;
             		max_row[col] = obj;
             	}
@@ -813,9 +813,16 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             this.max_excl.advanceToRow(0);
 
             if (cmp.compare(this.min_incl.getRowArray(), this.max_excl.getRowArray()) > 0) {
-		throw new ParseException("Min cannot be greater than max", -1);
+            	throw new ParseException("Min cannot be greater than max", -1);
     	    }
             
+        }
+        
+        private Object parseValue(VoltType vt, String value) throws ParseException {
+        	if (value.isEmpty()) {
+        		return vt.getNullValue();
+        	}
+        	return VoltTypeUtil.getObjectFromString(vt, value);
         }
         
         private VoltTableComparator createComparator(ArrayList<Pair<Integer, SortDirectionType>> sortCol, Pair<Integer, SortDirectionType>...pairs ) {
