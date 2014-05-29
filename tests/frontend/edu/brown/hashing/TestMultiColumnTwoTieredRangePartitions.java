@@ -273,11 +273,6 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         Table table = getTable(TPCCConstants.TABLENAME_DISTRICT);
         olds.add(new PartitionRange<Integer>(table, 1, "1-2"));
         PartitionedTable<Integer> old_table = new PartitionedTable<>(olds, "table", VoltType.INTEGER, table);
-        Iterator<PartitionRange<Integer>> it = old_table.partitions.iterator();
-        while(it.hasNext()) {
-        	PartitionRange<Integer> range = it.next();
-        	LOG.info("old table: mins: " + range.min_incl.toString() + " maxs: " + range.max_excl.toString() + " partition: " + range.partition);
-        }
         Map<String, PartitionedTable<? extends Comparable<?>>> old_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
         old_table_map.put("table", old_table);
         PartitionPhase old_phase = new PartitionPhase(old_table_map);
@@ -286,11 +281,6 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         news.add(new PartitionRange<Integer>(table, 2, "1:10-20"));
         news.add(new PartitionRange<Integer>(table, 3, "1-2:20-"));
         PartitionedTable<Integer> new_table = new PartitionedTable<>(news, "table", VoltType.INTEGER, table);
-        it = new_table.partitions.iterator();
-        while(it.hasNext()) {
-        	PartitionRange<Integer> range = it.next();
-        	LOG.info("new table: mins: " + range.min_incl.toString() + " maxs: " + range.max_excl.toString() + " partition: " + range.partition);
-        }
         Map<String, PartitionedTable<? extends Comparable<?>>> new_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
         new_table_map.put("table", new_table);
         PartitionPhase new_phase = new PartitionPhase(new_table_map);
@@ -300,9 +290,11 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         ReconfigurationTable<Integer> reconfig = (ReconfigurationTable<Integer>) reconfig_plan.tables_map.get("table");
         ReconfigurationRange<Integer> range = null;
         range = reconfig.getReconfigurations().get(0);
+        LOG.info("reconfiguration range 1: mins: " + range.getMinIncl().toString() + " maxs: " + range.getMaxExcl().toString() + " partition: " + range.partition);
         assertTrue(range.getMinIncl().getLong(1) == 10 && range.getMaxExcl().getLong(1) == 20 && range.old_partition == 1 && range.new_partition == 2);
 
         range = reconfig.getReconfigurations().get(1);
+        LOG.info("reconfiguration range 2: mins: " + range.getMinIncl().toString() + " maxs: " + range.getMaxExcl().toString() + " partition: " + range.partition);
         assertTrue(range.getMinIncl().getLong(1) == 20 && range.getMaxExcl().getLong(1) == 30 && range.old_partition == 1 && range.new_partition == 3);
 
     }
