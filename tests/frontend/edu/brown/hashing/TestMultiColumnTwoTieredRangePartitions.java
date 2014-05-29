@@ -228,8 +228,8 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         JSONObject test_json = new JSONObject(FileUtil.readFile(f1));
         ExplicitPartitions p = new TwoTieredRangePartitions(catalogContext, test_json);
         p.setPartitionPlan(json_path1);
-        assertEquals(1, p.getPartitionId("district", new Long[]{ 1L, 1L }));
-        assertEquals(2, p.getPartitionId("district", new Long[]{ 1L, 4L }));
+        assertEquals(0, p.getPartitionId("district", new Long[]{ 1L, 1L }));
+        assertEquals(1, p.getPartitionId("district", new Long[]{ 1L, 4L }));
     }
 
     public void testExtractTableNames() throws Exception {
@@ -243,18 +243,18 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         JSONObject test_json = new JSONObject(test_json1);
         ExplicitPartitions p = new TwoTieredRangePartitions(catalogContext, test_json);
         p.setPartitionPlan(json_path1);
-        assertEquals(1, p.getPartitionId("district", new Long[]{ 1L, 1L }));
-        assertEquals(2, p.getPartitionId("district", new Long[]{ 1L, 5L }));
-        assertEquals(2, p.getPartitionId("district", new Long[]{ 2L, 2L }));
-        assertEquals(2, p.getPartitionId("district", new Long[]{ 2L }));
+        assertEquals(0, p.getPartitionId("district", new Long[]{ 1L, 1L }));
+        assertEquals(1, p.getPartitionId("district", new Long[]{ 1L, 5L }));
+        assertEquals(1, p.getPartitionId("district", new Long[]{ 2L, 2L }));
+        assertEquals(1, p.getPartitionId("district", new Long[]{ 2L }));
         assertEquals(-1, p.getPartitionId("district", new Long[]{ 1L }));
 
         p.setPartitionPlan(json_path2);
-        assertEquals(1, p.getPartitionId("district", new Long[]{ 1L, 1L }));
-        assertEquals(1, p.getPartitionId("district", new Long[]{ 1L, 5L }));
-        assertEquals(2, p.getPartitionId("district", new Long[]{ 2L, 2L }));
-        assertEquals(2, p.getPartitionId("district", new Long[]{ 2L }));
-        assertEquals(1, p.getPartitionId("district", new Long[]{ 1L }));
+        assertEquals(0, p.getPartitionId("district", new Long[]{ 1L, 1L }));
+        assertEquals(0, p.getPartitionId("district", new Long[]{ 1L, 5L }));
+        assertEquals(1, p.getPartitionId("district", new Long[]{ 2L, 2L }));
+        assertEquals(1, p.getPartitionId("district", new Long[]{ 2L }));
+        assertEquals(0, p.getPartitionId("district", new Long[]{ 1L }));
     }
 
     public void testPartitionRangeCompare() throws Exception {
