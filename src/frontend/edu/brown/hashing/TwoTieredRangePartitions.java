@@ -39,7 +39,6 @@ import edu.brown.hstore.HStoreConstants;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.mappings.ParameterMappingsSet;
-import edu.brown.utils.CompositeKey;
 import edu.brown.utils.FileUtil;
 import edu.brown.utils.JSONSerializable;
 import edu.brown.utils.StringUtil;
@@ -275,10 +274,7 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
      */
     @Override
     public int getPartitionId(String table_name, Object id) throws Exception {
-    	if (id instanceof CompositeKey) {
-    		return getPartitionId(table_name, ((CompositeKey) id).getValues());
-    	}
-        PartitionPhase plan = this.getCurrentPlan();
+    	PartitionPhase plan = this.getCurrentPlan();
         PartitionedTable<?> table = plan.getTable(table_name);
         if (table == null) {
             if (debug.val)
@@ -311,6 +307,17 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
         return table.findPartition(ids);
     }
 
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(java.lang.String, java.lang.Object)
+     */
+    @Override
+    public int getPartitionId(String table_name, Object[] ids) throws Exception {
+    	ArrayList<Object> idList = new ArrayList<>();
+    	for (Object id : ids) {
+    		idList.add(id);
+    	}
+    	return getPartitionId(table_name, idList);
+    }
     
     /* (non-Javadoc)
      * @see edu.brown.hashing.ExplicitPartition#getPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)

@@ -333,6 +333,17 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         return table.findPartition(ids);
     }
 
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(java.lang.String, java.lang.Object)
+     */
+    @Override
+    public int getPartitionId(String table_name, Object[] ids) throws Exception {
+    	ArrayList<Object> idList = new ArrayList<>();
+    	for (Object id : ids) {
+    		idList.add(id);
+    	}
+    	return getPartitionId(table_name, idList);
+    }
     
     /* (non-Javadoc)
      * @see edu.brown.hashing.ExplicitPartition#getPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)

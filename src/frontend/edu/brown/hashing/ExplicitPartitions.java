@@ -38,6 +38,8 @@ public interface ExplicitPartitions {
 
     public abstract int getPartitionId(String table_name, List<Object> ids) throws Exception;
     
+    public abstract int getPartitionId(String table_name, Object[] ids) throws Exception;
+    
     public abstract int getPartitionId(CatalogType catalog, Object id) throws Exception;
 
     public abstract int getPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception;
