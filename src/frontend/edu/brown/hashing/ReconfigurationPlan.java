@@ -507,7 +507,7 @@ public class ReconfigurationPlan {
             for(int i = 0; i < this.clone.getColumnCount(); i++) {
             	sortCol.add(Pair.of(i, SortDirectionType.ASC));
             }
-            this.cmp = new VoltTableComparator(this.clone, (Pair<Integer, SortDirectionType>[]) sortCol.toArray());
+            this.cmp = createComparator(sortCol, sortCol.get(0));
             
             this.min_incl = min_incl;
             this.max_excl = max_excl;
@@ -516,6 +516,10 @@ public class ReconfigurationPlan {
             this.old_partition = old_partition;
             this.new_partition = new_partition;
             this.single_range = false;
+        }
+        
+        private VoltTableComparator createComparator(ArrayList<Pair<Integer, SortDirectionType>> sortCol, Pair<Integer, SortDirectionType>...pairs ) {
+        	return new VoltTableComparator(clone, sortCol.toArray(pairs));
         }
 
         @Override
