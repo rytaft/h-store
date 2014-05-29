@@ -873,7 +873,10 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         		VoltType vt = this.min_incl.getColumnType(col);
             	keys[col] = vt.getNullValue();
         	}
-        	return inRange(keys);
+        	VoltTable temp = this.clone.clone(0);
+        	temp.addRow(keys);
+        	temp.advanceToRow(0);
+        	return inRange(temp.getRowArray());
         }
         
         public boolean inRange(Object[] keys) {
