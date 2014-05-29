@@ -258,12 +258,10 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
     }
 
     public void testPartitionRangeCompare() throws Exception {
-        PartitionRange<Long> pr1_20 = new PartitionRange<Long>(VoltType.INTEGER, 1, "1-20");
-        PartitionRange<Long> pr2_3 = new PartitionRange<Long>(VoltType.INTEGER, 1, "2-3");
-        PartitionRange<Long> pr1_4 = new PartitionRange<Long>(VoltType.INTEGER, 1, "1-4", pr1_20);
-        PartitionRange<Long> pr1_4b = new PartitionRange<Long>(VoltType.INTEGER, 1, "1-4", pr2_3);
-        assertTrue(pr1_4.compareTo(pr1_4b) < 0);
-        assertTrue(pr1_4b.compareTo(pr1_4) > 0);
+        PartitionRange<Long> pr1 = new PartitionRange<Long>(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1:1-20");
+        PartitionRange<Long> pr2 = new PartitionRange<Long>(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1:2-3");
+        assertTrue(pr1.compareTo(pr2) < 0);
+        assertTrue(pr2.compareTo(pr1) > 0);
     }
 
     @SuppressWarnings("unchecked")
@@ -271,15 +269,15 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         List<PartitionRange<Integer>> olds = new ArrayList<>();
         List<PartitionRange<Integer>> news = new ArrayList<>();
 
-        olds.add(new PartitionRange<Integer>(VoltType.INTEGER, 1, "1-3"));
+        olds.add(new PartitionRange<Integer>(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1-3"));
         PartitionedTable<Integer> old_table = new PartitionedTable<>(olds, "table", VoltType.INTEGER);
         Map<String, PartitionedTable<? extends Comparable<?>>> old_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
         old_table_map.put("table", old_table);
         PartitionPhase old_phase = new PartitionPhase(old_table_map);
 
-        news.add(new PartitionRange<Integer>(VoltType.INTEGER, 1, "1:1-10,2:1-10"));
-        news.add(new PartitionRange<Integer>(VoltType.INTEGER, 2, "1:10-20,2:10-30"));
-        news.add(new PartitionRange<Integer>(VoltType.INTEGER, 3, "1:20-30,3"));
+        news.add(new PartitionRange<Integer>(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1:1-10,2:1-10"));
+        news.add(new PartitionRange<Integer>(getTable(TPCCConstants.TABLENAME_DISTRICT), 2, "1:10-20,2:10-30"));
+        news.add(new PartitionRange<Integer>(getTable(TPCCConstants.TABLENAME_DISTRICT), 3, "1:20-30,3"));
         PartitionedTable<Integer> new_table = new PartitionedTable<>(news, "table", VoltType.INTEGER);
         Map<String, PartitionedTable<? extends Comparable<?>>> new_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
         new_table_map.put("table", new_table);
@@ -290,10 +288,10 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         ReconfigurationTable<Integer> reconfig = (ReconfigurationTable<Integer>) reconfig_plan.tables_map.get("table");
         ReconfigurationRange<Integer> range = null;
         range = reconfig.getReconfigurations().get(0);
-        assertTrue(range.sub_range.getMin_inclusive() == 10 && range.sub_range.getMax_exclusive() == 20 && range.old_partition == 1 && range.new_partition == 2);
+        assertTrue(range.getMinIncl().getLong(1) == 10 && range.getMaxExcl().getLong(1) == 20 && range.old_partition == 1 && range.new_partition == 2);
 
         range = reconfig.getReconfigurations().get(1);
-        assertTrue(range.sub_range.getMin_inclusive() == 20 && range.sub_range.getMax_exclusive() == 30 && range.old_partition == 1 && range.new_partition == 3);
+        assertTrue(range.getMinIncl().getLong(1) == 20 && range.getMaxExcl().getLong(1) == 30 && range.old_partition == 1 && range.new_partition == 3);
 
     }
 }
