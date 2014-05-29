@@ -762,7 +762,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         		// x-y
                 if (range.contains("-")) {
                 	if(col < ranges.length - 1) {
-                		throw new ParseException("keys with sub-ranges cannot span more than one key", -1);
+                		throw new ParseException("keys with sub-ranges cannot span more than one key: " + range_str, -1);
                 	}
             		String vals[] = range.split("-", 2);
             		min_row[col] = VoltTypeUtil.getObjectFromString(vt, vals[0]);
@@ -790,16 +790,18 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             	sortCol.add(Pair.of(i, SortDirectionType.ASC));
             }
             this.cmp = createComparator(sortCol, sortCol.get(0));
-            if (cmp.compare(min_row, max_row) > 0) {
-    			throw new ParseException("Min cannot be greater than max", -1);
-    		}
-            
+
             this.min_incl = clone.clone(0);
             this.max_excl = clone.clone(0);
             this.min_incl.addRow(min_row);
             this.max_excl.addRow(max_row);
             this.min_incl.advanceToRow(0);
             this.max_excl.advanceToRow(0);
+
+            if (cmp.compare(this.min_incl.getRowArray(), this.max_excl.getRowArray()) > 0) {
+		throw new ParseException("Min cannot be greater than max", -1);
+    	    }
+            
         }
         
         private VoltTableComparator createComparator(ArrayList<Pair<Integer, SortDirectionType>> sortCol, Pair<Integer, SortDirectionType>...pairs ) {
