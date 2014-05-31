@@ -772,6 +772,16 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
         this.channels[destinationId].dataTransfer(controller, dataTransferRequest, dataTransferRequestCallback);
     }
+    
+    public DataTransferResponse receiveTuples(int sourceId, long sentTimeStamp, int partitionId, int newPartitionId, String table_name, VoltTable vt, List<Long> minInclusive, List<Long> maxExclusive)
+            throws Exception {
+    	assert(minInclusive.size() == maxExclusive.size());
+        Table table = this.hstore_site.getCatalogContext().getTableByName(table_name);
+    	VoltTable min_incl = ReconfigurationUtil.getVoltTable(table, minInclusive);
+        VoltTable max_excl = ReconfigurationUtil.getVoltTable(table, maxExclusive);
+        
+    	return receiveTuples(sourceId, sentTimeStamp, partitionId, newPartitionId, table_name, vt, min_incl, max_excl);
+    }
 
     /**
      * Receive the tuples and send it to EE through PE
