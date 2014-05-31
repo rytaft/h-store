@@ -118,8 +118,8 @@ public class TestReconfigurationTrackingMultiTable extends BaseTestCase {
         assertEquals(3,ex.dataNotYetMigrated.size());
         for (ReconfigurationRange range : ex.dataNotYetMigrated) {
             System.out.println(range);
-            tracking1.markKeyAsReceived(range.table_name, Arrays.asList(range.getMinIncl().getRowArray()));
-            tracking2.markKeyAsMigratedOut(range.table_name, Arrays.asList(range.getMinIncl().getRowArray()));
+            tracking1.markKeyAsReceived(range.getTableName(), Arrays.asList(range.getMinIncl().getRowArray()));
+            tracking2.markKeyAsMigratedOut(range.getTableName(), Arrays.asList(range.getMinIncl().getRowArray()));
         }
         
         assertTrue(tracking1.checkKeyOwned(warehouse_tbl.getPartitioncolumn(), new Short("2")));

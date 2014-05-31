@@ -68,175 +68,30 @@ import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
  *         </ul>
  */
 
-public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
+public class PlannedPartitions extends ExplicitPartitions implements JSONSerializable {
     private static final Logger LOG = Logger.getLogger(PlannedPartitions.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
     public static final String PLANNED_PARTITIONS = "partition_plans";
-    public static final String TABLES = "tables";
-    public static final String PARTITIONS = "partitions";
-    private static final String DEFAULT_TABLE = "default_table";
     
     static {
         LoggerUtil.attachObserver(LOG, debug, trace);
     }
 
-    private CatalogContext catalog_context;
     private Map<String, PartitionPhase> partition_phase_map;
-    private Map<CatalogType, Table> catalog_to_table_map;
-    private Map<String, Column[]> table_partition_cols_map;
-    private Map<String, List<String>> relatedTablesMap;
-    private Map<String, List<Table>> relatedCatalogTablesMap;
-    private ParameterMappingsSet paramMappings;
     private String current_phase;
     private String previous_phase;
-    private String default_table = null;
-
+    
     public PlannedPartitions(CatalogContext catalog_context, File planned_partition_json_file) throws Exception {
         this(catalog_context, new JSONObject(FileUtil.readFile(planned_partition_json_file)));
     }
 
     public PlannedPartitions(CatalogContext catalog_context, JSONObject planned_partition_json) throws Exception {
+    	super(catalog_context, planned_partition_json);
         this.current_phase = null;
         this.previous_phase = null;
-        this.catalog_context = catalog_context;
         this.partition_phase_map = new HashMap<>();
-        this.catalog_to_table_map = new HashMap<>();
-        this.table_partition_cols_map = new HashMap<>();
-        this.paramMappings = catalog_context.paramMappings;
-        this.relatedTablesMap = new HashMap<>();
-        this.relatedCatalogTablesMap = new HashMap<>();
-
-        Set<String> partitionedTables = getExplicitPartitionedTables(planned_partition_json);
-        // TODO find catalogContext.getParameter mapping to find
-        // statement_column
-        // from project mapping (ae)
-        assert planned_partition_json.has(DEFAULT_TABLE) : "default_table missing from planned partition json";
-        this.default_table = planned_partition_json.getString(DEFAULT_TABLE);
-        for (Table table : catalog_context.getDataTables()) {
-            String tableName = table.getName().toLowerCase();
-            Column[] cols = new Column[table.getPartitioncolumns().size()];
-            for(ColumnRef colRef : table.getPartitioncolumns().values()) {
-            	cols[colRef.getIndex()] = colRef.getColumn();
-        	}
-            
-            // partition columns may not have been set
-            Column partitionCol;
-            if (cols.length == 0) {
-            	partitionCol = table.getPartitioncolumn();
-            	if (partitionCol != null) {
-            		table_partition_cols_map.put(tableName, new Column[]{partitionCol});
-            	}
-            }
-            else {
-            	partitionCol = cols[0];
-            	table_partition_cols_map.put(tableName, cols);
-            }
-            if (partitionCol == null) {
-                LOG.info(String.format("Partition col for table %s is null. Skipping", tableName));
-            } else {
-                LOG.info(String.format("Adding table:%s partitionCol:%s %s", tableName, partitionCol, VoltType.get(partitionCol.getType())));
-                this.catalog_to_table_map.put(partitionCol, table);
-            }
-        }
-
-        for (Procedure proc : catalog_context.procedures) {
-            if (!proc.getSystemproc()) {
-            	Column[] cols = new Column[proc.getPartitioncolumns().size()];
-                for(ColumnRef colRef : proc.getPartitioncolumns().values()) {
-                	cols[colRef.getIndex()] = colRef.getColumn();
-            	}
-                
-                // partition columns may not have been set
-                Column partitionCol;
-                if (cols.length == 0) {
-                	partitionCol = proc.getPartitioncolumn();
-                }
-                else {
-                	partitionCol = cols[0];
-                }
-            	
-                String table_name = null;
-                Table table = this.catalog_to_table_map.get(partitionCol);
-                if(table != null) {
-                	table_name = table.getName().toLowerCase();
-                }
-                if ((table_name == null) || (table_name.equals("null")) || (table_name.trim().length() == 0)) {
-                    LOG.info(String.format("Using default table %s for procedure: %s ", this.default_table, proc.toString()));
-                    table_name = this.default_table;
-                } else {
-                    LOG.info(table_name + " adding procedure: " + proc.toString());
-                }
-                this.catalog_to_table_map.put(proc, table);
-                for (Statement statement : proc.getStatements()) {
-                    LOG.debug(table_name + " adding statement: " + statement.toString());
-
-                    this.catalog_to_table_map.put(statement, table);
-                }
-
-            }
-        }
-        // We need to track which tables are partitioned on another table in
-        // order to generate the reconfiguration ranges for those tables,
-        // because they are not explicitly partitioned in the plan.
-        DependencyUtil dependUtil = DependencyUtil.singleton(catalog_context.database);
-        Map<String, String> partitionedTablesByFK = new HashMap<>();
-
-        for (Table table : catalog_context.getDataTables()) {
-            String tableName = table.getName().toLowerCase();
-            // Making the assumption that the same tables are in all phases TODO
-            // verify this
-            if (partitionedTables.contains(tableName) == false) {
-
-                Column partitionCol = table.getPartitioncolumn();
-                if (partitionCol == null) {
-                    LOG.info(tableName + " is not partitioned and has no partition column. skipping");
-                    continue;
-                } else {
-                    LOG.info(tableName + " is not explicitly partitioned.");
-                }
-                List<Column> depCols = dependUtil.getAncestors(partitionCol);
-                boolean partitionedParentFound = false;
-                List<String> relatedTables = new ArrayList<>();
-                List<Table> relatedCatalogTables = new ArrayList<>();
-                for (Column c : depCols) {
-                    CatalogType p = c.getParent();
-                    if (p instanceof Table) {
-                        // if in table then map to it
-                        String relatedTblName = p.getName().toLowerCase();
-                        Table relatedTbl = (Table) p;
-                        LOG.info(String.format("Table %s is related to %s",tableName,relatedTblName));
-                        relatedTables.add(relatedTblName);
-                        relatedCatalogTables.add(relatedTbl);
-                        if (partitionedTables.contains(relatedTblName)) {
-                            LOG.info("parent partitioned table : " + p + " : " + relatedTblName);
-                            partitionedTablesByFK.put(tableName, relatedTblName);
-                            partitionedParentFound = true;
-                            if (catalog_to_table_map.containsKey(table))
-                                LOG.error("ctm has table already : " + table);
-                            catalog_to_table_map.put(table, relatedTbl);
-                            if (catalog_to_table_map.containsKey(partitionCol)) {
-                                LOG.error("ctm has part col : " + partitionCol + " : " + catalog_to_table_map.get(partitionCol));
-                            }
-                            //TODO catalog_to_table_map.put(partitionCol, relatedTblName);
-                            LOG.info("no relationships on look up " +partitionCol + " : " + tableName);
-                            catalog_to_table_map.put(partitionCol, table);
-                        }
-                    }
-                }
-                if(!relatedTables.isEmpty()){
-                    LOG.info("Associating the list of related tables for :"+ tableName);
-                    relatedTables.add(tableName);
-                    relatedCatalogTables.add(table);
-                    relatedTablesMap.put(tableName, relatedTables);
-                    relatedCatalogTablesMap.put(tableName, relatedCatalogTables);
-                }
-                if (!partitionedParentFound) {
-                    throw new RuntimeException("No partitioned relationship found for table : " + tableName + " partitioned:" + partitionedTables.toString());
-                }
-            }
-        }
-
+        
         if (planned_partition_json.has(PLANNED_PARTITIONS)) {
             JSONObject phases = planned_partition_json.getJSONObject(PLANNED_PARTITIONS);
             String first_key = null;
@@ -319,35 +174,6 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
     }
 
     /* (non-Javadoc)
-     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(java.lang.String, java.lang.Object)
-     */
-    @Override
-    public int getPartitionId(String table_name, Object[] ids) throws Exception {
-    	return getPartitionId(table_name, Arrays.asList(ids));
-    }
-    
-    /* (non-Javadoc)
-     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
-     */
-    @Override
-    public int getPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception {
-    	String table_name = this.catalog_to_table_map.get(catalogs.get(0)).getName().toLowerCase();
-        return this.getPartitionId(table_name, ids);
-    }
-
-    public String getTableName(CatalogType catalog) {
-        return this.catalog_to_table_map.get(catalog).getName().toLowerCase();
-    }
-    
-    public String getTableName(List<CatalogType> catalog) {
-        return this.catalog_to_table_map.get(catalog.get(0)).getName().toLowerCase();
-    }
-
-    public Table getTable(List<CatalogType> catalog) {
-        return this.catalog_to_table_map.get(catalog.get(0));
-    }
-
-    /* (non-Javadoc)
      * @see edu.brown.hashing.ExplicitPartition#getPreviousPartitionId(java.lang.String, java.lang.Object)
      */
     @Override
@@ -366,29 +192,6 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         assert table != null : "Table not found " + table_name;
         return table.findPartition(ids);
     }
-
-    /* (non-Javadoc)
-     * @see edu.brown.hashing.ExplicitPartition#getPreviousPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
-     */
-    @Override
-    public int getPreviousPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception {
-    	String previousPhase = this.getPreviousPhase_phase();
-        if (previousPhase == null)
-            return -1;
-
-        String table_name = this.catalog_to_table_map.get(catalogs.get(0)).getName().toLowerCase();
-        PartitionPhase phase = this.partition_phase_map.get(previousPhase);
-        PartitionedTable table = phase.getTable(table_name);
-        if (table == null){
-            table = phase.getTable(table_name.toLowerCase());
-            if (table == null) {
-                throw new Exception("Unable to find table "+ table_name + " in phase  " + previousPhase);
-            }
-        }
-        assert table != null : "Table not found " + table_name;
-        return table.findPartition(ids);
-    }
-
     
 
     // ******** Containers *****************************************/
@@ -514,7 +317,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
-                	if (p.inRange(ids) && ids.size() >= p.non_null_cols) {
+                	if (p.inRange(ids)) {
                 		return p.partition;
                 	}
                 }
@@ -558,62 +361,26 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         protected VoltTable clone;
         protected VoltTable min_incl;
         protected VoltTable max_excl;
-        protected int non_null_cols;
         protected VoltTableComparator cmp;
         protected Table catalog_table;
         
-        public PartitionRange() {        
-        }
-
-        @SuppressWarnings("unchecked")
         public PartitionRange(Table table, int partition_id, String range_str) throws ParseException {
             this.partition = partition_id;
             this.catalog_table = table;
             
             this.clone = ReconfigurationUtil.getPartitionKeysVoltTable(table);
+            Object[] min_row;
+            Object[] max_row;
             
-            String ranges[];
-            // multi-key partitioning
-            if (range_str.contains(":")) {
-            	ranges = range_str.split(":");
-            } else {
-            	ranges = new String[]{ range_str };
-            }
+            // x-y
+            if (range_str.contains("-")) {
+            	String vals[] = range_str.split("-", 2);
 
-            int col = 0;
-            Object[] min_row = new Object[clone.getColumnCount()];
-            Object[] max_row = new Object[clone.getColumnCount()];
-            for(String range : ranges) {
-            	assert(col < clone.getColumnCount());
-            	VoltType vt = clone.getColumnType(col);
-            	
-        		// x-y
-                if (range.contains("-")) {
-                	if(col < ranges.length - 1) {
-                		LOG.warn("key with sub-range spans more than one key. range: " + range_str);
-                	}
-            		String vals[] = range.split("-", 2);
-            		min_row[col] = parseValue(vt, vals[0]);
-            		max_row[col] = parseValue(vt, vals[1]);
-            	}
-            	// x
-            	else {
-            		if(col == ranges.length - 1) {
-                		throw new ParseException("keys without sub-ranges must be specified as min-max. range: " + range_str, -1);
-                	}
-            		Object obj = parseValue(vt, range);
-            		min_row[col] = obj;
-            		max_row[col] = obj;
-            	}
-            	col++;
-            }
-            
-            this.non_null_cols = col;
-            for ( ; col < clone.getColumnCount(); col++) {
-            	VoltType vt = clone.getColumnType(col);
-            	Object obj = vt.getNullValue();
-            	min_row[col] = obj;
-            	max_row[col] = obj;
+            	min_row = getRangeKeys(vals[0]);
+                max_row = getRangeKeys(vals[1]);
+                
+            } else {
+            	throw new ParseException("keys must be specified as min-max. range: " + range_str, -1);
             }
             
             this.cmp = ReconfigurationUtil.getComparator(clone);
@@ -628,7 +395,91 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             if (cmp.compare(this.min_incl.getRowArray(), this.max_excl.getRowArray()) > 0) {
             	throw new ParseException("Min cannot be greater than max", -1);
     	    }
+        }
+        
+        protected PartitionRange(String table_name, VoltTable clone, VoltTable min_incl, VoltTable max_excl) {
+            this.clone = clone;
             
+            this.cmp = ReconfigurationUtil.getComparator(clone);
+            
+            this.min_incl = min_incl;
+            this.max_excl = max_excl;
+        }
+        
+        protected PartitionRange(Table table, VoltTable min_incl, VoltTable max_excl) {
+        	this.catalog_table = table;
+        	this.clone = ReconfigurationUtil.getPartitionKeysVoltTable(table);
+            
+            this.cmp = ReconfigurationUtil.getComparator(clone);
+            
+            this.min_incl = min_incl;
+            this.max_excl = max_excl;
+        }
+        
+        protected PartitionRange(Table table, List<Object> min_incl, List<Object> max_excl) {
+            
+        	this.catalog_table = table;
+        	this.clone = ReconfigurationUtil.getPartitionKeysVoltTable(table);
+            
+            this.cmp = ReconfigurationUtil.getComparator(clone);
+            
+            Object[] min_row = new Object[clone.getColumnCount()];
+            Object[] max_row = new Object[clone.getColumnCount()];
+            int min_col = 0;
+            for(Object obj : min_incl) {
+            	min_row[min_col] = obj;
+            	min_col++;
+            }
+            int max_col = 0;
+            for(Object obj : max_excl) {
+            	max_row[max_col] = obj;
+            	max_col++;
+            }
+            for (int col = min_col; col < clone.getColumnCount(); col++) {
+            	VoltType vt = clone.getColumnType(col);
+            	Object obj = vt.getNullValue();
+            	min_row[col] = obj;	
+            }
+            for (int col = max_col; col < clone.getColumnCount(); col++) {
+            	VoltType vt = clone.getColumnType(col);
+            	Object obj = vt.getNullValue();
+            	max_row[col] = obj;
+            }
+            
+            this.min_incl = clone.clone(0);
+            this.max_excl = clone.clone(0);
+            this.min_incl.addRow(min_row);
+            this.max_excl.addRow(max_row);
+
+        }
+        
+        private Object[] getRangeKeys(String key_str) throws ParseException {
+        	String keys[];
+        	// multi-key partitioning
+        	if (key_str.contains(":")) {
+        		keys = key_str.split(":");
+        	} else {
+        		keys = new String[]{ key_str };
+        	}
+
+        	Object[] row = new Object[clone.getColumnCount()];
+            
+        	int col = 0;
+        	for(String key : keys) {
+        		assert(col < clone.getColumnCount());
+        		VoltType vt = clone.getColumnType(col);
+
+        		row[col] = parseValue(vt, key);
+        		col++;
+        	}
+
+        	for ( ; col < clone.getColumnCount(); col++) {
+        		VoltType vt = clone.getColumnType(col);
+        		Object obj = vt.getNullValue();
+        		row[col] = obj;
+        	}
+        	
+        	return row;
         }
         
         private Object parseValue(VoltType vt, String value) throws ParseException {
@@ -638,10 +489,24 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         	return VoltTypeUtil.getObjectFromString(vt, value);
         }
         
+        protected int getNonNullCols() {        	
+        	int non_null_cols = 0;
+            for(int i = 0; i < min_incl.getColumnCount(); i++) {
+            	VoltType vt = min_incl.getColumnType(i);
+            	if(vt.getNullValue().equals(min_incl.get(i)) && vt.getNullValue().equals(max_excl.get(i))) {
+            		break;
+            	}
+            	non_null_cols++;
+            }
+            return non_null_cols;
+        }
+        
         @Override
         public String toString() {
-        	String range_str = "";
-        	for(int i = 0; i < this.non_null_cols; i++) {
+        	this.min_incl.advanceToRow(0);
+            this.max_excl.advanceToRow(0);
+            String range_str = "";
+        	for(int i = 0; i < getNonNullCols(); i++) {
         		if(i != 0) {
         			range_str += ":";
         		}
@@ -658,7 +523,9 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
 
         @Override
         public int compareTo(PartitionRange o) {
-        	if (cmp.compare(this.min_incl.getRowArray(), o.min_incl.getRowArray()) < 0) {
+        	this.min_incl.advanceToRow(0);
+            this.max_excl.advanceToRow(0);
+            if (cmp.compare(this.min_incl.getRowArray(), o.min_incl.getRowArray()) < 0) {
         		return -1;
         	} else if (cmp.compare(this.min_incl.getRowArray(), o.min_incl.getRowArray()) == 0) {
         		return cmp.compare(this.max_excl.getRowArray(), o.max_excl.getRowArray());
@@ -681,16 +548,22 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         	VoltTable temp = this.clone.clone(0);
         	temp.addRow(keys);
         	temp.advanceToRow(0);
-        	return inRange(temp.getRowArray());
+        	return inRange(temp.getRowArray(), ids.size());
         }
         
-        public boolean inRange(Object[] keys) {
-        	if(cmp.compare(min_incl.getRowArray(), keys) <= 0 && 
-        			(cmp.compare(max_excl.getRowArray(), keys) > 0 || 
-        					(cmp.compare(min_incl.getRowArray(), max_excl.getRowArray()) == 0 && 
-        					cmp.compare(min_incl.getRowArray(), keys) == 0))){
-        		return true;
-        	}
+        public boolean inRange(Object[] keys, int orig_size) {
+        	this.min_incl.resetRowPosition();
+            this.max_excl.resetRowPosition();
+            while(this.min_incl.advanceRow() && this.max_excl.advanceRow()) {
+            	if(cmp.compare(min_incl.getRowArray(), keys) <= 0 && 
+            			(cmp.compare(max_excl.getRowArray(), keys) > 0 || 
+                        (cmp.compare(min_incl.getRowArray(), max_excl.getRowArray()) == 0 && 
+                        cmp.compare(min_incl.getRowArray(), keys) == 0))){
+            		if (orig_size >= getNonNullCols()) {
+            			return true;
+            		}
+                }
+            }
             return false;
         }
         
@@ -704,10 +577,6 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         
         public VoltTable getClone() {
         	return this.clone;
-        }
-        
-        public int getNonNullCols() {
-        	return this.non_null_cols;
         }
         
         public Table getTable() {
@@ -813,14 +682,6 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
     public void fromJSON(JSONObject json_object, Database catalog_db) throws JSONException {
         // TODO Auto-generated method stub
 
-    }
-
-    public Map<String, List<String>> getRelatedTablesMap() {
-        return relatedTablesMap;
-    }
-
-    public Map<String, List<Table>> getRelatedCatalogTablesMap() {
-        return relatedCatalogTablesMap;
     }
 
     @Override

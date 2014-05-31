@@ -1432,7 +1432,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
             long _txnid = -1;
             // TODO Check that this range still needs to be pushed
-            Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
+            Table catalog_tbl = this.catalogContext.getTableByName(pushRange.getTableName());
             int table_id = catalog_tbl.getRelativeIndex();
             VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(pushRange);
             if(hstore_conf.site.reconfig_replication_delay){
@@ -1443,7 +1443,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
                 // RC push tuples
                 
-                reconfiguration_coordinator.pushTuples(pushRange.old_partition, pushRange.new_partition, pushRange.table_name, 
+                reconfiguration_coordinator.pushTuples(pushRange.getOldPartition(), pushRange.getNewPartition(), pushRange.getTableName(), 
                         vt.getFirst(), pushRange.getMinIncl(), pushRange.getMaxExcl());
                 if(vt.getSecond()){
                     LOG.error("TODO async push has more to send");
@@ -3792,8 +3792,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         Set<ReconfigurationRange> res = new HashSet<>();
         res.addAll(dataNotYetMigrated);
         for(ReconfigurationRange range: dataNotYetMigrated){
-            if (filterList.contains(range.table_name)){
-                LOG.info(String.format("For %s removing %s from list %s ",procName, range.table_name,dataNotYetMigrated));
+            if (filterList.contains(range.getTableName())){
+                LOG.info(String.format("For %s removing %s from list %s ",procName, range.getTableName(),dataNotYetMigrated));
                 res.remove(range);               
             }
         }
@@ -3944,8 +3944,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             Histogram<Integer> partitionHistogram = new FastIntHistogram();
             partitionHistogram.put(this.currentTxn.getPredictTouchedPartitions(), 1);
             for (ReconfigurationRange range : restartsNeeded) {
-                LOG.info(" *** adding a restart on partition " + range.new_partition);
-                partitionHistogram.put(range.new_partition);
+                LOG.info(" *** adding a restart on partition " + range.getNewPartition());
+                partitionHistogram.put(range.getNewPartition());
             }
             throw new MispredictionException(this.currentTxnId, partitionHistogram);
 
@@ -6284,7 +6284,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             VoltTable table = null;
             for (ReconfigurationRange out_range : outgoing_ranges) {
 
-                catalog_tbl = catalogContext.getTableByName(out_range.table_name);
+                catalog_tbl = catalogContext.getTableByName(out_range.getTableName());
                 table = CatalogUtil.getVoltTable(catalog_tbl);
                 // TODO ae leftoff
                 // Push Tuples is not called from here
@@ -6437,7 +6437,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public Pair<VoltTable,Boolean> extractPushRequst(ReconfigurationRange pushRange) {
         long _txnid = -1;
         // TODO Check that this range still needs to be pushed
-        Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
+        Table catalog_tbl = this.catalogContext.getTableByName(pushRange.getTableName());
         int table_id = catalog_tbl.getRelativeIndex();
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(pushRange);
         if(hstore_conf.site.reconfig_replication_delay){

@@ -105,8 +105,8 @@ public class ReconfigurationUtil {
         for(Entry<Integer, List<ReconfigurationRange>> entry : plan.getIncoming_ranges().entrySet()){
             Set<Integer> partitionsSendingData = new HashSet<>();
             for(ReconfigurationRange range : entry.getValue()){
-                partitionsSendingData.add(range.old_partition);
-                migrationPairs.add(new ReconfigurationPair(range.old_partition, range.new_partition));
+                partitionsSendingData.add(range.getOldPartition());
+                migrationPairs.add(new ReconfigurationPair(range.getOldPartition(), range.getNewPartition()));
             }
             LOG.info(String.format("Partition: %s is receiving data from :%s",entry.getKey(),StringUtils.join(partitionsSendingData, ",")));
         }
@@ -140,7 +140,7 @@ public class ReconfigurationUtil {
         for(Entry<Integer, List<ReconfigurationRange>> entry : plan.getIncoming_ranges().entrySet()){
             for(ReconfigurationRange range : entry.getValue()){
                 //find which split this range is going into
-                Integer splitIndex = pairToSplitMapping.get(new Pair<Integer, Integer>(range.old_partition, range.new_partition));
+                Integer splitIndex = pairToSplitMapping.get(new Pair<Integer, Integer>(range.getOldPartition(), range.getNewPartition()));
                 //add it
                 splitPlans.get(splitIndex).addRange(range);
             }
@@ -152,7 +152,7 @@ public class ReconfigurationUtil {
             Set<Pair<Integer,Integer>> debugSendingData = new HashSet<>();
             for(Entry<Integer, List<ReconfigurationRange>> entry : splitPlans.get(j).getIncoming_ranges().entrySet()){
                 for(ReconfigurationRange range : entry.getValue()){
-                    debugSendingData.add(new Pair<Integer, Integer>(range.old_partition, range.new_partition));
+                    debugSendingData.add(new Pair<Integer, Integer>(range.getOldPartition(), range.getNewPartition()));
                 }
             }
             LOG.info(String.format("PlanSplit:%s has the pairs(%s): %s", j, debugSendingData.size(), StringUtils.join(debugSendingData,",")));
@@ -165,7 +165,7 @@ public class ReconfigurationUtil {
     	ReconfigurationRange sample = ranges.get(0);
     	VoltTable newMin = sample.getClone().clone(0);
 		VoltTable newMax = sample.getClone().clone(0);
-		ReconfigurationRange mergedRanges = new ReconfigurationRange(sample.table_name, sample.getClone(), newMin, newMax, 0, sample.old_partition, sample.new_partition);
+		ReconfigurationRange mergedRanges = new ReconfigurationRange(sample.getTableName(), sample.getClone(), newMin, newMax, sample.getOldPartition(), sample.getNewPartition());
 		
 		for(ReconfigurationRange range : ranges) {
 			VoltTable max = range.getMaxExcl();
@@ -239,7 +239,6 @@ public class ReconfigurationUtil {
 
         ArrayList<Object[]> min_rows = new ArrayList<Object[]>();
         ArrayList<Object[]> max_rows = new ArrayList<Object[]>();
-        int non_null_cols = 0;
         for(int i = 0; i < mins.length && i < maxs.length; i++) {
         	Long[] minsSubKeys = mins[i];
         	Long[] maxsSubKeys = maxs[i];
@@ -250,7 +249,6 @@ public class ReconfigurationUtil {
         		min_row[col] = minsSubKeys[col];
         		max_row[col] = maxsSubKeys[col];
         	}
-    		non_null_cols = Math.max(non_null_cols, col);
     		for ( ; col < clone.getColumnCount(); col++) {
             	VoltType vt = clone.getColumnType(col);
             	Object obj = vt.getNullValue();
@@ -270,7 +268,7 @@ public class ReconfigurationUtil {
         	max_excl.addRow(row);
         }
 
-        return new ReconfigurationRange(table.getName(), clone, min_incl, max_excl, non_null_cols, old_partition, new_partition);
+        return new ReconfigurationRange(table.getName(), clone, min_incl, max_excl, old_partition, new_partition);
     }
     
     public static VoltTableComparator getComparator(VoltTable vt) {

@@ -42,8 +42,8 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
             "    \"tables\": {"+
             "      \"district\": {"+
             "        \"partitions\": {"+
-            "          \"0\": \"1:-3\", "+
-            "          \"1\": \"1-2:3-,2-3\""+
+            "          \"0\": \"1-1:3\", "+
+            "          \"1\": \"1:3-2,2-3\""+
             "        }"+
             "      },"+
             "      \"stock\": {"+
@@ -259,8 +259,8 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
     }
 
     public void testPartitionRangeCompare() throws Exception {
-        PartitionRange pr1 = new PartitionRange(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1:1-20");
-        PartitionRange pr2 = new PartitionRange(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1:2-3");
+        PartitionRange pr1 = new PartitionRange(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1:1-1:20");
+        PartitionRange pr2 = new PartitionRange(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1:2-1:3");
         assertTrue(pr1.compareTo(pr2) < 0);
         assertTrue(pr2.compareTo(pr1) > 0);
     }
@@ -290,10 +290,10 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         ReconfigurationTable reconfig = (ReconfigurationTable) reconfig_plan.tables_map.get("table");
         ReconfigurationRange range = null;
         range = reconfig.getReconfigurations().get(0);
-        assertTrue(range.getMinIncl().getLong(1) == 10 && range.getMaxExcl().getLong(1) == 20 && range.old_partition == 1 && range.new_partition == 2);
+        assertTrue(range.getMinIncl().getLong(1) == 10 && range.getMaxExcl().getLong(1) == 20 && range.getOldPartition() == 1 && range.getNewPartition() == 2);
 
         range = reconfig.getReconfigurations().get(1);
-        assertTrue(range.getMinIncl().getLong(1) == 20 && range.getMaxExcl().wasNull() && range.old_partition == 1 && range.new_partition == 3);
+        assertTrue(range.getMinIncl().getLong(1) == 20 && range.getMaxExcl().wasNull() && range.getOldPartition() == 1 && range.getNewPartition() == 3);
 
     }
 }

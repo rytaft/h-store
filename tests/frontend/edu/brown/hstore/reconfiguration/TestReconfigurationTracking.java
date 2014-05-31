@@ -221,7 +221,7 @@ public String test_json2 = "{"
         range.getMinIncl().advanceToRow(0);
         range.getMaxExcl().advanceToRow(0);
         assertTrue(range.getMinIncl().getLong(0) ==  390L && range.getMaxExcl().getLong(0) == 390L);
-        assertEquals(3, range.old_partition);
+        assertEquals(3, range.getOldPartition());
         
         
         //Test multiple ranges

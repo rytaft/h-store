@@ -108,7 +108,6 @@ public class ReconfigurationPlan {
           VoltTableComparator cmp = ReconfigurationUtil.getComparator(voltTable);
           
           Object[] max_old_accounted_for = null;
-          int non_null_cols = 0;
           
           PartitionRange old_range = null;
           // Iterate through the old partition ranges.
@@ -129,11 +128,10 @@ public class ReconfigurationPlan {
                 // No change do nothing
               } else {
                 // Same range new partition
-            	getReconfigurations().add(new ReconfigurationRange(this.table_name, old_range.getClone(), old_range.min_incl, old_range.max_excl, old_range.non_null_cols,
+            	getReconfigurations().add(new ReconfigurationRange(this.table_name, old_range.getClone(), old_range.min_incl, old_range.max_excl,
                     old_range.partition, new_range.partition));
               }
               max_old_accounted_for = old_range.max_excl.getRowArray();
-              non_null_cols = old_range.non_null_cols;
               if(new_ranges.hasNext())
                   new_range = new_ranges.next();
             } else {
@@ -142,15 +140,13 @@ public class ReconfigurationPlan {
                 if (old_range.partition == new_range.partition) {
                   // Same partitions no reconfiguration needed here
                   max_old_accounted_for = old_range.max_excl.getRowArray();
-                  non_null_cols = old_range.non_null_cols;
                 } else {
                   // Need to move the old range to new range
                   VoltTable new_min = voltTable.clone(0);
                   new_min.addRow(max_old_accounted_for);
-                  getReconfigurations().add(new ReconfigurationRange(this.table_name, old_range.getClone(), new_min, old_range.max_excl, Math.max(old_range.non_null_cols, non_null_cols),
+                  getReconfigurations().add(new ReconfigurationRange(this.table_name, old_range.getClone(), new_min, old_range.max_excl,
                       old_range.partition, new_range.partition));
-                  max_old_accounted_for = old_range.max_excl.getRowArray();    
-                  non_null_cols = old_range.non_null_cols;
+                  max_old_accounted_for = old_range.max_excl.getRowArray(); 
                 }
                 //Have we satisfied all of the new range and is there another new range to process
                 if (cmp.compare(max_old_accounted_for, new_range.max_excl.getRowArray())==0 && new_ranges.hasNext()){
@@ -164,15 +160,13 @@ public class ReconfigurationPlan {
                   if (old_range.partition == new_range.partition) {
                     // No need to move this range
                     max_old_accounted_for = new_range.max_excl.getRowArray();
-                    non_null_cols = new_range.non_null_cols;
                   } else {
                     // move
                 	VoltTable new_min = voltTable.clone(0);
                     new_min.addRow(max_old_accounted_for);
-                    getReconfigurations().add(new ReconfigurationRange(this.table_name, new_range.getClone(), new_min, new_range.max_excl, Math.max(new_range.non_null_cols, non_null_cols),
+                    getReconfigurations().add(new ReconfigurationRange(this.table_name, new_range.getClone(), new_min, new_range.max_excl,
                         old_range.partition, new_range.partition));
                     max_old_accounted_for = new_range.max_excl.getRowArray();
-                    non_null_cols = new_range.non_null_cols;
                   }
                   if (new_ranges.hasNext() == false) {
                     throw new RuntimeException("Not all ranges accounted for");
@@ -220,7 +214,7 @@ public class ReconfigurationPlan {
                 	if(partialRange == null) {
                 		VoltTable newMin = range.clone.clone(0);
                 		VoltTable newMax = range.clone.clone(0);
-                		partialRange = new ReconfigurationRange(this.table_name, range.getClone(), newMin, newMax, 0, old_partition, new_partition);
+                		partialRange = new ReconfigurationRange(this.table_name, range.getClone(), newMin, newMax, old_partition, new_partition);
                 		rangeMap.put(key, partialRange);
                 	}
                 	
@@ -228,7 +222,6 @@ public class ReconfigurationPlan {
                 	VoltTable min = range.getMinIncl();
                     partialRange.getMaxExcl().add(max);
                     partialRange.getMinIncl().add(min);
-                    partialRange.non_null_cols = Math.max(partialRange.non_null_cols, range.non_null_cols);
                     long max_potential_keys = partialRange.getMaxPotentialKeys();
                     
                     // once we have reached the minimum number of rows, we can add this set of ranges to the output
@@ -302,11 +295,9 @@ public class ReconfigurationPlan {
                 			new_max = Math.min(new_min+maxRows,orig_max);
                 			LOG.info(String.format("New range %s-%s",orig_min,new_max));
                 			VoltTable max, min;
-                			int non_null_cols = 0;
                 			
                 			if(new_max == orig_max) {
                 				max = range.getMaxExcl();
-                				non_null_cols = Math.max(non_null_cols, range.non_null_cols);
                 			} else {
                 				max = range.getClone().clone(0);
                 				Object[] values = new Object[max.getColumnCount()];
@@ -316,12 +307,10 @@ public class ReconfigurationPlan {
                 					values[i] = vt.getNullValue();
                 				}
                 				max.addRow(values);
-                				non_null_cols = Math.max(non_null_cols, 1);
                 			}
                 			
                 			if(new_min == orig_min) {
                 				min = range.getMinIncl();
-                				non_null_cols = Math.max(non_null_cols, range.non_null_cols);
                 			} else {
                 				min = range.getClone().clone(0);
                 				Object[] values = new Object[min.getColumnCount()];
@@ -331,11 +320,10 @@ public class ReconfigurationPlan {
                 					values[i] = vt.getNullValue();
                 				}
                 				min.addRow(values);
-                				non_null_cols = Math.max(non_null_cols, 1);
                 			}
                 			
                 			ReconfigurationRange newRange = new ReconfigurationRange(
-                					this.table_name, range.getClone(), min, max, non_null_cols, range.old_partition, range.new_partition);
+                					this.table_name, range.getClone(), min, max, range.old_partition, range.new_partition);
                 			new_min = new_max;
                 			keysRemaining-=maxRows;
                 			modified = true;
@@ -383,29 +371,15 @@ public class ReconfigurationPlan {
        * As of 5/20/14 a range may also contain a sub-range on a different key 
        * in the case of multi-column partitioning
        * 
-       * @author aelmore
-       * 
-       * @param <T>
+       * @author aelmore, rytaft
        */
-      public static class ReconfigurationRange {
-        public int old_partition;
-        public int new_partition;
-        public String table_name;
-        private VoltTable clone;
-        private VoltTable min_incl;
-        private VoltTable max_excl;
-        private int non_null_cols;
-        private VoltTableComparator cmp;
+      public static class ReconfigurationRange extends PartitionRange {
+        private int old_partition;
+        private int new_partition;
+        private String table_name; 
         
-        
-        public ReconfigurationRange(String table_name, VoltTable clone, VoltTable min_incl, VoltTable max_excl, int non_null_cols, int old_partition, int new_partition) {
-            this.clone = clone;
-            
-            this.cmp = ReconfigurationUtil.getComparator(clone);
-            
-            this.min_incl = min_incl;
-            this.max_excl = max_excl;
-            this.non_null_cols = non_null_cols;
+        public ReconfigurationRange(String table_name, VoltTable clone, VoltTable min_incl, VoltTable max_excl, int old_partition, int new_partition) {
+            super(table_name, clone, min_incl, max_excl);
             
             this.old_partition = old_partition;
             this.new_partition = new_partition;
@@ -413,63 +387,15 @@ public class ReconfigurationPlan {
         }
         
         public ReconfigurationRange(Table table, VoltTable min_incl, VoltTable max_excl, int old_partition, int new_partition) {
-        	this.clone = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-            
-            this.cmp = ReconfigurationUtil.getComparator(clone);
-            
-            this.min_incl = min_incl;
-            this.max_excl = max_excl;
-            
-            this.old_partition = old_partition;
+        	super(table, min_incl, max_excl);
+        	
+        	this.old_partition = old_partition;
             this.new_partition = new_partition;
             this.table_name = table.getName().toLowerCase();
-            
-            this.non_null_cols = 0;
-            min_incl.resetRowPosition();
-            max_excl.resetRowPosition();
-            while(min_incl.advanceRow() && max_excl.advanceRow()) {
-            	if(min_incl.wasNull() && max_excl.wasNull()) {
-            		break;
-            	}
-            	non_null_cols++;
-            }
-            
         }
         
-        public ReconfigurationRange(Table table, List<Object> min_incl, List<Object> max_excl, int old_partition, int new_partition) {
-            
-        	this.clone = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-            
-            this.cmp = ReconfigurationUtil.getComparator(clone);
-            
-            Object[] min_row = new Object[clone.getColumnCount()];
-            Object[] max_row = new Object[clone.getColumnCount()];
-            int min_col = 0;
-            for(Object obj : min_incl) {
-            	min_row[min_col] = obj;
-            	min_col++;
-            }
-            int max_col = 0;
-            for(Object obj : max_excl) {
-            	max_row[max_col] = obj;
-            	max_col++;
-            }
-            for (int col = min_col; col < clone.getColumnCount(); col++) {
-            	VoltType vt = clone.getColumnType(col);
-            	Object obj = vt.getNullValue();
-            	min_row[col] = obj;	
-            }
-            for (int col = max_col; col < clone.getColumnCount(); col++) {
-            	VoltType vt = clone.getColumnType(col);
-            	Object obj = vt.getNullValue();
-            	max_row[col] = obj;
-            }
-            
-            this.min_incl = clone.clone(0);
-            this.max_excl = clone.clone(0);
-            this.min_incl.addRow(min_row);
-            this.max_excl.addRow(max_row);
-            this.non_null_cols = Math.max(min_col, max_col);
+        public ReconfigurationRange(Table table, List<Object> min_incl, List<Object> max_excl, int old_partition, int new_partition) { 
+        	super(table, min_incl, max_excl);
             
             this.old_partition = old_partition;
             this.new_partition = new_partition;
@@ -488,7 +414,7 @@ public class ReconfigurationPlan {
         		}
 
         		String range_str = "";
-        		for(int i = 0; i < this.non_null_cols; i++) {
+        		for(int i = 0; i < getNonNullCols(); i++) {
         			if(i != 0) {
         				range_str += ":";
         			}
@@ -508,55 +434,18 @@ public class ReconfigurationPlan {
 
         }
         
-        public boolean inRange(List<Object> ids) {
-        	Object[] keys = new Object[this.min_incl.getColumnCount()];
-        	int col = 0;
-        	for(Object id : ids) {
-        		keys[col] = id;
-        		col++;
-        	}
-        	for( ; col < this.min_incl.getColumnCount(); col++) {
-        		VoltType vt = this.min_incl.getColumnType(col);
-            	keys[col] = vt.getNullValue();
-        	}
-        	VoltTable temp = this.clone.clone(0);
-        	temp.addRow(keys);
-        	temp.advanceToRow(0);
-        	return inRange(temp.getRowArray());
-        }
-        
-        public boolean inRange(Object[] keys) {
-        	this.min_incl.resetRowPosition();
-            this.max_excl.resetRowPosition();
-            while(this.min_incl.advanceRow() && this.max_excl.advanceRow()) {
-            	if(cmp.compare(min_incl.getRowArray(), keys) <= 0 && 
-            			(cmp.compare(max_excl.getRowArray(), keys) > 0 || 
-                        (cmp.compare(min_incl.getRowArray(), max_excl.getRowArray()) == 0 && 
-                        cmp.compare(min_incl.getRowArray(), keys) == 0))){
-                    return true;
-                }
-            }
-            return false;
-        }
-        
-        @SuppressWarnings("unchecked")
-        public <T> T castKey(Comparable<?> key){
-            return (T)key;
-        }
-        
-       
-
         @Override
         public int hashCode() {
             final int prime = 31;
             int result = 1;
             result = prime * result + new_partition;
             result = prime * result + old_partition;
+            result = prime * result + min_incl.hashCode();
+            result = prime * result + max_excl.hashCode();
             result = prime * result + ((table_name == null) ? 0 : table_name.hashCode());
             return result;
         }
         
-
         @Override
         public boolean equals(Object obj) {
             if (this == obj)
@@ -585,8 +474,6 @@ public class ReconfigurationPlan {
                     return false;
             } else if (!max_excl.equals(other.max_excl))
                 return false;
-            if (non_null_cols != other.non_null_cols)
-                return false;
             return true;
         }
 
@@ -607,20 +494,16 @@ public class ReconfigurationPlan {
         	return max_potential_keys;
         }
 
-        public VoltTable getMinIncl() {
-        	return this.min_incl;
+        public int getOldPartition() {
+        	return this.old_partition;
         }
         
-        public VoltTable getMaxExcl() {
-        	return this.max_excl;
+        public int getNewPartition() {
+        	return this.new_partition;
         }
         
-        public VoltTable getClone() {
-        	return this.clone;
-        }
-        
-        public int getNonNullCols() {
-        	return this.non_null_cols;
+        public String getTableName() {
+        	return this.table_name;
         }
         
     }
