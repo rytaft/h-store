@@ -290,6 +290,8 @@ public class ReconfigurationPlan {
                 for(ReconfigurationRange range : reconfiguration_range){
                 	long max_potential_keys = range.getMaxPotentialKeys();
                 	if (max_potential_keys > maxRows){
+                		range.getMaxExcl().advanceToRow(0);
+                		range.getMinIncl().advanceToRow(0);
                 		long orig_max = range.getMaxExcl().getLong(0);
                 		long orig_min = range.getMinIncl().getLong(0);
                 		LOG.info(String.format("Splitting up a range %s-%s. Max row:%s. Table:%s",orig_min,orig_max,maxRows,table_name));
