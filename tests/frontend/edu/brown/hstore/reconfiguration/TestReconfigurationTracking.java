@@ -71,12 +71,13 @@ public String test_json2 = "{"
     String tbl = "usertable";
     String table2str = "table2";
     Table catalog_tbl;
+    Column catalog_col;
     Table table2;
     @Override
     protected void setUp() throws Exception {
       super.setUp(ProjectType.YCSB);
       catalog_tbl = this.getTable(tbl);
-      Column catalog_col = this.getColumn(catalog_tbl, "YCSB_KEY");
+      catalog_col = this.getColumn(catalog_tbl, "YCSB_KEY");
       catalog_tbl.setPartitioncolumn(catalog_col);
       String tmp_dir = System.getProperty("java.io.tmpdir");
       json_path1 = FileUtil.join(tmp_dir, "test1.json");
@@ -115,13 +116,13 @@ public String test_json2 = "{"
         assertTrue(migrOut);
         
         //check keys that should have been migrated
-        assertTrue(tracking1.checkKeyOwned(catalog_tbl, 100L));
-        assertTrue(tracking1.checkKeyOwned(catalog_tbl, 108L));
+        assertTrue(tracking1.checkKeyOwned(catalog_col, 100L));
+        assertTrue(tracking1.checkKeyOwned(catalog_col, 108L));
         
         //a key that has not been migrated
         ReconfigurationException ex = null;
         try{
-            tracking1.checkKeyOwned(catalog_tbl, 110L);
+            tracking1.checkKeyOwned(catalog_col, 110L);
         } catch(ReconfigurationException e){
           ex =e;  
         } catch(Exception e){
@@ -138,13 +139,13 @@ public String test_json2 = "{"
         assertTrue(range.getMaxExcl().getLong(0) == 110L);
         
         //source still has the key
-        assertTrue(tracking2.checkKeyOwned(catalog_tbl, 110L));
+        assertTrue(tracking2.checkKeyOwned(catalog_col, 110L));
         
         
         //verify moved away from 2 
         ex = null;
         try{
-            tracking2.checkKeyOwned(catalog_tbl, 104L);
+            tracking2.checkKeyOwned(catalog_col, 104L);
         } catch(ReconfigurationException e){
           ex =e;  
         }
@@ -157,7 +158,7 @@ public String test_json2 = "{"
         //verify moved away from 2 
         ex = null;
         try{
-            tracking1.checkKeyOwned(catalog_tbl, 371L);
+            tracking1.checkKeyOwned(catalog_col, 371L);
         } catch(ReconfigurationException e){
           ex =e;
         }
@@ -168,9 +169,9 @@ public String test_json2 = "{"
         //Testing an existing range split
         migrRange = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{370L}, new Long[]{373L}, 3, 1);
         tracking1.markRangeAsReceived(migrRange);
-        assertTrue(tracking1.checkKeyOwned(catalog_tbl, 370L));        
-        assertTrue(tracking1.checkKeyOwned(catalog_tbl, 371L));
-        assertTrue(tracking1.checkKeyOwned(catalog_tbl, 372L));
+        assertTrue(tracking1.checkKeyOwned(catalog_col, 370L));        
+        assertTrue(tracking1.checkKeyOwned(catalog_col, 371L));
+        assertTrue(tracking1.checkKeyOwned(catalog_col, 372L));
         
         migrRange = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{350L}, new Long[]{360L}, 3, 1);
         tracking1.markRangeAsReceived(migrRange);
@@ -179,7 +180,7 @@ public String test_json2 = "{"
         //verify moved away from 2 
         ex = null;
         try{
-            tracking1.checkKeyOwned(catalog_tbl, 365L);
+            tracking1.checkKeyOwned(catalog_col, 365L);
         } catch(ReconfigurationException e){
           ex =e;
         }
@@ -189,7 +190,7 @@ public String test_json2 = "{"
         
         ex = null;
         try{
-            tracking1.checkKeyOwned(catalog_tbl, 369L);
+            tracking1.checkKeyOwned(catalog_col, 369L);
         } catch(ReconfigurationException e){
           ex =e;
         }
@@ -198,12 +199,12 @@ public String test_json2 = "{"
         assertTrue(range.getMinIncl().getLong(0) ==  369L && range.getMaxExcl().getLong(0) == 369L);  
         
         
-        assertTrue(tracking1.checkKeyOwned(catalog_tbl, 371L));
-        assertTrue(tracking1.checkKeyOwned(catalog_tbl, 355L));
+        assertTrue(tracking1.checkKeyOwned(catalog_col, 371L));
+        assertTrue(tracking1.checkKeyOwned(catalog_col, 355L));
         
         ex = null;
         try{
-            tracking1.checkKeyOwned(catalog_tbl, 390L);
+            tracking1.checkKeyOwned(catalog_col, 390L);
         } catch(ReconfigurationException e){
           ex =e;
         }
@@ -220,9 +221,9 @@ public String test_json2 = "{"
         ranges.add(ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{330L}, new Long[]{340L}, 4, 1));
         tracking1.markRangeAsReceived(ranges);
 
-        assertTrue(tracking1.checkKeyOwned(catalog_tbl, 308L));
-        assertTrue(tracking1.checkKeyOwned(catalog_tbl, 334L));
-        assertTrue(tracking1.checkKeyOwned(catalog_tbl, 349L));
+        assertTrue(tracking1.checkKeyOwned(catalog_col, 308L));
+        assertTrue(tracking1.checkKeyOwned(catalog_col, 334L));
+        assertTrue(tracking1.checkKeyOwned(catalog_col, 349L));
 
     }
     
@@ -241,15 +242,15 @@ public String test_json2 = "{"
         ReconfigurationTrackingInterface tracking4 = new ReconfigurationTracking(p, plan,4);
         
         //keys that should be present
-        assertTrue(tracking1.checkKeyOwned(catalog_tbl, 1L));
-        assertTrue(tracking1.checkKeyOwned(catalog_tbl, 99L));
+        assertTrue(tracking1.checkKeyOwned(catalog_col, 1L));
+        assertTrue(tracking1.checkKeyOwned(catalog_col, 99L));
         
         //Check a  key that is not migrated yet, but should be
 
-        assertTrue(tracking2.checkKeyOwned(catalog_tbl, 100L));
+        assertTrue(tracking2.checkKeyOwned(catalog_col, 100L));
         ReconfigurationException ex = null;
         try{
-            tracking1.checkKeyOwned(catalog_tbl, 100L);
+            tracking1.checkKeyOwned(catalog_col, 100L);
         } catch(ReconfigurationException e){
           ex =e;  
         } catch(Exception e){
@@ -268,12 +269,12 @@ public String test_json2 = "{"
         tracking2.markKeyAsMigratedOut(tbl, Arrays.asList(new Object[]{100L}));
         
         //verify moved
-        assertTrue(tracking1.checkKeyOwned(catalog_tbl, 100L));
+        assertTrue(tracking1.checkKeyOwned(catalog_col, 100L));
         
         //verify moved away from 2 
         ex = null;
         try{
-            tracking2.checkKeyOwned(catalog_tbl, 100L);
+            tracking2.checkKeyOwned(catalog_col, 100L);
         } catch(ReconfigurationException e){
           ex =e;  
         }
