@@ -121,9 +121,9 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
     @Test 
     public void testMultiExtract() throws Exception {
         int wid = 2;
-        ReconfigurationRange<Long> range; 
+        ReconfigurationRange range; 
         VoltTable extractTable;
-        range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2);
+        range = ReconfigurationUtil.getReconfigurationRange(customer_tbl, new Long[][]{{ new Long(wid) }}, new Long[][]{{ new Long(wid+1) }}, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
         this.loadTPCCData(NUM_TUPLES * 10, this.customer_tbl,this.cust_p_index, wid);
         int EXTRACT_LIMIT = 2048;
@@ -165,7 +165,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
         
     	assertTrue(true);
     	
-    	ReconfigurationRange<Long> range; 
+    	ReconfigurationRange range; 
     	VoltTable extractTable;
     	long start, extract, load;
     	Pair<VoltTable,Boolean> resTable;
@@ -176,7 +176,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
     	    int scale = scales[i];
     	    LOG.info("Testing for scale : " + scale);
     	    //extract
-            range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale+1), 1, 2);
+            range = ReconfigurationUtil.getReconfigurationRange(customer_tbl, new Long[][]{{ new Long(scale) }}, new Long[][]{{ new Long(scale+1) }}, 1, 2);
             extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
             start = System.currentTimeMillis();
             resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
@@ -230,7 +230,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
         
         assertTrue(true);
         
-        ReconfigurationRange<Long> range; 
+        ReconfigurationRange range; 
         VoltTable extractTable;
         long start, extract, load;
         Pair<VoltTable,Boolean> resTable;
@@ -241,7 +241,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
             int scale = scales[i];
             LOG.info("Testing for scale : " + scale);
             //extract
-            range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale), 1, 2);
+            range = ReconfigurationUtil.getReconfigurationRange(customer_tbl, new Long[][]{{ new Long(scale) }}, new Long[][]{{ new Long(scale) }}, 1, 2);
             extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
             start = System.currentTimeMillis();
             resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);

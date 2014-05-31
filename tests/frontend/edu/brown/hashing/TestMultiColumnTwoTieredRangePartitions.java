@@ -259,36 +259,36 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
     }
 
     public void testPartitionRangeCompare() throws Exception {
-        PartitionRange<Long> pr1 = new PartitionRange<Long>(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1:1-20");
-        PartitionRange<Long> pr2 = new PartitionRange<Long>(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1:2-3");
+        PartitionRange pr1 = new PartitionRange(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1:1-20");
+        PartitionRange pr2 = new PartitionRange(getTable(TPCCConstants.TABLENAME_DISTRICT), 1, "1:2-3");
         assertTrue(pr1.compareTo(pr2) < 0);
         assertTrue(pr2.compareTo(pr1) > 0);
     }
 
     @SuppressWarnings("unchecked")
     public void testReconfigurationPlan() throws Exception {
-        List<PartitionRange<Integer>> olds = new ArrayList<>();
-        List<PartitionRange<Integer>> news = new ArrayList<>();
+        List<PartitionRange> olds = new ArrayList<>();
+        List<PartitionRange> news = new ArrayList<>();
 
         Table table = getTable(TPCCConstants.TABLENAME_DISTRICT);
-        olds.add(new PartitionRange<Integer>(table, 1, "1-2"));
-        PartitionedTable<Integer> old_table = new PartitionedTable<>(olds, "table", VoltType.INTEGER, table);
-        Map<String, PartitionedTable<? extends Comparable<?>>> old_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
+        olds.add(new PartitionRange(table, 1, "1-2"));
+        PartitionedTable old_table = new PartitionedTable(olds, "table", table);
+        Map<String, PartitionedTable> old_table_map = new HashMap<String, PlannedPartitions.PartitionedTable>();
         old_table_map.put("table", old_table);
         PartitionPhase old_phase = new PartitionPhase(old_table_map);
 
-        news.add(new PartitionRange<Integer>(table, 1, "1:-10"));
-        news.add(new PartitionRange<Integer>(table, 2, "1:10-20"));
-        news.add(new PartitionRange<Integer>(table, 3, "1-2:20-"));
-        PartitionedTable<Integer> new_table = new PartitionedTable<>(news, "table", VoltType.INTEGER, table);
-        Map<String, PartitionedTable<? extends Comparable<?>>> new_table_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
+        news.add(new PartitionRange(table, 1, "1:-10"));
+        news.add(new PartitionRange(table, 2, "1:10-20"));
+        news.add(new PartitionRange(table, 3, "1-2:20-"));
+        PartitionedTable new_table = new PartitionedTable(news, "table", table);
+        Map<String, PartitionedTable> new_table_map = new HashMap<String, PlannedPartitions.PartitionedTable>();
         new_table_map.put("table", new_table);
         PartitionPhase new_phase = new PartitionPhase(new_table_map);
 
         ReconfigurationPlan reconfig_plan = new ReconfigurationPlan(old_phase, new_phase);
 
-        ReconfigurationTable<Integer> reconfig = (ReconfigurationTable<Integer>) reconfig_plan.tables_map.get("table");
-        ReconfigurationRange<Integer> range = null;
+        ReconfigurationTable reconfig = (ReconfigurationTable) reconfig_plan.tables_map.get("table");
+        ReconfigurationRange range = null;
         range = reconfig.getReconfigurations().get(0);
         assertTrue(range.getMinIncl().getLong(1) == 10 && range.getMaxExcl().getLong(1) == 20 && range.old_partition == 1 && range.new_partition == 2);
 

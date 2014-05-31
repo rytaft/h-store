@@ -11,6 +11,7 @@ import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Database;
+import org.voltdb.catalog.Table;
 
 import edu.brown.hashing.PlannedPartitions.PartitionPhase;
 
@@ -34,17 +35,17 @@ public interface ExplicitPartitions {
      *         found in the plan
      * @throws Exception
      */
-    public abstract int getPartitionId(String table_name, Object id) throws Exception;
-
     public abstract int getPartitionId(String table_name, List<Object> ids) throws Exception;
     
     public abstract int getPartitionId(String table_name, Object[] ids) throws Exception;
     
-    public abstract int getPartitionId(CatalogType catalog, Object id) throws Exception;
-
     public abstract int getPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception;
 
     public abstract String getTableName(CatalogType catalog);
+    
+    public abstract String getTableName(List<CatalogType> catalog);
+    
+    public abstract Table getTable(List<CatalogType> catalog);
 
     /**
      * Get the previous partition id for a given table and partition id/key
@@ -55,11 +56,7 @@ public interface ExplicitPartitions {
      *         found in the plan OR if there is no previous plan
      * @throws Exception
      */
-    public abstract int getPreviousPartitionId(String table_name, Object id) throws Exception;
-
     public abstract int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception;
-
-    public abstract int getPreviousPartitionId(CatalogType catalog, Object id) throws Exception;
 
     public abstract int getPreviousPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception;
 
@@ -116,5 +113,7 @@ public interface ExplicitPartitions {
     public abstract void fromJSON(JSONObject json_object, Database catalog_db) throws JSONException;
 
     public abstract Map<String, List<String>> getRelatedTablesMap();
+    
+    public abstract Map<String, List<Table>> getRelatedCatalogTablesMap();
 
 }

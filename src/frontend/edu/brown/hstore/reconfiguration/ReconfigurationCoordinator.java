@@ -21,6 +21,9 @@ import org.jfree.util.Log;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.CatalogType;
+import org.voltdb.catalog.Column;
+import org.voltdb.catalog.ColumnRef;
+import org.voltdb.catalog.Table;
 import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.messaging.FastSerializer;
@@ -28,6 +31,7 @@ import org.voltdb.messaging.FastSerializer;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
 
+import edu.brown.catalog.CatalogUtil;
 import edu.brown.hashing.AbstractHasher;
 import edu.brown.hashing.ExplicitHasher;
 import edu.brown.hashing.ExplicitPartitions;
@@ -64,7 +68,6 @@ import edu.brown.profilers.ReconfigurationProfiler;
 import edu.brown.protorpc.ProtoRpcController;
 import edu.brown.statistics.FastIntHistogram;
 import edu.brown.utils.FileUtil;
-import edu.brown.utils.CompositeKey;
 
 /**
  * @author vaibhav : Reconfiguration Coordinator at each site, responsible for
@@ -357,9 +360,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             LOG.info("Pushing ranges for local PE : " + executor.getPartitionId());
                             long peStart = System.currentTimeMillis();
                             int kbSent = 0;
-                            List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges = executor.getOutgoingRanges();
+                            List<ReconfigurationRange> outgoing_ranges = executor.getOutgoingRanges();
                             if (outgoing_ranges != null && outgoing_ranges.size()>0) {
-                                for (ReconfigurationRange<? extends Comparable<?>> range : outgoing_ranges) {
+                                for (ReconfigurationRange range : outgoing_ranges) {
                                     boolean hasMoreData = true;
                                     while(hasMoreData){
                                         Pair<VoltTable,Boolean> res = executor.extractPushRequst(range);
@@ -738,14 +741,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
     //  DATA TRANSFER FUNCTIONS 
     // -------------------------------------------
     
-    public void pushTuples(int oldPartitionId, int newPartitionId, String table_name, VoltTable vt, Long minInclusive, Long maxExclusive) throws Exception {
-        List<Long> mins = new ArrayList<>();
-        List<Long> maxs = new ArrayList<>();
-        mins.add(minInclusive);
-        maxs.add(maxExclusive);
-        pushTuples(oldPartitionId, newPartitionId, table_name, vt, mins, maxs);
-    }
-    
     /**
      * @param oldPartitionId
      * @param newPartitionId
@@ -753,7 +748,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param vt
      * @throws Exception
      */
-    public void pushTuples(int oldPartitionId, int newPartitionId, String table_name, VoltTable vt, List<Long> minInclusive, List<Long> maxExclusive) throws Exception {
+    public void pushTuples(int oldPartitionId, int newPartitionId, String table_name, VoltTable vt, VoltTable minInclusive, VoltTable maxExclusive) throws Exception {
         LOG.info(String.format("pushTuples keys (%s-%s] for [%s]  partitions %s->%s", minInclusive, maxExclusive, table_name, oldPartitionId, newPartitionId));
         int destinationId = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(newPartitionId);
 
@@ -772,7 +767,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
         }
 
-        DataTransferRequest dataTransferRequest = DataTransferRequest.newBuilder().addAllMinInclusive(minInclusive).addAllMaxExclusive(maxExclusive).setSenderSite(this.localSiteId)
+        DataTransferRequest dataTransferRequest = DataTransferRequest.newBuilder().addAllMinInclusive(getLongsList(minInclusive)).addAllMaxExclusive(getLongsList(maxExclusive)).setSenderSite(this.localSiteId)
                 .setOldPartition(oldPartitionId).setNewPartition(newPartitionId).setVoltTableName(table_name).setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).build();
 
         this.channels[destinationId].dataTransfer(controller, dataTransferRequest, dataTransferRequestCallback);
@@ -787,7 +782,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param vt
      * @throws Exception
      */
-    public DataTransferResponse receiveTuples(int sourceId, long sentTimeStamp, int partitionId, int newPartitionId, String table_name, VoltTable vt, List<Long> minInclusive, List<Long> maxExclusive)
+    public DataTransferResponse receiveTuples(int sourceId, long sentTimeStamp, int partitionId, int newPartitionId, String table_name, VoltTable vt, VoltTable minInclusive, VoltTable maxExclusive)
             throws Exception {
         LOG.info(String.format("receiveTuples  keys for %s  partIds %s->%s", table_name, partitionId, newPartitionId));
         if (vt == null) {
@@ -801,7 +796,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         boolean moreData = false;
         executor.receiveTuples(0L, partitionId, newPartitionId, table_name, minInclusive, maxExclusive, vt, moreData, false, -1);
         DataTransferResponse response = DataTransferResponse.newBuilder().setNewPartition(newPartitionId).setOldPartition(partitionId).setT0S(sentTimeStamp).setSenderSite(sourceId)
-                .setVoltTableName(table_name).addAllMinInclusive(minInclusive).addAllMaxExclusive(maxExclusive).build();
+                .setVoltTableName(table_name).addAllMinInclusive(getLongsList(minInclusive)).addAllMaxExclusive(getLongsList(maxExclusive)).build();
         return response;
     }
 
@@ -849,10 +844,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param partitionId
      * @param pullRequests
      */
-    public void asyncPullRequestFromPE(int livePullId, long txnId, int callingPartition, List<ReconfigurationRange<? extends Comparable<?>>> pullRequests) {
+    public void asyncPullRequestFromPE(int livePullId, long txnId, int callingPartition, List<ReconfigurationRange> pullRequests) {
         for(ReconfigurationRange range : pullRequests){
             asyncPullTuples(livePullId, txnId, range.old_partition, range.new_partition, range.table_name, 
-                    range.getMinList(), range.getMaxList(), range.getVt());
+                    range.getMinIncl(), range.getMaxExcl());
         }
         
     }
@@ -863,7 +858,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param callingPartition
      * @param pullRequests
      */
-    public void pullRangesNonBlocking(int livePullId, long txnId, int callingPartition, Collection<ReconfigurationRange<? extends Comparable<?>>> pullRequests) {
+    public void pullRangesNonBlocking(int livePullId, long txnId, int callingPartition, Collection<ReconfigurationRange> pullRequests) {
         pullRanges(livePullId, txnId, callingPartition, pullRequests, null);
     }
 
@@ -877,7 +872,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param blockingSemaphore
      */
     public void pullRanges(int livePullId, 
-            long txnId, int callingPartition, Collection<ReconfigurationRange<? extends Comparable<?>>> pullRequests, Semaphore blockingSemaphore){
+            long txnId, int callingPartition, Collection<ReconfigurationRange> pullRequests, Semaphore blockingSemaphore){
         try {
             blockingSemaphore.acquire(pullRequests.size());
         } catch (InterruptedException e) {
@@ -888,7 +883,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             //FIXME change pullTuples to be generic comparable
             
             pullTuples(livePullId, txnId, range.old_partition, range.new_partition, range.table_name, 
-                    range.getMinList(), range.getMaxList(), range.getVt());
+                    range.getMinIncl(), range.getMaxExcl());
             blockedRequests.put(livePullId, blockingSemaphore);
             //LOG.error("TODO temp removing sempahore for testing");
             //blockingSemaphore.release();         
@@ -907,7 +902,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param max_exclusive
      * @param voltType
      */
-    public void pullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, List<Long> min_inclusive, List<Long> max_exclusive, VoltType voltType) {
+    public void pullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable min_inclusive, VoltTable max_exclusive) {
         LOG.info(String.format("pullTuples with Live Pull ID %s, keys %s->%s for %s  partIds %s->%s", livePullId, min_inclusive, max_exclusive, table_name, oldPartitionId, newPartitionId));
         // TODO : Check if volt type makes can be used here for generic values
         // or remove it
@@ -916,7 +911,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         ProtoRpcController controller = new ProtoRpcController();
 
         LivePullRequest livePullRequest = LivePullRequest.newBuilder().setLivePullIdentifier(livePullId).setSenderSite(this.localSiteId).setTransactionID(txnId).setOldPartition(oldPartitionId)
-                .setNewPartition(newPartitionId).setVoltTableName(table_name).addAllMinInclusive(min_inclusive).addAllMaxExclusive(max_exclusive).setT0S(System.currentTimeMillis()).build();
+                .setNewPartition(newPartitionId).setVoltTableName(table_name).addAllMinInclusive(getLongsList(min_inclusive)).addAllMaxExclusive(getLongsList(max_exclusive)).setT0S(System.currentTimeMillis()).build();
 
         if (sourceID == localSiteId) {
             LOG.debug("pulling from localsite");
@@ -931,6 +926,16 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.channels[sourceID].livePull(controller, livePullRequest, livePullRequestCallback);
     }
     
+    // HACK - we need to change Hstoreservice to take a volt table
+    private List<Long> getLongsList(VoltTable vt) {
+    	ArrayList<Long> list = new ArrayList<Long>();
+    	vt.resetRowPosition();
+    	while(vt.advanceRow()) {
+    		list.add(vt.getLong(0));
+    	}
+    	return list;
+    }
+    
     /**
      * Live Pull the tuples for a reconfiguration range by generating a live
      * pull request
@@ -943,14 +948,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param max_exclusive
      * @param voltType
      */
-    public void asyncPullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, List<Long> min_inclusive, List<Long> max_exclusive, VoltType voltType) {
+    public void asyncPullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable min_inclusive, VoltTable max_exclusive) {
         LOG.info(String.format("pullTuples with async Pull ID %s, keys %s->%s for %s  partIds %s->%s", livePullId, min_inclusive, max_exclusive, table_name, oldPartitionId, newPartitionId));
         int sourceID = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(oldPartitionId);
 
         ProtoRpcController controller = new ProtoRpcController();
 
         AsyncPullRequest asyncPullRequest = AsyncPullRequest.newBuilder().setAsyncPullIdentifier(livePullId).setSenderSite(this.localSiteId).setTransactionID(txnId).setOldPartition(oldPartitionId)
-                .setNewPartition(newPartitionId).setVoltTableName(table_name).addAllMinInclusive(min_inclusive).addAllMaxExclusive(max_exclusive).setT0S(System.currentTimeMillis()).build();
+                .setNewPartition(newPartitionId).setVoltTableName(table_name).addAllMinInclusive(getLongsList(min_inclusive)).addAllMaxExclusive(getLongsList(max_exclusive)).setT0S(System.currentTimeMillis()).build();
 
         if (sourceID == localSiteId) {
             LOG.debug("pulling from localsite");
@@ -1097,7 +1102,19 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
 
     public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, List<Long> min_inclusive, 
-		List<Long> max_exclusive, VoltTable voltTable, boolean moreDataNeeded) {
+    		List<Long> max_exclusive, VoltTable voltTable, boolean moreDataNeeded) {
+    	    	
+    	assert(min_inclusive.size() == max_exclusive.size());
+        Table table = this.hstore_site.getCatalogContext().getTableByName(table_name);
+    	VoltTable min_incl = ReconfigurationUtil.getVoltTable(table, min_inclusive);
+        VoltTable max_excl = ReconfigurationUtil.getVoltTable(table, max_exclusive);
+        
+        receiveLivePullTuples(livePullId, txnId, oldPartitionId, newPartitionId, table_name, min_incl, max_excl, voltTable, moreDataNeeded);
+    }
+    
+    
+    public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable min_inclusive, 
+		VoltTable max_exclusive, VoltTable voltTable, boolean moreDataNeeded) {
         
         long start=0, receive=0, done=0;
         if (detailed_timing){
@@ -1426,7 +1443,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         if (executorMap.containsKey(expectedPartition)){
             //check with destination if we have it
             try{
-                if (executorMap.get(expectedPartition).getReconfiguration_tracker().quickCheckKeyOwned(catalogItems.get(0), new CompositeKey(values)))
+                if (executorMap.get(expectedPartition).getReconfiguration_tracker().quickCheckKeyOwned(catalogItems.get(0), values))
                     return expectedPartition;
                 else
                     return previousPartition;
@@ -1435,7 +1452,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             }
         } else if (executorMap.containsKey(previousPartition)) {
             try{
-                if (executorMap.get(previousPartition).getReconfiguration_tracker().quickCheckKeyOwned(catalogItems.get(0), new CompositeKey(values)))
+                if (executorMap.get(previousPartition).getReconfiguration_tracker().quickCheckKeyOwned(catalogItems.get(0), values))
                     return previousPartition;
                 else
                     return expectedPartition;

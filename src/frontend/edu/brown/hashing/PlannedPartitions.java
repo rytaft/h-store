@@ -45,6 +45,7 @@ import edu.brown.mappings.ParameterMappingsSet;
 import edu.brown.utils.FileUtil;
 import edu.brown.utils.JSONSerializable;
 import edu.brown.utils.StringUtil;
+import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
 
 //       TODO This class likely needs to be relocated (ae)
 /**
@@ -75,18 +76,17 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
     public static final String TABLES = "tables";
     public static final String PARTITIONS = "partitions";
     private static final String DEFAULT_TABLE = "default_table";
-    public static final VoltType DEFAULT_VOLTTYPE = VoltType.BIGINT;
-
+    
     static {
         LoggerUtil.attachObserver(LOG, debug, trace);
     }
 
     private CatalogContext catalog_context;
-    private Map<String, VoltType> table_vt_map;
     private Map<String, PartitionPhase> partition_phase_map;
-    private Map<CatalogType, String> catalog_to_table_map;
+    private Map<CatalogType, Table> catalog_to_table_map;
     private Map<String, Column[]> table_partition_cols_map;
     private Map<String, List<String>> relatedTablesMap;
+    private Map<String, List<Table>> relatedCatalogTablesMap;
     private ParameterMappingsSet paramMappings;
     private String current_phase;
     private String previous_phase;
@@ -105,6 +105,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         this.table_partition_cols_map = new HashMap<>();
         this.paramMappings = catalog_context.paramMappings;
         this.relatedTablesMap = new HashMap<>();
+        this.relatedCatalogTablesMap = new HashMap<>();
 
         Set<String> partitionedTables = getExplicitPartitionedTables(planned_partition_json);
         // TODO find catalogContext.getParameter mapping to find
@@ -112,7 +113,6 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         // from project mapping (ae)
         assert planned_partition_json.has(DEFAULT_TABLE) : "default_table missing from planned partition json";
         this.default_table = planned_partition_json.getString(DEFAULT_TABLE);
-        this.table_vt_map = new HashMap<>();
         for (Table table : catalog_context.getDataTables()) {
             String tableName = table.getName().toLowerCase();
             Column[] cols = new Column[table.getPartitioncolumns().size()];
@@ -136,8 +136,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
                 LOG.info(String.format("Partition col for table %s is null. Skipping", tableName));
             } else {
                 LOG.info(String.format("Adding table:%s partitionCol:%s %s", tableName, partitionCol, VoltType.get(partitionCol.getType())));
-                this.table_vt_map.put(tableName, VoltType.get(partitionCol.getType()));
-                this.catalog_to_table_map.put(partitionCol, tableName);
+                this.catalog_to_table_map.put(partitionCol, table);
             }
         }
 
@@ -157,18 +156,19 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
                 	partitionCol = cols[0];
                 }
             	
-            	String table_name = this.catalog_to_table_map.get(partitionCol);
+                Table table = this.catalog_to_table_map.get(partitionCol);
+            	String table_name = table.getName().toLowerCase();
                 if ((table_name == null) || (table_name.equals("null")) || (table_name.trim().length() == 0)) {
                     LOG.info(String.format("Using default table %s for procedure: %s ", this.default_table, proc.toString()));
                     table_name = this.default_table;
                 } else {
                     LOG.info(table_name + " adding procedure: " + proc.toString());
                 }
-                this.catalog_to_table_map.put(proc, table_name);
+                this.catalog_to_table_map.put(proc, table);
                 for (Statement statement : proc.getStatements()) {
                     LOG.debug(table_name + " adding statement: " + statement.toString());
 
-                    this.catalog_to_table_map.put(statement, table_name);
+                    this.catalog_to_table_map.put(statement, table);
                 }
 
             }
@@ -195,33 +195,38 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
                 List<Column> depCols = dependUtil.getAncestors(partitionCol);
                 boolean partitionedParentFound = false;
                 List<String> relatedTables = new ArrayList<>();
+                List<Table> relatedCatalogTables = new ArrayList<>();
                 for (Column c : depCols) {
                     CatalogType p = c.getParent();
                     if (p instanceof Table) {
                         // if in table then map to it
                         String relatedTblName = p.getName().toLowerCase();
+                        Table relatedTbl = (Table) p;
                         LOG.info(String.format("Table %s is related to %s",tableName,relatedTblName));
                         relatedTables.add(relatedTblName);
+                        relatedCatalogTables.add(relatedTbl);
                         if (partitionedTables.contains(relatedTblName)) {
                             LOG.info("parent partitioned table : " + p + " : " + relatedTblName);
                             partitionedTablesByFK.put(tableName, relatedTblName);
                             partitionedParentFound = true;
                             if (catalog_to_table_map.containsKey(table))
                                 LOG.error("ctm has table already : " + table);
-                            catalog_to_table_map.put(table, relatedTblName);
+                            catalog_to_table_map.put(table, relatedTbl);
                             if (catalog_to_table_map.containsKey(partitionCol)) {
                                 LOG.error("ctm has part col : " + partitionCol + " : " + catalog_to_table_map.get(partitionCol));
                             }
                             //TODO catalog_to_table_map.put(partitionCol, relatedTblName);
                             LOG.info("no relationships on look up " +partitionCol + " : " + tableName);
-                            catalog_to_table_map.put(partitionCol, tableName);
+                            catalog_to_table_map.put(partitionCol, table);
                         }
                     }
                 }
                 if(!relatedTables.isEmpty()){
                     LOG.info("Associating the list of related tables for :"+ tableName);
                     relatedTables.add(tableName);
+                    relatedCatalogTables.add(table);
                     relatedTablesMap.put(tableName, relatedTables);
+                    relatedCatalogTablesMap.put(tableName, relatedCatalogTables);
                 }
                 if (!partitionedParentFound) {
                     throw new RuntimeException("No partitioned relationship found for table : " + tableName + " partitioned:" + partitionedTables.toString());
@@ -237,7 +242,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
                 String key = keys.next();
 
                 JSONObject phase = phases.getJSONObject(key);
-                this.partition_phase_map.put(key, new PartitionPhase(catalog_context, this.table_vt_map, phase, partitionedTablesByFK));
+                this.partition_phase_map.put(key, new PartitionPhase(catalog_context, phase, partitionedTablesByFK));
 
                 // Use the first phase by default
                 if (first_key == null) {
@@ -291,37 +296,13 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         }
     }
 
-    /**
-     * Get the partition id for a given table and partition id/key
-     * 
-     * @param table_name
-     * @param id
-     * @return the partition id, or -1 / null partition if the id/key is not
-     *         found in the plan
-     * @throws Exception
-     */
-    public int getPartitionId(String table_name, Object id) throws Exception {
-    	PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
-        PartitionedTable<?> table = phase.getTable(table_name);
-        if (table == null) {
-            if (debug.val)
-                LOG.debug(String.format("Table not found: %s, using default:%s ", table_name, this.default_table));
-            table = phase.getTable(this.default_table);
-            if (table == null) {
-                throw new RuntimeException(String.format("Default partition table is null. Lookup table:%s Default Table:%s", table_name, this.default_table));
-            }
-        }
-        assert table != null : "Table not found " + table_name;
-        return table.findPartition(id);
-    }
-
     /* (non-Javadoc)
      * @see edu.brown.hashing.ExplicitPartition#getPartitionId(java.lang.String, java.lang.Object)
      */
     @Override
     public int getPartitionId(String table_name, List<Object> ids) throws Exception {
     	PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
-        PartitionedTable<?> table = phase.getTable(table_name);
+        PartitionedTable table = phase.getTable(table_name);
         if (table == null) {
             if (debug.val)
                 LOG.debug(String.format("Table not found: %s, using default:%s ", table_name, this.default_table));
@@ -339,57 +320,28 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
      */
     @Override
     public int getPartitionId(String table_name, Object[] ids) throws Exception {
-    	ArrayList<Object> idList = new ArrayList<>();
-    	for (Object id : ids) {
-    		idList.add(id);
-    	}
-    	return getPartitionId(table_name, idList);
+    	return getPartitionId(table_name, Arrays.asList(ids));
     }
     
     /* (non-Javadoc)
      * @see edu.brown.hashing.ExplicitPartition#getPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
      */
-    public int getPartitionId(CatalogType catalog, Object id) throws Exception {
-        String table_name = this.catalog_to_table_map.get(catalog);
-        return this.getPartitionId(table_name, id);
-    }
-
-    /* (non-Javadoc)
-     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
-     */
     @Override
     public int getPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception {
-    	String table_name = this.catalog_to_table_map.get(catalogs.get(0));
+    	String table_name = this.catalog_to_table_map.get(catalogs.get(0)).getName().toLowerCase();
         return this.getPartitionId(table_name, ids);
     }
 
     public String getTableName(CatalogType catalog) {
-        return this.catalog_to_table_map.get(catalog);
+        return this.catalog_to_table_map.get(catalog).getName().toLowerCase();
+    }
+    
+    public String getTableName(List<CatalogType> catalog) {
+        return this.catalog_to_table_map.get(catalog.get(0)).getName().toLowerCase();
     }
 
-    /**
-     * Get the previous partition id for a given table and partition id/key
-     * 
-     * @param table_name
-     * @param id
-     * @return the partition id, or -1 / null partition if the id/key is not
-     *         found in the plan OR if there is no previous phase
-     * @throws Exception
-     */
-    public int getPreviousPartitionId(String table_name, Object id) throws Exception {
-    	String previousPhase = this.getPreviousPhase_phase();
-        if (previousPhase == null)
-            return -1;
-        PartitionPhase phase = this.partition_phase_map.get(previousPhase);
-        PartitionedTable<?> table = phase.getTable(table_name);
-        if (table == null){
-            table = phase.getTable(table_name.toLowerCase());
-            if (table == null) {
-                throw new Exception("Unable to find table "+ table_name + " in phase  " + previousPhase);
-            }
-        }
-        assert table != null : "Table not found " + table_name;
-        return table.findPartition(id);
+    public Table getTable(List<CatalogType> catalog) {
+        return this.catalog_to_table_map.get(catalog.get(0));
     }
 
     /* (non-Javadoc)
@@ -401,7 +353,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         if (previousPhase == null)
             return -1;
         PartitionPhase phase = this.partition_phase_map.get(previousPhase);
-        PartitionedTable<?> table = phase.getTable(table_name);
+        PartitionedTable table = phase.getTable(table_name);
         if (table == null){
             table = phase.getTable(table_name.toLowerCase());
             if (table == null) {
@@ -412,24 +364,6 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         return table.findPartition(ids);
     }
 
-    public int getPreviousPartitionId(CatalogType catalog, Object id) throws Exception {
-        String previousPhase = this.getPreviousPhase_phase();
-        if (previousPhase == null)
-            return -1;
-
-        String table_name = this.catalog_to_table_map.get(catalog);
-        PartitionPhase phase = this.partition_phase_map.get(previousPhase);
-        PartitionedTable<?> table = phase.getTable(table_name);
-        if (table == null){
-            table = phase.getTable(table_name.toLowerCase());
-            if (table == null) {
-                throw new Exception("Unable to find table "+ table_name + " in phase  " + previousPhase);
-            }
-        }
-        assert table != null : "Table not found " + table_name;
-        return table.findPartition(id);
-    }
-    
     /* (non-Javadoc)
      * @see edu.brown.hashing.ExplicitPartition#getPreviousPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
      */
@@ -439,9 +373,9 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         if (previousPhase == null)
             return -1;
 
-        String table_name = this.catalog_to_table_map.get(catalogs.get(0));
+        String table_name = this.catalog_to_table_map.get(catalogs.get(0)).getName().toLowerCase();
         PartitionPhase phase = this.partition_phase_map.get(previousPhase);
-        PartitionedTable<?> table = phase.getTable(table_name);
+        PartitionedTable table = phase.getTable(table_name);
         if (table == null){
             table = phase.getTable(table_name.toLowerCase());
             if (table == null) {
@@ -460,14 +394,14 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
      * @author aelmore Holds the phases/epochs/version of a partition plan
      */
     public static class PartitionPhase {
-        protected Map<String, PartitionedTable<? extends Comparable<?>>> tables_map;
+        protected Map<String, PartitionedTable> tables_map;
 
         @SuppressWarnings("unchecked")
-        public List<PartitionRange<? extends Comparable<?>>> getPartitions(String table_name) {
-            return (List<PartitionRange<? extends Comparable<?>>>) this.tables_map.get(table_name);
+        public List<PartitionRange> getPartitions(String table_name) {
+            return (List<PartitionRange>) this.tables_map.get(table_name);
         }
 
-        public PartitionedTable<? extends Comparable<?>> getTable(String table_name) {
+        public PartitionedTable getTable(String table_name) {
             return this.tables_map.get(table_name);
         }
 
@@ -481,25 +415,17 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
          *            JSONObject
          * @param partitionedTablesByFK
          */
-        public PartitionPhase(CatalogContext catalog_context, Map<String, VoltType> table_vt_map, JSONObject phase, Map<String, String> partitionedTablesByFK) throws Exception {
-            this.tables_map = new HashMap<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>>();
+        public PartitionPhase(CatalogContext catalog_context, JSONObject phase, Map<String, String> partitionedTablesByFK) throws Exception {
+            this.tables_map = new HashMap<String, PlannedPartitions.PartitionedTable>();
             assert (phase.has(TABLES));
             JSONObject json_tables = phase.getJSONObject(TABLES);
             Iterator<String> table_names = json_tables.keys();
             while (table_names.hasNext()) {
                 String table_name = table_names.next();
-                VoltType vt = null;
-                if (table_vt_map.containsKey(table_name.toLowerCase())) {
-                    vt = table_vt_map.get(table_name);
-                } else {
-                    LOG.info(String.format("Using default voltType %s for table '%s' ", DEFAULT_VOLTTYPE, table_name));
-                    vt = DEFAULT_VOLTTYPE;
-                }
-
                 JSONObject table_json = json_tables.getJSONObject(table_name.toLowerCase());
                 // Class<?> c = table_vt_map.get(table_name).classFromType();
                 // TODO fix partitiontype
-                this.tables_map.put(table_name, new PartitionedTable<Long>(vt, table_name, table_json, catalog_context.getTableByName(table_name)));
+                this.tables_map.put(table_name, new PartitionedTable(table_name, table_json, catalog_context.getTableByName(table_name)));
             }
 
             //Add entries for tables that are partitioned on other columns
@@ -514,7 +440,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             }
         }
 
-        protected PartitionPhase(Map<String, PlannedPartitions.PartitionedTable<? extends Comparable<?>>> table_map) {
+        protected PartitionPhase(Map<String, PlannedPartitions.PartitionedTable> table_map) {
             this.tables_map = table_map;
         }
     }
@@ -524,20 +450,18 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
      * @param <T>
      *            The type of the ID which is partitioned on. Comparable
      */
-    public static class PartitionedTable<T extends Comparable<T>> {
+    public static class PartitionedTable {
 
-        protected List<PartitionRange<T>> partitions;
+        protected List<PartitionRange> partitions;
         protected String table_name;
-        private VoltType vt;
         private Table catalog_table;
         private JSONObject table_json;
 
-        public PartitionedTable(VoltType vt, String table_name, JSONObject table_json, Table catalog_table) throws Exception {
+        public PartitionedTable(String table_name, JSONObject table_json, Table catalog_table) throws Exception {
             this.catalog_table = catalog_table;
             this.partitions = new ArrayList<>();
             this.table_name = table_name;
             this.table_json = table_json;
-            this.vt = vt;
             assert (table_json.has(PARTITIONS));
             JSONObject partitions_json = table_json.getJSONObject(PARTITIONS);
             Iterator<String> partitions = partitions_json.keys();
@@ -552,61 +476,21 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             Collections.sort(this.partitions);
         }
         
-        public PartitionedTable<T> clone(String new_table_name, Table new_catalog_table) throws Exception{
-            return new PartitionedTable<T>(this.vt,new_table_name, this.table_json,new_catalog_table);
+        public PartitionedTable clone(String new_table_name, Table new_catalog_table) throws Exception{
+            return new PartitionedTable(new_table_name, this.table_json,new_catalog_table);
         }
 
-        public PartitionedTable(List<PartitionRange<T>> partitions, String table_name, VoltType vt) {
+        public PartitionedTable(List<PartitionRange> partitions, String table_name) {
             this.partitions = partitions;
             this.table_name = table_name;
-            this.vt = vt;
         }
 
-        public PartitionedTable(List<PartitionRange<T>> partitions, String table_name, VoltType vt, Table catalog_table) {
+        public PartitionedTable(List<PartitionRange> partitions, String table_name, Table catalog_table) {
             this.partitions = partitions;
             this.table_name = table_name;
-            this.vt = vt;
             this.catalog_table = catalog_table;
         }
 
-        /**
-         * Find the partition for a key
-         * 
-         * @param id
-         * @return the partition id or null partition id if no match could be
-         *         found
-         */
-        @SuppressWarnings("unchecked")
-        public int findPartition(Object id) throws Exception {
-            if (trace.val) {
-                LOG.trace(String.format("Looking up key %s on table %s during phase %s", id, this.table_name));
-            }
-            assert (id instanceof Number);
-
-            // TODO I am sure there is a better way to do this... Andy? (ae)
-            // TODO fix partitiontype
-            Long cast_id = ((Number) id).longValue();
-
-            try {
-                for (PartitionRange<T> p : this.partitions) {
-                    // if this greater than or equal to the min inclusive val
-                    // and
-                    // less than
-                    // max_exclusive or equal to both min and max (singleton)
-                    // TODO fix partitiontype
-                    if ((p.min_inclusive_long.compareTo(cast_id) <= 0 && p.max_exclusive_long.compareTo(cast_id) > 0)
-                            || (p.min_inclusive_long.compareTo(cast_id) == 0 && p.max_exclusive_long.compareTo(cast_id) == 0)) {
-                        return p.partition;
-                    }
-                }
-            } catch (Exception e) {
-                LOG.error("Error looking up partition", e);
-            }
-
-            LOG.error(String.format("Partition not found for ID:%s.  Type:%s  TableType", cast_id, cast_id.getClass().toString(), this.vt.getClass().toString()));
-            return HStoreConstants.NULL_PARTITION_ID;
-        }
-        
         /**
          * Find the partition for a key
          * 
@@ -621,7 +505,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             }
 
             try {
-                for (PartitionRange<T> p : this.partitions) {
+                for (PartitionRange p : this.partitions) {
                     // if this greater than or equal to the min inclusive val
                     // and
                     // less than
@@ -649,7 +533,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
          */
         public void addPartitionRanges(int partition_id, String partition_values) throws ParseException {
             for (String range : partition_values.split(",")) {
-                this.partitions.add(new PartitionRange<T>(this.catalog_table, partition_id, range));
+                this.partitions.add(new PartitionRange(this.catalog_table, partition_id, range));
             }
         }
 
@@ -666,73 +550,16 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
      * @param <T>
      *            Comparable type of key
      */
-    public static class PartitionRange<T extends Comparable<T>> implements Comparable<PartitionRange<T>> {
-        protected T min_inclusive;
-        protected Long min_inclusive_long;
-        protected T max_exclusive;
-        protected Long max_exclusive_long;
+    public static class PartitionRange implements Comparable<PartitionRange> {
         protected int partition;
-        protected VoltType vt;
-        
-        // new stuff!!
         protected VoltTable clone;
         protected VoltTable min_incl;
         protected VoltTable max_excl;
         protected int non_null_cols;
         protected VoltTableComparator cmp;
         protected Table catalog_table;
-        //protected PartitionRange<?> sub_range;
-        // end new stuff!!
         
-        public PartitionRange(VoltType vt, T min_inclusive, T max_exclusive) {
-            this.vt = vt;
-            if (min_inclusive.compareTo(max_exclusive) > 0) {
-                throw new RuntimeException("Min cannot be greater than max. Must be <= ");
-            }
-            this.min_inclusive = min_inclusive;
-            this.max_exclusive = max_exclusive;
-            // TODO fix partitiontype
-            assert (min_inclusive instanceof Number && max_exclusive instanceof Number);
-            LOG.debug("Setting long values");
-            this.min_inclusive_long = ((Number) min_inclusive).longValue();
-            this.max_exclusive_long = ((Number) max_exclusive).longValue();
-            this.partition = -1;
-        }
-        
-        @SuppressWarnings("unchecked")
-        public PartitionRange(VoltType vt, int partition_id, String range) throws ParseException {
-            this.vt = vt;
-            this.partition = partition_id;
-            
-            // TODO add support for open ranges ie -100 (< 100) and 100-
-            // (anything >=
-            // 100)
-            
-            // x-y
-            if (range.contains("-")) {
-                String vals[] = range.split("-", 2);
-                Object min_obj = VoltTypeUtil.getObjectFromString(vt, vals[0]);
-                this.min_inclusive = (T) min_obj;
-                Object max_obj = VoltTypeUtil.getObjectFromString(vt, vals[1]);
-                this.max_exclusive = (T) max_obj;
-                if (this.min_inclusive.compareTo(this.max_exclusive) > 0) {
-                    throw new ParseException("Min cannot be greater than max", -1);
-                }
-            }
-            // x
-            else {
-                Object obj = VoltTypeUtil.getObjectFromString(vt, range);
-                this.min_inclusive = (T) obj;
-                this.max_exclusive = (T) obj;
-            }
-            // TODO fix partitiontype
-            assert (min_inclusive instanceof Number && max_exclusive instanceof Number);
-            this.min_inclusive_long = ((Number) min_inclusive).longValue();
-            this.max_exclusive_long = ((Number) max_exclusive).longValue();
-        }
-        
-        public PartitionRange(VoltType vt) {
-            this.vt = vt;            
+        public PartitionRange() {        
         }
 
         @SuppressWarnings("unchecked")
@@ -790,11 +617,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             	max_row[col] = obj;
             }
             
-            ArrayList<Pair<Integer, SortDirectionType>> sortCol = new ArrayList<Pair<Integer, SortDirectionType>>();
-            for(int i = 0; i < clone.getColumnCount(); i++) {
-            	sortCol.add(Pair.of(i, SortDirectionType.ASC));
-            }
-            this.cmp = createComparator(sortCol, sortCol.get(0));
+            this.cmp = ReconfigurationUtil.getComparator(clone);
 
             this.min_incl = clone.clone(0);
             this.max_excl = clone.clone(0);
@@ -816,50 +639,32 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         	return VoltTypeUtil.getObjectFromString(vt, value);
         }
         
-        private VoltTableComparator createComparator(ArrayList<Pair<Integer, SortDirectionType>> sortCol, Pair<Integer, SortDirectionType>...pairs ) {
-        	return new VoltTableComparator(clone, sortCol.toArray(pairs));
-        }
-
         @Override
         public String toString() {
-        	if(this.min_incl != null && this.max_excl != null) {
-        		String range_str = "";
-        		for(int i = 0; i < this.non_null_cols; i++) {
-        			if(i != 0) {
-        				range_str += ":";
-        			}
-        			Object min = this.min_incl.get(i);
-        			Object max = this.max_excl.get(i);
-        			if(min.equals(max)) {
-        				range_str += min.toString();
-        			} else {
-        				range_str += min.toString() + "-" + max.toString();
-        			}
+        	String range_str = "";
+        	for(int i = 0; i < this.non_null_cols; i++) {
+        		if(i != 0) {
+        			range_str += ":";
         		}
-        		return "PartitionRange [" + range_str + ") p_id=" + this.partition + "]";
-        	} else {
-        		return "PartitionRange [" + this.min_inclusive + "-" + this.max_exclusive + ") p_id=" + this.partition + "]";
+        		Object min = this.min_incl.get(i);
+        		Object max = this.max_excl.get(i);
+        		if(min.equals(max)) {
+        			range_str += min.toString();
+        		} else {
+        			range_str += min.toString() + "-" + max.toString();
+        		}
         	}
+        	return "PartitionRange [" + range_str + ") p_id=" + this.partition + "]";        	
         }
 
         @Override
-        public int compareTo(PartitionRange<T> o) {
-        	if (this.min_incl != null && o.min_incl != null) {
-        		if (cmp.compare(this.min_incl.getRowArray(), o.min_incl.getRowArray()) < 0) {
-        			return -1;
-        		} else if (cmp.compare(this.min_incl.getRowArray(), o.min_incl.getRowArray()) == 0) {
-        			return cmp.compare(this.max_excl.getRowArray(), o.max_excl.getRowArray());
-        		} else {
-        			return 1;
-        		}
+        public int compareTo(PartitionRange o) {
+        	if (cmp.compare(this.min_incl.getRowArray(), o.min_incl.getRowArray()) < 0) {
+        		return -1;
+        	} else if (cmp.compare(this.min_incl.getRowArray(), o.min_incl.getRowArray()) == 0) {
+        		return cmp.compare(this.max_excl.getRowArray(), o.max_excl.getRowArray());
         	} else {
-        		if (this.min_inclusive.compareTo(o.min_inclusive) < 0) {
-        			return -1;
-        		} else if (this.min_inclusive.compareTo(o.min_inclusive) == 0) {
-        			return this.max_exclusive.compareTo(o.max_exclusive);
-        		} else {
-        			return 1;
-        		}
+        		return 1;
         	}
         }
         
@@ -888,18 +693,6 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
         		return true;
         	}
             return false;
-        }
-
-        public T getMin_inclusive() {
-            return this.min_inclusive;
-        }
-
-        public T getMax_exclusive() {
-            return this.max_exclusive;
-        }
-
-        public VoltType getVt() {
-            return this.vt;
         }
         
         public VoltTable getMinIncl() {
@@ -1025,6 +818,10 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
 
     public Map<String, List<String>> getRelatedTablesMap() {
         return relatedTablesMap;
+    }
+
+    public Map<String, List<Table>> getRelatedCatalogTablesMap() {
+        return relatedCatalogTablesMap;
     }
 
     @Override

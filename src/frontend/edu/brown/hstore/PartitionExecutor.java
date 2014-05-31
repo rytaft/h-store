@@ -118,6 +118,7 @@ import org.voltdb.utils.DBBPool.BBContainer;
 import org.voltdb.utils.Encoder;
 import org.voltdb.utils.EstTime;
 import org.voltdb.utils.Pair;
+import org.voltdb.utils.VoltTableComparator;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
@@ -1426,7 +1427,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // RECONFIGURATION PUSH WORK
         // -------------------------------
         else if (work instanceof AsyncNonChunkPushRequestMessage) {
-            ReconfigurationRange<? extends Comparable<?>> pushRange = ((AsyncNonChunkPushRequestMessage) work).getPushRange();
+            ReconfigurationRange pushRange = ((AsyncNonChunkPushRequestMessage) work).getPushRange();
             LOG.info("Asynch push message scheduled " + pushRange.toString());
 
             long _txnid = -1;
@@ -1443,7 +1444,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // RC push tuples
                 
                 reconfiguration_coordinator.pushTuples(pushRange.old_partition, pushRange.new_partition, pushRange.table_name, 
-                        vt.getFirst(), pushRange.getMinList(), pushRange.getMaxList());
+                        vt.getFirst(), pushRange.getMinIncl(), pushRange.getMaxExcl());
                 if(vt.getSecond()){
                     LOG.error("TODO async push has more to send");
                     this.reconfiguration_tracker.markRangeAsPartiallyMigratedOut(pushRange);
@@ -3274,13 +3275,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // can just return the tuples. Because we are blocking the destination we might not want to have low priority messages at the 
         // source lying around
         
-        ReconfigurationRange<? extends Comparable<?>> pullRange = scheduleAsyncPullMsg.getPullRange();
+        ReconfigurationRange pullRange = scheduleAsyncPullMsg.getPullRange();
         LOG.trace("A chunked asynch pull message being scheduled for range " + pullRange.toString());
         //How long did it sit in the queue for
         this.reconfiguration_coordinator.profilers[this.partitionId].async_dest_queue_time.appendTime(scheduleAsyncPullMsg.getQueueTime());
         //TODO : For now the function is called for each range being pulled, check if we should move the logic of breaking the requests here
         int requestSize = 1;
-        List<ReconfigurationRange<? extends Comparable<?>>> pullRequests = new  ArrayList<ReconfigurationRange<? extends Comparable<?>>>();
+        List<ReconfigurationRange> pullRequests = new  ArrayList<ReconfigurationRange>();
         pullRequests.add(pullRange);
         // transaction id is a dummy here
         // Calling the RC to generates a Live Pull Request for a range and blocking. When the reply comes back the RC will unblock the semaphore
@@ -3363,14 +3364,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // can just return the tuples. Because we are blocking the destination we might not want to have low priority messages at the 
         // source lying around
         
-        ReconfigurationRange<? extends Comparable<?>> pullRange = asyncPullRequestMessage.getPullRange();
+        ReconfigurationRange pullRange = asyncPullRequestMessage.getPullRange();
         LOG.debug("Asynch pull message being scheduled for range " + pullRange.toString());
         //How long did it sit in the queue for
         this.reconfiguration_coordinator.profilers[this.partitionId].async_dest_queue_time.appendTime(asyncPullRequestMessage.getQueueTime());
         //TODO : For now the function is called for each range being pulled, check if we should move the logic of breaking the requests here
         int requestSize = 1;
         Semaphore pullBlockSemaphore = new Semaphore(requestSize);
-        List<ReconfigurationRange<? extends Comparable<?>>> pullRequests = new  ArrayList<ReconfigurationRange<? extends Comparable<?>>>();
+        List<ReconfigurationRange> pullRequests = new  ArrayList<ReconfigurationRange>();
         pullRequests.add(pullRange);
         // transaction id is a dummy here
         // Calling the RC to generates a Live Pull Request for a range and blocking. When the reply comes back the RC will unblock the semaphore
@@ -3787,10 +3788,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     
-    public Set<ReconfigurationRange<? extends Comparable<?>>> filterSet(Set<ReconfigurationRange<? extends Comparable<?>>> dataNotYetMigrated, String procName, List<String> filterList){
-        Set<ReconfigurationRange<? extends Comparable<?>>> res = new HashSet<>();
+    public Set<ReconfigurationRange> filterSet(Set<ReconfigurationRange> dataNotYetMigrated, String procName, List<String> filterList){
+        Set<ReconfigurationRange> res = new HashSet<>();
         res.addAll(dataNotYetMigrated);
-        for(ReconfigurationRange<?> range: dataNotYetMigrated){
+        for(ReconfigurationRange range: dataNotYetMigrated){
             if (filterList.contains(range.table_name)){
                 LOG.info(String.format("For %s removing %s from list %s ",procName, range.table_name,dataNotYetMigrated));
                 res.remove(range);               
@@ -3799,7 +3800,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         return res;
     }
     
-    public Set<ReconfigurationRange<? extends Comparable<?>>> staticFilter(Set<ReconfigurationRange<? extends Comparable<?>>> dataNotYetMigrated, String procName) {
+    public Set<ReconfigurationRange> staticFilter(Set<ReconfigurationRange> dataNotYetMigrated, String procName) {
         if (procName.equalsIgnoreCase("neworder")) {
             return filterSet(dataNotYetMigrated, procName, ReconfigurationCoordinator.NEW_ORDER_FILTER_LIST);
         }
@@ -3835,8 +3836,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // migrated)
 
         // Get all the fragments
-        Set<ReconfigurationRange<? extends Comparable<?>>> pullRequestsNeeded = new HashSet<>();
-        Set<ReconfigurationRange<? extends Comparable<?>>> restartsNeeded = new HashSet<>();
+        Set<ReconfigurationRange> pullRequestsNeeded = new HashSet<>();
+        Set<ReconfigurationRange> restartsNeeded = new HashSet<>();
         
         this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.start();
         for (int i = 0; i < fragmentIds.length; i++) {
@@ -6178,8 +6179,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private ReconfigurationPlan reconfig_plan;
     private ReconfigurationCoordinator reconfiguration_coordinator = null;
     private ReconfigurationProtocols reconfig_protocol = null;
-    private List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges;
-    private List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges;
+    private List<ReconfigurationRange> outgoing_ranges;
+    private List<ReconfigurationRange> incoming_ranges;
     private ReconfigurationTrackingInterface reconfiguration_tracker;
     private int idle_click_count;
     private long currentLiveDataLoaded = 0;
@@ -6264,11 +6265,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
     
 
-    public List<ReconfigurationRange<? extends Comparable<?>>> getOutgoingRanges() throws Exception {
+    public List<ReconfigurationRange> getOutgoingRanges() throws Exception {
         return this.outgoing_ranges;
     }
     
-    public List<ReconfigurationRange<? extends Comparable<?>>> getIncomingRanges() throws Exception {
+    public List<ReconfigurationRange> getIncomingRanges() throws Exception {
         return this.incoming_ranges;
     }
 
@@ -6311,6 +6312,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.reconfiguration_tracker = null;
     }
     
+    public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, List<Long> minInclusiveList, 
+    		List<Long> maxExclusiveList, VoltTable vt, boolean moreDataComing, boolean isAsyncRequest, int pullId) throws Exception {
+    	
+    	assert(minInclusiveList.size() == maxExclusiveList.size());
+        Table table = this.hstore_site.getCatalogContext().getTableByName(table_name);
+    	VoltTable min_incl = ReconfigurationUtil.getVoltTable(table, minInclusiveList);
+        VoltTable max_excl = ReconfigurationUtil.getVoltTable(table, maxExclusiveList);
+    	
+        receiveTuples(txnId, oldPartitionId, newPartitionId, table_name, min_incl, max_excl, vt, moreDataComing, isAsyncRequest, pullId);
+    }
+    
     /**
      * Receiving tuples for the asynchronous pull operation made as well as the
      * Stop and Copy
@@ -6320,10 +6332,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param vt
      * @throws Exception
      */
-    public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, List<Long> minInclusiveList, 
-            List<Long> maxExclusiveList, VoltTable vt, boolean moreDataComing, boolean isAsyncRequest, int pullId) throws Exception {
+    public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable minInclusiveList, 
+    		VoltTable maxExclusiveList, VoltTable vt, boolean moreDataComing, boolean isAsyncRequest, int pullId) throws Exception {
         
-        if (debug.val) LOG.debug(String.format("PE (%s) Received tuples for %s txnId:%s Rows(%s) partitions(%s->%s) for range, " + "[%s-%s)", this.partitionId,table_name, txnId, vt.getRowCount(), 
+    	Table catalog_tbl = this.catalogContext.getTableByName(table_name);
+    	if (debug.val) LOG.debug(String.format("PE (%s) Received tuples for %s txnId:%s Rows(%s) partitions(%s->%s) for range, " + "[%s-%s)", this.partitionId,table_name, txnId, vt.getRowCount(), 
                  oldPartitionId, newPartitionId, minInclusiveList.toString(), maxExclusiveList.toString()));
         if(vt.getRowCount()==0){
             this.reconfiguration_coordinator.profilers[partitionId].empty_loads++;
@@ -6331,21 +6344,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if(hstore_conf.site.reconfig_replication_delay){
             replicationDelay();
         }
-        assert(minInclusiveList.size() == maxExclusiveList.size());
+        assert(minInclusiveList.getRowCount() == maxExclusiveList.getRowCount());
         FileUtil.appendEventToFile(String.format("RECEIVE_TUPLES, MORE=%s, ASYNC=%s, PULLID=%s",moreDataComing,isAsyncRequest,pullId ));
         //Iterate over the ranges for this receive to mark all as received (partially or full)
-        for(int i =0; i < minInclusiveList.size();i++) {
-            Long minInclusive = minInclusiveList.get(i);
-            Long maxExclusive = maxExclusiveList.get(i);
+        minInclusiveList.resetRowPosition();
+        maxExclusiveList.resetRowPosition();
+        VoltTableComparator cmp = ReconfigurationUtil.getComparator(minInclusiveList);
+        while(minInclusiveList.advanceRow() && maxExclusiveList.advanceRow()) {
             // Currently we don't have any tracking for Stop and Copy.
             // Sanity checks can be added to make sure all data is added. But
             // tracker during the
             // executions is not required as Stop and Copy -> "Stops"
             if (this.reconfig_protocol != ReconfigurationProtocols.STOPCOPY && this.reconfiguration_tracker != null) {
-                if (minInclusive.compareTo(maxExclusive) == 0) {
+                if (cmp.compare(minInclusiveList.getRowArray(), maxExclusiveList.getRowArray()) == 0) {
                     // We have received a single key
                     if(moreDataComing == false) {
-                        LOG.debug(String.format("(%s) marking key as received %s %s ", this.partitionId, table_name, minInclusive));                          
                         if(isAsyncRequest){
                             LOG.trace("Last chunk received for async request, unsetting async in progress");
                             asyncOutstanding.set(false);
@@ -6356,18 +6369,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             long timeTaken = System.currentTimeMillis() - startTime;
                             FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s",timeTaken, pullId));
                         }
-                        this.reconfiguration_tracker.markKeyAsReceived(table_name, minInclusive);
-                    } else {
-                        if (debug.val) LOG.debug(String.format("PE (%s) keyreceived, but more data is coming. %s %s ", this.partitionId, table_name, minInclusive));     
-                    }                
-                    this.reconfiguration_tracker.markRangeAsPartiallyReceived(new ReconfigurationRange<Long>
-                                (table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
+                        this.reconfiguration_tracker.markKeyAsReceived(table_name, Arrays.asList(minInclusiveList.getRowArray()));
+                    }               
+                    this.reconfiguration_tracker.markRangeAsPartiallyReceived(new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
                 } else {
-                    LOG.debug(String.format("PE (%s) marking range as received %s %s-%s ", this.partitionId, table_name, minInclusive, maxExclusive));
                     try {
-                        if (moreDataComing) {
+                    	if (moreDataComing) {
                             this.reconfiguration_tracker.markRangeAsPartiallyReceived(
-                                    new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
+                            		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
                             nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                         } else {
                             if(isAsyncRequest){
@@ -6381,7 +6390,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                 FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s",timeTaken, pullId));
                             }
                             this.reconfiguration_tracker.markRangeAsReceived(
-                                    new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, minInclusive, maxExclusive, oldPartitionId, newPartitionId));
+                            		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
                         }
                         
                         if(this.reconfiguration_tracker.checkIfAllRangesAreMigratedIn()){
@@ -6421,11 +6430,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         VoltTable vt = null;
         // FIXME make generic
         Table catalog_tbl = this.catalogContext.getTableByName(table_name);
-        return extractTable(catalog_tbl, new ReconfigurationRange<Long>(table_name, VoltType.BIGINT, min_inclusive, max_exclusive, oldPartitionId, newPartitionId), chunkId);
+        return extractTable(catalog_tbl, ReconfigurationUtil.getReconfigurationRange(catalog_tbl, min_inclusive.toArray(new Long[]{}), max_exclusive.toArray(new Long[]{}), oldPartitionId, newPartitionId), chunkId);
     }
 
     
-    public Pair<VoltTable,Boolean> extractPushRequst(ReconfigurationRange<? extends Comparable<?>> pushRange) {
+    public Pair<VoltTable,Boolean> extractPushRequst(ReconfigurationRange pushRange) {
         long _txnid = -1;
         // TODO Check that this range still needs to be pushed
         Table catalog_tbl = this.catalogContext.getTableByName(pushRange.table_name);
@@ -6446,7 +6455,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param range
      * @return
      */
-    public Pair<VoltTable,Boolean> extractTable(Table table, ReconfigurationRange<? extends Comparable<?>> range, int chunkId) {
+    public Pair<VoltTable,Boolean> extractTable(Table table, ReconfigurationRange range, int chunkId) {
         LOG.debug(String.format("Extract table %s Range:%s", table.toString(), range.toString()));
         int table_id = table.getRelativeIndex();
         if(hstore_conf.site.reconfig_replication_delay){
@@ -6506,11 +6515,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param incomingRanges
      * @return success bool
      */
-    public boolean scheduleInitialAsyncPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+    public boolean scheduleInitialAsyncPullRequests(List<ReconfigurationRange> incomingRanges) {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info(String.format("(%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
             boolean res = true;            
-            for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
+            for (ReconfigurationRange range : incomingRanges) {
                 ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
                 boolean success = this.work_queue.offer(scheduleAsyncPull); // ,
                 if (!success)
@@ -6546,11 +6555,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param incomingRanges
      * @return success bool
      */
-    public boolean scheduleInitialAsyncPullRequestsForSC(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+    public boolean scheduleInitialAsyncPullRequestsForSC(List<ReconfigurationRange> incomingRanges) {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info(String.format("(%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
             boolean res = true;            
-            for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
+            for (ReconfigurationRange range : incomingRanges) {
                 ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
                 scheduleAsyncPull.setProtocol("s&c");
                 boolean success = this.work_queue.offer(scheduleAsyncPull); // ,
@@ -6570,10 +6579,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param incomingRanges
      * @return success bool
      */
-    public boolean queueInitialAsyncPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+    public boolean queueInitialAsyncPullRequests(List<ReconfigurationRange> incomingRanges) {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info(String.format(" ### (%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
-            for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
+            for (ReconfigurationRange range : incomingRanges) {
                 ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
                 scheduleAsyncPullQueue.add(scheduleAsyncPull);
                 //this.work_queue.offer(scheduleAsyncPull);
@@ -6592,11 +6601,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param incomingRanges
      * @return success bool
      */
-    public boolean scheduleInitialAsyncNonChunkPullRequests(List<ReconfigurationRange<? extends Comparable<?>>> incomingRanges) {
+    public boolean scheduleInitialAsyncNonChunkPullRequests(List<ReconfigurationRange> incomingRanges) {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info("Scheduling async pull requests : " + incomingRanges.size());
             boolean res = true;
-            for (ReconfigurationRange<? extends Comparable<?>> range : incomingRanges) {
+            for (ReconfigurationRange range : incomingRanges) {
                 AsyncNonChunkPullRequestMessage pullMessage = new AsyncNonChunkPullRequestMessage(range);
                 boolean success = this.work_queue.offer(pullMessage); // ,
                 if (!success)
@@ -6615,11 +6624,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param outgoingRanges
      * @return
      */
-    public boolean scheduleInitialAsyncNonChunkPushRequests(List<ReconfigurationRange<? extends Comparable<?>>> outgoingRanges) {
+    public boolean scheduleInitialAsyncNonChunkPushRequests(List<ReconfigurationRange> outgoingRanges) {
         if (outgoingRanges != null && !outgoingRanges.isEmpty()) {
             LOG.info("Scheduling async push requests : " + outgoingRanges.size());
             boolean res = true;
-            for (ReconfigurationRange<? extends Comparable<?>> range : outgoingRanges) {
+            for (ReconfigurationRange range : outgoingRanges) {
                 AsyncNonChunkPushRequestMessage pushMessage = new AsyncNonChunkPushRequestMessage(range);
                 boolean success = this.work_queue.offer(pushMessage); // ,
                 if (!success)

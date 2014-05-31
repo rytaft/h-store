@@ -12,14 +12,14 @@ import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
  * @author aelmore
  */
 public class AsyncNonChunkPushRequestMessage extends InternalMessage {
-    private ReconfigurationRange<? extends Comparable<?>> pushRange;
+    private ReconfigurationRange pushRange;
 
-    public AsyncNonChunkPushRequestMessage(ReconfigurationRange<? extends Comparable<?>> pushRange) {
+    public AsyncNonChunkPushRequestMessage(ReconfigurationRange pushRange) {
         super();
         this.pushRange = pushRange;
     }
 
-    public ReconfigurationRange<? extends Comparable<?>> getPushRange() {
+    public ReconfigurationRange getPushRange() {
         return pushRange;
     }
     

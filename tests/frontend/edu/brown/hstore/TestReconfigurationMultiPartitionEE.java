@@ -159,50 +159,6 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 
     }
     
-    private ReconfigurationRange<Long> getReconfigurationRange(Table table, Long[][] mins, 
-    		Long[][] maxs, int old_partition, int new_partition) {
-    	Column[] cols = new Column[table.getPartitioncolumns().size()];
-        for(ColumnRef colRef : table.getPartitioncolumns()) {
-        	cols[colRef.getIndex()] = colRef.getColumn();
-        }
-        VoltTable clone = CatalogUtil.getVoltTable(Arrays.asList(cols));
-
-        ArrayList<Object[]> min_rows = new ArrayList<Object[]>();
-        ArrayList<Object[]> max_rows = new ArrayList<Object[]>();
-        int non_null_cols = 0;
-        for(int i = 0; i < mins.length && i < maxs.length; i++) {
-        	Long[] minsSubKeys = mins[i];
-        	Long[] maxsSubKeys = maxs[i];
-        	Object[] min_row = new Object[clone.getColumnCount()];
-    		Object[] max_row = new Object[clone.getColumnCount()];
-    		int col = 0;
-    		for( ; col < minsSubKeys.length && col < maxsSubKeys.length && col < clone.getColumnCount(); col++) {
-        		min_row[col] = minsSubKeys[col];
-        		max_row[col] = maxsSubKeys[col];
-        	}
-    		non_null_cols = Math.max(non_null_cols, col);
-    		for ( ; col < clone.getColumnCount(); col++) {
-            	VoltType vt = clone.getColumnType(col);
-            	Object obj = vt.getNullValue();
-            	min_row[col] = obj;
-            	max_row[col] = obj;
-            }
-    		min_rows.add(min_row);
-    		max_rows.add(max_row);
-        }
-        
-        VoltTable min_incl = clone.clone(0);
-        VoltTable max_excl = clone.clone(0);
-        for(Object[] row : min_rows) {
-        	min_incl.addRow(row);
-        }
-        for(Object[] row : max_rows) {
-        	max_excl.addRow(row);
-        }
-
-        return new ReconfigurationRange<Long>(clone, min_incl, max_excl, non_null_cols, old_partition, new_partition);
-    }
-    
     String partitionPlan = "{" +
 "    		 \"TABLE_ENTRIES\": {" +
 "    	  \"{'database':'CUSTOMER'}\": {" +
@@ -326,11 +282,11 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	int wid = 2; // warehouse id
     	int[] keys = new int[]{ wid };
         
-    	ReconfigurationRange<Long> range; 
+    	ReconfigurationRange range; 
         VoltTable extractTable;
         Long[][] mins = new Long[][]{{ new Long(wid) }};
     	Long[][] maxs = new Long[][]{{ new Long(wid+1) }};
-    	range = getReconfigurationRange(this.customer_tbl, mins, maxs, 1, 2);
+    	range = ReconfigurationUtil.getReconfigurationRange(this.customer_tbl, mins, maxs, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
         this.loadTPCCData(NUM_TUPLES * 10, this.customer_tbl,this.cust_p_index, keys);
         int EXTRACT_LIMIT = 2048;
@@ -370,7 +326,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
        
     	assertTrue(true);
     	
-    	ReconfigurationRange<Long> range; 
+    	ReconfigurationRange range; 
         VoltTable extractTable;
         long start, extract, load;
     	Pair<VoltTable,Boolean> resTable;
@@ -384,7 +340,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	    
     	    Long[][] mins = new Long[][]{{ new Long(scale) }};
         	Long[][] maxs = new Long[][]{{ new Long(scale+1) }};
-        	range = getReconfigurationRange(this.customer_tbl, mins, maxs, 1, 2);
+        	range = ReconfigurationUtil.getReconfigurationRange(this.customer_tbl, mins, maxs, 1, 2);
             extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
             start = System.currentTimeMillis();
             resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
@@ -421,7 +377,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         
     	Long[][] mins = new Long[][]{{ new Long(wid), new Long(did) }};
     	Long[][] maxs = new Long[][]{{ new Long(wid), new Long(did+1) }};
-    	ReconfigurationRange<Long> range = getReconfigurationRange(this.customer_tbl, mins, maxs, 1, 2);
+    	ReconfigurationRange range = ReconfigurationUtil.getReconfigurationRange(this.customer_tbl, mins, maxs, 1, 2);
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
         this.loadTPCCData(NUM_TUPLES * 10, this.customer_tbl,this.cust_p_index, keys);
         int EXTRACT_LIMIT = 2048;
@@ -476,7 +432,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	    	    //extract
 	    	    Long[][] mins = new Long[][]{{ new Long(warehouse_scale), new Long(district_scale) }};
 	        	Long[][] maxs = new Long[][]{{ new Long(warehouse_scale), new Long(district_scale+1) }};
-	        	ReconfigurationRange<Long> range = getReconfigurationRange(this.customer_tbl, mins, maxs, 1, 2);
+	        	ReconfigurationRange range = ReconfigurationUtil.getReconfigurationRange(this.customer_tbl, mins, maxs, 1, 2);
 	            extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
 	            start = System.currentTimeMillis();
 	            resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
@@ -509,11 +465,11 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	int wid = 2; // warehouse id
     	int[] keys = new int[]{ wid };
         
-    	ReconfigurationRange<Long> range; 
+    	ReconfigurationRange range; 
         VoltTable extractTable;
         Long[][] mins = new Long[][]{{ new Long(wid) }};
     	Long[][] maxs = new Long[][]{{ new Long(wid+1) }};
-    	range = getReconfigurationRange(this.orders_tbl, mins, maxs, 1, 2);
+    	range = ReconfigurationUtil.getReconfigurationRange(this.orders_tbl, mins, maxs, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
         this.loadTPCCData(NUM_TUPLES * 10, this.orders_tbl,this.orders_p_index, keys);
         int EXTRACT_LIMIT = 2048;
@@ -553,7 +509,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
        
     	assertTrue(true);
     	
-    	ReconfigurationRange<Long> range; 
+    	ReconfigurationRange range; 
         VoltTable extractTable;
         long start, extract, load;
     	Pair<VoltTable,Boolean> resTable;
@@ -566,7 +522,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     	    //extract
     	    Long[][] mins = new Long[][]{{ new Long(scale) }};
         	Long[][] maxs = new Long[][]{{ new Long(scale+1) }};
-        	range = getReconfigurationRange(this.orders_tbl, mins, maxs, 1, 2);
+        	range = ReconfigurationUtil.getReconfigurationRange(this.orders_tbl, mins, maxs, 1, 2);
             extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
             start = System.currentTimeMillis();
             resTable= this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
@@ -601,7 +557,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
         
     	Long[][] mins = new Long[][]{{ new Long(wid), new Long(did) }};
     	Long[][] maxs = new Long[][]{{ new Long(wid), new Long(did+1) }};
-    	ReconfigurationRange<Long> range = getReconfigurationRange(this.orders_tbl, mins, maxs, 1, 2);
+    	ReconfigurationRange range = ReconfigurationUtil.getReconfigurationRange(this.orders_tbl, mins, maxs, 1, 2);
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);  
         this.loadTPCCData(NUM_TUPLES * 10, this.orders_tbl,this.orders_p_index, keys);
         int EXTRACT_LIMIT = 2048;
@@ -656,7 +612,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	    	    //extract
 	    	    Long[][] mins = new Long[][]{{ new Long(warehouse_scale), new Long(district_scale) }};
 	        	Long[][] maxs = new Long[][]{{ new Long(warehouse_scale), new Long(district_scale+1) }};
-	        	ReconfigurationRange<Long> range = getReconfigurationRange(this.orders_tbl, mins, maxs, 1, 2);
+	        	ReconfigurationRange range = ReconfigurationUtil.getReconfigurationRange(this.orders_tbl, mins, maxs, 1, 2);
 	            extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
 	            start = System.currentTimeMillis();
 	            resTable= this.ee.extractTable(this.orders_tbl, this.orders_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
@@ -724,7 +680,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	    	    		{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(20) },
         				{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(38) },
         				{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(95) }};
-	    	    ReconfigurationRange<Long> range = getReconfigurationRange(this.orderline_tbl, mins, maxs, 1, 2);
+	    	    ReconfigurationRange range = ReconfigurationUtil.getReconfigurationRange(this.orderline_tbl, mins, maxs, 1, 2);
         
 	    	    extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
 	            start = System.currentTimeMillis();

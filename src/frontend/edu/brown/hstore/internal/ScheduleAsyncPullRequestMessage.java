@@ -4,11 +4,11 @@ import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.profilers.ProfileMeasurement;
 
 public class ScheduleAsyncPullRequestMessage extends InternalMessage {
-    private ReconfigurationRange<? extends Comparable<?>> pullRange;
+    private ReconfigurationRange pullRange;
     public long createTime;
     public String protocol;
     
-    public ScheduleAsyncPullRequestMessage(ReconfigurationRange<? extends Comparable<?>> pullRange) {
+    public ScheduleAsyncPullRequestMessage(ReconfigurationRange pullRange) {
         super();
         this.pullRange = pullRange;
         this.createTime = ProfileMeasurement.getTime();
@@ -19,7 +19,7 @@ public class ScheduleAsyncPullRequestMessage extends InternalMessage {
         return ProfileMeasurement.getTime() - this.createTime;
     }
     
-    public ReconfigurationRange<? extends Comparable<?>> getPullRange() {
+    public ReconfigurationRange getPullRange() {
         return pullRange;
     }
     
