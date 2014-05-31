@@ -170,8 +170,12 @@ public class ReconfigurationUtil {
 		for(ReconfigurationRange range : ranges) {
 			VoltTable max = range.getMaxExcl();
 			VoltTable min = range.getMinIncl();
-			mergedRanges.getMaxExcl().add(max);
-			mergedRanges.getMinIncl().add(min);
+			max.resetRowPosition();
+			min.resetRowPosition();
+			while(max.advanceRow() && min.advanceRow()) {
+				mergedRanges.getMaxExcl().add(max);
+				mergedRanges.getMinIncl().add(min);
+			}
 		}
 		
 		return getExtractVoltTable(mergedRanges);
