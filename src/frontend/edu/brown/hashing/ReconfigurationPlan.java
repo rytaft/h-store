@@ -107,25 +107,23 @@ public class ReconfigurationPlan {
           
           VoltTableComparator cmp = ReconfigurationUtil.getComparator(voltTable);
           
-          // get a row representing the max accounted for
-          // We have not accounted for any range yet
-          Object[] max_old_accounted_for = new Object[voltTable.getColumnCount()];
+          Object[] max_old_accounted_for = null;
           int non_null_cols = 0;
-          for (int i = 0 ; i < voltTable.getColumnCount(); i++) {
-          	VoltType vt = voltTable.getColumnType(i);
-          	max_old_accounted_for[i] = vt.getNullValue();
-          }
           
           PartitionRange old_range = null;
           // Iterate through the old partition ranges.
           // Only move to the next old rang
-          while (old_ranges.hasNext() || (old_range != null && (cmp.compare(max_old_accounted_for, old_range.max_excl.getRowArray())) != 0 )) {
+          while (old_ranges.hasNext() || (max_old_accounted_for != null && (cmp.compare(max_old_accounted_for, old_range.max_excl.getRowArray())) != 0 )) {
             // only move to the next element if first time, or all of the previous
             // range has been accounted for
             if (old_range == null || cmp.compare(old_range.max_excl.getRowArray(), max_old_accounted_for) <= 0) {
               old_range = old_ranges.next();
             }
 
+            if (max_old_accounted_for == null) {
+                // We have not accounted for any range yet
+                max_old_accounted_for = old_range.min_incl.getRowArray();
+            }
             if (old_range.compareTo(new_range) == 0) {
               if (old_range.partition == new_range.partition) {
                 // No change do nothing
