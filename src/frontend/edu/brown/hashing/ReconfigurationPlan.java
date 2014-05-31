@@ -100,6 +100,8 @@ public class ReconfigurationPlan {
           Iterator<PartitionRange> new_ranges = new_table.partitions.iterator();
 
           PartitionRange new_range = new_ranges.next();
+          new_range.min_incl.advanceToRow(0);
+          new_range.max_excl.advanceToRow(0);
           
           // get a volt table and volt table comparator
           Table table = old_table.getCatalog_table();
@@ -117,6 +119,8 @@ public class ReconfigurationPlan {
             // range has been accounted for
             if (old_range == null || cmp.compare(old_range.max_excl.getRowArray(), max_old_accounted_for) <= 0) {
               old_range = old_ranges.next();
+              old_range.min_incl.advanceToRow(0);
+              old_range.max_excl.advanceToRow(0);
             }
 
             if (max_old_accounted_for == null) {
@@ -134,6 +138,8 @@ public class ReconfigurationPlan {
               max_old_accounted_for = old_range.max_excl.getRowArray();
               if(new_ranges.hasNext())
                   new_range = new_ranges.next();
+              	  new_range.min_incl.advanceToRow(0);
+              	  new_range.max_excl.advanceToRow(0);         
             } else {
               if (cmp.compare(old_range.max_excl.getRowArray(), new_range.max_excl.getRowArray()) <= 0) {
                 // The old range is a subset of the new range
@@ -151,6 +157,8 @@ public class ReconfigurationPlan {
                 //Have we satisfied all of the new range and is there another new range to process
                 if (cmp.compare(max_old_accounted_for, new_range.max_excl.getRowArray())==0 && new_ranges.hasNext()){
                 	new_range = new_ranges.next();
+                	new_range.min_incl.advanceToRow(0);
+                  	new_range.max_excl.advanceToRow(0); 
                 }
 
               } else {
@@ -172,6 +180,8 @@ public class ReconfigurationPlan {
                     throw new RuntimeException("Not all ranges accounted for");
                   }
                   new_range = new_ranges.next();
+              	  new_range.min_incl.advanceToRow(0);
+              	  new_range.max_excl.advanceToRow(0); 
                 }
               }
 

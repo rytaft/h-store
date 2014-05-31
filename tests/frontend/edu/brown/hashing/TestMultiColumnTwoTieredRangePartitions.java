@@ -277,9 +277,9 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         old_table_map.put("table", old_table);
         PartitionPhase old_phase = new PartitionPhase(old_table_map);
 
-        news.add(new PartitionRange(table, 1, "1:-10"));
-        news.add(new PartitionRange(table, 2, "1:10-20"));
-        news.add(new PartitionRange(table, 3, "1-2:20-"));
+        news.add(new PartitionRange(table, 1, "1-1:10"));
+        news.add(new PartitionRange(table, 2, "1:10-1:20"));
+        news.add(new PartitionRange(table, 3, "1:20-2"));
         PartitionedTable new_table = new PartitionedTable(news, "table", table);
         Map<String, PartitionedTable> new_table_map = new HashMap<String, PlannedPartitions.PartitionedTable>();
         new_table_map.put("table", new_table);
