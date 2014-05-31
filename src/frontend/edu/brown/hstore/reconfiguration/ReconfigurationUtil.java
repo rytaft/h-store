@@ -235,11 +235,7 @@ public class ReconfigurationUtil {
     
     public static ReconfigurationRange getReconfigurationRange(Table table, Long[][] mins, 
     		Long[][] maxs, int old_partition, int new_partition) {
-    	Column[] cols = new Column[table.getPartitioncolumns().size()];
-        for(ColumnRef colRef : table.getPartitioncolumns()) {
-        	cols[colRef.getIndex()] = colRef.getColumn();
-        }
-        VoltTable clone = CatalogUtil.getVoltTable(Arrays.asList(cols));
+    	VoltTable clone = getPartitionKeysVoltTable(table);
 
         ArrayList<Object[]> min_rows = new ArrayList<Object[]>();
         ArrayList<Object[]> max_rows = new ArrayList<Object[]>();
