@@ -152,6 +152,8 @@ public String test_json2 = "{"
         assertNotNull(ex);
         assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_MIGRATED_OUT,ex.exceptionType);         
         range = (ReconfigurationRange) ex.dataMigratedOut.toArray()[0];//.get(0);
+        range.getMinIncl().advanceToRow(0);
+        range.getMaxExcl().advanceToRow(0);
         assertTrue(range.getMinIncl().getLong(0) ==  104L && range.getMaxExcl().getLong(0) == 104L); 
         
         
@@ -164,6 +166,8 @@ public String test_json2 = "{"
         }
         assertEquals(ExceptionTypes.TUPLES_NOT_MIGRATED, ex.exceptionType);         
         range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
+        range.getMinIncl().advanceToRow(0);
+        range.getMaxExcl().advanceToRow(0);
         assertTrue(range.getMinIncl().getLong(0) ==  371L && range.getMaxExcl().getLong(0) == 371L); 
                 
         //Testing an existing range split
@@ -186,6 +190,8 @@ public String test_json2 = "{"
         }
         assertEquals(ExceptionTypes.TUPLES_NOT_MIGRATED, ex.exceptionType);         
         range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
+        range.getMinIncl().advanceToRow(0);
+        range.getMaxExcl().advanceToRow(0);
         assertTrue(range.getMinIncl().getLong(0) ==  365L && range.getMaxExcl().getLong(0) == 365L);  
         
         ex = null;
@@ -196,6 +202,8 @@ public String test_json2 = "{"
         }
         assertEquals(ExceptionTypes.TUPLES_NOT_MIGRATED, ex.exceptionType);         
         range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
+        range.getMinIncl().advanceToRow(0);
+        range.getMaxExcl().advanceToRow(0);
         assertTrue(range.getMinIncl().getLong(0) ==  369L && range.getMaxExcl().getLong(0) == 369L);  
         
         
@@ -210,6 +218,8 @@ public String test_json2 = "{"
         }
         assertEquals(ExceptionTypes.TUPLES_NOT_MIGRATED, ex.exceptionType);         
         range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
+        range.getMinIncl().advanceToRow(0);
+        range.getMaxExcl().advanceToRow(0);
         assertTrue(range.getMinIncl().getLong(0) ==  390L && range.getMaxExcl().getLong(0) == 390L);
         assertEquals(3, range.old_partition);
         
@@ -261,6 +271,8 @@ public String test_json2 = "{"
         assertTrue(ex.dataNotYetMigrated.size()== 1);
         ReconfigurationRange range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
         System.out.println(range);
+        range.getMinIncl().advanceToRow(0);
+        range.getMaxExcl().advanceToRow(0);
         assertTrue(range.getMinIncl().getLong(0) ==  100L); 
         assertTrue(range.getMaxExcl().getLong(0) == 100L); 
 
@@ -284,6 +296,8 @@ public String test_json2 = "{"
         assertTrue(ex.dataNotYetMigrated.size()== 0);
         assertTrue(ex.dataMigratedOut.size()== 1);
         range = (ReconfigurationRange) ex.dataMigratedOut.toArray()[0];
+        range.getMinIncl().advanceToRow(0);
+        range.getMaxExcl().advanceToRow(0);
         assertTrue(range.getMinIncl().getLong(0) ==  100L && range.getMaxExcl().getLong(0) == 100L); 
         
 
@@ -301,6 +315,8 @@ public String test_json2 = "{"
         assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_NOT_MIGRATED,ex.exceptionType);        
         assertTrue(ex.dataNotYetMigrated.size()== 1);
         range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
+        range.getMinIncl().advanceToRow(0);
+        range.getMaxExcl().advanceToRow(0);
         assertTrue(range.getMinIncl().getLong(0) ==  1L && range.getMaxExcl().getLong(0) == 1L);
         pulls.add(range);
         pulls.add(range);
@@ -334,6 +350,8 @@ public String test_json2 = "{"
         assertTrue(ex.dataNotYetMigrated.size()== 0);
         assertTrue(ex.dataMigratedOut.size()== 1);
         range = (ReconfigurationRange) ex.dataMigratedOut.toArray()[0];
+        range.getMinIncl().advanceToRow(0);
+        range.getMaxExcl().advanceToRow(0);
         assertTrue(range.getMinIncl().getLong(0) ==  1L && range.getMaxExcl().getLong(0) == 1L);      
         
 
