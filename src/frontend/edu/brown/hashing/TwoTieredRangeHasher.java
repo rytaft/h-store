@@ -4,7 +4,10 @@
 package edu.brown.hashing;
 
 import org.json.JSONObject;
+
+import java.util.Arrays;
 import java.util.List;
+
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Column;
@@ -107,13 +110,15 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
     public int hash(Object value, CatalogType catalogItem) {
         if (catalogItem instanceof Column || catalogItem instanceof Procedure || catalogItem instanceof Statement) {
             try {
+            	List<CatalogType> catalogList = Arrays.asList(catalogItem);
+            	List<Object> valueList = Arrays.asList(value);
                 //If we do not have an RC, or there is an RC but no reconfig is in progress
                 if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !reconfigCoord.getReconfigurationInProgress())){
-                	if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s",catalogItem,value,partitions.getPartitionId(catalogItem, value)));
-                    return partitions.getPartitionId(catalogItem, value);
+                	if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s",catalogItem,value,partitions.getPartitionId(catalogList, valueList)));
+                    return partitions.getPartitionId(catalogList, valueList);
                 } else {
-                    int expectedPartition = partitions.getPartitionId(catalogItem, value);
-                    int previousPartition = partitions.getPreviousPartitionId(catalogItem, value);
+                    int expectedPartition = partitions.getPartitionId(catalogList, valueList);
+                    int previousPartition = partitions.getPreviousPartitionId(catalogList, valueList);
                     if (expectedPartition == previousPartition) {
                         //The item isn't moving
                         return expectedPartition;
