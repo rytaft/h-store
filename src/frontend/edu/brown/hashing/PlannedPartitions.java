@@ -156,8 +156,11 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
                 	partitionCol = cols[0];
                 }
             	
+                String table_name;
                 Table table = this.catalog_to_table_map.get(partitionCol);
-            	String table_name = table.getName().toLowerCase();
+                if(table != null) {
+                	table_name = table.getName().toLowerCase();
+                }
                 if ((table_name == null) || (table_name.equals("null")) || (table_name.trim().length() == 0)) {
                     LOG.info(String.format("Using default table %s for procedure: %s ", this.default_table, proc.toString()));
                     table_name = this.default_table;
