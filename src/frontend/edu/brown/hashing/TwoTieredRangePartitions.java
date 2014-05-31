@@ -152,7 +152,7 @@ public class TwoTieredRangePartitions implements JSONSerializable, ExplicitParti
                 	partitionCol = cols[0];
                 }
             	
-                String table_name;
+                String table_name = null;
                 Table table = this.catalog_to_table_map.get(partitionCol);
                 if(table != null) {
                 	table_name = table.getName().toLowerCase();
