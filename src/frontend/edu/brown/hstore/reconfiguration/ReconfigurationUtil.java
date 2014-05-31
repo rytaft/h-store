@@ -315,8 +315,10 @@ public class ReconfigurationUtil {
     		for(ColumnRef colRef : table.getPartitioncolumns()) {
     			cols[colRef.getIndex()] = colRef.getColumn();
     		}
-    	} else {
+    	} else if (table.getPartitioncolumn() != null) {
     		cols = new Column[]{ table.getPartitioncolumn() };
+    	} else {
+    		throw new RuntimeException("No partition columns provided for table " + table.getName());
     	}
         return CatalogUtil.getVoltTable(Arrays.asList(cols));
     }
