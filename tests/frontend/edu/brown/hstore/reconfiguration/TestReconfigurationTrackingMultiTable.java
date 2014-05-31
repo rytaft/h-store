@@ -2,6 +2,7 @@ package edu.brown.hstore.reconfiguration;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -106,7 +107,7 @@ public class TestReconfigurationTrackingMultiTable extends BaseTestCase {
         //a key that has not been migrated
         ReconfigurationException ex = null;
         try{
-            tracking1.checkKeyOwned(customer, 2L);
+            tracking1.checkKeyOwned(customer_tbl, Arrays.asList(new Object[]{2L}));
         } catch(ReconfigurationException e){
           ex =e;  
         } catch(Exception e){
@@ -115,25 +116,25 @@ public class TestReconfigurationTrackingMultiTable extends BaseTestCase {
         assertNotNull(ex);
         assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_NOT_MIGRATED,ex.exceptionType);        
         assertEquals(3,ex.dataNotYetMigrated.size());
-        for (ReconfigurationRange<? extends Comparable<?>> range : ex.dataNotYetMigrated) {
+        for (ReconfigurationRange range : ex.dataNotYetMigrated) {
             System.out.println(range);
-            tracking1.markKeyAsReceived(range.table_name, range.getMin_inclusive());
-            tracking2.markKeyAsMigratedOut(range.table_name, range.getMin_inclusive());
+            tracking1.markKeyAsReceived(range.table_name, Arrays.asList(range.getMinIncl().getRowArray()));
+            tracking2.markKeyAsMigratedOut(range.table_name, Arrays.asList(range.getMinIncl().getRowArray()));
         }
         
         assertTrue(tracking1.checkKeyOwned(warehouse_tbl.getPartitioncolumn(), new Short("2")));
         
         
         
-        ReconfigurationRange<Long> migrRange = new ReconfigurationRange<Long>(customer, VoltType.BIGINT, 1L, 2L, 2, 1);
+        ReconfigurationRange migrRange = ReconfigurationUtil.getReconfigurationRange(customer_tbl, new Long[]{1L}, new Long[]{2L}, 2, 1);
         //Test single range
         tracking1.markRangeAsReceived(migrRange);
         tracking2.markRangeAsMigratedOut(migrRange);
 
         
         //check keys that should have been migrated
-        assertTrue(tracking1.checkKeyOwned(customer, 1L));
-        assertTrue(tracking1.checkKeyOwned(customer, 0L));
+        assertTrue(tracking1.checkKeyOwned(customer_tbl, Arrays.asList(new Object[]{1L})));
+        assertTrue(tracking1.checkKeyOwned(customer_tbl, Arrays.asList(new Object[]{0L})));
         
         
         
