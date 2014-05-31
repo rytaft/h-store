@@ -34,7 +34,7 @@ public String test_json1 = "{"
             + "                \"partitions\":{"
             + "                  1 : \"1-100\","
             + "                  2 : \"100-300\","
-            + "                  3 : \"300,350-400,302\","
+            + "                  3 : \"300-301,350-400,302-303\","
             + "                  4 : \"301,303,304-350\"       "
             + "                }     "
             + "              },"
@@ -76,7 +76,6 @@ public String test_json2 = "{"
     protected void setUp() throws Exception {
       super.setUp(ProjectType.YCSB);
       catalog_tbl = this.getTable(tbl);
-      table2 = this.getTable(table2str);
       Column catalog_col = this.getColumn(catalog_tbl, "YCSB_KEY");
       catalog_tbl.setPartitioncolumn(catalog_col);
       String tmp_dir = System.getProperty("java.io.tmpdir");
@@ -289,6 +288,7 @@ public String test_json2 = "{"
 
         //check table 2
         Set<ReconfigurationRange> pulls = new HashSet<>();
+        table2 = this.getTable(table2str);
         assertTrue(tracking3.checkKeyOwned(table2, 1L));
         ex = null;
         try{
