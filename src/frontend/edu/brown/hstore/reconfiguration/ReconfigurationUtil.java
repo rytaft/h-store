@@ -290,11 +290,7 @@ public class ReconfigurationUtil {
     }
     
     public static VoltTable getVoltTable(Table table, List<Long> list) {
-    	Column[] cols = new Column[table.getPartitioncolumns().size()];
-        for(ColumnRef colRef : table.getPartitioncolumns()) {
-        	cols[colRef.getIndex()] = colRef.getColumn();
-        }
-        VoltTable voltTable = CatalogUtil.getVoltTable(Arrays.asList(cols));
+    	VoltTable voltTable = getPartitionKeysVoltTable(table);
         
         for(int i = 0; i < list.size(); i++) {
         	Object[] row = new Object[voltTable.getColumnCount()];
@@ -311,6 +307,18 @@ public class ReconfigurationUtil {
         return voltTable;
     }
 
-    
+    public static VoltTable getPartitionKeysVoltTable(Table table) {
+    	
+    	Column[] cols;
+    	if(table.getPartitioncolumns().size() > 0) {
+    		cols = new Column[table.getPartitioncolumns().size()];
+    		for(ColumnRef colRef : table.getPartitioncolumns()) {
+    			cols[colRef.getIndex()] = colRef.getColumn();
+    		}
+    	} else {
+    		cols = new Column[]{ table.getPartitioncolumn() };
+    	}
+        return CatalogUtil.getVoltTable(Arrays.asList(cols));
+    }
   
 }

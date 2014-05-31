@@ -570,11 +570,7 @@ public class PlannedPartitions implements JSONSerializable, ExplicitPartitions {
             this.partition = partition_id;
             this.catalog_table = table;
             
-            Column[] cols = new Column[table.getPartitioncolumns().size()];
-            for(ColumnRef colRef : table.getPartitioncolumns()) {
-            	cols[colRef.getIndex()] = colRef.getColumn();
-            }
-            this.clone = CatalogUtil.getVoltTable(Arrays.asList(cols));
+            this.clone = ReconfigurationUtil.getPartitionKeysVoltTable(table);
             
             String ranges[];
             // multi-key partitioning

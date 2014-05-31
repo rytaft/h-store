@@ -103,11 +103,7 @@ public class ReconfigurationPlan {
           
           // get a volt table and volt table comparator
           Table table = old_table.getCatalog_table();
-          Column[] cols = new Column[table.getPartitioncolumns().size()];
-          for(ColumnRef colRef : table.getPartitioncolumns()) {
-          	cols[colRef.getIndex()] = colRef.getColumn();
-          }
-          VoltTable voltTable = CatalogUtil.getVoltTable(Arrays.asList(cols));
+          VoltTable voltTable = ReconfigurationUtil.getPartitionKeysVoltTable(table);
           
           VoltTableComparator cmp = ReconfigurationUtil.getComparator(voltTable);
           
@@ -417,11 +413,7 @@ public class ReconfigurationPlan {
         }
         
         public ReconfigurationRange(Table table, VoltTable min_incl, VoltTable max_excl, int old_partition, int new_partition) {
-        	Column[] cols = new Column[table.getPartitioncolumns().size()];
-            for(ColumnRef colRef : table.getPartitioncolumns()) {
-            	cols[colRef.getIndex()] = colRef.getColumn();
-            }
-            this.clone = CatalogUtil.getVoltTable(Arrays.asList(cols));
+        	this.clone = ReconfigurationUtil.getPartitionKeysVoltTable(table);
             
             this.cmp = ReconfigurationUtil.getComparator(clone);
             
@@ -446,11 +438,7 @@ public class ReconfigurationPlan {
         
         public ReconfigurationRange(Table table, List<Object> min_incl, List<Object> max_excl, int old_partition, int new_partition) {
             
-        	Column[] cols = new Column[table.getPartitioncolumns().size()];
-            for(ColumnRef colRef : table.getPartitioncolumns()) {
-            	cols[colRef.getIndex()] = colRef.getColumn();
-            }
-            this.clone = CatalogUtil.getVoltTable(Arrays.asList(cols));
+        	this.clone = ReconfigurationUtil.getPartitionKeysVoltTable(table);
             
             this.cmp = ReconfigurationUtil.getComparator(clone);
             
