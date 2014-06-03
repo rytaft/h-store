@@ -182,13 +182,17 @@ public class ReconfigurationUtil {
     }
     
     public static VoltTable getExtractVoltTable(ReconfigurationRange range) {
-    	int nCols = range.getMinIncl().getColumnCount();
+    	return getExtractVoltTable(range.getMinIncl(), range.getMaxExcl());
+    }
+
+    public static VoltTable getExtractVoltTable(VoltTable minIncl, VoltTable maxExcl) {
+    	int nCols = minIncl.getColumnCount();
     	int nSchemaCols = nCols * 3 + 1;
     	ColumnInfo[] extractTableColumns = new ColumnInfo[nSchemaCols];
 
         extractTableColumns[0] = new ColumnInfo("TABLE_NAME", VoltType.INTEGER);
         for(int i = 0; i < nCols; i++) {
-        	VoltType type = range.getMinIncl().getColumnType(i);
+        	VoltType type = minIncl.getColumnType(i);
         	extractTableColumns[i*3+1] = new ColumnInfo("KEY_TYPE", VoltType.INTEGER);
             extractTableColumns[i*3+2] = new ColumnInfo("MIN_INCLUSIVE", type); // range.getVt());
             extractTableColumns[i*3+3] = new ColumnInfo("MAX_EXCLUSIVE", type); // range.getVt());
@@ -197,15 +201,15 @@ public class ReconfigurationUtil {
         VoltTable vt = new VoltTable(extractTableColumns);
         // vt.addRow(range.table_name,range.getVt().toString(),range.getMin_inclusive(),range.getMax_exclusive());
         
-        range.getMinIncl().resetRowPosition();
-		range.getMaxExcl().resetRowPosition();
-		while(range.getMinIncl().advanceRow() && range.getMaxExcl().advanceRow()) {
+        minIncl.resetRowPosition();
+		maxExcl.resetRowPosition();
+		while(minIncl.advanceRow() && maxExcl.advanceRow()) {
 			Object[] row = new Object[nSchemaCols];
     		row[0] = 1;
     		for(int i = 0; i < nCols; i++) {	
         		row[i*3+1] = 1;
-        		row[i*3+2] = range.getMinIncl().get(i);
-        		row[i*3+3] = range.getMaxExcl().get(i);
+        		row[i*3+2] = minIncl.get(i);
+        		row[i*3+3] = maxExcl.get(i);
         	}
     		vt.addRow(row);
         }  
@@ -213,6 +217,7 @@ public class ReconfigurationUtil {
 		return vt;
     }
 
+    
     public static VoltTable getExtractVoltTable(List<Long> minInclusives, List<Long> maxExclusives) {
         if(minInclusives.size()!=maxExclusives.size()){
             throw new RuntimeException("Min inclusive list different size than maxExclusives.");
