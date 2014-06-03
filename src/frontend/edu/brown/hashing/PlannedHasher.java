@@ -212,5 +212,10 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     public ReconfigurationPlan changePartitionPlan(String partition_json_file) throws Exception {
         throw new NotImplementedException("TODO");
     }
+    
+    @Override
+    public boolean hasMultiColumnRanges() {
+    	return true;
+    }
 
 }

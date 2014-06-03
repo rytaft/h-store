@@ -184,5 +184,10 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
     public ReconfigurationPlan changePartitionPhase(String partition_plan) throws Exception {
         throw new NotImplementedException("TODO");
     }
+    
+    @Override
+    public boolean hasMultiColumnRanges() {
+    	return true;
+    }
 
 }
