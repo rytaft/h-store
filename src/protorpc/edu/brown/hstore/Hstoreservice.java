@@ -15923,31 +15923,19 @@ public final class Hstoreservice {
     public boolean hasVoltTableName() { return hasVoltTableName; }
     public java.lang.String getVoltTableName() { return voltTableName_; }
     
-    // repeated int64 min_inclusive = 6 [packed = true];
+    // required bytes min_inclusive = 6;
     public static final int MIN_INCLUSIVE_FIELD_NUMBER = 6;
-    private java.util.List<java.lang.Long> minInclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMinInclusiveList() {
-      return minInclusive_;
-    }
-    public int getMinInclusiveCount() { return minInclusive_.size(); }
-    public long getMinInclusive(int index) {
-      return minInclusive_.get(index);
-    }
-    private int minInclusiveMemoizedSerializedSize = -1;
+    private boolean hasMinInclusive;
+    private com.google.protobuf.ByteString minInclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMinInclusive() { return hasMinInclusive; }
+    public com.google.protobuf.ByteString getMinInclusive() { return minInclusive_; }
     
-    // repeated int64 max_exclusive = 7 [packed = true];
+    // required bytes max_exclusive = 7;
     public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 7;
-    private java.util.List<java.lang.Long> maxExclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMaxExclusiveList() {
-      return maxExclusive_;
-    }
-    public int getMaxExclusiveCount() { return maxExclusive_.size(); }
-    public long getMaxExclusive(int index) {
-      return maxExclusive_.get(index);
-    }
-    private int maxExclusiveMemoizedSerializedSize = -1;
+    private boolean hasMaxExclusive;
+    private com.google.protobuf.ByteString maxExclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMaxExclusive() { return hasMaxExclusive; }
+    public com.google.protobuf.ByteString getMaxExclusive() { return maxExclusive_; }
     
     // required bytes volt_table_data = 8;
     public static final int VOLT_TABLE_DATA_FIELD_NUMBER = 8;
@@ -15964,6 +15952,8 @@ public final class Hstoreservice {
       if (!hasOldPartition) return false;
       if (!hasNewPartition) return false;
       if (!hasVoltTableName) return false;
+      if (!hasMinInclusive) return false;
+      if (!hasMaxExclusive) return false;
       if (!hasVoltTableData) return false;
       return true;
     }
@@ -15986,19 +15976,11 @@ public final class Hstoreservice {
       if (hasVoltTableName()) {
         output.writeString(5, getVoltTableName());
       }
-      if (getMinInclusiveList().size() > 0) {
-        output.writeRawVarint32(50);
-        output.writeRawVarint32(minInclusiveMemoizedSerializedSize);
+      if (hasMinInclusive()) {
+        output.writeBytes(6, getMinInclusive());
       }
-      for (long element : getMinInclusiveList()) {
-        output.writeInt64NoTag(element);
-      }
-      if (getMaxExclusiveList().size() > 0) {
-        output.writeRawVarint32(58);
-        output.writeRawVarint32(maxExclusiveMemoizedSerializedSize);
-      }
-      for (long element : getMaxExclusiveList()) {
-        output.writeInt64NoTag(element);
+      if (hasMaxExclusive()) {
+        output.writeBytes(7, getMaxExclusive());
       }
       if (hasVoltTableData()) {
         output.writeBytes(8, getVoltTableData());
@@ -16032,33 +16014,13 @@ public final class Hstoreservice {
         size += com.google.protobuf.CodedOutputStream
           .computeStringSize(5, getVoltTableName());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMinInclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMinInclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        minInclusiveMemoizedSerializedSize = dataSize;
+      if (hasMinInclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(6, getMinInclusive());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMaxExclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMaxExclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        maxExclusiveMemoizedSerializedSize = dataSize;
+      if (hasMaxExclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(7, getMaxExclusive());
       }
       if (hasVoltTableData()) {
         size += com.google.protobuf.CodedOutputStream
@@ -16206,14 +16168,6 @@ public final class Hstoreservice {
           throw new IllegalStateException(
             "build() has already been called on this Builder.");
         }
-        if (result.minInclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.minInclusive_ =
-            java.util.Collections.unmodifiableList(result.minInclusive_);
-        }
-        if (result.maxExclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.maxExclusive_ =
-            java.util.Collections.unmodifiableList(result.maxExclusive_);
-        }
         edu.brown.hstore.Hstoreservice.DataTransferRequest returnMe = result;
         result = null;
         return returnMe;
@@ -16245,17 +16199,11 @@ public final class Hstoreservice {
         if (other.hasVoltTableName()) {
           setVoltTableName(other.getVoltTableName());
         }
-        if (!other.minInclusive_.isEmpty()) {
-          if (result.minInclusive_.isEmpty()) {
-            result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.minInclusive_.addAll(other.minInclusive_);
+        if (other.hasMinInclusive()) {
+          setMinInclusive(other.getMinInclusive());
         }
-        if (!other.maxExclusive_.isEmpty()) {
-          if (result.maxExclusive_.isEmpty()) {
-            result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.maxExclusive_.addAll(other.maxExclusive_);
+        if (other.hasMaxExclusive()) {
+          setMaxExclusive(other.getMaxExclusive());
         }
         if (other.hasVoltTableData()) {
           setVoltTableData(other.getVoltTableData());
@@ -16305,30 +16253,12 @@ public final class Hstoreservice {
               setVoltTableName(input.readString());
               break;
             }
-            case 48: {
-              addMinInclusive(input.readInt64());
-              break;
-            }
             case 50: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMinInclusive(input.readInt64());
-              }
-              input.popLimit(limit);
-              break;
-            }
-            case 56: {
-              addMaxExclusive(input.readInt64());
+              setMinInclusive(input.readBytes());
               break;
             }
             case 58: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMaxExclusive(input.readInt64());
-              }
-              input.popLimit(limit);
+              setMaxExclusive(input.readBytes());
               break;
             }
             case 66: {
@@ -16433,71 +16363,45 @@ public final class Hstoreservice {
         return this;
       }
       
-      // repeated int64 min_inclusive = 6 [packed = true];
-      public java.util.List<java.lang.Long> getMinInclusiveList() {
-        return java.util.Collections.unmodifiableList(result.minInclusive_);
+      // required bytes min_inclusive = 6;
+      public boolean hasMinInclusive() {
+        return result.hasMinInclusive();
       }
-      public int getMinInclusiveCount() {
-        return result.getMinInclusiveCount();
+      public com.google.protobuf.ByteString getMinInclusive() {
+        return result.getMinInclusive();
       }
-      public long getMinInclusive(int index) {
-        return result.getMinInclusive(index);
-      }
-      public Builder setMinInclusive(int index, long value) {
-        result.minInclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMinInclusive(long value) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.minInclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMinInclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.minInclusive_);
+      public Builder setMinInclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMinInclusive = true;
+        result.minInclusive_ = value;
         return this;
       }
       public Builder clearMinInclusive() {
-        result.minInclusive_ = java.util.Collections.emptyList();
+        result.hasMinInclusive = false;
+        result.minInclusive_ = getDefaultInstance().getMinInclusive();
         return this;
       }
       
-      // repeated int64 max_exclusive = 7 [packed = true];
-      public java.util.List<java.lang.Long> getMaxExclusiveList() {
-        return java.util.Collections.unmodifiableList(result.maxExclusive_);
+      // required bytes max_exclusive = 7;
+      public boolean hasMaxExclusive() {
+        return result.hasMaxExclusive();
       }
-      public int getMaxExclusiveCount() {
-        return result.getMaxExclusiveCount();
+      public com.google.protobuf.ByteString getMaxExclusive() {
+        return result.getMaxExclusive();
       }
-      public long getMaxExclusive(int index) {
-        return result.getMaxExclusive(index);
-      }
-      public Builder setMaxExclusive(int index, long value) {
-        result.maxExclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMaxExclusive(long value) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.maxExclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMaxExclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.maxExclusive_);
+      public Builder setMaxExclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMaxExclusive = true;
+        result.maxExclusive_ = value;
         return this;
       }
       public Builder clearMaxExclusive() {
-        result.maxExclusive_ = java.util.Collections.emptyList();
+        result.hasMaxExclusive = false;
+        result.maxExclusive_ = getDefaultInstance().getMaxExclusive();
         return this;
       }
       
@@ -16596,31 +16500,19 @@ public final class Hstoreservice {
     public boolean hasVoltTableName() { return hasVoltTableName; }
     public java.lang.String getVoltTableName() { return voltTableName_; }
     
-    // repeated int64 min_inclusive = 6 [packed = true];
+    // required bytes min_inclusive = 6;
     public static final int MIN_INCLUSIVE_FIELD_NUMBER = 6;
-    private java.util.List<java.lang.Long> minInclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMinInclusiveList() {
-      return minInclusive_;
-    }
-    public int getMinInclusiveCount() { return minInclusive_.size(); }
-    public long getMinInclusive(int index) {
-      return minInclusive_.get(index);
-    }
-    private int minInclusiveMemoizedSerializedSize = -1;
+    private boolean hasMinInclusive;
+    private com.google.protobuf.ByteString minInclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMinInclusive() { return hasMinInclusive; }
+    public com.google.protobuf.ByteString getMinInclusive() { return minInclusive_; }
     
-    // repeated int64 max_exclusive = 7 [packed = true];
+    // required bytes max_exclusive = 7;
     public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 7;
-    private java.util.List<java.lang.Long> maxExclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMaxExclusiveList() {
-      return maxExclusive_;
-    }
-    public int getMaxExclusiveCount() { return maxExclusive_.size(); }
-    public long getMaxExclusive(int index) {
-      return maxExclusive_.get(index);
-    }
-    private int maxExclusiveMemoizedSerializedSize = -1;
+    private boolean hasMaxExclusive;
+    private com.google.protobuf.ByteString maxExclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMaxExclusive() { return hasMaxExclusive; }
+    public com.google.protobuf.ByteString getMaxExclusive() { return maxExclusive_; }
     
     private void initFields() {
     }
@@ -16630,6 +16522,8 @@ public final class Hstoreservice {
       if (!hasOldPartition) return false;
       if (!hasNewPartition) return false;
       if (!hasVoltTableName) return false;
+      if (!hasMinInclusive) return false;
+      if (!hasMaxExclusive) return false;
       return true;
     }
     
@@ -16651,19 +16545,11 @@ public final class Hstoreservice {
       if (hasVoltTableName()) {
         output.writeString(5, getVoltTableName());
       }
-      if (getMinInclusiveList().size() > 0) {
-        output.writeRawVarint32(50);
-        output.writeRawVarint32(minInclusiveMemoizedSerializedSize);
+      if (hasMinInclusive()) {
+        output.writeBytes(6, getMinInclusive());
       }
-      for (long element : getMinInclusiveList()) {
-        output.writeInt64NoTag(element);
-      }
-      if (getMaxExclusiveList().size() > 0) {
-        output.writeRawVarint32(58);
-        output.writeRawVarint32(maxExclusiveMemoizedSerializedSize);
-      }
-      for (long element : getMaxExclusiveList()) {
-        output.writeInt64NoTag(element);
+      if (hasMaxExclusive()) {
+        output.writeBytes(7, getMaxExclusive());
       }
       getUnknownFields().writeTo(output);
     }
@@ -16694,33 +16580,13 @@ public final class Hstoreservice {
         size += com.google.protobuf.CodedOutputStream
           .computeStringSize(5, getVoltTableName());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMinInclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMinInclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        minInclusiveMemoizedSerializedSize = dataSize;
+      if (hasMinInclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(6, getMinInclusive());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMaxExclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMaxExclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        maxExclusiveMemoizedSerializedSize = dataSize;
+      if (hasMaxExclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(7, getMaxExclusive());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -16864,14 +16730,6 @@ public final class Hstoreservice {
           throw new IllegalStateException(
             "build() has already been called on this Builder.");
         }
-        if (result.minInclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.minInclusive_ =
-            java.util.Collections.unmodifiableList(result.minInclusive_);
-        }
-        if (result.maxExclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.maxExclusive_ =
-            java.util.Collections.unmodifiableList(result.maxExclusive_);
-        }
         edu.brown.hstore.Hstoreservice.DataTransferResponse returnMe = result;
         result = null;
         return returnMe;
@@ -16903,17 +16761,11 @@ public final class Hstoreservice {
         if (other.hasVoltTableName()) {
           setVoltTableName(other.getVoltTableName());
         }
-        if (!other.minInclusive_.isEmpty()) {
-          if (result.minInclusive_.isEmpty()) {
-            result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.minInclusive_.addAll(other.minInclusive_);
+        if (other.hasMinInclusive()) {
+          setMinInclusive(other.getMinInclusive());
         }
-        if (!other.maxExclusive_.isEmpty()) {
-          if (result.maxExclusive_.isEmpty()) {
-            result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.maxExclusive_.addAll(other.maxExclusive_);
+        if (other.hasMaxExclusive()) {
+          setMaxExclusive(other.getMaxExclusive());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -16960,30 +16812,12 @@ public final class Hstoreservice {
               setVoltTableName(input.readString());
               break;
             }
-            case 48: {
-              addMinInclusive(input.readInt64());
-              break;
-            }
             case 50: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMinInclusive(input.readInt64());
-              }
-              input.popLimit(limit);
-              break;
-            }
-            case 56: {
-              addMaxExclusive(input.readInt64());
+              setMinInclusive(input.readBytes());
               break;
             }
             case 58: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMaxExclusive(input.readInt64());
-              }
-              input.popLimit(limit);
+              setMaxExclusive(input.readBytes());
               break;
             }
           }
@@ -17084,71 +16918,45 @@ public final class Hstoreservice {
         return this;
       }
       
-      // repeated int64 min_inclusive = 6 [packed = true];
-      public java.util.List<java.lang.Long> getMinInclusiveList() {
-        return java.util.Collections.unmodifiableList(result.minInclusive_);
+      // required bytes min_inclusive = 6;
+      public boolean hasMinInclusive() {
+        return result.hasMinInclusive();
       }
-      public int getMinInclusiveCount() {
-        return result.getMinInclusiveCount();
+      public com.google.protobuf.ByteString getMinInclusive() {
+        return result.getMinInclusive();
       }
-      public long getMinInclusive(int index) {
-        return result.getMinInclusive(index);
-      }
-      public Builder setMinInclusive(int index, long value) {
-        result.minInclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMinInclusive(long value) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.minInclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMinInclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.minInclusive_);
+      public Builder setMinInclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMinInclusive = true;
+        result.minInclusive_ = value;
         return this;
       }
       public Builder clearMinInclusive() {
-        result.minInclusive_ = java.util.Collections.emptyList();
+        result.hasMinInclusive = false;
+        result.minInclusive_ = getDefaultInstance().getMinInclusive();
         return this;
       }
       
-      // repeated int64 max_exclusive = 7 [packed = true];
-      public java.util.List<java.lang.Long> getMaxExclusiveList() {
-        return java.util.Collections.unmodifiableList(result.maxExclusive_);
+      // required bytes max_exclusive = 7;
+      public boolean hasMaxExclusive() {
+        return result.hasMaxExclusive();
       }
-      public int getMaxExclusiveCount() {
-        return result.getMaxExclusiveCount();
+      public com.google.protobuf.ByteString getMaxExclusive() {
+        return result.getMaxExclusive();
       }
-      public long getMaxExclusive(int index) {
-        return result.getMaxExclusive(index);
-      }
-      public Builder setMaxExclusive(int index, long value) {
-        result.maxExclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMaxExclusive(long value) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.maxExclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMaxExclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.maxExclusive_);
+      public Builder setMaxExclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMaxExclusive = true;
+        result.maxExclusive_ = value;
         return this;
       }
       public Builder clearMaxExclusive() {
-        result.maxExclusive_ = java.util.Collections.emptyList();
+        result.hasMaxExclusive = false;
+        result.maxExclusive_ = getDefaultInstance().getMaxExclusive();
         return this;
       }
       
@@ -17240,31 +17048,19 @@ public final class Hstoreservice {
     public boolean hasVoltTableName() { return hasVoltTableName; }
     public java.lang.String getVoltTableName() { return voltTableName_; }
     
-    // repeated int64 min_inclusive = 8 [packed = true];
+    // required bytes min_inclusive = 8;
     public static final int MIN_INCLUSIVE_FIELD_NUMBER = 8;
-    private java.util.List<java.lang.Long> minInclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMinInclusiveList() {
-      return minInclusive_;
-    }
-    public int getMinInclusiveCount() { return minInclusive_.size(); }
-    public long getMinInclusive(int index) {
-      return minInclusive_.get(index);
-    }
-    private int minInclusiveMemoizedSerializedSize = -1;
+    private boolean hasMinInclusive;
+    private com.google.protobuf.ByteString minInclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMinInclusive() { return hasMinInclusive; }
+    public com.google.protobuf.ByteString getMinInclusive() { return minInclusive_; }
     
-    // repeated int64 max_exclusive = 9 [packed = true];
+    // required bytes max_exclusive = 9;
     public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 9;
-    private java.util.List<java.lang.Long> maxExclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMaxExclusiveList() {
-      return maxExclusive_;
-    }
-    public int getMaxExclusiveCount() { return maxExclusive_.size(); }
-    public long getMaxExclusive(int index) {
-      return maxExclusive_.get(index);
-    }
-    private int maxExclusiveMemoizedSerializedSize = -1;
+    private boolean hasMaxExclusive;
+    private com.google.protobuf.ByteString maxExclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMaxExclusive() { return hasMaxExclusive; }
+    public com.google.protobuf.ByteString getMaxExclusive() { return maxExclusive_; }
     
     private void initFields() {
     }
@@ -17276,6 +17072,8 @@ public final class Hstoreservice {
       if (!hasOldPartition) return false;
       if (!hasNewPartition) return false;
       if (!hasVoltTableName) return false;
+      if (!hasMinInclusive) return false;
+      if (!hasMaxExclusive) return false;
       return true;
     }
     
@@ -17303,19 +17101,11 @@ public final class Hstoreservice {
       if (hasVoltTableName()) {
         output.writeString(7, getVoltTableName());
       }
-      if (getMinInclusiveList().size() > 0) {
-        output.writeRawVarint32(66);
-        output.writeRawVarint32(minInclusiveMemoizedSerializedSize);
+      if (hasMinInclusive()) {
+        output.writeBytes(8, getMinInclusive());
       }
-      for (long element : getMinInclusiveList()) {
-        output.writeInt64NoTag(element);
-      }
-      if (getMaxExclusiveList().size() > 0) {
-        output.writeRawVarint32(74);
-        output.writeRawVarint32(maxExclusiveMemoizedSerializedSize);
-      }
-      for (long element : getMaxExclusiveList()) {
-        output.writeInt64NoTag(element);
+      if (hasMaxExclusive()) {
+        output.writeBytes(9, getMaxExclusive());
       }
       getUnknownFields().writeTo(output);
     }
@@ -17354,33 +17144,13 @@ public final class Hstoreservice {
         size += com.google.protobuf.CodedOutputStream
           .computeStringSize(7, getVoltTableName());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMinInclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMinInclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        minInclusiveMemoizedSerializedSize = dataSize;
+      if (hasMinInclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(8, getMinInclusive());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMaxExclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMaxExclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        maxExclusiveMemoizedSerializedSize = dataSize;
+      if (hasMaxExclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(9, getMaxExclusive());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -17524,14 +17294,6 @@ public final class Hstoreservice {
           throw new IllegalStateException(
             "build() has already been called on this Builder.");
         }
-        if (result.minInclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.minInclusive_ =
-            java.util.Collections.unmodifiableList(result.minInclusive_);
-        }
-        if (result.maxExclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.maxExclusive_ =
-            java.util.Collections.unmodifiableList(result.maxExclusive_);
-        }
         edu.brown.hstore.Hstoreservice.LivePullRequest returnMe = result;
         result = null;
         return returnMe;
@@ -17569,17 +17331,11 @@ public final class Hstoreservice {
         if (other.hasVoltTableName()) {
           setVoltTableName(other.getVoltTableName());
         }
-        if (!other.minInclusive_.isEmpty()) {
-          if (result.minInclusive_.isEmpty()) {
-            result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.minInclusive_.addAll(other.minInclusive_);
+        if (other.hasMinInclusive()) {
+          setMinInclusive(other.getMinInclusive());
         }
-        if (!other.maxExclusive_.isEmpty()) {
-          if (result.maxExclusive_.isEmpty()) {
-            result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.maxExclusive_.addAll(other.maxExclusive_);
+        if (other.hasMaxExclusive()) {
+          setMaxExclusive(other.getMaxExclusive());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -17634,30 +17390,12 @@ public final class Hstoreservice {
               setVoltTableName(input.readString());
               break;
             }
-            case 64: {
-              addMinInclusive(input.readInt64());
-              break;
-            }
             case 66: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMinInclusive(input.readInt64());
-              }
-              input.popLimit(limit);
-              break;
-            }
-            case 72: {
-              addMaxExclusive(input.readInt64());
+              setMinInclusive(input.readBytes());
               break;
             }
             case 74: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMaxExclusive(input.readInt64());
-              }
-              input.popLimit(limit);
+              setMaxExclusive(input.readBytes());
               break;
             }
           }
@@ -17794,71 +17532,45 @@ public final class Hstoreservice {
         return this;
       }
       
-      // repeated int64 min_inclusive = 8 [packed = true];
-      public java.util.List<java.lang.Long> getMinInclusiveList() {
-        return java.util.Collections.unmodifiableList(result.minInclusive_);
+      // required bytes min_inclusive = 8;
+      public boolean hasMinInclusive() {
+        return result.hasMinInclusive();
       }
-      public int getMinInclusiveCount() {
-        return result.getMinInclusiveCount();
+      public com.google.protobuf.ByteString getMinInclusive() {
+        return result.getMinInclusive();
       }
-      public long getMinInclusive(int index) {
-        return result.getMinInclusive(index);
-      }
-      public Builder setMinInclusive(int index, long value) {
-        result.minInclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMinInclusive(long value) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.minInclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMinInclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.minInclusive_);
+      public Builder setMinInclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMinInclusive = true;
+        result.minInclusive_ = value;
         return this;
       }
       public Builder clearMinInclusive() {
-        result.minInclusive_ = java.util.Collections.emptyList();
+        result.hasMinInclusive = false;
+        result.minInclusive_ = getDefaultInstance().getMinInclusive();
         return this;
       }
       
-      // repeated int64 max_exclusive = 9 [packed = true];
-      public java.util.List<java.lang.Long> getMaxExclusiveList() {
-        return java.util.Collections.unmodifiableList(result.maxExclusive_);
+      // required bytes max_exclusive = 9;
+      public boolean hasMaxExclusive() {
+        return result.hasMaxExclusive();
       }
-      public int getMaxExclusiveCount() {
-        return result.getMaxExclusiveCount();
+      public com.google.protobuf.ByteString getMaxExclusive() {
+        return result.getMaxExclusive();
       }
-      public long getMaxExclusive(int index) {
-        return result.getMaxExclusive(index);
-      }
-      public Builder setMaxExclusive(int index, long value) {
-        result.maxExclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMaxExclusive(long value) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.maxExclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMaxExclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.maxExclusive_);
+      public Builder setMaxExclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMaxExclusive = true;
+        result.maxExclusive_ = value;
         return this;
       }
       public Builder clearMaxExclusive() {
-        result.maxExclusive_ = java.util.Collections.emptyList();
+        result.hasMaxExclusive = false;
+        result.maxExclusive_ = getDefaultInstance().getMaxExclusive();
         return this;
       }
       
@@ -17957,31 +17669,19 @@ public final class Hstoreservice {
     public boolean hasVoltTableName() { return hasVoltTableName; }
     public java.lang.String getVoltTableName() { return voltTableName_; }
     
-    // repeated int64 min_inclusive = 8 [packed = true];
+    // required bytes min_inclusive = 8;
     public static final int MIN_INCLUSIVE_FIELD_NUMBER = 8;
-    private java.util.List<java.lang.Long> minInclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMinInclusiveList() {
-      return minInclusive_;
-    }
-    public int getMinInclusiveCount() { return minInclusive_.size(); }
-    public long getMinInclusive(int index) {
-      return minInclusive_.get(index);
-    }
-    private int minInclusiveMemoizedSerializedSize = -1;
+    private boolean hasMinInclusive;
+    private com.google.protobuf.ByteString minInclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMinInclusive() { return hasMinInclusive; }
+    public com.google.protobuf.ByteString getMinInclusive() { return minInclusive_; }
     
-    // repeated int64 max_exclusive = 9 [packed = true];
+    // required bytes max_exclusive = 9;
     public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 9;
-    private java.util.List<java.lang.Long> maxExclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMaxExclusiveList() {
-      return maxExclusive_;
-    }
-    public int getMaxExclusiveCount() { return maxExclusive_.size(); }
-    public long getMaxExclusive(int index) {
-      return maxExclusive_.get(index);
-    }
-    private int maxExclusiveMemoizedSerializedSize = -1;
+    private boolean hasMaxExclusive;
+    private com.google.protobuf.ByteString maxExclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMaxExclusive() { return hasMaxExclusive; }
+    public com.google.protobuf.ByteString getMaxExclusive() { return maxExclusive_; }
     
     // required bytes volt_table_data = 10;
     public static final int VOLT_TABLE_DATA_FIELD_NUMBER = 10;
@@ -18007,6 +17707,8 @@ public final class Hstoreservice {
       if (!hasOldPartition) return false;
       if (!hasNewPartition) return false;
       if (!hasVoltTableName) return false;
+      if (!hasMinInclusive) return false;
+      if (!hasMaxExclusive) return false;
       if (!hasVoltTableData) return false;
       return true;
     }
@@ -18035,19 +17737,11 @@ public final class Hstoreservice {
       if (hasVoltTableName()) {
         output.writeString(7, getVoltTableName());
       }
-      if (getMinInclusiveList().size() > 0) {
-        output.writeRawVarint32(66);
-        output.writeRawVarint32(minInclusiveMemoizedSerializedSize);
+      if (hasMinInclusive()) {
+        output.writeBytes(8, getMinInclusive());
       }
-      for (long element : getMinInclusiveList()) {
-        output.writeInt64NoTag(element);
-      }
-      if (getMaxExclusiveList().size() > 0) {
-        output.writeRawVarint32(74);
-        output.writeRawVarint32(maxExclusiveMemoizedSerializedSize);
-      }
-      for (long element : getMaxExclusiveList()) {
-        output.writeInt64NoTag(element);
+      if (hasMaxExclusive()) {
+        output.writeBytes(9, getMaxExclusive());
       }
       if (hasVoltTableData()) {
         output.writeBytes(10, getVoltTableData());
@@ -18095,33 +17789,13 @@ public final class Hstoreservice {
         size += com.google.protobuf.CodedOutputStream
           .computeStringSize(7, getVoltTableName());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMinInclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMinInclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        minInclusiveMemoizedSerializedSize = dataSize;
+      if (hasMinInclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(8, getMinInclusive());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMaxExclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMaxExclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        maxExclusiveMemoizedSerializedSize = dataSize;
+      if (hasMaxExclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(9, getMaxExclusive());
       }
       if (hasVoltTableData()) {
         size += com.google.protobuf.CodedOutputStream
@@ -18277,14 +17951,6 @@ public final class Hstoreservice {
           throw new IllegalStateException(
             "build() has already been called on this Builder.");
         }
-        if (result.minInclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.minInclusive_ =
-            java.util.Collections.unmodifiableList(result.minInclusive_);
-        }
-        if (result.maxExclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.maxExclusive_ =
-            java.util.Collections.unmodifiableList(result.maxExclusive_);
-        }
         edu.brown.hstore.Hstoreservice.LivePullResponse returnMe = result;
         result = null;
         return returnMe;
@@ -18325,17 +17991,11 @@ public final class Hstoreservice {
         if (other.hasVoltTableName()) {
           setVoltTableName(other.getVoltTableName());
         }
-        if (!other.minInclusive_.isEmpty()) {
-          if (result.minInclusive_.isEmpty()) {
-            result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.minInclusive_.addAll(other.minInclusive_);
+        if (other.hasMinInclusive()) {
+          setMinInclusive(other.getMinInclusive());
         }
-        if (!other.maxExclusive_.isEmpty()) {
-          if (result.maxExclusive_.isEmpty()) {
-            result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.maxExclusive_.addAll(other.maxExclusive_);
+        if (other.hasMaxExclusive()) {
+          setMaxExclusive(other.getMaxExclusive());
         }
         if (other.hasVoltTableData()) {
           setVoltTableData(other.getVoltTableData());
@@ -18396,30 +18056,12 @@ public final class Hstoreservice {
               setVoltTableName(input.readString());
               break;
             }
-            case 64: {
-              addMinInclusive(input.readInt64());
-              break;
-            }
             case 66: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMinInclusive(input.readInt64());
-              }
-              input.popLimit(limit);
-              break;
-            }
-            case 72: {
-              addMaxExclusive(input.readInt64());
+              setMinInclusive(input.readBytes());
               break;
             }
             case 74: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMaxExclusive(input.readInt64());
-              }
-              input.popLimit(limit);
+              setMaxExclusive(input.readBytes());
               break;
             }
             case 82: {
@@ -18586,71 +18228,45 @@ public final class Hstoreservice {
         return this;
       }
       
-      // repeated int64 min_inclusive = 8 [packed = true];
-      public java.util.List<java.lang.Long> getMinInclusiveList() {
-        return java.util.Collections.unmodifiableList(result.minInclusive_);
+      // required bytes min_inclusive = 8;
+      public boolean hasMinInclusive() {
+        return result.hasMinInclusive();
       }
-      public int getMinInclusiveCount() {
-        return result.getMinInclusiveCount();
+      public com.google.protobuf.ByteString getMinInclusive() {
+        return result.getMinInclusive();
       }
-      public long getMinInclusive(int index) {
-        return result.getMinInclusive(index);
-      }
-      public Builder setMinInclusive(int index, long value) {
-        result.minInclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMinInclusive(long value) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.minInclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMinInclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.minInclusive_);
+      public Builder setMinInclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMinInclusive = true;
+        result.minInclusive_ = value;
         return this;
       }
       public Builder clearMinInclusive() {
-        result.minInclusive_ = java.util.Collections.emptyList();
+        result.hasMinInclusive = false;
+        result.minInclusive_ = getDefaultInstance().getMinInclusive();
         return this;
       }
       
-      // repeated int64 max_exclusive = 9 [packed = true];
-      public java.util.List<java.lang.Long> getMaxExclusiveList() {
-        return java.util.Collections.unmodifiableList(result.maxExclusive_);
+      // required bytes max_exclusive = 9;
+      public boolean hasMaxExclusive() {
+        return result.hasMaxExclusive();
       }
-      public int getMaxExclusiveCount() {
-        return result.getMaxExclusiveCount();
+      public com.google.protobuf.ByteString getMaxExclusive() {
+        return result.getMaxExclusive();
       }
-      public long getMaxExclusive(int index) {
-        return result.getMaxExclusive(index);
-      }
-      public Builder setMaxExclusive(int index, long value) {
-        result.maxExclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMaxExclusive(long value) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.maxExclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMaxExclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.maxExclusive_);
+      public Builder setMaxExclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMaxExclusive = true;
+        result.maxExclusive_ = value;
         return this;
       }
       public Builder clearMaxExclusive() {
-        result.maxExclusive_ = java.util.Collections.emptyList();
+        result.hasMaxExclusive = false;
+        result.maxExclusive_ = getDefaultInstance().getMaxExclusive();
         return this;
       }
       
@@ -18781,31 +18397,19 @@ public final class Hstoreservice {
     public boolean hasVoltTableName() { return hasVoltTableName; }
     public java.lang.String getVoltTableName() { return voltTableName_; }
     
-    // repeated int64 min_inclusive = 8 [packed = true];
+    // required bytes min_inclusive = 8;
     public static final int MIN_INCLUSIVE_FIELD_NUMBER = 8;
-    private java.util.List<java.lang.Long> minInclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMinInclusiveList() {
-      return minInclusive_;
-    }
-    public int getMinInclusiveCount() { return minInclusive_.size(); }
-    public long getMinInclusive(int index) {
-      return minInclusive_.get(index);
-    }
-    private int minInclusiveMemoizedSerializedSize = -1;
+    private boolean hasMinInclusive;
+    private com.google.protobuf.ByteString minInclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMinInclusive() { return hasMinInclusive; }
+    public com.google.protobuf.ByteString getMinInclusive() { return minInclusive_; }
     
-    // repeated int64 max_exclusive = 9 [packed = true];
+    // required bytes max_exclusive = 9;
     public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 9;
-    private java.util.List<java.lang.Long> maxExclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMaxExclusiveList() {
-      return maxExclusive_;
-    }
-    public int getMaxExclusiveCount() { return maxExclusive_.size(); }
-    public long getMaxExclusive(int index) {
-      return maxExclusive_.get(index);
-    }
-    private int maxExclusiveMemoizedSerializedSize = -1;
+    private boolean hasMaxExclusive;
+    private com.google.protobuf.ByteString maxExclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMaxExclusive() { return hasMaxExclusive; }
+    public com.google.protobuf.ByteString getMaxExclusive() { return maxExclusive_; }
     
     private void initFields() {
     }
@@ -18817,6 +18421,8 @@ public final class Hstoreservice {
       if (!hasOldPartition) return false;
       if (!hasNewPartition) return false;
       if (!hasVoltTableName) return false;
+      if (!hasMinInclusive) return false;
+      if (!hasMaxExclusive) return false;
       return true;
     }
     
@@ -18844,19 +18450,11 @@ public final class Hstoreservice {
       if (hasVoltTableName()) {
         output.writeString(7, getVoltTableName());
       }
-      if (getMinInclusiveList().size() > 0) {
-        output.writeRawVarint32(66);
-        output.writeRawVarint32(minInclusiveMemoizedSerializedSize);
+      if (hasMinInclusive()) {
+        output.writeBytes(8, getMinInclusive());
       }
-      for (long element : getMinInclusiveList()) {
-        output.writeInt64NoTag(element);
-      }
-      if (getMaxExclusiveList().size() > 0) {
-        output.writeRawVarint32(74);
-        output.writeRawVarint32(maxExclusiveMemoizedSerializedSize);
-      }
-      for (long element : getMaxExclusiveList()) {
-        output.writeInt64NoTag(element);
+      if (hasMaxExclusive()) {
+        output.writeBytes(9, getMaxExclusive());
       }
       getUnknownFields().writeTo(output);
     }
@@ -18895,33 +18493,13 @@ public final class Hstoreservice {
         size += com.google.protobuf.CodedOutputStream
           .computeStringSize(7, getVoltTableName());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMinInclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMinInclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        minInclusiveMemoizedSerializedSize = dataSize;
+      if (hasMinInclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(8, getMinInclusive());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMaxExclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMaxExclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        maxExclusiveMemoizedSerializedSize = dataSize;
+      if (hasMaxExclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(9, getMaxExclusive());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -19065,14 +18643,6 @@ public final class Hstoreservice {
           throw new IllegalStateException(
             "build() has already been called on this Builder.");
         }
-        if (result.minInclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.minInclusive_ =
-            java.util.Collections.unmodifiableList(result.minInclusive_);
-        }
-        if (result.maxExclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.maxExclusive_ =
-            java.util.Collections.unmodifiableList(result.maxExclusive_);
-        }
         edu.brown.hstore.Hstoreservice.AsyncPullRequest returnMe = result;
         result = null;
         return returnMe;
@@ -19110,17 +18680,11 @@ public final class Hstoreservice {
         if (other.hasVoltTableName()) {
           setVoltTableName(other.getVoltTableName());
         }
-        if (!other.minInclusive_.isEmpty()) {
-          if (result.minInclusive_.isEmpty()) {
-            result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.minInclusive_.addAll(other.minInclusive_);
+        if (other.hasMinInclusive()) {
+          setMinInclusive(other.getMinInclusive());
         }
-        if (!other.maxExclusive_.isEmpty()) {
-          if (result.maxExclusive_.isEmpty()) {
-            result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.maxExclusive_.addAll(other.maxExclusive_);
+        if (other.hasMaxExclusive()) {
+          setMaxExclusive(other.getMaxExclusive());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -19175,30 +18739,12 @@ public final class Hstoreservice {
               setVoltTableName(input.readString());
               break;
             }
-            case 64: {
-              addMinInclusive(input.readInt64());
-              break;
-            }
             case 66: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMinInclusive(input.readInt64());
-              }
-              input.popLimit(limit);
-              break;
-            }
-            case 72: {
-              addMaxExclusive(input.readInt64());
+              setMinInclusive(input.readBytes());
               break;
             }
             case 74: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMaxExclusive(input.readInt64());
-              }
-              input.popLimit(limit);
+              setMaxExclusive(input.readBytes());
               break;
             }
           }
@@ -19335,71 +18881,45 @@ public final class Hstoreservice {
         return this;
       }
       
-      // repeated int64 min_inclusive = 8 [packed = true];
-      public java.util.List<java.lang.Long> getMinInclusiveList() {
-        return java.util.Collections.unmodifiableList(result.minInclusive_);
+      // required bytes min_inclusive = 8;
+      public boolean hasMinInclusive() {
+        return result.hasMinInclusive();
       }
-      public int getMinInclusiveCount() {
-        return result.getMinInclusiveCount();
+      public com.google.protobuf.ByteString getMinInclusive() {
+        return result.getMinInclusive();
       }
-      public long getMinInclusive(int index) {
-        return result.getMinInclusive(index);
-      }
-      public Builder setMinInclusive(int index, long value) {
-        result.minInclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMinInclusive(long value) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.minInclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMinInclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.minInclusive_);
+      public Builder setMinInclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMinInclusive = true;
+        result.minInclusive_ = value;
         return this;
       }
       public Builder clearMinInclusive() {
-        result.minInclusive_ = java.util.Collections.emptyList();
+        result.hasMinInclusive = false;
+        result.minInclusive_ = getDefaultInstance().getMinInclusive();
         return this;
       }
       
-      // repeated int64 max_exclusive = 9 [packed = true];
-      public java.util.List<java.lang.Long> getMaxExclusiveList() {
-        return java.util.Collections.unmodifiableList(result.maxExclusive_);
+      // required bytes max_exclusive = 9;
+      public boolean hasMaxExclusive() {
+        return result.hasMaxExclusive();
       }
-      public int getMaxExclusiveCount() {
-        return result.getMaxExclusiveCount();
+      public com.google.protobuf.ByteString getMaxExclusive() {
+        return result.getMaxExclusive();
       }
-      public long getMaxExclusive(int index) {
-        return result.getMaxExclusive(index);
-      }
-      public Builder setMaxExclusive(int index, long value) {
-        result.maxExclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMaxExclusive(long value) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.maxExclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMaxExclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.maxExclusive_);
+      public Builder setMaxExclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMaxExclusive = true;
+        result.maxExclusive_ = value;
         return this;
       }
       public Builder clearMaxExclusive() {
-        result.maxExclusive_ = java.util.Collections.emptyList();
+        result.hasMaxExclusive = false;
+        result.maxExclusive_ = getDefaultInstance().getMaxExclusive();
         return this;
       }
       
@@ -19498,31 +19018,19 @@ public final class Hstoreservice {
     public boolean hasVoltTableName() { return hasVoltTableName; }
     public java.lang.String getVoltTableName() { return voltTableName_; }
     
-    // repeated int64 min_inclusive = 8 [packed = true];
+    // required bytes min_inclusive = 8;
     public static final int MIN_INCLUSIVE_FIELD_NUMBER = 8;
-    private java.util.List<java.lang.Long> minInclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMinInclusiveList() {
-      return minInclusive_;
-    }
-    public int getMinInclusiveCount() { return minInclusive_.size(); }
-    public long getMinInclusive(int index) {
-      return minInclusive_.get(index);
-    }
-    private int minInclusiveMemoizedSerializedSize = -1;
+    private boolean hasMinInclusive;
+    private com.google.protobuf.ByteString minInclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMinInclusive() { return hasMinInclusive; }
+    public com.google.protobuf.ByteString getMinInclusive() { return minInclusive_; }
     
-    // repeated int64 max_exclusive = 9 [packed = true];
+    // required bytes max_exclusive = 9;
     public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 9;
-    private java.util.List<java.lang.Long> maxExclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMaxExclusiveList() {
-      return maxExclusive_;
-    }
-    public int getMaxExclusiveCount() { return maxExclusive_.size(); }
-    public long getMaxExclusive(int index) {
-      return maxExclusive_.get(index);
-    }
-    private int maxExclusiveMemoizedSerializedSize = -1;
+    private boolean hasMaxExclusive;
+    private com.google.protobuf.ByteString maxExclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMaxExclusive() { return hasMaxExclusive; }
+    public com.google.protobuf.ByteString getMaxExclusive() { return maxExclusive_; }
     
     // required bytes volt_table_data = 10;
     public static final int VOLT_TABLE_DATA_FIELD_NUMBER = 10;
@@ -19549,6 +19057,8 @@ public final class Hstoreservice {
       if (!hasOldPartition) return false;
       if (!hasNewPartition) return false;
       if (!hasVoltTableName) return false;
+      if (!hasMinInclusive) return false;
+      if (!hasMaxExclusive) return false;
       if (!hasVoltTableData) return false;
       if (!hasMoreDataNeeded) return false;
       return true;
@@ -19578,19 +19088,11 @@ public final class Hstoreservice {
       if (hasVoltTableName()) {
         output.writeString(7, getVoltTableName());
       }
-      if (getMinInclusiveList().size() > 0) {
-        output.writeRawVarint32(66);
-        output.writeRawVarint32(minInclusiveMemoizedSerializedSize);
+      if (hasMinInclusive()) {
+        output.writeBytes(8, getMinInclusive());
       }
-      for (long element : getMinInclusiveList()) {
-        output.writeInt64NoTag(element);
-      }
-      if (getMaxExclusiveList().size() > 0) {
-        output.writeRawVarint32(74);
-        output.writeRawVarint32(maxExclusiveMemoizedSerializedSize);
-      }
-      for (long element : getMaxExclusiveList()) {
-        output.writeInt64NoTag(element);
+      if (hasMaxExclusive()) {
+        output.writeBytes(9, getMaxExclusive());
       }
       if (hasVoltTableData()) {
         output.writeBytes(10, getVoltTableData());
@@ -19638,33 +19140,13 @@ public final class Hstoreservice {
         size += com.google.protobuf.CodedOutputStream
           .computeStringSize(7, getVoltTableName());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMinInclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMinInclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        minInclusiveMemoizedSerializedSize = dataSize;
+      if (hasMinInclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(8, getMinInclusive());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMaxExclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMaxExclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        maxExclusiveMemoizedSerializedSize = dataSize;
+      if (hasMaxExclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(9, getMaxExclusive());
       }
       if (hasVoltTableData()) {
         size += com.google.protobuf.CodedOutputStream
@@ -19820,14 +19302,6 @@ public final class Hstoreservice {
           throw new IllegalStateException(
             "build() has already been called on this Builder.");
         }
-        if (result.minInclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.minInclusive_ =
-            java.util.Collections.unmodifiableList(result.minInclusive_);
-        }
-        if (result.maxExclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.maxExclusive_ =
-            java.util.Collections.unmodifiableList(result.maxExclusive_);
-        }
         edu.brown.hstore.Hstoreservice.AsyncPullResponse returnMe = result;
         result = null;
         return returnMe;
@@ -19868,17 +19342,11 @@ public final class Hstoreservice {
         if (other.hasVoltTableName()) {
           setVoltTableName(other.getVoltTableName());
         }
-        if (!other.minInclusive_.isEmpty()) {
-          if (result.minInclusive_.isEmpty()) {
-            result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.minInclusive_.addAll(other.minInclusive_);
+        if (other.hasMinInclusive()) {
+          setMinInclusive(other.getMinInclusive());
         }
-        if (!other.maxExclusive_.isEmpty()) {
-          if (result.maxExclusive_.isEmpty()) {
-            result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.maxExclusive_.addAll(other.maxExclusive_);
+        if (other.hasMaxExclusive()) {
+          setMaxExclusive(other.getMaxExclusive());
         }
         if (other.hasVoltTableData()) {
           setVoltTableData(other.getVoltTableData());
@@ -19939,30 +19407,12 @@ public final class Hstoreservice {
               setVoltTableName(input.readString());
               break;
             }
-            case 64: {
-              addMinInclusive(input.readInt64());
-              break;
-            }
             case 66: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMinInclusive(input.readInt64());
-              }
-              input.popLimit(limit);
-              break;
-            }
-            case 72: {
-              addMaxExclusive(input.readInt64());
+              setMinInclusive(input.readBytes());
               break;
             }
             case 74: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMaxExclusive(input.readInt64());
-              }
-              input.popLimit(limit);
+              setMaxExclusive(input.readBytes());
               break;
             }
             case 82: {
@@ -20129,71 +19579,45 @@ public final class Hstoreservice {
         return this;
       }
       
-      // repeated int64 min_inclusive = 8 [packed = true];
-      public java.util.List<java.lang.Long> getMinInclusiveList() {
-        return java.util.Collections.unmodifiableList(result.minInclusive_);
+      // required bytes min_inclusive = 8;
+      public boolean hasMinInclusive() {
+        return result.hasMinInclusive();
       }
-      public int getMinInclusiveCount() {
-        return result.getMinInclusiveCount();
+      public com.google.protobuf.ByteString getMinInclusive() {
+        return result.getMinInclusive();
       }
-      public long getMinInclusive(int index) {
-        return result.getMinInclusive(index);
-      }
-      public Builder setMinInclusive(int index, long value) {
-        result.minInclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMinInclusive(long value) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.minInclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMinInclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.minInclusive_);
+      public Builder setMinInclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMinInclusive = true;
+        result.minInclusive_ = value;
         return this;
       }
       public Builder clearMinInclusive() {
-        result.minInclusive_ = java.util.Collections.emptyList();
+        result.hasMinInclusive = false;
+        result.minInclusive_ = getDefaultInstance().getMinInclusive();
         return this;
       }
       
-      // repeated int64 max_exclusive = 9 [packed = true];
-      public java.util.List<java.lang.Long> getMaxExclusiveList() {
-        return java.util.Collections.unmodifiableList(result.maxExclusive_);
+      // required bytes max_exclusive = 9;
+      public boolean hasMaxExclusive() {
+        return result.hasMaxExclusive();
       }
-      public int getMaxExclusiveCount() {
-        return result.getMaxExclusiveCount();
+      public com.google.protobuf.ByteString getMaxExclusive() {
+        return result.getMaxExclusive();
       }
-      public long getMaxExclusive(int index) {
-        return result.getMaxExclusive(index);
-      }
-      public Builder setMaxExclusive(int index, long value) {
-        result.maxExclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMaxExclusive(long value) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.maxExclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMaxExclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.maxExclusive_);
+      public Builder setMaxExclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMaxExclusive = true;
+        result.maxExclusive_ = value;
         return this;
       }
       public Builder clearMaxExclusive() {
-        result.maxExclusive_ = java.util.Collections.emptyList();
+        result.hasMaxExclusive = false;
+        result.maxExclusive_ = getDefaultInstance().getMaxExclusive();
         return this;
       }
       
@@ -20338,31 +19762,19 @@ public final class Hstoreservice {
     public boolean hasVoltTableName() { return hasVoltTableName; }
     public java.lang.String getVoltTableName() { return voltTableName_; }
     
-    // repeated int64 min_inclusive = 10 [packed = true];
+    // required bytes min_inclusive = 10;
     public static final int MIN_INCLUSIVE_FIELD_NUMBER = 10;
-    private java.util.List<java.lang.Long> minInclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMinInclusiveList() {
-      return minInclusive_;
-    }
-    public int getMinInclusiveCount() { return minInclusive_.size(); }
-    public long getMinInclusive(int index) {
-      return minInclusive_.get(index);
-    }
-    private int minInclusiveMemoizedSerializedSize = -1;
+    private boolean hasMinInclusive;
+    private com.google.protobuf.ByteString minInclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMinInclusive() { return hasMinInclusive; }
+    public com.google.protobuf.ByteString getMinInclusive() { return minInclusive_; }
     
-    // repeated int64 max_exclusive = 11 [packed = true];
+    // required bytes max_exclusive = 11;
     public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 11;
-    private java.util.List<java.lang.Long> maxExclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMaxExclusiveList() {
-      return maxExclusive_;
-    }
-    public int getMaxExclusiveCount() { return maxExclusive_.size(); }
-    public long getMaxExclusive(int index) {
-      return maxExclusive_.get(index);
-    }
-    private int maxExclusiveMemoizedSerializedSize = -1;
+    private boolean hasMaxExclusive;
+    private com.google.protobuf.ByteString maxExclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMaxExclusive() { return hasMaxExclusive; }
+    public com.google.protobuf.ByteString getMaxExclusive() { return maxExclusive_; }
     
     // required bytes volt_table_data = 12;
     public static final int VOLT_TABLE_DATA_FIELD_NUMBER = 12;
@@ -20390,6 +19802,8 @@ public final class Hstoreservice {
       if (!hasOldPartition) return false;
       if (!hasNewPartition) return false;
       if (!hasVoltTableName) return false;
+      if (!hasMinInclusive) return false;
+      if (!hasMaxExclusive) return false;
       if (!hasVoltTableData) return false;
       if (!hasMoreDataNeeded) return false;
       return true;
@@ -20425,19 +19839,11 @@ public final class Hstoreservice {
       if (hasVoltTableName()) {
         output.writeString(9, getVoltTableName());
       }
-      if (getMinInclusiveList().size() > 0) {
-        output.writeRawVarint32(82);
-        output.writeRawVarint32(minInclusiveMemoizedSerializedSize);
+      if (hasMinInclusive()) {
+        output.writeBytes(10, getMinInclusive());
       }
-      for (long element : getMinInclusiveList()) {
-        output.writeInt64NoTag(element);
-      }
-      if (getMaxExclusiveList().size() > 0) {
-        output.writeRawVarint32(90);
-        output.writeRawVarint32(maxExclusiveMemoizedSerializedSize);
-      }
-      for (long element : getMaxExclusiveList()) {
-        output.writeInt64NoTag(element);
+      if (hasMaxExclusive()) {
+        output.writeBytes(11, getMaxExclusive());
       }
       if (hasVoltTableData()) {
         output.writeBytes(12, getVoltTableData());
@@ -20490,33 +19896,13 @@ public final class Hstoreservice {
         size += com.google.protobuf.CodedOutputStream
           .computeStringSize(9, getVoltTableName());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMinInclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMinInclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        minInclusiveMemoizedSerializedSize = dataSize;
+      if (hasMinInclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(10, getMinInclusive());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMaxExclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMaxExclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        maxExclusiveMemoizedSerializedSize = dataSize;
+      if (hasMaxExclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(11, getMaxExclusive());
       }
       if (hasVoltTableData()) {
         size += com.google.protobuf.CodedOutputStream
@@ -20668,14 +20054,6 @@ public final class Hstoreservice {
           throw new IllegalStateException(
             "build() has already been called on this Builder.");
         }
-        if (result.minInclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.minInclusive_ =
-            java.util.Collections.unmodifiableList(result.minInclusive_);
-        }
-        if (result.maxExclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.maxExclusive_ =
-            java.util.Collections.unmodifiableList(result.maxExclusive_);
-        }
         edu.brown.hstore.Hstoreservice.MultiPullReplyRequest returnMe = result;
         result = null;
         return returnMe;
@@ -20719,17 +20097,11 @@ public final class Hstoreservice {
         if (other.hasVoltTableName()) {
           setVoltTableName(other.getVoltTableName());
         }
-        if (!other.minInclusive_.isEmpty()) {
-          if (result.minInclusive_.isEmpty()) {
-            result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.minInclusive_.addAll(other.minInclusive_);
+        if (other.hasMinInclusive()) {
+          setMinInclusive(other.getMinInclusive());
         }
-        if (!other.maxExclusive_.isEmpty()) {
-          if (result.maxExclusive_.isEmpty()) {
-            result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.maxExclusive_.addAll(other.maxExclusive_);
+        if (other.hasMaxExclusive()) {
+          setMaxExclusive(other.getMaxExclusive());
         }
         if (other.hasVoltTableData()) {
           setVoltTableData(other.getVoltTableData());
@@ -20798,30 +20170,12 @@ public final class Hstoreservice {
               setVoltTableName(input.readString());
               break;
             }
-            case 80: {
-              addMinInclusive(input.readInt64());
-              break;
-            }
             case 82: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMinInclusive(input.readInt64());
-              }
-              input.popLimit(limit);
-              break;
-            }
-            case 88: {
-              addMaxExclusive(input.readInt64());
+              setMinInclusive(input.readBytes());
               break;
             }
             case 90: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMaxExclusive(input.readInt64());
-              }
-              input.popLimit(limit);
+              setMaxExclusive(input.readBytes());
               break;
             }
             case 98: {
@@ -21002,71 +20356,45 @@ public final class Hstoreservice {
         return this;
       }
       
-      // repeated int64 min_inclusive = 10 [packed = true];
-      public java.util.List<java.lang.Long> getMinInclusiveList() {
-        return java.util.Collections.unmodifiableList(result.minInclusive_);
+      // required bytes min_inclusive = 10;
+      public boolean hasMinInclusive() {
+        return result.hasMinInclusive();
       }
-      public int getMinInclusiveCount() {
-        return result.getMinInclusiveCount();
+      public com.google.protobuf.ByteString getMinInclusive() {
+        return result.getMinInclusive();
       }
-      public long getMinInclusive(int index) {
-        return result.getMinInclusive(index);
-      }
-      public Builder setMinInclusive(int index, long value) {
-        result.minInclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMinInclusive(long value) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.minInclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMinInclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.minInclusive_);
+      public Builder setMinInclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMinInclusive = true;
+        result.minInclusive_ = value;
         return this;
       }
       public Builder clearMinInclusive() {
-        result.minInclusive_ = java.util.Collections.emptyList();
+        result.hasMinInclusive = false;
+        result.minInclusive_ = getDefaultInstance().getMinInclusive();
         return this;
       }
       
-      // repeated int64 max_exclusive = 11 [packed = true];
-      public java.util.List<java.lang.Long> getMaxExclusiveList() {
-        return java.util.Collections.unmodifiableList(result.maxExclusive_);
+      // required bytes max_exclusive = 11;
+      public boolean hasMaxExclusive() {
+        return result.hasMaxExclusive();
       }
-      public int getMaxExclusiveCount() {
-        return result.getMaxExclusiveCount();
+      public com.google.protobuf.ByteString getMaxExclusive() {
+        return result.getMaxExclusive();
       }
-      public long getMaxExclusive(int index) {
-        return result.getMaxExclusive(index);
-      }
-      public Builder setMaxExclusive(int index, long value) {
-        result.maxExclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMaxExclusive(long value) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.maxExclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMaxExclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.maxExclusive_);
+      public Builder setMaxExclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMaxExclusive = true;
+        result.maxExclusive_ = value;
         return this;
       }
       public Builder clearMaxExclusive() {
-        result.maxExclusive_ = java.util.Collections.emptyList();
+        result.hasMaxExclusive = false;
+        result.maxExclusive_ = getDefaultInstance().getMaxExclusive();
         return this;
       }
       
@@ -21211,31 +20539,19 @@ public final class Hstoreservice {
     public boolean hasVoltTableName() { return hasVoltTableName; }
     public java.lang.String getVoltTableName() { return voltTableName_; }
     
-    // repeated int64 min_inclusive = 10 [packed = true];
+    // required bytes min_inclusive = 10;
     public static final int MIN_INCLUSIVE_FIELD_NUMBER = 10;
-    private java.util.List<java.lang.Long> minInclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMinInclusiveList() {
-      return minInclusive_;
-    }
-    public int getMinInclusiveCount() { return minInclusive_.size(); }
-    public long getMinInclusive(int index) {
-      return minInclusive_.get(index);
-    }
-    private int minInclusiveMemoizedSerializedSize = -1;
+    private boolean hasMinInclusive;
+    private com.google.protobuf.ByteString minInclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMinInclusive() { return hasMinInclusive; }
+    public com.google.protobuf.ByteString getMinInclusive() { return minInclusive_; }
     
-    // repeated int64 max_exclusive = 11 [packed = true];
+    // required bytes max_exclusive = 11;
     public static final int MAX_EXCLUSIVE_FIELD_NUMBER = 11;
-    private java.util.List<java.lang.Long> maxExclusive_ =
-      java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getMaxExclusiveList() {
-      return maxExclusive_;
-    }
-    public int getMaxExclusiveCount() { return maxExclusive_.size(); }
-    public long getMaxExclusive(int index) {
-      return maxExclusive_.get(index);
-    }
-    private int maxExclusiveMemoizedSerializedSize = -1;
+    private boolean hasMaxExclusive;
+    private com.google.protobuf.ByteString maxExclusive_ = com.google.protobuf.ByteString.EMPTY;
+    public boolean hasMaxExclusive() { return hasMaxExclusive; }
+    public com.google.protobuf.ByteString getMaxExclusive() { return maxExclusive_; }
     
     private void initFields() {
     }
@@ -21249,6 +20565,8 @@ public final class Hstoreservice {
       if (!hasOldPartition) return false;
       if (!hasNewPartition) return false;
       if (!hasVoltTableName) return false;
+      if (!hasMinInclusive) return false;
+      if (!hasMaxExclusive) return false;
       return true;
     }
     
@@ -21282,19 +20600,11 @@ public final class Hstoreservice {
       if (hasVoltTableName()) {
         output.writeString(9, getVoltTableName());
       }
-      if (getMinInclusiveList().size() > 0) {
-        output.writeRawVarint32(82);
-        output.writeRawVarint32(minInclusiveMemoizedSerializedSize);
+      if (hasMinInclusive()) {
+        output.writeBytes(10, getMinInclusive());
       }
-      for (long element : getMinInclusiveList()) {
-        output.writeInt64NoTag(element);
-      }
-      if (getMaxExclusiveList().size() > 0) {
-        output.writeRawVarint32(90);
-        output.writeRawVarint32(maxExclusiveMemoizedSerializedSize);
-      }
-      for (long element : getMaxExclusiveList()) {
-        output.writeInt64NoTag(element);
+      if (hasMaxExclusive()) {
+        output.writeBytes(11, getMaxExclusive());
       }
       getUnknownFields().writeTo(output);
     }
@@ -21341,33 +20651,13 @@ public final class Hstoreservice {
         size += com.google.protobuf.CodedOutputStream
           .computeStringSize(9, getVoltTableName());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMinInclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMinInclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        minInclusiveMemoizedSerializedSize = dataSize;
+      if (hasMinInclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(10, getMinInclusive());
       }
-      {
-        int dataSize = 0;
-        for (long element : getMaxExclusiveList()) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(element);
-        }
-        size += dataSize;
-        if (!getMaxExclusiveList().isEmpty()) {
-          size += 1;
-          size += com.google.protobuf.CodedOutputStream
-              .computeInt32SizeNoTag(dataSize);
-        }
-        maxExclusiveMemoizedSerializedSize = dataSize;
+      if (hasMaxExclusive()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(11, getMaxExclusive());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -21511,14 +20801,6 @@ public final class Hstoreservice {
           throw new IllegalStateException(
             "build() has already been called on this Builder.");
         }
-        if (result.minInclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.minInclusive_ =
-            java.util.Collections.unmodifiableList(result.minInclusive_);
-        }
-        if (result.maxExclusive_ != java.util.Collections.EMPTY_LIST) {
-          result.maxExclusive_ =
-            java.util.Collections.unmodifiableList(result.maxExclusive_);
-        }
         edu.brown.hstore.Hstoreservice.MultiPullReplyResponse returnMe = result;
         result = null;
         return returnMe;
@@ -21562,17 +20844,11 @@ public final class Hstoreservice {
         if (other.hasVoltTableName()) {
           setVoltTableName(other.getVoltTableName());
         }
-        if (!other.minInclusive_.isEmpty()) {
-          if (result.minInclusive_.isEmpty()) {
-            result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.minInclusive_.addAll(other.minInclusive_);
+        if (other.hasMinInclusive()) {
+          setMinInclusive(other.getMinInclusive());
         }
-        if (!other.maxExclusive_.isEmpty()) {
-          if (result.maxExclusive_.isEmpty()) {
-            result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-          }
-          result.maxExclusive_.addAll(other.maxExclusive_);
+        if (other.hasMaxExclusive()) {
+          setMaxExclusive(other.getMaxExclusive());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -21635,30 +20911,12 @@ public final class Hstoreservice {
               setVoltTableName(input.readString());
               break;
             }
-            case 80: {
-              addMinInclusive(input.readInt64());
-              break;
-            }
             case 82: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMinInclusive(input.readInt64());
-              }
-              input.popLimit(limit);
-              break;
-            }
-            case 88: {
-              addMaxExclusive(input.readInt64());
+              setMinInclusive(input.readBytes());
               break;
             }
             case 90: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addMaxExclusive(input.readInt64());
-              }
-              input.popLimit(limit);
+              setMaxExclusive(input.readBytes());
               break;
             }
           }
@@ -21831,71 +21089,45 @@ public final class Hstoreservice {
         return this;
       }
       
-      // repeated int64 min_inclusive = 10 [packed = true];
-      public java.util.List<java.lang.Long> getMinInclusiveList() {
-        return java.util.Collections.unmodifiableList(result.minInclusive_);
+      // required bytes min_inclusive = 10;
+      public boolean hasMinInclusive() {
+        return result.hasMinInclusive();
       }
-      public int getMinInclusiveCount() {
-        return result.getMinInclusiveCount();
+      public com.google.protobuf.ByteString getMinInclusive() {
+        return result.getMinInclusive();
       }
-      public long getMinInclusive(int index) {
-        return result.getMinInclusive(index);
-      }
-      public Builder setMinInclusive(int index, long value) {
-        result.minInclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMinInclusive(long value) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.minInclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMinInclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.minInclusive_.isEmpty()) {
-          result.minInclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.minInclusive_);
+      public Builder setMinInclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMinInclusive = true;
+        result.minInclusive_ = value;
         return this;
       }
       public Builder clearMinInclusive() {
-        result.minInclusive_ = java.util.Collections.emptyList();
+        result.hasMinInclusive = false;
+        result.minInclusive_ = getDefaultInstance().getMinInclusive();
         return this;
       }
       
-      // repeated int64 max_exclusive = 11 [packed = true];
-      public java.util.List<java.lang.Long> getMaxExclusiveList() {
-        return java.util.Collections.unmodifiableList(result.maxExclusive_);
+      // required bytes max_exclusive = 11;
+      public boolean hasMaxExclusive() {
+        return result.hasMaxExclusive();
       }
-      public int getMaxExclusiveCount() {
-        return result.getMaxExclusiveCount();
+      public com.google.protobuf.ByteString getMaxExclusive() {
+        return result.getMaxExclusive();
       }
-      public long getMaxExclusive(int index) {
-        return result.getMaxExclusive(index);
-      }
-      public Builder setMaxExclusive(int index, long value) {
-        result.maxExclusive_.set(index, value);
-        return this;
-      }
-      public Builder addMaxExclusive(long value) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        result.maxExclusive_.add(value);
-        return this;
-      }
-      public Builder addAllMaxExclusive(
-          java.lang.Iterable<? extends java.lang.Long> values) {
-        if (result.maxExclusive_.isEmpty()) {
-          result.maxExclusive_ = new java.util.ArrayList<java.lang.Long>();
-        }
-        super.addAll(values, result.maxExclusive_);
+      public Builder setMaxExclusive(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  result.hasMaxExclusive = true;
+        result.maxExclusive_ = value;
         return this;
       }
       public Builder clearMaxExclusive() {
-        result.maxExclusive_ = java.util.Collections.emptyList();
+        result.hasMaxExclusive = false;
+        result.maxExclusive_ = getDefaultInstance().getMaxExclusive();
         return this;
       }
       
@@ -24768,132 +24000,131 @@ public final class Hstoreservice {
       "_s\030\004 \002(\003\";\n\026ReconfigurationRequest\022\023\n\013se" +
       "nder_site\030\001 \002(\005\022\014\n\004t0_s\030\002 \002(\003\"<\n\027Reconfi" +
       "gurationResponse\022\023\n\013sender_site\030\001 \002(\005\022\014\n" +
-      "\004t0_s\030\002 \002(\003\"\316\001\n\023DataTransferRequest\022\023\n\013s" +
+      "\004t0_s\030\002 \002(\003\"\306\001\n\023DataTransferRequest\022\023\n\013s" +
       "ender_site\030\001 \002(\005\022\014\n\004t0_s\030\002 \002(\003\022\025\n\rold_pa" +
       "rtition\030\003 \002(\005\022\025\n\rnew_partition\030\004 \002(\005\022\027\n\017",
-      "volt_table_name\030\005 \002(\t\022\031\n\rmin_inclusive\030\006" +
-      " \003(\003B\002\020\001\022\031\n\rmax_exclusive\030\007 \003(\003B\002\020\001\022\027\n\017v" +
-      "olt_table_data\030\010 \002(\014\"\266\001\n\024DataTransferRes" +
-      "ponse\022\023\n\013sender_site\030\001 \002(\005\022\014\n\004t0_s\030\002 \002(\003" +
-      "\022\025\n\rold_partition\030\003 \002(\005\022\025\n\rnew_partition" +
-      "\030\004 \002(\005\022\027\n\017volt_table_name\030\005 \002(\t\022\031\n\rmin_i" +
-      "nclusive\030\006 \003(\003B\002\020\001\022\031\n\rmax_exclusive\030\007 \003(" +
-      "\003B\002\020\001\"\346\001\n\017LivePullRequest\022\034\n\024live_pull_i" +
-      "dentifier\030\001 \002(\005\022\023\n\013sender_site\030\002 \002(\005\022\014\n\004" +
-      "t0_s\030\003 \002(\003\022\025\n\rtransactionID\030\004 \002(\003\022\025\n\rold",
-      "_partition\030\005 \002(\005\022\025\n\rnew_partition\030\006 \002(\005\022" +
-      "\027\n\017volt_table_name\030\007 \002(\t\022\031\n\rmin_inclusiv" +
-      "e\030\010 \003(\003B\002\020\001\022\031\n\rmax_exclusive\030\t \003(\003B\002\020\001\"\254" +
-      "\002\n\020LivePullResponse\022\034\n\024live_pull_identif" +
-      "ier\030\001 \002(\005\022\020\n\010chunk_id\030\014 \001(\005\022\023\n\013sender_si" +
-      "te\030\002 \002(\005\022\014\n\004t0_s\030\003 \002(\003\022\025\n\rtransactionID\030" +
-      "\004 \002(\003\022\025\n\rold_partition\030\005 \002(\005\022\025\n\rnew_part" +
-      "ition\030\006 \002(\005\022\027\n\017volt_table_name\030\007 \002(\t\022\031\n\r" +
-      "min_inclusive\030\010 \003(\003B\002\020\001\022\031\n\rmax_exclusive" +
-      "\030\t \003(\003B\002\020\001\022\027\n\017volt_table_data\030\n \002(\014\022\030\n\020m",
-      "ore_data_needed\030\013 \001(\010\"\350\001\n\020AsyncPullReque" +
-      "st\022\035\n\025async_pull_identifier\030\001 \002(\005\022\023\n\013sen" +
-      "der_site\030\002 \002(\005\022\014\n\004t0_s\030\003 \002(\003\022\025\n\rtransact" +
-      "ionID\030\004 \002(\003\022\025\n\rold_partition\030\005 \002(\005\022\025\n\rne" +
-      "w_partition\030\006 \002(\005\022\027\n\017volt_table_name\030\007 \002" +
-      "(\t\022\031\n\rmin_inclusive\030\010 \003(\003B\002\020\001\022\031\n\rmax_exc" +
-      "lusive\030\t \003(\003B\002\020\001\"\256\002\n\021AsyncPullResponse\022\035" +
+      "volt_table_name\030\005 \002(\t\022\025\n\rmin_inclusive\030\006" +
+      " \002(\014\022\025\n\rmax_exclusive\030\007 \002(\014\022\027\n\017volt_tabl" +
+      "e_data\030\010 \002(\014\"\256\001\n\024DataTransferResponse\022\023\n" +
+      "\013sender_site\030\001 \002(\005\022\014\n\004t0_s\030\002 \002(\003\022\025\n\rold_" +
+      "partition\030\003 \002(\005\022\025\n\rnew_partition\030\004 \002(\005\022\027" +
+      "\n\017volt_table_name\030\005 \002(\t\022\025\n\rmin_inclusive" +
+      "\030\006 \002(\014\022\025\n\rmax_exclusive\030\007 \002(\014\"\336\001\n\017LivePu" +
+      "llRequest\022\034\n\024live_pull_identifier\030\001 \002(\005\022" +
+      "\023\n\013sender_site\030\002 \002(\005\022\014\n\004t0_s\030\003 \002(\003\022\025\n\rtr" +
+      "ansactionID\030\004 \002(\003\022\025\n\rold_partition\030\005 \002(\005",
+      "\022\025\n\rnew_partition\030\006 \002(\005\022\027\n\017volt_table_na" +
+      "me\030\007 \002(\t\022\025\n\rmin_inclusive\030\010 \002(\014\022\025\n\rmax_e" +
+      "xclusive\030\t \002(\014\"\244\002\n\020LivePullResponse\022\034\n\024l" +
+      "ive_pull_identifier\030\001 \002(\005\022\020\n\010chunk_id\030\014 " +
+      "\001(\005\022\023\n\013sender_site\030\002 \002(\005\022\014\n\004t0_s\030\003 \002(\003\022\025" +
+      "\n\rtransactionID\030\004 \002(\003\022\025\n\rold_partition\030\005" +
+      " \002(\005\022\025\n\rnew_partition\030\006 \002(\005\022\027\n\017volt_tabl" +
+      "e_name\030\007 \002(\t\022\025\n\rmin_inclusive\030\010 \002(\014\022\025\n\rm" +
+      "ax_exclusive\030\t \002(\014\022\027\n\017volt_table_data\030\n " +
+      "\002(\014\022\030\n\020more_data_needed\030\013 \001(\010\"\340\001\n\020AsyncP",
+      "ullRequest\022\035\n\025async_pull_identifier\030\001 \002(" +
+      "\005\022\023\n\013sender_site\030\002 \002(\005\022\014\n\004t0_s\030\003 \002(\003\022\025\n\r" +
+      "transactionID\030\004 \002(\003\022\025\n\rold_partition\030\005 \002" +
+      "(\005\022\025\n\rnew_partition\030\006 \002(\005\022\027\n\017volt_table_" +
+      "name\030\007 \002(\t\022\025\n\rmin_inclusive\030\010 \002(\014\022\025\n\rmax" +
+      "_exclusive\030\t \002(\014\"\246\002\n\021AsyncPullResponse\022\035" +
       "\n\025async_pull_identifier\030\001 \002(\005\022\020\n\010chunk_i" +
       "d\030\014 \002(\005\022\023\n\013sender_site\030\002 \002(\005\022\014\n\004t0_s\030\003 \002" +
-      "(\003\022\025\n\rtransactionID\030\004 \002(\003\022\025\n\rold_partiti",
-      "on\030\005 \002(\005\022\025\n\rnew_partition\030\006 \002(\005\022\027\n\017volt_" +
-      "table_name\030\007 \002(\t\022\031\n\rmin_inclusive\030\010 \003(\003B" +
-      "\002\020\001\022\031\n\rmax_exclusive\030\t \003(\003B\002\020\001\022\027\n\017volt_t" +
-      "able_data\030\n \002(\014\022\030\n\020more_data_needed\030\013 \002(" +
-      "\010\"\276\002\n\025MultiPullReplyRequest\022\027\n\017pull_iden" +
-      "tifier\030\001 \002(\005\022\020\n\010is_async\030\002 \002(\010\022\020\n\010chunk_" +
-      "id\030\003 \002(\005\022\023\n\013sender_site\030\004 \002(\005\022\014\n\004t0_s\030\005 " +
-      "\002(\003\022\025\n\rtransactionID\030\006 \002(\003\022\025\n\rold_partit" +
-      "ion\030\007 \002(\005\022\025\n\rnew_partition\030\010 \002(\005\022\027\n\017volt" +
-      "_table_name\030\t \002(\t\022\031\n\rmin_inclusive\030\n \003(\003",
-      "B\002\020\001\022\031\n\rmax_exclusive\030\013 \003(\003B\002\020\001\022\027\n\017volt_" +
-      "table_data\030\014 \002(\014\022\030\n\020more_data_needed\030\r \002" +
-      "(\010\"\214\002\n\026MultiPullReplyResponse\022\027\n\017pull_id" +
-      "entifier\030\001 \002(\005\022\020\n\010is_async\030\002 \002(\010\022\020\n\010chun" +
-      "k_id\030\003 \002(\005\022\023\n\013sender_site\030\004 \002(\005\022\014\n\004t0_s\030" +
-      "\005 \002(\003\022\025\n\rtransactionID\030\006 \002(\003\022\025\n\rold_part" +
-      "ition\030\007 \002(\005\022\025\n\rnew_partition\030\010 \002(\005\022\027\n\017vo" +
-      "lt_table_name\030\t \002(\t\022\031\n\rmin_inclusive\030\n \003" +
-      "(\003B\002\020\001\022\031\n\rmax_exclusive\030\013 \003(\003B\002\020\001\"\341\001\n\035Re" +
-      "configurationControlRequest\022\032\n\022message_i",
-      "dentifier\030\001 \002(\005\022\023\n\013sender_site\030\002 \002(\005\022\025\n\r" +
-      "receiver_site\030\003 \002(\005\022\025\n\rsrc_partition\030\004 \002" +
-      "(\005\022\026\n\016dest_partition\030\005 \002(\005\022I\n\023reconfigCo" +
-      "ntrolType\030\006 \002(\0162,.edu.brown.hstore.Recon" +
-      "figurationControlType\"\342\001\n\036Reconfiguratio" +
-      "nControlResponse\022\032\n\022message_identifier\030\001" +
-      " \002(\005\022\023\n\013sender_site\030\002 \002(\005\022\025\n\rreceiver_si" +
-      "te\030\003 \002(\005\022\025\n\rsrc_partition\030\004 \002(\005\022\026\n\016dest_" +
-      "partition\030\005 \002(\005\022I\n\023reconfigControlType\030\006" +
-      " \002(\0162,.edu.brown.hstore.ReconfigurationC",
-      "ontrolType*\320\001\n\006Status\022\006\n\002OK\020\000\022\016\n\nABORT_U" +
-      "SER\020\001\022\022\n\016ABORT_GRACEFUL\020\002\022\024\n\020ABORT_UNEXP" +
-      "ECTED\020\003\022\031\n\025ABORT_CONNECTION_LOST\020\004\022\024\n\020AB" +
-      "ORT_MISPREDICT\020\005\022\021\n\rABORT_RESTART\020\006\022\020\n\014A" +
-      "BORT_REJECT\020\007\022\027\n\023ABORT_EVICTEDACCESS\020\010\022\025" +
-      "\n\021ABORT_SPECULATIVE\020\t*\237\001\n\032Reconfiguratio" +
-      "nControlType\022\021\n\rPULL_RECEIVED\020\000\022\030\n\024RECON" +
-      "FIGURATION_DONE\020\001\022!\n\035RECONFIGURATION_DON" +
-      "E_RECEIVED\020\002\022\022\n\016CHUNK_RECEIVED\020\003\022\035\n\031NEXT" +
-      "_RECONFIGURATION_PLAN\020\0042\317\020\n\rHStoreServic",
-      "e\022f\n\017TransactionInit\022(.edu.brown.hstore." +
-      "TransactionInitRequest\032).edu.brown.hstor" +
-      "e.TransactionInitResponse\022f\n\017Transaction" +
-      "Work\022(.edu.brown.hstore.TransactionWorkR" +
-      "equest\032).edu.brown.hstore.TransactionWor" +
-      "kResponse\022x\n\023TransactionPrefetch\022+.edu.b" +
-      "rown.hstore.TransactionPrefetchResult\0324." +
-      "edu.brown.hstore.TransactionPrefetchAckn" +
-      "owledgement\022c\n\016TransactionMap\022\'.edu.brow" +
-      "n.hstore.TransactionMapRequest\032(.edu.bro",
-      "wn.hstore.TransactionMapResponse\022l\n\021Tran" +
-      "sactionReduce\022*.edu.brown.hstore.Transac" +
-      "tionReduceRequest\032+.edu.brown.hstore.Tra" +
-      "nsactionReduceResponse\022o\n\022TransactionPre" +
-      "pare\022+.edu.brown.hstore.TransactionPrepa" +
-      "reRequest\032,.edu.brown.hstore.Transaction" +
-      "PrepareResponse\022l\n\021TransactionFinish\022*.e" +
-      "du.brown.hstore.TransactionFinishRequest" +
-      "\032+.edu.brown.hstore.TransactionFinishRes" +
-      "ponse\022r\n\023TransactionRedirect\022,.edu.brown",
-      ".hstore.TransactionRedirectRequest\032-.edu" +
-      ".brown.hstore.TransactionRedirectRespons" +
-      "e\022i\n\020TransactionDebug\022).edu.brown.hstore" +
-      ".TransactionDebugRequest\032*.edu.brown.hst" +
-      "ore.TransactionDebugResponse\022Q\n\010SendData" +
-      "\022!.edu.brown.hstore.SendDataRequest\032\".ed" +
-      "u.brown.hstore.SendDataResponse\022W\n\nIniti" +
-      "alize\022#.edu.brown.hstore.InitializeReque" +
-      "st\032$.edu.brown.hstore.InitializeResponse" +
-      "\022f\n\017ShutdownPrepare\022(.edu.brown.hstore.S",
-      "hutdownPrepareRequest\032).edu.brown.hstore" +
-      ".ShutdownPrepareResponse\022Q\n\010Shutdown\022!.e" +
-      "du.brown.hstore.ShutdownRequest\032\".edu.br" +
-      "own.hstore.ShutdownResponse\022T\n\tHeartbeat" +
-      "\022\".edu.brown.hstore.HeartbeatRequest\032#.e" +
-      "du.brown.hstore.HeartbeatResponse\022Q\n\010Tim" +
-      "eSync\022!.edu.brown.hstore.TimeSyncRequest" +
-      "\032\".edu.brown.hstore.TimeSyncResponse\022f\n\017" +
-      "Reconfiguration\022(.edu.brown.hstore.Recon" +
-      "figurationRequest\032).edu.brown.hstore.Rec",
-      "onfigurationResponse\022]\n\014DataTransfer\022%.e" +
-      "du.brown.hstore.DataTransferRequest\032&.ed" +
-      "u.brown.hstore.DataTransferResponse\022Q\n\010L" +
-      "ivePull\022!.edu.brown.hstore.LivePullReque" +
-      "st\032\".edu.brown.hstore.LivePullResponse\022T" +
-      "\n\tAsyncPull\022\".edu.brown.hstore.AsyncPull" +
-      "Request\032#.edu.brown.hstore.AsyncPullResp" +
-      "onse\022~\n\031ReconfigurationControlMsg\022/.edu." +
-      "brown.hstore.ReconfigurationControlReque" +
-      "st\0320.edu.brown.hstore.ReconfigurationCon",
-      "trolResponse\022c\n\016MultiPullReply\022\'.edu.bro" +
-      "wn.hstore.MultiPullReplyRequest\032(.edu.br" +
-      "own.hstore.MultiPullReplyResponse"
+      "(\003\022\025\n\rtransactionID\030\004 \002(\003\022\025\n\rold_partiti" +
+      "on\030\005 \002(\005\022\025\n\rnew_partition\030\006 \002(\005\022\027\n\017volt_",
+      "table_name\030\007 \002(\t\022\025\n\rmin_inclusive\030\010 \002(\014\022" +
+      "\025\n\rmax_exclusive\030\t \002(\014\022\027\n\017volt_table_dat" +
+      "a\030\n \002(\014\022\030\n\020more_data_needed\030\013 \002(\010\"\266\002\n\025Mu" +
+      "ltiPullReplyRequest\022\027\n\017pull_identifier\030\001" +
+      " \002(\005\022\020\n\010is_async\030\002 \002(\010\022\020\n\010chunk_id\030\003 \002(\005" +
+      "\022\023\n\013sender_site\030\004 \002(\005\022\014\n\004t0_s\030\005 \002(\003\022\025\n\rt" +
+      "ransactionID\030\006 \002(\003\022\025\n\rold_partition\030\007 \002(" +
+      "\005\022\025\n\rnew_partition\030\010 \002(\005\022\027\n\017volt_table_n" +
+      "ame\030\t \002(\t\022\025\n\rmin_inclusive\030\n \002(\014\022\025\n\rmax_" +
+      "exclusive\030\013 \002(\014\022\027\n\017volt_table_data\030\014 \002(\014",
+      "\022\030\n\020more_data_needed\030\r \002(\010\"\204\002\n\026MultiPull" +
+      "ReplyResponse\022\027\n\017pull_identifier\030\001 \002(\005\022\020" +
+      "\n\010is_async\030\002 \002(\010\022\020\n\010chunk_id\030\003 \002(\005\022\023\n\013se" +
+      "nder_site\030\004 \002(\005\022\014\n\004t0_s\030\005 \002(\003\022\025\n\rtransac" +
+      "tionID\030\006 \002(\003\022\025\n\rold_partition\030\007 \002(\005\022\025\n\rn" +
+      "ew_partition\030\010 \002(\005\022\027\n\017volt_table_name\030\t " +
+      "\002(\t\022\025\n\rmin_inclusive\030\n \002(\014\022\025\n\rmax_exclus" +
+      "ive\030\013 \002(\014\"\341\001\n\035ReconfigurationControlRequ" +
+      "est\022\032\n\022message_identifier\030\001 \002(\005\022\023\n\013sende" +
+      "r_site\030\002 \002(\005\022\025\n\rreceiver_site\030\003 \002(\005\022\025\n\rs",
+      "rc_partition\030\004 \002(\005\022\026\n\016dest_partition\030\005 \002" +
+      "(\005\022I\n\023reconfigControlType\030\006 \002(\0162,.edu.br" +
+      "own.hstore.ReconfigurationControlType\"\342\001" +
+      "\n\036ReconfigurationControlResponse\022\032\n\022mess" +
+      "age_identifier\030\001 \002(\005\022\023\n\013sender_site\030\002 \002(" +
+      "\005\022\025\n\rreceiver_site\030\003 \002(\005\022\025\n\rsrc_partitio" +
+      "n\030\004 \002(\005\022\026\n\016dest_partition\030\005 \002(\005\022I\n\023recon" +
+      "figControlType\030\006 \002(\0162,.edu.brown.hstore." +
+      "ReconfigurationControlType*\320\001\n\006Status\022\006\n" +
+      "\002OK\020\000\022\016\n\nABORT_USER\020\001\022\022\n\016ABORT_GRACEFUL\020",
+      "\002\022\024\n\020ABORT_UNEXPECTED\020\003\022\031\n\025ABORT_CONNECT" +
+      "ION_LOST\020\004\022\024\n\020ABORT_MISPREDICT\020\005\022\021\n\rABOR" +
+      "T_RESTART\020\006\022\020\n\014ABORT_REJECT\020\007\022\027\n\023ABORT_E" +
+      "VICTEDACCESS\020\010\022\025\n\021ABORT_SPECULATIVE\020\t*\237\001" +
+      "\n\032ReconfigurationControlType\022\021\n\rPULL_REC" +
+      "EIVED\020\000\022\030\n\024RECONFIGURATION_DONE\020\001\022!\n\035REC" +
+      "ONFIGURATION_DONE_RECEIVED\020\002\022\022\n\016CHUNK_RE" +
+      "CEIVED\020\003\022\035\n\031NEXT_RECONFIGURATION_PLAN\020\0042" +
+      "\317\020\n\rHStoreService\022f\n\017TransactionInit\022(.e" +
+      "du.brown.hstore.TransactionInitRequest\032)",
+      ".edu.brown.hstore.TransactionInitRespons" +
+      "e\022f\n\017TransactionWork\022(.edu.brown.hstore." +
+      "TransactionWorkRequest\032).edu.brown.hstor" +
+      "e.TransactionWorkResponse\022x\n\023Transaction" +
+      "Prefetch\022+.edu.brown.hstore.TransactionP" +
+      "refetchResult\0324.edu.brown.hstore.Transac" +
+      "tionPrefetchAcknowledgement\022c\n\016Transacti" +
+      "onMap\022\'.edu.brown.hstore.TransactionMapR" +
+      "equest\032(.edu.brown.hstore.TransactionMap" +
+      "Response\022l\n\021TransactionReduce\022*.edu.brow",
+      "n.hstore.TransactionReduceRequest\032+.edu." +
+      "brown.hstore.TransactionReduceResponse\022o" +
+      "\n\022TransactionPrepare\022+.edu.brown.hstore." +
+      "TransactionPrepareRequest\032,.edu.brown.hs" +
+      "tore.TransactionPrepareResponse\022l\n\021Trans" +
+      "actionFinish\022*.edu.brown.hstore.Transact" +
+      "ionFinishRequest\032+.edu.brown.hstore.Tran" +
+      "sactionFinishResponse\022r\n\023TransactionRedi" +
+      "rect\022,.edu.brown.hstore.TransactionRedir" +
+      "ectRequest\032-.edu.brown.hstore.Transactio",
+      "nRedirectResponse\022i\n\020TransactionDebug\022)." +
+      "edu.brown.hstore.TransactionDebugRequest" +
+      "\032*.edu.brown.hstore.TransactionDebugResp" +
+      "onse\022Q\n\010SendData\022!.edu.brown.hstore.Send" +
+      "DataRequest\032\".edu.brown.hstore.SendDataR" +
+      "esponse\022W\n\nInitialize\022#.edu.brown.hstore" +
+      ".InitializeRequest\032$.edu.brown.hstore.In" +
+      "itializeResponse\022f\n\017ShutdownPrepare\022(.ed" +
+      "u.brown.hstore.ShutdownPrepareRequest\032)." +
+      "edu.brown.hstore.ShutdownPrepareResponse",
+      "\022Q\n\010Shutdown\022!.edu.brown.hstore.Shutdown" +
+      "Request\032\".edu.brown.hstore.ShutdownRespo" +
+      "nse\022T\n\tHeartbeat\022\".edu.brown.hstore.Hear" +
+      "tbeatRequest\032#.edu.brown.hstore.Heartbea" +
+      "tResponse\022Q\n\010TimeSync\022!.edu.brown.hstore" +
+      ".TimeSyncRequest\032\".edu.brown.hstore.Time" +
+      "SyncResponse\022f\n\017Reconfiguration\022(.edu.br" +
+      "own.hstore.ReconfigurationRequest\032).edu." +
+      "brown.hstore.ReconfigurationResponse\022]\n\014" +
+      "DataTransfer\022%.edu.brown.hstore.DataTran",
+      "sferRequest\032&.edu.brown.hstore.DataTrans" +
+      "ferResponse\022Q\n\010LivePull\022!.edu.brown.hsto" +
+      "re.LivePullRequest\032\".edu.brown.hstore.Li" +
+      "vePullResponse\022T\n\tAsyncPull\022\".edu.brown." +
+      "hstore.AsyncPullRequest\032#.edu.brown.hsto" +
+      "re.AsyncPullResponse\022~\n\031ReconfigurationC" +
+      "ontrolMsg\022/.edu.brown.hstore.Reconfigura" +
+      "tionControlRequest\0320.edu.brown.hstore.Re" +
+      "configurationControlResponse\022c\n\016MultiPul" +
+      "lReply\022\'.edu.brown.hstore.MultiPullReply",
+      "Request\032(.edu.brown.hstore.MultiPullRepl" +
+      "yResponse"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
