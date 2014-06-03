@@ -3139,7 +3139,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                          (this.currentDtxn != null && multiPullTxnId == this.currentDtxn.getTransactionId()))){
             		if (debug.val) LOG.debug("Process a live pull reply for the same transaction as the one blocked");
             		
-            		VoltTable vt, minIncl, maxExcl = null;
+            		VoltTable vt = null;
+            		VoltTable minIncl = null;
+            		VoltTable maxExcl = null;
                     try {
                     	ByteString minInclBytes = multiPullReplyRequest.getMinInclusive();
                         ByteString maxExclBytes = multiPullReplyRequest.getMaxExclusive();
@@ -3163,7 +3165,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             	} else if(multiPullReplyRequest.getIsAsync() && multiPullReplyRequest.getTransactionID() == ReconfigurationCoordinator.STOP_COPY_TXNID){
             	  
                     LOG.info(String.format("Processing a pull for Stop and Copy Async:%s PullTxnID:%s  DistTxn:%s CurrentTxn:%s ",multiPullReplyRequest.getIsAsync(),multiPullTxnId, this.currentDtxn, this.currentTxnId ) );
-                    VoltTable vt, minIncl, maxExcl = null;
+                    VoltTable vt = null;
+                    VoltTable minIncl = null;
+                    VoltTable maxExcl = null;
                     try {
                     	ByteString minInclBytes = multiPullReplyRequest.getMinInclusive();
                         ByteString maxExclBytes = multiPullReplyRequest.getMaxExclusive();
@@ -3253,7 +3257,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         
         ByteString minInclBytes = livePullRequest.getMinInclusive();
         ByteString maxExclBytes = livePullRequest.getMaxExclusive();
-        VoltTable minIncl, maxExcl = null;
+        VoltTable minIncl = null;
+        VoltTable maxExcl = null;
         try {
         	minIncl = FastDeserializer.deserialize(minInclBytes.toByteArray(), VoltTable.class);
             maxExcl = FastDeserializer.deserialize(maxExclBytes.toByteArray(), VoltTable.class);

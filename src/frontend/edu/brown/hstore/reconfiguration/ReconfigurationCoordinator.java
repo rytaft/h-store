@@ -760,27 +760,25 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
         ProtoRpcController controller = new ProtoRpcController();
         ByteString tableBytes = null;
+        ByteString minInclBytes = null;
+        ByteString maxExclBytes = null;
         try {
             ByteBuffer b = ByteBuffer.wrap(FastSerializer.serialize(vt));
             tableBytes = ByteString.copyFrom(b.array());
+            
+            ByteBuffer b_min = ByteBuffer.wrap(FastSerializer.serialize(minInclusive));
+            minInclBytes = ByteString.copyFrom(b_min.array());
+            
+            ByteBuffer b_max = ByteBuffer.wrap(FastSerializer.serialize(maxExclusive));
+            maxExclBytes = ByteString.copyFrom(b_max.array());
         } catch (Exception ex) {
             throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
         }
 
-        DataTransferRequest dataTransferRequest = DataTransferRequest.newBuilder().addAllMinInclusive(getLongsList(minInclusive)).addAllMaxExclusive(getLongsList(maxExclusive)).setSenderSite(this.localSiteId)
+        DataTransferRequest dataTransferRequest = DataTransferRequest.newBuilder().setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes).setSenderSite(this.localSiteId)
                 .setOldPartition(oldPartitionId).setNewPartition(newPartitionId).setVoltTableName(table_name).setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).build();
 
         this.channels[destinationId].dataTransfer(controller, dataTransferRequest, dataTransferRequestCallback);
-    }
-    
-    public DataTransferResponse receiveTuples(int sourceId, long sentTimeStamp, int partitionId, int newPartitionId, String table_name, VoltTable vt, List<Long> minInclusive, List<Long> maxExclusive)
-            throws Exception {
-    	assert(minInclusive.size() == maxExclusive.size());
-        Table table = this.hstore_site.getCatalogContext().getTableByName(table_name);
-    	VoltTable min_incl = ReconfigurationUtil.getVoltTable(table, minInclusive);
-        VoltTable max_excl = ReconfigurationUtil.getVoltTable(table, maxExclusive);
-        
-    	return receiveTuples(sourceId, sentTimeStamp, partitionId, newPartitionId, table_name, vt, min_incl, max_excl);
     }
 
     /**
@@ -804,9 +802,22 @@ public class ReconfigurationCoordinator implements Shutdownable {
         // so just set it to 0 for now
         LOG.error("TODO add check for moreData"); //TODO fix this
         boolean moreData = false;
+        
+        ByteString minInclBytes = null;
+        ByteString maxExclBytes = null;
+        try {
+            ByteBuffer b_min = ByteBuffer.wrap(FastSerializer.serialize(minInclusive));
+            minInclBytes = ByteString.copyFrom(b_min.array());
+            
+            ByteBuffer b_max = ByteBuffer.wrap(FastSerializer.serialize(maxExclusive));
+            maxExclBytes = ByteString.copyFrom(b_max.array());
+        } catch (Exception ex) {
+            throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
+        }
+        
         executor.receiveTuples(0L, partitionId, newPartitionId, table_name, minInclusive, maxExclusive, vt, moreData, false, -1);
         DataTransferResponse response = DataTransferResponse.newBuilder().setNewPartition(newPartitionId).setOldPartition(partitionId).setT0S(sentTimeStamp).setSenderSite(sourceId)
-                .setVoltTableName(table_name).addAllMinInclusive(getLongsList(minInclusive)).addAllMaxExclusive(getLongsList(maxExclusive)).build();
+                .setVoltTableName(table_name).setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes).build();
         return response;
     }
 
@@ -826,7 +837,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @return
      */
     public void dataPullRequest(LivePullRequest livePullRequest, RpcCallback<LivePullResponse> livePullResponseCallback) {
-        LOG.info(String.format("dataPullRequest received livePullId %s  keys %s->%s for %s  partIds %s->%s", livePullRequest.getLivePullIdentifier(), livePullRequest.getMinInclusiveList().toString(), livePullRequest.getMaxExclusiveList().toString(), livePullRequest.getVoltTableName(),
+        LOG.info(String.format("dataPullRequest received livePullId %s  for %s  partIds %s->%s", livePullRequest.getLivePullIdentifier(), livePullRequest.getVoltTableName(),
                 livePullRequest.getOldPartition(), livePullRequest.getNewPartition()));
         long now=0;
         
@@ -920,8 +931,20 @@ public class ReconfigurationCoordinator implements Shutdownable {
         LOG.error("TODO after chunking : must check if async pull has been issued and is queued");
         ProtoRpcController controller = new ProtoRpcController();
 
+        ByteString minInclBytes = null;
+        ByteString maxExclBytes = null;
+        try {
+            ByteBuffer b_min = ByteBuffer.wrap(FastSerializer.serialize(min_inclusive));
+            minInclBytes = ByteString.copyFrom(b_min.array());
+            
+            ByteBuffer b_max = ByteBuffer.wrap(FastSerializer.serialize(max_exclusive));
+            maxExclBytes = ByteString.copyFrom(b_max.array());
+        } catch (Exception ex) {
+            throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
+        }
+        
         LivePullRequest livePullRequest = LivePullRequest.newBuilder().setLivePullIdentifier(livePullId).setSenderSite(this.localSiteId).setTransactionID(txnId).setOldPartition(oldPartitionId)
-                .setNewPartition(newPartitionId).setVoltTableName(table_name).addAllMinInclusive(getLongsList(min_inclusive)).addAllMaxExclusive(getLongsList(max_exclusive)).setT0S(System.currentTimeMillis()).build();
+                .setNewPartition(newPartitionId).setVoltTableName(table_name).setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes).setT0S(System.currentTimeMillis()).build();
 
         if (sourceID == localSiteId) {
             LOG.debug("pulling from localsite");
@@ -934,16 +957,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
 
         this.channels[sourceID].livePull(controller, livePullRequest, livePullRequestCallback);
-    }
-    
-    // HACK - we need to change Hstoreservice to take a volt table
-    private List<Long> getLongsList(VoltTable vt) {
-    	ArrayList<Long> list = new ArrayList<Long>();
-    	vt.resetRowPosition();
-    	while(vt.advanceRow()) {
-    		list.add(vt.getLong(0));
-    	}
-    	return list;
     }
     
     /**
@@ -964,8 +977,20 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
         ProtoRpcController controller = new ProtoRpcController();
 
+        ByteString minInclBytes = null;
+        ByteString maxExclBytes = null;
+        try {
+            ByteBuffer b_min = ByteBuffer.wrap(FastSerializer.serialize(min_inclusive));
+            minInclBytes = ByteString.copyFrom(b_min.array());
+            
+            ByteBuffer b_max = ByteBuffer.wrap(FastSerializer.serialize(max_exclusive));
+            maxExclBytes = ByteString.copyFrom(b_max.array());
+        } catch (Exception ex) {
+            throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
+        }
+        
         AsyncPullRequest asyncPullRequest = AsyncPullRequest.newBuilder().setAsyncPullIdentifier(livePullId).setSenderSite(this.localSiteId).setTransactionID(txnId).setOldPartition(oldPartitionId)
-                .setNewPartition(newPartitionId).setVoltTableName(table_name).addAllMinInclusive(getLongsList(min_inclusive)).addAllMaxExclusive(getLongsList(max_exclusive)).setT0S(System.currentTimeMillis()).build();
+                .setNewPartition(newPartitionId).setVoltTableName(table_name).setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes).setT0S(System.currentTimeMillis()).build();
 
         if (sourceID == localSiteId) {
             LOG.debug("pulling from localsite");
@@ -1069,18 +1094,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
     	int oldPartitionId = multiPullReplyRequest.getOldPartition();
     	int newPartitionId =  multiPullReplyRequest.getNewPartition();
     	String table_name = multiPullReplyRequest.getVoltTableName();
-    	List<Long> min_inclusive = multiPullReplyRequest.getMinInclusiveList(); 
-        List<Long> max_exclusive = multiPullReplyRequest.getMaxExclusiveList(); 
-        int chunkId = multiPullReplyRequest.getChunkId();
+    	int chunkId = multiPullReplyRequest.getChunkId();
         
         boolean moreDataNeeded = multiPullReplyRequest.getMoreDataNeeded();
         long start=0, receive=0, done=0;
         if (detailed_timing){
             start = System.currentTimeMillis();
         }
-        LOG.info(String.format("Received tuples for pullId:%s chunk:%s txn:%s (%s) (from:%s to:%s) for range, " 
-                + "(from:%s to:%s)", livePullId, chunkId, txnId, table_name, newPartitionId, oldPartitionId, min_inclusive,
-                max_exclusive));
+        LOG.info(String.format("Received tuples for pullId:%s chunk:%s txn:%s (%s) (from:%s to:%s)", livePullId, chunkId, txnId, table_name, newPartitionId, oldPartitionId));
         PartitionExecutor executor = executorMap.get(newPartitionId);
         assert(executor != null);
         try {
@@ -1247,7 +1268,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
             long pullId = msg.getLivePullIdentifier();
             LOG.info("Received senderId " + senderId + " timestamp " + timeStamp + " Transaction Id " + txnId + " Pull ID:"+pullId);
             VoltTable vt = null;
+            VoltTable minIncl = null;
+            VoltTable maxExcl = null;
             try {
+            	ByteString minInclBytes = msg.getMinInclusive();
+                ByteString maxExclBytes = msg.getMaxExclusive();
+                minIncl = FastDeserializer.deserialize(minInclBytes.toByteArray(), VoltTable.class);
+                maxExcl = FastDeserializer.deserialize(maxExclBytes.toByteArray(), VoltTable.class);
+                
                 vt = FastDeserializer.deserialize(msg.getVoltTableData().toByteArray(), VoltTable.class);
             } catch (IOException e) {
                 LOG.error("Error in deserializing volt table");
@@ -1255,8 +1283,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // TODO : change the log status later. Info for testing.
             // LOG.info("Volt table Received in callback is "+vt.toString());
 
-            receiveLivePullTuples(msg.getLivePullIdentifier(), msg.getTransactionID(), msg.getOldPartition(), msg.getNewPartition(), msg.getVoltTableName(), msg.getMinInclusiveList(),
-                    msg.getMaxExclusiveList(), vt, msg.getMoreDataNeeded());
+            receiveLivePullTuples(msg.getLivePullIdentifier(), msg.getTransactionID(), msg.getOldPartition(), msg.getNewPartition(), msg.getVoltTableName(), minIncl,
+                    maxExcl, vt, msg.getMoreDataNeeded());
             
             // send Acknowledgement 
 
