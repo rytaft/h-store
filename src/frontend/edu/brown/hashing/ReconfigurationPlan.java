@@ -418,25 +418,32 @@ public class ReconfigurationPlan {
         	this.max_excl.resetRowPosition();
         	String keys = "";
         	int row = 0;
+        	
         	while(this.min_incl.advanceRow() && this.max_excl.advanceRow()) {
         		if(row != 0) {
         			keys += ", ";
         		}
 
-        		String range_str = "";
-        		for(int i = 0; i < getNonNullCols(); i++) {
-        			if(i != 0) {
-        				range_str += ":";
-        			}
-        			Object min = this.min_incl.get(i);
-        			Object max = this.max_excl.get(i);
-        			if(min.equals(max)) {
-        				range_str += min.toString();
-        			} else {
-        				range_str += min.toString() + "-" + max.toString();
-        			}
-        		}
-        		keys += "[" + range_str + ")";
+        		String min_str = "";
+                String max_str = "";
+                for(int i = 0; i < this.min_incl.getColumnCount(); i++) {
+            		Object min = this.min_incl.get(i);
+            		Object max = this.max_excl.get(i);
+            		VoltType vt = this.min_incl.getColumnType(i);
+            		if(!vt.getNullValue().equals(min)) {
+            			if(i != 0) {
+            				min_str += ":";
+            			}
+            			min_str += min.toString();
+            		}
+            		if(!vt.getNullValue().equals(max)) {
+            			if(i != 0) {
+            				max_str += ":";
+            			}
+            			max_str += max.toString();
+            		}
+            	}
+        		keys += "[" + min_str + "-" + max_str + ")";
         		row++;
         	}
         	return String.format("ReconfigRange (%s) keys:%s p_id:%s->%s ",table_name,keys,

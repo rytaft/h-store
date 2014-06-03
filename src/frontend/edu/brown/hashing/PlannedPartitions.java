@@ -505,20 +505,26 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         public String toString() {
         	this.min_incl.advanceToRow(0);
             this.max_excl.advanceToRow(0);
-            String range_str = "";
-        	for(int i = 0; i < getNonNullCols(); i++) {
-        		if(i != 0) {
-        			range_str += ":";
-        		}
+            String min_str = "";
+            String max_str = "";
+        	for(int i = 0; i < this.min_incl.getColumnCount(); i++) {
         		Object min = this.min_incl.get(i);
         		Object max = this.max_excl.get(i);
-        		if(min.equals(max)) {
-        			range_str += min.toString();
-        		} else {
-        			range_str += min.toString() + "-" + max.toString();
+        		VoltType vt = this.min_incl.getColumnType(i);
+        		if(!vt.getNullValue().equals(min)) {
+        			if(i != 0) {
+        				min_str += ":";
+        			}
+        			min_str += min.toString();
+        		}
+        		if(!vt.getNullValue().equals(max)) {
+        			if(i != 0) {
+        				max_str += ":";
+        			}
+        			max_str += max.toString();
         		}
         	}
-        	return "PartitionRange [" + range_str + ") p_id=" + this.partition + "]";        	
+        	return "PartitionRange [" + min_str + "-" + max_str + ") p_id=" + this.partition + "]";        	
         }
 
         @Override
