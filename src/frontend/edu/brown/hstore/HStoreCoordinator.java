@@ -833,8 +833,15 @@ public class HStoreCoordinator implements Shutdownable {
                       HStoreThreadManager.formatSiteName(request.getSenderSite())));
           
           VoltTable vt = null;
+          VoltTable minIncl = null;
+          VoltTable maxExcl = null;
           try {
-            vt = FastDeserializer.deserialize(request.getVoltTableData().toByteArray(), VoltTable.class);
+        	  ByteString minInclBytes = request.getMinInclusive();
+              ByteString maxExclBytes = request.getMaxExclusive();
+              minIncl = FastDeserializer.deserialize(minInclBytes.toByteArray(), VoltTable.class);
+              maxExcl = FastDeserializer.deserialize(maxExclBytes.toByteArray(), VoltTable.class);
+              
+              vt = FastDeserializer.deserialize(request.getVoltTableData().toByteArray(), VoltTable.class);
           } catch (IOException e) {
             // TODO Auto-generated catch block
             LOG.error("Error in deserializing volt table");
@@ -843,7 +850,7 @@ public class HStoreCoordinator implements Shutdownable {
           try {
             response = hstore_site.getReconfigurationCoordinator().receiveTuples(
                 request.getSenderSite(), request.getT0S(), request.getOldPartition(), request.getNewPartition(), 
-                request.getVoltTableName(), vt, request.getMinInclusiveList(), request.getMaxExclusiveList());
+                request.getVoltTableName(), vt, minIncl, maxExcl);
           } catch (Exception e) {
             // TODO Auto-generated catch block
             LOG.error("Exception incurred while receiving tuples", e);
