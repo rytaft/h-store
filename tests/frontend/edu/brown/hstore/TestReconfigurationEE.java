@@ -260,11 +260,6 @@ public class TestReconfigurationEE extends BaseTestCase {
         resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken(), 1);
         assertTrue(resTable.getFirst().getRowCount() == 100);
 
-        range = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{300L}, new Long[]{300L}, 1, 2);
-        extractTable = ReconfigurationUtil.getExtractVoltTable(range);
-        resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken(), 1);
-        assertTrue(resTable.getFirst().getRowCount() == 1);
-
         range = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{301L}, new Long[]{302L}, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken(), 1);
