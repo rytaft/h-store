@@ -37,11 +37,6 @@ public String test_json1 = "{"
             + "                  3 : \"300-301,350-400,302-303\","
             + "                  4 : \"301-302,303-304,304-350\"       "
             + "                }     "
-            + "              },"
-            + "              \"table2\":{"
-            + "                \"partitions\":{"
-            + "                  3 : \"1-10\""
-            + "                }     "
             + "              }"
             + "            }"
             + "          }"
@@ -56,11 +51,6 @@ public String test_json2 = "{"
             + "                \"partitions\":{"
             + "                  1 : \"1-400\","
             + "                }     "
-            + "              },"
-            + "              \"table2\":{"
-            + "                \"partitions\":{"
-            + "                  4 : \"1-10\""
-            + "                }     "
             + "              }"
             + "            }"            
             + "          }"
@@ -69,10 +59,8 @@ public String test_json2 = "{"
     private File json_path1;
     private File json_path2;
     String tbl = "usertable";
-    String table2str = "table2";
     Table catalog_tbl;
     Column catalog_col;
-    Table table2;
     @Override
     protected void setUp() throws Exception {
       super.setUp(ProjectType.YCSB);
@@ -298,63 +286,7 @@ public String test_json2 = "{"
         range = (ReconfigurationRange) ex.dataMigratedOut.toArray()[0];
         range.getMinIncl().advanceToRow(0);
         range.getMaxExcl().advanceToRow(0);
-        assertTrue(range.getMinIncl().getLong(0) ==  100L && range.getMaxExcl().getLong(0) == 100L); 
-        
-
-        //check table 2
-        Set<ReconfigurationRange> pulls = new HashSet<>();
-        table2 = this.getTable(table2str);
-        assertTrue(tracking3.checkKeyOwned(table2, 1L));
-        ex = null;
-        try{
-            tracking4.checkKeyOwned(table2, 1L);
-        } catch(ReconfigurationException e){
-          ex =e;  
-        }
-        assertNotNull(ex);
-        assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_NOT_MIGRATED,ex.exceptionType);        
-        assertTrue(ex.dataNotYetMigrated.size()== 1);
-        range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
-        range.getMinIncl().advanceToRow(0);
-        range.getMaxExcl().advanceToRow(0);
-        assertTrue(range.getMinIncl().getLong(0) ==  1L && range.getMaxExcl().getLong(0) == 1L);
-        pulls.add(range);
-        pulls.add(range);
-        assertEquals(pulls.size(),1);
-        
-        ex = null;
-        try{
-            tracking4.checkKeyOwned(table2, 1L);
-        } catch(ReconfigurationException e){
-          ex =e;  
-        }
-        range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
-        pulls.add(range);
-        
-        assertEquals(pulls.size(),1);
-        
-        
-        
-        tracking3.markKeyAsMigratedOut(table2str, Arrays.asList(new Object[]{1L}));
-        tracking4.markKeyAsReceived(table2str, Arrays.asList(new Object[]{1L}));
-        assertTrue(tracking4.checkKeyOwned(table2, 1L));
-        
-        ex = null;
-        try{
-            assertTrue(tracking3.checkKeyOwned(table2, 1L));
-        } catch(ReconfigurationException e){
-          ex =e;  
-        }
-        assertNotNull(ex);
-        assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_MIGRATED_OUT,ex.exceptionType);        
-        assertTrue(ex.dataNotYetMigrated.size()== 0);
-        assertTrue(ex.dataMigratedOut.size()== 1);
-        range = (ReconfigurationRange) ex.dataMigratedOut.toArray()[0];
-        range.getMinIncl().advanceToRow(0);
-        range.getMaxExcl().advanceToRow(0);
-        assertTrue(range.getMinIncl().getLong(0) ==  1L && range.getMaxExcl().getLong(0) == 1L);      
-        
-
+        assertTrue(range.getMinIncl().getLong(0) ==  100L && range.getMaxExcl().getLong(0) == 100L);        
         
         
     }
