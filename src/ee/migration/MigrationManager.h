@@ -47,10 +47,8 @@ class TableIndex;
 class PersistentTable;
 class ExecutorContext;
 
-struct RecursiveRangeMap {
-  std::map<NValue,std::pair<NValue, RecursiveRangeMap>,NValue::ltNValue> r;
-};
 
+typedef std::map<TableTuple,TableTuple,TableTuple::ltTableTuple> RangeMap;
 
 class MigrationManager {
         
@@ -97,13 +95,13 @@ private:
     TableIndex* getPartitionColumnsIndex();
     void init(PersistentTable *table); 
     TableTuple initKeys(const TupleSchema* keySchema);
-    void setKeys(const RecursiveRangeMap& rangeMap, TableTuple& minKeys, TableTuple& maxKeys, int keyIndex);
+    const TupleSchema* createPartitionKeySchema();
     bool inRange(const TableTuple& tuple, const TableTuple& maxKeys);
-    bool inRange(const TableTuple& tuple, const RecursiveRangeMap& rangeMap, int keyIndex);
+    bool inRange(const TableTuple& tuple, const RangeMap& rangeMap);
     bool extractTuple(TableTuple& tuple);
-    bool searchBTree(const RecursiveRangeMap& rangeMap, TableTuple& minKeys, TableTuple& maxKeys, int keyIndex);
-    bool scanTable(const RecursiveRangeMap& rangeMap);
-    void getRecursiveRangeMap(RecursiveRangeMap& rangeMap, TableIterator& inputIterator, TableTuple& extractTuple);
+    bool searchBTree(const RangeMap& rangeMap);
+    bool scanTable(const RangeMap& rangeMap);
+    void getRangeMap(RangeMap& rangeMap, TableIterator& inputIterator, TableTuple& extractTuple);
 }; // MigrationManager class
 
 
