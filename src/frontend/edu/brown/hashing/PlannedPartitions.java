@@ -359,6 +359,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     public static class PartitionRange implements Comparable<PartitionRange> {
         private int partition;
         private VoltTable keySchema;
+        private VoltTable keySchemaCopy;
         private Object[] min_incl;
         private Object[] max_excl;
         private VoltTableComparator cmp;
@@ -369,6 +370,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.catalog_table = table;
             
             this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
+            this.keySchemaCopy = this.keySchema.clone(0);
             Object[] min_row;
             Object[] max_row;
             
@@ -482,7 +484,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         	}
         }
         
-        public boolean inRange(List<Object> ids) {
+        public synchronized boolean inRange(List<Object> ids) {
         	Object[] keys = new Object[this.min_incl.length];
         	int col = 0;
         	for(Object id : ids) {
@@ -493,10 +495,12 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         		VoltType vt = this.keySchema.getColumnType(col);
             	keys[col] = vt.getNullValue();
         	}
-        	VoltTable temp = this.keySchema.clone(0);
-        	temp.addRow(keys);
-        	temp.advanceToRow(0);
-        	return inRange(temp.getRowArray(), ids.size());
+        	//VoltTable temp = this.keySchema.clone(0);
+        	keySchemaCopy.addRow(keys);
+        	keySchemaCopy.advanceToRow(0);
+        	Object[] rowArray = keySchemaCopy.getRowArray();
+        	keySchemaCopy.clearRowData();
+        	return inRange(rowArray, ids.size());
         }
         
         public boolean inRange(Object[] keys, int orig_size) {
