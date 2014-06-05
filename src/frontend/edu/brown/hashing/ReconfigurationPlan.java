@@ -128,11 +128,7 @@ public class ReconfigurationPlan {
                 // No change do nothing
               } else {
                 // Same range new partition
-            	ArrayList<Object[]> minList = new ArrayList<Object[]>();
-            	minList.add(old_range.getMinIncl());
-            	ArrayList<Object[]> maxList = new ArrayList<Object[]>();
-            	maxList.add(old_range.getMaxExcl());
-            	getReconfigurations().add(new ReconfigurationRange(this.table_name, old_range.getKeySchema(), minList, maxList,
+            	getReconfigurations().add(new ReconfigurationRange(this.table_name, old_range.getKeySchema(), old_range.getMinIncl(), old_range.getMaxExcl(),
                     old_range.getPartition(), new_range.getPartition()));
               }
               max_old_accounted_for = old_range.getMaxExcl();
@@ -146,11 +142,7 @@ public class ReconfigurationPlan {
                   max_old_accounted_for = old_range.getMaxExcl();
                 } else {
                   // Need to move the old range to new range
-                  ArrayList<Object[]> minList = new ArrayList<Object[]>();
-                  minList.add(max_old_accounted_for);
-                  ArrayList<Object[]> maxList = new ArrayList<Object[]>();
-                  maxList.add(old_range.getMaxExcl());
-                  getReconfigurations().add(new ReconfigurationRange(this.table_name, old_range.getKeySchema(), minList, maxList,
+                  getReconfigurations().add(new ReconfigurationRange(this.table_name, old_range.getKeySchema(), max_old_accounted_for, old_range.getMaxExcl(),
                 		  old_range.getPartition(), new_range.getPartition()));
                   max_old_accounted_for = old_range.getMaxExcl(); 
                 }
@@ -168,11 +160,7 @@ public class ReconfigurationPlan {
                     max_old_accounted_for = new_range.getMaxExcl();
                   } else {
                     // move
-                	ArrayList<Object[]> minList = new ArrayList<Object[]>();
-                    minList.add(max_old_accounted_for);
-                    ArrayList<Object[]> maxList = new ArrayList<Object[]>();
-                    maxList.add(new_range.getMaxExcl());
-                    getReconfigurations().add(new ReconfigurationRange(this.table_name, new_range.getKeySchema(), minList, maxList,
+                	getReconfigurations().add(new ReconfigurationRange(this.table_name, new_range.getKeySchema(), max_old_accounted_for, new_range.getMaxExcl(),
                     		old_range.getPartition(), new_range.getPartition()));
                     max_old_accounted_for = new_range.getMaxExcl();
                   }
@@ -411,6 +399,20 @@ public class ReconfigurationPlan {
         	}
         }  
         
+        public ReconfigurationRange(String table_name, VoltTable keySchema, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition) {
+        	this(table_name, keySchema, new ArrayList<Object[]>(), new ArrayList<Object[]>(), old_partition, new_partition);
+        	
+        	this.min_incl.add(min_incl);
+        	this.max_excl.add(max_excl);
+        }
+        
+        public ReconfigurationRange(Table table, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition) {
+        	this(table, new ArrayList<Object[]>(), new ArrayList<Object[]>(), old_partition, new_partition);
+        
+        	this.min_incl.add(min_incl);
+        	this.max_excl.add(max_excl);
+        }
+        
         public ReconfigurationRange(String table_name, VoltTable keySchema, List<Object[]> min_incl, List<Object[]> max_excl, int old_partition, int new_partition) {
         	this.keySchema = keySchema;
             
@@ -550,6 +552,24 @@ public class ReconfigurationPlan {
                 }
             }
             return false;
+        }
+        
+        public static Object[] getKeys(List<Object> ids, Table table) {
+        	VoltTable keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
+        	Object[] keys = new Object[keySchema.getColumnCount()];
+        	int col = 0;
+        	for(Object id : ids) {
+        		keys[col] = id;
+        		col++;
+        	}
+        	for( ; col < keySchema.getColumnCount(); col++) {
+        		VoltType vt = keySchema.getColumnType(col);
+            	keys[col] = vt.getNullValue();
+        	}
+        	VoltTable temp = keySchema.clone(0);
+        	temp.addRow(keys);
+        	temp.advanceToRow(0);
+        	return temp.getRowArray();
         }
         
         public Long getMaxPotentialKeys() {

@@ -124,7 +124,7 @@ public class StopCopy extends VoltSystemProcedure {
                                     LOG.error("More data coming in stop and copy. This is deprecated");
                                 }
                                 rc.pushTuples(range.getOldPartition(), range.getNewPartition(), range.getTableName(), table, 
-                                        range.getMinIncl(), range.getMaxExcl());
+                                        range.getMinInclTable(), range.getMaxExclTable());
                             }
                         } else {
                             LOG.info("No outgoing ranges for this partition");

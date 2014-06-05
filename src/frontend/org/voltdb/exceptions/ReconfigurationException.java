@@ -79,7 +79,8 @@ public class ReconfigurationException extends SerializableException {
 
         for(Table table: tables){
             ReconfigurationRange range;
-            range = new ReconfigurationRange(table, key, key, old_partition, new_partition);
+            Object[] keyArray = ReconfigurationRange.getKeys(key, table);
+            range = new ReconfigurationRange(table, keyArray, keyArray, old_partition, new_partition);
             keys.add(range);
         }
         this.exceptionType = exceptionType;
@@ -100,7 +101,8 @@ public class ReconfigurationException extends SerializableException {
 
         ReconfigurationRange range;
 
-        range = new ReconfigurationRange(table, key, key, old_partition, new_partition);
+        Object[] keyArray = ReconfigurationRange.getKeys(key, table);
+        range = new ReconfigurationRange(table, keyArray, keyArray, old_partition, new_partition);
         keys.add(range);
         this.exceptionType = exceptionType;
         if (exceptionType == ExceptionTypes.TUPLES_NOT_MIGRATED) {
