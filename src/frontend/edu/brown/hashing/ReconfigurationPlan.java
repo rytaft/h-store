@@ -372,6 +372,7 @@ public class ReconfigurationPlan {
         private int new_partition;
         private String table_name; 
         private VoltTable keySchema;
+        private VoltTable keySchemaCopy; // not exposed outside of the class
         private List<Object[]> min_incl;
         private List<Object[]> max_excl;
         private VoltTableComparator cmp;
@@ -415,7 +416,8 @@ public class ReconfigurationPlan {
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, List<Object[]> min_incl, List<Object[]> max_excl, int old_partition, int new_partition) {
         	this.keySchema = keySchema;
-            
+            this.keySchemaCopy = this.keySchema.clone(0);
+        	
             this.cmp = ReconfigurationUtil.getComparator(keySchema);
             
             this.min_incl = min_incl;
@@ -429,7 +431,8 @@ public class ReconfigurationPlan {
         public ReconfigurationRange(Table table, List<Object[]> min_incl, List<Object[]> max_excl, int old_partition, int new_partition) {
         	this.catalog_table = table;
         	this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-            
+        	this.keySchemaCopy = this.keySchema.clone(0);
+        	
             this.cmp = ReconfigurationUtil.getComparator(keySchema);
             
             this.min_incl = min_incl;
@@ -534,10 +537,12 @@ public class ReconfigurationPlan {
         		VoltType vt = this.keySchema.getColumnType(col);
             	keys[col] = vt.getNullValue();
         	}
-        	VoltTable temp = this.keySchema.clone(0);
-        	temp.addRow(keys);
-        	temp.advanceToRow(0);
-        	return inRange(temp.getRowArray());
+        	
+        	keySchemaCopy.addRow(keys);
+        	keySchemaCopy.advanceToRow(0);
+        	Object[] rowArray = keySchemaCopy.getRowArray();
+        	keySchemaCopy.clearRowData();
+        	return inRange(rowArray);
         }
         
         public boolean inRange(Object[] keys) {
@@ -566,10 +571,10 @@ public class ReconfigurationPlan {
         		VoltType vt = keySchema.getColumnType(col);
             	keys[col] = vt.getNullValue();
         	}
-        	VoltTable temp = keySchema.clone(0);
-        	temp.addRow(keys);
-        	temp.advanceToRow(0);
-        	return temp.getRowArray();
+        	
+        	keySchema.addRow(keys);
+        	keySchema.advanceToRow(0);
+        	return keySchema.getRowArray();
         }
         
         public Long getMaxPotentialKeys() {

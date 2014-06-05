@@ -359,7 +359,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     public static class PartitionRange implements Comparable<PartitionRange> {
         private int partition;
         private VoltTable keySchema;
-        private VoltTable keySchemaCopy;
+        private VoltTable keySchemaCopy; // not exposed outside of the class
         private Object[] min_incl;
         private Object[] max_excl;
         private VoltTableComparator cmp;
@@ -387,15 +387,16 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             
             this.cmp = ReconfigurationUtil.getComparator(keySchema);
 
-            VoltTable minTable = keySchema.clone(0);
-            VoltTable maxTable = keySchema.clone(0);
-            minTable.addRow(min_row);
-            maxTable.addRow(max_row);
-            minTable.advanceToRow(0);
-            maxTable.advanceToRow(0);
-            this.min_incl = minTable.getRowArray();
-            this.max_excl = maxTable.getRowArray();
-
+            keySchemaCopy.addRow(min_row);
+            keySchemaCopy.advanceToRow(0);
+            this.min_incl = keySchemaCopy.getRowArray();
+            keySchemaCopy.clearRowData();
+        	
+            keySchemaCopy.addRow(max_row);
+            keySchemaCopy.advanceToRow(0);
+            this.max_excl = keySchemaCopy.getRowArray();
+            keySchemaCopy.clearRowData();
+        	
             if (cmp.compare(this.min_incl, this.max_excl) > 0) {
             	throw new ParseException("Min cannot be greater than max", -1);
     	    }
@@ -495,7 +496,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         		VoltType vt = this.keySchema.getColumnType(col);
             	keys[col] = vt.getNullValue();
         	}
-        	//VoltTable temp = this.keySchema.clone(0);
+        	
         	keySchemaCopy.addRow(keys);
         	keySchemaCopy.advanceToRow(0);
         	Object[] rowArray = keySchemaCopy.getRowArray();
