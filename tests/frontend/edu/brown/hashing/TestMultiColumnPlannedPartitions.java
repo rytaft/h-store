@@ -284,10 +284,15 @@ public class TestMultiColumnPlannedPartitions extends BaseTestCase {
         ReconfigurationTable reconfig = (ReconfigurationTable) reconfig_plan.tables_map.get("table");
         ReconfigurationRange range = null;
         range = reconfig.getReconfigurations().get(0);
-        assertTrue(((Long)range.getMinIncl().get(0)[1]) == 10 && ((Long)range.getMaxExcl().get(0)[1]) == 20 && range.getOldPartition() == 1 && range.getNewPartition() == 2);
-
+        assertEquals(10, range.getMinIncl().get(0)[1]);
+        assertEquals(20, range.getMaxExcl().get(0)[1]);
+        assertEquals(1, range.getOldPartition());
+        assertEquals(2, range.getNewPartition());
+        
         range = reconfig.getReconfigurations().get(1);
-        assertTrue(((Long)range.getMinIncl().get(0)[1]) == 20 && range.getKeySchema().getColumnType(1).getNullValue().equals(range.getMaxExcl().get(0)[1]) && range.getOldPartition() == 1 && range.getNewPartition() == 3);
-
+        assertEquals(20, range.getMinIncl().get(0)[1]);
+        assertEquals(range.getKeySchema().getColumnType(1).getNullValue(), range.getMaxExcl().get(0)[1]);
+        assertEquals(1, range.getOldPartition());
+        assertEquals(3, range.getNewPartition());
     }
 }

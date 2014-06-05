@@ -199,16 +199,28 @@ public class TestPlannedPartitions extends BaseTestCase {
         ReconfigurationTable reconfig = new ReconfigurationTable(old_table, new_table);
         ReconfigurationRange range = null;
         range = reconfig.getReconfigurations().get(0);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 5 && ((Long)range.getMaxExcl().get(0)[0]) == 7 && range.getOldPartition() == 1 && range.getNewPartition() == 2);
+        assertEquals(5, range.getMinIncl().get(0)[0]);
+        assertEquals(7, range.getMaxExcl().get(0)[0]);
+        assertEquals(1, range.getOldPartition());
+        assertEquals(2, range.getNewPartition());
 
         range = reconfig.getReconfigurations().get(1);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 7 && ((Long)range.getMaxExcl().get(0)[0]) == 10 && range.getOldPartition() == 1 && range.getNewPartition() == 3);
+        assertEquals(7, range.getMinIncl().get(0)[0]);
+        assertEquals(10, range.getMaxExcl().get(0)[0]);
+        assertEquals(1, range.getOldPartition());
+        assertEquals(3, range.getNewPartition());
 
         range = reconfig.getReconfigurations().get(2);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 20 && ((Long)range.getMaxExcl().get(0)[0]) == 25 && range.getOldPartition() == 3 && range.getNewPartition() == 2);
+        assertEquals(20, range.getMinIncl().get(0)[0]);
+        assertEquals(25, range.getMaxExcl().get(0)[0]);
+        assertEquals(3, range.getOldPartition());
+        assertEquals(2, range.getNewPartition());
 
         range = reconfig.getReconfigurations().get(3);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 25 && ((Long)range.getMaxExcl().get(0)[0]) == 26 && range.getOldPartition() == 3 && range.getNewPartition() == 1);
+        assertEquals(25, range.getMinIncl().get(0)[0]);
+        assertEquals(26, range.getMaxExcl().get(0)[0]);
+        assertEquals(3, range.getOldPartition());
+        assertEquals(1, range.getNewPartition());
     }
 
     public void testPreviousPhase() throws Exception {
@@ -230,10 +242,17 @@ public class TestPlannedPartitions extends BaseTestCase {
         ReconfigurationTable reconfig = new ReconfigurationTable(old_table, new_table);
         ReconfigurationRange range = null;
         range = reconfig.getReconfigurations().get(0);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 10 && ((Long)range.getMaxExcl().get(0)[0]) == 20 && range.getOldPartition() == 1 && range.getNewPartition() == 2);
+        assertEquals(10, range.getMinIncl().get(0)[0]);
+        assertEquals(20, range.getMaxExcl().get(0)[0]);
+        assertEquals(1, range.getOldPartition());
+        assertEquals(2, range.getNewPartition());
 
         range = reconfig.getReconfigurations().get(1);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 20 && ((Long)range.getMaxExcl().get(0)[0]) == 30 && range.getOldPartition() == 1 && range.getNewPartition() == 3);
+        assertEquals(20, range.getMinIncl().get(0)[0]);
+        assertEquals(30, range.getMaxExcl().get(0)[0]);
+        assertEquals(1, range.getOldPartition());
+        assertEquals(3, range.getNewPartition());
+        
     }
 
     public void testReconfigurationTable3() throws Exception {
@@ -252,10 +271,16 @@ public class TestPlannedPartitions extends BaseTestCase {
         ReconfigurationTable reconfig = new ReconfigurationTable(new_table, old_table);
         ReconfigurationRange range = null;
         range = reconfig.getReconfigurations().get(0);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 10 && ((Long)range.getMaxExcl().get(0)[0]) == 20 && range.getOldPartition() == 2 && range.getNewPartition() == 1);
+        assertEquals(10, range.getMinIncl().get(0)[0]);
+        assertEquals(20, range.getMaxExcl().get(0)[0]);
+        assertEquals(2, range.getOldPartition());
+        assertEquals(1, range.getNewPartition());
 
         range = reconfig.getReconfigurations().get(1);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 20 && ((Long)range.getMaxExcl().get(0)[0]) == 30 && range.getOldPartition() == 3 && range.getNewPartition() == 1);
+        assertEquals(20, range.getMinIncl().get(0)[0]);
+        assertEquals(30, range.getMaxExcl().get(0)[0]);
+        assertEquals(3, range.getOldPartition());
+        assertEquals(1, range.getNewPartition());
     }
 
     @SuppressWarnings("unchecked")
@@ -282,22 +307,40 @@ public class TestPlannedPartitions extends BaseTestCase {
         ReconfigurationTable reconfig = (ReconfigurationTable) reconfig_plan.tables_map.get("table");
         ReconfigurationRange range = null;
         range = reconfig.getReconfigurations().get(0);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 10 && ((Long)range.getMaxExcl().get(0)[0]) == 20 && range.getOldPartition() == 1 && range.getNewPartition() == 2);
-
+        assertEquals(10, range.getMinIncl().get(0)[0]);
+        assertEquals(20, range.getMaxExcl().get(0)[0]);
+        assertEquals(1, range.getOldPartition());
+        assertEquals(2, range.getNewPartition());
+        
         range = reconfig.getReconfigurations().get(1);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 20 && ((Long)range.getMaxExcl().get(0)[0]) == 30 && range.getOldPartition() == 1 && range.getNewPartition() == 3);
-
+        assertEquals(20, range.getMinIncl().get(0)[0]);
+        assertEquals(30, range.getMaxExcl().get(0)[0]);
+        assertEquals(1, range.getOldPartition());
+        assertEquals(3, range.getNewPartition());
+        
         range = (ReconfigurationRange) reconfig_plan.incoming_ranges.get(2).get(0);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 10 && ((Long)range.getMaxExcl().get(0)[0]) == 20 && range.getOldPartition() == 1 && range.getNewPartition() == 2);
-
+        assertEquals(10, range.getMinIncl().get(0)[0]);
+        assertEquals(20, range.getMaxExcl().get(0)[0]);
+        assertEquals(1, range.getOldPartition());
+        assertEquals(2, range.getNewPartition());
+        
         range = (ReconfigurationRange) reconfig_plan.outgoing_ranges.get(1).get(0);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 10 && ((Long)range.getMaxExcl().get(0)[0]) == 20 && range.getOldPartition() == 1 && range.getNewPartition() == 2);
-
+        assertEquals(10, range.getMinIncl().get(0)[0]);
+        assertEquals(20, range.getMaxExcl().get(0)[0]);
+        assertEquals(1, range.getOldPartition());
+        assertEquals(2, range.getNewPartition());
+        
         range = (ReconfigurationRange) reconfig_plan.outgoing_ranges.get(1).get(1);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 20 && ((Long)range.getMaxExcl().get(0)[0]) == 30 && range.getOldPartition() == 1 && range.getNewPartition() == 3);
-
+        assertEquals(20, range.getMinIncl().get(0)[0]);
+        assertEquals(30, range.getMaxExcl().get(0)[0]);
+        assertEquals(1, range.getOldPartition());
+        assertEquals(3, range.getNewPartition());
+        
         range = (ReconfigurationRange) reconfig_plan.incoming_ranges.get(3).get(0);
-        assertTrue(((Long)range.getMinIncl().get(0)[0]) == 20 && ((Long)range.getMaxExcl().get(0)[0]) == 30 && range.getOldPartition() == 1 && range.getNewPartition() == 3);
-
+        assertEquals(20, range.getMinIncl().get(0)[0]);
+        assertEquals(30, range.getMaxExcl().get(0)[0]);
+        assertEquals(1, range.getOldPartition());
+        assertEquals(3, range.getNewPartition());
+        
     }
 }
