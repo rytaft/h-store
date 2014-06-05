@@ -526,7 +526,7 @@ public class ReconfigurationPlan {
             return true;
         }
 
-        public boolean inRange(List<Object> ids) {
+        public synchronized boolean inRange(List<Object> ids) {
         	Object[] keys = new Object[this.keySchema.getColumnCount()];
         	int col = 0;
         	for(Object id : ids) {
