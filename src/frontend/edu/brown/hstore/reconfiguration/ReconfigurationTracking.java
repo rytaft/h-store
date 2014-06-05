@@ -74,10 +74,10 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         if (incoming_ranges != null)
         	this.incoming_ranges.addAll(incoming_ranges);
         for(ReconfigurationRange range : this.incoming_ranges) {
-        	incomingRangesCount += range.getMinIncl().getRowCount();
+        	incomingRangesCount += range.getMinIncl().size();
         }
         for(ReconfigurationRange range: this.outgoing_ranges){
-        	outgoingRangesCount += range.getMinIncl().getRowCount();
+        	outgoingRangesCount += range.getMinIncl().size();
         }
         this.partition_id = partition_id;
         this.migratedKeyIn = new HashMap<String, Set<List<Object>>>();

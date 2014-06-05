@@ -121,10 +121,8 @@ public String test_json2 = "{"
         assertTrue(ex.dataNotYetMigrated.size()== 1);
         ReconfigurationRange range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
         
-        range.getMinIncl().advanceToRow(0);
-        range.getMaxExcl().advanceToRow(0);
-        assertTrue(range.getMinIncl().getLong(0) ==  110L);
-        assertTrue(range.getMaxExcl().getLong(0) == 110L);
+        assertTrue(((Long)range.getMinIncl().get(0)[0]) ==  110L);
+        assertTrue(((Long)range.getMaxExcl().get(0)[0]) == 110L);
         
         //source still has the key
         assertTrue(tracking2.checkKeyOwned(catalog_col, 110L));
@@ -140,9 +138,7 @@ public String test_json2 = "{"
         assertNotNull(ex);
         assertEquals(ReconfigurationException.ExceptionTypes.TUPLES_MIGRATED_OUT,ex.exceptionType);         
         range = (ReconfigurationRange) ex.dataMigratedOut.toArray()[0];//.get(0);
-        range.getMinIncl().advanceToRow(0);
-        range.getMaxExcl().advanceToRow(0);
-        assertTrue(range.getMinIncl().getLong(0) ==  104L && range.getMaxExcl().getLong(0) == 104L); 
+        assertTrue(((Long)range.getMinIncl().get(0)[0]) ==  104L && ((Long)range.getMaxExcl().get(0)[0]) == 104L); 
         
         
         //verify moved away from 2 
@@ -154,9 +150,7 @@ public String test_json2 = "{"
         }
         assertEquals(ExceptionTypes.TUPLES_NOT_MIGRATED, ex.exceptionType);         
         range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
-        range.getMinIncl().advanceToRow(0);
-        range.getMaxExcl().advanceToRow(0);
-        assertTrue(range.getMinIncl().getLong(0) ==  371L && range.getMaxExcl().getLong(0) == 371L); 
+        assertTrue(((Long)range.getMinIncl().get(0)[0]) ==  371L && ((Long)range.getMaxExcl().get(0)[0]) == 371L); 
                 
         //Testing an existing range split
         migrRange = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{370L}, new Long[]{373L}, 3, 1);
@@ -178,9 +172,7 @@ public String test_json2 = "{"
         }
         assertEquals(ExceptionTypes.TUPLES_NOT_MIGRATED, ex.exceptionType);         
         range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
-        range.getMinIncl().advanceToRow(0);
-        range.getMaxExcl().advanceToRow(0);
-        assertTrue(range.getMinIncl().getLong(0) ==  365L && range.getMaxExcl().getLong(0) == 365L);  
+        assertTrue(((Long)range.getMinIncl().get(0)[0]) ==  365L && ((Long)range.getMaxExcl().get(0)[0]) == 365L);  
         
         ex = null;
         try{
@@ -190,9 +182,7 @@ public String test_json2 = "{"
         }
         assertEquals(ExceptionTypes.TUPLES_NOT_MIGRATED, ex.exceptionType);         
         range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
-        range.getMinIncl().advanceToRow(0);
-        range.getMaxExcl().advanceToRow(0);
-        assertTrue(range.getMinIncl().getLong(0) ==  369L && range.getMaxExcl().getLong(0) == 369L);  
+        assertTrue(((Long)range.getMinIncl().get(0)[0]) ==  369L && ((Long)range.getMaxExcl().get(0)[0]) == 369L);  
         
         
         assertTrue(tracking1.checkKeyOwned(catalog_col, 371L));
@@ -206,9 +196,7 @@ public String test_json2 = "{"
         }
         assertEquals(ExceptionTypes.TUPLES_NOT_MIGRATED, ex.exceptionType);         
         range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
-        range.getMinIncl().advanceToRow(0);
-        range.getMaxExcl().advanceToRow(0);
-        assertTrue(range.getMinIncl().getLong(0) ==  390L && range.getMaxExcl().getLong(0) == 390L);
+        assertTrue(((Long)range.getMinIncl().get(0)[0]) ==  390L && ((Long)range.getMaxExcl().get(0)[0]) == 390L);
         assertEquals(3, range.getOldPartition());
         
         
@@ -259,10 +247,8 @@ public String test_json2 = "{"
         assertTrue(ex.dataNotYetMigrated.size()== 1);
         ReconfigurationRange range = (ReconfigurationRange) ex.dataNotYetMigrated.toArray()[0];
         System.out.println(range);
-        range.getMinIncl().advanceToRow(0);
-        range.getMaxExcl().advanceToRow(0);
-        assertTrue(range.getMinIncl().getLong(0) ==  100L); 
-        assertTrue(range.getMaxExcl().getLong(0) == 100L); 
+        assertTrue(((Long)range.getMinIncl().get(0)[0]) ==  100L); 
+        assertTrue(((Long)range.getMaxExcl().get(0)[0]) == 100L); 
 
         //'migrate key'
         tracking1.markKeyAsReceived(tbl, Arrays.asList(new Object[]{100L}));
@@ -284,9 +270,7 @@ public String test_json2 = "{"
         assertTrue(ex.dataNotYetMigrated.size()== 0);
         assertTrue(ex.dataMigratedOut.size()== 1);
         range = (ReconfigurationRange) ex.dataMigratedOut.toArray()[0];
-        range.getMinIncl().advanceToRow(0);
-        range.getMaxExcl().advanceToRow(0);
-        assertTrue(range.getMinIncl().getLong(0) ==  100L && range.getMaxExcl().getLong(0) == 100L);        
+        assertTrue(((Long)range.getMinIncl().get(0)[0]) ==  100L && ((Long)range.getMaxExcl().get(0)[0]) == 100L);        
         
         
     }

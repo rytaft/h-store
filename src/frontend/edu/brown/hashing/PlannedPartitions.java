@@ -357,18 +357,18 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      *            Comparable type of key
      */
     public static class PartitionRange implements Comparable<PartitionRange> {
-        protected int partition;
-        protected VoltTable clone;
-        protected VoltTable min_incl;
-        protected VoltTable max_excl;
-        protected VoltTableComparator cmp;
-        protected Table catalog_table;
+        private int partition;
+        private VoltTable keySchema;
+        private Object[] min_incl;
+        private Object[] max_excl;
+        private VoltTableComparator cmp;
+        private Table catalog_table;
         
         public PartitionRange(Table table, int partition_id, String range_str) throws ParseException {
             this.partition = partition_id;
             this.catalog_table = table;
             
-            this.clone = ReconfigurationUtil.getPartitionKeysVoltTable(table);
+            this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
             Object[] min_row;
             Object[] max_row;
             
@@ -383,74 +383,20 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             	throw new ParseException("keys must be specified as min-max. range: " + range_str, -1);
             }
             
-            this.cmp = ReconfigurationUtil.getComparator(clone);
+            this.cmp = ReconfigurationUtil.getComparator(keySchema);
 
-            this.min_incl = clone.clone(0);
-            this.max_excl = clone.clone(0);
-            this.min_incl.addRow(min_row);
-            this.max_excl.addRow(max_row);
-            this.min_incl.advanceToRow(0);
-            this.max_excl.advanceToRow(0);
+            VoltTable minTable = keySchema.clone(0);
+            VoltTable maxTable = keySchema.clone(0);
+            minTable.addRow(min_row);
+            maxTable.addRow(max_row);
+            minTable.advanceToRow(0);
+            maxTable.advanceToRow(0);
+            this.min_incl = minTable.getRowArray();
+            this.max_excl = maxTable.getRowArray();
 
-            if (cmp.compare(this.min_incl.getRowArray(), this.max_excl.getRowArray()) > 0) {
+            if (cmp.compare(this.min_incl, this.max_excl) > 0) {
             	throw new ParseException("Min cannot be greater than max", -1);
     	    }
-        }
-        
-        protected PartitionRange(String table_name, VoltTable clone, VoltTable min_incl, VoltTable max_excl) {
-            this.clone = clone;
-            
-            this.cmp = ReconfigurationUtil.getComparator(clone);
-            
-            this.min_incl = min_incl;
-            this.max_excl = max_excl;
-        }
-        
-        protected PartitionRange(Table table, VoltTable min_incl, VoltTable max_excl) {
-        	this.catalog_table = table;
-        	this.clone = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-            
-            this.cmp = ReconfigurationUtil.getComparator(clone);
-            
-            this.min_incl = min_incl;
-            this.max_excl = max_excl;
-        }
-        
-        protected PartitionRange(Table table, List<Object> min_incl, List<Object> max_excl) {
-            
-        	this.catalog_table = table;
-        	this.clone = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-            
-            this.cmp = ReconfigurationUtil.getComparator(clone);
-            
-            Object[] min_row = new Object[clone.getColumnCount()];
-            Object[] max_row = new Object[clone.getColumnCount()];
-            int min_col = 0;
-            for(Object obj : min_incl) {
-            	min_row[min_col] = obj;
-            	min_col++;
-            }
-            int max_col = 0;
-            for(Object obj : max_excl) {
-            	max_row[max_col] = obj;
-            	max_col++;
-            }
-            for (int col = min_col; col < clone.getColumnCount(); col++) {
-            	VoltType vt = clone.getColumnType(col);
-            	Object obj = vt.getNullValue();
-            	min_row[col] = obj;	
-            }
-            for (int col = max_col; col < clone.getColumnCount(); col++) {
-            	VoltType vt = clone.getColumnType(col);
-            	Object obj = vt.getNullValue();
-            	max_row[col] = obj;
-            }
-            
-            this.min_incl = clone.clone(0);
-            this.max_excl = clone.clone(0);
-            this.min_incl.addRow(min_row);
-            this.max_excl.addRow(max_row);
-
         }
         
         private Object[] getRangeKeys(String key_str) throws ParseException {
@@ -462,19 +408,19 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         		keys = new String[]{ key_str };
         	}
 
-        	Object[] row = new Object[clone.getColumnCount()];
+        	Object[] row = new Object[keySchema.getColumnCount()];
             
         	int col = 0;
         	for(String key : keys) {
-        		assert(col < clone.getColumnCount());
-        		VoltType vt = clone.getColumnType(col);
+        		assert(col < keySchema.getColumnCount());
+        		VoltType vt = keySchema.getColumnType(col);
 
         		row[col] = parseValue(vt, key);
         		col++;
         	}
 
-        	for ( ; col < clone.getColumnCount(); col++) {
-        		VoltType vt = clone.getColumnType(col);
+        	for ( ; col < keySchema.getColumnCount(); col++) {
+        		VoltType vt = keySchema.getColumnType(col);
         		Object obj = vt.getNullValue();
         		row[col] = obj;
         	}
@@ -489,11 +435,11 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         	return VoltTypeUtil.getObjectFromString(vt, value);
         }
         
-        protected int getNonNullCols() {        	
+        private int getNonNullCols() {        	
         	int non_null_cols = 0;
-            for(int i = 0; i < min_incl.getColumnCount(); i++) {
-            	VoltType vt = min_incl.getColumnType(i);
-            	if(vt.getNullValue().equals(min_incl.get(i)) && vt.getNullValue().equals(max_excl.get(i))) {
+            for(int i = 0; i < min_incl.length; i++) {
+            	VoltType vt = keySchema.getColumnType(i);
+            	if(vt.getNullValue().equals(min_incl[i]) && vt.getNullValue().equals(max_excl[i])) {
             		break;
             	}
             	non_null_cols++;
@@ -503,14 +449,12 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         
         @Override
         public String toString() {
-        	this.min_incl.advanceToRow(0);
-            this.max_excl.advanceToRow(0);
-            String min_str = "";
+        	String min_str = "";
             String max_str = "";
-        	for(int i = 0; i < this.min_incl.getColumnCount(); i++) {
-        		Object min = this.min_incl.get(i);
-        		Object max = this.max_excl.get(i);
-        		VoltType vt = this.min_incl.getColumnType(i);
+        	for(int i = 0; i < this.min_incl.length; i++) {
+        		Object min = this.min_incl[i];
+        		Object max = this.max_excl[i];
+        		VoltType vt = this.keySchema.getColumnType(i);
         		if(!vt.getNullValue().equals(min)) {
         			if(i != 0) {
         				min_str += ":";
@@ -529,64 +473,75 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
         @Override
         public int compareTo(PartitionRange o) {
-        	this.min_incl.advanceToRow(0);
-            this.max_excl.advanceToRow(0);
-            if (cmp.compare(this.min_incl.getRowArray(), o.min_incl.getRowArray()) < 0) {
+        	if (cmp.compare(this.min_incl, o.min_incl) < 0) {
         		return -1;
-        	} else if (cmp.compare(this.min_incl.getRowArray(), o.min_incl.getRowArray()) == 0) {
-        		return cmp.compare(this.max_excl.getRowArray(), o.max_excl.getRowArray());
+        	} else if (cmp.compare(this.min_incl, o.min_incl) == 0) {
+        		return cmp.compare(this.max_excl, o.max_excl);
         	} else {
         		return 1;
         	}
         }
         
         public boolean inRange(List<Object> ids) {
-        	Object[] keys = new Object[this.min_incl.getColumnCount()];
+        	Object[] keys = new Object[this.min_incl.length];
         	int col = 0;
         	for(Object id : ids) {
         		keys[col] = id;
         		col++;
         	}
-        	for( ; col < this.min_incl.getColumnCount(); col++) {
-        		VoltType vt = this.min_incl.getColumnType(col);
+        	for( ; col < this.min_incl.length; col++) {
+        		VoltType vt = this.keySchema.getColumnType(col);
             	keys[col] = vt.getNullValue();
         	}
-        	VoltTable temp = this.clone.clone(0);
+        	VoltTable temp = this.keySchema.clone(0);
         	temp.addRow(keys);
         	temp.advanceToRow(0);
         	return inRange(temp.getRowArray(), ids.size());
         }
         
         public boolean inRange(Object[] keys, int orig_size) {
-        	this.min_incl.resetRowPosition();
-            this.max_excl.resetRowPosition();
-            while(this.min_incl.advanceRow() && this.max_excl.advanceRow()) {
-            	if(cmp.compare(min_incl.getRowArray(), keys) <= 0 && 
-            			(cmp.compare(max_excl.getRowArray(), keys) > 0 || 
-                        (cmp.compare(min_incl.getRowArray(), max_excl.getRowArray()) == 0 && 
-                        cmp.compare(min_incl.getRowArray(), keys) == 0))){
-            		if (orig_size >= getNonNullCols()) {
-            			return true;
-            		}
-                }
-            }
+        	if(cmp.compare(min_incl, keys) <= 0 && 
+        			(cmp.compare(max_excl, keys) > 0 || 
+        					(cmp.compare(min_incl, max_excl) == 0 && 
+        					cmp.compare(min_incl, keys) == 0))){
+        		if (orig_size >= getNonNullCols()) {
+        			return true;
+        		}
+        	}
+
             return false;
         }
         
-        public VoltTable getMinIncl() {
+        public VoltTable getMinInclTable() {
+        	VoltTable minInclTable = this.keySchema.clone(0);
+        	minInclTable.addRow(this.min_incl);
+        	return minInclTable;
+        }
+        
+        public VoltTable getMaxExclTable() {
+        	VoltTable maxExclTable = this.keySchema.clone(0);
+        	maxExclTable.addRow(this.max_excl);
+        	return maxExclTable;
+        }
+        
+        public Object[] getMinIncl() {
         	return this.min_incl;
         }
         
-        public VoltTable getMaxExcl() {
+        public Object[] getMaxExcl() {
         	return this.max_excl;
         }
         
-        public VoltTable getClone() {
-        	return this.clone;
+        public VoltTable getKeySchema() {
+        	return this.keySchema;
         }
         
         public Table getTable() {
         	return this.catalog_table;
+        }
+        
+        public int getPartition() {
+        	return this.partition;
         }
 
     }

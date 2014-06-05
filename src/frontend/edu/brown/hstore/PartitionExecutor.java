@@ -1444,7 +1444,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 // RC push tuples
                 
                 reconfiguration_coordinator.pushTuples(pushRange.getOldPartition(), pushRange.getNewPartition(), pushRange.getTableName(), 
-                        vt.getFirst(), pushRange.getMinIncl(), pushRange.getMaxExcl());
+                        vt.getFirst(), pushRange.getMinInclTable(), pushRange.getMaxExclTable());
                 if(vt.getSecond()){
                     LOG.error("TODO async push has more to send");
                     this.reconfiguration_tracker.markRangeAsPartiallyMigratedOut(pushRange);

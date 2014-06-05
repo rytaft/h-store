@@ -290,10 +290,10 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         ReconfigurationTable reconfig = (ReconfigurationTable) reconfig_plan.tables_map.get("table");
         ReconfigurationRange range = null;
         range = reconfig.getReconfigurations().get(0);
-        assertTrue(range.getMinIncl().getLong(1) == 10 && range.getMaxExcl().getLong(1) == 20 && range.getOldPartition() == 1 && range.getNewPartition() == 2);
+        assertTrue(((Long)range.getMinIncl().get(0)[1]) == 10 && ((Long)range.getMaxExcl().get(0)[1]) == 20 && range.getOldPartition() == 1 && range.getNewPartition() == 2);
 
         range = reconfig.getReconfigurations().get(1);
-        assertTrue(range.getMinIncl().getLong(1) == 20 && range.getMaxExcl().wasNull() && range.getOldPartition() == 1 && range.getNewPartition() == 3);
+        assertTrue(((Long)range.getMinIncl().get(0)[1]) == 20 && range.getKeySchema().getColumnType(1).getNullValue().equals(range.getMaxExcl().get(0)[1]) && range.getOldPartition() == 1 && range.getNewPartition() == 3);
 
     }
 }
