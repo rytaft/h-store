@@ -4901,13 +4901,16 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     // If this is the last WorkFragment that we're going to send to this partition for
                     // this batch, then we will want to check whether we know that this is the last
                     // time this txn will ever need to go to that txn. If so, then we'll want to 
-                    if (notify != null && notify.donePartitions.contains(partition) &&
-                        tmp_fragmentsPerPartition.dec(partition) == 0) {
-                        if (debug.val)
-                            LOG.debug(String.format("%s - Setting last fragment flag in %s for partition %d",
-                                      ts, WorkFragment.class.getSimpleName(), partition));
-                        fragmentBuilder.setLastFragment(true);
-                    }
+                    
+                    // Becca 6/5/14: Commenting this out because it doesn't seem to do anything 
+                    // useful (we never actually check the last fragment flag) and it occasionally causes an exception
+                    //if (notify != null && notify.donePartitions.contains(partition) &&
+                    //    tmp_fragmentsPerPartition.dec(partition) == 0) {
+                    //    if (debug.val)
+                    //        LOG.debug(String.format("%s - Setting last fragment flag in %s for partition %d",
+                    //                  ts, WorkFragment.class.getSimpleName(), partition));
+                    //    fragmentBuilder.setLastFragment(true);
+                    //}
                     
                     if (first == false || this.depTracker.addWorkFragment(ts, fragmentBuilder, batchParams)) {
                         total++;
