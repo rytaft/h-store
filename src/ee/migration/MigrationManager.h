@@ -86,6 +86,8 @@ private:
     bool m_partitionColumnsIndexed;
     Table* m_outputTable;
     int m_outTableSizeInBytes;
+    const TupleSchema* m_partitionKeySchema;
+    const TupleSchema* m_matchingIndexColsSchema;
 
 #ifdef EXTRACT_STAT_ENABLED
     boost::timer m_timer;
@@ -95,8 +97,8 @@ private:
     TableIndex* getPartitionColumnsIndex();
     void init(PersistentTable *table); 
     TableTuple initKeys(const TupleSchema* keySchema);
-    const TupleSchema* createPartitionKeySchema();
-    bool inRange(const TableTuple& tuple, const TableTuple& maxKeys);
+    const TupleSchema* createPartitionKeySchema(int nCols);
+    bool inIndexRange(const TableTuple& tuple, const TableTuple& maxKeys);
     bool inRange(const TableTuple& tuple, const RangeMap& rangeMap);
     bool extractTuple(TableTuple& tuple);
     bool searchBTree(const RangeMap& rangeMap);

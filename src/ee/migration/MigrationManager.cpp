@@ -76,6 +76,8 @@ void MigrationManager::init(PersistentTable *table) {
     m_partitionIndex = NULL;
     m_partitionColumnsIndexed = false;
     m_outputTable = NULL;
+    m_partitionKeySchema = NULL;
+    m_matchingIndexColsSchema = NULL;
     m_outTableSizeInBytes = 0; 
   }
   else {
@@ -87,14 +89,17 @@ void MigrationManager::init(PersistentTable *table) {
       m_partitionColumns.push_back(m_table->partitionColumn());
     }
     m_partitionIndex = getPartitionColumnsIndex(); 
+    m_partitionKeySchema = createPartitionKeySchema(static_cast<int>(m_partitionColumns.size()));
     
     if(m_partitionIndex == NULL) {
       VOLT_DEBUG("partitionColumn is not indexed. partitionColumn[0]: %d",m_partitionColumns[0]);
       //TODO ae what do we do when we have no index for the partition colum?
       m_partitionColumnsIndexed = false;
+      m_matchingIndexColsSchema = NULL;
     } else {
       VOLT_DEBUG("partitionColumn is indexed. partitionColumn[0]: %d",m_partitionColumns[0]);
       m_partitionColumnsIndexed = true;
+      m_matchingIndexColsSchema = createPartitionKeySchema(m_matchingIndexCols);
     }
 
     //TODO ae andy -> How many byes should we set this to? Below is just a silly guess
@@ -121,8 +126,12 @@ TableTuple MigrationManager::initKeys(const TupleSchema* keySchema) {
   return keys;
 }
 
-const TupleSchema* MigrationManager::createPartitionKeySchema() {
-  size_t nCols = m_partitionColumns.size();
+const TupleSchema* MigrationManager::createPartitionKeySchema(int nCols) {
+  if(nCols > m_partitionColumns.size()) {
+    VOLT_ERROR("Partition key schema may not have more columns than there are table partition columns. nCols: %d, number of partition columns: %d", nCols, static_cast<int>(m_partitionColumns.size()));
+    nCols = static_cast<int>(m_partitionColumns.size());
+  }
+
   std::vector<ValueType> columnTypes(nCols);
   std::vector<int32_t> columnSizes(nCols);
   std::vector<bool> allowNull(nCols);
@@ -135,19 +144,24 @@ const TupleSchema* MigrationManager::createPartitionKeySchema() {
   return TupleSchema::createTupleSchema(columnTypes, columnSizes, allowNull, false);
 }
 
-bool MigrationManager::inRange(const TableTuple& tuple, const TableTuple& maxKeys) {
-  for(int i = 0; i < maxKeys.sizeInValues() && !maxKeys.isNull(i); i++) {
-    if(maxKeys.getNValue(i).compare(tuple.getNValue(m_partitionColumns[i])) <= 0) {
-      return false;
-    }
+bool MigrationManager::inIndexRange(const TableTuple& tuple, const TableTuple& maxKeys) {
+  TableTuple keys = initKeys(m_matchingIndexColsSchema);
+  TableTuple maxKeysCmp = initKeys(m_matchingIndexColsSchema);
+  for(int i = 0; i < m_matchingIndexCols; ++i) {
+    keys.setNValue(i, tuple.getNValue(m_partitionColumns[i]));
+    maxKeysCmp.setNValue(i, maxKeys.getNValue(i));
   }
-  return true;
+
+  if (maxKeysCmp.compare(keys) >= 0) {
+    return true;
+  }
+
+  return false;
 }
 
 
 bool MigrationManager::inRange(const TableTuple& tuple, const RangeMap& rangeMap) {
-  const TupleSchema* keySchema = createPartitionKeySchema();
-  TableTuple keys = initKeys(keySchema);
+  TableTuple keys = initKeys(m_partitionKeySchema);
   for(int i = 0; i < m_partitionColumns.size(); ++i) {
     keys.setNValue(i, tuple.getNValue(m_partitionColumns[i]));
   }
@@ -200,24 +214,21 @@ bool MigrationManager::searchBTree(const RangeMap& rangeMap) {
     TableTuple minKeys = it->second;
     TableTuple maxKeys = it->first;
     
-    TableTuple minSearchKeys = initKeys(keySchema);
-    TableTuple maxSearchKeys = initKeys(keySchema);
+    TableTuple searchKeys = initKeys(keySchema);
     for(int i = 0; i < m_matchingIndexCols; i++) {
-      minSearchKeys.setNValue(i, minKeys.getNValue(i));
-      maxSearchKeys.setNValue(i, maxKeys.getNValue(i));
+      searchKeys.setNValue(i, minKeys.getNValue(i));
     }
 
-    for(int i = m_matchingIndexCols; i < minSearchKeys.sizeInValues(); ++i) {
-      minSearchKeys.setNValue(i, NValue::getNullValue(minSearchKeys.getType(i)));
-      maxSearchKeys.setNValue(i, NValue::getNullValue(maxSearchKeys.getType(i)));
+    for(int i = m_matchingIndexCols; i < searchKeys.sizeInValues(); ++i) {
+      searchKeys.setNValue(i, NValue::getNullValue(searchKeys.getType(i)));
     }
 
-    m_partitionIndex->moveToKeyOrGreater(&minSearchKeys);    
+    m_partitionIndex->moveToKeyOrGreater(&searchKeys);    
     TableTuple tuple(m_table->schema());
 
     // look through each tuple at this key and see if it's in our range
     while(((!(tuple = m_partitionIndex->nextValueAtKey()).isNullTuple()) ||
-	   (!(tuple = m_partitionIndex->nextValue()).isNullTuple())) && inRange(tuple, maxSearchKeys)) {
+	   (!(tuple = m_partitionIndex->nextValue()).isNullTuple())) && inIndexRange(tuple, maxKeys)) {
 
 #ifdef EXTRACT_STAT_ENABLED
       m_rowsExamined++;
@@ -257,12 +268,10 @@ bool MigrationManager::scanTable(const RangeMap& rangeMap) {
 
 void MigrationManager::getRangeMap(RangeMap& rangeMap, TableIterator& inputIterator, TableTuple& extractTuple) {
 
-  const TupleSchema* keySchema = createPartitionKeySchema();
-
   int size = extractTuple.sizeInValues(); 
   while(inputIterator.next(extractTuple)) {
-    TableTuple minKeys = initKeys(keySchema);
-    TableTuple maxKeys = initKeys(keySchema);
+    TableTuple minKeys = initKeys(m_partitionKeySchema);
+    TableTuple maxKeys = initKeys(m_partitionKeySchema);
     for(int i = 0, j = 0; i+3 < size && j < minKeys.sizeInValues(); i+=3, j++) {
       NValue minKey = extractTuple.getNValue(i+2);
       NValue maxKey = extractTuple.getNValue(i+3);
@@ -270,7 +279,7 @@ void MigrationManager::getRangeMap(RangeMap& rangeMap, TableIterator& inputItera
       minKeys.setNValue(j, minKey);
       maxKeys.setNValue(j, maxKey);
     }
-
+    
     if(minKeys.compare(maxKeys) > 0) {
       //Min key should never be greater than maxKey
       throwFatalException("Max extract key is smaller than min key");
