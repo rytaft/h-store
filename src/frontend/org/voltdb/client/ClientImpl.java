@@ -33,12 +33,14 @@ import org.voltdb.messaging.FastSerializer;
 import org.voltdb.utils.DBBPool.BBContainer;
 
 import edu.brown.catalog.CatalogUtil;
+import edu.brown.hashing.AbstractHasher;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.profilers.ProfileMeasurement;
+import edu.brown.utils.ClassUtil;
 import edu.brown.utils.PartitionEstimator;
 
 /**
@@ -125,7 +127,22 @@ final class ClientImpl implements Client {
         if (catalog != null && m_hstoreConf.client.txn_hints) {
             m_catalog = catalog;
             m_catalogContext = new CatalogContext(m_catalog);
-            m_pEstimator = new PartitionEstimator(m_catalogContext);
+            
+            // Get the hasher we will use for this client
+            // check if reconfiguration is enabled and that plan is set
+            if(m_hstoreConf.global.reconfiguration_enable){
+                if(m_hstoreConf.global.hasher_plan == null){
+                    LOG.warn("Reconfiguration enabled but no plan set. Disabling reconfiguration and using default hasher");
+                    m_hstoreConf.global.reconfiguration_enable = false;
+                    m_hstoreConf.global.hasher_class  = "edu.brown.hashing.DefaultHasher";                
+                }
+            }
+            
+            LOG.info("Using hasher class: " + m_hstoreConf.global.hasher_class );     
+            AbstractHasher hasher = ClassUtil.newInstance(m_hstoreConf.global.hasher_class,
+                                                 new Object[]{ m_catalogContext, m_catalogContext.numberOfPartitions , m_hstoreConf },
+                                                 new Class<?>[]{ CatalogContext.class, int.class, HStoreConf.class });
+            m_pEstimator = new PartitionEstimator(m_catalogContext, hasher);
             m_partitionSiteXref = CatalogUtil.getPartitionSiteXrefArray(m_catalog);
     }
 
