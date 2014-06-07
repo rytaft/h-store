@@ -489,10 +489,13 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         	Object[] keys = new Object[this.min_incl.length];
         	int col = 0;
         	for(Object id : ids) {
+        		if(col >= keys.length) {
+        			break;
+        		}
         		keys[col] = id;
         		col++;
         	}
-        	for( ; col < this.min_incl.length; col++) {
+        	for( ; col < keys.length; col++) {
         		VoltType vt = this.keySchema.getColumnType(col);
             	keys[col] = vt.getNullValue();
         	}

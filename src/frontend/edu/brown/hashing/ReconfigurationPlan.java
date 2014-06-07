@@ -530,10 +530,13 @@ public class ReconfigurationPlan {
         	Object[] keys = new Object[this.keySchema.getColumnCount()];
         	int col = 0;
         	for(Object id : ids) {
+        		if(col >= keys.length) {
+        			break;
+        		}
         		keys[col] = id;
         		col++;
         	}
-        	for( ; col < this.keySchema.getColumnCount(); col++) {
+        	for( ; col < keys.length; col++) {
         		VoltType vt = this.keySchema.getColumnType(col);
             	keys[col] = vt.getNullValue();
         	}
