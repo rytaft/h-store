@@ -932,9 +932,6 @@ public class PartitionEstimator {
             	} // FOR
             	// @TODO - currently we do not support arrays for multi-column range partitioning
             	partition = this.hasher.hash(Arrays.asList(values), Arrays.asList(catalogItems));
-            	if(partition == HStoreConstants.NULL_PARTITION_ID) {
-            		partition = 0;
-            	}
             	
             } else {
             	int hashes[] = new int[mpp.size()];
