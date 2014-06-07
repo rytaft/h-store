@@ -137,6 +137,9 @@ public class TransactionInitializer {
             this.isSysProc[id] = proc.getSystemproc();
             this.isReadOnly[id] = proc.getReadonly();
             this.expectedParams[id] = proc.getParameters().size();
+            if(proc.getPartitionparameters().size() > 1) {
+            	this.expectedParams[id]--; // we need to account for the MultiProcParameter 
+            }
         } // FOR
         
         this.txnIdManagers = new TransactionIdManager[this.catalogContext.numberOfPartitions];
