@@ -277,8 +277,8 @@ public class ReconfigurationPlan {
                 for(ReconfigurationRange range : reconfiguration_range){
                 	long max_potential_keys = range.getMaxPotentialKeys();
                 	if (max_potential_keys > maxRows){
-                		long orig_max = (Long) range.getMaxExcl().get(0)[0];
-                		long orig_min = (Long) range.getMinIncl().get(0)[0];
+                		long orig_max = ((Number) range.getMaxExcl().get(0)[0]).longValue();
+                		long orig_min = ((Number) range.getMinIncl().get(0)[0]).longValue();
                 		LOG.info(String.format("Splitting up a range %s-%s. Max row:%s. Table:%s",orig_min,orig_max,maxRows,table_name));
                 		long new_max, new_min;
                 		new_min = orig_min;
@@ -584,8 +584,8 @@ public class ReconfigurationPlan {
             ArrayList<Long> min_list = new ArrayList<>();
             ArrayList<Long> max_list = new ArrayList<>();
             for(int i = 0; i < this.min_incl.size() && i < this.max_excl.size(); i++) {
-            	min_list.add((Long) this.min_incl.get(i)[0]);
-            	max_list.add((Long) this.max_excl.get(i)[0]);
+            	min_list.add(((Number) this.min_incl.get(i)[0]).longValue());
+            	max_list.add(((Number) this.max_excl.get(i)[0]).longValue());
             }
 
         	Long max_potential_keys = 0L;
