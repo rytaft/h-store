@@ -349,14 +349,14 @@ public class ReconfigurationPlan {
         
         private List<Object[]> getTPCCSubKeySplits() {
         	List<Object[]> res = new ArrayList<>();
-        	res.add(new Object[]{ new Byte[2] });
-        	res.add(new Object[]{ new Byte[3] });
-        	res.add(new Object[]{ new Byte[4] });
-        	res.add(new Object[]{ new Byte[5] });
-        	res.add(new Object[]{ new Byte[6] });
-        	res.add(new Object[]{ new Byte[7] });
-        	res.add(new Object[]{ new Byte[8] });
-        	res.add(new Object[]{ new Byte[9] });
+        	res.add(new Object[]{ 2 });
+        	res.add(new Object[]{ 3 });
+        	res.add(new Object[]{ 4 });
+        	res.add(new Object[]{ 5 });
+        	res.add(new Object[]{ 6 });
+        	res.add(new Object[]{ 7 });
+        	res.add(new Object[]{ 8 });
+        	res.add(new Object[]{ 9 });
         	return res;
         }
         
@@ -370,7 +370,7 @@ public class ReconfigurationPlan {
         		Object[] min = range.getMinIncl().get(0).clone();
         		Object[] max = null;
         		VoltType vt_0 = temp.getColumnType(0);
-				Object max_0 = vt_0.classFromType().cast(new Long(min_long));
+			Object max_0 = min_long;
 				for(long i = min_long + 1; i <= max_long; i++) {	
         			for(Object[] subKeySplit : subKeySplits) {
         				assert(subKeySplit.length == min.length - 1);
@@ -388,7 +388,7 @@ public class ReconfigurationPlan {
         				min = max;
         			}
     				
-        			max_0 = vt_0.classFromType().cast(new Long(i));
+        			max_0 = i;
         			max[0] = max_0;
     				for(int j = 1; j < max.length; j++) {
     					VoltType vt = temp.getColumnType(j);
