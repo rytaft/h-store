@@ -201,6 +201,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     public static class PartitionPhase {
         protected Map<String, PartitionedTable> tables_map;
+        protected CatalogContext catalog_context;
 
         @SuppressWarnings("unchecked")
         public List<PartitionRange> getPartitions(String table_name) {
@@ -223,6 +224,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
          */
         public PartitionPhase(CatalogContext catalog_context, JSONObject phase, Map<String, String> partitionedTablesByFK) throws Exception {
             this.tables_map = new HashMap<String, PlannedPartitions.PartitionedTable>();
+            this.catalog_context = catalog_context;
             assert (phase.has(TABLES));
             JSONObject json_tables = phase.getJSONObject(TABLES);
             Iterator<String> table_names = json_tables.keys();
@@ -231,7 +233,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 JSONObject table_json = json_tables.getJSONObject(table_name.toLowerCase());
                 // Class<?> c = table_vt_map.get(table_name).classFromType();
                 // TODO fix partitiontype
-                this.tables_map.put(table_name, new PartitionedTable(table_name, table_json, catalog_context.getTableByName(table_name)));
+                this.tables_map.put(table_name, new PartitionedTable(table_name, table_json, catalog_context.getTableByName(table_name), getSubKeySplits(table_name, partitionedTablesByFK)));
             }
 
             //Add entries for tables that are partitioned on other columns
@@ -249,6 +251,24 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         protected PartitionPhase(Map<String, PlannedPartitions.PartitionedTable> table_map) {
             this.tables_map = table_map;
         }
+        
+        protected List<Object[]> getSubKeySplits(String table_name, Map<String, String> partitionedTablesByFK) {
+        	
+        	// HACK - this is currently hard coded for TPCC
+        	String partitionedTable = partitionedTablesByFK.get(table_name);        	
+        	List<Object[]> res = new ArrayList<>();
+        	if(partitionedTable.equals("district")) {
+        		res.add(new Object[]{ 2 });
+        		res.add(new Object[]{ 3 });
+        		res.add(new Object[]{ 4 });
+        		res.add(new Object[]{ 5 });
+        		res.add(new Object[]{ 6 });
+        		res.add(new Object[]{ 7 });
+        		res.add(new Object[]{ 8 });
+        		res.add(new Object[]{ 9 });
+        	}
+        	return res;
+        }
     }
 
     /**
@@ -262,9 +282,11 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         protected String table_name;
         private Table catalog_table;
         private JSONObject table_json;
+        protected List<Object[]> subKeySplits;
 
-        public PartitionedTable(String table_name, JSONObject table_json, Table catalog_table) throws Exception {
+        public PartitionedTable(String table_name, JSONObject table_json, Table catalog_table, List<Object[]> subKeySplits) throws Exception {
             this.catalog_table = catalog_table;
+            this.subKeySplits = subKeySplits;
             this.partitions = new ArrayList<>();
             this.table_name = table_name;
             this.table_json = table_json;
@@ -283,12 +305,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         }
         
         public PartitionedTable clone(String new_table_name, Table new_catalog_table) throws Exception{
-            return new PartitionedTable(new_table_name, this.table_json,new_catalog_table);
-        }
-
-        public PartitionedTable(List<PartitionRange> partitions, String table_name) {
-            this.partitions = partitions;
-            this.table_name = table_name;
+            return new PartitionedTable(new_table_name, this.table_json,new_catalog_table, this.subKeySplits);
         }
 
         public PartitionedTable(List<PartitionRange> partitions, String table_name, Table catalog_table) {

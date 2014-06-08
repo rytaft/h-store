@@ -38,7 +38,7 @@ import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
  */
 public class ReconfigurationPlan {
 
-    private static final Logger LOG = Logger.getLogger(ReconfigurationPlan.class);
+	private static final Logger LOG = Logger.getLogger(ReconfigurationPlan.class);
     protected Map<String,ReconfigurationTable> tables_map;
     
     //Helper map of partition ID and outgoing/incoming ranges for this reconfiguration
@@ -88,7 +88,7 @@ public class ReconfigurationPlan {
     }
 
     public static class ReconfigurationTable {
-        private List<ReconfigurationRange> reconfigurations;
+    	private List<ReconfigurationRange> reconfigurations;
         String table_name;
         HStoreConf conf = null;
         
@@ -174,7 +174,7 @@ public class ReconfigurationPlan {
             }
           }
           if(true) {
-              setReconfigurations(splitReconfigurationsOnPartitionKeys(getReconfigurations(), new_table.getCatalog_table(), getTPCCSubKeySplits()));
+              setReconfigurations(splitReconfigurationsOnPartitionKeys(getReconfigurations(), new_table.getCatalog_table(), old_table.subKeySplits));
           } else { 
         	  setReconfigurations(
                   mergeReconfigurations(splitReconfigurations(getReconfigurations(),new_table.getCatalog_table()), new_table.getCatalog_table()));
@@ -347,19 +347,6 @@ public class ReconfigurationPlan {
             return reconfiguration_range;
         }
         
-        private List<Object[]> getTPCCSubKeySplits() {
-        	List<Object[]> res = new ArrayList<>();
-        	res.add(new Object[]{ 2 });
-        	res.add(new Object[]{ 3 });
-        	res.add(new Object[]{ 4 });
-        	res.add(new Object[]{ 5 });
-        	res.add(new Object[]{ 6 });
-        	res.add(new Object[]{ 7 });
-        	res.add(new Object[]{ 8 });
-        	res.add(new Object[]{ 9 });
-        	return res;
-        }
-        
         private List<ReconfigurationRange> splitReconfigurationsOnPartitionKeys(List<ReconfigurationRange> reconfiguration_ranges, Table catalog_table, List<Object[]> subKeySplits) {
         	List<ReconfigurationRange> res = new ArrayList<>();
         	for(ReconfigurationRange range : reconfiguration_ranges) {
@@ -369,13 +356,11 @@ public class ReconfigurationPlan {
         		long max_long = ((Number) range.getMaxExcl().get(0)[0]).longValue();
         		Object[] min = range.getMinIncl().get(0).clone();
         		Object[] max = null;
-        		VoltType vt_0 = temp.getColumnType(0);
-			Object max_0 = min_long;
-				for(long i = min_long + 1; i <= max_long; i++) {	
+        		for(long i = min_long; i < max_long; i++) {	
         			for(Object[] subKeySplit : subKeySplits) {
         				assert(subKeySplit.length == min.length - 1);
         				max = new Object[min.length];
-        				max[0] = max_0;
+        				max[0] = i;
         				for(int j = 1; j < max.length; j++) {
         					max[j] = subKeySplit[j-1];
         				}
@@ -388,8 +373,7 @@ public class ReconfigurationPlan {
         				min = max;
         			}
     				
-        			max_0 = i;
-        			max[0] = max_0;
+        			max[0] = i+1;
     				for(int j = 1; j < max.length; j++) {
     					VoltType vt = temp.getColumnType(j);
     					max[j] = vt.getNullValue();
