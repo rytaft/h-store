@@ -363,7 +363,8 @@ public class ReconfigurationPlan {
         private List<ReconfigurationRange> splitReconfigurationsOnPartitionKeys(List<ReconfigurationRange> reconfiguration_ranges, Table catalog_table, List<Object[]> subKeySplits) {
         	List<ReconfigurationRange> res = new ArrayList<>();
         	for(ReconfigurationRange range : reconfiguration_ranges) {
-        		VoltTable temp = range.keySchema.clone(0);
+        		LOG.info("Old range: " + range.toString());
+				VoltTable temp = range.keySchema.clone(0);
         	    long min_long = ((Number) range.getMinIncl().get(0)[0]).longValue();
         		long max_long = ((Number) range.getMaxExcl().get(0)[0]).longValue();
         		Object[] min = range.getMinIncl().get(0).clone();
@@ -383,6 +384,7 @@ public class ReconfigurationPlan {
         				max = temp.getRowArray();
         				temp.clearRowData();
         				res.add(new ReconfigurationRange(catalog_table, min, max, range.old_partition, range.new_partition));
+        				LOG.info("New range: " + res.get(res.size()-1).toString());
         				min = max;
         			}
     				
@@ -397,6 +399,7 @@ public class ReconfigurationPlan {
     				max = temp.getRowArray();
     				temp.clearRowData();
     				res.add(new ReconfigurationRange(catalog_table, min, max, range.old_partition, range.new_partition));
+    				LOG.info("New range: " + res.get(res.size()-1).toString());
     				min = max;
         		}
 			}
