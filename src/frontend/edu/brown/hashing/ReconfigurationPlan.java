@@ -173,8 +173,14 @@ public class ReconfigurationPlan {
 
             }
           }
-          setReconfigurations(
+          if(true) {
+              setReconfigurations(splitReconfigurationsOnPartitionKeys(getReconfigurations(), new_table.getCatalog_table(), getTPCCSubKeySplits()));
+          } else { 
+        	  setReconfigurations(
                   mergeReconfigurations(splitReconfigurations(getReconfigurations(),new_table.getCatalog_table()), new_table.getCatalog_table()));
+          }
+             
+        
         }
         
         private List<ReconfigurationRange> mergeReconfigurations(List<ReconfigurationRange> reconfiguration_range, Table catalog_table) {
@@ -339,6 +345,63 @@ public class ReconfigurationPlan {
             }
 
             return reconfiguration_range;
+        }
+        
+        private List<Object[]> getTPCCSubKeySplits() {
+        	List<Object[]> res = new ArrayList<>();
+        	res.add(new Object[]{ new Byte[2] });
+        	res.add(new Object[]{ new Byte[3] });
+        	res.add(new Object[]{ new Byte[4] });
+        	res.add(new Object[]{ new Byte[5] });
+        	res.add(new Object[]{ new Byte[6] });
+        	res.add(new Object[]{ new Byte[7] });
+        	res.add(new Object[]{ new Byte[8] });
+        	res.add(new Object[]{ new Byte[9] });
+        	return res;
+        }
+        
+        private List<ReconfigurationRange> splitReconfigurationsOnPartitionKeys(List<ReconfigurationRange> reconfiguration_ranges, Table catalog_table, List<Object[]> subKeySplits) {
+        	List<ReconfigurationRange> res = new ArrayList<>();
+        	for(ReconfigurationRange range : reconfiguration_ranges) {
+        		VoltTable temp = range.keySchema.clone(0);
+        	    long min_long = ((Number) range.getMinIncl().get(0)[0]).longValue();
+        		long max_long = ((Number) range.getMaxExcl().get(0)[0]).longValue();
+        		Object[] min = range.getMinIncl().get(0).clone();
+        		Object[] max = null;
+        		VoltType vt_0 = temp.getColumnType(0);
+				Object max_0 = vt_0.classFromType().cast(new Long(min_long));
+				for(long i = min_long + 1; i <= max_long; i++) {	
+        			for(Object[] subKeySplit : subKeySplits) {
+        				assert(subKeySplit.length == min.length - 1);
+        				max = new Object[min.length];
+        				max[0] = max_0;
+        				for(int j = 1; j < max.length; j++) {
+        					max[j] = subKeySplit[j-1];
+        				}
+        				temp.addRow(max);
+        				temp.advanceToRow(0);
+        				max = temp.getRowArray();
+        				temp.clearRowData();
+        				res.add(new ReconfigurationRange(catalog_table, min, max, range.old_partition, range.new_partition));
+        				min = max;
+        			}
+    				
+        			max_0 = vt_0.classFromType().cast(new Long(i));
+        			max[0] = max_0;
+    				for(int j = 1; j < max.length; j++) {
+    					VoltType vt = temp.getColumnType(j);
+    					max[j] = vt.getNullValue();
+    				}
+    				temp.addRow(max);
+    				temp.advanceToRow(0);
+    				max = temp.getRowArray();
+    				temp.clearRowData();
+    				res.add(new ReconfigurationRange(catalog_table, min, max, range.old_partition, range.new_partition));
+    				min = max;
+        		}
+			}
+
+            return res;
         }
 
 
