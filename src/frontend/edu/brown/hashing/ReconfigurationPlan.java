@@ -373,7 +373,8 @@ public class ReconfigurationPlan {
         				min = max;
         			}
     				
-        			max[0] = i+1;
+        			max = new Object[min.length];
+    				max[0] = i+1;
     				for(int j = 1; j < max.length; j++) {
     					VoltType vt = temp.getColumnType(j);
     					max[j] = vt.getNullValue();
