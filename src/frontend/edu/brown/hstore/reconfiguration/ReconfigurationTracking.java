@@ -177,7 +177,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     @Override
     public boolean markKeyAsMigratedOut(String table_name, List<Object> key) {
         for (ReconfigurationRange range : this.outgoing_ranges) {
-            if (range.inRange(key) && range.getTableName().equalsIgnoreCase(table_name)){
+            if (range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                 markRangeAsPartiallyMigratedOut(range);
             }
         }
@@ -187,7 +187,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     @Override
     public boolean markKeyAsReceived(String table_name, List<Object> key) {
         for (ReconfigurationRange range : this.incoming_ranges) {
-            if (range.inRange(key) && range.getTableName().equalsIgnoreCase(table_name)){
+            if (range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                 markRangeAsPartiallyReceived(range);
             }
         }
@@ -236,7 +236,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 } else {                       
                     //check if the key was received out in a range        
                     for(ReconfigurationRange range : this.dataMigratedIn){
-                        if(range.inRange(key) && range.getTableName().equalsIgnoreCase(table_name)){
+                        if(range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                             if (debug.val) LOG.debug(String.format("Key has been migrated in range %s %s (%s)",range, key,table_name));
                             return true;
                         }
@@ -253,14 +253,14 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 }                
                 //check to see if this key was migrated in a range
                 for(ReconfigurationRange range : this.dataMigratedOut){
-                    if(range.inRange(key) && range.getTableName().equalsIgnoreCase(table_name)){
+                    if(range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                         if (debug.val) LOG.debug(String.format("Key has been migrated out range %s %s (%s)",range, key,table_name));
                         return false;
                     }
                 }                
                 //check to see if this key was migrated in a range
                 for(ReconfigurationRange range : this.dataPartiallyMigratedOut){
-                    if(range.inRange(key) && range.getTableName().equalsIgnoreCase(table_name)){
+                    if(range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                         if (debug.val) LOG.debug(String.format("Key may have been migrated out in partially dirtied range %s %s (%s)",range, key,table_name));
                         return false;
                     }
@@ -310,7 +310,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 } else {                       
                     //check if the key was received out in a range        
                     for(ReconfigurationRange range : this.dataMigratedIn){
-                        if(range.inRange(key) && range.getTableName().equalsIgnoreCase(table_name)){
+                        if(range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                             return true;
                         }
                     }
@@ -383,7 +383,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 
                 //check to see if this key was migrated in a range
                 for(ReconfigurationRange range : this.dataMigratedOut){
-                    if(range.inRange(key) && range.getTableName().equalsIgnoreCase(table_name)){
+                    if(range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                         ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table, previousPartition,expectedPartition, key);
                         throw ex;
                     }
@@ -391,7 +391,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 
               //check to see if this key was migrated in a range
                 for(ReconfigurationRange range : this.dataPartiallyMigratedOut){
-                    if(range.inRange(key) && range.getTableName().equalsIgnoreCase(table_name)){
+                    if(range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                         ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table, previousPartition,expectedPartition, key);
                         throw ex;
                     }
