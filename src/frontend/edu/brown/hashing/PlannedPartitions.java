@@ -254,20 +254,23 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         
         protected List<Object[]> getSubKeySplits(String table_name, Map<String, String> partitionedTablesByFK) {
         	
-        	// HACK - this is currently hard coded for TPCC
-        	String partitionedTable = partitionedTablesByFK.get(table_name);        	
-        	List<Object[]> res = new ArrayList<>();
-        	if(partitionedTable.equals("district")) {
-        		res.add(new Object[]{ 2 });
-        		res.add(new Object[]{ 3 });
-        		res.add(new Object[]{ 4 });
-        		res.add(new Object[]{ 5 });
-        		res.add(new Object[]{ 6 });
-        		res.add(new Object[]{ 7 });
-        		res.add(new Object[]{ 8 });
-        		res.add(new Object[]{ 9 });
-        	}
-        	return res;
+	    // HACK - this is currently hard coded for TPCC
+	    String partitionedTable = partitionedTablesByFK.get(table_name);        	
+	    if(partitionedTable == null) {
+		partitionedTable = table_name;
+	    } 
+	    List<Object[]> res = new ArrayList<>();
+	    if (partitionedTable.equals("district")) {
+		res.add(new Object[]{ 2 });
+		res.add(new Object[]{ 3 });
+		res.add(new Object[]{ 4 });
+		res.add(new Object[]{ 5 });
+		res.add(new Object[]{ 6 });
+		res.add(new Object[]{ 7 });
+		res.add(new Object[]{ 8 });
+		res.add(new Object[]{ 9 });
+	    }
+	    return res;
         }
     }
 
