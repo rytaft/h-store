@@ -179,12 +179,12 @@ public class ReconfigurationUtil {
     	List<ReconfigurationPlan> splitPlans = new ArrayList<>();
     	
     	// split up the ranges by key schema so we only compare ranges with the same key schema
-    	HashMap<VoltType[], List<ReconfigurationRange>> rangeMap = new HashMap<>();
+    	HashMap<List<VoltType>, List<ReconfigurationRange>> rangeMap = new HashMap<>();
     	for(List<ReconfigurationRange> ranges : plan.getIncoming_ranges().values()){
     		for(ReconfigurationRange range : ranges) {
-    			VoltType[] types = new VoltType[range.getKeySchema().getColumnCount()];
-    			for(int i = 0; i < types.length; i++) {
-    				types[i] = range.getKeySchema().getColumnType(i);
+    			List<VoltType> types = new ArrayList<VoltType>(range.getKeySchema().getColumnCount());
+    			for(int i = 0; i < range.getKeySchema().getColumnCount(); i++) {
+    				types.add(range.getKeySchema().getColumnType(i));
     			}
     			if(rangeMap.get(types) == null) {
     				rangeMap.put(types, new ArrayList<ReconfigurationRange>());
@@ -195,7 +195,7 @@ public class ReconfigurationUtil {
     	
     	// sort all the ranges with the same key schema
     	int numRanges = 0;
-    	for(Entry<VoltType[],List<ReconfigurationRange>> entry : rangeMap.entrySet()) {
+    	for(Entry<List<VoltType>,List<ReconfigurationRange>> entry : rangeMap.entrySet()) {
     		rangeMap.put(entry.getKey(), CollectionUtil.sort(entry.getValue()));
     		numRanges += entry.getValue().size();
     	}
