@@ -177,28 +177,53 @@ public class ReconfigurationUtil {
     public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(ReconfigurationPlan plan, int numberOfSplits){
     	
     	List<ReconfigurationPlan> splitPlans = new ArrayList<>();
-    	List<ReconfigurationRange> ranges = new ArrayList<>();
-    	for(List<ReconfigurationRange> range : plan.getIncoming_ranges().values()){
-    		ranges.addAll(range);
+    	
+    	// split up the ranges by key schema so we only compare ranges with the same key schema
+    	HashMap<VoltType[], List<ReconfigurationRange>> rangeMap = new HashMap<>();
+    	for(List<ReconfigurationRange> ranges : plan.getIncoming_ranges().values()){
+    		for(ReconfigurationRange range : ranges) {
+    			VoltType[] types = new VoltType[range.getKeySchema().getColumnCount()];
+    			for(int i = 0; i < types.length; i++) {
+    				types[i] = range.getKeySchema().getColumnType(i);
+    			}
+    			if(rangeMap.get(types) == null) {
+    				rangeMap.put(types, new ArrayList<ReconfigurationRange>());
+    			}
+    			rangeMap.get(types).add(range);
+    		}
         }
     	
-    	ranges = CollectionUtil.sort(ranges);
-    	
-    	if(numberOfSplits > ranges.size()) {
-    		numberOfSplits = ranges.size();
+    	// sort all the ranges with the same key schema
+    	int numRanges = 0;
+    	for(Entry<VoltType[],List<ReconfigurationRange>> entry : rangeMap.entrySet()) {
+    		rangeMap.put(entry.getKey(), CollectionUtil.sort(entry.getValue()));
+    		numRanges += entry.getValue().size();
+    	}
+
+    	if(numberOfSplits > numRanges) {
+    		numberOfSplits = numRanges;
     		LOG.info("Limiting number of range splits to " + numberOfSplits);
     	}
-    	
-    	int rangesPerSplit = ranges.size()/numberOfSplits;
-    	for(int i = 0; i <= ranges.size(); i += rangesPerSplit) {
-    		List<ReconfigurationRange> split = ranges.subList(i, Math.min(i + rangesPerSplit, ranges.size()));
-    		ReconfigurationPlan newPlan = new ReconfigurationPlan();
-    		for(ReconfigurationRange range : split) {
+
+    	// split up the ranges into numberOfSplits chunks
+    	int rangesPerSplit = (int) Math.ceil(((double) numRanges)/numberOfSplits);
+    	int i = 0;
+    	ReconfigurationPlan newPlan = new ReconfigurationPlan();
+    	for(List<ReconfigurationRange> ranges : rangeMap.values()) {
+    		for(ReconfigurationRange range : ranges) {
     			newPlan.addRange(range);
+    			i++;
+    			if(i == rangesPerSplit) {
+    				LOG.info("Adding a new reconfiguration plan: " + newPlan.getIncoming_ranges().values().toString());
+    				splitPlans.add(newPlan);
+    				i = 0;
+    				newPlan = new ReconfigurationPlan();
+    			}
     		}
-    		LOG.info("Adding a new reconfiguration plan: " + newPlan.getIncoming_ranges().values().toString());
+    	}
+    	if(i > 0) {
     		splitPlans.add(newPlan);
-     	}
+    	}
         
         return splitPlans;
     }
