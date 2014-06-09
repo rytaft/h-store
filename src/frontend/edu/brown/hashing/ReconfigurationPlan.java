@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Collection;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
@@ -418,7 +419,7 @@ public class ReconfigurationPlan {
        * 
        * @author aelmore, rytaft
        */
-      public static class ReconfigurationRange{
+      public static class ReconfigurationRange implements Comparable<ReconfigurationRange> {
         private int old_partition;
         private int new_partition;
         private String table_name; 
@@ -492,6 +493,17 @@ public class ReconfigurationPlan {
         	this.old_partition = old_partition;
             this.new_partition = new_partition;
             this.table_name = table.getName().toLowerCase();
+        }
+        
+        @Override
+        public int compareTo(ReconfigurationRange o) {
+        	if (cmp.compare(this.min_incl.get(0), o.min_incl.get(0)) < 0) {
+        		return -1;
+        	} else if (cmp.compare(this.min_incl.get(0), o.min_incl.get(0)) == 0) {
+        		return cmp.compare(this.max_excl.get(0), o.max_excl.get(0));
+        	} else {
+        		return 1;
+        	}
         }
         
         @Override
@@ -700,5 +712,9 @@ public class ReconfigurationPlan {
 
       public Map<Integer, List<ReconfigurationRange>> getIncoming_ranges() {
           return incoming_ranges;
+      }
+      
+      public Collection<ReconfigurationTable> getReconfigurationTables() {
+    	  return this.tables_map.values();
       }
 }

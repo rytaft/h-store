@@ -26,6 +26,8 @@ import org.voltdb.utils.Pair;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.hashing.ReconfigurationPlan.ReconfigurationTable;
+import edu.brown.utils.CollectionUtil;
 
 public class ReconfigurationUtil {
     private static final Logger LOG = Logger.getLogger(ReconfigurationUtil.class);
@@ -117,18 +119,18 @@ public class ReconfigurationUtil {
         migrationPairsList.addAll(migrationPairs);
         Collections.sort(migrationPairsList);
         
-        //Limit the number of splits to number of pairs times some constant
-        int splitsPerPair = 1;
-        if (numberOfSplits > migrationPairsList.size()) {
-        	splitsPerPair = numberOfSplits/migrationPairsList.size(); // integer division
-            numberOfSplits = migrationPairsList.size() * splitsPerPair;
+        //Limit the number of splits to number of pairs
+        int extraSplits = 0;
+        if (numberOfSplits > migrationPairsList.size()){
+        	extraSplits = numberOfSplits - migrationPairsList.size();
+            numberOfSplits = migrationPairsList.size();
             LOG.info("Limiting number of pair splits to " + numberOfSplits);
         }
         
-        //Split pairs into groups based on numSplits param
+        //Split pairs into groups based on numSplits paramt
         int pairCounter = 0;
         for(ReconfigurationPair mPair : migrationPairsList){
-            pairToSplitMapping.put(new Pair<Integer, Integer>(mPair.from, mPair.to), pairCounter % Math.min(numberOfSplits, migrationPairsList.size()));
+            pairToSplitMapping.put(new Pair<Integer, Integer>(mPair.from, mPair.to), pairCounter % numberOfSplits);
             pairCounter++;
         }
 
@@ -139,15 +141,12 @@ public class ReconfigurationUtil {
 
         
         //put ranges into split rangePLans
-        int factor = 1;
         for(Entry<Integer, List<ReconfigurationRange>> entry : plan.getIncoming_ranges().entrySet()){
             for(ReconfigurationRange range : entry.getValue()){
                 //find which split this range is going into
                 Integer splitIndex = pairToSplitMapping.get(new Pair<Integer, Integer>(range.getOldPartition(), range.getNewPartition()));
                 //add it
-                splitIndex *= factor;
                 splitPlans.get(splitIndex).addRange(range);
-                factor = (factor % splitsPerPair) + 1;
             }
         }
 
@@ -162,6 +161,44 @@ public class ReconfigurationUtil {
             }
             LOG.info(String.format("PlanSplit:%s has the pairs(%s): %s", j, debugSendingData.size(), StringUtils.join(debugSendingData,",")));
         }
+        
+        int extraSplitsPerPlan = extraSplits / splitPlans.size();
+        if(extraSplitsPerPlan > 0) {
+        	List<ReconfigurationPlan> splitPlansAgain = new ArrayList<>();
+        	for(ReconfigurationPlan splitPlan : splitPlans) {
+        		splitPlansAgain.addAll(fineGrainedSplitReconfigurationPlan(splitPlan, extraSplitsPerPlan));
+        	}
+        	return splitPlansAgain;
+        }
+        
+        return splitPlans;
+    }
+    
+    public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(ReconfigurationPlan plan, int numberOfSplits){
+    	
+    	List<ReconfigurationPlan> splitPlans = new ArrayList<>();
+    	List<ReconfigurationRange> ranges = new ArrayList<>();
+    	for(List<ReconfigurationRange> range : plan.getIncoming_ranges().values()){
+    		ranges.addAll(range);
+        }
+    	
+    	ranges = CollectionUtil.sort(ranges);
+    	
+    	if(numberOfSplits > ranges.size()) {
+    		numberOfSplits = ranges.size();
+    		LOG.info("Limiting number of range splits to " + numberOfSplits);
+    	}
+    	
+    	int rangesPerSplit = ranges.size()/numberOfSplits;
+    	for(int i = 0; i <= ranges.size(); i += rangesPerSplit) {
+    		List<ReconfigurationRange> split = ranges.subList(i, Math.min(i + rangesPerSplit, ranges.size()));
+    		ReconfigurationPlan newPlan = new ReconfigurationPlan();
+    		for(ReconfigurationRange range : split) {
+    			newPlan.addRange(range);
+    		}
+    		LOG.info("Adding a new reconfiguration plan: " + newPlan.getIncoming_ranges().values().toString());
+    		splitPlans.add(newPlan);
+     	}
         
         return splitPlans;
     }
