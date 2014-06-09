@@ -260,7 +260,7 @@ public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(Reco
     		ReconfigurationPlan newPlan = new ReconfigurationPlan();
     		ReconfigurationRange prevRange = null;
         	for(ReconfigurationRange range : ranges) {
-    			if(prevRange != null && !range.equals(prevRange)) {
+    			if(prevRange != null && !range.equalsIgnoreTable(prevRange)) {
     				LOG.info("Adding a new reconfiguration plan: " + newPlan.getIncoming_ranges().values().toString());
     				splitPlans.add(newPlan);
     				newPlan = new ReconfigurationPlan();

@@ -588,6 +588,31 @@ public class ReconfigurationPlan {
                 return false;
             return true;
         }
+        
+        public boolean equalsIgnoreTable(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            ReconfigurationRange other = (ReconfigurationRange) obj;
+            if (new_partition != other.new_partition)
+                return false;
+            if (old_partition != other.old_partition)
+                return false;
+            if (min_incl == null) {
+                if (other.min_incl != null)
+                    return false;
+            } else if (!min_incl.equals(other.min_incl))
+                return false;
+            if (max_excl == null) {
+                if (other.max_excl != null)
+                    return false;
+            } else if (!max_excl.equals(other.max_excl))
+                return false;
+            return true;
+        }
 
         public synchronized boolean inRange(List<Object> ids) {
         	Object[] keys = new Object[this.keySchema.getColumnCount()];
