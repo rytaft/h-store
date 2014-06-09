@@ -166,7 +166,8 @@ public class ReconfigurationUtil {
         if(extraSplitsPerPlan > 0) {
         	List<ReconfigurationPlan> splitPlansAgain = new ArrayList<>();
         	for(ReconfigurationPlan splitPlan : splitPlans) {
-        		splitPlansAgain.addAll(fineGrainedSplitReconfigurationPlan(splitPlan, extraSplitsPerPlan));
+        		//splitPlansAgain.addAll(fineGrainedSplitReconfigurationPlan(splitPlan, extraSplitsPerPlan));
+        		splitPlansAgain.addAll(fineGrainedSplitReconfigurationPlan(splitPlan));
         	}
         	return splitPlansAgain;
         }
@@ -224,6 +225,55 @@ public class ReconfigurationUtil {
     	if(i > 0) {
     		splitPlans.add(newPlan);
     	}
+        
+        return splitPlans;
+    }
+    
+public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(ReconfigurationPlan plan){
+    	
+    	List<ReconfigurationPlan> splitPlans = new ArrayList<>();
+    	
+    	// split up the ranges by key schema so we only compare ranges with the same key schema
+    	HashMap<List<VoltType>, List<ReconfigurationRange>> rangeMap = new HashMap<>();
+    	for(List<ReconfigurationRange> ranges : plan.getIncoming_ranges().values()){
+    		for(ReconfigurationRange range : ranges) {
+    			List<VoltType> types = new ArrayList<VoltType>(range.getKeySchema().getColumnCount());
+    			for(int i = 0; i < range.getKeySchema().getColumnCount(); i++) {
+    				types.add(range.getKeySchema().getColumnType(i));
+    			}
+    			if(rangeMap.get(types) == null) {
+    				rangeMap.put(types, new ArrayList<ReconfigurationRange>());
+    			}
+    			rangeMap.get(types).add(range);
+    		}
+        }
+    	
+    	// sort all the ranges with the same key schema
+    	int numRanges = 0;
+    	for(Entry<List<VoltType>,List<ReconfigurationRange>> entry : rangeMap.entrySet()) {
+    		rangeMap.put(entry.getKey(), CollectionUtil.sort(entry.getValue()));
+    		numRanges += entry.getValue().size();
+    	}
+
+    	// combine ranges that have the same value
+    	for(List<ReconfigurationRange> ranges : rangeMap.values()) {
+    		ReconfigurationPlan newPlan = new ReconfigurationPlan();
+    		ReconfigurationRange prevRange = null;
+        	for(ReconfigurationRange range : ranges) {
+    			if(prevRange != null && !range.equals(prevRange)) {
+    				LOG.info("Adding a new reconfiguration plan: " + newPlan.getIncoming_ranges().values().toString());
+    				splitPlans.add(newPlan);
+    				newPlan = new ReconfigurationPlan();
+    			}
+    				
+    			newPlan.addRange(range);
+    			prevRange = range;
+    		}
+        	if(!newPlan.getIncoming_ranges().isEmpty()) {
+        		splitPlans.add(newPlan);
+        	}
+    	}
+    	
         
         return splitPlans;
     }
