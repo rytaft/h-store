@@ -270,7 +270,8 @@ public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(Reco
     			prevRange = range;
     		}
         	if(!newPlan.getIncoming_ranges().isEmpty()) {
-        		splitPlans.add(newPlan);
+		    LOG.info("Adding a new reconfiguration plan: " + newPlan.getIncoming_ranges().values().toString());
+		    splitPlans.add(newPlan);
         	}
     	}
     	

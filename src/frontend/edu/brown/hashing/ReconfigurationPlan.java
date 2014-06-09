@@ -560,57 +560,112 @@ public class ReconfigurationPlan {
         
         @Override
         public boolean equals(Object obj) {
-            if (this == obj)
+            if (this == obj) {
                 return true;
-            if (obj == null)
+	    }
+	    if (obj == null) {
                 return false;
-            if (getClass() != obj.getClass())
+            }
+	    if (getClass() != obj.getClass()) {
                 return false;
+	    }
+
             ReconfigurationRange other = (ReconfigurationRange) obj;
-            if (new_partition != other.new_partition)
+            if (new_partition != other.new_partition) {
                 return false;
-            if (old_partition != other.old_partition)
+	    }
+            if (old_partition != other.old_partition) {
                 return false;
+	    }
+
             if (table_name == null) {
-                if (other.table_name != null)
+                if (other.table_name != null) {
                     return false;
-            } else if (!table_name.equals(other.table_name))
+		}
+            } else if (!table_name.equals(other.table_name)) {
                 return false;
-            if (min_incl == null) {
-                if (other.min_incl != null)
+	    }           
+
+	    if (min_incl == null) {
+                if (other.min_incl != null) {
                     return false;
-            } else if (!min_incl.equals(other.min_incl))
-                return false;
+		}
+            } else {
+		if(min_incl.size() != other.min_incl.size()) {
+		    return false;
+		}
+		for(int i = 0; i < min_incl.size(); i++) {
+		    if (!Arrays.asList(min_incl.get(i)).equals(Arrays.asList(other.min_incl.get(i)))) {
+			return false;
+		    }
+		}
+	    }
+
             if (max_excl == null) {
-                if (other.max_excl != null)
+                if (other.max_excl != null) {
                     return false;
-            } else if (!max_excl.equals(other.max_excl))
-                return false;
-            return true;
+		}
+            } else {
+		if(max_excl.size() != other.max_excl.size()) {
+		    return false;
+		}
+		for(int i = 0; i < max_excl.size(); i++) {
+		    if (!Arrays.asList(max_excl.get(i)).equals(Arrays.asList(other.max_excl.get(i)))) {
+			return false;
+		    }
+		}
+	    }
+	    return true;
         }
         
         public boolean equalsIgnoreTable(Object obj) {
-            if (this == obj)
+            if (this == obj) {
                 return true;
-            if (obj == null)
+	    }
+	    if (obj == null) {
                 return false;
-            if (getClass() != obj.getClass())
+            }
+	    if (getClass() != obj.getClass()) {
                 return false;
+	    }
+
             ReconfigurationRange other = (ReconfigurationRange) obj;
-            if (new_partition != other.new_partition)
+            if (new_partition != other.new_partition) {
                 return false;
-            if (old_partition != other.old_partition)
+	    }
+            if (old_partition != other.old_partition) {
                 return false;
+	    }
+
             if (min_incl == null) {
-                if (other.min_incl != null)
+                if (other.min_incl != null) {
                     return false;
-            } else if (!min_incl.equals(other.min_incl))
-                return false;
+		}
+            } else {
+		if(min_incl.size() != other.min_incl.size()) {
+		    return false;
+		}
+		for(int i = 0; i < min_incl.size(); i++) {
+		    if (!Arrays.asList(min_incl.get(i)).equals(Arrays.asList(other.min_incl.get(i)))) {
+			return false;
+		    }
+		}
+	    }
+
             if (max_excl == null) {
-                if (other.max_excl != null)
+                if (other.max_excl != null) {
                     return false;
-            } else if (!max_excl.equals(other.max_excl))
-                return false;
+		}
+            } else {
+		if(max_excl.size() != other.max_excl.size()) {
+		    return false;
+		}
+		for(int i = 0; i < max_excl.size(); i++) {
+		    if (!Arrays.asList(max_excl.get(i)).equals(Arrays.asList(other.max_excl.get(i)))) {
+			return false;
+		    }
+		}
+	    }
             return true;
         }
 
