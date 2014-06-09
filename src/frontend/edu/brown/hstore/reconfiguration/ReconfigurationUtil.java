@@ -117,32 +117,37 @@ public class ReconfigurationUtil {
         migrationPairsList.addAll(migrationPairs);
         Collections.sort(migrationPairsList);
         
-        //Limit the number of splits to number of pairs
-        if (numberOfSplits > migrationPairsList.size()){
-            numberOfSplits = migrationPairsList.size();
+        //Limit the number of splits to number of pairs times some constant
+        int splitsPerPair = 1;
+        if (numberOfSplits > migrationPairsList.size()) {
+        	splitsPerPair = numberOfSplits/migrationPairsList.size(); // integer division
+            numberOfSplits = migrationPairsList.size() * splitsPerPair;
             LOG.info("Limiting number of pair splits to " + numberOfSplits);
         }
         
-        //Split pairs into groups based on numSplits paramt
+        //Split pairs into groups based on numSplits param
         int pairCounter = 0;
         for(ReconfigurationPair mPair : migrationPairsList){
-            pairToSplitMapping.put(new Pair<Integer, Integer>(mPair.from, mPair.to), pairCounter % numberOfSplits);
+            pairToSplitMapping.put(new Pair<Integer, Integer>(mPair.from, mPair.to), pairCounter % Math.min(numberOfSplits, migrationPairsList.size()));
             pairCounter++;
         }
 
-	List<ReconfigurationPlan> splitPlans = new ArrayList<>();
+        List<ReconfigurationPlan> splitPlans = new ArrayList<>();
         for(int i = 0; i < numberOfSplits; i++){
             splitPlans.add(new ReconfigurationPlan());
         }
 
         
         //put ranges into split rangePLans
+        int factor = 1;
         for(Entry<Integer, List<ReconfigurationRange>> entry : plan.getIncoming_ranges().entrySet()){
             for(ReconfigurationRange range : entry.getValue()){
                 //find which split this range is going into
                 Integer splitIndex = pairToSplitMapping.get(new Pair<Integer, Integer>(range.getOldPartition(), range.getNewPartition()));
                 //add it
+                splitIndex *= factor;
                 splitPlans.get(splitIndex).addRange(range);
+                factor = (factor % splitsPerPair) + 1;
             }
         }
 
@@ -223,26 +228,6 @@ public class ReconfigurationUtil {
         }  
         
 		return vt;
-    }
-
-    
-    public static VoltTable getExtractVoltTable(List<Long> minInclusives, List<Long> maxExclusives) {
-        if(minInclusives.size()!=maxExclusives.size()){
-            throw new RuntimeException("Min inclusive list different size than maxExclusives.");
-        }
-        ColumnInfo extractTableColumns[] = new ColumnInfo[4];
-
-        extractTableColumns[0] = new ColumnInfo("TABLE_NAME", VoltType.INTEGER);
-        extractTableColumns[1] = new ColumnInfo("KEY_TYPE", VoltType.INTEGER);
-        extractTableColumns[2] = new ColumnInfo("MIN_INCLUSIVE", VoltType.BIGINT); // range.getVt());
-        extractTableColumns[3] = new ColumnInfo("MAX_EXCLUSIVE", VoltType.BIGINT);// range.getVt());
-
-        VoltTable vt = new VoltTable(extractTableColumns);
-        for (int i = 0; i < minInclusives.size(); i++) {
-            vt.addRow(1, 1, minInclusives.get(i), maxExclusives.get(i));
-        }
-
-        return vt;       
     }
     
     public static ReconfigurationRange getReconfigurationRange(Table table, Long[] mins, 
