@@ -257,20 +257,43 @@ TableCatalogDelegate::init(ExecutorContext *executorContext,
         partitionColumnIndex = partitionColumn->index();
     }
 
+    // composite key partition columns
+    vector<int> partitionColumns;
+
+    // Since the columns are not going to come back in the proper order from
+    // the catalogs, we'll use the index attribute to make sure we put them
+    // in the right order
+    partitionColumns.resize(catalogTable.partitioncolumns().size());
+    map<string, catalog::ColumnRef*>::const_iterator pcolref_iterator;
+    for (pcolref_iterator = catalogTable.partitioncolumns().begin();
+	 pcolref_iterator != catalogTable.partitioncolumns().end();
+	 pcolref_iterator++) {
+        catalog::ColumnRef *catalog_colref = pcolref_iterator->second;
+	if (catalog_colref->index() < 0) {
+	    VOLT_ERROR("Invalid partition column '%d' in table '%s'",
+		       catalog_colref->index(),
+		       catalogTable.name().c_str());
+	    delete [] columnNames;
+	    return false;
+	}
+      
+	partitionColumns[catalog_colref->index()] = catalog_colref->column()->index();
+    }
+
     // no primary key
     if (pkey_index_id.size() == 0) {
         m_table = TableFactory::getPersistentTable(databaseId, executorContext,
-                                                 catalogTable.name(), schema, columnNames,
-                                                 indexes, partitionColumnIndex,
-                                                 isExportEnabledForTable(catalogDatabase, table_id),
-                                                 isTableExportOnly(catalogDatabase, table_id));
+						   catalogTable.name(), schema, columnNames,
+						   indexes, partitionColumnIndex, partitionColumns,
+						   isExportEnabledForTable(catalogDatabase, table_id),
+						   isTableExportOnly(catalogDatabase, table_id));
         
     } else {
         m_table = TableFactory::getPersistentTable(databaseId, executorContext,
-                                                 catalogTable.name(), schema, columnNames,
-                                                 pkey_index, indexes, partitionColumnIndex,
-                                                 isExportEnabledForTable(catalogDatabase, table_id),
-                                                 isTableExportOnly(catalogDatabase, table_id));
+						   catalogTable.name(), schema, columnNames,
+						   pkey_index, indexes, partitionColumnIndex, partitionColumns,
+						   isExportEnabledForTable(catalogDatabase, table_id),
+						   isTableExportOnly(catalogDatabase, table_id));
     }
     
     #ifdef ANTICACHE

@@ -6,6 +6,7 @@ package edu.brown.hstore.reconfiguration;
 import java.util.List;
 
 import org.voltdb.catalog.CatalogType;
+import org.voltdb.catalog.Table;
 import org.voltdb.exceptions.ReconfigurationException;
 
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
@@ -23,7 +24,7 @@ public interface ReconfigurationTrackingInterface {
      * @param key
      * @return if key was added
      */
-    public boolean markKeyAsMigratedOut(String table_name, Comparable<?> key ); 
+    public boolean markKeyAsMigratedOut(String table_name, List<Object> key ); 
     
     /**
      * Mark a key range migrated away from this partition      
@@ -33,7 +34,7 @@ public interface ReconfigurationTrackingInterface {
      * @param range
      * @return
      */
-    public boolean markRangeAsMigratedOut(List<ReconfigurationRange<? extends Comparable<?>>> range ) throws ReconfigurationException ;
+    public boolean markRangeAsMigratedOut(List<ReconfigurationRange> range ) throws ReconfigurationException ;
     
     /**
      * Mark a key range migrated away from this partition
@@ -43,7 +44,7 @@ public interface ReconfigurationTrackingInterface {
      * @param range
      * @return
      */
-    public boolean markRangeAsMigratedOut(ReconfigurationRange<? extends Comparable<?>> range ) throws ReconfigurationException;
+    public boolean markRangeAsMigratedOut(ReconfigurationRange range ) throws ReconfigurationException;
    
     
     /**
@@ -54,7 +55,7 @@ public interface ReconfigurationTrackingInterface {
      * @param range
      * @return
      */
-    public boolean markRangeAsPartiallyMigratedOut(ReconfigurationRange<? extends Comparable<?>> range ) throws ReconfigurationException;
+    public boolean markRangeAsPartiallyMigratedOut(ReconfigurationRange range ) throws ReconfigurationException;
     
     /**
      * Mark a key received by this partition
@@ -62,7 +63,7 @@ public interface ReconfigurationTrackingInterface {
      * @param key
      * @return
      */
-    public boolean markKeyAsReceived(String table_name, Comparable<?> key);
+    public boolean markKeyAsReceived(String table_name, List<Object> key);
     
     
     /**
@@ -73,7 +74,7 @@ public interface ReconfigurationTrackingInterface {
      * @param range
      * @return
      */
-    public boolean markRangeAsReceived(List<ReconfigurationRange<? extends Comparable<?>>> range )  throws ReconfigurationException;
+    public boolean markRangeAsReceived(List<ReconfigurationRange> range )  throws ReconfigurationException;
     
     /**
      * Mark a range as received by this partition
@@ -83,7 +84,7 @@ public interface ReconfigurationTrackingInterface {
      * @param range
      * @return
      */
-    public boolean markRangeAsReceived(ReconfigurationRange<? extends Comparable<?>> range )  throws ReconfigurationException;
+    public boolean markRangeAsReceived(ReconfigurationRange range )  throws ReconfigurationException;
   
     
     /**
@@ -94,16 +95,16 @@ public interface ReconfigurationTrackingInterface {
      * @param range
      * @return
      */
-    public boolean markRangeAsPartiallyReceived(ReconfigurationRange<? extends Comparable<?>> range )  throws ReconfigurationException;
+    public boolean markRangeAsPartiallyReceived(ReconfigurationRange range )  throws ReconfigurationException;
     
     /**
      * Check if a key is owned and currently present
-     * @param table_name
+     * @param table
      * @param key
      * @return if the key is owned or not.
      * @throws ReconfigurationException to indicate a set of keys must be migrated out, in or both
      */
-    public boolean checkKeyOwned(String table_name, Comparable<?> key) throws ReconfigurationException;
+    public boolean checkKeyOwned(Table table, List<Object> key) throws ReconfigurationException;
     
     /**
      * Check if a key is owned and currently present
@@ -114,6 +115,8 @@ public interface ReconfigurationTrackingInterface {
      */
     public boolean checkKeyOwned(CatalogType catalog, Object key) throws ReconfigurationException;
     
+    public boolean checkKeyOwned(List<CatalogType> catalog, List<Object> key) throws ReconfigurationException;
+    
     /**
      * Check if a key is owned and currently present.
      * No related tables or exceptions thrown for what should be migrated.
@@ -122,6 +125,8 @@ public interface ReconfigurationTrackingInterface {
      * @return if the key is owned or not.\
      */
     public boolean quickCheckKeyOwned(CatalogType catalog, Object key);
+    
+    public boolean quickCheckKeyOwned(List<CatalogType> catalog, List<Object> key);
     
     /**
      * Called to check if all reconfiguration ranges are received 

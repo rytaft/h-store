@@ -22,9 +22,11 @@
 #include <cassert>
 #include "procedure.h"
 #include "catalog.h"
+#include "procparameterref.h"
 #include "procparameter.h"
 #include "column.h"
 #include "conflictset.h"
+#include "columnref.h"
 #include "userref.h"
 #include "authprogram.h"
 #include "groupref.h"
@@ -36,7 +38,7 @@ using namespace std;
 
 Procedure::Procedure(Catalog *catalog, CatalogType *parent, const string &path, const string &name)
 : CatalogType(catalog, parent, path, name),
-  m_authUsers(catalog, this, path + "/" + "authUsers"), m_authGroups(catalog, this, path + "/" + "authGroups"), m_authPrograms(catalog, this, path + "/" + "authPrograms"), m_statements(catalog, this, path + "/" + "statements"), m_parameters(catalog, this, path + "/" + "parameters"), m_conflicts(catalog, this, path + "/" + "conflicts")
+  m_authUsers(catalog, this, path + "/" + "authUsers"), m_authGroups(catalog, this, path + "/" + "authGroups"), m_partitioncolumns(catalog, this, path + "/" + "partitioncolumns"), m_partitionparameters(catalog, this, path + "/" + "partitionparameters"), m_authPrograms(catalog, this, path + "/" + "authPrograms"), m_statements(catalog, this, path + "/" + "statements"), m_parameters(catalog, this, path + "/" + "parameters"), m_conflicts(catalog, this, path + "/" + "conflicts")
 {
     CatalogValue value;
     m_fields["id"] = value;
@@ -57,7 +59,9 @@ Procedure::Procedure(Catalog *catalog, CatalogType *parent, const string &path, 
     m_fields["hasjava"] = value;
     m_fields["partitiontable"] = value;
     m_fields["partitioncolumn"] = value;
+    m_childCollections["partitioncolumns"] = &m_partitioncolumns;
     m_fields["partitionparameter"] = value;
+    m_childCollections["partitionparameters"] = &m_partitionparameters;
     m_childCollections["authPrograms"] = &m_authPrograms;
     m_childCollections["statements"] = &m_statements;
     m_childCollections["parameters"] = &m_parameters;
@@ -78,6 +82,20 @@ Procedure::~Procedure() {
         groupref_iter++;
     }
     m_authGroups.clear();
+
+    std::map<std::string, ColumnRef*>::const_iterator columnref_iter = m_partitioncolumns.begin();
+    while (columnref_iter != m_partitioncolumns.end()) {
+        delete columnref_iter->second;
+        columnref_iter++;
+    }
+    m_partitioncolumns.clear();
+
+    std::map<std::string, ProcParameterRef*>::const_iterator procparameterref_iter = m_partitionparameters.begin();
+    while (procparameterref_iter != m_partitionparameters.end()) {
+        delete procparameterref_iter->second;
+        procparameterref_iter++;
+    }
+    m_partitionparameters.clear();
 
     std::map<std::string, AuthProgram*>::const_iterator authprogram_iter = m_authPrograms.begin();
     while (authprogram_iter != m_authPrograms.end()) {
@@ -142,6 +160,18 @@ CatalogType * Procedure::addChild(const std::string &collectionName, const std::
             return NULL;
         return m_authGroups.add(childName);
     }
+    if (collectionName.compare("partitioncolumns") == 0) {
+        CatalogType *exists = m_partitioncolumns.get(childName);
+        if (exists)
+            return NULL;
+        return m_partitioncolumns.add(childName);
+    }
+    if (collectionName.compare("partitionparameters") == 0) {
+        CatalogType *exists = m_partitionparameters.get(childName);
+        if (exists)
+            return NULL;
+        return m_partitionparameters.add(childName);
+    }
     if (collectionName.compare("authPrograms") == 0) {
         CatalogType *exists = m_authPrograms.get(childName);
         if (exists)
@@ -174,6 +204,10 @@ CatalogType * Procedure::getChild(const std::string &collectionName, const std::
         return m_authUsers.get(childName);
     if (collectionName.compare("authGroups") == 0)
         return m_authGroups.get(childName);
+    if (collectionName.compare("partitioncolumns") == 0)
+        return m_partitioncolumns.get(childName);
+    if (collectionName.compare("partitionparameters") == 0)
+        return m_partitionparameters.get(childName);
     if (collectionName.compare("authPrograms") == 0)
         return m_authPrograms.get(childName);
     if (collectionName.compare("statements") == 0)
@@ -192,6 +226,12 @@ bool Procedure::removeChild(const std::string &collectionName, const std::string
     }
     if (collectionName.compare("authGroups") == 0) {
         return m_authGroups.remove(childName);
+    }
+    if (collectionName.compare("partitioncolumns") == 0) {
+        return m_partitioncolumns.remove(childName);
+    }
+    if (collectionName.compare("partitionparameters") == 0) {
+        return m_partitionparameters.remove(childName);
     }
     if (collectionName.compare("authPrograms") == 0) {
         return m_authPrograms.remove(childName);
@@ -280,8 +320,16 @@ const Column * Procedure::partitioncolumn() const {
     return dynamic_cast<Column*>(m_partitioncolumn);
 }
 
+const CatalogMap<ColumnRef> & Procedure::partitioncolumns() const {
+    return m_partitioncolumns;
+}
+
 int32_t Procedure::partitionparameter() const {
     return m_partitionparameter;
+}
+
+const CatalogMap<ProcParameterRef> & Procedure::partitionparameters() const {
+    return m_partitionparameters;
 }
 
 const CatalogMap<AuthProgram> & Procedure::authPrograms() const {

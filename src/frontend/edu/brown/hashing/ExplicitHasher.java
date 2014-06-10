@@ -2,6 +2,7 @@ package edu.brown.hashing;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
@@ -43,6 +44,14 @@ public interface ExplicitHasher {
      * @return
      */
     public abstract int hash(Object value, CatalogType catalog_item);
+    
+    /**
+     * Hash the given values that are derived from particular catalog objects
+     * @param values
+     * @param catalog_items
+     * @return
+     */
+    public abstract int hash(List<Object> values, List<CatalogType> catalog_items);
 
     /**
      * Hash the given value using a specific partition count

@@ -7,6 +7,7 @@ import java.util.Set;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.voltdb.VoltType;
+import org.voltdb.catalog.Table;
 
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
@@ -26,8 +27,8 @@ public class ReconfigurationException extends SerializableException {
     };
 
     public ExceptionTypes exceptionType;
-    public Set<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut = null;
-    public Set<ReconfigurationRange<? extends Comparable<?>>> dataNotYetMigrated = null;
+    public Set<ReconfigurationRange> dataMigratedOut = null;
+    public Set<ReconfigurationRange> dataNotYetMigrated = null;
 
     public ReconfigurationException(ReconfigurationProtocols reconfigurationProtocols) {
         this.reconfigurationProtocols = reconfigurationProtocols;
@@ -42,7 +43,7 @@ public class ReconfigurationException extends SerializableException {
         this.exceptionType = exceptionType;
     }
 
-    public ReconfigurationException(List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut, List<ReconfigurationRange<? extends Comparable<?>>> dataNotYetMigrated) {
+    public ReconfigurationException(List<ReconfigurationRange> dataMigratedOut, List<ReconfigurationRange> dataNotYetMigrated) {
         super();
         this.dataMigratedOut = new HashSet<>();
         this.dataMigratedOut.addAll(dataMigratedOut);
@@ -58,7 +59,7 @@ public class ReconfigurationException extends SerializableException {
 
     }
 
-    public ReconfigurationException(ExceptionTypes exceptionType,  int old_partition, int new_partition, List<ReconfigurationRange<? extends Comparable<?>>> ranges) {
+    public ReconfigurationException(ExceptionTypes exceptionType, int old_partition, int new_partition, List<ReconfigurationRange> ranges) {
 
         this.exceptionType = exceptionType;
         if (exceptionType == ExceptionTypes.TUPLES_NOT_MIGRATED) {
@@ -73,12 +74,13 @@ public class ReconfigurationException extends SerializableException {
             throw new NotImplementedException("ExceptionType for single key not supported " + exceptionType);
     }
 
-    public ReconfigurationException(ExceptionTypes exceptionType, List<String> table_names, int old_partition, int new_partition, Comparable key) {
-        List<ReconfigurationRange<? extends Comparable<?>>> keys = new ArrayList<>();
+    public ReconfigurationException(ExceptionTypes exceptionType, List<Table> tables, int old_partition, int new_partition, List<Object> key) {
+        List<ReconfigurationRange> keys = new ArrayList<>();
 
-        for(String table_name: table_names){
-            ReconfigurationRange<? extends Comparable<?>> range;
-            range = new ReconfigurationRange(table_name, VoltType.typeFromObject(key), key, key, old_partition, new_partition);
+        for(Table table: tables){
+            ReconfigurationRange range;
+            Object[] keyArray = ReconfigurationRange.getKeys(key, table);
+            range = new ReconfigurationRange(table, keyArray, keyArray, old_partition, new_partition);
             keys.add(range);
         }
         this.exceptionType = exceptionType;
@@ -94,12 +96,13 @@ public class ReconfigurationException extends SerializableException {
             throw new NotImplementedException("ExceptionType for single key not supported " + exceptionType);
     }
 
-    public ReconfigurationException(ExceptionTypes exceptionType, String table_name, int old_partition, int new_partition, Comparable key) {
-        List<ReconfigurationRange<? extends Comparable<?>>> keys = new ArrayList<>();
+    public ReconfigurationException(ExceptionTypes exceptionType, Table table, int old_partition, int new_partition, List<Object> key) {
+        List<ReconfigurationRange> keys = new ArrayList<>();
 
-        ReconfigurationRange<? extends Comparable<?>> range;
+        ReconfigurationRange range;
 
-        range = new ReconfigurationRange(table_name, VoltType.typeFromObject(key), key, key, old_partition, new_partition);
+        Object[] keyArray = ReconfigurationRange.getKeys(key, table);
+        range = new ReconfigurationRange(table, keyArray, keyArray, old_partition, new_partition);
         keys.add(range);
         this.exceptionType = exceptionType;
         if (exceptionType == ExceptionTypes.TUPLES_NOT_MIGRATED) {

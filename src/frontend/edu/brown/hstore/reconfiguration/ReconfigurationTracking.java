@@ -19,6 +19,7 @@ import org.apache.log4j.Logger;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.exceptions.ReconfigurationException;
 import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
+import org.voltdb.catalog.Table;
 
 import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
@@ -42,55 +43,45 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         LoggerUtil.attachObserver(LOG, debug, trace);
     }
     public static boolean PULL_SINGLE_KEY = true;
-    private List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges;
-    private List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges;
-    public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedOut;
-    public List<ReconfigurationRange<? extends Comparable<?>>> dataPartiallyMigratedOut;
+    private List<ReconfigurationRange> outgoing_ranges;
+    private List<ReconfigurationRange> incoming_ranges;
+    public List<ReconfigurationRange> dataMigratedOut;
+    public List<ReconfigurationRange> dataPartiallyMigratedOut;
 
-    public List<ReconfigurationRange<? extends Comparable<?>>> dataPartiallyMigratedIn;
-    public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedIn;
+    public List<ReconfigurationRange> dataPartiallyMigratedIn;
+    public List<ReconfigurationRange> dataMigratedIn;
     private int rangesMigratedInCount = 0;
     private int rangesMigratedOutCount = 0;
     private int incomingRangesCount = 0;
     private int outgoingRangesCount = 0;
     
     //set of individual keys migrated out/in status, stored in a map by table name as key 
-    public Map<String,Set<Comparable>> migratedKeyIn;
-    public Map<String,Set<Comparable>> migratedKeyOut;
+    public Map<String,Set<List<Object>>> migratedKeyIn;
+    public Map<String,Set<List<Object>>> migratedKeyOut;
     
     private int partition_id;
     private ExplicitPartitions partitionPlan;
     
     
-    public ReconfigurationTracking(ExplicitPartitions partitionPlan,List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges,
-            List<ReconfigurationRange<? extends Comparable<?>>> incoming_ranges, int partition_id) {
+    public ReconfigurationTracking(ExplicitPartitions partitionPlan,List<ReconfigurationRange> outgoing_ranges,
+            List<ReconfigurationRange> incoming_ranges, int partition_id) {
         super();
         this.partitionPlan = partitionPlan;
-        this.outgoing_ranges = new ArrayList<ReconfigurationRange<? extends Comparable<?>>>();
+        this.outgoing_ranges = new ArrayList<ReconfigurationRange>();
         if (outgoing_ranges!= null)
-            this.outgoing_ranges.addAll(outgoing_ranges);
-        this.incoming_ranges = new ArrayList<ReconfigurationRange<? extends Comparable<?>>>();
+        	this.outgoing_ranges.addAll(outgoing_ranges);
+        this.incoming_ranges = new ArrayList<ReconfigurationRange>();
         if (incoming_ranges != null)
-            this.incoming_ranges.addAll(incoming_ranges);
-	for(ReconfigurationRange<? extends Comparable<?>> range : this.incoming_ranges) {
-	    if(range.isSingleRange()) {
-		incomingRangesCount++;
-	    }
-	    else {
-		incomingRangesCount += range.getMinList().size();
-	    }
-	}
-	for(ReconfigurationRange<? extends Comparable<?>> range: this.outgoing_ranges){
-            if(range.isSingleRange()) {
-		outgoingRangesCount++;
-            }
-            else {
-		outgoingRangesCount += range.getMinList().size();
-            }
+        	this.incoming_ranges.addAll(incoming_ranges);
+        for(ReconfigurationRange range : this.incoming_ranges) {
+        	incomingRangesCount += range.getMinIncl().size();
+        }
+        for(ReconfigurationRange range: this.outgoing_ranges){
+        	outgoingRangesCount += range.getMinIncl().size();
         }
         this.partition_id = partition_id;
-        this.migratedKeyIn = new HashMap<String, Set<Comparable>>();
-        this.migratedKeyOut = new HashMap<String, Set<Comparable>>();
+        this.migratedKeyIn = new HashMap<String, Set<List<Object>>>();
+        this.migratedKeyOut = new HashMap<String, Set<List<Object>>>();
         this.dataMigratedIn = new ArrayList<>();
         this.dataMigratedOut = new ArrayList<>();
         this.dataPartiallyMigratedOut = new ArrayList<>();
@@ -100,17 +91,17 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     public ReconfigurationTracking(ExplicitPartitions partitionPlan, ReconfigurationPlan plan, int partition_id){
         this(partitionPlan,plan.getOutgoing_ranges().get(partition_id), plan.getIncoming_ranges().get(partition_id),partition_id);
         /*this.partitionPlan = partitionPlan;
-        this.outgoing_ranges = new ArrayList<ReconfigurationRange<? extends Comparable<?>>>();
+        this.outgoing_ranges = new ArrayList<ReconfigurationRange>();
         if(plan.getOutgoing_ranges().containsKey(partition_id))
             this.outgoing_ranges.addAll(plan.getOutgoing_ranges().get(partition_id));
-        this.incoming_ranges = new ArrayList<ReconfigurationRange<? extends Comparable<?>>>();
+        this.incoming_ranges = new ArrayList<ReconfigurationRange>();
         if(plan.getIncoming_ranges().containsKey(partition_id))
             this.incoming_ranges.addAll(plan.getIncoming_ranges().get(partition_id));
         this.partition_id = partition_id;*/       
     }
   
     @Override 
-    public boolean markRangeAsMigratedOut(ReconfigurationRange<? extends Comparable<?>> range ) throws ReconfigurationException{
+    public boolean markRangeAsMigratedOut(ReconfigurationRange range ) throws ReconfigurationException{
         boolean added =  this.dataMigratedOut.add(range);
         if(added){
             rangesMigratedOutCount++;
@@ -122,15 +113,15 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     }
     
     @Override 
-    public boolean markRangeAsPartiallyMigratedOut(ReconfigurationRange<? extends Comparable<?>> range ) throws ReconfigurationException{
+    public boolean markRangeAsPartiallyMigratedOut(ReconfigurationRange range ) throws ReconfigurationException{
         return this.dataPartiallyMigratedOut.add(range);
     }
     
     
     @Override 
-    public boolean markRangeAsMigratedOut(List<ReconfigurationRange<? extends Comparable<?>>> ranges ){
+    public boolean markRangeAsMigratedOut(List<ReconfigurationRange> ranges ){
         boolean allAdded = true;
-        for(ReconfigurationRange<? extends Comparable<?>> range : ranges){
+        for(ReconfigurationRange range : ranges){
             boolean res = this.markRangeAsMigratedOut(range);
             if (!res)
                 allAdded =false;
@@ -139,9 +130,9 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     }
     
     @Override
-    public boolean markRangeAsReceived(List<ReconfigurationRange<? extends Comparable<?>>> ranges ){
+    public boolean markRangeAsReceived(List<ReconfigurationRange> ranges ){
         boolean allAdded = true;
-        for(ReconfigurationRange<? extends Comparable<?>> range : ranges){
+        for(ReconfigurationRange range : ranges){
             boolean res = this.markRangeAsReceived(range);
             if (!res)
                 allAdded =false;
@@ -150,12 +141,10 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     }
     
     @Override
-    public boolean markRangeAsReceived(ReconfigurationRange<? extends Comparable<?>> range ){
+    public boolean markRangeAsReceived(ReconfigurationRange range ){
         boolean added =  this.dataMigratedIn.add(range);
         if(added){
-            rangesMigratedInCount++;
-	    LOG.info(String.format("Migrated in range %s-%s, number %s out of %s", range.getMin_inclusive(), range.getMax_exclusive(), rangesMigratedInCount, incomingRangesCount));
-            if(rangesMigratedInCount==incomingRangesCount){
+            rangesMigratedInCount++;if(rangesMigratedInCount==incomingRangesCount){
                 throw new ReconfigurationException(ExceptionTypes.ALL_RANGES_MIGRATED_IN);
             }
         }
@@ -163,32 +152,32 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     }
     
     @Override
-    public boolean markRangeAsPartiallyReceived(ReconfigurationRange<? extends Comparable<?>> range ){
+    public boolean markRangeAsPartiallyReceived(ReconfigurationRange range ){
         return this.dataPartiallyMigratedIn.add(range);        
     }
     
 
-    private boolean markAsMigrated(Map<String,Set<Comparable>> migratedMapSet, String table_name, Comparable<?> key){
+    private boolean markAsMigrated(Map<String,Set<List<Object>>> migratedMapSet, String table_name, List<Object> key){
         if(migratedMapSet.containsKey(table_name) == false){
-            migratedMapSet.put(table_name, new HashSet());
+            migratedMapSet.put(table_name, new HashSet<List<Object>>());
         }
-        assert(key instanceof Number);
-        return migratedMapSet.get(table_name).add(((Number)key).longValue());
+        return migratedMapSet.get(table_name).add(key);
+        	
     }
 
-    private boolean checkMigratedMapSet(Map<String,Set<Comparable>> migratedMapSet, String table_name, Object key){
-        if(migratedMapSet.containsKey(table_name) == false){
+    private boolean checkMigratedMapSet(Map<String,Set<List<Object>>> migratedMapSet, Table table, Object key){
+    	String table_name = table.getName().toLowerCase();
+    	if(migratedMapSet.containsKey(table_name) == false){
            if (debug.val) LOG.debug("Checking a key for which there is no table tracking for yet " + table_name); 
            return false;
         }
-        assert(key instanceof Number);
-        return migratedMapSet.get(table_name).contains(((Number)key).longValue());
+        return migratedMapSet.get(table_name).contains(key);
     }
     
     @Override
-    public boolean markKeyAsMigratedOut(String table_name, Comparable<?> key) {
-        for (ReconfigurationRange<? extends Comparable<?>> range : this.outgoing_ranges) {
-            if (range.inRange(key) && range.table_name.equalsIgnoreCase(table_name)){
+    public boolean markKeyAsMigratedOut(String table_name, List<Object> key) {
+        for (ReconfigurationRange range : this.outgoing_ranges) {
+            if (range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                 markRangeAsPartiallyMigratedOut(range);
             }
         }
@@ -196,31 +185,39 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     }
 
     @Override
-    public boolean markKeyAsReceived(String table_name, Comparable<?> key) {
-        for (ReconfigurationRange<? extends Comparable<?>> range : this.incoming_ranges) {
-            if (range.inRange(key) && range.table_name.equalsIgnoreCase(table_name)){
+    public boolean markKeyAsReceived(String table_name, List<Object> key) {
+        for (ReconfigurationRange range : this.incoming_ranges) {
+            if (range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                 markRangeAsPartiallyReceived(range);
             }
         }
         return markAsMigrated(migratedKeyIn, table_name, key);
     }
-
+    
     @Override
     public boolean checkKeyOwned(CatalogType catalog, Object key) throws ReconfigurationException{
-        
-        if(key instanceof Number){
-            String tableName = this.partitionPlan.getTableName(catalog);
-            if (debug.val) LOG.debug(String.format("Checking Key owned for catalog:%s table:%s",catalog.toString(),tableName));
-            return checkKeyOwned(tableName, (Comparable)key);
-        }
-        else
-            throw new NotImplementedException("Only comparable keys are supported");
+    	return checkKeyOwned(Arrays.asList(catalog), Arrays.asList(key));
+    }
+
+    @Override
+    public boolean checkKeyOwned(List<CatalogType> catalog, List<Object> key) throws ReconfigurationException{
+
+    	Table table = this.partitionPlan.getTable(catalog);
+    	String tableName = table.getName().toLowerCase();    	
+    	if (debug.val) LOG.debug(String.format("Checking Key owned for catalog:%s table:%s",catalog.toString(),tableName));
+    	return checkKeyOwned(table, key);
     }
     
     @Override
     public boolean quickCheckKeyOwned(CatalogType catalog, Object key) {
+    	return quickCheckKeyOwned(Arrays.asList(catalog), Arrays.asList(key));
+    }
+    
+    @Override
+    public boolean quickCheckKeyOwned(List<CatalogType> catalog, List<Object> key) {
         try{
-            String table_name = this.partitionPlan.getTableName(catalog);
+        	Table table = this.partitionPlan.getTable(catalog);
+            String table_name = table.getName().toLowerCase();
             int expectedPartition = partitionPlan.getPartitionId(table_name, key);
             int previousPartition =  partitionPlan.getPreviousPartitionId(table_name, key);  
             if (expectedPartition == partition_id &&  previousPartition == partition_id)
@@ -233,14 +230,13 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 if (debug.val) LOG.debug(String.format("Key %s should be at %s. Checking if migrated in",key,partition_id));
                 
                 //Has the key been received as a single key
-                if (checkMigratedMapSet(migratedKeyIn,table_name,key)== true){
+                if (checkMigratedMapSet(migratedKeyIn,table,key)== true){
                     if (debug.val) LOG.debug(String.format("Key has been migrated in %s (%s)",key,table_name));
                     return true;
                 } else {                       
-                    Comparable<?> keyComp = (Comparable)key;
                     //check if the key was received out in a range        
-                    for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedIn){
-                        if(range.inRange(keyComp) && range.table_name.equalsIgnoreCase(table_name)){
+                    for(ReconfigurationRange range : this.dataMigratedIn){
+                        if(range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                             if (debug.val) LOG.debug(String.format("Key has been migrated in range %s %s (%s)",range, key,table_name));
                             return true;
                         }
@@ -251,21 +247,20 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 //Key should be moving away
                 if (debug.val) LOG.debug(String.format("Key %s was at %s. Checking if migrated ",key,partition_id));                
                 //Check to see if we migrated this key individually
-                if (checkMigratedMapSet(migratedKeyOut,table_name,key)){
+                if (checkMigratedMapSet(migratedKeyOut,table,key)){
                     if (debug.val) LOG.debug(String.format("Key has been migrated out %s (%s)",key,table_name));                    
                     return false;
                 }                
-                Comparable<?> keyComp = (Comparable)key;                
                 //check to see if this key was migrated in a range
-                for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedOut){
-                    if(range.inRange(keyComp) && range.table_name.equalsIgnoreCase(table_name)){
+                for(ReconfigurationRange range : this.dataMigratedOut){
+                    if(range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                         if (debug.val) LOG.debug(String.format("Key has been migrated out range %s %s (%s)",range, key,table_name));
                         return false;
                     }
                 }                
                 //check to see if this key was migrated in a range
-                for(ReconfigurationRange<? extends Comparable<?>> range : this.dataPartiallyMigratedOut){
-                    if(range.inRange(keyComp) && range.table_name.equalsIgnoreCase(table_name)){
+                for(ReconfigurationRange range : this.dataPartiallyMigratedOut){
+                    if(range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                         if (debug.val) LOG.debug(String.format("Key may have been migrated out in partially dirtied range %s %s (%s)",range, key,table_name));
                         return false;
                     }
@@ -287,8 +282,9 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     }
     
     @Override
-    public boolean checkKeyOwned(String table_name, Comparable<?> key) throws ReconfigurationException {
+    public boolean checkKeyOwned(Table table, List<Object> key) throws ReconfigurationException {
         
+    		String table_name = table.getName().toLowerCase();
             int expectedPartition;
             int previousPartition;
             try {
@@ -308,19 +304,19 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 if (debug.val) LOG.debug(String.format("Key %s should be at %s. Checking if migrated in",key,partition_id));
                 
                 //Has the key been received as a single key
-                if (checkMigratedMapSet(migratedKeyIn,table_name,key)== true){
+                if (checkMigratedMapSet(migratedKeyIn,table,key)== true){
                     if (debug.val) LOG.debug(String.format("Key has been migrated in %s (%s)",key,table_name));
                     return true;
                 } else {                       
                     //check if the key was received out in a range        
-                    for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedIn){
-                        if(range.inRange(key) && range.table_name.equalsIgnoreCase(table_name)){
+                    for(ReconfigurationRange range : this.dataMigratedIn){
+                        if(range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                             return true;
                         }
                     }
-                    List<String> relatedTables = null;
+                    List<Table> relatedTables = null;
                     if (partitionPlan.getRelatedTablesMap().containsKey(table_name)){
-                        relatedTables=partitionPlan.getRelatedTablesMap().get(table_name);
+                        relatedTables=partitionPlan.getRelatedCatalogTablesMap().get(table_name);
                         if (debug.val) LOG.debug(String.format("Table %s has related tables:%s",table_name, StringUtils.join(relatedTables, ',')));
                     }
                     // The key has not been received. Throw an exception to notify
@@ -328,10 +324,10 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                     if (PULL_SINGLE_KEY) {
                         ReconfigurationException ex = null;
                         if(relatedTables == null){
-                            ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED, table_name, previousPartition, expectedPartition, key);
+                            ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED, table, previousPartition, expectedPartition, key);
                         } else {
-                            List<String> relatedTablesToPull = new ArrayList<>();
-                            for(String rTable : relatedTables){
+                            List<Table> relatedTablesToPull = new ArrayList<>();
+                            for(Table rTable : relatedTables){
                                 if (checkMigratedMapSet(migratedKeyIn,rTable,key)== false) {
                                     if (debug.val) LOG.debug(" Related table key not migrated, adding to pull : " + rTable);
                                     relatedTablesToPull.add(rTable);
@@ -344,10 +340,10 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                         throw ex;
                     } else {
                         //FIXME highly inefficient
-                        List<ReconfigurationRange<? extends Comparable<?>>> rangesToPull = new ArrayList<>();    
-                        for(ReconfigurationRange<? extends Comparable<?>> range : this.incoming_ranges){
+                        List<ReconfigurationRange> rangesToPull = new ArrayList<>();    
+                        for(ReconfigurationRange range : this.incoming_ranges){
                             if(relatedTables == null) {
-                                if(range.table_name.equalsIgnoreCase(table_name) && range.inRange(key)){
+                                if(range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
                                     LOG.info(String.format("Access for key %s, pulling entire range :%s (%s)", key, range.toString(),table_name));
                                     rangesToPull.add(range);
                                     //we only have table to match
@@ -355,8 +351,8 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                                 }
                             }
                             else {
-                                for(String relatedTable : relatedTables){
-                                    if(range.table_name.equalsIgnoreCase(relatedTable) && range.inRange(key)){
+                                for(Table relatedTable : relatedTables){
+                                    if(range.getTableName().equalsIgnoreCase(relatedTable.getName().toLowerCase()) && range.inRange(key)){
                                         if (dataMigratedIn.contains(range)){
                                             LOG.info(String.format("Range %s has already been migrated in. Not pulling again", range));
                                         } else {
@@ -378,25 +374,25 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 if (debug.val) LOG.debug(String.format("Key %s was at %s. Checking if migrated ",key,partition_id));
                 
                 //Check to see if we migrated this key individually
-                if (checkMigratedMapSet(migratedKeyOut,table_name,key)){
-                    ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table_name, previousPartition,expectedPartition, key);
+                if (checkMigratedMapSet(migratedKeyOut,table,key)){
+                    ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table, previousPartition,expectedPartition, key);
                     throw ex;
                 }
                 
                 
                 
                 //check to see if this key was migrated in a range
-                for(ReconfigurationRange<? extends Comparable<?>> range : this.dataMigratedOut){
-                    if(range.inRange(key) && range.table_name.equalsIgnoreCase(table_name)){
-                        ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table_name, previousPartition,expectedPartition, key);
+                for(ReconfigurationRange range : this.dataMigratedOut){
+                    if(range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
+                        ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table, previousPartition,expectedPartition, key);
                         throw ex;
                     }
                 }
                 
               //check to see if this key was migrated in a range
-                for(ReconfigurationRange<? extends Comparable<?>> range : this.dataPartiallyMigratedOut){
-                    if(range.inRange(key) && range.table_name.equalsIgnoreCase(table_name)){
-                        ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table_name, previousPartition,expectedPartition, key);
+                for(ReconfigurationRange range : this.dataPartiallyMigratedOut){
+                    if(range.getTableName().equalsIgnoreCase(table_name) && range.inRange(key)){
+                        ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table, previousPartition,expectedPartition, key);
                         throw ex;
                     }
                 }

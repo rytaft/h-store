@@ -3,11 +3,13 @@ package edu.brown.hashing;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Database;
+import org.voltdb.utils.NotImplementedException;
 
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.JSONSerializable;
@@ -45,6 +47,14 @@ public abstract class AbstractHasher implements JSONSerializable {
             o[i] = values[i];
         }
         return this.multiValueHash(o);
+    }
+    
+    public boolean hasMultiColumnRanges() {
+    	return false;
+    }
+    
+    public int hash(List<Object> values, List<CatalogType> catalogItems) {
+    	throw new NotImplementedException("TODO");
     }
     
     /**

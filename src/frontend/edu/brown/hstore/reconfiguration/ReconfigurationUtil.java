@@ -1,6 +1,7 @@
 package edu.brown.hstore.reconfiguration;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,12 +14,20 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTable.ColumnInfo;
+import org.voltdb.catalog.Column;
+import org.voltdb.catalog.ColumnRef;
+import org.voltdb.catalog.Table;
+import org.voltdb.types.SortDirectionType;
 import org.voltdb.utils.Pair;
+import org.voltdb.utils.VoltTableComparator;
 import org.voltdb.VoltType;
 import org.voltdb.utils.Pair;
 
+import edu.brown.catalog.CatalogUtil;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.hashing.ReconfigurationPlan.ReconfigurationTable;
+import edu.brown.utils.CollectionUtil;
 
 public class ReconfigurationUtil {
     private static final Logger LOG = Logger.getLogger(ReconfigurationUtil.class);
@@ -95,11 +104,11 @@ public class ReconfigurationUtil {
         Map<Pair<Integer,Integer>, Integer> pairToSplitMapping = new HashMap<>();
         
         //Calculate pairs
-        for(Entry<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> entry : plan.getIncoming_ranges().entrySet()){
+        for(Entry<Integer, List<ReconfigurationRange>> entry : plan.getIncoming_ranges().entrySet()){
             Set<Integer> partitionsSendingData = new HashSet<>();
-            for(ReconfigurationRange<? extends Comparable<?>> range : entry.getValue()){
-                partitionsSendingData.add(range.old_partition);
-                migrationPairs.add(new ReconfigurationPair(range.old_partition, range.new_partition));
+            for(ReconfigurationRange range : entry.getValue()){
+                partitionsSendingData.add(range.getOldPartition());
+                migrationPairs.add(new ReconfigurationPair(range.getOldPartition(), range.getNewPartition()));
             }
             LOG.info(String.format("Partition: %s is receiving data from :%s",entry.getKey(),StringUtils.join(partitionsSendingData, ",")));
         }
@@ -111,7 +120,9 @@ public class ReconfigurationUtil {
         Collections.sort(migrationPairsList);
         
         //Limit the number of splits to number of pairs
+        int extraSplits = 0;
         if (numberOfSplits > migrationPairsList.size()){
+        	extraSplits = numberOfSplits - migrationPairsList.size();
             numberOfSplits = migrationPairsList.size();
             LOG.info("Limiting number of pair splits to " + numberOfSplits);
         }
@@ -119,21 +130,21 @@ public class ReconfigurationUtil {
         //Split pairs into groups based on numSplits paramt
         int pairCounter = 0;
         for(ReconfigurationPair mPair : migrationPairsList){
-            pairToSplitMapping.put(new Pair(mPair.from, mPair.to), pairCounter % numberOfSplits);
+            pairToSplitMapping.put(new Pair<Integer, Integer>(mPair.from, mPair.to), pairCounter % numberOfSplits);
             pairCounter++;
         }
 
-	List<ReconfigurationPlan> splitPlans = new ArrayList<>();
+        List<ReconfigurationPlan> splitPlans = new ArrayList<>();
         for(int i = 0; i < numberOfSplits; i++){
             splitPlans.add(new ReconfigurationPlan());
         }
 
         
         //put ranges into split rangePLans
-        for(Entry<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> entry : plan.getIncoming_ranges().entrySet()){
-            for(ReconfigurationRange<? extends Comparable<?>> range : entry.getValue()){
+        for(Entry<Integer, List<ReconfigurationRange>> entry : plan.getIncoming_ranges().entrySet()){
+            for(ReconfigurationRange range : entry.getValue()){
                 //find which split this range is going into
-                Integer splitIndex = pairToSplitMapping.get(new Pair(range.old_partition, range.new_partition));
+                Integer splitIndex = pairToSplitMapping.get(new Pair<Integer, Integer>(range.getOldPartition(), range.getNewPartition()));
                 //add it
                 splitPlans.get(splitIndex).addRange(range);
             }
@@ -143,80 +154,282 @@ public class ReconfigurationUtil {
         for (int j = 0; j < numberOfSplits; j++){
             
             Set<Pair<Integer,Integer>> debugSendingData = new HashSet<>();
-            for(Entry<Integer, List<ReconfigurationRange<? extends Comparable<?>>>> entry : splitPlans.get(j).getIncoming_ranges().entrySet()){
-                for(ReconfigurationRange<? extends Comparable<?>> range : entry.getValue()){
-                    debugSendingData.add(new Pair(range.old_partition, range.new_partition));
+            for(Entry<Integer, List<ReconfigurationRange>> entry : splitPlans.get(j).getIncoming_ranges().entrySet()){
+                for(ReconfigurationRange range : entry.getValue()){
+                    debugSendingData.add(new Pair<Integer, Integer>(range.getOldPartition(), range.getNewPartition()));
                 }
             }
             LOG.info(String.format("PlanSplit:%s has the pairs(%s): %s", j, debugSendingData.size(), StringUtils.join(debugSendingData,",")));
         }
         
+        int extraSplitsPerPlan = extraSplits / splitPlans.size();
+        if(extraSplitsPerPlan > 0) {
+        	List<ReconfigurationPlan> splitPlansAgain = new ArrayList<>();
+        	for(ReconfigurationPlan splitPlan : splitPlans) {
+        		//splitPlansAgain.addAll(fineGrainedSplitReconfigurationPlan(splitPlan, extraSplitsPerPlan));
+        		splitPlansAgain.addAll(fineGrainedSplitReconfigurationPlan(splitPlan));
+        	}
+        	return splitPlansAgain;
+        }
+        
         return splitPlans;
     }
+    
+    public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(ReconfigurationPlan plan, int numberOfSplits){
+    	
+    	List<ReconfigurationPlan> splitPlans = new ArrayList<>();
+    	
+    	// split up the ranges by key schema so we only compare ranges with the same key schema
+    	HashMap<List<VoltType>, List<ReconfigurationRange>> rangeMap = new HashMap<>();
+    	for(List<ReconfigurationRange> ranges : plan.getIncoming_ranges().values()){
+    		for(ReconfigurationRange range : ranges) {
+    			List<VoltType> types = new ArrayList<VoltType>(range.getKeySchema().getColumnCount());
+    			for(int i = 0; i < range.getKeySchema().getColumnCount(); i++) {
+    				types.add(range.getKeySchema().getColumnType(i));
+    			}
+    			if(rangeMap.get(types) == null) {
+    				rangeMap.put(types, new ArrayList<ReconfigurationRange>());
+    			}
+    			rangeMap.get(types).add(range);
+    		}
+        }
+    	
+    	// sort all the ranges with the same key schema
+    	int numRanges = 0;
+    	for(Entry<List<VoltType>,List<ReconfigurationRange>> entry : rangeMap.entrySet()) {
+    		rangeMap.put(entry.getKey(), CollectionUtil.sort(entry.getValue()));
+    		numRanges += entry.getValue().size();
+    	}
 
-    public static VoltTable getExtractVoltTable(ReconfigurationRange range) {
-        ColumnInfo extractTableColumns[] = new ColumnInfo[4];
+    	if(numberOfSplits > numRanges) {
+    		numberOfSplits = numRanges;
+    		LOG.info("Limiting number of range splits to " + numberOfSplits);
+    	}
 
-        extractTableColumns[0] = new ColumnInfo("TABLE_NAME", VoltType.INTEGER);
-        extractTableColumns[1] = new ColumnInfo("KEY_TYPE", VoltType.INTEGER);
-        extractTableColumns[2] = new ColumnInfo("MIN_INCLUSIVE", VoltType.BIGINT); // range.getVt());
-        extractTableColumns[3] = new ColumnInfo("MAX_EXCLUSIVE", VoltType.BIGINT);// range.getVt());
-
-        VoltTable vt = new VoltTable(extractTableColumns);
-        // vt.addRow(range.table_name,range.getVt().toString(),range.getMin_inclusive(),range.getMax_exclusive());
+    	// split up the ranges into numberOfSplits chunks
+    	int rangesPerSplit = (int) Math.ceil(((double) numRanges)/numberOfSplits);
+    	int i = 0;
+    	ReconfigurationPlan newPlan = new ReconfigurationPlan();
+    	for(List<ReconfigurationRange> ranges : rangeMap.values()) {
+    		for(ReconfigurationRange range : ranges) {
+    			newPlan.addRange(range);
+    			i++;
+    			if(i == rangesPerSplit) {
+    				LOG.info("Adding a new reconfiguration plan: " + newPlan.getIncoming_ranges().values().toString());
+    				splitPlans.add(newPlan);
+    				i = 0;
+    				newPlan = new ReconfigurationPlan();
+    			}
+    		}
+    	}
+    	if(i > 0) {
+    		splitPlans.add(newPlan);
+    	}
         
-        if(range.isSingleRange()) {
-        	vt.addRow(1, 1, range.getMin_inclusive(), range.getMax_exclusive());
-        }
-        else {
-        	for (int i = 0; i < range.getMinList().size(); i++) {
-                vt.addRow(1, 1, range.getMinList().get(i), range.getMaxList().get(i));
-            }
-        }
-
-        return vt;
+        return splitPlans;
     }
-
-    public static VoltTable getExtractVoltTable(List<Long> minInclusives, List<Long> maxExclusives) {
-        if(minInclusives.size()!=maxExclusives.size()){
-            throw new RuntimeException("Min inclusive list different size than maxExclusives.");
+    
+public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(ReconfigurationPlan plan){
+    	
+    	List<ReconfigurationPlan> splitPlans = new ArrayList<>();
+    	
+    	// split up the ranges by key schema so we only compare ranges with the same key schema
+    	HashMap<List<VoltType>, List<ReconfigurationRange>> rangeMap = new HashMap<>();
+    	for(List<ReconfigurationRange> ranges : plan.getIncoming_ranges().values()){
+    		for(ReconfigurationRange range : ranges) {
+    			List<VoltType> types = new ArrayList<VoltType>(range.getKeySchema().getColumnCount());
+    			for(int i = 0; i < range.getKeySchema().getColumnCount(); i++) {
+    				types.add(range.getKeySchema().getColumnType(i));
+    			}
+    			if(rangeMap.get(types) == null) {
+    				rangeMap.put(types, new ArrayList<ReconfigurationRange>());
+    			}
+    			rangeMap.get(types).add(range);
+    		}
         }
-        ColumnInfo extractTableColumns[] = new ColumnInfo[4];
+    	
+    	// sort all the ranges with the same key schema
+    	int numRanges = 0;
+    	for(Entry<List<VoltType>,List<ReconfigurationRange>> entry : rangeMap.entrySet()) {
+    		rangeMap.put(entry.getKey(), CollectionUtil.sort(entry.getValue()));
+    		numRanges += entry.getValue().size();
+    	}
 
-        extractTableColumns[0] = new ColumnInfo("TABLE_NAME", VoltType.INTEGER);
-        extractTableColumns[1] = new ColumnInfo("KEY_TYPE", VoltType.INTEGER);
-        extractTableColumns[2] = new ColumnInfo("MIN_INCLUSIVE", VoltType.BIGINT); // range.getVt());
-        extractTableColumns[3] = new ColumnInfo("MAX_EXCLUSIVE", VoltType.BIGINT);// range.getVt());
-
-        VoltTable vt = new VoltTable(extractTableColumns);
-        for (int i = 0; i < minInclusives.size(); i++) {
-            vt.addRow(1, 1, minInclusives.get(i), maxExclusives.get(i));
-        }
-
-        return vt;       
+    	// combine ranges that have the same value
+    	for(List<ReconfigurationRange> ranges : rangeMap.values()) {
+    		ReconfigurationPlan newPlan = new ReconfigurationPlan();
+    		ReconfigurationRange prevRange = null;
+        	for(ReconfigurationRange range : ranges) {
+    			if(prevRange != null && !range.equalsIgnoreTable(prevRange)) {
+    				LOG.info("Adding a new reconfiguration plan: " + newPlan.getIncoming_ranges().values().toString());
+    				splitPlans.add(newPlan);
+    				newPlan = new ReconfigurationPlan();
+    			}
+    				
+    			newPlan.addRange(range);
+    			prevRange = range;
+    		}
+        	if(!newPlan.getIncoming_ranges().isEmpty()) {
+		    LOG.info("Adding a new reconfiguration plan: " + newPlan.getIncoming_ranges().values().toString());
+		    splitPlans.add(newPlan);
+        	}
+    	}
+    	
+        
+        return splitPlans;
     }
     
     public static VoltTable getExtractVoltTable(List<ReconfigurationRange> ranges) {
-        ColumnInfo extractTableColumns[] = new ColumnInfo[4];
+    	ReconfigurationRange sample = ranges.get(0);
+    	ReconfigurationRange mergedRanges = new ReconfigurationRange(sample.getTableName(), sample.getKeySchema(), new ArrayList<Object[]>(), new ArrayList<Object[]>(), sample.getOldPartition(), sample.getNewPartition());
+		
+		for(ReconfigurationRange range : ranges) {
+			List<Object[]> max = range.getMaxExcl();
+			List<Object[]> min = range.getMinIncl();
+			mergedRanges.getMaxExcl().addAll(max);
+			mergedRanges.getMinIncl().addAll(min);
+		}
+		
+		return getExtractVoltTable(mergedRanges);
+    }
+    
+    public static VoltTable getExtractVoltTable(ReconfigurationRange range) {
+    	return getExtractVoltTable(range.getKeySchema(), range.getMinIncl(), range.getMaxExcl());
+    }
+
+    public static VoltTable getExtractVoltTable(VoltTable minIncl, VoltTable maxExcl) {
+    	List<Object[]> minInclList = new ArrayList<Object[]>();
+    	List<Object[]> maxExclList = new ArrayList<Object[]>();
+    	
+    	minIncl.resetRowPosition();
+    	maxExcl.resetRowPosition();
+    	while(minIncl.advanceRow() && maxExcl.advanceRow()) {
+    		minInclList.add(minIncl.getRowArray());
+    		maxExclList.add(maxExcl.getRowArray());
+    	}
+    	return getExtractVoltTable(minIncl, minInclList, maxExclList);
+    }
+        
+    
+    public static VoltTable getExtractVoltTable(VoltTable keySchema, List<Object[]> minIncl, List<Object[]> maxExcl) {
+    	int nCols = keySchema.getColumnCount();
+    	int nSchemaCols = nCols * 3 + 1;
+    	ColumnInfo[] extractTableColumns = new ColumnInfo[nSchemaCols];
 
         extractTableColumns[0] = new ColumnInfo("TABLE_NAME", VoltType.INTEGER);
-        extractTableColumns[1] = new ColumnInfo("KEY_TYPE", VoltType.INTEGER);
-        extractTableColumns[2] = new ColumnInfo("MIN_INCLUSIVE", VoltType.BIGINT); // range.getVt());
-        extractTableColumns[3] = new ColumnInfo("MAX_EXCLUSIVE", VoltType.BIGINT);// range.getVt());
-
+        for(int i = 0; i < nCols; i++) {
+        	VoltType type = keySchema.getColumnType(i);
+        	extractTableColumns[i*3+1] = new ColumnInfo("KEY_TYPE", VoltType.INTEGER);
+            extractTableColumns[i*3+2] = new ColumnInfo("MIN_INCLUSIVE", type); // range.getVt());
+            extractTableColumns[i*3+3] = new ColumnInfo("MAX_EXCLUSIVE", type); // range.getVt());
+        }  
+        
         VoltTable vt = new VoltTable(extractTableColumns);
         // vt.addRow(range.table_name,range.getVt().toString(),range.getMin_inclusive(),range.getMax_exclusive());
-        for (ReconfigurationRange range : ranges) {
-            if(range.isSingleRange()) {
-            	vt.addRow(1, 1, range.getMin_inclusive(), range.getMax_exclusive());
+        
+        for(int i = 0; i < minIncl.size() && i < maxExcl.size(); i++) {
+        	Object[] min_incl_i = minIncl.get(i);
+        	Object[] max_excl_i = maxExcl.get(i);
+			Object[] row = new Object[nSchemaCols];
+    		row[0] = 1;
+    		for(int j = 0; j < nCols; j++) {	
+        		row[j*3+1] = 1;
+        		row[j*3+2] = min_incl_i[j];
+        		row[j*3+3] = max_excl_i[j];
+        	}
+    		vt.addRow(row);
+        }  
+        
+		return vt;
+    }
+    
+    public static ReconfigurationRange getReconfigurationRange(Table table, Long[] mins, 
+    		Long[] maxs, int old_partition, int new_partition) {
+    	return getReconfigurationRange(table, new Long[][]{mins}, new Long[][]{maxs}, old_partition, new_partition);
+    }
+    
+    public static ReconfigurationRange getReconfigurationRange(Table table, Long[][] mins, 
+    		Long[][] maxs, int old_partition, int new_partition) {
+    	VoltTable clone = getPartitionKeysVoltTable(table);
+
+        ArrayList<Object[]> min_rows = new ArrayList<Object[]>();
+        ArrayList<Object[]> max_rows = new ArrayList<Object[]>();
+        for(int i = 0; i < mins.length && i < maxs.length; i++) {
+        	Long[] minsSubKeys = mins[i];
+        	Long[] maxsSubKeys = maxs[i];
+        	Object[] min_row = new Object[clone.getColumnCount()];
+    		Object[] max_row = new Object[clone.getColumnCount()];
+    		int col = 0;
+    		for( ; col < minsSubKeys.length && col < maxsSubKeys.length && col < clone.getColumnCount(); col++) {
+        		min_row[col] = minsSubKeys[col];
+        		max_row[col] = maxsSubKeys[col];
+        	}
+    		for ( ; col < clone.getColumnCount(); col++) {
+            	VoltType vt = clone.getColumnType(col);
+            	Object obj = vt.getNullValue();
+            	min_row[col] = obj;
+            	max_row[col] = obj;
             }
-            else {
-            	for (int i = 0; i < range.getMinList().size(); i++) {
-                    vt.addRow(1, 1, range.getMinList().get(i), range.getMaxList().get(i));
-                }
-            }
+    		min_rows.add(min_row);
+    		max_rows.add(max_row);
+        }
+        
+        VoltTable min_incl = clone.clone(0);
+        VoltTable max_excl = clone.clone(0);
+        for(Object[] row : min_rows) {
+        	min_incl.addRow(row);
+        }
+        for(Object[] row : max_rows) {
+        	max_excl.addRow(row);
         }
 
-        return vt;
+        return new ReconfigurationRange(table.getName(), clone, min_incl, max_excl, old_partition, new_partition);
     }
+    
+    public static VoltTableComparator getComparator(VoltTable vt) {
+    	ArrayList<Pair<Integer, SortDirectionType>> sortCol = new ArrayList<Pair<Integer, SortDirectionType>>();
+    	for(int i = 0; i < vt.getColumnCount(); i++) {
+    		sortCol.add(Pair.of(i, SortDirectionType.ASC));
+    	}
+    	return createComparator(vt, sortCol, sortCol.get(0));
+    }
+    
+    private static VoltTableComparator createComparator(VoltTable vt, ArrayList<Pair<Integer, SortDirectionType>> sortCol, Pair<Integer, SortDirectionType>...pairs ) {
+    	return new VoltTableComparator(vt, sortCol.toArray(pairs));
+    }
+    
+    public static VoltTable getVoltTable(Table table, List<Long> list) {
+    	VoltTable voltTable = getPartitionKeysVoltTable(table);
+        
+        for(int i = 0; i < list.size(); i++) {
+        	Object[] row = new Object[voltTable.getColumnCount()];
+        	
+        	row[0] = list.get(i);
+        	for (int col = 1; col < voltTable.getColumnCount(); col++) {
+        		VoltType vt = voltTable.getColumnType(col);
+        		Object obj = vt.getNullValue();
+        		row[col] = obj;
+        	}
+        	voltTable.addRow(row);
+        }
+
+        return voltTable;
+    }
+
+    public static VoltTable getPartitionKeysVoltTable(Table table) {
+    	
+    	Column[] cols;
+    	if(table.getPartitioncolumns().size() > 0) {
+    		cols = new Column[table.getPartitioncolumns().size()];
+    		for(ColumnRef colRef : table.getPartitioncolumns()) {
+    			cols[colRef.getIndex()] = colRef.getColumn();
+    		}
+    	} else if (table.getPartitioncolumn() != null) {
+    		cols = new Column[]{ table.getPartitioncolumn() };
+    	} else {
+    		throw new RuntimeException("No partition columns provided for table " + table.getName());
+    	}
+        return CatalogUtil.getVoltTable(Arrays.asList(cols));
+    }
+  
 }

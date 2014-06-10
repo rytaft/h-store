@@ -68,13 +68,14 @@ Table* TableFactory::getPersistentTable(
             TupleSchema* schema,
             const std::string* columnNames,
             int partitionColumn,
+	    const std::vector<int>& partitionColumns,
             bool exportEnabled,
             bool exportOnly)
 {
     std::vector<TableIndexScheme> dummy;
     return getPersistentTable(databaseId, ctx, name,
                               schema, columnNames, dummy, partitionColumn,
-                              exportEnabled, exportOnly);
+                              partitionColumns, exportEnabled, exportOnly);
 }
 
 Table* TableFactory::getPersistentTable(
@@ -85,13 +86,14 @@ Table* TableFactory::getPersistentTable(
             const std::string* columnNames,
             const TableIndexScheme &pkey_index,
             int partitionColumn,
+	    const std::vector<int>& partitionColumns,
             bool exportEnabled,
             bool exportOnly)
 {
     std::vector<TableIndexScheme> dummy;
     return getPersistentTable(databaseId, ctx, name, schema, columnNames,
                               pkey_index, dummy, partitionColumn,
-                              exportEnabled, exportOnly);
+                              partitionColumns, exportEnabled, exportOnly);
 }
 
 Table* TableFactory::getPersistentTable(
@@ -102,6 +104,7 @@ Table* TableFactory::getPersistentTable(
             const std::string* columnNames,
             const std::vector<TableIndexScheme> &indexes,
             int partitionColumn,
+	    const std::vector<int>& partitionColumns,
             bool exportEnabled,
             bool exportOnly)
 {
@@ -118,6 +121,7 @@ Table* TableFactory::getPersistentTable(
         pTable->m_indexCount = (int)indexes.size();
         pTable->m_indexes = new TableIndex*[indexes.size()];
         pTable->m_partitionColumn = partitionColumn;
+	pTable->setPartitionColumns(partitionColumns);
 
         for (int i = 0; i < indexes.size(); ++i) {
             pTable->m_indexes[i] = TableIndexFactory::getInstance(indexes[i]);
@@ -139,6 +143,7 @@ Table* TableFactory::getPersistentTable(
             const TableIndexScheme &pkeyIndex,
             const std::vector<TableIndexScheme> &indexes,
             int partitionColumn,
+	    const std::vector<int>& partitionColumns,
             bool exportEnabled,
             bool exportOnly)
 {
@@ -154,6 +159,7 @@ Table* TableFactory::getPersistentTable(
         pTable->m_pkeyIndex = TableIndexFactory::getInstance(pkeyIndex);
         TableFactory::initCommon(databaseId, pTable, name, schema, columnNames, true);
         pTable->m_partitionColumn = partitionColumn;
+	pTable->setPartitionColumns(partitionColumns);
 
         // one for pkey + all the other indexes
         pTable->m_indexCount = 1 + (int)indexes.size();

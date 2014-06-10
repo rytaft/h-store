@@ -75,14 +75,14 @@ public class TestMultiTablePlannedPartitions extends BaseTestCase {
         JSONObject test_json = new JSONObject(FileUtil.readFile(f));
         PlannedPartitions p = new PlannedPartitions(catalogContext, test_json);
         p.setPartitionPhase("1");
-        assertEquals(0, p.getPartitionId("warehouse", new Long(1)));
-        assertEquals(1, p.getPartitionId("warehouse", new Long(2)));
-        assertEquals(0, p.getPartitionId("district", new Long(1)));
-        assertEquals(1, p.getPartitionId("district", new Long(2)));
-        assertEquals(-1, p.getPartitionId("district", new Long(10)));
-        assertEquals(0, p.getPartitionId("stock", new Long(1)));
-        assertEquals(0, p.getPartitionId("item", new Long(10100)));
-        assertEquals(1, p.getPartitionId("item", new Long(50100)));
+        assertEquals(0, p.getPartitionId("warehouse", new Long[]{1L}));
+        assertEquals(1, p.getPartitionId("warehouse", new Long[]{2L}));
+        assertEquals(0, p.getPartitionId("district", new Long[]{1L}));
+        assertEquals(1, p.getPartitionId("district", new Long[]{2L}));
+        assertEquals(-1, p.getPartitionId("district", new Long[]{10L}));
+        assertEquals(0, p.getPartitionId("stock", new Long[]{1L}));
+        assertEquals(0, p.getPartitionId("item", new Long[]{10100L}));
+        assertEquals(1, p.getPartitionId("item", new Long[]{50100L}));
     }
 
     public void testReconfigPlan() throws Exception {
@@ -94,7 +94,7 @@ public class TestMultiTablePlannedPartitions extends BaseTestCase {
         p.setPartitionPhase("1");
         ReconfigurationPlan plan = p.setPartitionPhase("2");
         assertNotNull(plan);
-        List<ReconfigurationRange<? extends Comparable<?>>> out_ranges = plan.getOutgoing_ranges().get(0);
+        List<ReconfigurationRange> out_ranges = plan.getOutgoing_ranges().get(0);
         System.out.println(out_ranges);
         assertEquals("Expected 9 outgoing ranges",9, out_ranges.size());
     }

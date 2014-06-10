@@ -11,6 +11,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.Vector;
+import java.util.ArrayList;
 
 import org.apache.log4j.Logger;
 import org.json.JSONException;
@@ -18,8 +19,10 @@ import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Column;
+import org.voltdb.catalog.ColumnRef;
 import org.voltdb.catalog.Database;
 import org.voltdb.catalog.ProcParameter;
+import org.voltdb.catalog.ProcParameterRef;
 import org.voltdb.catalog.Procedure;
 import org.voltdb.catalog.Statement;
 import org.voltdb.catalog.Table;
@@ -31,6 +34,8 @@ import edu.brown.catalog.special.NullProcParameter;
 import edu.brown.catalog.special.RandomProcParameter;
 import edu.brown.catalog.special.ReplicatedColumn;
 import edu.brown.catalog.special.VerticalPartitionColumn;
+import edu.brown.catalog.special.MultiColumn;
+import edu.brown.catalog.special.MultiProcParameter;
 import edu.brown.designer.DesignerHints;
 import edu.brown.designer.partitioners.PartitionerUtil;
 import edu.brown.designer.partitioners.VerticalPartitionerUtil;
@@ -239,7 +244,25 @@ public class PartitionPlan implements JSONSerializable {
                     assert (catalog_col != null);
                     if (catalog_col instanceof VerticalPartitionColumn && enableVerticalPartitions == false) {
                         catalog_col = ((VerticalPartitionColumn) catalog_col).getHorizontalColumn();
+                    } 
+                    
+                    // for composite key partitioning
+                    if (catalog_col instanceof MultiColumn) {
+                    	Object[] columns = ((MultiColumn) catalog_col).getAttributes().toArray();
+                    	
+                    	for (int i = 0; i < columns.length; i++) {
+                        	Column col = (Column) columns[i];
+                            ColumnRef cref = catalog_tbl.getPartitioncolumns().add(col.getTypeName());
+                            cref.setColumn(col);
+                            cref.setIndex(i);
+                        }
                     }
+                    else {                    	
+                    	ColumnRef cref = catalog_tbl.getPartitioncolumns().add(catalog_col.getTypeName());
+                        cref.setColumn(catalog_col);
+                        cref.setIndex(0);
+                    }
+                    
                     catalog_tbl.setPartitioncolumn(catalog_col);
                     catalog_tbl.setIsreplicated(false);
                 }
@@ -307,7 +330,24 @@ public class PartitionPlan implements JSONSerializable {
 
             assert (catalog_proc_param != null) : "Null ProcParameter for " + catalog_proc;
             catalog_proc.setPartitionparameter(catalog_proc_param.getIndex());
-
+            
+            // for composite key partitioning
+            if (catalog_proc_param instanceof MultiProcParameter) {
+            	Object[] params = ((MultiProcParameter) catalog_proc_param).getAttributes().toArray();
+            	
+            	for (int i = 0; i < params.length; i++) {
+            		ProcParameter param = (ProcParameter) params[i];
+            		ProcParameterRef ppref = catalog_proc.getPartitionparameters().add(param.getTypeName());
+            		ppref.setParameter(param);
+            		ppref.setIndex(i);
+                }
+            }
+            else {                    	
+            	ProcParameterRef ppref = catalog_proc.getPartitionparameters().add(catalog_proc_param.getTypeName());
+        		ppref.setParameter(catalog_proc_param);
+        		ppref.setIndex(0);
+            }
+            
             Boolean single_partition = pentry.isSinglePartition();
             if (single_partition != null)
                 catalog_proc.setSinglepartition(single_partition);

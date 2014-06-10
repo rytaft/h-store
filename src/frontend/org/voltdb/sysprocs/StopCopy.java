@@ -111,20 +111,20 @@ public class StopCopy extends VoltSystemProcedure {
                     ReconfigurationPlan plan = rc.initReconfiguration(coordinator, reconfig_protocol, partition_plan, this.partitionId);
                     if(plan != null){
                         assert plan.getOutgoing_ranges() != null : "reconfig plan outgoing_ranges is null";
-                        List<ReconfigurationRange<? extends Comparable<?>>> outgoing_ranges = plan.getOutgoing_ranges().get(this.partitionId);
+                        List<ReconfigurationRange> outgoing_ranges = plan.getOutgoing_ranges().get(this.partitionId);
                         if (outgoing_ranges != null && outgoing_ranges.size() > 0) {
                             Table catalog_tbl = null;
                             VoltTable table = null;
                             Object row[] = null;
-                            for (ReconfigurationRange<? extends Comparable<?>> range : outgoing_ranges) {
-                                catalog_tbl = this.catalogContext.getTableByName(range.table_name);
+                            for (ReconfigurationRange range : outgoing_ranges) {
+                                catalog_tbl = this.catalogContext.getTableByName(range.getTableName());
                                 Pair<VoltTable, Boolean> res = executor.extractTable(catalog_tbl, range, 1);
                                 table = res.getFirst();
                                 if (res.getSecond().booleanValue()){
                                     LOG.error("More data coming in stop and copy. This is deprecated");
                                 }
-                                rc.pushTuples(range.old_partition, range.new_partition, range.table_name, table, 
-                                        (Long)range.getMin_inclusive(), (Long)range.getMax_exclusive());
+                                rc.pushTuples(range.getOldPartition(), range.getNewPartition(), range.getTableName(), table, 
+                                        range.getMinInclTable(), range.getMaxExclTable());
                             }
                         } else {
                             LOG.info("No outgoing ranges for this partition");

@@ -359,6 +359,13 @@ public:
         return m_schema;
     }
 
+    /* Functor comparator for use with std::set */
+    struct ltTableTuple {
+      bool operator()(const TableTuple &v1, const TableTuple &v2) const {
+	return v1.compare(v2) < 0;
+      }
+    };
+
     /** Print out a human readable description of this tuple */
     std::string debug(const std::string& tableName) const;
     std::string debugNoHeader() const;
