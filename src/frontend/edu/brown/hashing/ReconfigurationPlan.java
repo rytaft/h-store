@@ -359,12 +359,15 @@ public class ReconfigurationPlan {
         		Object[] max = null;
         		for(long i = min_long; i < max_long; i++) {	
         			for(Object[] subKeySplit : subKeySplits) {
-        				assert(subKeySplit.length == min.length - 1);
         				max = new Object[min.length];
         				max[0] = i;
-        				for(int j = 1; j < max.length; j++) {
+        				for(int j = 1; j < max.length && j <= subKeySplit.length; j++) {
         					max[j] = subKeySplit[j-1];
         				}
+        				for(int j = subKeySplit.length + 1; j < max.length; j++) {
+					    VoltType vt = temp.getColumnType(j);
+					    max[j] = vt.getNullValue();
+					}
         				temp.addRow(max);
         				temp.advanceToRow(0);
         				max = temp.getRowArray();

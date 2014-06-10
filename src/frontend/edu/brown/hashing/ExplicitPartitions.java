@@ -153,6 +153,7 @@ public abstract class ExplicitPartitions {
 
                 Column partitionCol = partitionCols[0];
                 List<Column> depCols = dependUtil.getAncestors(partitionCol);
+                boolean partitionedParentFound = false;
                 List<String> relatedTables = new ArrayList<>();
                 List<Table> relatedCatalogTables = new ArrayList<>();
                 for (Column c : depCols) {
@@ -164,46 +165,31 @@ public abstract class ExplicitPartitions {
                         LOG.info(String.format("Table %s is related to %s",tableName,relatedTblName));
                         relatedTables.add(relatedTblName);
                         relatedCatalogTables.add(relatedTbl);
+                        if (partitionedTables.contains(relatedTblName)) {
+                            LOG.info("parent partitioned table : " + p + " : " + relatedTblName);
+                            partitionedTablesByFK.put(tableName, relatedTblName);
+                            partitionedParentFound = true;
+                            if (catalog_to_table_map.containsKey(table))
+                                LOG.error("ctm has table already : " + table);
+                            catalog_to_table_map.put(table, relatedTbl);
+                            if (catalog_to_table_map.containsKey(partitionCol)) {
+                                LOG.error("ctm has part col : " + partitionCol + " : " + catalog_to_table_map.get(partitionCol));
+                            }
+                            //TODO catalog_to_table_map.put(partitionCol, relatedTblName);
+                            LOG.info("no relationships on look up " +partitionCol + " : " + tableName);
+                            catalog_to_table_map.put(partitionCol, table);
+                        }
                     }
                 }
-                
-                String relatedTblName = null;
-                if(relatedTables.contains(this.default_table)) {
-                	relatedTblName = this.default_table;
-                } else {
-                	for(String name : relatedTables) {
-                		if (partitionedTables.contains(name)) {
-                			relatedTblName = name;
-                			break;
-                		}
-                	}
-                }
-                
-
-                if (relatedTblName == null) {
-                    throw new RuntimeException("No partitioned relationship found for table : " + tableName + " partitioned:" + partitionedTables.toString());
-                }
-                Table relatedTbl = this.catalog_context.getTableByName(relatedTblName);
-
-                LOG.info("parent partitioned table : " + relatedTbl + " : " + relatedTblName);
-                partitionedTablesByFK.put(tableName, relatedTblName);
-                if (catalog_to_table_map.containsKey(table))
-                	LOG.error("ctm has table already : " + table);
-                catalog_to_table_map.put(table, relatedTbl);
-                if (catalog_to_table_map.containsKey(partitionCol)) {
-                	LOG.error("ctm has part col : " + partitionCol + " : " + catalog_to_table_map.get(partitionCol));
-                }
-                //TODO catalog_to_table_map.put(partitionCol, relatedTblName);
-                LOG.info("no relationships on look up " +partitionCol + " : " + tableName);
-                catalog_to_table_map.put(partitionCol, table);
-
-                			
                 if(!relatedTables.isEmpty()){
                     LOG.info("Associating the list of related tables for :"+ tableName);
                     relatedTables.add(tableName);
                     relatedCatalogTables.add(table);
                     relatedTablesMap.put(tableName, relatedTables);
                     relatedCatalogTablesMap.put(tableName, relatedCatalogTables);
+                }
+                if (!partitionedParentFound) {
+                    throw new RuntimeException("No partitioned relationship found for table : " + tableName + " partitioned:" + partitionedTables.toString());
                 }
             }
         }
