@@ -23,7 +23,7 @@ RECONFIG_EXPERIMENTS = [
     "reconfig-slow",
 ]
 
-RECONFIG_CLIENT_COUNT = 2
+RECONFIG_CLIENT_COUNT = 1
 
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
