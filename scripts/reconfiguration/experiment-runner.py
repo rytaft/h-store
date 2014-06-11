@@ -612,7 +612,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["site.exec_early_prepare"]=False
 
         fabric.env["site.exec_force_singlepartitioned"] = True
-        fabric.env["site.specexec_enable"] = False
+        fabric.env["site.specexec_enable"] = True
         fabric.env['global.hasher_class'] = 'edu.brown.hashing.PlannedHasher'
         fabric.env["client.output_response_status"] = True
         fabric.env["client.output_exec_profiling"] = "execprofile.csv"
