@@ -117,7 +117,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.loadthread_per_warehouse"] = False
         fabric.env["benchmark.loadthreads"] = max(16, partitions)        
-        fabric.env["partitionplan"]="tpcc-plan.pplan"
+        fabric.env["partitionplan"]="tpcc-plan-warehouse-part.pplan" #"tpcc-plan.pplan"
         fabric.env["site.reconfig_subplan_split"]=100
 
 
