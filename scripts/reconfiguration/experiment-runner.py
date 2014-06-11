@@ -608,6 +608,9 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         LOG.info("Disabling command logging for reconfig experiments ******")
         fabric.env["site.commandlog_enable"] = False
         fabric.env["client.txn_hints"] = False
+        fabric.env["planner_caching"]=False 
+        fabric.env["site.exec_early_prepare"]=False
+
         fabric.env["site.exec_force_singlepartitioned"] = True
         fabric.env["site.specexec_enable"] = False
         fabric.env['global.hasher_class'] = 'edu.brown.hashing.PlannedHasher'

@@ -21,6 +21,7 @@ RECONFIG_EXPERIMENTS = [
     "reconfig-fast",
     "stopcopy-fast",
     "reconfig-slow",
+    "reconfig-2split",
 ]
 
 RECONFIG_CLIENT_COUNT = 1
@@ -98,6 +99,27 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.loadthread_per_warehouse"] = False
         fabric.env["benchmark.loadthreads"] = max(16, partitions)
+        
+        
+    if 'reconfig-2split' in  args['exp_type'] or 'stopcopy-2slit' in args['exp_type']:
+        fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
+        fabric.env["client.blocking_concurrent"] = 1
+        #fabric.env["client.txnrate"] = 100000
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.output_exec_profiling"] = "execprofile.csv"
+        fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
+        fabric.env["client.output_txn_profiling_combine"] = True
+        fabric.env["client.output_txn_counters"] = "txncounters.csv"
+        fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
+        fabric.env["site.reconfig_chunk_size_kb"] = 30000 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 30000
+        fabric.env["site.commandlog_enable"] = False
+        fabric.env["benchmark.loadthread_per_warehouse"] = False
+        fabric.env["benchmark.loadthreads"] = max(16, partitions)        
+        fabric.env["partitionplan"]="tpcc-plan.pplan"
+        fabric.env["site.reconfig_subplan_split"]=100
+
 
     if 'reconfig-10b' in  args['exp_type'] or 'stopcopy-10b' in args['exp_type']:
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
@@ -111,7 +133,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
         fabric.env["site.reconfig_chunk_size_kb"] = 10000 
-        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 10000
         fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.loadthread_per_warehouse"] = False
         fabric.env["benchmark.loadthreads"] = max(16, partitions)

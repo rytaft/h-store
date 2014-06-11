@@ -15,7 +15,7 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-    "reconfig-2b --partitions=2 --benchmark-size=4 --reconfig=30000:1:0 --exp-suffix=t4-move1 "\
+    "reconfig-2split --partitions=2 --benchmark-size=4   "\
 )
 
 for b in tpcc; do
@@ -30,9 +30,10 @@ for b in tpcc; do
         --plot \
 	--client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=120000 \
+        --client.duration=60000 \
         --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv \
+        --reconfig=15000:1:0 \
         --sweep-reconfiguration 
     )
     
