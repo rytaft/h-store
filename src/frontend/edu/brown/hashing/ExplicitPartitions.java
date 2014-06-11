@@ -166,6 +166,7 @@ public abstract class ExplicitPartitions {
                         relatedTables.add(relatedTblName);
                         relatedCatalogTables.add(relatedTbl);
                         if (partitionedTables.contains(relatedTblName) && 
+                        		this.table_partition_cols_map.get(relatedTblName) != null &&
                         		this.table_partition_cols_map.get(relatedTblName)[0].equals(c)) {
                             parentCandidates.add(relatedTbl);
                         }
@@ -188,6 +189,7 @@ public abstract class ExplicitPartitions {
                         	String relatedTblName = p.getName().toLowerCase();
                             Table relatedTbl = (Table) p;
                             if (prevParentCandidates.contains(relatedTbl) && 
+                            		this.table_partition_cols_map.get(relatedTblName) != null &&
                             		this.table_partition_cols_map.get(relatedTblName)[i].equals(c)) {
                                 parentCandidates.add(relatedTbl);
                             }
