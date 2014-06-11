@@ -151,11 +151,11 @@ public abstract class ExplicitPartitions {
                     LOG.info(tableName + " is not explicitly partitioned.");
                 }
 
-                Column partitionCol = partitionCols[0];
-                List<Column> depCols = dependUtil.getAncestors(partitionCol);
-                boolean partitionedParentFound = false;
+                List<Column> depCols = dependUtil.getAncestors(partitionCols[0]);
                 List<String> relatedTables = new ArrayList<>();
                 List<Table> relatedCatalogTables = new ArrayList<>();
+                List<Table> parentCandidates = new ArrayList<>();
+                List<Table> prevParentCandidates = new ArrayList<>();
                 for (Column c : depCols) {
                     CatalogType p = c.getParent();
                     if (p instanceof Table) {
@@ -165,31 +165,57 @@ public abstract class ExplicitPartitions {
                         LOG.info(String.format("Table %s is related to %s",tableName,relatedTblName));
                         relatedTables.add(relatedTblName);
                         relatedCatalogTables.add(relatedTbl);
-                        if (partitionedTables.contains(relatedTblName)) {
-                            LOG.info("parent partitioned table : " + p + " : " + relatedTblName);
-                            partitionedTablesByFK.put(tableName, relatedTblName);
-                            partitionedParentFound = true;
-                            if (catalog_to_table_map.containsKey(table))
-                                LOG.error("ctm has table already : " + table);
-                            catalog_to_table_map.put(table, relatedTbl);
-                            if (catalog_to_table_map.containsKey(partitionCol)) {
-                                LOG.error("ctm has part col : " + partitionCol + " : " + catalog_to_table_map.get(partitionCol));
-                            }
-                            //TODO catalog_to_table_map.put(partitionCol, relatedTblName);
-                            LOG.info("no relationships on look up " +partitionCol + " : " + tableName);
-                            catalog_to_table_map.put(partitionCol, table);
+                        if (partitionedTables.contains(relatedTblName) && 
+                        		this.table_partition_cols_map.get(relatedTblName)[0].equals(c)) {
+                            parentCandidates.add(relatedTbl);
                         }
                     }
                 }
+                
+                // find the parent with the greatest number of partition columns in common
+                for(int i = 1; i < partitionCols.length; i++) {
+                	if(parentCandidates.size() != 0) {
+                		prevParentCandidates = parentCandidates;
+                		parentCandidates = new ArrayList<>();
+                	} else {
+                		break;
+                	}
+                	
+                	depCols = dependUtil.getAncestors(partitionCols[i]);
+                	for (Column c : depCols) {
+                        CatalogType p = c.getParent();
+                        if (p instanceof Table) {
+                        	String relatedTblName = p.getName().toLowerCase();
+                            Table relatedTbl = (Table) p;
+                            if (prevParentCandidates.contains(relatedTbl) && 
+                            		this.table_partition_cols_map.get(relatedTblName)[i].equals(c)) {
+                                parentCandidates.add(relatedTbl);
+                            }
+                        }
+                    }
+                }
+                
+                Table parentTbl = null;
+                if(parentCandidates.size() != 0) {
+                	parentTbl = parentCandidates.get(0);
+                } else if(prevParentCandidates.size() != 0) {
+                	parentTbl = prevParentCandidates.get(0);
+                } else {
+                	throw new RuntimeException("No partitioned relationship found for table : " + tableName + " partitioned:" + partitionedTables.toString());
+                }
+                
+                String parentTblName = parentTbl.getName().toLowerCase();
+                LOG.info("parent partitioned table : " + parentTbl + " : " + parentTblName);
+                partitionedTablesByFK.put(tableName, parentTblName);
+                catalog_to_table_map.put(table, parentTbl);
+                catalog_to_table_map.put(partitionCols[0], table);
+                
                 if(!relatedTables.isEmpty()){
                     LOG.info("Associating the list of related tables for :"+ tableName);
                     relatedTables.add(tableName);
                     relatedCatalogTables.add(table);
                     relatedTablesMap.put(tableName, relatedTables);
                     relatedCatalogTablesMap.put(tableName, relatedCatalogTables);
-                }
-                if (!partitionedParentFound) {
-                    throw new RuntimeException("No partitioned relationship found for table : " + tableName + " partitioned:" + partitionedTables.toString());
                 }
             }
         }
