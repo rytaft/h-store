@@ -6246,10 +6246,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // FIXME (ae) We need to check with Andy about concurrency issues here
         LOG.info(String.format("PE %s InitReconfiguration plan  %s %s", this.partitionId, reconfig_protocol, reconfig_state));
         if (this.reconfig_plan != null) {
-            String msg = "Reconfiguration plan already set. Cannot set until previous reconfig plan is complete. Current state: " + reconfig_state;
-            LOG.error(msg);
-            //throw new Exception(msg);
-
+            String msg = "Reconfiguration plan already set. Current state: " + reconfig_state;
+            LOG.warn(msg);
         }
         if (debug.val) {
             LOG.debug(String.format("Setting reconfiguration plan. Protocol:%s. State:%s", reconfig_protocol, reconfig_state));
