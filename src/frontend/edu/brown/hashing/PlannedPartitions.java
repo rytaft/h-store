@@ -598,7 +598,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             if (old_phase == null) {
                 return null;
             }
-            return new ReconfigurationPlan(this.partition_phase_map.get(old_phase), this.partition_phase_map.get(new_phase));
+            return new ReconfigurationPlan(this.catalog_context, this.partition_phase_map.get(old_phase), this.partition_phase_map.get(new_phase));
         } catch (Exception ex) {
             LOG.error("Exception on setting partition phase", ex);
             LOG.error(String.format("Old phase: %s  New Phase: %s" , old_phase,new_phase));
