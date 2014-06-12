@@ -207,7 +207,7 @@ public abstract class ExplicitPartitions {
                 }
                 
                 String parentTblName = parentTbl.getName().toLowerCase();
-                LOG.info("parent partitioned table : " + parentTbl + " : " + parentTblName);
+                LOG.info("parent partitioned table for " + tableName + ": " + parentTbl + " : " + parentTblName);
                 partitionedTablesByFK.put(tableName, parentTblName);
                 catalog_to_table_map.put(table, parentTbl);
                 catalog_to_table_map.put(partitionCols[0], table);
