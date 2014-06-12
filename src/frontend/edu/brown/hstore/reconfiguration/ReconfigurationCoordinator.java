@@ -150,7 +150,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     
     public class SendNextPlan extends Thread {
     	public void run() {
-    		long sleep_time = 500;
+    		long sleep_time = 5000;
     		try {
                 Thread.sleep(sleep_time);
             } catch (InterruptedException e) {
