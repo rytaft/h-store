@@ -421,7 +421,7 @@ class AbstractFabric(object):
     ## __writeConf__
     ## ----------------------------------------------
     def __writeConf__(self, inst, project, removals=[ ], revertFirst=False):
-        prefix_include = [ 'site', 'client', 'global', 'benchmark' ]
+        prefix_include = [ 'site', 'client', 'global', 'benchmark', 'partitionplan' ]
         
         hstoreConf_updates = { }
         hstoreConf_removals = set()
@@ -470,7 +470,7 @@ class AbstractFabric(object):
     ## ----------------------------------------------
     def __updateConf__(self, inst, conf_file, updates={ }, removals=[ ], noSpaces=False):
         LOG.info("Updating configuration file '%s' - Updates[%d] / Removals[%d]", conf_file, len(updates), len(removals))
-        
+        LOG.info(sorted(updates.keys()))
         contents = self.get_file(inst, conf_file)
         assert len(contents) > 0, "Configuration file '%s' is empty" % conf_file
         
