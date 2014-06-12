@@ -986,15 +986,15 @@ public abstract class BenchmarkComponent {
                 } // SYNCH
             }
         }
-//        else if (status == Status.ABORT_UNEXPECTED) {
-//            LOG.warn("Invalid " + m_countDisplayNames[txn_idx] + " response!\n" + cresponse);
-//            if (cresponse.getException() != null) {
-//                cresponse.getException().printStackTrace();
-//            }
-//            if (cresponse.getStatusString() != null) {
-//                LOG.warn(cresponse.getStatusString());
-//            }
-//        }
+        else if (status == Status.ABORT_UNEXPECTED) {
+            LOG.warn("Invalid " + m_countDisplayNames[txn_idx] + " response!\n" + cresponse);
+            if (cresponse.getException() != null) {
+                cresponse.getException().printStackTrace();
+            }
+            if (cresponse.getStatusString() != null) {
+                LOG.warn(cresponse.getStatusString());
+            }
+        }
         
         if (m_txnStats.isResponsesStatusesEnabled()) {
             synchronized (m_txnStats.responseStatuses) {
