@@ -14,6 +14,7 @@ import java.util.Collection;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
+import org.voltdb.CatalogContext;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.Column;
@@ -46,8 +47,15 @@ public class ReconfigurationPlan {
     protected Map<Integer, List<ReconfigurationRange>> outgoing_ranges;
     protected Map<Integer, List<ReconfigurationRange>> incoming_ranges;
     public String planDebug = "";
+    private CatalogContext catalogContext;
     
-    public ReconfigurationPlan(){
+    private ReconfigurationPlan(){
+        outgoing_ranges = new HashMap<>();
+        incoming_ranges = new HashMap<>();
+    }
+    
+    public ReconfigurationPlan(CatalogContext catalogContext){
+        this.catalogContext = catalogContext;
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
     }
@@ -67,13 +75,14 @@ public class ReconfigurationPlan {
      * @throws Exception 
      * 
      */
-    public ReconfigurationPlan(PartitionPhase old_phase,PartitionPhase new_phase) throws Exception {
+    public ReconfigurationPlan(CatalogContext catalogContext, PartitionPhase old_phase,PartitionPhase new_phase) throws Exception {
+        this.catalogContext = catalogContext;
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
         assert old_phase.tables_map.keySet().equals(new_phase.tables_map.keySet()) : "Partition plans have different tables";
         tables_map = new HashMap<String, ReconfigurationPlan.ReconfigurationTable>();
         for(String table_name : old_phase.tables_map.keySet()){
-            tables_map.put(table_name, new ReconfigurationTable(old_phase.getTable(table_name), new_phase.getTable(table_name)));
+            tables_map.put(table_name, new ReconfigurationTable(catalogContext, old_phase.getTable(table_name), new_phase.getTable(table_name)));
         }
         registerReconfigurationRanges();
         planDebug = String.format("Reconfiguration plan generated \n Out: %s \n In: %s",outgoing_ranges.toString(),incoming_ranges.toString());
@@ -92,8 +101,10 @@ public class ReconfigurationPlan {
     	private List<ReconfigurationRange> reconfigurations;
         String table_name;
         HStoreConf conf = null;
+        CatalogContext catalogContext;
         
-        public ReconfigurationTable(PartitionedTable old_table, PartitionedTable new_table) throws Exception {
+        public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table) throws Exception {
+          this.catalogContext = catalogContext;
           table_name = old_table.table_name;
           this.conf = HStoreConf.singleton(false);
           setReconfigurations(new ArrayList<ReconfigurationRange>());
@@ -174,7 +185,7 @@ public class ReconfigurationPlan {
 
             }
           }
-          if(true) {
+          if(this.catalogContext.jarPath.getName().contains("tpcc")) {
               setReconfigurations(splitReconfigurationsOnPartitionKeys(getReconfigurations(), new_table.getCatalog_table(), old_table.subKeySplits));
           } else { 
         	  setReconfigurations(
@@ -800,4 +811,8 @@ public class ReconfigurationPlan {
       public Collection<ReconfigurationTable> getReconfigurationTables() {
     	  return this.tables_map.values();
       }
+
+    public CatalogContext getCatalogContext() {
+        return catalogContext;
+    }
 }

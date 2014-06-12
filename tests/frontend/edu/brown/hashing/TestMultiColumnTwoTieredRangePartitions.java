@@ -285,7 +285,7 @@ public class TestMultiColumnTwoTieredRangePartitions extends BaseTestCase {
         new_table_map.put("table", new_table);
         PartitionPhase new_phase = new PartitionPhase(new_table_map);
 
-        ReconfigurationPlan reconfig_plan = new ReconfigurationPlan(old_phase, new_phase);
+        ReconfigurationPlan reconfig_plan = new ReconfigurationPlan(catalogContext, old_phase, new_phase);
 
         ReconfigurationTable reconfig = (ReconfigurationTable) reconfig_plan.tables_map.get("table");
         ReconfigurationRange range = null;

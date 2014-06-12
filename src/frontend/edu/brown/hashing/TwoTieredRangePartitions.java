@@ -194,7 +194,7 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
             if (old_plan == null) {
                 return null;
             }
-            return new ReconfigurationPlan(old_plan, new_plan);
+            return new ReconfigurationPlan(this.catalog_context, old_plan, new_plan);
         } catch (Exception ex) {
             LOG.error("Exception on setting partition plan", ex);
             LOG.error(String.format("Old plan: %s  New plan: %s" , getPreviousPlan() ,getCurrentPlan()));
