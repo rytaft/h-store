@@ -1676,7 +1676,15 @@ public class PartitionEstimator {
     				
     				columnValues.add(params[param_idx]);
     			}
-    			// Doesn't work with constant values, etc.
+    			// CONSTANT VALUE
+    	        // This is more rare
+    	        else if (param instanceof ConstantValue) {
+    				ConstantValue const_param = (ConstantValue)param;
+                    VoltType vtype = VoltType.get(const_param.getType());
+                    Object const_value = VoltTypeUtil.getObjectFromString(vtype, const_param.getValue());
+                    columnValues.add(const_value);
+    			}
+    			// BUSTED!
     			else {
     				throw new RuntimeException("Unexpected parameter type: " + param.fullName());
     			}
