@@ -788,6 +788,14 @@ public final class HStoreConf {
                 experimental=true
         )
         public boolean reconfig_replication_delay;
+        
+        @ConfigProperty(
+                description="The introduce delay to inject replication latency into reconfiguraiton. ",
+                defaultLong=1000,
+                experimental=true
+        )
+        public long reconfig_plan_delay;        
+        
 
         @ConfigProperty(
                 description="The default live chunk size for reconfiguration ",
@@ -1405,6 +1413,7 @@ public final class HStoreConf {
             experimental=false
         )
         public int pool_pathestimators_idle;
+
         
     }
     

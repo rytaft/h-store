@@ -149,8 +149,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public static long STOP_COPY_TXNID = -2L;
     
     public class SendNextPlan extends Thread {
+        private long sleep_time;
+
+        public SendNextPlan(long sleep_time) { 
+            this.sleep_time = sleep_time;
+        }
+        
     	public void run() {
-    		long sleep_time = 5000;
     		try {
                 Thread.sleep(sleep_time);
             } catch (InterruptedException e) {
@@ -624,7 +629,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 }
                 FileUtil.appendEventToFile("RECONFIGURATION_INIT_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
                 //sendNextPlanToAllSites();
-                SendNextPlan send = new SendNextPlan();
+                SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
                 send.start();
             } else { 
                 LOG.info("All sites have reported that reconfiguration is complete "); 
@@ -706,7 +711,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 }
                 FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
                 //sendNextPlanToAllSites();
-                SendNextPlan send = new SendNextPlan();
+                SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
                 send.start();
             } else { 
                 sendReconfigEndAcknowledgementToAllSites();
