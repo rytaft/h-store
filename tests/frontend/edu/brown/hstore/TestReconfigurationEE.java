@@ -119,7 +119,7 @@ public class TestReconfigurationEE extends BaseTestCase {
         news.add(new PartitionRange(catalog_tbl, 2, rangeString));
         PartitionedTable new_table = new PartitionedTable(news, TARGET_TABLE, this.catalog_tbl);
 
-        ReconfigurationTable reconfig = new ReconfigurationTable(old_table, new_table);
+        ReconfigurationTable reconfig = new ReconfigurationTable(catalogContext, old_table, new_table);
         long rowCount = 0;
         for (ReconfigurationRange range : reconfig.getReconfigurations()) {
             assertNotNull(range);

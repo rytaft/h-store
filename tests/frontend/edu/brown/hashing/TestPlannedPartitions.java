@@ -196,7 +196,7 @@ public class TestPlannedPartitions extends BaseTestCase {
         news.add(new PartitionRange(catalog_tbl, 3, "26-30"));
         PartitionedTable new_table = new PartitionedTable(news, "table", catalog_tbl);
 
-        ReconfigurationTable reconfig = new ReconfigurationTable(old_table, new_table);
+        ReconfigurationTable reconfig = new ReconfigurationTable(catalogContext, old_table, new_table);
         ReconfigurationRange range = null;
         range = reconfig.getReconfigurations().get(0);
         assertEquals(5L, range.getMinIncl().get(0)[0]);
@@ -239,7 +239,7 @@ public class TestPlannedPartitions extends BaseTestCase {
         news.add(new PartitionRange(catalog_tbl, 3, "20-30"));
         PartitionedTable new_table = new PartitionedTable(news, "table", catalog_tbl);
 
-        ReconfigurationTable reconfig = new ReconfigurationTable(old_table, new_table);
+        ReconfigurationTable reconfig = new ReconfigurationTable(catalogContext, old_table, new_table);
         ReconfigurationRange range = null;
         range = reconfig.getReconfigurations().get(0);
         assertEquals(10L, range.getMinIncl().get(0)[0]);
@@ -268,7 +268,7 @@ public class TestPlannedPartitions extends BaseTestCase {
         PartitionedTable new_table = new PartitionedTable(news, "table", catalog_tbl);
 
         // REVERSED OLD <--> NEW
-        ReconfigurationTable reconfig = new ReconfigurationTable(new_table, old_table);
+        ReconfigurationTable reconfig = new ReconfigurationTable(catalogContext, new_table, old_table);
         ReconfigurationRange range = null;
         range = reconfig.getReconfigurations().get(0);
         assertEquals(10L, range.getMinIncl().get(0)[0]);
@@ -302,7 +302,7 @@ public class TestPlannedPartitions extends BaseTestCase {
         new_table_map.put("table", new_table);
         PartitionPhase new_phase = new PartitionPhase(new_table_map);
 
-        ReconfigurationPlan reconfig_plan = new ReconfigurationPlan(old_phase, new_phase);
+        ReconfigurationPlan reconfig_plan = new ReconfigurationPlan(catalogContext, old_phase, new_phase);
 
         ReconfigurationTable reconfig = (ReconfigurationTable) reconfig_plan.tables_map.get("table");
         ReconfigurationRange range = null;

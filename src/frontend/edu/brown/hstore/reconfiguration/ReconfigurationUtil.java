@@ -136,7 +136,7 @@ public class ReconfigurationUtil {
 
         List<ReconfigurationPlan> splitPlans = new ArrayList<>();
         for(int i = 0; i < numberOfSplits; i++){
-            splitPlans.add(new ReconfigurationPlan());
+            splitPlans.add(new ReconfigurationPlan(plan.getCatalogContext()));
         }
 
         
@@ -209,7 +209,7 @@ public class ReconfigurationUtil {
     	// split up the ranges into numberOfSplits chunks
     	int rangesPerSplit = (int) Math.ceil(((double) numRanges)/numberOfSplits);
     	int i = 0;
-    	ReconfigurationPlan newPlan = new ReconfigurationPlan();
+    	ReconfigurationPlan newPlan = new ReconfigurationPlan(plan.getCatalogContext());
     	for(List<ReconfigurationRange> ranges : rangeMap.values()) {
     		for(ReconfigurationRange range : ranges) {
     			newPlan.addRange(range);
@@ -218,7 +218,7 @@ public class ReconfigurationUtil {
     				LOG.info("Adding a new reconfiguration plan: " + newPlan.getIncoming_ranges().values().toString());
     				splitPlans.add(newPlan);
     				i = 0;
-    				newPlan = new ReconfigurationPlan();
+    				newPlan = new ReconfigurationPlan(plan.getCatalogContext());
     			}
     		}
     	}
@@ -257,13 +257,13 @@ public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(Reco
 
     	// combine ranges that have the same value
     	for(List<ReconfigurationRange> ranges : rangeMap.values()) {
-    		ReconfigurationPlan newPlan = new ReconfigurationPlan();
+    		ReconfigurationPlan newPlan = new ReconfigurationPlan(plan.getCatalogContext());
     		ReconfigurationRange prevRange = null;
         	for(ReconfigurationRange range : ranges) {
     			if(prevRange != null && !range.equalsIgnoreTable(prevRange)) {
     				LOG.info("Adding a new reconfiguration plan: " + newPlan.getIncoming_ranges().values().toString());
     				splitPlans.add(newPlan);
-    				newPlan = new ReconfigurationPlan();
+    				newPlan = new ReconfigurationPlan(plan.getCatalogContext());
     			}
     				
     			newPlan.addRange(range);
