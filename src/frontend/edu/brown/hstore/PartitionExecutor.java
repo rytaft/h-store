@@ -85,6 +85,7 @@ import org.voltdb.VoltSystemProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.Catalog;
+import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Cluster;
 import org.voltdb.catalog.Column;
 import org.voltdb.catalog.Database;
@@ -3891,16 +3892,19 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.start();
         for (int i = 0; i < fragmentIds.length; i++) {
             // Calls andy's methods for calculaitng the offsets
-            List<Pair<Column, Integer>> offsets = new ArrayList<>();
-            p_estimator.getPlanFragmentEstimationParameters(CatalogUtil.getPlanFragment(catalogContext.database, (int) fragmentIds[i]), offsets);
+            List<Pair<List<CatalogType>, List<Integer>>> offsets = new ArrayList<>();
+            p_estimator.getPlanFragmentEstimationParametersMultiCol(CatalogUtil.getPlanFragment(catalogContext.database, (int) fragmentIds[i]), offsets);
             ParameterSet parameterSet = parameterSets[i];
-            for (Pair<Column, Integer> offsetPair : offsets) {
-                Object parameterToCheck = parameterSet.toArray()[offsetPair.getSecond()];
+            for (Pair<List<CatalogType>, List<Integer>> offsetPair : offsets) {
+                List<Object> parametersToCheck = new ArrayList<Object>();
+                for(Integer offset : offsetPair.getSecond()) {
+                	parametersToCheck.add(parameterSet.toArray()[offset]);
+                }
                 try {
                     // FIXME make generic
-                    boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), parameterToCheck);
+                    boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), parametersToCheck);
                     if (trace.val)
-                        LOG.trace(String.format("CatalogObj:%s Parameter:%s  KeyOwned:%s ",offsetPair.getFirst(), parameterToCheck.toString(), keyOwned));
+                        LOG.trace(String.format("CatalogObj:%s Parameter:%s  KeyOwned:%s ",offsetPair.getFirst(), parametersToCheck.toString(), keyOwned));
                 } catch (ReconfigurationException rex) {
                     // A reconfigurationException was thrown for this key
                     if (debug.val) LOG.debug(String.format("(%d) Exception thrown from reconfig check : %s for txn %s ", this.partitionId, rex.toString(),currentTxn));

@@ -1129,6 +1129,107 @@ public class PartitionEstimator {
     }
     
     /**
+     * Populate the list of partitioning key and offset pairs for the given PlanFragment.
+     * For each pair, the Column is the partitioning key for a particular table referenced
+     * in the PlanFragment and its corresponding Integer is the offset in the StmtParameters
+     * to use to determine what partition to execute the PlanFragment on.
+     * Note that this method does not consider how the parameter is being used in the
+     * predicate (e.g., it does not check whether the parameter is used in an equality expression
+     * or a range expression).
+     * @param catalog_frag
+     * @param offsets
+     * @return true if the offsets collection was successfully updated.
+     */
+    public boolean getPlanFragmentEstimationParametersMultiCol(final PlanFragment catalog_frag, final Collection<Pair<List<CatalogType>, List<Integer>>> offsets) {
+        if (debug.val)
+            LOG.debug("Retrieving estimation parameter offsets for " + catalog_frag.fullName());
+        PartitionEstimator.CacheEntry cache_entry = null;
+        try {
+            cache_entry = this.getFragmentCacheEntry(catalog_frag);
+        } catch (Exception ex) {
+            throw new RuntimeException("Failed to retrieve CacheEntry for " + catalog_frag.fullName());
+        }
+
+        // If this PlanFragment has a broadcast, then this statement
+        // can't be used for fast look-ups
+        if (cache_entry.hasBroadcast()) {
+            if (debug.val)
+                LOG.warn(String.format("%s contains an operation that must be broadcast. " +
+                		 "Cannot be used for fast look-ups",
+                		 catalog_frag.fullName()));
+            return (false);
+        }
+
+        for (Table catalog_tbl : cache_entry.getTables()) {
+            if (catalog_tbl.getMaterializer() != null) {
+                catalog_tbl = catalog_tbl.getMaterializer();
+            }
+            Column partition_col = catalog_tbl.getPartitioncolumn();
+            if (partition_col instanceof MultiColumn) {
+            	if(this.multi_col_ranges) {
+            		MultiColumn mc = (MultiColumn) partition_col;
+                	List<CatalogType> columns = new ArrayList<CatalogType>();
+                	ArrayList<ArrayList<Integer>> offsetListList = new ArrayList<ArrayList<Integer>>();
+                	
+                	for (int i = 0, mc_cnt = mc.size(); i < mc_cnt; i++) {
+                		Column mc_column = mc.get(i);
+                		List<Pair<ExpressionType, CatalogType>> predicates;
+                    	
+                		if (cache_entry.predicates.containsKey(mc_column)) {
+                			predicates = cache_entry.predicates.get(mc_column);
+                		} else {
+                			break;
+                		}
+
+                		ArrayList<Integer> offsetList = new ArrayList<Integer>();
+                		// Note that we have to go through all of the mappings from the partitioning column
+                		// to parameters. This can occur when the partitioning column is referenced multiple times
+                		// This allows us to handle complex WHERE clauses and what not.
+                		for (Pair<ExpressionType, CatalogType> pair : predicates) {
+                			if (pair.getFirst() == ExpressionType.COMPARE_EQUAL &&
+                                    pair.getSecond() instanceof StmtParameter) {
+                				offsetList.add(((StmtParameter)pair.getSecond()).getIndex());
+                			}
+                		} // FOR
+                		
+                		if(offsetList.size() > 0) {
+                			columns.add(mc_column);
+                			offsetListList.add(offsetList);
+                		} else {
+                			break;
+                		}
+                	} // FOR
+
+                	// get all combinations of the param offsets
+                	// in the case of two partition columns, we are effectively taking the cross product
+                	List<List<Integer>> allCombinations = PartitionEstimator.combinations(offsetListList);    	
+                	for(List<Integer> indexes : allCombinations) {
+                		offsets.add(Pair.of(columns, indexes));
+                	}
+            	}
+            	else {
+            		if (debug.val)
+                        LOG.warn(String.format("%s references %s, which is partitioned on %s. " +
+                        		 "Cannot be used for fast look-ups",
+                                 catalog_frag.fullName(), catalog_tbl.getName(), partition_col.fullName()));
+                    // Do nothing?
+            	}
+            }
+            else if (partition_col != null && cache_entry.predicates.containsKey(partition_col)) {
+                for (Pair<ExpressionType, CatalogType> pair : cache_entry.predicates.get(partition_col)) {
+                    if (pair.getFirst() == ExpressionType.COMPARE_EQUAL &&
+                            pair.getSecond() instanceof StmtParameter) {
+                    	List<CatalogType> columns = new ArrayList<CatalogType>();
+                    	columns.add(partition_col);
+                        offsets.add(Pair.of(columns,Arrays.asList(((StmtParameter)pair.getSecond()).getIndex())));
+                    }
+                } // FOR
+            }
+        } // FOR
+        return (true);
+    }
+    
+    /**
      * Return the set of StmtParameter offsets that can be used to figure out
      * what partitions the Statement invocation will touch. This is used to
      * quickly figure out whether that invocation is single-partition or not. If
@@ -1725,7 +1826,7 @@ public class PartitionEstimator {
      * @return a List which contains every list which can be formed by taking
      * one Object from each Object list within the specified list of lists.
      */
-    public static List<List<Object>> combinations(List<ArrayList<Object>> objListList) {
+    public static <T> List<List<T>> combinations(List<ArrayList<T>> objListList) {
     	// keep track of the size of each inner Object list
     	int sizeArray[] = new int[objListList.size()];
 
@@ -1743,13 +1844,13 @@ public class PartitionEstimator {
     	}
 
     	// Store the combinations in a List of Object lists
-    	List<List<Object>> comboListList = new ArrayList<List<Object>>(totalCombinationCount);
+    	List<List<T>> comboListList = new ArrayList<List<T>>(totalCombinationCount);
 
     	for (int i = 0; i < totalCombinationCount; ++i) {
     		// Run through the inner lists, grabbing the member from the list
     		// specified by the counterArray for each inner list, and build a
     		// combination list.
-    		ArrayList<Object> comboList = new ArrayList<Object>(objListList.size());
+    		ArrayList<T> comboList = new ArrayList<T>(objListList.size());
     		for(int j = 0; j < objListList.size(); ++j) {
     			comboList.add(objListList.get(j).get(counterArray[j]));
     		}
