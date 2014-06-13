@@ -3943,6 +3943,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.info(String.format("(%s) PullId:%s pulling number of ranges and then blocking: %s",partitionId, pullID, pullRequestsNeeded.size()));
                 if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.start();
                 //Issue the pull
+                if (this.reconfiguration_coordinator == null){
+                    throw new RuntimeException("Null RC");
+                }
                 this.reconfiguration_coordinator.pullRanges(pullID, this.currentTxnId, this.partitionId, pullRequestsNeeded, pullBlockSemaphore);
                 if (debug.val) LOG.debug("Blocking on ranges " + pullRequestsNeeded.size());
                 try {
@@ -6434,7 +6437,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             Long startTime = pullStartTime.remove(pullId);
                             if (isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
                                 long timeTaken = System.currentTimeMillis() - startTime;
-                                FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s, ",timeTaken, pullId,table_name, minInclusiveList, maxExclusiveList));
+                                FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s, ",timeTaken, pullId,table_name, minInclusiveList.toString().replace("\n", " | "), maxExclusiveList));
                             }
                             this.reconfiguration_tracker.markRangeAsReceived(
                             		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
