@@ -167,6 +167,9 @@ bool MigrationManager::inRange(const TableTuple& tuple, const RangeMap& rangeMap
   }
 
   RangeMap::const_iterator it = rangeMap.upper_bound(keys);
+  if(it == rangeMap.end() || ((it->second).compare(keys) > 0)) {
+    it = rangeMap.lower_bound(keys);
+  }
   if(it == rangeMap.end()) {
     return false;
   }
