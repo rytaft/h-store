@@ -520,6 +520,18 @@ public class ReconfigurationPlan {
         	}
         }
         
+        private int getNonNullCols(int row) {        	
+        	int non_null_cols = 0;
+            for(int i = 0; i < min_incl.get(row).length; i++) {
+            	VoltType vt = keySchema.getColumnType(i);
+            	if(vt.getNullValue().equals(min_incl.get(row)[i]) && vt.getNullValue().equals(max_excl.get(row)[i])) {
+            		break;
+            	}
+            	non_null_cols++;
+            }
+            return non_null_cols;
+        }
+        
         @Override
         public String toString(){
         	String keys = "";
@@ -702,10 +714,10 @@ public class ReconfigurationPlan {
         	keySchemaCopy.advanceToRow(0);
         	Object[] rowArray = keySchemaCopy.getRowArray();
         	keySchemaCopy.clearRowData();
-        	return inRange(rowArray);
+        	return inRange(rowArray, ids.size());
         }
         
-        public boolean inRange(Object[] keys) {
+        public boolean inRange(Object[] keys, int orig_size) {
         	for(int i = 0; i < this.min_incl.size() && i < this.max_excl.size(); i++) {
         		Object[] min_incl_i = this.min_incl.get(i);
         		Object[] max_excl_i = this.max_excl.get(i);
@@ -713,7 +725,9 @@ public class ReconfigurationPlan {
             			(cmp.compare(max_excl_i, keys) > 0 || 
                         (cmp.compare(min_incl_i, max_excl_i) == 0 && 
                         cmp.compare(min_incl_i, keys) == 0))){
-            		return true;
+            		if (orig_size >= getNonNullCols(i)) {
+            			return true;
+            		}
                 }
             }
             return false;
