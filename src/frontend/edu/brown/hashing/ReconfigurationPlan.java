@@ -738,6 +738,9 @@ public class ReconfigurationPlan {
         	Object[] keys = new Object[keySchema.getColumnCount()];
         	int col = 0;
         	for(Object id : ids) {
+        		if(col >= keys.length) {
+        			break;
+        		}
         		keys[col] = id;
         		col++;
         	}
