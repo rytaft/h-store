@@ -733,6 +733,41 @@ public class ReconfigurationPlan {
             return false;
         }
         
+        public synchronized boolean inRangeIgnoreNullCols(List<Object> ids) {
+        	Object[] keys = new Object[this.keySchema.getColumnCount()];
+        	int col = 0;
+        	for(Object id : ids) {
+        		if(col >= keys.length) {
+        			break;
+        		}
+        		keys[col] = id;
+        		col++;
+        	}
+        	
+        	keySchemaCopy.addRow(keys);
+        	keySchemaCopy.advanceToRow(0);
+        	Object[] rowArray = keySchemaCopy.getRowArray();
+        	keySchemaCopy.clearRowData();
+        	return inRangeIgnoreNullCols(rowArray, ids.size());
+        }
+        
+        public boolean inRangeIgnoreNullCols(Object[] keys, int orig_size) {
+        	for(int i = 0; i < this.min_incl.size() && i < this.max_excl.size(); i++) {
+        		Object[] min_incl_i = this.min_incl.get(i);
+        		Object[] max_excl_i = this.max_excl.get(i);
+        		for(int j = orig_size; j < keys.length; j++) {
+        			keys[j] = min_incl_i[j];
+        		}
+            	if(cmp.compare(min_incl_i, keys) <= 0 && 
+            			(cmp.compare(max_excl_i, keys) > 0 || 
+                        (cmp.compare(min_incl_i, max_excl_i) == 0 && 
+                        cmp.compare(min_incl_i, keys) == 0))){
+            		return true;
+                }
+            }
+            return false;
+        }
+        
         public static Object[] getKeys(List<Object> ids, Table table) {
         	VoltTable keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
         	Object[] keys = new Object[keySchema.getColumnCount()];
