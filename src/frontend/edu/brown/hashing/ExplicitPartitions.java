@@ -210,12 +210,7 @@ public abstract class ExplicitPartitions {
                 	relatedTablesMap.put(parentTblName, new ArrayList<String>());
                 	relatedTablesMap.get(parentTblName).add(parentTblName);
                 }
-                if(!relatedTablesMap.containsKey(tableName)) {
-                	relatedTablesMap.put(tableName, new ArrayList<String>());
-                	relatedTablesMap.get(tableName).add(tableName);
-                }
                 relatedTablesMap.get(parentTblName).add(tableName);
-                relatedTablesMap.get(tableName).add(parentTblName);
             }
         }
 	}
@@ -330,8 +325,14 @@ public abstract class ExplicitPartitions {
      */
     public abstract void fromJSON(JSONObject json_object, Database catalog_db) throws JSONException;
 
-    public Map<String, List<String>> getRelatedTablesMap() {
-        return relatedTablesMap;
+    public List<String> getRelatedTables(String table_name) {
+        if(relatedTablesMap.containsKey(table_name)) {
+        	return relatedTablesMap.get(table_name);
+        } else if(this.partitionedTablesByFK.containsKey(table_name)) {
+        	return relatedTablesMap.get(this.partitionedTablesByFK.get(table_name));
+        }
+        
+        return null;
     }
     
     public CatalogContext getCatalogContext() {

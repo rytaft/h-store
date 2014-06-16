@@ -313,10 +313,9 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                             return true;
                         }
                     }
-                    List<String> relatedTables = null;
-                    if (partitionPlan.getRelatedTablesMap().containsKey(table_name)){
-                        relatedTables=partitionPlan.getRelatedTablesMap().get(table_name);
-                        if (debug.val) LOG.debug(String.format("Table %s has related tables:%s",table_name, StringUtils.join(relatedTables, ',')));
+                    List<String> relatedTables = partitionPlan.getRelatedTables(table_name);
+                    if (debug.val && relatedTables != null){
+                        LOG.debug(String.format("Table %s has related tables:%s",table_name, StringUtils.join(relatedTables, ',')));
                     }
                     // The key has not been received. Throw an exception to notify
                     //It could be in a partial range, but that doesn't matter to us. Still need to pull the full range.
