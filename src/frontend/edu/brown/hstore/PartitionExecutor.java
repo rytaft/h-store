@@ -3684,9 +3684,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                                Map<Integer, List<VoltTable>> input_deps) {
         assert(this.ee != null) : "The EE object is null. This is bad!";
 
-        if (reconfiguration_coordinator != null && reconfiguration_coordinator.getReconfigurationInProgress() && 
-                reconfiguration_coordinator.isLive_pull()) {
-            checkReconfigurationTracking(fragmentIds, parameterSets);
+        if (reconfiguration_coordinator != null && reconfiguration_coordinator.getReconfigurationInProgress()) {
+            if(reconfiguration_coordinator.isLive_pull()) {
+            	checkReconfigurationTracking(fragmentIds, parameterSets);
+            } else {
+            	checkReconfigurationTrackingAsyncPulls(fragmentIds, parameterSets);
+            }
         }
 
         
@@ -4017,6 +4020,75 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     }
 
+    private void checkReconfigurationTrackingAsyncPulls(long fragmentIds[], ParameterSet parameterSets[]) {
+        if (debug.val)
+            LOG.debug("check reconfigurationTrackingAsyncPulls");
+        if (this.reconfiguration_tracker == null) {
+            throw new RuntimeException("null reconfig tracker");
+        }
+
+        // Check if all the keys within the parameter sets are supposed to be
+        // present and not
+        // in reconfiguration state (either already migrated or waiting to be
+        // migrated)
+
+        // Get all the fragments
+        Set<ReconfigurationRange> restartsNeeded = new HashSet<>();
+        
+        this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.start();
+        for (int i = 0; i < fragmentIds.length; i++) {
+            // Calls andy's methods for calculaitng the offsets
+            List<Pair<List<CatalogType>, List<Integer>>> offsets = new ArrayList<>();
+            p_estimator.getPlanFragmentEstimationParametersMultiCol(CatalogUtil.getPlanFragment(catalogContext.database, (int) fragmentIds[i]), offsets);
+            ParameterSet parameterSet = parameterSets[i];
+            for (Pair<List<CatalogType>, List<Integer>> offsetPair : offsets) {
+                List<Object> parametersToCheck = new ArrayList<Object>();
+                for(Integer offset : offsetPair.getSecond()) {
+                	parametersToCheck.add(parameterSet.toArray()[offset]);
+                }
+                try {
+                    // FIXME make generic
+                    boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), parametersToCheck);
+                    if (trace.val)
+                        LOG.trace(String.format("CatalogObj:%s Parameter:%s  KeyOwned:%s ",offsetPair.getFirst(), parametersToCheck.toString(), keyOwned));
+                } catch (ReconfigurationException rex) {
+                    // A reconfigurationException was thrown for this key
+                    if (debug.val) LOG.debug(String.format("(%d) Exception thrown from reconfig check : %s for txn %s ", this.partitionId, rex.toString(),currentTxn));
+
+                    // Store the type of reconfigurationRange
+                    if (rex.exceptionType == ExceptionTypes.TUPLES_MIGRATED_OUT || rex.exceptionType == ExceptionTypes.BOTH) {
+                        // Lost data to destination
+                        restartsNeeded.addAll(rex.dataMigratedOut);
+                    } else if (rex.exceptionType == ExceptionTypes.TUPLES_NOT_MIGRATED || rex.exceptionType == ExceptionTypes.BOTH) {
+                        // not yet migrated
+                        if (ReconfigurationCoordinator.STATIC_PULL_FILTER){
+                            rex.dataNotYetMigrated = staticFilter(rex.dataNotYetMigrated, currentTxn.getProcedure().getName());
+                        }
+                        restartsNeeded.addAll(rex.dataNotYetMigrated);
+                    } else {
+                        throw new NotImplementedException("Unknown reconfigurationException type " + rex.toString());
+                    }
+
+                }
+            }
+        }
+        this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.stopIfStarted();
+
+        if (restartsNeeded.size() > 0) {
+            LOG.info("Restarts needed due to migrated data : " + restartsNeeded.size());
+            Histogram<Integer> partitionHistogram = new FastIntHistogram();
+            partitionHistogram.put(this.currentTxn.getPredictTouchedPartitions(), 1);
+            for (ReconfigurationRange range : restartsNeeded) {
+                LOG.info(" *** adding a restart on partition " + range.getNewPartition());
+                partitionHistogram.put(range.getNewPartition());
+            }
+            throw new MispredictionException(this.currentTxnId, partitionHistogram);
+
+        }
+
+    }
+
+    
     /**
      * Load a VoltTable directly into the EE at this partition.
      * <B>NOTE:</B> This should only be invoked by a system stored procedure.
