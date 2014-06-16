@@ -38,7 +38,6 @@ public abstract class ExplicitPartitions {
 	protected Map<String, Column[]> table_partition_cols_map;
 	protected String default_table = null;
 	protected Map<String, List<String>> relatedTablesMap;
-	protected Map<String, List<Table>> relatedCatalogTablesMap;
 	
 	private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
@@ -57,7 +56,6 @@ public abstract class ExplicitPartitions {
         this.table_partition_cols_map = new HashMap<>();
         this.plan_tables = null;
         this.relatedTablesMap = new HashMap<>();
-        this.relatedCatalogTablesMap = new HashMap<>();
         Set<String> partitionedTables = getExplicitPartitionedTables(partition_json);
         // TODO find catalogContext.getParameter mapping to find
         // statement_column
@@ -152,8 +150,6 @@ public abstract class ExplicitPartitions {
                 }
 
                 List<Column> depCols = dependUtil.getAncestors(partitionCols[0]);
-                List<String> relatedTables = new ArrayList<>();
-                List<Table> relatedCatalogTables = new ArrayList<>();
                 List<Table> parentCandidates = new ArrayList<>();
                 List<Table> prevParentCandidates = new ArrayList<>();
                 for (Column c : depCols) {
@@ -163,8 +159,6 @@ public abstract class ExplicitPartitions {
                         String relatedTblName = p.getName().toLowerCase();
                         Table relatedTbl = (Table) p;
                         LOG.info(String.format("Table %s is related to %s",tableName,relatedTblName));
-                        relatedTables.add(relatedTblName);
-                        relatedCatalogTables.add(relatedTbl);
                         if (partitionedTables.contains(relatedTblName) && 
                         		this.table_partition_cols_map.get(relatedTblName) != null &&
                         		this.table_partition_cols_map.get(relatedTblName)[0].equals(c)) {
@@ -212,13 +206,14 @@ public abstract class ExplicitPartitions {
                 catalog_to_table_map.put(table, parentTbl);
                 catalog_to_table_map.put(partitionCols[0], table);
                 
-                if(!relatedTables.isEmpty()){
-                    LOG.info("Associating the list of related tables for :"+ tableName);
-                    relatedTables.add(tableName);
-                    relatedCatalogTables.add(table);
-                    relatedTablesMap.put(tableName, relatedTables);
-                    relatedCatalogTablesMap.put(tableName, relatedCatalogTables);
+                if(!relatedTablesMap.containsKey(parentTblName)) {
+                	relatedTablesMap.put(parentTblName, new ArrayList<String>());
                 }
+                if(!relatedTablesMap.containsKey(tableName)) {
+                	relatedTablesMap.put(tableName, new ArrayList<String>());
+                }
+                relatedTablesMap.get(parentTblName).add(tableName);
+                relatedTablesMap.get(tableName).add(parentTblName);
             }
         }
 	}
@@ -337,8 +332,8 @@ public abstract class ExplicitPartitions {
         return relatedTablesMap;
     }
     
-    public Map<String, List<Table>> getRelatedCatalogTablesMap() {
-        return relatedCatalogTablesMap;
+    public CatalogContext getCatalogContext() {
+    	return this.catalog_context;
     }
 
 }

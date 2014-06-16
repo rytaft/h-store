@@ -165,8 +165,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         	
     }
 
-    private boolean checkMigratedMapSet(Map<String,Set<List<Object>>> migratedMapSet, Table table, Object key){
-    	String table_name = table.getName().toLowerCase();
+    private boolean checkMigratedMapSet(Map<String,Set<List<Object>>> migratedMapSet, String table_name, Object key){
     	if(migratedMapSet.containsKey(table_name) == false){
            if (debug.val) LOG.debug("Checking a key for which there is no table tracking for yet " + table_name); 
            return false;
@@ -230,7 +229,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 if (debug.val) LOG.debug(String.format("Key %s should be at %s. Checking if migrated in",key,partition_id));
                 
                 //Has the key been received as a single key
-                if (checkMigratedMapSet(migratedKeyIn,table,key)== true){
+                if (checkMigratedMapSet(migratedKeyIn,table_name,key)== true){
                     if (debug.val) LOG.debug(String.format("Key has been migrated in %s (%s)",key,table_name));
                     return true;
                 } else {                       
@@ -247,7 +246,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 //Key should be moving away
                 if (debug.val) LOG.debug(String.format("Key %s was at %s. Checking if migrated ",key,partition_id));                
                 //Check to see if we migrated this key individually
-                if (checkMigratedMapSet(migratedKeyOut,table,key)){
+                if (checkMigratedMapSet(migratedKeyOut,table_name,key)){
                     if (debug.val) LOG.debug(String.format("Key has been migrated out %s (%s)",key,table_name));                    
                     return false;
                 }                
@@ -304,7 +303,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 if (debug.val) LOG.debug(String.format("Key %s should be at %s. Checking if migrated in",key,partition_id));
                 
                 //Has the key been received as a single key
-                if (checkMigratedMapSet(migratedKeyIn,table,key)== true){
+                if (checkMigratedMapSet(migratedKeyIn,table_name,key)== true){
                     if (debug.val) LOG.debug(String.format("Key has been migrated in %s (%s)",key,table_name));
                     return true;
                 } else {                       
@@ -314,9 +313,9 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                             return true;
                         }
                     }
-                    List<Table> relatedTables = null;
+                    List<String> relatedTables = null;
                     if (partitionPlan.getRelatedTablesMap().containsKey(table_name)){
-                        relatedTables=partitionPlan.getRelatedCatalogTablesMap().get(table_name);
+                        relatedTables=partitionPlan.getRelatedTablesMap().get(table_name);
                         if (debug.val) LOG.debug(String.format("Table %s has related tables:%s",table_name, StringUtils.join(relatedTables, ',')));
                     }
                     // The key has not been received. Throw an exception to notify
@@ -327,8 +326,9 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                             ex = new ReconfigurationException(ExceptionTypes.TUPLES_NOT_MIGRATED, table, previousPartition, expectedPartition, key);
                         } else {
                             List<Table> relatedTablesToPull = new ArrayList<>();
-                            for(Table rTable : relatedTables){
-                                if (checkMigratedMapSet(migratedKeyIn,rTable,key)== false) {
+                            for(String rTableName : relatedTables){
+                            	Table rTable = this.partitionPlan.getCatalogContext().getTableByName(rTableName);
+                            	if (checkMigratedMapSet(migratedKeyIn,rTableName,key)== false) {
                                     if (debug.val) LOG.debug(" Related table key not migrated, adding to pull : " + rTable);
                                     relatedTablesToPull.add(rTable);
                                 } else {
@@ -351,12 +351,12 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                                 }
                             }
                             else {
-                                for(Table relatedTable : relatedTables){
-                                    if(range.getTableName().equalsIgnoreCase(relatedTable.getName().toLowerCase()) && range.inRange(key)){
+                                for(String rTableName : relatedTables){
+                                    if(range.getTableName().equalsIgnoreCase(rTableName) && range.inRange(key)){
                                         if (dataMigratedIn.contains(range)){
                                             LOG.info(String.format("Range %s has already been migrated in. Not pulling again", range));
                                         } else {
-                                            LOG.info(String.format("Access for key %s, pulling entire range :%s (%s)", key, range.toString(),relatedTable));
+                                            LOG.info(String.format("Access for key %s, pulling entire range :%s (%s)", key, range.toString(),rTableName));
                                             rangesToPull.add(range);
                                         }
                                     }
@@ -374,7 +374,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 if (debug.val) LOG.debug(String.format("Key %s was at %s. Checking if migrated ",key,partition_id));
                 
                 //Check to see if we migrated this key individually
-                if (checkMigratedMapSet(migratedKeyOut,table,key)){
+                if (checkMigratedMapSet(migratedKeyOut,table_name,key)){
                     ReconfigurationException ex = new ReconfigurationException(ExceptionTypes.TUPLES_MIGRATED_OUT,table, previousPartition,expectedPartition, key);
                     throw ex;
                 }
