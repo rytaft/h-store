@@ -208,9 +208,11 @@ public abstract class ExplicitPartitions {
                 
                 if(!relatedTablesMap.containsKey(parentTblName)) {
                 	relatedTablesMap.put(parentTblName, new ArrayList<String>());
+                	relatedTablesMap.get(parentTblName).add(parentTblName);
                 }
                 if(!relatedTablesMap.containsKey(tableName)) {
                 	relatedTablesMap.put(tableName, new ArrayList<String>());
+                	relatedTablesMap.get(tableName).add(tableName);
                 }
                 relatedTablesMap.get(parentTblName).add(tableName);
                 relatedTablesMap.get(tableName).add(parentTblName);
