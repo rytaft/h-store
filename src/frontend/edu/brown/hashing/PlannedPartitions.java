@@ -203,9 +203,8 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         protected Map<String, PartitionedTable> tables_map;
         protected CatalogContext catalog_context;
 
-        @SuppressWarnings("unchecked")
         public List<PartitionRange> getPartitions(String table_name) {
-            return (List<PartitionRange>) this.tables_map.get(table_name);
+            return this.tables_map.get(table_name).getRanges();
         }
 
         public PartitionedTable getTable(String table_name) {
@@ -479,6 +478,10 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             for (String range : partition_values.split(",")) {
                 this.partitions.add(new PartitionRange(this.catalog_table, partition_id, range));
             }
+        }
+        
+        public List<PartitionRange> getRanges() {
+        	return this.partitions;
         }
 
         public Table getCatalog_table() {
