@@ -47,29 +47,36 @@ public class ReconfigurationPlan {
     //Helper map of partition ID and outgoing/incoming ranges for this reconfiguration
     protected Map<Integer, List<ReconfigurationRange>> outgoing_ranges;
     protected Map<Integer, List<ReconfigurationRange>> incoming_ranges;
+    protected Map<String, List<ReconfigurationRange>> range_map;
     public String planDebug = "";
     private CatalogContext catalogContext;
     
     private ReconfigurationPlan(){
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
+        range_map = new HashMap<>();
     }
     
     public ReconfigurationPlan(CatalogContext catalogContext){
         this.catalogContext = catalogContext;
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
+        range_map = new HashMap<>();
     }
     
     public void addRange(ReconfigurationRange range){
-        if(outgoing_ranges.containsKey(range.old_partition)==false){
+        if(!outgoing_ranges.containsKey(range.old_partition)) {
             outgoing_ranges.put(range.old_partition, new ArrayList<ReconfigurationRange>());
         }
-        if(incoming_ranges.containsKey(range.new_partition)==false){
+        if(!incoming_ranges.containsKey(range.new_partition)) {
             incoming_ranges.put(range.new_partition, new ArrayList<ReconfigurationRange>());
+        }
+        if(!range_map.containsKey(range.table_name)) {
+        	range_map.put(range.table_name, new ArrayList<ReconfigurationRange>());
         }
         outgoing_ranges.get(range.old_partition).add(range);
         incoming_ranges.get(range.new_partition).add(range);
+        range_map.get(range.table_name).add(range);
     }    
     
     /**
@@ -80,6 +87,7 @@ public class ReconfigurationPlan {
         this.catalogContext = catalogContext;
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
+        range_map = new HashMap<>();
         assert old_phase.tables_map.keySet().equals(new_phase.tables_map.keySet()) : "Partition plans have different tables";
         tables_map = new HashMap<String, ReconfigurationPlan.ReconfigurationTable>();
         for(String table_name : old_phase.tables_map.keySet()){
@@ -96,6 +104,36 @@ public class ReconfigurationPlan {
                 addRange(range);
             }
         }
+    }
+    
+    /**
+     * Find the reconfiguration range for a key
+     * 
+     * @param id
+     * @return the reconfiguration range or null if no match could be
+     *         found
+     */
+    public ReconfigurationRange findReconfigurationRange(String table_name, List<Object> ids) throws Exception {
+    	try {
+    		List<ReconfigurationRange> ranges = this.range_map.get(table_name);
+    		if (ranges == null) {
+    			return null;
+    		}
+    		for (ReconfigurationRange r : ranges) {
+    			// if this greater than or equal to the min inclusive val
+    			// and
+    			// less than
+    			// max_exclusive or equal to both min and max (singleton)
+    			if (r.inRange(ids)) {
+    				return r;
+    			}
+    		}
+          
+        } catch (Exception e) {
+            LOG.error("Error looking up reconfiguration range", e);
+        }
+
+        return null;
     }
 
     public static class ReconfigurationTable {
@@ -444,7 +482,6 @@ public class ReconfigurationPlan {
                 LOG.error("Error looking up reconfiguration range", e);
             }
 
-            LOG.info("Reconfiguration range not found");
             return null;
         }
       }

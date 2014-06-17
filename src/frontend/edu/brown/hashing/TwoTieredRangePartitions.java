@@ -135,17 +135,7 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
     public int getPartitionId(String table_name, List<Object> ids) throws Exception {
     	synchronized (this) {
     		if(this.reconfigurationPlan != null) {
-    			ReconfigurationTable table = this.reconfigurationPlan.tables_map.get(table_name);
-    			if (table == null) {
-    				if (debug.val)
-    					LOG.debug(String.format("Table not found: %s, using default:%s ", table_name, this.default_table));
-    				table = this.reconfigurationPlan.tables_map.get(this.default_table);
-    				if (table == null) {
-    					throw new RuntimeException(String.format("Default partition table is null. Lookup table:%s Default Table:%s", table_name, this.default_table));
-    				}
-    			}
-    			assert table != null : "Table not found " + table_name;
-    			ReconfigurationRange range = table.findReconfigurationRange(ids);
+    			ReconfigurationRange range = this.reconfigurationPlan.findReconfigurationRange(table_name, ids);
     			if(range != null) {
     				return range.getNewPartition();
     			}
@@ -174,17 +164,7 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
     public int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception {
     	synchronized (this) {
     		if(this.reconfigurationPlan != null) {
-    			ReconfigurationTable table = this.reconfigurationPlan.tables_map.get(table_name);
-    			if (table == null) {
-    				if (debug.val)
-    					LOG.debug(String.format("Table not found: %s, using default:%s ", table_name, this.default_table));
-    				table = this.reconfigurationPlan.tables_map.get(this.default_table);
-    				if (table == null) {
-    					throw new RuntimeException(String.format("Default partition table is null. Lookup table:%s Default Table:%s", table_name, this.default_table));
-    				}
-    			}
-    			assert table != null : "Table not found " + table_name;
-    			ReconfigurationRange range = table.findReconfigurationRange(ids);
+    			ReconfigurationRange range = this.reconfigurationPlan.findReconfigurationRange(table_name, ids);
     			if(range != null) {
     				return range.getOldPartition();
     			}
