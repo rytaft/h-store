@@ -133,4 +133,9 @@ public interface ReconfigurationTrackingInterface {
      * @return
      */
     public boolean checkIfAllRangesAreMigratedIn();
+    
+    /**
+     * end the reconfiguration
+     */
+    public void endReconfiguration();
 }

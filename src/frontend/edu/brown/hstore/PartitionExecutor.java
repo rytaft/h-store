@@ -6430,7 +6430,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.currentExecMode = ExecutionMode.COMMIT_ALL;
             haltProcessing();
         }
-            
+        
+        this.reconfiguration_tracker.endReconfiguration();
+        
     	this.reconfig_plan = null;
     	this.reconfig_state = ReconfigurationState.END;
         this.outgoing_ranges = null;

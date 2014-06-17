@@ -35,6 +35,8 @@ import edu.brown.catalog.DependencyUtil;
 import edu.brown.hashing.PlannedPartitions.PartitionPhase;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
+import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.hashing.ReconfigurationPlan.ReconfigurationTable;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
@@ -131,7 +133,26 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
      */
     @Override
     public int getPartitionId(String table_name, List<Object> ids) throws Exception {
-        PartitionPhase plan = this.getCurrentPlan();
+    	synchronized (this) {
+    		if(this.reconfigurationPlan != null) {
+    			ReconfigurationTable table = this.reconfigurationPlan.tables_map.get(table_name);
+    			if (table == null) {
+    				if (debug.val)
+    					LOG.debug(String.format("Table not found: %s, using default:%s ", table_name, this.default_table));
+    				table = this.reconfigurationPlan.tables_map.get(this.default_table);
+    				if (table == null) {
+    					throw new RuntimeException(String.format("Default partition table is null. Lookup table:%s Default Table:%s", table_name, this.default_table));
+    				}
+    			}
+    			assert table != null : "Table not found " + table_name;
+    			ReconfigurationRange range = table.findReconfigurationRange(ids);
+    			if(range != null) {
+    				return range.getNewPartition();
+    			}
+    		}
+    	}
+    	
+    	PartitionPhase plan = this.getCurrentPlan();
         PartitionedTable table = plan.getTable(table_name);
         if (table == null) {
             if (debug.val)
@@ -151,7 +172,26 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
      */
     @Override
     public int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception {
-        PartitionPhase previousPlan = this.getPreviousPlan();
+    	synchronized (this) {
+    		if(this.reconfigurationPlan != null) {
+    			ReconfigurationTable table = this.reconfigurationPlan.tables_map.get(table_name);
+    			if (table == null) {
+    				if (debug.val)
+    					LOG.debug(String.format("Table not found: %s, using default:%s ", table_name, this.default_table));
+    				table = this.reconfigurationPlan.tables_map.get(this.default_table);
+    				if (table == null) {
+    					throw new RuntimeException(String.format("Default partition table is null. Lookup table:%s Default Table:%s", table_name, this.default_table));
+    				}
+    			}
+    			assert table != null : "Table not found " + table_name;
+    			ReconfigurationRange range = table.findReconfigurationRange(ids);
+    			if(range != null) {
+    				return range.getOldPartition();
+    			}
+    		}
+    	}
+    	
+    	PartitionPhase previousPlan = this.getPreviousPlan();
         if (previousPlan == null)
             return -1;
         PartitionedTable table = previousPlan.getTable(table_name);

@@ -38,6 +38,7 @@ public abstract class ExplicitPartitions {
 	protected Map<String, Column[]> table_partition_cols_map;
 	protected String default_table = null;
 	protected Map<String, List<String>> relatedTablesMap;
+	protected ReconfigurationPlan reconfigurationPlan;
 	
 	private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
@@ -56,6 +57,7 @@ public abstract class ExplicitPartitions {
         this.table_partition_cols_map = new HashMap<>();
         this.plan_tables = null;
         this.relatedTablesMap = new HashMap<>();
+        this.reconfigurationPlan = null;
         Set<String> partitionedTables = getExplicitPartitionedTables(partition_json);
         // TODO find catalogContext.getParameter mapping to find
         // statement_column
@@ -337,6 +339,10 @@ public abstract class ExplicitPartitions {
     
     public CatalogContext getCatalogContext() {
     	return this.catalog_context;
+    }
+    
+    public synchronized void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan) {
+    	this.reconfigurationPlan = reconfigurationPlan;
     }
 
 }

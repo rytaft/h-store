@@ -38,6 +38,8 @@ import org.voltdb.utils.VoltTypeUtil;
 import org.voltdb.utils.VoltTableComparator;
 
 import edu.brown.catalog.DependencyUtil;
+import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.hashing.ReconfigurationPlan.ReconfigurationTable;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
@@ -159,6 +161,25 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public int getPartitionId(String table_name, List<Object> ids) throws Exception {
+    	synchronized (this) {
+    		if(this.reconfigurationPlan != null) {
+    			ReconfigurationTable table = this.reconfigurationPlan.tables_map.get(table_name);
+    			if (table == null) {
+    				if (debug.val)
+    					LOG.debug(String.format("Table not found: %s, using default:%s ", table_name, this.default_table));
+    				table = this.reconfigurationPlan.tables_map.get(this.default_table);
+    				if (table == null) {
+    					throw new RuntimeException(String.format("Default partition table is null. Lookup table:%s Default Table:%s", table_name, this.default_table));
+    				}
+    			}
+    			assert table != null : "Table not found " + table_name;
+    			ReconfigurationRange range = table.findReconfigurationRange(ids);
+    			if(range != null) {
+    				return range.getNewPartition();
+    			}
+    		}
+    	}
+    	
     	PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
         PartitionedTable table = phase.getTable(table_name);
         if (table == null) {
@@ -178,6 +199,25 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception {
+    	synchronized (this) {
+    		if(this.reconfigurationPlan != null) {
+    			ReconfigurationTable table = this.reconfigurationPlan.tables_map.get(table_name);
+    			if (table == null) {
+    				if (debug.val)
+    					LOG.debug(String.format("Table not found: %s, using default:%s ", table_name, this.default_table));
+    				table = this.reconfigurationPlan.tables_map.get(this.default_table);
+    				if (table == null) {
+    					throw new RuntimeException(String.format("Default partition table is null. Lookup table:%s Default Table:%s", table_name, this.default_table));
+    				}
+    			}
+    			assert table != null : "Table not found " + table_name;
+    			ReconfigurationRange range = table.findReconfigurationRange(ids);
+    			if(range != null) {
+    				return range.getOldPartition();
+    			}
+    		}
+    	}
+    	
     	String previousPhase = this.getPreviousPhase_phase();
         if (previousPhase == null)
             return -1;
@@ -441,7 +481,6 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
          * @return the partition id or null partition id if no match could be
          *         found
          */
-        @SuppressWarnings("unchecked")
         public int findPartition(List<Object> ids) throws Exception {
             if (trace.val) {
                 LOG.trace(String.format("Looking up key %s on table %s during phase %s", ids.get(0), this.table_name));

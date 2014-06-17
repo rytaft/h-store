@@ -29,6 +29,7 @@ import edu.brown.designer.MemoryEstimator;
 import edu.brown.hashing.PlannedPartitions.PartitionPhase;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
+import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants;
 import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
@@ -419,6 +420,32 @@ public class ReconfigurationPlan {
 
         public void setReconfigurations(List<ReconfigurationRange> reconfigurations) {
             this.reconfigurations = reconfigurations;
+        }
+        
+        /**
+         * Find the reconfiguration range for a key
+         * 
+         * @param id
+         * @return the reconfiguration range or null if no match could be
+         *         found
+         */
+        public ReconfigurationRange findReconfigurationRange(List<Object> ids) throws Exception {
+            try {
+                for (ReconfigurationRange r : this.reconfigurations) {
+                    // if this greater than or equal to the min inclusive val
+                    // and
+                    // less than
+                    // max_exclusive or equal to both min and max (singleton)
+                    if (r.inRange(ids)) {
+                		return r;
+                	}
+                }
+            } catch (Exception e) {
+                LOG.error("Error looking up reconfiguration range", e);
+            }
+
+            LOG.info("Reconfiguration range not found");
+            return null;
         }
       }
       

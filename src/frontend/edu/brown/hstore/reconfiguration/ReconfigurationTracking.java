@@ -64,7 +64,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     private ExplicitPartitions partitionPlan;
     
     
-    public ReconfigurationTracking(ExplicitPartitions partitionPlan,List<ReconfigurationRange> outgoing_ranges,
+    protected ReconfigurationTracking(ExplicitPartitions partitionPlan,List<ReconfigurationRange> outgoing_ranges,
             List<ReconfigurationRange> incoming_ranges, int partition_id) {
         super();
         this.partitionPlan = partitionPlan;
@@ -91,14 +91,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     
     public ReconfigurationTracking(ExplicitPartitions partitionPlan, ReconfigurationPlan plan, int partition_id){
         this(partitionPlan,plan.getOutgoing_ranges().get(partition_id), plan.getIncoming_ranges().get(partition_id),partition_id);
-        /*this.partitionPlan = partitionPlan;
-        this.outgoing_ranges = new ArrayList<ReconfigurationRange>();
-        if(plan.getOutgoing_ranges().containsKey(partition_id))
-            this.outgoing_ranges.addAll(plan.getOutgoing_ranges().get(partition_id));
-        this.incoming_ranges = new ArrayList<ReconfigurationRange>();
-        if(plan.getIncoming_ranges().containsKey(partition_id))
-            this.incoming_ranges.addAll(plan.getIncoming_ranges().get(partition_id));
-        this.partition_id = partition_id;*/       
+        this.partitionPlan.setReconfigurationPlan(plan);      
     }
   
     @Override 
@@ -418,6 +411,11 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
             return true;
         } 
         return false;     
+    }
+    
+    @Override
+    public void endReconfiguration() {
+    	this.partitionPlan.setReconfigurationPlan(null);
     }
     
     
