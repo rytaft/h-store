@@ -24,6 +24,7 @@ import org.voltdb.catalog.Table;
 import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.hstore.HStoreConstants;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 
@@ -288,7 +289,10 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
             int previousPartition;
             try {
                 expectedPartition = partitionPlan.getPartitionId(table_name, key);
-                previousPartition =  partitionPlan.getPreviousPartitionId(table_name, key);        
+                previousPartition =  partitionPlan.getPreviousPartitionId(table_name, key); 
+                if(previousPartition == HStoreConstants.NULL_PARTITION_ID) {
+                	previousPartition = expectedPartition;
+                }
             } catch (Exception e) {
                 LOG.error("Exception trying to get partition IDs",e);
                 throw new RuntimeException(e);
