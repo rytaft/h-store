@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -14,6 +15,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.voltdb.CatalogContext;
+import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Column;
@@ -22,9 +24,14 @@ import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Procedure;
 import org.voltdb.catalog.Statement;
 import org.voltdb.catalog.Table;
+import org.voltdb.utils.VoltTableComparator;
 
 import edu.brown.catalog.DependencyUtil;
 import edu.brown.hashing.PlannedPartitions.PartitionPhase;
+import edu.brown.hashing.PlannedPartitions.PartitionRange;
+import edu.brown.hashing.PlannedPartitions.PartitionedTable;
+import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
+import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.mappings.ParameterMappingsSet;
@@ -39,6 +46,7 @@ public abstract class ExplicitPartitions {
 	protected String default_table = null;
 	protected Map<String, List<String>> relatedTablesMap;
 	protected ReconfigurationPlan reconfigurationPlan;
+	protected PartitionPhase incrementalPlan;
 	
 	private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
@@ -343,6 +351,77 @@ public abstract class ExplicitPartitions {
     
     public synchronized void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan) {
     	this.reconfigurationPlan = reconfigurationPlan;
+    	if(this.incrementalPlan == null) {
+    		this.incrementalPlan = this.getPreviousPlan();
+    	}
+    	List<PartitionRange> newRanges = new ArrayList<PartitionRange>();
+		for(Map.Entry<String, PartitionedTable> tables : this.incrementalPlan.tables_map.entrySet()) {
+    		String table_name = tables.getKey();
+    		Iterator<PartitionRange> partitionRanges = tables.getValue().getRanges().iterator();
+    		Iterator<ReconfigurationRange> reconfigRanges = this.reconfigurationPlan.range_map.get(table_name).iterator();
+    		Table table = this.catalog_context.getTableByName(table_name);
+
+    		ReconfigurationRange reconfigRange = reconfigRanges.next();
+
+    		// get a volt table and volt table comparator
+    		VoltTable voltTable = ReconfigurationUtil.getPartitionKeysVoltTable(table);
+    		VoltTableComparator cmp = ReconfigurationUtil.getComparator(voltTable);
+
+    		Object[] max_old_accounted_for = null;
+
+    		PartitionRange partitionRange = null;
+    		// Iterate through the old partition ranges.
+    		// Only move to the next old rang
+    		while (partitionRanges.hasNext() || (max_old_accounted_for != null && (cmp.compare(max_old_accounted_for, partitionRange.getMaxExcl())) != 0 )) {
+    			// only move to the next element if first time, or all of the previous
+    			// range has been accounted for
+    			if (partitionRange == null || cmp.compare(partitionRange.getMaxExcl(), max_old_accounted_for) <= 0) {
+    				partitionRange = partitionRanges.next();
+    			}
+
+    			if (max_old_accounted_for == null) {
+    				// We have not accounted for any range yet
+    				max_old_accounted_for = partitionRange.getMinIncl();
+    			}
+    			if(cmp.compare(max_old_accounted_for, reconfigRange.getMinIncl().get(0)) < 0) {
+    				if(cmp.compare(partitionRange.getMaxExcl(), reconfigRange.getMinIncl().get(0)) <= 0) {
+    					// the end of the range is not moving
+        				newRanges.add(new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
+    					max_old_accounted_for = partitionRange.getMaxExcl();
+    				} else {
+    					// the beginning/middle of the range is not moving
+        				newRanges.add(new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, reconfigRange.getMinIncl().get(0)));
+    					max_old_accounted_for = reconfigRange.getMinIncl().get(0);
+    				}
+    			} else if(cmp.compare(max_old_accounted_for, reconfigRange.getMaxExcl().get(0)) < 0) {
+    				assert (partitionRange.getPartition() == reconfigRange.getOldPartition());
+					if (cmp.compare(partitionRange.getMaxExcl(), reconfigRange.getMaxExcl().get(0)) < 0) {
+						// the end of the range is moving
+	    				newRanges.add(new PartitionRange(partitionRange.getTable(), reconfigRange.getNewPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
+    					max_old_accounted_for = partitionRange.getMaxExcl();
+    				} else {
+    					// the beginning/middle of the range is moving
+        				newRanges.add(new PartitionRange(partitionRange.getTable(), reconfigRange.getNewPartition(), max_old_accounted_for, reconfigRange.getMaxExcl().get(0)));
+    					max_old_accounted_for = reconfigRange.getMaxExcl().get(0);
+    					if(reconfigRanges.hasNext()) {
+    						reconfigRange = reconfigRanges.next();  
+    					}
+    				}
+    			} else {
+    				if(reconfigRanges.hasNext()) {
+    					reconfigRange = reconfigRanges.next();  
+    				}
+    			}
+
+            }
+    	}
+		
+		try {
+			this.incrementalPlan = new PartitionPhase(this.incrementalPlan.catalog_context, newRanges);
+		} catch (Exception e) {
+			LOG.error(e);
+			throw new RuntimeException(e);
+		}
     }
 
 }

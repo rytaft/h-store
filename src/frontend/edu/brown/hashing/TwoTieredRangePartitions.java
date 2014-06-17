@@ -140,6 +140,11 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
     				return range.getNewPartition();
     			}
     		}
+    		if(this.incrementalPlan != null) {
+    			PartitionedTable table = incrementalPlan.getTable(table_name);
+    	        assert table != null : "Table not found " + table_name;
+    	        return table.findPartition(ids);
+    		}
     	}
     	
     	PartitionPhase plan = this.getCurrentPlan();
@@ -168,6 +173,11 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
     			if(range != null) {
     				return range.getOldPartition();
     			}
+    		}
+    		if(this.incrementalPlan != null) {
+    			PartitionedTable table = incrementalPlan.getTable(table_name);
+    	        assert table != null : "Table not found " + table_name;
+    	        return table.findPartition(ids);
     		}
     	}
     	

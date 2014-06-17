@@ -168,6 +168,11 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     				return range.getNewPartition();
     			}
     		}
+    		if(this.incrementalPlan != null) {
+    			PartitionedTable table = incrementalPlan.getTable(table_name);
+    	        assert table != null : "Table not found " + table_name;
+    	        return table.findPartition(ids);
+    		}
     	}
     	
     	PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
@@ -195,6 +200,11 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     			if(range != null) {
     				return range.getOldPartition();
     			}
+    		}
+    		if(this.incrementalPlan != null) {
+    			PartitionedTable table = incrementalPlan.getTable(table_name);
+    	        assert table != null : "Table not found " + table_name;
+    	        return table.findPartition(ids);
     		}
     	}
     	
@@ -269,6 +279,26 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
         protected PartitionPhase(Map<String, PlannedPartitions.PartitionedTable> table_map) {
             this.tables_map = table_map;
+        }
+        
+        protected PartitionPhase(CatalogContext catalog_context, List<PartitionRange> ranges) throws Exception {
+            this.tables_map = new HashMap<String, PlannedPartitions.PartitionedTable>();
+            this.catalog_context = catalog_context;
+            
+            HashMap<String, List<PartitionRange>> table_name_map = new HashMap<String, List<PartitionRange>>();
+            
+            for(PartitionRange range : ranges) {
+            	String table_name = range.catalog_table.getName().toLowerCase();
+            	if(!table_name_map.containsKey(table_name)) {
+            		table_name_map.put(table_name, new ArrayList<PartitionRange>());
+            	}
+            	table_name_map.get(table_name).add(range);
+            }
+            
+            for(Map.Entry<String, List<PartitionRange>> tableRanges : table_name_map.entrySet()) {
+            	String table_name = tableRanges.getKey();
+            	this.tables_map.put(table_name, new PartitionedTable(tableRanges.getValue(), table_name, this.catalog_context.getTableByName(table_name)));
+            }
         }
         
         protected List<Object[]> getSubKeySplits(String table_name, Map<String, String> partitionedTablesByFK) {
@@ -560,6 +590,18 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             if (cmp.compare(this.min_incl, this.max_excl) > 0) {
             	throw new ParseException("Min cannot be greater than max", -1);
     	    }
+        }
+        
+        public PartitionRange(Table table, int partition_id, Object[] min_incl, Object[] max_excl) {
+            this.partition = partition_id;
+            this.catalog_table = table;
+            
+            this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
+            this.keySchemaCopy = this.keySchema.clone(0);
+            this.cmp = ReconfigurationUtil.getComparator(keySchema);
+
+            this.min_incl = min_incl;
+            this.max_excl = max_excl;
         }
         
         private Object[] getRangeKeys(String key_str) throws ParseException {
