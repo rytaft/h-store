@@ -283,6 +283,17 @@ public abstract class ExplicitPartitions {
     
     public abstract int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception;
 
+    /**
+     * get all partitions that may contain the key
+     * @param table_name
+     * @param ids
+     * @return
+     * @throws Exception
+     */
+    public abstract List<Integer> getAllPartitionIds(String table_name, List<Object> ids) throws Exception;
+    
+    public abstract List<Integer> getAllPreviousPartitionIds(String table_name, List<Object> ids) throws Exception;
+    
     public abstract ReconfigurationPlan setPartitionPlan(File partition_json_file) throws Exception;
 
     /**

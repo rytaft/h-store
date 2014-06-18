@@ -135,6 +135,36 @@ public class ReconfigurationPlan {
 
         return null;
     }
+    
+    /**
+     * Find all reconfiguration ranges that may contain a key
+     * 
+     * @param id
+     * @return the matching reconfiguration ranges
+     */
+    public List<ReconfigurationRange> findAllReconfigurationRanges(String table_name, List<Object> ids) throws Exception {
+    	List<ReconfigurationRange> matchingRanges = new ArrayList<ReconfigurationRange>();
+		List<ReconfigurationRange> ranges = this.range_map.get(table_name);
+		if (ranges == null) {
+			return matchingRanges;
+		}
+		for (ReconfigurationRange r : ranges) {
+			try {
+
+				// if this greater than or equal to the min inclusive val
+				// and
+				// less than
+				// max_exclusive or equal to both min and max (singleton)
+				if (r.inRangeIgnoreNullCols(ids)) {
+					matchingRanges.add(r);
+				} 
+			} catch (Exception e) {
+				LOG.error("Error looking up reconfiguration range", e);
+			}
+		}
+
+        return matchingRanges;
+    }
 
     public static class ReconfigurationTable {
     	private List<ReconfigurationRange> reconfigurations;

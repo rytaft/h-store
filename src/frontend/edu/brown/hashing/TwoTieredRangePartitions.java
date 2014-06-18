@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.log4j.Logger;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -188,6 +190,64 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
         PartitionedTable table = previousPlan.getTable(table_name);
         assert table != null : "Table not found " + table_name;
         return table.findPartition(ids);
+    }
+    
+    @Override
+    public List<Integer> getAllPartitionIds(String table_name, List<Object> ids) throws Exception {
+    	List<Integer> allPartitionIds = new ArrayList<Integer>();
+    	synchronized (this) {
+    		if(this.reconfigurationPlan != null) {
+    			List<ReconfigurationRange> ranges = this.reconfigurationPlan.findAllReconfigurationRanges(table_name, ids);
+    			for(ReconfigurationRange range : ranges) {
+    				allPartitionIds.add(range.getNewPartition());
+    			}
+    		}
+    		if(this.incrementalPlan != null) {
+    			PartitionedTable table = incrementalPlan.getTable(table_name);
+    	        assert table != null : "Table not found " + table_name;
+    	        allPartitionIds.addAll(table.findAllPartitions(ids));
+    	        return allPartitionIds;
+    		}
+    	}
+    	
+    	PartitionPhase plan = this.getCurrentPlan();
+        PartitionedTable table = plan.getTable(table_name);
+        if (table == null) {
+            if (debug.val)
+                LOG.debug(String.format("Table not found: %s, using default:%s ", table_name, this.default_table));
+            table = plan.getTable(this.default_table);
+            if (table == null) {
+                throw new RuntimeException(String.format("Default partition table is null. Lookup table:%s Default Table:%s", table_name, this.default_table));
+            }
+        }
+        assert table != null : "Table not found " + table_name;
+        return table.findAllPartitions(ids);
+    }
+    
+    @Override
+    public List<Integer> getAllPreviousPartitionIds(String table_name, List<Object> ids) throws Exception {
+    	List<Integer> allPartitionIds = new ArrayList<Integer>();
+    	synchronized (this) {
+    		if(this.reconfigurationPlan != null) {
+    			List<ReconfigurationRange> ranges = this.reconfigurationPlan.findAllReconfigurationRanges(table_name, ids);
+    			for(ReconfigurationRange range : ranges) {
+    				allPartitionIds.add(range.getOldPartition());
+    			}
+    		}
+    		if(this.incrementalPlan != null) {
+    			PartitionedTable table = incrementalPlan.getTable(table_name);
+			assert table != null : "Table not found " + table_name;
+			allPartitionIds.addAll(table.findAllPartitions(ids));
+	        return allPartitionIds;
+    		}
+    	}
+    	
+    	PartitionPhase previousPlan = this.getPreviousPlan();
+        if (previousPlan == null)
+            return new ArrayList<Integer>();
+        PartitionedTable table = previousPlan.getTable(table_name);
+        assert table != null : "Table not found " + table_name;
+        return table.findAllPartitions(ids);
     }
 
     /* (non-Javadoc)
