@@ -3686,9 +3686,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
         if (reconfiguration_coordinator != null && reconfiguration_coordinator.getReconfigurationInProgress()) {
             if(reconfiguration_coordinator.isLive_pull()) {
-            	checkReconfigurationTracking(fragmentIds, parameterSets);
+            	checkReconfigurationTracking(fragmentIds, parameterSets, ts.isPredictSinglePartition());
             } else {
-            	checkReconfigurationTrackingAsyncPulls(fragmentIds, parameterSets);
+            	checkReconfigurationTrackingAsyncPulls(fragmentIds, parameterSets, ts.isPredictSinglePartition());
             }
         }
 
@@ -3876,7 +3876,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
     
     
-    private void checkReconfigurationTracking(long fragmentIds[], ParameterSet parameterSets[]) {
+    private void checkReconfigurationTracking(long fragmentIds[], ParameterSet parameterSets[], boolean predict_single_partition) {
         if (debug.val)
             LOG.debug("check reconfigurationTracking");
         if (this.reconfiguration_tracker == null) {
@@ -3909,7 +3909,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), parametersToCheck);
                     if (trace.val)
                         LOG.trace(String.format("CatalogObj:%s Parameter:%s  KeyOwned:%s ",offsetPair.getFirst(), parametersToCheck.toString(), keyOwned));
-                    if(!keyOwned) {
+                    if(!keyOwned && predict_single_partition) {
                     	try {
                     		partitionsForRestart.addAll(this.reconfiguration_tracker.getAllPartitionIds(offsetPair.getFirst(), parametersToCheck));
                     	} catch (Exception e) {
@@ -4029,7 +4029,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     }
 
-    private void checkReconfigurationTrackingAsyncPulls(long fragmentIds[], ParameterSet parameterSets[]) {
+    private void checkReconfigurationTrackingAsyncPulls(long fragmentIds[], ParameterSet parameterSets[], boolean predict_single_partition) {
         if (debug.val)
             LOG.debug("check reconfigurationTrackingAsyncPulls");
         if (this.reconfiguration_tracker == null) {
@@ -4061,7 +4061,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), parametersToCheck);
                     if (trace.val)
                         LOG.trace(String.format("CatalogObj:%s Parameter:%s  KeyOwned:%s ",offsetPair.getFirst(), parametersToCheck.toString(), keyOwned));
-                    if(!keyOwned) {
+                    if(!keyOwned && predict_single_partition) {
                     	try {
                     		partitionsForRestart.addAll(this.reconfiguration_tracker.getAllPartitionIds(offsetPair.getFirst(), parametersToCheck));
                     	} catch (Exception e) {
