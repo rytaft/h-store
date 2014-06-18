@@ -4,6 +4,7 @@
 package edu.brown.hstore.reconfiguration;
 
 import java.util.List;
+import java.util.Set;
 
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Table;
@@ -133,6 +134,15 @@ public interface ReconfigurationTrackingInterface {
      * @return
      */
     public boolean checkIfAllRangesAreMigratedIn();
+    
+    /**
+     * find all the partitions that may contain the key
+     * @param catalog
+     * @param key
+     * @return
+     * @throws Exception
+     */
+    public Set<Integer> getAllPartitionIds(List<CatalogType> catalog, List<Object> key) throws Exception;
     
     /**
      * end the reconfiguration

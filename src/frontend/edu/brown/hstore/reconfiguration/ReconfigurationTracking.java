@@ -411,6 +411,16 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     }
     
     @Override
+    public Set<Integer> getAllPartitionIds(List<CatalogType> catalog, List<Object> key) throws Exception {
+
+    	String table_name = this.partitionPlan.getTableName(catalog);
+    	Set<Integer> partitionIds = new HashSet<Integer>();
+    	partitionIds.addAll(this.partitionPlan.getAllPartitionIds(table_name, key));
+    	partitionIds.addAll(this.partitionPlan.getAllPreviousPartitionIds(table_name, key));
+    	return partitionIds;
+    }
+    
+    @Override
     public void endReconfiguration() {
     	this.partitionPlan.setReconfigurationPlan(null);
     }

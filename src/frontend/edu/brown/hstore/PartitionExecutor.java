@@ -3891,6 +3891,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // Get all the fragments
         Set<ReconfigurationRange> pullRequestsNeeded = new HashSet<>();
         Set<ReconfigurationRange> restartsNeeded = new HashSet<>();
+        Set<Integer> partitionsForRestart = new HashSet<>();
         
         this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.start();
         for (int i = 0; i < fragmentIds.length; i++) {
@@ -3908,6 +3909,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), parametersToCheck);
                     if (trace.val)
                         LOG.trace(String.format("CatalogObj:%s Parameter:%s  KeyOwned:%s ",offsetPair.getFirst(), parametersToCheck.toString(), keyOwned));
+                    if(!keyOwned) {
+                    	partitionsForRestart.addAll(this.reconfiguration_tracker.getAllPartitionIds(offsetPair.getFirst(), parametersToCheck));
+                    }
                 } catch (ReconfigurationException rex) {
                     // A reconfigurationException was thrown for this key
                     if (debug.val) LOG.debug(String.format("(%d) Exception thrown from reconfig check : %s for txn %s ", this.partitionId, rex.toString(),currentTxn));
@@ -3936,7 +3940,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.stopIfStarted();
         // Blocking here
         boolean blockingNeeded = true;
-        if (restartsNeeded.size() > 0) {
+        if (restartsNeeded.size() > 0 || partitionsForRestart.size() > 0) {
             // Since we want to restart we are not going to block
             blockingNeeded = false;
         }
@@ -3998,7 +4002,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 this.reconfiguration_coordinator.pullRangesNonBlocking(getNextRequestToken(), this.currentTxnId, this.partitionId, pullRequestsNeeded);
             }
         }
-        if (restartsNeeded.size() > 0) {
+        if (restartsNeeded.size() > 0 || partitionsForRestart.size() > 0) {
             LOG.info("Restarts needed due to migrated data : " + restartsNeeded.size());
             Histogram<Integer> partitionHistogram = new FastIntHistogram();
             partitionHistogram.put(this.currentTxn.getPredictTouchedPartitions(), 1);
@@ -4006,6 +4010,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.info(" *** adding a restart on partition " + range.getNewPartition());
                 partitionHistogram.put(range.getNewPartition());
             }
+            partitionHistogram.put(partitionsForRestart);
             throw new MispredictionException(this.currentTxnId, partitionHistogram);
 
         }
