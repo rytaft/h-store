@@ -3910,7 +3910,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     if (trace.val)
                         LOG.trace(String.format("CatalogObj:%s Parameter:%s  KeyOwned:%s ",offsetPair.getFirst(), parametersToCheck.toString(), keyOwned));
                     if(!keyOwned) {
-                    	partitionsForRestart.addAll(this.reconfiguration_tracker.getAllPartitionIds(offsetPair.getFirst(), parametersToCheck));
+                    	try {
+                    		partitionsForRestart.addAll(this.reconfiguration_tracker.getAllPartitionIds(offsetPair.getFirst(), parametersToCheck));
+                    	} catch (Exception e) {
+                    		LOG.error("Error while finding partitions for restart: " + e);
+                    	}
                     }
                 } catch (ReconfigurationException rex) {
                     // A reconfigurationException was thrown for this key
@@ -4039,6 +4043,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
         // Get all the fragments
         Set<ReconfigurationRange> restartsNeeded = new HashSet<>();
+        Set<Integer> partitionsForRestart = new HashSet<>();
         
         this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.start();
         for (int i = 0; i < fragmentIds.length; i++) {
@@ -4056,6 +4061,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     boolean keyOwned = this.reconfiguration_tracker.checkKeyOwned(offsetPair.getFirst(), parametersToCheck);
                     if (trace.val)
                         LOG.trace(String.format("CatalogObj:%s Parameter:%s  KeyOwned:%s ",offsetPair.getFirst(), parametersToCheck.toString(), keyOwned));
+                    if(!keyOwned) {
+                    	try {
+                    		partitionsForRestart.addAll(this.reconfiguration_tracker.getAllPartitionIds(offsetPair.getFirst(), parametersToCheck));
+                    	} catch (Exception e) {
+                    		LOG.error("Error while finding partitions for restart: " + e);
+                    	}
+                    }
                 } catch (ReconfigurationException rex) {
                     // A reconfigurationException was thrown for this key
                     if (debug.val) LOG.debug(String.format("(%d) Exception thrown from reconfig check : %s for txn %s ", this.partitionId, rex.toString(),currentTxn));
@@ -4079,7 +4091,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.stopIfStarted();
 
-        if (restartsNeeded.size() > 0) {
+        if (restartsNeeded.size() > 0 || partitionsForRestart.size() > 0) {
             LOG.info("Restarts needed due to migrated data : " + restartsNeeded.size());
             Histogram<Integer> partitionHistogram = new FastIntHistogram();
             partitionHistogram.put(this.currentTxn.getPredictTouchedPartitions(), 1);
@@ -4087,6 +4099,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 LOG.info(" *** adding a restart on partition " + range.getNewPartition());
                 partitionHistogram.put(range.getNewPartition());
             }
+            partitionHistogram.put(partitionsForRestart);
             throw new MispredictionException(this.currentTxnId, partitionHistogram);
 
         }
