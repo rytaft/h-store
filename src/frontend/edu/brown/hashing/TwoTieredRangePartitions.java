@@ -86,7 +86,8 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
     	super(catalog_context, partition_json);
     	this.old_partition_plan = null;
         this.partition_plan = null;
-        
+	this.incrementalPlan = null;
+
         if (partition_json.has(PARTITION_PLAN)) {
             JSONObject plan = partition_json.getJSONObject(PARTITION_PLAN);
             this.partition_plan = new PartitionPhase(catalog_context, plan, partitionedTablesByFK);
@@ -176,8 +177,8 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
     		}
     		if(this.incrementalPlan != null) {
     			PartitionedTable table = incrementalPlan.getTable(table_name);
-    	        assert table != null : "Table not found " + table_name;
-    	        return table.findPartition(ids);
+			assert table != null : "Table not found " + table_name;
+			return table.findPartition(ids);
     		}
     	}
     	
@@ -216,6 +217,7 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
             		this.old_partition_plan = this.partition_plan;
             		this.partition_plan = new_plan;
             		old_plan = this.old_partition_plan;
+			this.incrementalPlan = null;
             	}
             } else {
                 throw new JSONException(String.format("JSON file is missing key \"%s\". ", PARTITION_PLAN));

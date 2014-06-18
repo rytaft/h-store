@@ -350,16 +350,34 @@ public abstract class ExplicitPartitions {
     }
     
     public synchronized void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan) {
-    	this.reconfigurationPlan = reconfigurationPlan;
+	if(reconfigurationPlan == null) {
+	    this.reconfigurationPlan = null;
+	    return;
+	}
+
+	if(this.reconfigurationPlan != null && reconfigurationPlan.equals(this.reconfigurationPlan)) {
+	    LOG.debug("plan already set");
+	    return;
+	}
+
+   	this.reconfigurationPlan = reconfigurationPlan;
     	if(this.incrementalPlan == null) {
     		this.incrementalPlan = this.getPreviousPlan();
     	}
+	assert (this.reconfigurationPlan.range_map != null) : "Null reconfiguration range map";
+
     	List<PartitionRange> newRanges = new ArrayList<PartitionRange>();
-		for(Map.Entry<String, PartitionedTable> tables : this.incrementalPlan.tables_map.entrySet()) {
-    		String table_name = tables.getKey();
+	for(Map.Entry<String, PartitionedTable> tables : this.incrementalPlan.tables_map.entrySet()) {
+	    String table_name = tables.getKey();
     		Iterator<PartitionRange> partitionRanges = tables.getValue().getRanges().iterator();
-    		Iterator<ReconfigurationRange> reconfigRanges = this.reconfigurationPlan.range_map.get(table_name).iterator();
-    		Table table = this.catalog_context.getTableByName(table_name);
+		Iterator<ReconfigurationRange> reconfigRanges;
+		if(this.reconfigurationPlan.range_map.get(table_name) != null) {
+		    reconfigRanges = this.reconfigurationPlan.range_map.get(table_name).iterator();
+		} else {
+		    newRanges.addAll(tables.getValue().getRanges());
+		    continue;
+		}
+ 		Table table = this.catalog_context.getTableByName(table_name);
 
     		ReconfigurationRange reconfigRange = reconfigRanges.next();
 
@@ -383,18 +401,18 @@ public abstract class ExplicitPartitions {
     				// We have not accounted for any range yet
     				max_old_accounted_for = partitionRange.getMinIncl();
     			}
-    			if(cmp.compare(max_old_accounted_for, reconfigRange.getMinIncl().get(0)) < 0) {
+   			if(cmp.compare(max_old_accounted_for, reconfigRange.getMinIncl().get(0)) < 0) {
     				if(cmp.compare(partitionRange.getMaxExcl(), reconfigRange.getMinIncl().get(0)) <= 0) {
     					// the end of the range is not moving
         				newRanges.add(new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
     					max_old_accounted_for = partitionRange.getMaxExcl();
     				} else {
     					// the beginning/middle of the range is not moving
-        				newRanges.add(new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, reconfigRange.getMinIncl().get(0)));
+				    newRanges.add(new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, reconfigRange.getMinIncl().get(0)));
     					max_old_accounted_for = reconfigRange.getMinIncl().get(0);
     				}
     			} else if(cmp.compare(max_old_accounted_for, reconfigRange.getMaxExcl().get(0)) < 0) {
-    				assert (partitionRange.getPartition() == reconfigRange.getOldPartition());
+			    assert (partitionRange.getPartition() == reconfigRange.getOldPartition()) : "partitions do not match: <" + partitionRange.getPartition() + "> != <" + reconfigRange.getOldPartition() + ">";
 					if (cmp.compare(partitionRange.getMaxExcl(), reconfigRange.getMaxExcl().get(0)) < 0) {
 						// the end of the range is moving
 	    				newRanges.add(new PartitionRange(partitionRange.getTable(), reconfigRange.getNewPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
@@ -411,10 +429,17 @@ public abstract class ExplicitPartitions {
     				if(reconfigRanges.hasNext()) {
     					reconfigRange = reconfigRanges.next();  
     				}
+				else {
+        				newRanges.add(new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
+    					max_old_accounted_for = partitionRange.getMaxExcl();
+    				    
+				}
     			}
 
             }
     	}
+
+	LOG.info("New incremental plan ranges: " + newRanges.toString());
 		
 		try {
 			this.incrementalPlan = new PartitionPhase(this.incrementalPlan.catalog_context, newRanges);
@@ -422,6 +447,7 @@ public abstract class ExplicitPartitions {
 			LOG.error(e);
 			throw new RuntimeException(e);
 		}
+
     }
 
 }

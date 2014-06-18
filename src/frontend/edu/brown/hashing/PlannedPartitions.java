@@ -198,7 +198,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     		if(this.reconfigurationPlan != null) {
     			ReconfigurationRange range = this.reconfigurationPlan.findReconfigurationRange(table_name, ids);
     			if(range != null) {
-    				return range.getOldPartition();
+			    return range.getOldPartition();
     			}
     		}
     		if(this.incrementalPlan != null) {
@@ -511,7 +511,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 LOG.error("Error looking up partition", e);
             }
 
-            LOG.info("Partition not found");
+            if(debug.val) LOG.debug("Partition not found. ids: " + ids.toString() + ", partitions: " + this.partitions.toString() );
             return HStoreConstants.NULL_PARTITION_ID;
         }
 
@@ -673,7 +673,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         			max_str += max.toString();
         		}
         	}
-        	return "PartitionRange [" + min_str + "-" + max_str + ") p_id=" + this.partition + "]";        	
+        	return "[PartitionRange (" + this.catalog_table.getName().toLowerCase() + ") [" + min_str + "-" + max_str + ") p_id=" + this.partition + "]";        	
         }
 
         @Override
@@ -775,6 +775,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         synchronized (this) {
             this.current_phase = new_phase;
             this.previous_phase = old_phase;
+	    this.incrementalPlan = null;
         }
         try {
             if (old_phase == null) {

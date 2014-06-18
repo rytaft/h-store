@@ -283,9 +283,6 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
             try {
                 expectedPartition = partitionPlan.getPartitionId(table_name, key);
                 previousPartition =  partitionPlan.getPreviousPartitionId(table_name, key); 
-                if(previousPartition == HStoreConstants.NULL_PARTITION_ID) {
-                	previousPartition = expectedPartition;
-                }
             } catch (Exception e) {
                 LOG.error("Exception trying to get partition IDs",e);
                 throw new RuntimeException(e);
@@ -338,7 +335,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                         //FIXME highly inefficient
                         List<ReconfigurationRange> rangesToPull = new ArrayList<>();    
                         for(ReconfigurationRange range : this.incoming_ranges){
-                            if(relatedTables == null) {
+			    if(relatedTables == null) {
                                 if(range.getTableName().equalsIgnoreCase(table_name) && range.inRangeIgnoreNullCols(key)){
                                     LOG.info(String.format("Access for key %s, pulling entire range :%s (%s)", key, range.toString(),table_name));
                                     rangesToPull.add(range);
