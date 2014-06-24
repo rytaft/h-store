@@ -640,6 +640,18 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         LOG.info("Using plan: %s" % plan_path)
         fabric.env['global.hasher_plan'] = plan_path
 
+    if 'splitplan' in args:
+        fabric.env['site.reconfig_subplan_split']=args['splitplan']
+
+    if 'plandelay' in args:
+        fabric.env['site.reconfig_plan_delay']=args['plandelay']
+
+    if 'asyncsize' in args:
+        fabric.env['site.reconfig_async_chunk_size_kb']=args['asyncsize']
+        
+    if 'chunksize' in args:
+        fabric.env['site.reconfig_chunk_size_kb']=args['chunksize']
+	
     if args['exp_type'] == 'reconfig-test':
         fabric.env["client.count"] = 1
         #fabric.env["client.txnrate"] = 100000
@@ -1001,7 +1013,10 @@ def plotResults(args):
     csv_base = "%s-results.csv" % args['exp_type']
     csv = "--csv %s" % os.path.join(resultsDir,csv_base)
     for show_type in ["tps", "lat50","lat","lat95"]:
-        _file_name = "%s-%s" % (args['exp_type'], show_type)
+        _file_base = args['exp_type']
+        if 'exp-suffix' in args:
+            _file_base = '%s-%s' % (_file_base, args['exp-suffix'])
+        _file_name = "%s-%s" % (_file_base, show_type)
         _file = os.path.join(resultsDir, _file_name )
         _cmd = base % (reconfig, resultsDir, show_type, _file, csv)
         LOG.info("Executing:\n\t %s"% _cmd)
@@ -1150,6 +1165,10 @@ if __name__ == '__main__':
     agroup.add_argument("--reconfig", action="append", help="Configuration for an optional reconfig event [delayTimeMS]:[planId]:[optLeaderId]. Can accept multiple")
     agroup.add_argument("--sweep-reconfiguration", action='store_true',default=False, help='Collect hevent.log from servers')
     agroup.add_argument("--benchmark-size", type=int, help="The size of a benchmark (usertable size, warehouses, etc)")
+    agroup.add_argument("--splitplan", type=int,  help="Number of plan splits")
+    agroup.add_argument("--plandelay", type=int,  help="Amount of time between plans")
+    agroup.add_argument("--chunksize", type=int,  help="Size of chunk splits")
+    agroup.add_argument("--asyncsize", type=int,  help="Size of async chunk splits")
     agroup.add_argument("--plot", action='store_true',default=False, help='Plot results')
     agroup.add_argument("--no-zip", action='store_true',default=False, help='Do not zip and save results')
     
@@ -1220,7 +1239,8 @@ if __name__ == '__main__':
     agroup.add_argument("--debug-log4j-client", action='store_true')
 
     args = vars(aparser.parse_args())
-    
+    if 'exp_suffix' in  args:
+        args['exp_type'] = '%s-%s' % (args['exp_type'], args['exp_suffix'])
     ## ----------------------------------------------
     ## ARGUMENT PROCESSING 
     ## ----------------------------------------------

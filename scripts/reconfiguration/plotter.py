@@ -404,11 +404,11 @@ def plotReconfigs(args, d, ax):
     y2 = ymean - ax.get_ylim()[1]*0.1
     lives = d[d.LIVE_PULLS>0]['LIVE_PULLS']
     asyncs = d[d.ASYNC_PULLS>0]['ASYNC_PULLS']
-    label = 'Live Pull'
+    label = None #'Live Pull'
     for z in lives.iteritems():
         plot.plot(z[0],y1,'^',ms=z[1]*2,color='black',label=label)
         label = None
-    label = 'Async Pull'
+    label = None #'Async Pull'
     for z in asyncs.iteritems():
         plot.plot(z[0],y2,'D',ms=z[1]*2,color='blue',label=label)
         label = None
@@ -421,8 +421,8 @@ def plotTSD(args, files, ax):
     if args.subplots:
         f,axarr = plot.subplots(len(dfs), sharex=True, sharey=False)
     data = {}
-    init_legend = "Reconfig Init"
-    end_legend = "Reconfig End"
+    init_legend = None #= "Reconfig Init"
+    end_legend = None #= "Reconfig End"
     x = 0
     for i,(_file, df) in enumerate(dfs):
         name = os.path.basename(_file).split("-interval")[0] 
