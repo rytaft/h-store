@@ -646,6 +646,9 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
     if 'plandelay' in args:
         fabric.env['site.reconfig_plan_delay']=args['plandelay']
 
+    if 'asyncdelay' in args:
+        fabric.env['site.reconfig_async_delay_ms']=args['asyncdelay']
+
     if 'asyncsize' in args:
         fabric.env['site.reconfig_async_chunk_size_kb']=args['asyncsize']
         
@@ -1167,6 +1170,7 @@ if __name__ == '__main__':
     agroup.add_argument("--benchmark-size", type=int, help="The size of a benchmark (usertable size, warehouses, etc)")
     agroup.add_argument("--splitplan", type=int,  help="Number of plan splits")
     agroup.add_argument("--plandelay", type=int,  help="Amount of time between plans")
+    agroup.add_argument("--asyncdelay", type=int,  help="Amount of time between async pull")
     agroup.add_argument("--chunksize", type=int,  help="Size of chunk splits")
     agroup.add_argument("--asyncsize", type=int,  help="Size of async chunk splits")
     agroup.add_argument("--plot", action='store_true',default=False, help='Plot results')

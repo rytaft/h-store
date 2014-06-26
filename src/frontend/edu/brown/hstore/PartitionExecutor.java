@@ -238,7 +238,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     private static final UtilityWorkMessage UTIL_WORK_MSG = new UtilityWorkMessage();
     private static final UpdateMemoryMessage STATS_WORK_MSG = new UpdateMemoryMessage();
-    private static int MIN_MS_BETWEEN_ASYNC_PULLS = 100;
     private static int RAND_MS_BETWEEN_ASYNC_PULLS = 200;
     private static Random rand = new Random();
 
@@ -899,7 +898,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         int num_sites = this.catalogContext.numberOfSites;
         this.tmp_transactionRequestBuilders = new TransactionWorkRequestBuilder[num_sites];
         
-
         this.pullStartTime = new HashMap<>();
     }
 
@@ -1246,7 +1244,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     					   asyncRequestPullQueue.size(),idle_click_count));
                     }
                     this.idle_click_count = 0;
-                    nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+                    nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                     this.work_queue.offer(asyncRequestPullQueue.remove());
                 } else if (this.scheduleAsyncPullQueue.isEmpty() == false && asyncOutstanding.get() == false
                         && ((idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS )  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )) {
@@ -1260,7 +1258,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         LOG.warn("Offering async request to the work queue when there is already an async request in progress");
                     }
                     this.idle_click_count = 0;
-            		nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+            		nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                     ScheduleAsyncPullRequestMessage pullMsg = scheduleAsyncPullQueue.poll();                    
                     if (pullMsg != null){
                         this.work_queue.offer(pullMsg);
@@ -6330,7 +6328,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private ReconfigurationTrackingInterface reconfiguration_tracker;
     private int idle_click_count;
     private long currentLiveDataLoaded = 0;
-    private static int MAX_PULL_ASYNC_EVERY_CLICKS=5000;
+    private static int MAX_PULL_ASYNC_EVERY_CLICKS=700000;
 
 
     public void setReconfigurationCoordinator(ReconfigurationCoordinator rc) {
@@ -6508,7 +6506,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         if(isAsyncRequest){
                             LOG.trace("Last chunk received for async request, unsetting async in progress");
                             asyncOutstanding.set(false);
-                            nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+                            nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                         }
                         Long startTime = pullStartTime.remove(pullId);
                         if (isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
@@ -6523,12 +6521,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     	if (moreDataComing) {
                             this.reconfiguration_tracker.markRangeAsPartiallyReceived(
                             		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
-                            nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+                            nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                         } else {
                             if(isAsyncRequest){
                                 LOG.trace("Last chunk received for async request, unsetting async in progress");
                                 asyncOutstanding.set(false);
-                                nextAsyncPullTimeMS = System.currentTimeMillis() + MIN_MS_BETWEEN_ASYNC_PULLS + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+                                nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                             }
                             Long startTime = pullStartTime.remove(pullId);
                             if (isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){

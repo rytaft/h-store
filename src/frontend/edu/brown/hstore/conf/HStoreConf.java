@@ -796,6 +796,13 @@ public final class HStoreConf {
         )
         public long reconfig_plan_delay;        
         
+        
+        @ConfigProperty(
+                description="The amount of  delay to between async pulls. ",
+                defaultLong=100,
+                experimental=true
+        )
+        public long reconfig_async_delay_ms;
 
         @ConfigProperty(
                 description="The default live chunk size for reconfiguration ",
