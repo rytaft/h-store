@@ -3926,9 +3926,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         restartsNeeded.addAll(rex.dataMigratedOut);
                     } else if (rex.exceptionType == ExceptionTypes.TUPLES_NOT_MIGRATED || rex.exceptionType == ExceptionTypes.BOTH) {
                         // not yet migrated
-                        //if (ReconfigurationCoordinator.STATIC_PULL_FILTER){
-                        //    rex.dataNotYetMigrated = staticFilter(rex.dataNotYetMigrated, currentTxn.getProcedure().getName());
-                        //}
+                        if (ReconfigurationCoordinator.STATIC_PULL_FILTER){
+                            rex.dataNotYetMigrated = staticFilter(rex.dataNotYetMigrated, currentTxn.getProcedure().getName());
+                        }
                         if (rex.dataNotYetMigrated.isEmpty()){
                             LOG.info("All needed data for a transaction has been filtered");
                         } else {
@@ -6363,7 +6363,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (!scheduleAsyncPullQueue.isEmpty()){
             LOG.warn("Schedule async pull queue was not empty... " + StringUtil.join(",",scheduleAsyncPullQueue));
         }
-        if (this.catalogContext.jarPath.getName().contains("ycsb") || this.catalogContext.jarPath.getName().contains("tpcc")){
+        if (this.catalogContext.jarPath.getName().contains("ycsb")){
             LOG.info("Pulling ranges instead of keys ************");
             ReconfigurationTracking.PULL_SINGLE_KEY = false;
         } else {
