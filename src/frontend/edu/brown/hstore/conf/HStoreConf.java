@@ -2449,11 +2449,27 @@ public final class HStoreConf {
             Object value = null;
             
             if (f_class.equals(int.class)) {
-                value = this.config.getInt(k, (Integer)defaultValue);
+                try {
+                 value = this.config.getInt(k, (Integer)defaultValue);
+                } catch (NumberFormatException ex) {
+                    LOG.info("Number format exception. Using default. Original value : " + k );
+                    value = (Integer)defaultValue;
+                }
+                
             } else if (f_class.equals(long.class)) {
-                value = this.config.getLong(k, (Long)defaultValue);
+                try { 
+                    value = this.config.getLong(k, (Long)defaultValue);
+                } catch (NumberFormatException ex) {
+                    LOG.info("Number format exception. Using default. Original value : " + k );
+                    value = (Long)defaultValue;
+                }
             } else if (f_class.equals(double.class)) {
-                value = this.config.getDouble(k, (Double)defaultValue);
+                try {
+                    value = this.config.getDouble(k, (Double)defaultValue);
+                } catch (NumberFormatException ex) {
+                    LOG.info("Number format exception. Using default. Original value : " + k );
+                    value = (Double)defaultValue;
+                }
             } else if (f_class.equals(boolean.class)) {
                 value = this.config.getBoolean(k, (Boolean)defaultValue);
             } else if (f_class.equals(String.class)) {
