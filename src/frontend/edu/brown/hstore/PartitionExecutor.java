@@ -6535,13 +6535,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             }
                             this.reconfiguration_tracker.markRangeAsReceived(
                             		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
-                        }
-                        
-                        if(this.reconfiguration_tracker.checkIfAllRangesAreMigratedIn()){
-                            // Now reconfiguration resposnibilty of a destination of Live Pull is done,
-                            // so it tells the leader it is done
-                            this.hstore_site.getReconfigurationCoordinator().finishReconfiguration(partitionId);
-                        }
+                        }                       
                     } catch (ReconfigurationException re) {
                         if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_IN)
                             this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
@@ -6559,6 +6553,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (debug.val)
             LOG.debug("load table");
         loadTableForReconfiguration(this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), table_name, vt);
+        
+        if(this.reconfiguration_tracker == null) {
+            LOG.error(String.format("(%s) ReconfigTracker is Null!! ", this.partitionId));
+        }
+        else if(this.reconfiguration_tracker.checkIfAllRangesAreMigratedIn()){
+            // Now reconfiguration resposnibilty of a destination of Live Pull is done,
+            // so it tells the leader it is done
+            this.hstore_site.getReconfigurationCoordinator().finishReconfiguration(partitionId);
+        }
     }
 
     /**
