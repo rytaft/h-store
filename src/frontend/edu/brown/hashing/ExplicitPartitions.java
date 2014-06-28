@@ -296,6 +296,7 @@ public abstract class ExplicitPartitions {
     
     public abstract ReconfigurationPlan setPartitionPlan(File partition_json_file) throws Exception;
 
+    public abstract ReconfigurationPlan setPartitionPhase(String new_phase);
     /**
      * Update the current partition plan
      * 

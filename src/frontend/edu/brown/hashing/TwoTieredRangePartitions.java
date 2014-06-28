@@ -33,6 +33,7 @@ import org.voltdb.catalog.Statement;
 import org.voltdb.catalog.Table;
 import org.voltdb.utils.VoltTypeUtil;
 
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import edu.brown.catalog.DependencyUtil;
 import edu.brown.hashing.PlannedPartitions.PartitionPhase;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
@@ -321,8 +322,7 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
      */
     @Override
     public String toJSONString() {
-        // TODO Auto-generated method stub
-        return null;
+        throw new NotImplementedException();
     }
 
     /*
@@ -334,7 +334,7 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
      */
     @Override
     public void save(File output_path) throws IOException {
-        // TODO Auto-generated method stub
+        throw new NotImplementedException();
 
     }
 
@@ -348,7 +348,7 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
      */
     @Override
     public void load(File input_path, Database catalog_db) throws IOException {
-        // TODO Auto-generated method stub
+        throw new NotImplementedException();
 
     }
 
@@ -361,8 +361,7 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
      */
     @Override
     public void toJSON(JSONStringer stringer) throws JSONException {
-        // TODO Auto-generated method stub
-
+        throw new NotImplementedException();
     }
 
     /*
@@ -375,8 +374,13 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
      */
     @Override
     public void fromJSON(JSONObject json_object, Database catalog_db) throws JSONException {
-        // TODO Auto-generated method stub
+        throw new NotImplementedException();
 
+    }
+
+    @Override
+    public ReconfigurationPlan setPartitionPhase(String new_phase) {
+        throw new NotImplementedException();
     }
 
     

@@ -37,6 +37,7 @@ import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTypeUtil;
 import org.voltdb.utils.VoltTableComparator;
 
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import edu.brown.catalog.DependencyUtil;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationTable;
@@ -371,7 +372,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         }
 
         protected List<Object[]> getSubKeySplits(String table_name, Map<String, String> partitionedTablesByFK) {
-
+            LOG.info("getSubKeySplits");
             // HACK - this is currently hard coded for TPCC
             String partitionedTable = partitionedTablesByFK.get(table_name);
             if (partitionedTable == null) {
@@ -936,9 +937,8 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      * @see org.json.JSONString#toJSONString()
      */
     @Override
-    public String toJSONString() {
-        // TODO Auto-generated method stub
-        return null;
+    public String toJSONString() {        
+        throw new NotImplementedException();
     }
 
     /*
@@ -946,8 +946,8 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      * @see edu.brown.utils.JSONSerializable#save(java.io.File)
      */
     @Override
-    public void save(File output_path) throws IOException {
-        // TODO Auto-generated method stub
+    public void save(File output_path) throws IOException {        
+        throw new NotImplementedException();
 
     }
 
@@ -958,7 +958,8 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public void load(File input_path, Database catalog_db) throws IOException {
-        // TODO Auto-generated method stub
+        
+        throw new NotImplementedException();
 
     }
 
@@ -968,7 +969,8 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public void toJSON(JSONStringer stringer) throws JSONException {
-        // TODO Auto-generated method stub
+        
+        throw new NotImplementedException();
 
     }
 
@@ -979,20 +981,19 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public void fromJSON(JSONObject json_object, Database catalog_db) throws JSONException {
-        // TODO Auto-generated method stub
+        
+        throw new NotImplementedException();
 
     }
 
     @Override
     public ReconfigurationPlan setPartitionPlan(File partition_json_file) throws Exception {
-        // TODO Auto-generated method stub
-        return null;
+        throw new NotImplementedException();
     }
 
     @Override
     public ReconfigurationPlan setPartitionPlan(JSONObject partition_json) {
-        // TODO Auto-generated method stub
-        return null;
+        throw new NotImplementedException();
     }
 
     @Override
