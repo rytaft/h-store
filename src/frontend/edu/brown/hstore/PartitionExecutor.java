@@ -177,6 +177,7 @@ import edu.brown.hstore.internal.WorkFragmentMessage;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
 import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator;
 import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator.ReconfigurationState;
+import edu.brown.hstore.reconfiguration.ReconfigurationStats;
 import edu.brown.hstore.reconfiguration.ReconfigurationTracking;
 import edu.brown.hstore.reconfiguration.ReconfigurationTrackingInterface;
 import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
@@ -752,6 +753,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     private final SystemProcedureContext m_systemProcedureContext = new SystemProcedureContext();
     public StringBuilder liveLogData;
+    private ReconfigurationStats reconfiguration_stats;
 
     // ----------------------------------------------------------------------------
     // INITIALIZATION
@@ -899,6 +901,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.tmp_transactionRequestBuilders = new TransactionWorkRequestBuilder[num_sites];
         
         this.pullStartTime = new HashMap<>();
+        
+        this.reconfiguration_stats = new ReconfigurationStats();
     }
 
     /**
@@ -4129,7 +4133,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             LOG.debug(String.format("Loading %d row(s) into %s [txnId=%d]",
                       data.getRowCount(), table.getName(), ts.getTransactionId()));
         ts.markExecutedWork(this.partitionId);
+        long start = System.currentTimeMillis();
         this.ee.loadTable(table.getRelativeIndex(), data, ts.getTransactionId(), this.lastCommittedTxnId.longValue(), ts.getLastUndoToken(this.partitionId), allowELT != 0);
+        long timeTaken = System.currentTimeMillis()-start;
+        int loadSizeKB = (data.getRowCount() * data.getRowSize())/1000;
+        this.reconfiguration_stats.trackLoad(partitionId, table.getName(), data.getRowCount(), loadSizeKB, timeTaken);
     }
 
     /**
@@ -4158,15 +4166,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             throw new VoltAbortException("ee is null!");
         }
         if (data == null)
-            throw new VoltAbortException("data i s null");
-        long start=0;
-        if (ReconfigurationCoordinator.detailed_timing) {
-            start = System.currentTimeMillis();
-        }
+            throw new VoltAbortException("data is null");
+        long start = System.currentTimeMillis();
         this.ee.loadTable(table.getRelativeIndex(), data, -1, lastCommitted, getNextUndoToken(), allowExport);
+        long timeTaken = System.currentTimeMillis()-start;
+        int loadSizeKB = (data.getRowCount() * data.getRowSize())/1000;
+        this.reconfiguration_stats.trackLoad(partitionId, tableName, data.getRowCount(), loadSizeKB, timeTaken);
         if (ReconfigurationCoordinator.detailed_timing) {
             LOG.info(String.format("(%s) Load table[%s] for %s records of size %s (kb) took %s ms ",this.partitionId, tableName, 
-                    data.getRowCount(), (data.getRowCount() * data.getRowSize())/1000 ,System.currentTimeMillis()-start )); 
+                    data.getRowCount(), loadSizeKB, timeTaken)); 
         }
 
     }
@@ -4185,12 +4193,18 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (debug.val)
             LOG.debug(String.format("Loading %d row(s) into %s [txnId=%d]",
                       data.getRowCount(), table.getName(), txnId));
+        
+        long start = System.currentTimeMillis();
         this.ee.loadTable(table.getRelativeIndex(),
                           data,
                           txnId.longValue(),
                           this.lastCommittedTxnId.longValue(),
                           HStoreConstants.NULL_UNDO_LOGGING_TOKEN,
                           allowELT);
+        long timeTaken = System.currentTimeMillis()-start;
+        int loadSizeKB = (data.getRowCount() * data.getRowSize())/1000;
+        this.reconfiguration_stats.trackLoad(partitionId, table.getName(), data.getRowCount(), loadSizeKB, timeTaken);
+
     }
 
     /**
