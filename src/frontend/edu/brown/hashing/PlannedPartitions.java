@@ -75,7 +75,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
     public static final String PLANNED_PARTITIONS = "partition_plans";
-    
+
     static {
         LoggerUtil.attachObserver(LOG, debug, trace);
     }
@@ -83,17 +83,17 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     private Map<String, PartitionPhase> partition_phase_map;
     private String current_phase;
     private String previous_phase;
-    
+
     public PlannedPartitions(CatalogContext catalog_context, File planned_partition_json_file) throws Exception {
         this(catalog_context, new JSONObject(FileUtil.readFile(planned_partition_json_file)));
     }
 
     public PlannedPartitions(CatalogContext catalog_context, JSONObject planned_partition_json) throws Exception {
-    	super(catalog_context, planned_partition_json);
+        super(catalog_context, planned_partition_json);
         this.current_phase = null;
         this.previous_phase = null;
         this.partition_phase_map = new HashMap<>();
-        
+
         if (planned_partition_json.has(PLANNED_PARTITIONS)) {
             JSONObject phases = planned_partition_json.getJSONObject(PLANNED_PARTITIONS);
             String first_key = null;
@@ -156,26 +156,28 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         }
     }
 
-    /* (non-Javadoc)
-     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(java.lang.String, java.lang.Object)
+    /*
+     * (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(java.lang.String,
+     * java.lang.Object)
      */
     @Override
     public int getPartitionId(String table_name, List<Object> ids) throws Exception {
-    	synchronized (this) {
-    		if(this.reconfigurationPlan != null) {
-    			ReconfigurationRange range = this.reconfigurationPlan.findReconfigurationRange(table_name, ids);
-    			if(range != null) {
-    				return range.getNewPartition();
-    			}
-    		}
-    		if(this.incrementalPlan != null) {
-    			PartitionedTable table = incrementalPlan.getTable(table_name);
-    	        assert table != null : "Table not found " + table_name;
-    	        return table.findPartition(ids);
-    		}
-    	}
-    	
-    	PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
+        synchronized (this) {
+            if (this.reconfigurationPlan != null) {
+                ReconfigurationRange range = this.reconfigurationPlan.findReconfigurationRange(table_name, ids);
+                if (range != null) {
+                    return range.getNewPartition();
+                }
+            }
+            if (this.incrementalPlan != null) {
+                PartitionedTable table = incrementalPlan.getTable(table_name);
+                assert table != null : "Table not found " + table_name;
+                return table.findPartition(ids);
+            }
+        }
+
+        PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
         PartitionedTable table = phase.getTable(table_name);
         if (table == null) {
             if (debug.val)
@@ -189,59 +191,62 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         return table.findPartition(ids);
     }
 
-    /* (non-Javadoc)
-     * @see edu.brown.hashing.ExplicitPartition#getPreviousPartitionId(java.lang.String, java.lang.Object)
+    /*
+     * (non-Javadoc)
+     * @see
+     * edu.brown.hashing.ExplicitPartition#getPreviousPartitionId(java.lang.
+     * String, java.lang.Object)
      */
     @Override
     public int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception {
-    	synchronized (this) {
-    		if(this.reconfigurationPlan != null) {
-    			ReconfigurationRange range = this.reconfigurationPlan.findReconfigurationRange(table_name, ids);
-    			if(range != null) {
-			    return range.getOldPartition();
-    			}
-    		}
-    		if(this.incrementalPlan != null) {
-    			PartitionedTable table = incrementalPlan.getTable(table_name);
-    	        assert table != null : "Table not found " + table_name;
-    	        return table.findPartition(ids);
-    		}
-    	}
-    	
-    	String previousPhase = this.getPreviousPhase_phase();
+        synchronized (this) {
+            if (this.reconfigurationPlan != null) {
+                ReconfigurationRange range = this.reconfigurationPlan.findReconfigurationRange(table_name, ids);
+                if (range != null) {
+                    return range.getOldPartition();
+                }
+            }
+            if (this.incrementalPlan != null) {
+                PartitionedTable table = incrementalPlan.getTable(table_name);
+                assert table != null : "Table not found " + table_name;
+                return table.findPartition(ids);
+            }
+        }
+
+        String previousPhase = this.getPreviousPhase_phase();
         if (previousPhase == null)
             return -1;
         PartitionPhase phase = this.partition_phase_map.get(previousPhase);
         PartitionedTable table = phase.getTable(table_name);
-        if (table == null){
+        if (table == null) {
             table = phase.getTable(table_name.toLowerCase());
             if (table == null) {
-                throw new Exception("Unable to find table "+ table_name + " in phase  " + previousPhase);
+                throw new Exception("Unable to find table " + table_name + " in phase  " + previousPhase);
             }
         }
         assert table != null : "Table not found " + table_name;
         return table.findPartition(ids);
     }
-    
+
     @Override
     public List<Integer> getAllPartitionIds(String table_name, List<Object> ids) throws Exception {
-    	List<Integer> allPartitionIds = new ArrayList<Integer>();
-    	synchronized (this) {
-    		if(this.reconfigurationPlan != null) {
-    			List<ReconfigurationRange> ranges = this.reconfigurationPlan.findAllReconfigurationRanges(table_name, ids);
-    			for(ReconfigurationRange range : ranges) {
-    				allPartitionIds.add(range.getNewPartition());
-    			}
-    		}
-    		if(this.incrementalPlan != null) {
-    			PartitionedTable table = incrementalPlan.getTable(table_name);
-    	        assert table != null : "Table not found " + table_name;
-    	        allPartitionIds.addAll(table.findAllPartitions(ids));
-    	        return allPartitionIds;
-    		}
-    	}
-    	
-    	PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
+        List<Integer> allPartitionIds = new ArrayList<Integer>();
+        synchronized (this) {
+            if (this.reconfigurationPlan != null) {
+                List<ReconfigurationRange> ranges = this.reconfigurationPlan.findAllReconfigurationRanges(table_name, ids);
+                for (ReconfigurationRange range : ranges) {
+                    allPartitionIds.add(range.getNewPartition());
+                }
+            }
+            if (this.incrementalPlan != null) {
+                PartitionedTable table = incrementalPlan.getTable(table_name);
+                assert table != null : "Table not found " + table_name;
+                allPartitionIds.addAll(table.findAllPartitions(ids));
+                return allPartitionIds;
+            }
+        }
+
+        PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
         PartitionedTable table = phase.getTable(table_name);
         if (table == null) {
             if (debug.val)
@@ -252,41 +257,41 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
         }
         assert table != null : "Table not found " + table_name;
-        return table.findAllPartitions(ids);    }
-    
+        return table.findAllPartitions(ids);
+    }
+
     @Override
     public List<Integer> getAllPreviousPartitionIds(String table_name, List<Object> ids) throws Exception {
-    	List<Integer> allPartitionIds = new ArrayList<Integer>();
-    	synchronized (this) {
-    		if(this.reconfigurationPlan != null) {
-    			List<ReconfigurationRange> ranges = this.reconfigurationPlan.findAllReconfigurationRanges(table_name, ids);
-    			for(ReconfigurationRange range : ranges) {
-    				allPartitionIds.add(range.getOldPartition());
-    			}
-    		}
-    		if(this.incrementalPlan != null) {
-    			PartitionedTable table = incrementalPlan.getTable(table_name);
-			assert table != null : "Table not found " + table_name;
-			allPartitionIds.addAll(table.findAllPartitions(ids));
-	        return allPartitionIds;
-    		}
-    	}
-    	
-    	String previousPhase = this.getPreviousPhase_phase();
+        List<Integer> allPartitionIds = new ArrayList<Integer>();
+        synchronized (this) {
+            if (this.reconfigurationPlan != null) {
+                List<ReconfigurationRange> ranges = this.reconfigurationPlan.findAllReconfigurationRanges(table_name, ids);
+                for (ReconfigurationRange range : ranges) {
+                    allPartitionIds.add(range.getOldPartition());
+                }
+            }
+            if (this.incrementalPlan != null) {
+                PartitionedTable table = incrementalPlan.getTable(table_name);
+                assert table != null : "Table not found " + table_name;
+                allPartitionIds.addAll(table.findAllPartitions(ids));
+                return allPartitionIds;
+            }
+        }
+
+        String previousPhase = this.getPreviousPhase_phase();
         if (previousPhase == null)
             return allPartitionIds;
         PartitionPhase phase = this.partition_phase_map.get(previousPhase);
         PartitionedTable table = phase.getTable(table_name);
-        if (table == null){
+        if (table == null) {
             table = phase.getTable(table_name.toLowerCase());
             if (table == null) {
-                throw new Exception("Unable to find table "+ table_name + " in phase  " + previousPhase);
+                throw new Exception("Unable to find table " + table_name + " in phase  " + previousPhase);
             }
         }
         assert table != null : "Table not found " + table_name;
         return table.findAllPartitions(ids);
     }
-    
 
     // ******** Containers *****************************************/
 
@@ -329,12 +334,12 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 this.tables_map.put(table_name, new PartitionedTable(table_name, table_json, catalog_context.getTableByName(table_name), getSubKeySplits(table_name, partitionedTablesByFK)));
             }
 
-            //Add entries for tables that are partitioned on other columns
+            // Add entries for tables that are partitioned on other columns
             for (Entry<String, String> partitionedFK : partitionedTablesByFK.entrySet()) {
                 String table_name = partitionedFK.getKey();
                 String fk_table_name = partitionedFK.getValue();
                 if (json_tables.has(fk_table_name) == false) {
-                    throw new RuntimeException(String.format("For table %s, the foreignkey partitioned table %s is not explicitly partitioned ", table_name,fk_table_name));
+                    throw new RuntimeException(String.format("For table %s, the foreignkey partitioned table %s is not explicitly partitioned ", table_name, fk_table_name));
                 }
                 LOG.info(String.format("Adding FK partitioning %s->%s", table_name, fk_table_name));
                 this.tables_map.put(partitionedFK.getKey(), this.tables_map.get(partitionedFK.getValue()).clone(table_name, catalog_context.getTableByName(table_name)));
@@ -344,164 +349,164 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         protected PartitionPhase(Map<String, PlannedPartitions.PartitionedTable> table_map) {
             this.tables_map = table_map;
         }
-        
+
         protected PartitionPhase(CatalogContext catalog_context, List<PartitionRange> ranges) throws Exception {
             this.tables_map = new HashMap<String, PlannedPartitions.PartitionedTable>();
             this.catalog_context = catalog_context;
-            
+
             HashMap<String, List<PartitionRange>> table_name_map = new HashMap<String, List<PartitionRange>>();
-            
-            for(PartitionRange range : ranges) {
-            	String table_name = range.catalog_table.getName().toLowerCase();
-            	if(!table_name_map.containsKey(table_name)) {
-            		table_name_map.put(table_name, new ArrayList<PartitionRange>());
-            	}
-            	table_name_map.get(table_name).add(range);
+
+            for (PartitionRange range : ranges) {
+                String table_name = range.catalog_table.getName().toLowerCase();
+                if (!table_name_map.containsKey(table_name)) {
+                    table_name_map.put(table_name, new ArrayList<PartitionRange>());
+                }
+                table_name_map.get(table_name).add(range);
             }
-            
-            for(Map.Entry<String, List<PartitionRange>> tableRanges : table_name_map.entrySet()) {
-            	String table_name = tableRanges.getKey();
-            	this.tables_map.put(table_name, new PartitionedTable(tableRanges.getValue(), table_name, this.catalog_context.getTableByName(table_name)));
+
+            for (Map.Entry<String, List<PartitionRange>> tableRanges : table_name_map.entrySet()) {
+                String table_name = tableRanges.getKey();
+                this.tables_map.put(table_name, new PartitionedTable(tableRanges.getValue(), table_name, this.catalog_context.getTableByName(table_name)));
             }
         }
-        
+
         protected List<Object[]> getSubKeySplits(String table_name, Map<String, String> partitionedTablesByFK) {
-        	
-	    // HACK - this is currently hard coded for TPCC
-	    String partitionedTable = partitionedTablesByFK.get(table_name);        	
-	    if(partitionedTable == null) {
-		partitionedTable = table_name;
-	    } 
-	    List<Object[]> res = new ArrayList<>();
-	    if (partitionedTable.equals("district")) {
-		res.add(new Object[]{ 2 });
-		res.add(new Object[]{ 3 });
-		res.add(new Object[]{ 4 });
-		res.add(new Object[]{ 5 });
-		res.add(new Object[]{ 6 });
-		res.add(new Object[]{ 7 });
-		res.add(new Object[]{ 8 });
-		res.add(new Object[]{ 9 });
-	    } else if (partitionedTable.equals("customer")) {
-	    	res.add(new Object[]{ 1, 10000 });
-	    	res.add(new Object[]{ 1, 20000 });
-	    	res.add(new Object[]{ 1, 30000 });
-	    	res.add(new Object[]{ 1, 40000 });
-	    	res.add(new Object[]{ 1, 50000 });
-		res.add(new Object[]{ 2, 0 });
-		res.add(new Object[]{ 2, 10000 });
-	    	res.add(new Object[]{ 2, 20000 });
-	    	res.add(new Object[]{ 2, 30000 });
-	    	res.add(new Object[]{ 2, 40000 });
-	    	res.add(new Object[]{ 2, 50000 });
-	    	res.add(new Object[]{ 3, 0 });
-		res.add(new Object[]{ 3, 10000 });
-	    	res.add(new Object[]{ 3, 20000 });
-	    	res.add(new Object[]{ 3, 30000 });
-	    	res.add(new Object[]{ 3, 40000 });
-	    	res.add(new Object[]{ 3, 50000 });
-	    	res.add(new Object[]{ 4, 0 });
-		res.add(new Object[]{ 4, 10000 });
-	    	res.add(new Object[]{ 4, 20000 });
-	    	res.add(new Object[]{ 4, 30000 });
-	    	res.add(new Object[]{ 4, 40000 });
-	    	res.add(new Object[]{ 4, 50000 });
-	    	res.add(new Object[]{ 5, 0 });
-		res.add(new Object[]{ 5, 10000 });
-	    	res.add(new Object[]{ 5, 20000 });
-	    	res.add(new Object[]{ 5, 30000 });
-	    	res.add(new Object[]{ 5, 40000 });
-	    	res.add(new Object[]{ 5, 50000 });
-	    	res.add(new Object[]{ 6, 0 });
-		res.add(new Object[]{ 6, 10000 });
-	    	res.add(new Object[]{ 6, 20000 });
-	    	res.add(new Object[]{ 6, 30000 });
-	    	res.add(new Object[]{ 6, 40000 });
-	    	res.add(new Object[]{ 6, 50000 });
-	    	res.add(new Object[]{ 7, 0 });
-		res.add(new Object[]{ 7, 10000 });
-	    	res.add(new Object[]{ 7, 20000 });
-	    	res.add(new Object[]{ 7, 30000 });
-	    	res.add(new Object[]{ 7, 40000 });
-	    	res.add(new Object[]{ 7, 50000 });
-	    	res.add(new Object[]{ 8, 0 });
-		res.add(new Object[]{ 8, 10000 });
-	    	res.add(new Object[]{ 8, 20000 });
-	    	res.add(new Object[]{ 8, 30000 });
-	    	res.add(new Object[]{ 8, 40000 });
-	    	res.add(new Object[]{ 8, 50000 });
-	    	res.add(new Object[]{ 9, 0 });
-		res.add(new Object[]{ 9, 10000 });
-	    	res.add(new Object[]{ 9, 20000 });
-	    	res.add(new Object[]{ 9, 30000 });
-	    	res.add(new Object[]{ 9, 40000 });
-	    	res.add(new Object[]{ 9, 50000 });
-	    } else if (partitionedTable.equals("orders")) {
-	    	res.add(new Object[]{ 1, 1000 });
-	    	res.add(new Object[]{ 1, 2000 });
-	    	res.add(new Object[]{ 1, 3000 });
-	    	res.add(new Object[]{ 1, 4000 });
-	    	res.add(new Object[]{ 1, 5000 });
-		res.add(new Object[]{ 2, 0 });
-		res.add(new Object[]{ 2, 1000 });
-	    	res.add(new Object[]{ 2, 2000 });
-	    	res.add(new Object[]{ 2, 3000 });
-	    	res.add(new Object[]{ 2, 4000 });
-	    	res.add(new Object[]{ 2, 5000 });
-	    	res.add(new Object[]{ 3, 0 });
-		res.add(new Object[]{ 3, 1000 });
-	    	res.add(new Object[]{ 3, 2000 });
-	    	res.add(new Object[]{ 3, 3000 });
-	    	res.add(new Object[]{ 3, 4000 });
-	    	res.add(new Object[]{ 3, 5000 });
-	    	res.add(new Object[]{ 4, 0 });
-		res.add(new Object[]{ 4, 1000 });
-	    	res.add(new Object[]{ 4, 2000 });
-	    	res.add(new Object[]{ 4, 3000 });
-	    	res.add(new Object[]{ 4, 4000 });
-	    	res.add(new Object[]{ 4, 5000 });
-	    	res.add(new Object[]{ 5, 0 });
-		res.add(new Object[]{ 5, 1000 });
-	    	res.add(new Object[]{ 5, 2000 });
-	    	res.add(new Object[]{ 5, 3000 });
-	    	res.add(new Object[]{ 5, 4000 });
-	    	res.add(new Object[]{ 5, 5000 });
-	    	res.add(new Object[]{ 6, 0 });
-		res.add(new Object[]{ 6, 1000 });
-	    	res.add(new Object[]{ 6, 2000 });
-	    	res.add(new Object[]{ 6, 3000 });
-	    	res.add(new Object[]{ 6, 4000 });
-	    	res.add(new Object[]{ 6, 5000 });
-	    	res.add(new Object[]{ 7, 0 });
-		res.add(new Object[]{ 7, 1000 });
-	    	res.add(new Object[]{ 7, 2000 });
-	    	res.add(new Object[]{ 7, 3000 });
-	    	res.add(new Object[]{ 7, 4000 });
-	    	res.add(new Object[]{ 7, 5000 });
-	    	res.add(new Object[]{ 8, 0 });
-		res.add(new Object[]{ 8, 1000 });
-	    	res.add(new Object[]{ 8, 2000 });
-	    	res.add(new Object[]{ 8, 3000 });
-	    	res.add(new Object[]{ 8, 4000 });
-	    	res.add(new Object[]{ 8, 5000 });
-	    	res.add(new Object[]{ 9, 0 });
-		res.add(new Object[]{ 9, 1000 });
-	    	res.add(new Object[]{ 9, 2000 });
-	    	res.add(new Object[]{ 9, 3000 });
-	    	res.add(new Object[]{ 9, 4000 });
-	    	res.add(new Object[]{ 9, 5000 });
-	    } else if (partitionedTable.equals("stock")) {
-	    	res.add(new Object[]{ 10000 });
-	    	res.add(new Object[]{ 20000 });
-	    	res.add(new Object[]{ 30000 });
-	    	res.add(new Object[]{ 40000 });
-	    	res.add(new Object[]{ 50000 });
-	    	res.add(new Object[]{ 60000 });
-	    	res.add(new Object[]{ 70000 });
-	    	res.add(new Object[]{ 80000 });
-	    	res.add(new Object[]{ 90000 });
-	    }
-	    return res;
+
+            // HACK - this is currently hard coded for TPCC
+            String partitionedTable = partitionedTablesByFK.get(table_name);
+            if (partitionedTable == null) {
+                partitionedTable = table_name;
+            }
+            List<Object[]> res = new ArrayList<>();
+            if (partitionedTable.equals("district")) {
+                res.add(new Object[] { 2 });
+                res.add(new Object[] { 3 });
+                res.add(new Object[] { 4 });
+                res.add(new Object[] { 5 });
+                res.add(new Object[] { 6 });
+                res.add(new Object[] { 7 });
+                res.add(new Object[] { 8 });
+                res.add(new Object[] { 9 });
+            } else if (partitionedTable.equals("customer")) {
+                res.add(new Object[] { 1, 10000 });
+                res.add(new Object[] { 1, 20000 });
+                res.add(new Object[] { 1, 30000 });
+                res.add(new Object[] { 1, 40000 });
+                res.add(new Object[] { 1, 50000 });
+                res.add(new Object[] { 2, 0 });
+                res.add(new Object[] { 2, 10000 });
+                res.add(new Object[] { 2, 20000 });
+                res.add(new Object[] { 2, 30000 });
+                res.add(new Object[] { 2, 40000 });
+                res.add(new Object[] { 2, 50000 });
+                res.add(new Object[] { 3, 0 });
+                res.add(new Object[] { 3, 10000 });
+                res.add(new Object[] { 3, 20000 });
+                res.add(new Object[] { 3, 30000 });
+                res.add(new Object[] { 3, 40000 });
+                res.add(new Object[] { 3, 50000 });
+                res.add(new Object[] { 4, 0 });
+                res.add(new Object[] { 4, 10000 });
+                res.add(new Object[] { 4, 20000 });
+                res.add(new Object[] { 4, 30000 });
+                res.add(new Object[] { 4, 40000 });
+                res.add(new Object[] { 4, 50000 });
+                res.add(new Object[] { 5, 0 });
+                res.add(new Object[] { 5, 10000 });
+                res.add(new Object[] { 5, 20000 });
+                res.add(new Object[] { 5, 30000 });
+                res.add(new Object[] { 5, 40000 });
+                res.add(new Object[] { 5, 50000 });
+                res.add(new Object[] { 6, 0 });
+                res.add(new Object[] { 6, 10000 });
+                res.add(new Object[] { 6, 20000 });
+                res.add(new Object[] { 6, 30000 });
+                res.add(new Object[] { 6, 40000 });
+                res.add(new Object[] { 6, 50000 });
+                res.add(new Object[] { 7, 0 });
+                res.add(new Object[] { 7, 10000 });
+                res.add(new Object[] { 7, 20000 });
+                res.add(new Object[] { 7, 30000 });
+                res.add(new Object[] { 7, 40000 });
+                res.add(new Object[] { 7, 50000 });
+                res.add(new Object[] { 8, 0 });
+                res.add(new Object[] { 8, 10000 });
+                res.add(new Object[] { 8, 20000 });
+                res.add(new Object[] { 8, 30000 });
+                res.add(new Object[] { 8, 40000 });
+                res.add(new Object[] { 8, 50000 });
+                res.add(new Object[] { 9, 0 });
+                res.add(new Object[] { 9, 10000 });
+                res.add(new Object[] { 9, 20000 });
+                res.add(new Object[] { 9, 30000 });
+                res.add(new Object[] { 9, 40000 });
+                res.add(new Object[] { 9, 50000 });
+            } else if (partitionedTable.equals("orders")) {
+                res.add(new Object[] { 1, 1000 });
+                res.add(new Object[] { 1, 2000 });
+                res.add(new Object[] { 1, 3000 });
+                res.add(new Object[] { 1, 4000 });
+                res.add(new Object[] { 1, 5000 });
+                res.add(new Object[] { 2, 0 });
+                res.add(new Object[] { 2, 1000 });
+                res.add(new Object[] { 2, 2000 });
+                res.add(new Object[] { 2, 3000 });
+                res.add(new Object[] { 2, 4000 });
+                res.add(new Object[] { 2, 5000 });
+                res.add(new Object[] { 3, 0 });
+                res.add(new Object[] { 3, 1000 });
+                res.add(new Object[] { 3, 2000 });
+                res.add(new Object[] { 3, 3000 });
+                res.add(new Object[] { 3, 4000 });
+                res.add(new Object[] { 3, 5000 });
+                res.add(new Object[] { 4, 0 });
+                res.add(new Object[] { 4, 1000 });
+                res.add(new Object[] { 4, 2000 });
+                res.add(new Object[] { 4, 3000 });
+                res.add(new Object[] { 4, 4000 });
+                res.add(new Object[] { 4, 5000 });
+                res.add(new Object[] { 5, 0 });
+                res.add(new Object[] { 5, 1000 });
+                res.add(new Object[] { 5, 2000 });
+                res.add(new Object[] { 5, 3000 });
+                res.add(new Object[] { 5, 4000 });
+                res.add(new Object[] { 5, 5000 });
+                res.add(new Object[] { 6, 0 });
+                res.add(new Object[] { 6, 1000 });
+                res.add(new Object[] { 6, 2000 });
+                res.add(new Object[] { 6, 3000 });
+                res.add(new Object[] { 6, 4000 });
+                res.add(new Object[] { 6, 5000 });
+                res.add(new Object[] { 7, 0 });
+                res.add(new Object[] { 7, 1000 });
+                res.add(new Object[] { 7, 2000 });
+                res.add(new Object[] { 7, 3000 });
+                res.add(new Object[] { 7, 4000 });
+                res.add(new Object[] { 7, 5000 });
+                res.add(new Object[] { 8, 0 });
+                res.add(new Object[] { 8, 1000 });
+                res.add(new Object[] { 8, 2000 });
+                res.add(new Object[] { 8, 3000 });
+                res.add(new Object[] { 8, 4000 });
+                res.add(new Object[] { 8, 5000 });
+                res.add(new Object[] { 9, 0 });
+                res.add(new Object[] { 9, 1000 });
+                res.add(new Object[] { 9, 2000 });
+                res.add(new Object[] { 9, 3000 });
+                res.add(new Object[] { 9, 4000 });
+                res.add(new Object[] { 9, 5000 });
+            } else if (partitionedTable.equals("stock")) {
+                res.add(new Object[] { 10000 });
+                res.add(new Object[] { 20000 });
+                res.add(new Object[] { 30000 });
+                res.add(new Object[] { 40000 });
+                res.add(new Object[] { 50000 });
+                res.add(new Object[] { 60000 });
+                res.add(new Object[] { 70000 });
+                res.add(new Object[] { 80000 });
+                res.add(new Object[] { 90000 });
+            }
+            return res;
         }
     }
 
@@ -537,9 +542,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
             Collections.sort(this.partitions);
         }
-        
-        public PartitionedTable clone(String new_table_name, Table new_catalog_table) throws Exception{
-            return new PartitionedTable(new_table_name, this.table_json,new_catalog_table, this.subKeySplits);
+
+        public PartitionedTable clone(String new_table_name, Table new_catalog_table) throws Exception {
+            return new PartitionedTable(new_table_name, this.table_json, new_catalog_table, this.subKeySplits);
         }
 
         public PartitionedTable(List<PartitionRange> partitions, String table_name, Table catalog_table) {
@@ -567,18 +572,19 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
-                	if (p.inRange(ids)) {
-                		return p.partition;
-                	}
+                    if (p.inRange(ids)) {
+                        return p.partition;
+                    }
                 }
             } catch (Exception e) {
                 LOG.error("Error looking up partition", e);
             }
 
-            if(debug.val) LOG.debug("Partition not found. ids: " + ids.toString() + ", partitions: " + this.partitions.toString() );
+            if (debug.val)
+                LOG.debug("Partition not found. ids: " + ids.toString() + ", partitions: " + this.partitions.toString());
             return HStoreConstants.NULL_PARTITION_ID;
         }
-        
+
         /**
          * Find all the partitions that may contain a key
          * 
@@ -592,21 +598,21 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             List<Integer> partitionIds = new ArrayList<Integer>();
             for (PartitionRange p : this.partitions) {
-            	try {
-                    
+                try {
+
                     // if this greater than or equal to the min inclusive val
                     // and
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
-                	if (p.inRangeIgnoreNullCols(ids)) {
-                		partitionIds.add(p.partition);
-                	}
-            	} catch (Exception e) {
+                    if (p.inRangeIgnoreNullCols(ids)) {
+                        partitionIds.add(p.partition);
+                    }
+                } catch (Exception e) {
                     LOG.error("Error looking up partition", e);
                 }
             }
-            
+
             return partitionIds;
         }
 
@@ -623,9 +629,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 this.partitions.add(new PartitionRange(this.catalog_table, partition_id, range));
             }
         }
-        
+
         public List<PartitionRange> getRanges() {
-        	return this.partitions;
+            return this.partitions;
         }
 
         public Table getCatalog_table() {
@@ -649,48 +655,48 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         private Object[] max_excl;
         private VoltTableComparator cmp;
         private Table catalog_table;
-        
+
         public PartitionRange(Table table, int partition_id, String range_str) throws ParseException {
             this.partition = partition_id;
             this.catalog_table = table;
-            
+
             this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
             this.keySchemaCopy = this.keySchema.clone(0);
             Object[] min_row;
             Object[] max_row;
-            
+
             // x-y
             if (range_str.contains("-")) {
-            	String vals[] = range_str.split("-", 2);
+                String vals[] = range_str.split("-", 2);
 
-            	min_row = getRangeKeys(vals[0]);
+                min_row = getRangeKeys(vals[0]);
                 max_row = getRangeKeys(vals[1]);
-                
+
             } else {
-            	throw new ParseException("keys must be specified as min-max. range: " + range_str, -1);
+                throw new ParseException("keys must be specified as min-max. range: " + range_str, -1);
             }
-            
+
             this.cmp = ReconfigurationUtil.getComparator(keySchema);
 
             keySchemaCopy.addRow(min_row);
             keySchemaCopy.advanceToRow(0);
             this.min_incl = keySchemaCopy.getRowArray();
             keySchemaCopy.clearRowData();
-        	
+
             keySchemaCopy.addRow(max_row);
             keySchemaCopy.advanceToRow(0);
             this.max_excl = keySchemaCopy.getRowArray();
             keySchemaCopy.clearRowData();
-        	
+
             if (cmp.compare(this.min_incl, this.max_excl) > 0) {
-            	throw new ParseException("Min cannot be greater than max", -1);
-    	    }
+                throw new ParseException("Min cannot be greater than max", -1);
+            }
         }
-        
+
         public PartitionRange(Table table, int partition_id, Object[] min_incl, Object[] max_excl) {
             this.partition = partition_id;
             this.catalog_table = table;
-            
+
             this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
             this.keySchemaCopy = this.keySchema.clone(0);
             this.cmp = ReconfigurationUtil.getComparator(keySchema);
@@ -698,187 +704,181 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.min_incl = min_incl;
             this.max_excl = max_excl;
         }
-        
+
         private Object[] getRangeKeys(String key_str) throws ParseException {
-        	String keys[];
-        	// multi-key partitioning
-        	if (key_str.contains(":")) {
-        		keys = key_str.split(":");
-        	} else {
-        		keys = new String[]{ key_str };
-        	}
+            String keys[];
+            // multi-key partitioning
+            if (key_str.contains(":")) {
+                keys = key_str.split(":");
+            } else {
+                keys = new String[] { key_str };
+            }
 
-        	Object[] row = new Object[keySchema.getColumnCount()];
-            
-        	int col = 0;
-        	for(String key : keys) {
-        		assert(col < keySchema.getColumnCount());
-        		VoltType vt = keySchema.getColumnType(col);
+            Object[] row = new Object[keySchema.getColumnCount()];
 
-        		row[col] = parseValue(vt, key);
-        		col++;
-        	}
+            int col = 0;
+            for (String key : keys) {
+                assert (col < keySchema.getColumnCount());
+                VoltType vt = keySchema.getColumnType(col);
 
-        	for ( ; col < keySchema.getColumnCount(); col++) {
-        		VoltType vt = keySchema.getColumnType(col);
-        		Object obj = vt.getNullValue();
-        		row[col] = obj;
-        	}
-        	
-        	return row;
+                row[col] = parseValue(vt, key);
+                col++;
+            }
+
+            for (; col < keySchema.getColumnCount(); col++) {
+                VoltType vt = keySchema.getColumnType(col);
+                Object obj = vt.getNullValue();
+                row[col] = obj;
+            }
+
+            return row;
         }
-        
+
         private Object parseValue(VoltType vt, String value) throws ParseException {
-        	if (value.isEmpty()) {
-        		return vt.getNullValue();
-        	}
-        	return VoltTypeUtil.getObjectFromString(vt, value);
+            if (value.isEmpty()) {
+                return vt.getNullValue();
+            }
+            return VoltTypeUtil.getObjectFromString(vt, value);
         }
-        
-        private int getNonNullCols() {        	
-        	int non_null_cols = 0;
-            for(int i = 0; i < min_incl.length; i++) {
-            	VoltType vt = keySchema.getColumnType(i);
-            	if(vt.getNullValue().equals(min_incl[i]) && vt.getNullValue().equals(max_excl[i])) {
-            		break;
-            	}
-            	non_null_cols++;
+
+        private int getNonNullCols() {
+            int non_null_cols = 0;
+            for (int i = 0; i < min_incl.length; i++) {
+                VoltType vt = keySchema.getColumnType(i);
+                if (vt.getNullValue().equals(min_incl[i]) && vt.getNullValue().equals(max_excl[i])) {
+                    break;
+                }
+                non_null_cols++;
             }
             return non_null_cols;
         }
-        
+
         @Override
         public String toString() {
-        	String min_str = "";
+            String min_str = "";
             String max_str = "";
-        	for(int i = 0; i < this.min_incl.length; i++) {
-        		Object min = this.min_incl[i];
-        		Object max = this.max_excl[i];
-        		VoltType vt = this.keySchema.getColumnType(i);
-        		if(!vt.getNullValue().equals(min)) {
-        			if(i != 0) {
-        				min_str += ":";
-        			}
-        			min_str += min.toString();
-        		}
-        		if(!vt.getNullValue().equals(max)) {
-        			if(i != 0) {
-        				max_str += ":";
-        			}
-        			max_str += max.toString();
-        		}
-        	}
-        	return "[PartitionRange (" + this.catalog_table.getName().toLowerCase() + ") [" + min_str + "-" + max_str + ") p_id=" + this.partition + "]";        	
+            for (int i = 0; i < this.min_incl.length; i++) {
+                Object min = this.min_incl[i];
+                Object max = this.max_excl[i];
+                VoltType vt = this.keySchema.getColumnType(i);
+                if (!vt.getNullValue().equals(min)) {
+                    if (i != 0) {
+                        min_str += ":";
+                    }
+                    min_str += min.toString();
+                }
+                if (!vt.getNullValue().equals(max)) {
+                    if (i != 0) {
+                        max_str += ":";
+                    }
+                    max_str += max.toString();
+                }
+            }
+            return "[PartitionRange (" + this.catalog_table.getName().toLowerCase() + ") [" + min_str + "-" + max_str + ") p_id=" + this.partition + "]";
         }
 
         @Override
         public int compareTo(PartitionRange o) {
-        	if (cmp.compare(this.min_incl, o.min_incl) < 0) {
-        		return -1;
-        	} else if (cmp.compare(this.min_incl, o.min_incl) == 0) {
-        		return cmp.compare(this.max_excl, o.max_excl);
-        	} else {
-        		return 1;
-        	}
+            if (cmp.compare(this.min_incl, o.min_incl) < 0) {
+                return -1;
+            } else if (cmp.compare(this.min_incl, o.min_incl) == 0) {
+                return cmp.compare(this.max_excl, o.max_excl);
+            } else {
+                return 1;
+            }
         }
-        
+
         public synchronized boolean inRange(List<Object> ids) {
-        	Object[] keys = new Object[this.min_incl.length];
-        	int col = 0;
-        	for(Object id : ids) {
-        		if(col >= keys.length) {
-        			break;
-        		}
-        		keys[col] = id;
-        		col++;
-        	}
-        	for( ; col < keys.length; col++) {
-        		VoltType vt = this.keySchema.getColumnType(col);
-            	keys[col] = vt.getNullValue();
-        	}
-        	
-        	keySchemaCopy.addRow(keys);
-        	keySchemaCopy.advanceToRow(0);
-        	Object[] rowArray = keySchemaCopy.getRowArray();
-        	keySchemaCopy.clearRowData();
-        	return inRange(rowArray, ids.size());
+            Object[] keys = new Object[this.min_incl.length];
+            int col = 0;
+            for (Object id : ids) {
+                if (col >= keys.length) {
+                    break;
+                }
+                keys[col] = id;
+                col++;
+            }
+            for (; col < keys.length; col++) {
+                VoltType vt = this.keySchema.getColumnType(col);
+                keys[col] = vt.getNullValue();
+            }
+
+            keySchemaCopy.addRow(keys);
+            keySchemaCopy.advanceToRow(0);
+            Object[] rowArray = keySchemaCopy.getRowArray();
+            keySchemaCopy.clearRowData();
+            return inRange(rowArray, ids.size());
         }
-        
+
         public boolean inRange(Object[] keys, int orig_size) {
-        	if(cmp.compare(min_incl, keys) <= 0 && 
-        			(cmp.compare(max_excl, keys) > 0 || 
-        					(cmp.compare(min_incl, max_excl) == 0 && 
-        					cmp.compare(min_incl, keys) == 0))){
-        		if (orig_size >= getNonNullCols()) {
-        			return true;
-        		}
-        	}
+            if (cmp.compare(min_incl, keys) <= 0 && (cmp.compare(max_excl, keys) > 0 || (cmp.compare(min_incl, max_excl) == 0 && cmp.compare(min_incl, keys) == 0))) {
+                if (orig_size >= getNonNullCols()) {
+                    return true;
+                }
+            }
 
             return false;
         }
-        
-        public synchronized boolean inRangeIgnoreNullCols(List<Object> ids) {
-        	Object[] keys = new Object[this.keySchema.getColumnCount()];
-        	int col = 0;
-        	for(Object id : ids) {
-        		if(col >= keys.length) {
-        			break;
-        		}
-        		keys[col] = id;
-        		col++;
-        	}
-        	
-        	keySchemaCopy.addRow(keys);
-        	keySchemaCopy.advanceToRow(0);
-        	Object[] rowArray = keySchemaCopy.getRowArray();
-        	keySchemaCopy.clearRowData();
-        	return inRangeIgnoreNullCols(rowArray, ids.size());
-        }
-        
-        public boolean inRangeIgnoreNullCols(Object[] keys, int orig_size) {
-        	for(int j = orig_size; j < keys.length; j++) {
-        		keys[j] = min_incl[j];
-        	}
-        	if(cmp.compare(min_incl, keys) <= 0 && 
-        			(cmp.compare(max_excl, keys) > 0 || 
-        					(cmp.compare(min_incl, max_excl) == 0 && 
-        					cmp.compare(min_incl, keys) == 0))){
-        		return true;
-        	}
 
-        	return false;
+        public synchronized boolean inRangeIgnoreNullCols(List<Object> ids) {
+            Object[] keys = new Object[this.keySchema.getColumnCount()];
+            int col = 0;
+            for (Object id : ids) {
+                if (col >= keys.length) {
+                    break;
+                }
+                keys[col] = id;
+                col++;
+            }
+
+            keySchemaCopy.addRow(keys);
+            keySchemaCopy.advanceToRow(0);
+            Object[] rowArray = keySchemaCopy.getRowArray();
+            keySchemaCopy.clearRowData();
+            return inRangeIgnoreNullCols(rowArray, ids.size());
         }
-        
+
+        public boolean inRangeIgnoreNullCols(Object[] keys, int orig_size) {
+            for (int j = orig_size; j < keys.length; j++) {
+                keys[j] = min_incl[j];
+            }
+            if (cmp.compare(min_incl, keys) <= 0 && (cmp.compare(max_excl, keys) > 0 || (cmp.compare(min_incl, max_excl) == 0 && cmp.compare(min_incl, keys) == 0))) {
+                return true;
+            }
+
+            return false;
+        }
+
         public VoltTable getMinInclTable() {
-        	VoltTable minInclTable = this.keySchema.clone(0);
-        	minInclTable.addRow(this.min_incl);
-        	return minInclTable;
+            VoltTable minInclTable = this.keySchema.clone(0);
+            minInclTable.addRow(this.min_incl);
+            return minInclTable;
         }
-        
+
         public VoltTable getMaxExclTable() {
-        	VoltTable maxExclTable = this.keySchema.clone(0);
-        	maxExclTable.addRow(this.max_excl);
-        	return maxExclTable;
+            VoltTable maxExclTable = this.keySchema.clone(0);
+            maxExclTable.addRow(this.max_excl);
+            return maxExclTable;
         }
-        
+
         public Object[] getMinIncl() {
-        	return this.min_incl;
+            return this.min_incl;
         }
-        
+
         public Object[] getMaxExcl() {
-        	return this.max_excl;
+            return this.max_excl;
         }
-        
+
         public VoltTable getKeySchema() {
-        	return this.keySchema;
+            return this.keySchema;
         }
-        
+
         public Table getTable() {
-        	return this.catalog_table;
+            return this.catalog_table;
         }
-        
+
         public int getPartition() {
-        	return this.partition;
+            return this.partition;
         }
 
     }
@@ -902,7 +902,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         synchronized (this) {
             this.current_phase = new_phase;
             this.previous_phase = old_phase;
-	    this.incrementalPlan = null;
+            this.incrementalPlan = null;
         }
         try {
             if (old_phase == null) {
@@ -911,7 +911,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             return new ReconfigurationPlan(this.catalog_context, this.partition_phase_map.get(old_phase), this.partition_phase_map.get(new_phase));
         } catch (Exception ex) {
             LOG.error("Exception on setting partition phase", ex);
-            LOG.error(String.format("Old phase: %s  New Phase: %s" , old_phase,new_phase));
+            LOG.error(String.format("Old phase: %s  New Phase: %s", old_phase, new_phase));
             throw new RuntimeException("Exception building Reconfiguration plan", ex);
         }
 
@@ -997,7 +997,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
     @Override
     public synchronized PartitionPhase getCurrentPlan() {
-        
+
         return partition_phase_map.get(this.current_phase);
     }
 
