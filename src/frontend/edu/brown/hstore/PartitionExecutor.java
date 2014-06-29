@@ -1534,7 +1534,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 }
 
                 int chunkId = pullMsg.getAndIncrementChunk();
+                long start = System.currentTimeMillis();
                 Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, pull.getTransactionID(), lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId, hstore_conf.site.reconfig_async_chunk_size_kb*1024);
+                long timeTaken = System.currentTimeMillis() - start;
+                int size = (vt.getFirst().getRowCount() * vt.getFirst().getRowSize())/1000;
+                this.reconfiguration_stats.trackExtract(partitionId, tableName, vt.getFirst().getRowSize(), size , timeTaken);
+                
                 VoltTable voltTable = vt.getFirst();
 
                 ByteString tableBytes = null;
@@ -3369,7 +3374,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
 
             int chunkId = pullMsg.getAndIncrementChunk();
+            long start = System.currentTimeMillis();
             Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, pull.getTransactionID(), lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId, hstore_conf.site.reconfig_async_chunk_size_kb*1024);
+            long timeTaken = System.currentTimeMillis() - start;
+            int size = (vt.getFirst().getRowCount() * vt.getFirst().getRowSize())/1000;
+            this.reconfiguration_stats.trackExtract(partitionId, tableName, vt.getFirst().getRowSize(), size , timeTaken);
             VoltTable voltTable = vt.getFirst();
 
             ByteString tableBytes = null;
@@ -3389,7 +3398,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes)
                     .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
             
-            this.reconfiguration_stats.trackAsyncResponse(this.partitionId, pull.getNewPartition(), pull.getVoltTableName(), 
+            this.reconfiguration_stats.trackAsyncSrcResponse(this.partitionId, pull.getNewPartition(), pull.getVoltTableName(), 
                     multiPullReplyRequest.getVoltTableData().size()/1000, moreDataNeeded );
 
             
@@ -6496,7 +6505,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      */
     public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable minInclusiveList, 
     		VoltTable maxExclusiveList, VoltTable vt, boolean moreDataComing, boolean isAsyncRequest, int pullId) throws Exception {
-        
+        boolean notifyComplete = false;
     	Table catalog_tbl = this.catalogContext.getTableByName(table_name);
     	if (debug.val) LOG.debug(String.format("PE (%s) Received tuples for %s txnId:%s Rows(%s) partitions(%s->%s) for range, " + "[%s-%s)", this.partitionId,table_name, txnId, vt.getRowCount(), 
                  oldPartitionId, newPartitionId, minInclusiveList.toString(), maxExclusiveList.toString()));
@@ -6507,16 +6516,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             replicationDelay();
         }
         assert(minInclusiveList.getRowCount() == maxExclusiveList.getRowCount());
+        
         FileUtil.appendEventToFile(String.format("RECEIVE_TUPLES, MORE=%s, ASYNC=%s, PULLID=%s",moreDataComing,isAsyncRequest,pullId ));
+        
         //Iterate over the ranges for this receive to mark all as received (partially or full)
         minInclusiveList.resetRowPosition();
         maxExclusiveList.resetRowPosition();
         VoltTableComparator cmp = ReconfigurationUtil.getComparator(minInclusiveList);
+
+        Long startTime = pullStartTime.remove(pullId);
         while(minInclusiveList.advanceRow() && maxExclusiveList.advanceRow()) {
             // Currently we don't have any tracking for Stop and Copy.
             // Sanity checks can be added to make sure all data is added. But
             // tracker during the
             // executions is not required as Stop and Copy -> "Stops"
+
             if (this.reconfig_protocol != ReconfigurationProtocols.STOPCOPY && this.reconfiguration_tracker != null) {
                 if (cmp.compare(minInclusiveList.getRowArray(), maxExclusiveList.getRowArray()) == 0) {
                     // We have received a single key
@@ -6524,12 +6538,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         if(isAsyncRequest){
                             LOG.trace("Last chunk received for async request, unsetting async in progress");
                             asyncOutstanding.set(false);
-                            nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
-                        }
-                        Long startTime = pullStartTime.remove(pullId);
-                        if (isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
-                            long timeTaken = System.currentTimeMillis() - startTime;
-                            FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%s",timeTaken, pullId, table_name));
                         }
                         this.reconfiguration_tracker.markKeyAsReceived(table_name, Arrays.asList(minInclusiveList.getRowArray()));
                     }               
@@ -6539,38 +6547,45 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     	if (moreDataComing) {
                             this.reconfiguration_tracker.markRangeAsPartiallyReceived(
                             		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
-                            nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                         } else {
                             if(isAsyncRequest){
                                 LOG.trace("Last chunk received for async request, unsetting async in progress");
                                 asyncOutstanding.set(false);
-                                nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
-                            }
-                            Long startTime = pullStartTime.remove(pullId);
-                            if (isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
-                                long timeTaken = System.currentTimeMillis() - startTime;
-                                FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s, ",timeTaken, pullId,table_name, minInclusiveList.toString().replace("\n", " | "), maxExclusiveList));
                             }
                             this.reconfiguration_tracker.markRangeAsReceived(
                             		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
                         }                       
                     } catch (ReconfigurationException re) {
                         if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_IN)
-                            this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+                            notifyComplete = true;
                         else
                             LOG.error("Unexpected reconfiguration Exception", re);
                     }
     
                 }
             }
+        } // end while
+        nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+
+        long timeTaken = System.currentTimeMillis() - startTime;
+        if (!moreDataComing && isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
+            FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s, ",timeTaken, pullId,table_name, minInclusiveList.toString().replace("\n", " | "), maxExclusiveList));
         }
+        
         
         if (!isAsyncRequest && ReconfigurationCoordinator.detailed_timing){
             currentLiveDataLoaded += (vt.getRowCount() * vt.getRowSize());
         }
         if (debug.val)
             LOG.debug("load table");
+        
         loadTableForReconfiguration(this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), table_name, vt);
+        
+        this.reconfiguration_stats.trackAsyncReceived(this.partitionId, oldPartitionId, table_name, (vt.getRowSize()*vt.getRowCount())/1000, timeTaken, isAsyncRequest, moreDataComing);
+        
+        if (notifyComplete){
+            this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+        }
         
         if(this.reconfiguration_tracker == null) {
             LOG.error(String.format("(%s) ReconfigTracker is Null!! ", this.partitionId));
@@ -6626,23 +6641,22 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if(hstore_conf.site.reconfig_replication_delay){
             replicationDelay();
         }
-        long start=0;
 
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         if (currentTxnId == null) {
             if (debug.val) LOG.debug("Casting currentTxn to -1");
             currentTxnId = -1L;
         }
-        if(ReconfigurationCoordinator.detailed_timing){
-            start = System.currentTimeMillis();
-        }
+        long start = System.currentTimeMillis();
         Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table, table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId);
-        
+        long diff  = System.currentTimeMillis() - start;
+
         if (res != null) {
+            int size = res.getFirst().getRowCount() * (res.getFirst().getRowSize())/1000;
+            this.reconfiguration_stats.trackExtract(partitionId, table.getName(), res.getFirst().getRowCount(), size, diff);
             if(ReconfigurationCoordinator.detailed_timing){
-                long diff  = System.currentTimeMillis() - start;
                 LOG.info(String.format("(%s) Extract table[%s] for %s records of size %s kb took %s ms. ChunkId:%s MoreData:%s ",this.partitionId, table.getName(), 
-                        res.getFirst().getRowCount(), res.getFirst().getRowCount() * (res.getFirst().getRowSize())/1000 , diff, chunkId,res.getSecond())); 
+                        res.getFirst().getRowCount(),  size, diff, chunkId,res.getSecond())); 
             }
             
             if (debug.val) LOG.debug(String.format("PE (%s) marking range as migrated out %s  ", this.partitionId, range.toString()));

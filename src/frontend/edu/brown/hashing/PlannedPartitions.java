@@ -380,8 +380,8 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
             List<Object[]> res = new ArrayList<>();
             if (partitionedTable.equals("district")) {
-                res.add(new Object[] { 2 });
-                res.add(new Object[] { 3 });
+                res.add(new Object[] { 2 });//WID X, DID 1 
+                res.add(new Object[] { 3 });//WID X, DID 2 
                 res.add(new Object[] { 4 });
                 res.add(new Object[] { 5 });
                 res.add(new Object[] { 6 });
@@ -389,12 +389,12 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 res.add(new Object[] { 8 });
                 res.add(new Object[] { 9 });
             } else if (partitionedTable.equals("customer")) {
-                res.add(new Object[] { 1, 10000 });
-                res.add(new Object[] { 1, 20000 });
+                res.add(new Object[] { 1, 10000 });//WID X, D 1, CID 0-10000
+                res.add(new Object[] { 1, 20000 });//WID X, D 1, CID 10000-20000
                 res.add(new Object[] { 1, 30000 });
                 res.add(new Object[] { 1, 40000 });
-                res.add(new Object[] { 1, 50000 });
-                res.add(new Object[] { 2, 0 });
+                res.add(new Object[] { 1, 50000 });//WID X, D 1, CID 50000- 
+                res.add(new Object[] { 2, 0 });//WID X, D 2, CID 0-10000
                 res.add(new Object[] { 2, 10000 });
                 res.add(new Object[] { 2, 20000 });
                 res.add(new Object[] { 2, 30000 });
