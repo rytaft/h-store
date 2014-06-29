@@ -3344,6 +3344,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             FileUtil.appendEventToFile(String.format("ASYNC_PULL_REQUESTED, PULL_ID=%s, PARTITIONID=%s, TABLE=%s",pullID, partitionId, pullRange.getTableName()));
         } 
         this.reconfiguration_coordinator.asyncPullRequestFromPE(pullID, txnID, this.partitionId, pullRequests);
+        this.reconfiguration_stats.trackAsyncPullInit(this.partitionId, pullRange.getNewPartition(), pullRange.getTableName());
         LOG.debug("("+ this.partitionId + ") ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());       
     }
     
@@ -3379,7 +3380,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
             }
             
-
             boolean moreDataNeeded = vt.getSecond().booleanValue();  
             MultiPullReplyRequest multiPullReplyRequest = MultiPullReplyRequest.newBuilder().
                     setPullIdentifier(pull.getAsyncPullIdentifier()).
@@ -3388,6 +3388,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     setOldPartition(pull.getOldPartition()).setNewPartition(pull.getNewPartition()).setVoltTableName(pull.getVoltTableName())
                     .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes)
                     .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
+            
+            this.reconfiguration_stats.trackAsyncResponse(this.partitionId, pull.getNewPartition(), pull.getVoltTableName(), 
+                    multiPullReplyRequest.getVoltTableData().size()/1000, moreDataNeeded );
+
             
             LOG.info("Sending a multi pull async request");
             LOG.info("TODO do we need to invoke something different if local? Right now both remote / local put in with callback");
