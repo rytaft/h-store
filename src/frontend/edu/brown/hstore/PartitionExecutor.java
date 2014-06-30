@@ -1542,7 +1542,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 this.reconfiguration_stats.trackExtract(partitionId, tableName, vt.getFirst().getRowSize(), size , timeTaken);
                 
                 VoltTable voltTable = vt.getFirst();
-
+                int records = voltTable.getRowCount();
                 ByteString tableBytes = null;
                 try {
                     ByteBuffer b = ByteBuffer.wrap(FastSerializer.serialize(voltTable));
@@ -1572,6 +1572,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     asyncRequestPullQueue.add(pullMsg);
                     //this.work_queue.offer(pullMsg);
                 }
+                
+                LOG.info(String.format("CompletedExtract, Async2, PullId=%s, Chunks=%s, Records=%s, Table=%s ",
+                        pull.getAsyncPullIdentifier(), chunkId, records, tableName)); 
             } catch (Exception e) {
                 LOG.error("Exception when processing async data pull response", e);
             }
