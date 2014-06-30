@@ -171,11 +171,13 @@ public class ReconfigurationPlan {
         String table_name;
         HStoreConf conf = null;
         CatalogContext catalogContext;
+        public Pair<Object[], Object[]> subKeyMinMax;
         
         public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table) throws Exception {
           this.catalogContext = catalogContext;
           table_name = old_table.table_name;
           this.conf = HStoreConf.singleton(false);
+          this.subKeyMinMax = old_table.subKeyMinMax;
           setReconfigurations(new ArrayList<ReconfigurationRange>());
           Iterator<PartitionRange> old_ranges = old_table.partitions.iterator();
           Iterator<PartitionRange> new_ranges = new_table.partitions.iterator();
@@ -254,9 +256,7 @@ public class ReconfigurationPlan {
 
             }
           }
-          if(this.catalogContext.jarPath.getName().contains("tpcc")) {
-              setReconfigurations(splitReconfigurationsOnPartitionKeys(getReconfigurations(), new_table.getCatalog_table(), old_table.subKeySplits));
-          } else { 
+          if(!this.catalogContext.jarPath.getName().contains("tpcc")) { 
         	  setReconfigurations(
                   mergeReconfigurations(splitReconfigurations(getReconfigurations(),new_table.getCatalog_table()), new_table.getCatalog_table()));
           }
@@ -426,54 +426,6 @@ public class ReconfigurationPlan {
             }
 
             return reconfiguration_range;
-        }
-        
-        private List<ReconfigurationRange> splitReconfigurationsOnPartitionKeys(List<ReconfigurationRange> reconfiguration_ranges, Table catalog_table, List<Object[]> subKeySplits) {
-        	List<ReconfigurationRange> res = new ArrayList<>();
-        	for(ReconfigurationRange range : reconfiguration_ranges) {
-        		LOG.info("Old range: " + range.toString());
-				VoltTable temp = range.keySchema.clone(0);
-        	    long min_long = ((Number) range.getMinIncl().get(0)[0]).longValue();
-        		long max_long = ((Number) range.getMaxExcl().get(0)[0]).longValue();
-        		Object[] min = range.getMinIncl().get(0).clone();
-        		Object[] max = null;
-        		for(long i = min_long; i < max_long; i++) {	
-        			for(Object[] subKeySplit : subKeySplits) {
-        				max = new Object[min.length];
-        				max[0] = i;
-        				for(int j = 1; j < max.length && j <= subKeySplit.length; j++) {
-        					max[j] = subKeySplit[j-1];
-        				}
-        				for(int j = subKeySplit.length + 1; j < max.length; j++) {
-					    VoltType vt = temp.getColumnType(j);
-					    max[j] = vt.getNullValue();
-					}
-        				temp.addRow(max);
-        				temp.advanceToRow(0);
-        				max = temp.getRowArray();
-        				temp.clearRowData();
-        				res.add(new ReconfigurationRange(catalog_table, min, max, range.old_partition, range.new_partition));
-        				LOG.info("New range: " + res.get(res.size()-1).toString());
-        				min = max;
-        			}
-    				
-        			max = new Object[min.length];
-    				max[0] = i+1;
-    				for(int j = 1; j < max.length; j++) {
-    					VoltType vt = temp.getColumnType(j);
-    					max[j] = vt.getNullValue();
-    				}
-    				temp.addRow(max);
-    				temp.advanceToRow(0);
-    				max = temp.getRowArray();
-    				temp.clearRowData();
-    				res.add(new ReconfigurationRange(catalog_table, min, max, range.old_partition, range.new_partition));
-    				LOG.info("New range: " + res.get(res.size()-1).toString());
-    				min = max;
-        		}
-			}
-
-            return res;
         }
 
 
@@ -956,6 +908,10 @@ public class ReconfigurationPlan {
       
       public Collection<ReconfigurationTable> getReconfigurationTables() {
     	  return this.tables_map.values();
+      }
+      
+      public ReconfigurationTable getReconfigurationTable(String table_name) {
+    	  return this.tables_map.get(table_name);
       }
 
     public CatalogContext getCatalogContext() {
