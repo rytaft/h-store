@@ -177,7 +177,7 @@ public class ReconfigurationUtil {
         return splitPlans;
     }
     
-    private static List<ReconfigurationRange> splitReconfigurationRangeOnPartitionKeys(ReconfigurationRange range, Table catalog_table, Pair<Object[], Object[]> subKeyMinMax, long maxSplits) {
+    private static List<ReconfigurationRange> splitReconfigurationRangeOnPartitionKeys(ReconfigurationRange range, String table_name, Pair<Object[], Object[]> subKeyMinMax, long maxSplits) {
     	if(maxSplits <= 1 || subKeyMinMax == null) {
     		return Arrays.asList(range);
     	}
@@ -203,7 +203,7 @@ public class ReconfigurationUtil {
     		temp.advanceToRow(0);
     		max = temp.getRowArray();
     		temp.clearRowData();
-    		res.add(new ReconfigurationRange(catalog_table, min, max, range.getOldPartition(), range.getNewPartition(), range.getSubKeyMinMax()));
+    		res.add(new ReconfigurationRange(table_name, range.getKeySchema(), min, max, range.getOldPartition(), range.getNewPartition(), range.getSubKeyMinMax()));
     		LOG.info("New range: " + res.get(res.size()-1).toString());
     		min = max;
     	}
@@ -300,7 +300,7 @@ public class ReconfigurationUtil {
     	for(List<ReconfigurationRange> ranges : plan.getIncoming_ranges().values()){
     		for(ReconfigurationRange range : ranges) {
     			int extra = (splitsRemainder > 0 ? 2 : 1);
-    			List<ReconfigurationRange> splitRanges = splitReconfigurationRangeOnPartitionKeys(range, range.getTable(), 
+    			List<ReconfigurationRange> splitRanges = splitReconfigurationRangeOnPartitionKeys(range, range.getTableName(), 
     					range.getSubKeyMinMax(), splitsPerRange + extra); 
     			splitsRemainder--;
     		    List<VoltType> types = new ArrayList<VoltType>(range.getKeySchema().getColumnCount());
