@@ -163,11 +163,13 @@ public class ReconfigurationUtil {
         }
         
         int extraSplitsPerPlan = extraSplits / splitPlans.size();
-        if(extraSplitsPerPlan > 0) {
+        int extraSplitsRemainder = extraSplits % splitPlans.size();
+        if(extraSplits > 0) {
         	List<ReconfigurationPlan> splitPlansAgain = new ArrayList<>();
         	for(ReconfigurationPlan splitPlan : splitPlans) {
-        		//splitPlansAgain.addAll(fineGrainedSplitReconfigurationPlan(splitPlan, extraSplitsPerPlan));
-        		splitPlansAgain.addAll(fineGrainedSplitReconfigurationPlan(splitPlan));
+        		int extra = (extraSplitsRemainder > 0 ? 2 : 1);
+        		splitPlansAgain.addAll(fineGrainedSplitReconfigurationPlan(splitPlan, extraSplitsPerPlan + extra));
+        		extraSplitsRemainder--;
         	}
         	return splitPlansAgain;
         }
@@ -175,81 +177,145 @@ public class ReconfigurationUtil {
         return splitPlans;
     }
     
-    public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(ReconfigurationPlan plan, int numberOfSplits){
+    private static List<ReconfigurationRange> splitReconfigurationRangeOnPartitionKeys(ReconfigurationRange range, Table catalog_table, Pair<Object[], Object[]> subKeyMinMax, long maxSplits) {
+    	if(maxSplits <= 1 || subKeyMinMax == null) {
+    		return Arrays.asList(range);
+    	}
     	
-    	List<ReconfigurationPlan> splitPlans = new ArrayList<>();
-    	
-    	// split up the ranges by key schema so we only compare ranges with the same key schema
-    	HashMap<List<VoltType>, List<ReconfigurationRange>> rangeMap = new HashMap<>();
-    	for(List<ReconfigurationRange> ranges : plan.getIncoming_ranges().values()){
-    		for(ReconfigurationRange range : ranges) {
-    			List<VoltType> types = new ArrayList<VoltType>(range.getKeySchema().getColumnCount());
-    			for(int i = 0; i < range.getKeySchema().getColumnCount(); i++) {
-    				types.add(range.getKeySchema().getColumnType(i));
-    			}
-    			if(rangeMap.get(types) == null) {
-    				rangeMap.put(types, new ArrayList<ReconfigurationRange>());
-    			}
-    			rangeMap.get(types).add(range);
+    	List<ReconfigurationRange> res = new ArrayList<>();
+    	LOG.info("Old range: " + range.toString());
+    	VoltTable temp = range.getKeySchema().clone(0);
+    	long min_long = ((Number) range.getMinIncl().get(0)[0]).longValue();
+    	long max_long = ((Number) range.getMaxExcl().get(0)[0]).longValue();
+    	Object[] min = range.getMinIncl().get(0).clone();
+    	Object[] max = null;
+    	List<Object[]> keySplits = getKeySplits(min_long, max_long, subKeyMinMax, maxSplits);
+    	for(Object[] keySplit : keySplits) {
+    		max = new Object[min.length];
+    		for(int i = 0; i < max.length && i < keySplit.length; i++) {
+    			max[i] = keySplit[i];
     		}
-        }
-    	
-    	// sort all the ranges with the same key schema
-    	int numRanges = 0;
-    	for(Entry<List<VoltType>,List<ReconfigurationRange>> entry : rangeMap.entrySet()) {
-    		rangeMap.put(entry.getKey(), CollectionUtil.sort(entry.getValue()));
-    		numRanges += entry.getValue().size();
+    		for(int i = keySplit.length; i < max.length; i++) {
+    			VoltType vt = temp.getColumnType(i);
+    			max[i] = vt.getNullValue();
+    		}
+    		temp.addRow(max);
+    		temp.advanceToRow(0);
+    		max = temp.getRowArray();
+    		temp.clearRowData();
+    		res.add(new ReconfigurationRange(catalog_table, min, max, range.getOldPartition(), range.getNewPartition()));
+    		LOG.info("New range: " + res.get(res.size()-1).toString());
+    		min = max;
     	}
 
-    	if(numberOfSplits > numRanges) {
-    		numberOfSplits = numRanges;
-    		LOG.info("Limiting number of range splits to " + numberOfSplits);
-    	}
+    	
 
-    	// split up the ranges into numberOfSplits chunks
-    	int rangesPerSplit = (int) Math.ceil(((double) numRanges)/numberOfSplits);
-    	int i = 0;
-    	ReconfigurationPlan newPlan = new ReconfigurationPlan(plan.getCatalogContext());
-    	for(List<ReconfigurationRange> ranges : rangeMap.values()) {
-    		for(ReconfigurationRange range : ranges) {
-    			newPlan.addRange(range);
-    			i++;
-    			if(i == rangesPerSplit) {
-    				LOG.info("Adding a new reconfiguration plan: " + newPlan.getIncoming_ranges().values().toString());
-    				splitPlans.add(newPlan);
-    				i = 0;
-    				newPlan = new ReconfigurationPlan(plan.getCatalogContext());
-    			}
-    		}
-    	}
-    	if(i > 0) {
-    		splitPlans.add(newPlan);
-    	}
-        
-        return splitPlans;
+        return res;
     }
     
-public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(ReconfigurationPlan plan){
+    private static List<Object[]> getKeySplits(long keyMin, long keyMax, Pair<Object[], Object[]> subKeyMinMax, long maxSplits) {
+    	List<Object[]> keySplits = new ArrayList<>();
+    	Object[] min = subKeyMinMax.getFirst();
+    	Object[] max = subKeyMinMax.getSecond();
+    	assert(min.length == max.length) : "Min and max sub keys must be the same length.  Min length: " + min.length + " Max length: " + max.length;
+    	
+    	// calculate the values of min key, number of splits, and range size for each level
+    	long minArray[] = new long[min.length + 1];
+    	long rangeSizeArray[] = new long[min.length + 1];
+    	long numSplitsArray[] = new long[min.length + 1];
+    	int splitLength = 1;
+
+    	minArray[0] = keyMin;
+    	long numKeys = keyMax - keyMin;
+    	if (numKeys == 0L) numKeys = 1L;
+    	
+    	rangeSizeArray[0] = (numKeys >= maxSplits ? numKeys / maxSplits : 1L); 
+    	numSplitsArray[0] = numKeys / rangeSizeArray[0];
+    	long totalSplits = numSplitsArray[0];
+
+    	for(int i = 0; i < min.length && totalSplits < maxSplits; ++i) {
+
+    		minArray[i + 1] = (Long) min[i];
+    		numKeys = (Long) max[i] - minArray[i + 1];
+    		if (numKeys == 0L) numKeys = 1L;
+
+    		rangeSizeArray[i + 1] = (totalSplits * numKeys >= maxSplits ? totalSplits * numKeys / maxSplits : 1L);
+    		numSplitsArray[i + 1] = numKeys / rangeSizeArray[i + 1];
+    		totalSplits *= numSplitsArray[i + 1];
+    		
+    		splitLength++;
+    	}
+
+    	
+    	// keep track of the key index of each level which will be used
+    	// to make the next split
+    	int counterArray[] = new int[min.length + 1];
+    	
+    	for (int i = 0; i < Math.min(totalSplits, maxSplits); ++i) {
+    		// Run through the inner lists, grabbing the member from the list
+    		// specified by the counterArray for each inner list, and build a
+    		// combination list.
+    		Object[] split = new Object[splitLength];
+    		for(int j = 0; j < splitLength; ++j) {
+    			split[j] = minArray[j] + counterArray[j] * rangeSizeArray[j];
+    		}
+    		keySplits.add(split);  // add new split to list
+
+    		// Now we need to increment the counterArray so that the next
+    		// combination is taken on the next iteration of this loop.
+    		for(int incIndex = 0; incIndex < splitLength; ++incIndex) {
+    			if(counterArray[incIndex] + 1 < numSplitsArray[incIndex]) {
+    				++counterArray[incIndex];
+    				// None of the indices of higher significance need to be
+    				// incremented, so jump out of this for loop at this point.
+    				break;
+    			}
+    			// The index at this position is at its max value, so zero it
+    			// and continue this loop to increment the index which is more
+    			// significant than this one.
+    			counterArray[incIndex] = 0;
+    		}
+    	}
+    	
+    	return keySplits;
+    }
+    
+    public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(ReconfigurationPlan plan, int numberOfSplits){
+    	
+    	if(numberOfSplits <= 1) {
+    		return Arrays.asList(plan);
+    	}
     	
     	List<ReconfigurationPlan> splitPlans = new ArrayList<>();
     	
+    	int numRanges = 0;
+    	for(List<ReconfigurationRange> ranges : plan.getIncoming_ranges().values()) {
+    		numRanges += ranges.size();
+    	}
+    	
     	// split up the ranges by key schema so we only compare ranges with the same key schema
     	HashMap<List<VoltType>, List<ReconfigurationRange>> rangeMap = new HashMap<>();
+    	long splitsPerRange = numberOfSplits / numRanges;
+    	long splitsRemainder = numberOfSplits % numRanges;
     	for(List<ReconfigurationRange> ranges : plan.getIncoming_ranges().values()){
     		for(ReconfigurationRange range : ranges) {
-    			List<VoltType> types = new ArrayList<VoltType>(range.getKeySchema().getColumnCount());
+    			int extra = (splitsRemainder > 0 ? 2 : 1);
+    			List<ReconfigurationRange> splitRanges = splitReconfigurationRangeOnPartitionKeys(range, range.getTable(), 
+    					plan.getReconfigurationTable(range.getTableName()).subKeyMinMax, splitsPerRange + extra); 
+    			splitsRemainder--;
+    		    List<VoltType> types = new ArrayList<VoltType>(range.getKeySchema().getColumnCount());
     			for(int i = 0; i < range.getKeySchema().getColumnCount(); i++) {
     				types.add(range.getKeySchema().getColumnType(i));
     			}
     			if(rangeMap.get(types) == null) {
     				rangeMap.put(types, new ArrayList<ReconfigurationRange>());
     			}
-    			rangeMap.get(types).add(range);
+    			rangeMap.get(types).addAll(splitRanges);
     		}
         }
     	
     	// sort all the ranges with the same key schema
-    	int numRanges = 0;
+    	numRanges = 0;
     	for(Entry<List<VoltType>,List<ReconfigurationRange>> entry : rangeMap.entrySet()) {
     		rangeMap.put(entry.getKey(), CollectionUtil.sort(entry.getValue()));
     		numRanges += entry.getValue().size();

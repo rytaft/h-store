@@ -28,6 +28,7 @@ import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Table;
 import org.voltdb.utils.VoltTableComparator;
 import org.voltdb.utils.VoltTypeUtil;
+import org.voltdb.utils.Pair;
 
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.HStoreConstants;
@@ -320,7 +321,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 JSONObject table_json = json_tables.getJSONObject(table_name.toLowerCase());
                 // Class<?> c = table_vt_map.get(table_name).classFromType();
                 // TODO fix partitiontype
-                this.tables_map.put(table_name, new PartitionedTable(table_name, table_json, catalog_context.getTableByName(table_name), getSubKeySplits(table_name, partitionedTablesByFK)));
+                this.tables_map.put(table_name, new PartitionedTable(table_name, table_json, catalog_context.getTableByName(table_name), getSubKeyMinMax(table_name, partitionedTablesByFK)));
             }
 
             // Add entries for tables that are partitioned on other columns
@@ -359,141 +360,23 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
         }
 
-        protected List<Object[]> getSubKeySplits(String table_name, Map<String, String> partitionedTablesByFK) {
-            LOG.info("getSubKeySplits");
+        protected Pair<Object[], Object[]> getSubKeyMinMax(String table_name, Map<String, String> partitionedTablesByFK) {
+            LOG.info("getSubKeyMinMax");
             // HACK - this is currently hard coded for TPCC
             String partitionedTable = partitionedTablesByFK.get(table_name);
             if (partitionedTable == null) {
                 partitionedTable = table_name;
             }
-            List<Object[]> res = new ArrayList<>();
+            Pair<Object[], Object[]> res = null;
+            // <min incl, max excl>
             if (partitionedTable.equals("district")) {
-                res.add(new Object[] { 2 });//WID X, DID 1 
-                res.add(new Object[] { 3 });//WID X, DID 2 
-                res.add(new Object[] { 4 });
-                res.add(new Object[] { 5 });
-                res.add(new Object[] { 6 });
-                res.add(new Object[] { 7 });
-                res.add(new Object[] { 8 });
-                res.add(new Object[] { 9 });
+            	res = new Pair<Object[], Object[]>(new Object[] { 1 }, new Object[] { 11 });
             } else if (partitionedTable.equals("customer")) {
-                res.add(new Object[] { 1, 10000 });//WID X, D 1, CID 0-10000
-                res.add(new Object[] { 1, 20000 });//WID X, D 1, CID 10000-20000
-                res.add(new Object[] { 1, 30000 });
-                res.add(new Object[] { 1, 40000 });
-                res.add(new Object[] { 1, 50000 });//WID X, D 1, CID 50000- 
-                res.add(new Object[] { 2, 0 });//WID X, D 2, CID 0-10000
-                res.add(new Object[] { 2, 10000 });
-                res.add(new Object[] { 2, 20000 });
-                res.add(new Object[] { 2, 30000 });
-                res.add(new Object[] { 2, 40000 });
-                res.add(new Object[] { 2, 50000 });
-                res.add(new Object[] { 3, 0 });
-                res.add(new Object[] { 3, 10000 });
-                res.add(new Object[] { 3, 20000 });
-                res.add(new Object[] { 3, 30000 });
-                res.add(new Object[] { 3, 40000 });
-                res.add(new Object[] { 3, 50000 });
-                res.add(new Object[] { 4, 0 });
-                res.add(new Object[] { 4, 10000 });
-                res.add(new Object[] { 4, 20000 });
-                res.add(new Object[] { 4, 30000 });
-                res.add(new Object[] { 4, 40000 });
-                res.add(new Object[] { 4, 50000 });
-                res.add(new Object[] { 5, 0 });
-                res.add(new Object[] { 5, 10000 });
-                res.add(new Object[] { 5, 20000 });
-                res.add(new Object[] { 5, 30000 });
-                res.add(new Object[] { 5, 40000 });
-                res.add(new Object[] { 5, 50000 });
-                res.add(new Object[] { 6, 0 });
-                res.add(new Object[] { 6, 10000 });
-                res.add(new Object[] { 6, 20000 });
-                res.add(new Object[] { 6, 30000 });
-                res.add(new Object[] { 6, 40000 });
-                res.add(new Object[] { 6, 50000 });
-                res.add(new Object[] { 7, 0 });
-                res.add(new Object[] { 7, 10000 });
-                res.add(new Object[] { 7, 20000 });
-                res.add(new Object[] { 7, 30000 });
-                res.add(new Object[] { 7, 40000 });
-                res.add(new Object[] { 7, 50000 });
-                res.add(new Object[] { 8, 0 });
-                res.add(new Object[] { 8, 10000 });
-                res.add(new Object[] { 8, 20000 });
-                res.add(new Object[] { 8, 30000 });
-                res.add(new Object[] { 8, 40000 });
-                res.add(new Object[] { 8, 50000 });
-                res.add(new Object[] { 9, 0 });
-                res.add(new Object[] { 9, 10000 });
-                res.add(new Object[] { 9, 20000 });
-                res.add(new Object[] { 9, 30000 });
-                res.add(new Object[] { 9, 40000 });
-                res.add(new Object[] { 9, 50000 });
+            	res = new Pair<Object[], Object[]>(new Object[] { 1, 0 }, new Object[] { 11, 60000 });
             } else if (partitionedTable.equals("orders")) {
-                res.add(new Object[] { 1, 1000 });
-                res.add(new Object[] { 1, 2000 });
-                res.add(new Object[] { 1, 3000 });
-                res.add(new Object[] { 1, 4000 });
-                res.add(new Object[] { 1, 5000 });
-                res.add(new Object[] { 2, 0 });
-                res.add(new Object[] { 2, 1000 });
-                res.add(new Object[] { 2, 2000 });
-                res.add(new Object[] { 2, 3000 });
-                res.add(new Object[] { 2, 4000 });
-                res.add(new Object[] { 2, 5000 });
-                res.add(new Object[] { 3, 0 });
-                res.add(new Object[] { 3, 1000 });
-                res.add(new Object[] { 3, 2000 });
-                res.add(new Object[] { 3, 3000 });
-                res.add(new Object[] { 3, 4000 });
-                res.add(new Object[] { 3, 5000 });
-                res.add(new Object[] { 4, 0 });
-                res.add(new Object[] { 4, 1000 });
-                res.add(new Object[] { 4, 2000 });
-                res.add(new Object[] { 4, 3000 });
-                res.add(new Object[] { 4, 4000 });
-                res.add(new Object[] { 4, 5000 });
-                res.add(new Object[] { 5, 0 });
-                res.add(new Object[] { 5, 1000 });
-                res.add(new Object[] { 5, 2000 });
-                res.add(new Object[] { 5, 3000 });
-                res.add(new Object[] { 5, 4000 });
-                res.add(new Object[] { 5, 5000 });
-                res.add(new Object[] { 6, 0 });
-                res.add(new Object[] { 6, 1000 });
-                res.add(new Object[] { 6, 2000 });
-                res.add(new Object[] { 6, 3000 });
-                res.add(new Object[] { 6, 4000 });
-                res.add(new Object[] { 6, 5000 });
-                res.add(new Object[] { 7, 0 });
-                res.add(new Object[] { 7, 1000 });
-                res.add(new Object[] { 7, 2000 });
-                res.add(new Object[] { 7, 3000 });
-                res.add(new Object[] { 7, 4000 });
-                res.add(new Object[] { 7, 5000 });
-                res.add(new Object[] { 8, 0 });
-                res.add(new Object[] { 8, 1000 });
-                res.add(new Object[] { 8, 2000 });
-                res.add(new Object[] { 8, 3000 });
-                res.add(new Object[] { 8, 4000 });
-                res.add(new Object[] { 8, 5000 });
-                res.add(new Object[] { 9, 0 });
-                res.add(new Object[] { 9, 1000 });
-                res.add(new Object[] { 9, 2000 });
-                res.add(new Object[] { 9, 3000 });
-                res.add(new Object[] { 9, 4000 });
-                res.add(new Object[] { 9, 5000 });
+            	res = new Pair<Object[], Object[]>(new Object[] { 1, 0 }, new Object[] { 11, 6000 });
             } else if (partitionedTable.equals("stock")) {
-                res.add(new Object[] { 10000 });
-                res.add(new Object[] { 20000 });
-                res.add(new Object[] { 30000 });
-                res.add(new Object[] { 40000 });
-                res.add(new Object[] { 50000 });
-                res.add(new Object[] { 60000 });
-                res.add(new Object[] { 70000 });
-                res.add(new Object[] { 80000 });
-                res.add(new Object[] { 90000 });
+            	res = new Pair<Object[], Object[]>(new Object[] { 0 }, new Object[] { 100000 });
             }
             return res;
         }
@@ -510,11 +393,11 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         protected String table_name;
         private Table catalog_table;
         private JSONObject table_json;
-        protected List<Object[]> subKeySplits;
+        protected Pair<Object[], Object[]> subKeyMinMax;
 
-        public PartitionedTable(String table_name, JSONObject table_json, Table catalog_table, List<Object[]> subKeySplits) throws Exception {
+        public PartitionedTable(String table_name, JSONObject table_json, Table catalog_table, Pair<Object[], Object[]> subKeyMinMax) throws Exception {
             this.catalog_table = catalog_table;
-            this.subKeySplits = subKeySplits;
+            this.subKeyMinMax = subKeyMinMax;
             this.partitions = new ArrayList<>();
             this.table_name = table_name;
             this.table_json = table_json;
@@ -533,7 +416,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         }
 
         public PartitionedTable clone(String new_table_name, Table new_catalog_table) throws Exception {
-            return new PartitionedTable(new_table_name, this.table_json, new_catalog_table, this.subKeySplits);
+            return new PartitionedTable(new_table_name, this.table_json, new_catalog_table, this.subKeyMinMax);
         }
 
         public PartitionedTable(List<PartitionRange> partitions, String table_name, Table catalog_table) {
