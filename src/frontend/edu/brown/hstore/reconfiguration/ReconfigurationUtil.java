@@ -235,8 +235,8 @@ public class ReconfigurationUtil {
 
     	for(int i = 0; i < min.length && totalSplits < maxSplits; ++i) {
 
-    		minArray[i + 1] = (Long) min[i];
-    		numKeys = (Long) max[i] - minArray[i + 1];
+	    minArray[i + 1] = ((Number) min[i]).longValue();
+	    numKeys = ((Number) max[i]).longValue() - minArray[i + 1];
     		if (numKeys == 0L) numKeys = 1L;
 
     		rangeSizeArray[i + 1] = (totalSplits * numKeys >= maxSplits ? totalSplits * numKeys / maxSplits : 1L);
