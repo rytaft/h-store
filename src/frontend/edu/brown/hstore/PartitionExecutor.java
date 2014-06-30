@@ -3258,7 +3258,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         long queueTime = ProfileMeasurement.getTime() - livePullRequestMessage.getStartTime();
         LivePullRequest livePullRequest = livePullRequestMessage.getLivePullRequest();
         
-        LOG.info(String.format("(%s)Processing Live pull request %s",this.partitionId, livePullRequest.getLivePullIdentifier()));
+        if (debug.val) LOG.debug(String.format("(%s)Processing Live pull request %s",this.partitionId, livePullRequest.getLivePullIdentifier()));
         int queueSize = this.lockQueue.size();
         long extractStartTime = ProfileMeasurement.getTime();
         boolean moreDataNeeded = true;
@@ -3274,14 +3274,18 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         } catch (IOException e) {
             LOG.error("Error in deserializing volt table");
         }
-        
+        int records=0;
+        int emptyRecordCount=0;
         while(moreDataNeeded) {
             Pair<VoltTable,Boolean> res = extractTuples(livePullRequest.getTransactionID(), livePullRequest.getOldPartition(), 
                     livePullRequest.getNewPartition(), livePullRequest.getVoltTableName(),
                     minIncl, maxExcl, chunkId);
             moreDataNeeded = res.getSecond();
             VoltTable voltTable = res.getFirst();
-    
+            records+=voltTable.getRowCount();
+            if (voltTable.getRowCount() == 0 ){
+                emptyRecordCount++;
+            }
             ByteString tableBytes = null;
             try {
                 ByteBuffer b = ByteBuffer.wrap(FastSerializer.serialize(voltTable));
@@ -3312,8 +3316,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         int qGrowth = this.lockQueue.size()-queueSize;
         this.reconfiguration_coordinator.profilers[this.partitionId].pe_extract_queue_size_growth.put(qGrowth);
         
-        LOG.info(String.format("CompletedExtract, PullId=%s, Chunks=%s, QueueTimeMS=%s, TotalExtractTimeMS=%s, QueueGrowth=%s ",
-                livePullRequest.getLivePullIdentifier(), chunkId, queueTime/ 1000000, (extractEndTime-extractStartTime)/ 1000000, qGrowth)); 
+        LOG.info(String.format("CompletedExtract, Live, PullId=%s, Chunks=%s, Records=%s, EmptyRecordSet=%s, QueueTimeMS=%s, TotalExtractTimeMS=%s, QueueGrowth=%s ",
+                livePullRequest.getLivePullIdentifier(), chunkId, records, emptyRecordCount, queueTime/ 1000000, (extractEndTime-extractStartTime)/ 1000000, qGrowth)); 
     }
  
     
@@ -3381,7 +3385,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             int size = (vt.getFirst().getRowCount() * vt.getFirst().getRowSize())/1000;
             this.reconfiguration_stats.trackExtract(partitionId, tableName, vt.getFirst().getRowSize(), size , timeTaken);
             VoltTable voltTable = vt.getFirst();
-
+            int records = voltTable.getRowCount();
             ByteString tableBytes = null;
             try {
                 ByteBuffer b = ByteBuffer.wrap(FastSerializer.serialize(voltTable));
@@ -3414,6 +3418,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 asyncRequestPullQueue.add(pullMsg);
                 //this.work_queue.offer(pullMsg);
             }
+            
+            LOG.info(String.format("CompletedExtract, Async, PullId=%s, Chunks=%s, Records=%s, Table=%s ",
+                    pull.getAsyncPullIdentifier(), chunkId, records, tableName)); 
+      
+            
         } catch (Exception e) {
             LOG.error("Exception when processing async data pull response", e);
         }
