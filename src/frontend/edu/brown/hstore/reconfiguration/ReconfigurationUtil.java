@@ -208,8 +208,9 @@ public class ReconfigurationUtil {
     		min = max;
     	}
 
-    	
-
+    	max = range.getMaxExcl().get(0).clone();
+    	res.add(new ReconfigurationRange(table_name, range.getKeySchema(), min, max, range.getOldPartition(), range.getNewPartition(), range.getSubKeyMinMax()));
+		
         return res;
     }
     
