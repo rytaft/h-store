@@ -161,7 +161,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
 
     private boolean checkMigratedMapSet(Map<String,Set<List<Object>>> migratedMapSet, String table_name, Object key){
     	if(migratedMapSet.containsKey(table_name) == false){
-           if (debug.val) LOG.debug("Checking a key for which there is no table tracking for yet " + table_name); 
+           if (trace.val) LOG.trace("Checking a key for which there is no table tracking for yet " + table_name); 
            return false;
         }
         return migratedMapSet.get(table_name).contains(key);
@@ -197,7 +197,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
 
     	Table table = this.partitionPlan.getTable(catalog);
     	String tableName = table.getName().toLowerCase();    	
-    	if (debug.val) LOG.debug(String.format("Checking Key owned for catalog:%s table:%s",catalog.toString(),tableName));
+    	if (trace.val) LOG.trace(String.format("Checking Key owned for catalog:%s table:%s",catalog.toString(),tableName));
     	return checkKeyOwned(table, key);
     }
     

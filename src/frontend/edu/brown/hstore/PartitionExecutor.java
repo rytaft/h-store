@@ -3905,8 +3905,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // migrated)
 
         // Get all the fragments
-        Set<ReconfigurationRange> pullRequestsNeeded = new HashSet<>();
-        Set<ReconfigurationRange> restartsNeeded = new HashSet<>();
+        Set<ReconfigurationRange> pullRequestsNeeded = new TreeSet<>();
+        Set<ReconfigurationRange> restartsNeeded = new TreeSet<>();
         Set<Integer> partitionsForRestart = new HashSet<>();
         
         this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.start();
@@ -6478,7 +6478,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             haltProcessing();
         }
         
-        this.reconfiguration_tracker.endReconfiguration();
+        LOG.info("Clearing up reconfiguration state");
+        if (this.reconfiguration_tracker!=null)
+            this.reconfiguration_tracker.endReconfiguration();
         
     	this.reconfig_plan = null;
     	this.reconfig_state = ReconfigurationState.END;
@@ -6583,13 +6585,16 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (debug.val)
             LOG.debug("load table");
         
-        loadTableForReconfiguration(this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), table_name, vt);
+        if (vt.getRowCount() > 0) {
+            loadTableForReconfiguration(this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), table_name, vt);
+        } else {
+            LOG.info("EMPTY table to load, skipping: " +table_name);
+        }
+        
         
         this.reconfiguration_stats.trackAsyncReceived(this.partitionId, oldPartitionId, table_name, (vt.getRowSize()*vt.getRowCount())/1000, timeTaken, isAsyncRequest, moreDataComing);
         
-        if (notifyComplete){
-            this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
-        }
+
         
         if(this.reconfiguration_tracker == null) {
             LOG.error(String.format("(%s) ReconfigTracker is Null!! ", this.partitionId));
@@ -6598,6 +6603,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             // Now reconfiguration resposnibilty of a destination of Live Pull is done,
             // so it tells the leader it is done
             this.hstore_site.getReconfigurationCoordinator().finishReconfiguration(partitionId);
+        }
+        
+        if (notifyComplete){
+            this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
         }
     }
 
