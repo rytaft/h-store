@@ -934,7 +934,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param voltType
      */
     public void pullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable min_inclusive, VoltTable max_exclusive) {
-        LOG.info(String.format("pullTuples with Live Pull ID %s, keys %s->%s for %s  partIds %s->%s", livePullId, min_inclusive, max_exclusive, table_name, oldPartitionId, newPartitionId));
+        //LOG.info(String.format("pullTuples with Live Pull ID %s, keys %s->%s for %s  partIds %s->%s", livePullId, min_inclusive, max_exclusive, table_name, oldPartitionId, newPartitionId));
+        LOG.info(String.format("pullTuples with Live Pull ID %s for %s  partIds %s->%s", livePullId, table_name, oldPartitionId, newPartitionId));
+        
         // TODO : Check if volt type makes can be used here for generic values
         // or remove it
         int sourceID = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(oldPartitionId);
@@ -1572,6 +1574,18 @@ public class ReconfigurationCoordinator implements Shutdownable {
     
     public void showReconfigurationProfiler(boolean writeToEventLog) {
         if(hstore_conf.site.reconfig_profiling) {
+            for (PartitionExecutor p : local_executors){
+                LOG.info("------------------------------------\n" +
+                         "   Stats for partition " +  p.getPartitionId() +"  \n"  +
+                         "-------------------------------------");
+                ReconfigurationStats stats = p.getReconfigStats();
+                for (ReconfigurationStats.Stat s : stats.getEvents()){
+                    LOG.info(s.toString());
+                }
+                
+                //Messages?
+            }
+            
             for (int p_id : hstore_site.getLocalPartitionIds().values()) {
                 LOG.info("Showing reconfig stats");
                 LOG.info(this.profilers[p_id].toString());
@@ -1598,9 +1612,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id, writeToEventLog);
                     reportProfiler("REPORT_AVG_SRC_DATA_PULL_PROC",this.profilers[p_id].src_data_pull_req_proc_time, p_id, writeToEventLog);                    
                 }
-                String liveLog = this.executorMap.get(p_id).liveLogData.toString();
-                LOG.info(liveLog);
-                if (writeToEventLog) FileUtil.appendEventToFile(liveLog);
                 
                 
                 

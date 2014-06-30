@@ -17,6 +17,8 @@ public class ReconfigurationStats {
     private List<PullStat> pullsReceived;
     private List<PullStat> pullResponses;
     private List<EEStat> eeStats;
+    private List<Stat> events;
+    
    
     /**
      * 
@@ -27,26 +29,40 @@ public class ReconfigurationStats {
         pullsReceived = new ArrayList<>();
         pullResponses = new ArrayList<>();
         eeStats = new ArrayList<>();
+        events = new ArrayList<>();
     }
+    
+    public void addMessage(String m){
+        messages.append(m);
+        messages.append(System.lineSeparator());
+    }
+    
     
     public void trackExtract(int partitionId, String tableName, int rowCount, int loadSizeKB, long timeTaken) {
         if (on){
             long ts = System.currentTimeMillis();
-            eeStats.add(new EEStat(partitionId, tableName, true, false, rowCount, loadSizeKB, timeTaken, ts));
+            EEStat s = new EEStat(partitionId, tableName, true, false, rowCount, loadSizeKB, timeTaken, ts);
+            events.add(s);
+            eeStats.add(s);
+            
         }
     }
     
     public void trackLoad(int partitionId, String tableName, int rowCount, int loadSizeKB, long timeTaken,int queueGrowth) {
         if (on){
             long ts = System.currentTimeMillis();
-            eeStats.add(new EEStat(partitionId, tableName, false, true, rowCount, loadSizeKB, timeTaken, queueGrowth, ts));
+            EEStat s = new EEStat(partitionId, tableName, false, true, rowCount, loadSizeKB, timeTaken, queueGrowth, ts);
+            events.add(s);
+            eeStats.add(s);
         }
     }
     
     public void trackLoad(int partitionId, String tableName, int rowCount, int loadSizeKB, long timeTaken) {
         if (on){
             long ts = System.currentTimeMillis();
-            eeStats.add(new EEStat(partitionId, tableName, false, true, rowCount, loadSizeKB, timeTaken, ts));
+            EEStat s = new EEStat(partitionId, tableName, false, true, rowCount, loadSizeKB, timeTaken, ts);
+            events.add(s);
+            eeStats.add(s);
             
         }
     }
@@ -54,7 +70,9 @@ public class ReconfigurationStats {
     public void trackAsyncSrcResponse(int sourcePartitionId, int destPartitionId, String voltTableName, int responseSizeKB, boolean moreDataNeeded) {
         if (on){
             long ts = System.currentTimeMillis();
-            pullResponses.add(new PullStat(destPartitionId, sourcePartitionId, voltTableName, responseSizeKB, -1, true, moreDataNeeded, ts));
+            PullStat s = new PullStat(destPartitionId, sourcePartitionId, voltTableName, responseSizeKB, -1, true, moreDataNeeded, ts);
+            pullResponses.add(s);
+            events.add(s);
             
         }
     }
@@ -69,11 +87,26 @@ public class ReconfigurationStats {
     public void trackAsyncReceived(int destId, int srcId, String table_name, int responseSizeKB, long timeTaken, boolean isAsyncRequest, boolean moreDataComing) {
         if (on){
             long ts = System.currentTimeMillis();
-            pullsReceived.add(new PullStat(destId, srcId, table_name, responseSizeKB, timeTaken, isAsyncRequest, moreDataComing, ts));            
+            PullStat s = new PullStat(destId, srcId, table_name, responseSizeKB, timeTaken, isAsyncRequest, moreDataComing, ts);
+            pullsReceived.add(s);    
+            events.add(s);        
         }
     }
     
-    public class EEStat {
+    public void trackLivePull(int destId, int srcId, int responseSizeKB, long timeTaken, int queueGrowth) {
+        if (on){
+            long ts = System.currentTimeMillis();
+            PullStat s = new PullStat(destId, srcId, "", responseSizeKB, timeTaken, false, false, queueGrowth, ts);
+            pullsReceived.add(s);    
+            events.add(s);        
+        }
+    }
+    
+    public interface Stat {
+        public String toString();
+    }
+    
+    public class EEStat implements Stat {
         int partId;
         String tableName;
         boolean isExtract;
@@ -111,10 +144,18 @@ public class ReconfigurationStats {
             this.hasQueueStats = true;
             this.ts = ts;
         }
+
+        @Override
+        public String toString() {
+            return "EEStat [partId=" + partId + ", tableName=" + tableName + ", isExtract=" + isExtract + ", isLoad=" + isLoad + ", rowCount=" + rowCount + ", sizeKb=" + sizeKb + ", timeTaken="
+                    + timeTaken + ", queueGrowth=" + queueGrowth + ", hasQueueStats=" + hasQueueStats + ", ts=" + ts + "]";
+        }
+        
+        
     }
     
 
-    public class PullStat {
+    public class PullStat implements Stat {
         int destId;
         int srcId;
         String tableName;
@@ -152,6 +193,18 @@ public class ReconfigurationStats {
             this.hasQueueStats = true;
             this.ts = ts;
         }
+
+        @Override
+        public String toString() {
+            return "PullStat [destId=" + destId + ", srcId=" + srcId + ", tableName=" + tableName + ", responseSizeKB=" + responseSizeKB + ", timeTaken=" + timeTaken + ", isAsync=" + isAsync
+                    + ", moreData=" + moreData + ", queueGrowth=" + queueGrowth + ", hasQueueStats=" + hasQueueStats + ", ts=" + ts + "]";
+        }
         
+        
+    }
+
+
+    public List<Stat> getEvents() {
+        return events;
     }
 }
