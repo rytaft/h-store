@@ -203,7 +203,7 @@ public class ReconfigurationUtil {
     		temp.advanceToRow(0);
     		max = temp.getRowArray();
     		temp.clearRowData();
-    		res.add(new ReconfigurationRange(catalog_table, min, max, range.getOldPartition(), range.getNewPartition()));
+    		res.add(new ReconfigurationRange(catalog_table, min, max, range.getOldPartition(), range.getNewPartition(), range.getSubKeyMinMax()));
     		LOG.info("New range: " + res.get(res.size()-1).toString());
     		min = max;
     	}
@@ -301,7 +301,7 @@ public class ReconfigurationUtil {
     		for(ReconfigurationRange range : ranges) {
     			int extra = (splitsRemainder > 0 ? 2 : 1);
     			List<ReconfigurationRange> splitRanges = splitReconfigurationRangeOnPartitionKeys(range, range.getTable(), 
-    					plan.getReconfigurationTable(range.getTableName()).subKeyMinMax, splitsPerRange + extra); 
+    					range.getSubKeyMinMax(), splitsPerRange + extra); 
     			splitsRemainder--;
     		    List<VoltType> types = new ArrayList<VoltType>(range.getKeySchema().getColumnCount());
     			for(int i = 0; i < range.getKeySchema().getColumnCount(); i++) {

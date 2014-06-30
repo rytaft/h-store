@@ -171,7 +171,7 @@ public class ReconfigurationPlan {
         String table_name;
         HStoreConf conf = null;
         CatalogContext catalogContext;
-        public Pair<Object[], Object[]> subKeyMinMax;
+        Pair<Object[], Object[]> subKeyMinMax;
         
         public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table) throws Exception {
           this.catalogContext = catalogContext;
@@ -212,7 +212,7 @@ public class ReconfigurationPlan {
               } else {
                 // Same range new partition
             	getReconfigurations().add(new ReconfigurationRange(this.table_name, old_range.getKeySchema(), old_range.getMinIncl(), old_range.getMaxExcl(),
-                    old_range.getPartition(), new_range.getPartition()));
+                    old_range.getPartition(), new_range.getPartition(), this.subKeyMinMax));
               }
               max_old_accounted_for = old_range.getMaxExcl();
               if(new_ranges.hasNext())
@@ -226,7 +226,7 @@ public class ReconfigurationPlan {
                 } else {
                   // Need to move the old range to new range
                   getReconfigurations().add(new ReconfigurationRange(this.table_name, old_range.getKeySchema(), max_old_accounted_for, old_range.getMaxExcl(),
-                		  old_range.getPartition(), new_range.getPartition()));
+                		  old_range.getPartition(), new_range.getPartition(), this.subKeyMinMax));
                   max_old_accounted_for = old_range.getMaxExcl(); 
                 }
                 //Have we satisfied all of the new range and is there another new range to process
@@ -244,7 +244,7 @@ public class ReconfigurationPlan {
                   } else {
                     // move
                 	getReconfigurations().add(new ReconfigurationRange(this.table_name, new_range.getKeySchema(), max_old_accounted_for, new_range.getMaxExcl(),
-                    		old_range.getPartition(), new_range.getPartition()));
+                    		old_range.getPartition(), new_range.getPartition(), this.subKeyMinMax));
                     max_old_accounted_for = new_range.getMaxExcl();
                   }
                   if (new_ranges.hasNext() == false) {
@@ -489,6 +489,7 @@ public class ReconfigurationPlan {
         private List<Object[]> max_excl;
         private VoltTableComparator cmp;
         private Table catalog_table;
+        private Pair<Object[], Object[]> subKeyMinMax;
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, VoltTable min_incl, VoltTable max_excl, int old_partition, int new_partition) {
         	this(table_name, keySchema, new ArrayList<Object[]>(), new ArrayList<Object[]>(), old_partition, new_partition);
@@ -510,13 +511,29 @@ public class ReconfigurationPlan {
         		this.min_incl.add(min_incl.getRowArray());
         		this.max_excl.add(max_excl.getRowArray());
         	}
-        }  
+        } 
+        
+        public ReconfigurationRange(String table_name, VoltTable keySchema, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition, Pair<Object[], Object[]> subKeyMinMax) {
+        	this(table_name, keySchema, new ArrayList<Object[]>(), new ArrayList<Object[]>(), old_partition, new_partition);
+        	
+        	this.min_incl.add(min_incl);
+        	this.max_excl.add(max_excl);
+        	this.subKeyMinMax = subKeyMinMax;
+        }
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition) {
         	this(table_name, keySchema, new ArrayList<Object[]>(), new ArrayList<Object[]>(), old_partition, new_partition);
         	
         	this.min_incl.add(min_incl);
         	this.max_excl.add(max_excl);
+        }
+        
+        public ReconfigurationRange(Table table, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition, Pair<Object[], Object[]> subKeyMinMax) {
+        	this(table, new ArrayList<Object[]>(), new ArrayList<Object[]>(), old_partition, new_partition);
+        
+        	this.min_incl.add(min_incl);
+        	this.max_excl.add(max_excl);
+        	this.subKeyMinMax = subKeyMinMax;
         }
         
         public ReconfigurationRange(Table table, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition) {
@@ -538,6 +555,7 @@ public class ReconfigurationPlan {
             this.old_partition = old_partition;
             this.new_partition = new_partition;
             this.table_name = table_name;
+            this.subKeyMinMax = null;
         }
         
         public ReconfigurationRange(Table table, List<Object[]> min_incl, List<Object[]> max_excl, int old_partition, int new_partition) {
@@ -553,6 +571,7 @@ public class ReconfigurationPlan {
         	this.old_partition = old_partition;
             this.new_partition = new_partition;
             this.table_name = table.getName().toLowerCase();
+            this.subKeyMinMax = null;
         }
         
         @Override
@@ -893,6 +912,10 @@ public class ReconfigurationPlan {
         public Table getTable() {
         	return this.catalog_table;
         }
+        
+        public Pair<Object[], Object[]> getSubKeyMinMax() {
+        	return this.subKeyMinMax;
+        }
        
     }
       
@@ -903,18 +926,10 @@ public class ReconfigurationPlan {
       }
 
       public Map<Integer, List<ReconfigurationRange>> getIncoming_ranges() {
-          return incoming_ranges;
-      }
-      
-      public Collection<ReconfigurationTable> getReconfigurationTables() {
-    	  return this.tables_map.values();
-      }
-      
-      public ReconfigurationTable getReconfigurationTable(String table_name) {
-    	  return this.tables_map.get(table_name);
+    	  return incoming_ranges;
       }
 
-    public CatalogContext getCatalogContext() {
-        return catalogContext;
-    }
+      public CatalogContext getCatalogContext() {
+    	  return catalogContext;
+      }
 }
