@@ -620,7 +620,6 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         if benchmark == "tpcc":
-            fabric.env["partitionplan"]="tpcc-plan-warehouse-part.pplan"
             plan_base = 'scripts/reconfiguration/plans/tpcc'
             if "benchmark_size" in args and args["benchmark_size"]:
                 LOG.info("Updating the num of warehouses %s" % args["benchmark_size"])
