@@ -263,7 +263,7 @@ public class ReconfigurationUtil {
     		// combination list.
     		Object[] split = new Object[splitLength];
     		for(int j = 0; j < splitLength; ++j) {
-    			split[j] = minArray[j] + counterArray[j] * rangeSizeArray[j];
+    			split[j] = minArray[j] + counterArray[splitLength - j - 1] * rangeSizeArray[j];
     		}
     		keySplits.add(split);  // add new split to list
 
