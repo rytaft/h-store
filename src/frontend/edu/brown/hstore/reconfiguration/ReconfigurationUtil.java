@@ -190,6 +190,11 @@ public class ReconfigurationUtil {
     	Object[] min = range.getMinIncl().get(0).clone();
     	Object[] max = null;
     	List<Object[]> keySplits = getKeySplits(min_long, max_long, subKeyMinMax, maxSplits);
+    	
+    	// remove first and last elements
+    	keySplits.remove(0);
+    	keySplits.remove(keySplits.size() - 1);
+    
     	for(Object[] keySplit : keySplits) {
     		max = new Object[min.length];
     		for(int i = 0; i < max.length && i < keySplit.length; i++) {
@@ -210,6 +215,7 @@ public class ReconfigurationUtil {
 
     	max = range.getMaxExcl().get(0).clone();
     	res.add(new ReconfigurationRange(table_name, range.getKeySchema(), min, max, range.getOldPartition(), range.getNewPartition(), range.getSubKeyMinMax()));
+    	LOG.info("New range: " + res.get(res.size()-1).toString());
 		
         return res;
     }
@@ -304,6 +310,7 @@ public class ReconfigurationUtil {
     			List<ReconfigurationRange> splitRanges = splitReconfigurationRangeOnPartitionKeys(range, range.getTableName(), 
     					range.getSubKeyMinMax(), splitsPerRange + extra); 
     			splitsRemainder--;
+    			
     		    List<VoltType> types = new ArrayList<VoltType>(range.getKeySchema().getColumnCount());
     			for(int i = 0; i < range.getKeySchema().getColumnCount(); i++) {
     				types.add(range.getKeySchema().getColumnType(i));
