@@ -191,9 +191,8 @@ public class ReconfigurationUtil {
     	Object[] max = null;
     	List<Object[]> keySplits = getKeySplits(min_long, max_long, subKeyMinMax, maxSplits);
     	
-    	// remove first and last elements
+    	// remove first element
     	keySplits.remove(0);
-    	keySplits.remove(keySplits.size() - 1);
     
     	for(Object[] keySplit : keySplits) {
     		max = new Object[min.length];
