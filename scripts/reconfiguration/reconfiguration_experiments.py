@@ -100,10 +100,11 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.loadthread_per_warehouse"] = False
         fabric.env["benchmark.loadthreads"] = max(16, partitions)
-        fabric.env["hstore.sites_per_host"]=2
+        fabric.env["hstore.sites_per_host"]=1
+        fabric.env["hstore.sites_per_host"]=3
         
         
-    if 'reconfig-dynsplit' in  args['exp_type'] or 'stopcopy-2slit' in args['exp_type']:
+    if 'reconfig-dynsplit' in  args['exp_type'] or 'stopcopy-2slpit' in args['exp_type']:
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
         fabric.env["client.blocking_concurrent"] = 1
         #fabric.env["client.txnrate"] = 100000
@@ -118,8 +119,8 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["benchmark.loadthread_per_warehouse"] = False
         fabric.env["benchmark.loadthreads"] = max(16, partitions)        
         fabric.env["partitionplan"]="tpcc-plan-warehouse-part.pplan" #"tpcc-plan.pplan"
-        #fabric.env["hstore.partitions_per_site"]=1
-        fabric.env["hstore.sites_per_host"]=2
+        fabric.env["hstore.partitions_per_site"]=3
+        fabric.env["hstore.sites_per_host"]=1
 
 
     if 'reconfig-10b' in  args['exp_type'] or 'stopcopy-10b' in args['exp_type']:
