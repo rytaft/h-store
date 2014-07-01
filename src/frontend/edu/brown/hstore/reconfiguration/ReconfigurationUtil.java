@@ -269,7 +269,7 @@ public class ReconfigurationUtil {
 
     		// Now we need to increment the counterArray so that the next
     		// combination is taken on the next iteration of this loop.
-    		for(int incIndex = 0; incIndex < splitLength; ++incIndex) {
+    		for(int incIndex = splitLength - 1; incIndex >= 0; --incIndex) {
     			if(counterArray[incIndex] + 1 < numSplitsArray[incIndex]) {
     				++counterArray[incIndex];
     				// None of the indices of higher significance need to be
