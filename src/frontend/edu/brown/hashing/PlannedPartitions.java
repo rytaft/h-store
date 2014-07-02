@@ -291,6 +291,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     public static class PartitionPhase {
         protected Map<String, PartitionedTable> tables_map;
         protected CatalogContext catalog_context;
+        protected Map<String, String> partitionedTablesByFK;
 
         public List<PartitionRange> getPartitions(String table_name) {
             return this.tables_map.get(table_name).getRanges();
@@ -313,6 +314,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         public PartitionPhase(CatalogContext catalog_context, JSONObject phase, Map<String, String> partitionedTablesByFK) throws Exception {
             this.tables_map = new HashMap<String, PlannedPartitions.PartitionedTable>();
             this.catalog_context = catalog_context;
+            this.partitionedTablesByFK = partitionedTablesByFK;
             assert (phase.has(TABLES));
             JSONObject json_tables = phase.getJSONObject(TABLES);
             Iterator<String> table_names = json_tables.keys();
@@ -321,7 +323,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 JSONObject table_json = json_tables.getJSONObject(table_name.toLowerCase());
                 // Class<?> c = table_vt_map.get(table_name).classFromType();
                 // TODO fix partitiontype
-                this.tables_map.put(table_name, new PartitionedTable(table_name, table_json, catalog_context.getTableByName(table_name), getSubKeyMinMax(table_name, partitionedTablesByFK)));
+                this.tables_map.put(table_name, new PartitionedTable(table_name, table_json, catalog_context.getTableByName(table_name)));
             }
 
             // Add entries for tables that are partitioned on other columns
@@ -340,10 +342,11 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.tables_map = table_map;
         }
 
-        protected PartitionPhase(CatalogContext catalog_context, List<PartitionRange> ranges) throws Exception {
+        protected PartitionPhase(CatalogContext catalog_context, List<PartitionRange> ranges, Map<String, String> partitionedTablesByFK) throws Exception {
             this.tables_map = new HashMap<String, PlannedPartitions.PartitionedTable>();
             this.catalog_context = catalog_context;
-
+            this.partitionedTablesByFK = partitionedTablesByFK;
+            
             HashMap<String, List<PartitionRange>> table_name_map = new HashMap<String, List<PartitionRange>>();
 
             for (PartitionRange range : ranges) {
@@ -359,27 +362,6 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 this.tables_map.put(table_name, new PartitionedTable(tableRanges.getValue(), table_name, this.catalog_context.getTableByName(table_name)));
             }
         }
-
-        protected Pair<Object[], Object[]> getSubKeyMinMax(String table_name, Map<String, String> partitionedTablesByFK) {
-            LOG.info("getSubKeyMinMax");
-            // HACK - this is currently hard coded for TPCC
-            String partitionedTable = partitionedTablesByFK.get(table_name);
-            if (partitionedTable == null) {
-                partitionedTable = table_name;
-            }
-            Pair<Object[], Object[]> res = null;
-            // <min incl, max excl>
-            if (partitionedTable.equals("district")) {
-            	res = new Pair<Object[], Object[]>(new Object[] { 1 }, new Object[] { 11 });
-            } else if (partitionedTable.equals("customer")) {
-            	res = new Pair<Object[], Object[]>(new Object[] { 1, 0 }, new Object[] { 11, 60000 });
-            } else if (partitionedTable.equals("orders")) {
-            	res = new Pair<Object[], Object[]>(new Object[] { 1, 0 }, new Object[] { 11, 6000 });
-            } else if (partitionedTable.equals("stock")) {
-            	res = new Pair<Object[], Object[]>(new Object[] { 0 }, new Object[] { 100000 });
-            }
-            return res;
-        }
     }
 
     /**
@@ -393,11 +375,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         protected String table_name;
         private Table catalog_table;
         private JSONObject table_json;
-        protected Pair<Object[], Object[]> subKeyMinMax;
 
-        public PartitionedTable(String table_name, JSONObject table_json, Table catalog_table, Pair<Object[], Object[]> subKeyMinMax) throws Exception {
+        public PartitionedTable(String table_name, JSONObject table_json, Table catalog_table) throws Exception {
             this.catalog_table = catalog_table;
-            this.subKeyMinMax = subKeyMinMax;
             this.partitions = new ArrayList<>();
             this.table_name = table_name;
             this.table_json = table_json;
@@ -416,7 +396,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         }
 
         public PartitionedTable clone(String new_table_name, Table new_catalog_table) throws Exception {
-            return new PartitionedTable(new_table_name, this.table_json, new_catalog_table, this.subKeyMinMax);
+            return new PartitionedTable(new_table_name, this.table_json, new_catalog_table);
         }
 
         public PartitionedTable(List<PartitionRange> partitions, String table_name, Table catalog_table) {

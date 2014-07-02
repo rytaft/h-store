@@ -454,7 +454,7 @@ public abstract class ExplicitPartitions {
 	LOG.info("New incremental plan ranges: " + newRanges.toString());
 		
 		try {
-			this.incrementalPlan = new PartitionPhase(this.incrementalPlan.catalog_context, newRanges);
+			this.incrementalPlan = new PartitionPhase(this.incrementalPlan.catalog_context, newRanges, this.partitionedTablesByFK);
 		} catch (Exception e) {
 			LOG.error(e);
 			throw new RuntimeException(e);
