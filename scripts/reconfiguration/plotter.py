@@ -96,12 +96,14 @@ def getReconfigEvents(hevent_log):
                         protocol = items[len(items)-1].strip().split("=")[1]
                     elif "INIT" in line and "REPORT" not in line:
                         event = "INIT"
-                    elif "END" in line:
+                    elif "END" in line and "SEND" not in line:
                         event = "END"
                     elif "ASYNC_PULL_REQUESTED" in line:
                         event = "ASYNC_PULL_REQUESTED"
                     elif "LIVE_PULL_REQUESTED" in line:
                         event = "LIVE_PULL_REQUESTED"    
+                    elif "SEND_NEXT_PLAN" in line:
+                        event = "NEXT_PLAN"
                     else:
                         event = "UNKNOWN"
                     if event != "UNKNOWN":
@@ -356,7 +358,7 @@ def plotResults(args, files, ax):
 	    if args.type == "aborts":
                 LOG.info("Plotting Aborts")
                 txnstats = getTxnStats(_file.replace("interval_res.csv", "txncounters.csv"))
-                print txnstats
+                #print txnstats
                 if len(txnstats) > 0:
                     aborts = getAbortedTxns(txnstats)
                 else:
@@ -458,7 +460,10 @@ def plotTSD(args, files, ax):
                             LOG.error(" NO END FOUND %s " % name)
                             LOG.error("*****************************************")
                             LOG.error("*****************************************")
-            
+                        if any(df.RECONFIG.str.contains('NEXT_PLAN')):
+                            for x in range(len(df[df.RECONFIG.str.contains('NEXT_PLAN')])):
+                                ax.axvline(df[df.RECONFIG.str.contains('NEXT_PLAN')].index[x], color='0.8', lw=1.5, linestyle=":",label=None)
+                            end_legend = None
                         init_legend = None
                     elif len(df[df.RECONFIG.str.contains('TXN')]) < 1:
                         LOG.error("NO reconfig event found!")
@@ -498,7 +503,7 @@ def plotter(args, files):
     else:
         ax = None
     
-    print args
+    #print args
     if args.show == "latall":
         if args.tsd:
             keymap = INTERVAL_TYPE_MAP
@@ -536,7 +541,7 @@ if __name__=="__main__":
     if args.filter:
         for filt in args.filter.split(","):
             files = [f for f in  files if filt not in f]
-    LOG.info("Files : %s " % "\n".join(files) ) 
+    LOG.debug("Files : %s " % "\n".join(files) ) 
     
     plotter(args, files)
     

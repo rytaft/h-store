@@ -199,10 +199,7 @@ public abstract class FileUtil {
         return (file);
     }
 
-    @SuppressWarnings("unused")
     public static void appendEventToFile(String event){
-        if (true)
-            return;
         try {
             event = System.currentTimeMillis()+ "," + event;
             
