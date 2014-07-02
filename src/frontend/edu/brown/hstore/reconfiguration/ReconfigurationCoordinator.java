@@ -596,6 +596,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
         
     private void sendNextPlanToAllSites(){
+    	this.reconfigurationInProgress.set(true);
         //Reconfiguration leader sends ack that reconfiguration has been done
         FileUtil.appendEventToFile("RECONFIGURATION_SEND_NEXT_PLAN, siteId="+this.hstore_site.getSiteId() + " plansRemaining=" + this.reconfigPlanQueue.size());
         for(int i = 0;i < num_of_sites;i++){
@@ -634,6 +635,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     this.reconfigurationDoneSites = new HashSet<Integer>();
                 }
                 //sendNextPlanToAllSites();
+                this.reconfigurationInProgress.set(false);
                 SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
                 send.start();
             } else { 
@@ -716,6 +718,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 }
                 //FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
                 //sendNextPlanToAllSites();
+                this.reconfigurationInProgress.set(false);
                 SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
                 send.start();
             } else { 
