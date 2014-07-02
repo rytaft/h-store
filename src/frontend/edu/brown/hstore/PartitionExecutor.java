@@ -3358,6 +3358,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
             pullStartTime.put(pullID, System.currentTimeMillis());
             reconfiguration_stats.addMessage(String.format("ASYNC_PULL_REQUESTED, PULL_ID=%s, PARTITIONID=%s, TABLE=%s",pullID, partitionId, pullRange.getTableName()));
+            FileUtil.appendEventToFile(String.format("ASYNC_PULL_REQUESTED, PULL_ID=%s, PARTITIONID=%s, TABLE=%s",pullID, partitionId, pullRange.getTableName()));
+
         } 
         this.reconfiguration_coordinator.asyncPullRequestFromPE(pullID, txnID, this.partitionId, pullRequests);
         this.reconfiguration_stats.trackAsyncPullInit(this.partitionId, pullRange.getNewPartition(), pullRange.getTableName());
@@ -3996,7 +3998,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 if (debug.val) LOG.debug("Blocking on ranges " + pullRequestsNeeded.size());
                 try {
 
-                    //FileUtil.appendEventToFile(String.format("LIVE_PULL_REQUESTED, PULLID=%s, PULLS_NEEDED=%s, PARTITIONID=%s",pullID,pullRequestsNeeded.size(),partitionId)); 
+                    FileUtil.appendEventToFile(String.format("LIVE_PULL_REQUESTED, PULLID=%s, PULLS_NEEDED=%s, PARTITIONID=%s",pullID,pullRequestsNeeded.size(),partitionId)); 
                     //Block until pull is returned
                     pullBlockSemaphore.acquire(pullRequestsNeeded.size());
                     if (debug.val) LOG.debug("Load the buffered data on PE: "+ partitionId +" thread");
@@ -4016,7 +4018,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             pullID, (dataReceived-blockStartTime)/ 1000000, (dataReceivedAndProcessed-blockStartTime)/1000000,dataReceivedKB, pullRequestsNeeded.size(),
                             currentTxn.getProcedure().getName(),partitionId, pullRequestsNeeded);
                     //reconfiguration_stats.addMessage("REPORT_SINGLE_PULL, "+logmsg);
-                    //FileUtil.appendEventToFile("LIVE_PULL_COMPLETED, "+logmsg); 
+                    FileUtil.appendEventToFile("LIVE_PULL_COMPLETED, "+logmsg); 
                     LOG.info(logmsg);
                     reconfiguration_stats.trackLivePull(this.partitionId, -1 , dataReceivedKB, (dataReceived-blockStartTime)/ 1000000, queueGrowth);
                     this.reconfiguration_coordinator.profilers[this.partitionId].pe_block_queue_size.put(endQueueSize);
