@@ -52,17 +52,12 @@ public class ReconfigurationPlan {
     private CatalogContext catalogContext;
     protected Map<String, String> partitionedTablesByFK;
     
-    private ReconfigurationPlan(){
-        outgoing_ranges = new HashMap<>();
-        incoming_ranges = new HashMap<>();
-        range_map = new HashMap<>();
-    }
-    
-    public ReconfigurationPlan(CatalogContext catalogContext){
+    public ReconfigurationPlan(CatalogContext catalogContext, Map<String, String> partitionedTablesByFK){
         this.catalogContext = catalogContext;
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
         range_map = new HashMap<>();
+        this.partitionedTablesByFK = partitionedTablesByFK;
     }
     
     public void addRange(ReconfigurationRange range){

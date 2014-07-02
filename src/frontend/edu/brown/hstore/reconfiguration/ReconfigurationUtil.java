@@ -138,7 +138,7 @@ public class ReconfigurationUtil {
 
         List<ReconfigurationPlan> splitPlans = new ArrayList<>();
         for(int i = 0; i < numberOfSplits; i++){
-            splitPlans.add(new ReconfigurationPlan(plan.getCatalogContext()));
+            splitPlans.add(new ReconfigurationPlan(plan.getCatalogContext(), plan.getPartitionedTablesByFK()));
         }
 
         
@@ -337,7 +337,7 @@ public class ReconfigurationUtil {
 
     	// combine ranges from related tables
     	for(ReconfigurationRange range : explicitPartitionedTablesSplitRanges) {
-    		ReconfigurationPlan newPlan = new ReconfigurationPlan(plan.getCatalogContext());
+    		ReconfigurationPlan newPlan = new ReconfigurationPlan(plan.getCatalogContext(), plan.getPartitionedTablesByFK());
     		
 			newPlan.addRange(range);
 			for(String table_name : explicitPartitionedTables.get(range.getTableName())) {
