@@ -50,18 +50,14 @@ public class ReconfigurationPlan {
     protected Map<String, List<ReconfigurationRange>> range_map;
     public String planDebug = "";
     private CatalogContext catalogContext;
+    protected Map<String, String> partitionedTablesByFK;
     
-    private ReconfigurationPlan(){
-        outgoing_ranges = new HashMap<>();
-        incoming_ranges = new HashMap<>();
-        range_map = new HashMap<>();
-    }
-    
-    public ReconfigurationPlan(CatalogContext catalogContext){
+    public ReconfigurationPlan(CatalogContext catalogContext, Map<String, String> partitionedTablesByFK){
         this.catalogContext = catalogContext;
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
         range_map = new HashMap<>();
+        this.partitionedTablesByFK = partitionedTablesByFK;
     }
     
     public void addRange(ReconfigurationRange range){
@@ -88,6 +84,7 @@ public class ReconfigurationPlan {
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
         range_map = new HashMap<>();
+        partitionedTablesByFK = old_phase.partitionedTablesByFK;
         assert old_phase.tables_map.keySet().equals(new_phase.tables_map.keySet()) : "Partition plans have different tables";
         tables_map = new HashMap<String, ReconfigurationPlan.ReconfigurationTable>();
         for(String table_name : old_phase.tables_map.keySet()){
@@ -171,13 +168,11 @@ public class ReconfigurationPlan {
         String table_name;
         HStoreConf conf = null;
         CatalogContext catalogContext;
-        Pair<Object[], Object[]> subKeyMinMax;
         
         public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table) throws Exception {
           this.catalogContext = catalogContext;
           table_name = old_table.table_name;
           this.conf = HStoreConf.singleton(false);
-          this.subKeyMinMax = old_table.subKeyMinMax;
           setReconfigurations(new ArrayList<ReconfigurationRange>());
           Iterator<PartitionRange> old_ranges = old_table.partitions.iterator();
           Iterator<PartitionRange> new_ranges = new_table.partitions.iterator();
@@ -212,7 +207,7 @@ public class ReconfigurationPlan {
               } else {
                 // Same range new partition
             	getReconfigurations().add(new ReconfigurationRange(this.table_name, old_range.getKeySchema(), old_range.getMinIncl(), old_range.getMaxExcl(),
-                    old_range.getPartition(), new_range.getPartition(), this.subKeyMinMax));
+                    old_range.getPartition(), new_range.getPartition()));
               }
               max_old_accounted_for = old_range.getMaxExcl();
               if(new_ranges.hasNext())
@@ -226,7 +221,7 @@ public class ReconfigurationPlan {
                 } else {
                   // Need to move the old range to new range
                   getReconfigurations().add(new ReconfigurationRange(this.table_name, old_range.getKeySchema(), max_old_accounted_for, old_range.getMaxExcl(),
-                		  old_range.getPartition(), new_range.getPartition(), this.subKeyMinMax));
+                		  old_range.getPartition(), new_range.getPartition()));
                   max_old_accounted_for = old_range.getMaxExcl(); 
                 }
                 //Have we satisfied all of the new range and is there another new range to process
@@ -244,7 +239,7 @@ public class ReconfigurationPlan {
                   } else {
                     // move
                 	getReconfigurations().add(new ReconfigurationRange(this.table_name, new_range.getKeySchema(), max_old_accounted_for, new_range.getMaxExcl(),
-                    		old_range.getPartition(), new_range.getPartition(), this.subKeyMinMax));
+                    		old_range.getPartition(), new_range.getPartition()));
                     max_old_accounted_for = new_range.getMaxExcl();
                   }
                   if (new_ranges.hasNext() == false) {
@@ -489,7 +484,6 @@ public class ReconfigurationPlan {
         private List<Object[]> max_excl;
         private VoltTableComparator cmp;
         private Table catalog_table;
-        private Pair<Object[], Object[]> subKeyMinMax;
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, VoltTable min_incl, VoltTable max_excl, int old_partition, int new_partition) {
         	this(table_name, keySchema, new ArrayList<Object[]>(), new ArrayList<Object[]>(), old_partition, new_partition);
@@ -511,14 +505,6 @@ public class ReconfigurationPlan {
         		this.min_incl.add(min_incl.getRowArray());
         		this.max_excl.add(max_excl.getRowArray());
         	}
-        } 
-        
-        public ReconfigurationRange(String table_name, VoltTable keySchema, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition, Pair<Object[], Object[]> subKeyMinMax) {
-        	this(table_name, keySchema, new ArrayList<Object[]>(), new ArrayList<Object[]>(), old_partition, new_partition);
-        	
-        	this.min_incl.add(min_incl);
-        	this.max_excl.add(max_excl);
-        	this.subKeyMinMax = subKeyMinMax;
         }
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition) {
@@ -526,14 +512,6 @@ public class ReconfigurationPlan {
         	
         	this.min_incl.add(min_incl);
         	this.max_excl.add(max_excl);
-        }
-        
-        public ReconfigurationRange(Table table, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition, Pair<Object[], Object[]> subKeyMinMax) {
-        	this(table, new ArrayList<Object[]>(), new ArrayList<Object[]>(), old_partition, new_partition);
-        
-        	this.min_incl.add(min_incl);
-        	this.max_excl.add(max_excl);
-        	this.subKeyMinMax = subKeyMinMax;
         }
         
         public ReconfigurationRange(Table table, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition) {
@@ -555,7 +533,6 @@ public class ReconfigurationPlan {
             this.old_partition = old_partition;
             this.new_partition = new_partition;
             this.table_name = table_name;
-            this.subKeyMinMax = null;
         }
         
         public ReconfigurationRange(Table table, List<Object[]> min_incl, List<Object[]> max_excl, int old_partition, int new_partition) {
@@ -571,7 +548,18 @@ public class ReconfigurationPlan {
         	this.old_partition = old_partition;
             this.new_partition = new_partition;
             this.table_name = table.getName().toLowerCase();
-            this.subKeyMinMax = null;
+        }
+        
+        public ReconfigurationRange clone(Table new_table) {
+        	List<Object[]> minInclClone = new ArrayList<Object[]>();
+        	List<Object[]> maxExclClone = new ArrayList<Object[]>();
+        	minInclClone.addAll(this.min_incl);
+        	maxExclClone.addAll(this.max_excl);
+        	ReconfigurationRange clone = new ReconfigurationRange(this.table_name, this.keySchema.clone(0), minInclClone, 
+        			maxExclClone, this.old_partition, this.new_partition);
+        	clone.table_name = new_table.getName().toLowerCase();
+        	clone.catalog_table = new_table;
+        	return clone;
         }
         
         @Override
@@ -709,57 +697,6 @@ public class ReconfigurationPlan {
 	    return true;
         }
         
-        public boolean equalsIgnoreTable(Object obj) {
-            if (this == obj) {
-                return true;
-	    }
-	    if (obj == null) {
-                return false;
-            }
-	    if (getClass() != obj.getClass()) {
-                return false;
-	    }
-
-            ReconfigurationRange other = (ReconfigurationRange) obj;
-            if (new_partition != other.new_partition) {
-                return false;
-	    }
-            if (old_partition != other.old_partition) {
-                return false;
-	    }
-
-            if (min_incl == null) {
-                if (other.min_incl != null) {
-                    return false;
-		}
-            } else {
-		if(min_incl.size() != other.min_incl.size()) {
-		    return false;
-		}
-		for(int i = 0; i < min_incl.size(); i++) {
-		    if (!Arrays.asList(min_incl.get(i)).equals(Arrays.asList(other.min_incl.get(i)))) {
-			return false;
-		    }
-		}
-	    }
-
-            if (max_excl == null) {
-                if (other.max_excl != null) {
-                    return false;
-		}
-            } else {
-		if(max_excl.size() != other.max_excl.size()) {
-		    return false;
-		}
-		for(int i = 0; i < max_excl.size(); i++) {
-		    if (!Arrays.asList(max_excl.get(i)).equals(Arrays.asList(other.max_excl.get(i)))) {
-			return false;
-		    }
-		}
-	    }
-            return true;
-        }
-
         public synchronized boolean inRange(List<Object> ids) {
         	Object[] keys = new Object[this.keySchema.getColumnCount()];
         	int col = 0;
@@ -912,10 +849,6 @@ public class ReconfigurationPlan {
         public Table getTable() {
         	return this.catalog_table;
         }
-        
-        public Pair<Object[], Object[]> getSubKeyMinMax() {
-        	return this.subKeyMinMax;
-        }
        
     }
       
@@ -931,5 +864,9 @@ public class ReconfigurationPlan {
 
       public CatalogContext getCatalogContext() {
     	  return catalogContext;
+      }
+      
+      public Map<String, String> getPartitionedTablesByFK() {
+    	  return this.partitionedTablesByFK;
       }
 }
