@@ -3926,7 +3926,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         Set<ReconfigurationRange> restartsNeeded = new TreeSet<>();
         Set<Integer> partitionsForRestart = new HashSet<>();
         
-        this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.start();
+        //this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.start();
         for (int i = 0; i < fragmentIds.length; i++) {
             // Calls andy's methods for calculaitng the offsets
             List<Pair<List<CatalogType>, List<Integer>>> offsets = new ArrayList<>();
@@ -3974,7 +3974,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 }
             }
         }
-        this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.stopIfStarted();
+        //this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.stopIfStarted();
         // Blocking here
         boolean blockingNeeded = true;
         if (restartsNeeded.size() > 0 || partitionsForRestart.size() > 0) {
@@ -4011,13 +4011,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     this.reconfiguration_coordinator.profilers[this.partitionId].pe_live_pull_block_time.appendTime(blockStartTime, dataReceivedAndProcessed);
                     int dataReceivedKB = (int)(currentLiveDataLoaded/1000);
                     currentLiveDataLoaded = 0;
+                    
                     int endQueueSize =this.lockQueue.size();
                     int queueGrowth = endQueueSize-queueSize;
                     String logmsg = String.format(
-                            "PULLID=%s, livePullReceiveTimeMS=%s, livePullReceiveAndLoadTimeMS=%s, livePullDataReceivedKB=%s, livePulls=%s, txn=%s, partitionId=%s, ranges=%s\n",
-                            pullID, (dataReceived-blockStartTime)/ 1000000, (dataReceivedAndProcessed-blockStartTime)/1000000,dataReceivedKB, pullRequestsNeeded.size(),
+                            "PULLID=%s, livePullReceiveTimeMS=%s, livePullReceiveAndLoadTimeMS=%s, liveRowsPulled=%s,livePullDataReceivedKB=%s, livePulls=%s, txn=%s, partitionId=%s, ranges=%s\n",
+                            pullID, (dataReceived-blockStartTime)/ 1000000, (dataReceivedAndProcessed-blockStartTime)/1000000,currentLiveRows, dataReceivedKB, pullRequestsNeeded.size(),
                             currentTxn.getProcedure().getName(),partitionId, pullRequestsNeeded);
                     //reconfiguration_stats.addMessage("REPORT_SINGLE_PULL, "+logmsg);
+                    currentLiveRows = 0;
                     FileUtil.appendEventToFile("LIVE_PULL_COMPLETED, "+logmsg); 
                     LOG.info(logmsg);
                     reconfiguration_stats.trackLivePull(this.partitionId, -1 , dataReceivedKB, (dataReceived-blockStartTime)/ 1000000, queueGrowth);
@@ -4168,7 +4170,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.ee.loadTable(table.getRelativeIndex(), data, ts.getTransactionId(), this.lastCommittedTxnId.longValue(), ts.getLastUndoToken(this.partitionId), allowELT != 0);
         long timeTaken = System.currentTimeMillis()-start;
         int loadSizeKB = (data.getRowCount() * data.getRowSize())/1000;
-        this.reconfiguration_stats.trackLoad(partitionId, table.getName(), data.getRowCount(), loadSizeKB, timeTaken);
+        //this.reconfiguration_stats.trackLoad(partitionId, table.getName(), data.getRowCount(), loadSizeKB, timeTaken);
     }
 
     /**
@@ -4234,7 +4236,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                           allowELT);
         long timeTaken = System.currentTimeMillis()-start;
         int loadSizeKB = (data.getRowCount() * data.getRowSize())/1000;
-        this.reconfiguration_stats.trackLoad(partitionId, table.getName(), data.getRowCount(), loadSizeKB, timeTaken);
+        //this.reconfiguration_stats.trackLoad(partitionId, table.getName(), data.getRowCount(), loadSizeKB, timeTaken);
 
     }
 
@@ -6373,6 +6375,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private ReconfigurationTrackingInterface reconfiguration_tracker;
     private int idle_click_count;
     private long currentLiveDataLoaded = 0;
+    private long currentLiveRows = 0;
     private static int MAX_PULL_ASYNC_EVERY_CLICKS=700000;
 
 
@@ -6603,6 +6606,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         
         if (!isAsyncRequest && ReconfigurationCoordinator.detailed_timing){
             currentLiveDataLoaded += (vt.getRowCount() * vt.getRowSize());
+            currentLiveRows += vt.getRowCount();
         }
         
         if (vt.getRowCount() > 0) {
