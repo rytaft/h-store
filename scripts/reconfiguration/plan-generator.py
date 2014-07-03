@@ -4,7 +4,7 @@ import json
 import argparse
  
 
-def genPlanJSON(tables,phases,default_table, onebased=False):
+def genPlanJSON(tables,phases,default_table, onebased=False, multi=False):
 
   """
     A function to generate a partition plan json by evenly
@@ -56,6 +56,11 @@ def genPlanJSON(tables,phases,default_table, onebased=False):
         keyscovered=range_max
       plan_out[tablename] = {} 
       plan_out[tablename]["partitions"] = partitionranges
+      if multi:
+          plan_out["district"] = {}
+          plan_out["district"]["partitions"] = partitionranges
+          plan_out["stock"] = {}
+          plan_out["stock"]["partitions"] = partitionranges
     table_map ={}
     table_map["tables"]=plan_out
     plan["partition_plan"]=table_map
@@ -71,6 +76,7 @@ if __name__ == "__main__":
   parser.add_argument("-n","--num-phases",dest="phases", type=int, default=4, help="How many phases")
   parser.add_argument("-s","--size",dest="size", type=int, required=True, help="Partition key size")
   parser.add_argument("-p","--partitions",dest="partitions", type=str, required=True, help="Partitions size append, comma delimited" )
+  parser.add_argument("-m","--multi",dest="multi",  action="store_true", help="Gen multi col" )
 
   args = parser.parse_args()
   
@@ -83,6 +89,8 @@ if __name__ == "__main__":
   if "," in args.partitions or args.partitions != None:  
     tables = { TABLE_MAP[args.type]: args.size }
     default_table = TABLE_MAP[args.type]
+    if args.multi:
+        default_table="district"
     phases = {  }
     for x, parts in enumerate(args.partitions.split(",")):
       phases[x] = int(parts)
@@ -91,5 +99,5 @@ if __name__ == "__main__":
   onebased = False
   if args.type == "tpcc":
       onebased = True
-  plan_json = genPlanJSON(tables, phases, default_table, onebased)
+  plan_json = genPlanJSON(tables, phases, default_table, onebased,args.multi)
   print str(plan_json)

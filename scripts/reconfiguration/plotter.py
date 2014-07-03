@@ -498,7 +498,7 @@ def plotTSD(args, files, ax):
 def plotter(args, files):
 
     if not args.subplots:
-        plot.figure()
+        plot.figure(figsize=(15,11))
         ax = plot.subplot(111)
     else:
         ax = None
