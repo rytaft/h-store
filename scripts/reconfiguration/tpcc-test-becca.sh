@@ -15,7 +15,8 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-    "reconfig-dynsplit-becca --partitions=2 --benchmark-size=2 --splitplan=50 --plandelay=5000 --chunksize=20000 --asyncsize=20000 --asyncdelay=1000 " 
+#    "reconfig-dynsplit-becca --partitions=2 --benchmark-size=2 --splitplan=50 --plandelay=5000 --chunksize=20000 --asyncsize=20000 --asyncdelay=1000 " 
+    "reconfig-dynsplit-fine-grained --partitions=2 --benchmark-size=2 --splitplan=500 --plandelay=1000 --chunksize=2048 --asyncsize=2048 --asyncdelay=100 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size2-2-fine.json" 
 #    "reconfig-2b --partitions=2 --benchmark-size=4 --splitplan=10 --plandelay=2000 --chunksize=20000 --asyncsize=20000 --asyncdelay=1000  --exp-suffix=base" 
     )
 #    "reconfig-dynsplit --partitions=2 --benchmark-size=4 --splitplan=10 --plandelay=2000 --chunksize=20000 --asyncsize=20000 --asyncdelay=2000  --exp-suffix=split-10-size-20-delay-2-asyncdelay-2" 
@@ -48,8 +49,8 @@ for b in tpcc; do
         --plot \
 	    --client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=300000 \
-        --client.warmup=30000 \
+        --client.duration=600000 \
+        --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv \
         --reconfig=60000:1:0 \
         --sweep-reconfiguration 
