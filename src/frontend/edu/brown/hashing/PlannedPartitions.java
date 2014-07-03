@@ -732,6 +732,10 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         public int getPartition() {
             return this.partition;
         }
+        
+        public VoltTableComparator getComparator() {
+        	return this.cmp;
+        }
 
     }
 
