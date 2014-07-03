@@ -2,27 +2,32 @@
   "partition_plans": {
     "0": {
       "tables": {
-      "district": {
-        "partitions": {
-          "0": "1-3", 
-          "1": "3-5"
+          "district": {
+            "partitions": {
+              "0": "1-3", 
+              "1": "3-5"
+            }
+          },
+          "stock": {
+            "partitions": {
+              "0": "1-3", 
+              "1": "3-5"
+            }
+          },
+          "warehouse": {
+            "partitions": {
+              "0": "1-3", 
+              "1": "3-5"
+            }      
+          }
         }
-      },
-      "warehouse": {
-        "partitions": {
-          "0": "1-3", 
-          "1": "3-5"
-        }      
-      }
-    }
    },
     "1": {
       "tables": {
           "warehouse": {
             "partitions": {
               "0": "1-4",
-              "1": "4-5",
-               
+              "1": "4-5"
             }
           },
           "district": {
@@ -30,7 +35,13 @@
               "0": "1-4", 
               "1": "4-5" 
             }
-          }
+          },          
+          "stock": {
+            "partitions": {
+              "0": "1-4", 
+              "1": "4-5" 
+            }
+          },
         }
     }
   }, 
