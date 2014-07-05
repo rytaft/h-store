@@ -6550,17 +6550,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         maxExclusiveList.resetRowPosition();
         VoltTableComparator cmp = ReconfigurationUtil.getComparator(minInclusiveList);
 
-        if (!isAsyncRequest && ReconfigurationCoordinator.detailed_timing){
-            currentLiveDataLoaded += (vt.getRowCount() * vt.getRowSize());
-            currentLiveRows += vt.getRowCount();
-        }
-        
-        if (vt.getRowCount() > 0) {
-            loadTableForReconfiguration(this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), table_name, vt);
-        } else {
-            LOG.info("EMPTY table to load, skipping: " +table_name);
-        }
-        
         Long startTime = null; //pullStartTime.remove(pullId);
         while(minInclusiveList.advanceRow() && maxExclusiveList.advanceRow()) {
             // Currently we don't have any tracking for Stop and Copy.
@@ -6613,6 +6602,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     
                 }
             }
+        }
+        
+        if (!isAsyncRequest && ReconfigurationCoordinator.detailed_timing){
+            currentLiveDataLoaded += (vt.getRowCount() * vt.getRowSize());
+            currentLiveRows += vt.getRowCount();
+        }
+        
+        if (vt.getRowCount() > 0) {
+            loadTableForReconfiguration(this.catalogContext.catalog.getName(), this.catalogContext.database.getName(), table_name, vt);
+        } else {
+            LOG.info("EMPTY table to load, skipping: " +table_name);
         }
         
         if (!moreDataComing && isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
