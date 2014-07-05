@@ -1460,7 +1460,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         if (executorMap.containsKey(expectedPartition)){
             //check with destination if we have it
             try{
-                if (executorMap.get(expectedPartition).getReconfiguration_tracker().quickCheckKeyOwned(catalogItem, value))
+                if (executorMap.get(expectedPartition).getReconfiguration_tracker().quickCheckKeyOwned(previousPartition, expectedPartition, catalogItem, value))
                     return expectedPartition;
                 else
                     return previousPartition;
@@ -1469,7 +1469,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             }
         } else if (executorMap.containsKey(previousPartition)) {
             try{
-                if (executorMap.get(previousPartition).getReconfiguration_tracker().quickCheckKeyOwned(catalogItem, value))
+                if (executorMap.get(previousPartition).getReconfiguration_tracker().quickCheckKeyOwned(previousPartition, expectedPartition, catalogItem, value))
                     return previousPartition;
                 else
                     return expectedPartition;
