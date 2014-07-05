@@ -15,7 +15,7 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-#    "reconfig-dynsplit-becca --partitions=2 --benchmark-size=2 --splitplan=50 --plandelay=5000 --chunksize=20000 --asyncsize=20000 --asyncdelay=1000 " 
+    "reconfig-dynsplit-becca --partitions=2 --benchmark-size=2 --splitplan=50 --plandelay=2000 --chunksize=2048 --asyncsize=2048 --asyncdelay=500 "
     "reconfig-dynsplit-fine-grained --partitions=2 --benchmark-size=2 --splitplan=500 --plandelay=1000 --chunksize=2048 --asyncsize=2048 --asyncdelay=100 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size2-2-fine.json" 
 #    "reconfig-2b --partitions=2 --benchmark-size=4 --splitplan=10 --plandelay=2000 --chunksize=20000 --asyncsize=20000 --asyncdelay=1000  --exp-suffix=base" 
     )
