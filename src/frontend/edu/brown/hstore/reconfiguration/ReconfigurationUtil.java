@@ -164,9 +164,9 @@ public class ReconfigurationUtil {
             LOG.info(String.format("PlanSplit:%s has the pairs(%s): %s", j, debugSendingData.size(), StringUtils.join(debugSendingData,",")));
         }
         
-        int extraSplitsPerPlan = extraSplits / splitPlans.size();
-        int extraSplitsRemainder = extraSplits % splitPlans.size();
-        if(extraSplits > 0) {
+        if(splitPlans.size() > 0 && extraSplits > 0) {
+        	int extraSplitsPerPlan = extraSplits / splitPlans.size();
+        	int extraSplitsRemainder = extraSplits % splitPlans.size();
         	List<ReconfigurationPlan> splitPlansAgain = new ArrayList<>();
         	for(ReconfigurationPlan splitPlan : splitPlans) {
         		int extra = (extraSplitsRemainder > 0 ? 2 : 1);
@@ -174,6 +174,7 @@ public class ReconfigurationUtil {
         		extraSplitsRemainder--;
         	}
         	return splitPlansAgain;
+
         }
         
         return splitPlans;
