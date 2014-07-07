@@ -71,7 +71,6 @@ MigrationManager::~MigrationManager() {
   
 void MigrationManager::init(PersistentTable *table) {
   m_table = table;
-
   if(m_table == NULL) {
     m_partitionIndex = NULL;
     m_partitionColumnsIndexed = false;
@@ -238,9 +237,9 @@ bool MigrationManager::searchBTree(const RangeMap& rangeMap) {
 #endif
 
       if(inRange(tuple, rangeMap)) {
-	if(extractTuple(tuple)) {
-	  return true;
-	}
+        if(extractTuple(tuple)) {
+          return true;
+        }
       }
     }
   }
@@ -301,11 +300,12 @@ void MigrationManager::getRangeMap(RangeMap& rangeMap, TableIterator& inputItera
 Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& inputIterator, TableTuple& extractTuple, int32_t requestToken, int32_t extractTupleLimit, bool& moreData)
 {
   init(table);
+  
   m_extractTupleLimit = extractTupleLimit;
 
   RangeMap rangeMap;
   getRangeMap(rangeMap, inputIterator, extractTuple);
-
+  m_timer.restart();  
   //TODO ae andy -> on searching and checking for the max key condition
   // (cont) should we be using an expression or ok to just do  value check end value on iteration?
   //IF b-Tree
@@ -336,11 +336,12 @@ Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& in
   TableTuple globalMin = rangeMap.begin()->second;
   TableTuple globalMax = rangeMap.rbegin()->first;
 
-  VOLT_INFO("Rows examined: %d", m_rowsExamined);
-  VOLT_INFO("ExtractRange %s:%s %s - %s ", m_table->name().c_str(),m_table->columnName(m_partitionColumns[0]).c_str(),globalMin.debugNoHeader().c_str(),globalMax.debugNoHeader().c_str() );        
   std::string extract_id = "Extract:"+m_table->name()+" Range:"+globalMin.debugNoHeader().c_str()+"-"+globalMax.debugNoHeader().c_str();
-  m_timingResults[extract_id] = (int32_t)m_timer.elapsed();
-  m_timer.restart();	
+  double time_taken= m_timer.elapsed();
+  m_timingResults[extract_id] = (int32_t)time_taken;
+  VOLT_INFO("ExtractRange %s:%s %s - %s, RowsExamined: %d  TimeTaken: %0.4f ", m_table->name().c_str(),m_table->columnName(m_partitionColumns[0]).c_str(), 
+            globalMin.debugNoHeader().c_str(),globalMax.debugNoHeader().c_str(), m_rowsExamined, time_taken);        
+
 #endif
 
   return m_outputTable;

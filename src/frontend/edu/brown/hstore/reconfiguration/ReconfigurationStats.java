@@ -38,10 +38,10 @@ public class ReconfigurationStats {
     }
     
     
-    public void trackExtract(int partitionId, String tableName, int rowCount, int loadSizeKB, long timeTaken) {
+    public void trackExtract(int partitionId, String tableName, int rowCount, int loadSizeKB, long timeTaken, int entryId, boolean isLive) {
         if (on){
             long ts = System.currentTimeMillis();
-            EEStat s = new EEStat(partitionId, tableName, true, false, rowCount, loadSizeKB, timeTaken, ts);
+            EEStat s = new EEStat(partitionId, tableName, true, false, rowCount, loadSizeKB, timeTaken, ts, entryId, isLive);
             events.add(s);
             eeStats.add(s);
             
@@ -51,16 +51,16 @@ public class ReconfigurationStats {
     public void trackLoad(int partitionId, String tableName, int rowCount, int loadSizeKB, long timeTaken,int queueGrowth) {
         if (on){
             long ts = System.currentTimeMillis();
-            EEStat s = new EEStat(partitionId, tableName, false, true, rowCount, loadSizeKB, timeTaken, queueGrowth, ts);
+            EEStat s = new EEStat(partitionId, tableName, false, true, rowCount, loadSizeKB, timeTaken, queueGrowth, ts, -1);
             events.add(s);
             eeStats.add(s);
         }
     }
     
-    public void trackLoad(int partitionId, String tableName, int rowCount, int loadSizeKB, long timeTaken) {
+    public void trackLoad(int partitionId, String tableName, int rowCount, int loadSizeKB, long timeTaken, boolean isLive) {
         if (on){
             long ts = System.currentTimeMillis();
-            EEStat s = new EEStat(partitionId, tableName, false, true, rowCount, loadSizeKB, timeTaken, ts);
+            EEStat s = new EEStat(partitionId, tableName, false, true, rowCount, loadSizeKB, timeTaken, ts, -1, isLive);
             events.add(s);
             eeStats.add(s);
             
@@ -117,8 +117,10 @@ public class ReconfigurationStats {
         int queueGrowth;
         boolean hasQueueStats;
         long ts;
+        int entryId;
+        boolean isLive;
         
-        public EEStat(int partId, String tableName, boolean isExtract, boolean isLoad, int rowCount, int sizeKb, long timeTaken, long ts) {
+        public EEStat(int partId, String tableName, boolean isExtract, boolean isLoad, int rowCount, int sizeKb, long timeTaken, long ts, int entryId, boolean isLive) {
             super();
             this.partId = partId;
             this.tableName = tableName;
@@ -129,9 +131,12 @@ public class ReconfigurationStats {
             this.timeTaken = timeTaken;
             this.hasQueueStats = false;
             this.ts = ts;
+            this.entryId=entryId;
+            this.isLive = isLive;
+            
         }
         
-        public EEStat(int partId, String tableName, boolean isExtract, boolean isLoad, int rowCount, int sizeKb,long timeTaken, int queueGrowth, long ts) {
+        public EEStat(int partId, String tableName, boolean isExtract, boolean isLoad, int rowCount, int sizeKb,long timeTaken, int queueGrowth, long ts, int entryId) {
             super();
             this.partId = partId;
             this.tableName = tableName;
@@ -143,13 +148,17 @@ public class ReconfigurationStats {
             this.queueGrowth = queueGrowth;
             this.hasQueueStats = true;
             this.ts = ts;
+            this.entryId=entryId;
         }
 
         @Override
         public String toString() {
             return "EEStat [partId=" + partId + ", tableName=" + tableName + ", isExtract=" + isExtract + ", isLoad=" + isLoad + ", rowCount=" + rowCount + ", sizeKb=" + sizeKb + ", timeTaken="
-                    + timeTaken + ", queueGrowth=" + queueGrowth + ", hasQueueStats=" + hasQueueStats + ", ts=" + ts + "]";
+                    + timeTaken + ", queueGrowth=" + queueGrowth + ", hasQueueStats=" + hasQueueStats + ", ts=" + ts + ", entryId=" + entryId + ", isLive=" + isLive + "]";
         }
+
+
+
         
         
     }
