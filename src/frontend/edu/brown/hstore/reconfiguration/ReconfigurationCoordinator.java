@@ -987,7 +987,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param voltType
      */
     public void asyncPullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable min_inclusive, VoltTable max_exclusive) {
-        LOG.info(String.format("pullTuples with async Pull ID %s, keys %s->%s for %s  partIds %s->%s", livePullId, min_inclusive, max_exclusive, table_name, oldPartitionId, newPartitionId));
+        LOG.info(String.format("pullTuples with async Pull ID %s, for %s  partIds %s->%s", livePullId, table_name, oldPartitionId, newPartitionId));
         int sourceID = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(oldPartitionId);
 
         ProtoRpcController controller = new ProtoRpcController();
