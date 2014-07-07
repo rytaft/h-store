@@ -20,6 +20,7 @@ public class Plan {
 	public static final String PLANNED_PARTITIONS = "partition_plan";
 	// the TreeMap is a range. The key is the beginning of interval, the value is the end.
 	private Map<Integer, TreeMap<Long, Long>> partitionToRanges = new HashMap<Integer, TreeMap<Long, Long>>();
+	private String[] table_names;
 	public class Range{
 		Long from;
 		Long to;
@@ -550,9 +551,10 @@ public class Plan {
 		JSONObject tableObject = new JSONObject();
 
 		jsonPlan.put("tables", tableNameObject);
-		tableNameObject.put("usertable", partitionDelimiter);
-		partitionDelimiter.put("partitions", tableObject);
-
+		for(String table_name : table_names) {
+			tableNameObject.put(table_name, partitionDelimiter);
+			partitionDelimiter.put("partitions", tableObject);
+		}
 
 		for(Integer partition : partitionToRanges.keySet()) {
 			tableObject.put(partition.toString(), printPartition(partition));
@@ -603,6 +605,9 @@ public class Plan {
 		srcData = traverseLevelSingle(srcData);		
 
 		for(Integer i = 0; i < 3; ++i) {
+			if(i == 1) {
+				table_names = JSONObject.getNames(srcData);
+			}
 			srcData = traverseLevelSingle(srcData);			
 		}
 
