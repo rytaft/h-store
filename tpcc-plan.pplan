@@ -64,8 +64,9 @@
   "{'database':'WAREHOUSE'}": {
    "PARENT_ATTRIBUTE": null,
    "PARENT": null,
-   "METHOD": "REPLICATION",
-   "ATTRIBUTE": null
+   "METHOD": "HASH",
+   "ATTRIBUTE": "{'WAREHOUSE':'W_ID'}",
+   "ATTRIBUTE_class": "org.voltdb.catalog.Column"
   }
  },
  "PROC_ENTRIES": {
