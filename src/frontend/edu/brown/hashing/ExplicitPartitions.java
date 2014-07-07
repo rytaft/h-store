@@ -416,22 +416,22 @@ public abstract class ExplicitPartitions {
    			if(cmp.compare(max_old_accounted_for, reconfigRange.getMinIncl().get(0)) < 0) {
     				if(cmp.compare(partitionRange.getMaxExcl(), reconfigRange.getMinIncl().get(0)) <= 0) {
     					// the end of the range is not moving
-        				newRanges.add(new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
+        				newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
     					max_old_accounted_for = partitionRange.getMaxExcl();
     				} else {
     					// the beginning/middle of the range is not moving
-				    newRanges.add(new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, reconfigRange.getMinIncl().get(0)));
+				    newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, reconfigRange.getMinIncl().get(0)));
     					max_old_accounted_for = reconfigRange.getMinIncl().get(0);
     				}
     			} else if(cmp.compare(max_old_accounted_for, reconfigRange.getMaxExcl().get(0)) < 0) {
 			    assert (partitionRange.getPartition() == reconfigRange.getOldPartition()) : "partitions do not match: <" + partitionRange.getPartition() + "> != <" + reconfigRange.getOldPartition() + ">";
 					if (cmp.compare(partitionRange.getMaxExcl(), reconfigRange.getMaxExcl().get(0)) < 0) {
 						// the end of the range is moving
-	    				newRanges.add(new PartitionRange(partitionRange.getTable(), reconfigRange.getNewPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
+	    				newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), reconfigRange.getNewPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
     					max_old_accounted_for = partitionRange.getMaxExcl();
     				} else {
     					// the beginning/middle of the range is moving
-        				newRanges.add(new PartitionRange(partitionRange.getTable(), reconfigRange.getNewPartition(), max_old_accounted_for, reconfigRange.getMaxExcl().get(0)));
+        				newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), reconfigRange.getNewPartition(), max_old_accounted_for, reconfigRange.getMaxExcl().get(0)));
     					max_old_accounted_for = reconfigRange.getMaxExcl().get(0);
     					if(reconfigRanges.hasNext()) {
     						reconfigRange = reconfigRanges.next();  
@@ -442,7 +442,7 @@ public abstract class ExplicitPartitions {
     					reconfigRange = reconfigRanges.next();  
     				}
 				else {
-        				newRanges.add(new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
+        				newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
     					max_old_accounted_for = partitionRange.getMaxExcl();
     				    
 				}
@@ -460,6 +460,29 @@ public abstract class ExplicitPartitions {
 			throw new RuntimeException(e);
 		}
 
+    }
+    
+    public List<PartitionRange> addAndMergeRanges(List<PartitionRange> ranges, PartitionRange newRange) {
+    	ArrayList<PartitionRange> newRanges = new ArrayList<>();
+    	VoltTableComparator cmp = newRange.getComparator();
+    	
+    	for(PartitionRange range : ranges) {
+    		if(range.getTable().equals(newRange.getTable()) && range.getPartition() == newRange.getPartition()) {
+    			if(cmp.compare(newRange.getMinIncl(), range.getMaxExcl()) == 0) {
+    				newRange = new PartitionRange(newRange.getTable(), newRange.getPartition(), range.getMinIncl(), newRange.getMaxExcl());
+    			} else if (cmp.compare(newRange.getMaxExcl(), range.getMinIncl()) == 0) {
+    				newRange = new PartitionRange(newRange.getTable(), newRange.getPartition(), newRange.getMinIncl(), range.getMaxExcl());
+    			} else {
+    				newRanges.add(range);
+    			}
+    		} else {
+    			newRanges.add(range);
+    		}
+    	}
+    	
+    	newRanges.add(newRange);
+    	
+    	return newRanges;
     }
 
 }

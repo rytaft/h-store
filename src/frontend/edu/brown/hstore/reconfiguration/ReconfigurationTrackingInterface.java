@@ -125,9 +125,9 @@ public interface ReconfigurationTrackingInterface {
      * @param key
      * @return if the key is owned or not.\
      */
-    public boolean quickCheckKeyOwned(CatalogType catalog, Object key);
+    public boolean quickCheckKeyOwned(int previousPartition, int expectedPartition, CatalogType catalog, Object key);
     
-    public boolean quickCheckKeyOwned(List<CatalogType> catalog, List<Object> key);
+    public boolean quickCheckKeyOwned(int previousPartition, int expectedPartition, List<CatalogType> catalog, List<Object> key);
     
     /**
      * Called to check if all reconfiguration ranges are received 

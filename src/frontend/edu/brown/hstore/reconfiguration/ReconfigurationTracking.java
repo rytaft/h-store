@@ -202,17 +202,15 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     }
     
     @Override
-    public boolean quickCheckKeyOwned(CatalogType catalog, Object key) {
-    	return quickCheckKeyOwned(Arrays.asList(catalog), Arrays.asList(key));
+    public boolean quickCheckKeyOwned(int previousPartition, int expectedPartition, CatalogType catalog, Object key) {
+    	return quickCheckKeyOwned(previousPartition, expectedPartition, Arrays.asList(catalog), Arrays.asList(key));
     }
     
     @Override
-    public boolean quickCheckKeyOwned(List<CatalogType> catalog, List<Object> key) {
+    public boolean quickCheckKeyOwned(int previousPartition, int expectedPartition, List<CatalogType> catalog, List<Object> key) {
         try{
         	Table table = this.partitionPlan.getTable(catalog);
             String table_name = table.getName().toLowerCase();
-            int expectedPartition = partitionPlan.getPartitionId(table_name, key);
-            int previousPartition =  partitionPlan.getPreviousPartitionId(table_name, key);  
             if (expectedPartition == partition_id &&  previousPartition == partition_id)
             {
                 //This partition should have the key and it didnt move     
