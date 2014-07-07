@@ -550,7 +550,8 @@ public class Plan {
 		JSONObject tableObject = new JSONObject();
 
 		jsonPlan.put("tables", tableNameObject);
-		tableNameObject.put("usertable", partitionDelimiter);
+		//tableNameObject.put("usertable", partitionDelimiter);
+		tableNameObject.put("warehouse", partitionDelimiter);//essam tpcc
 		partitionDelimiter.put("partitions", tableObject);
 
 
