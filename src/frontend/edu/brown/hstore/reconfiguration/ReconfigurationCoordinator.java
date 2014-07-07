@@ -348,7 +348,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 }
                 this.planned_partitions = hasher.getPartitions();
                 if (reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
-                    if (reconfig_plan != null && reconfig_plan.getIncoming_ranges().size() > 0){
+                    if (reconfig_plan != null){
                         LOG.info("initReconfig for STOPCOPY");
                         this.partitionStates.put(partitionId, ReconfigurationState.DATA_TRANSFER);
                         this.reconfigurationState = ReconfigurationState.DATA_TRANSFER;
@@ -429,8 +429,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
 
                 } else if (reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL) {
-                    if (reconfig_plan != null && reconfig_plan.getIncoming_ranges().size() > 0) {
-                        if(this.reconfig_split  > 1){
+                    if (reconfig_plan != null) {
+                        if(this.reconfig_split  > 1 && reconfig_plan.getIncoming_ranges().size() > 0){
                             // split plan & put into queue
                             reconfigPlanQueue = ReconfigurationUtil.naiveSplitReconfigurationPlan(reconfig_plan, this.reconfig_split);
                             // set reconfig_plan = 1st split
