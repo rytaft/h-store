@@ -42,6 +42,8 @@ import java.util.zip.GZIPInputStream;
 
 import org.apache.log4j.Logger;
 
+import edu.brown.hstore.reconfiguration.ReconfigurationStats;
+
 /**
  * A bunch of random utility methods for reading/writing files
  * @author pavlo
@@ -52,6 +54,8 @@ public abstract class FileUtil {
     private static final Pattern EXT_SPLIT = Pattern.compile("\\.");
 
     public static final File EVENT_LOG = join(System.getProperty("user.dir"),"hevent.log");
+    
+    public static final File RECONFIG_LOG = join(System.getProperty("user.dir"), String.format("recstat-%s.log", ReconfigurationStats.FORMAT_VERSION));
     
     private static final SimpleDateFormat EVENT_FORMAT = new SimpleDateFormat("yyyy.MM.dd-HH:mm:ss");
 
@@ -199,6 +203,18 @@ public abstract class FileUtil {
         return (file);
     }
 
+    
+    public static void appendReconfigStat(String event){
+        try {
+            if (!RECONFIG_LOG.exists()){
+                appendStringToFile(RECONFIG_LOG, ReconfigurationStats.getEEHeader()+"\n");
+            }
+            appendStringToFile(RECONFIG_LOG, event+"\n");
+        } catch (IOException ex) {
+            LOG.error("Error on appending event to reconfig log", ex);            
+        }
+    }
+    
     public static void appendEventToFile(String event){
         try {
             event = System.currentTimeMillis()+ "," + event;
@@ -209,7 +225,7 @@ public abstract class FileUtil {
             FileUtil.appendStringToFile(EVENT_LOG, event);
         }
         catch(IOException ex) {
-            LOG.error("Error on appending event to even log", ex);
+            LOG.error("Error on appending event to event log", ex);
         }
     }
     

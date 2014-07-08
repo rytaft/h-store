@@ -1582,8 +1582,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
                          "   Stats for partition " +  p.getPartitionId() +"  \n"  +
                          "-------------------------------------");
                 ReconfigurationStats stats = p.getReconfigStats();
-                for (ReconfigurationStats.Stat s : stats.getEvents()){
-                    LOG.info(s.toString());
+                for (ReconfigurationStats.EEStat s : stats.getEeStats()){
+                    //LOG.info(s.toString());
+                    FileUtil.appendReconfigStat(s.toCSVString());
                 }
                 
                 //Messages?

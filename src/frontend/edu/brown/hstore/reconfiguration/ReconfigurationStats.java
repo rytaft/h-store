@@ -12,6 +12,7 @@ import java.util.List;
  */
 public class ReconfigurationStats {
 
+    
     private boolean on;
     private StringBuilder messages;
     private List<PullStat> pullsReceived;
@@ -156,11 +157,18 @@ public class ReconfigurationStats {
             return "EEStat [partId=" + partId + ", tableName=" + tableName + ", isExtract=" + isExtract + ", isLoad=" + isLoad + ", rowCount=" + rowCount + ", sizeKb=" + sizeKb + ", timeTaken="
                     + timeTaken + ", queueGrowth=" + queueGrowth + ", hasQueueStats=" + hasQueueStats + ", ts=" + ts + ", entryId=" + entryId + ", isLive=" + isLive + "]";
         }
-
-
-
         
-        
+        public String toCSVString(){
+            
+            return  partId + "," + tableName + "," + isExtract + "," + isLoad + "," + rowCount + "," + sizeKb + ","
+                    + timeTaken + "," + queueGrowth + "," + hasQueueStats + "," + ts + "," + entryId + "," + isLive + "";
+        }
+    }
+
+    public static final Object FORMAT_VERSION = "1";
+    public static String getEEHeader() {
+        return "partId,tableName,isExtract,isLoad,rowCount,sizeKb," +
+                "timeTaken,queueGrowth,hasQueueStats,ts,entryId,isLive";
     }
     
 
@@ -216,4 +224,13 @@ public class ReconfigurationStats {
     public List<Stat> getEvents() {
         return events;
     }
+
+    public List<EEStat> getEeStats() {
+        return eeStats;
+    }
+
+    
+
+    
+    
 }
