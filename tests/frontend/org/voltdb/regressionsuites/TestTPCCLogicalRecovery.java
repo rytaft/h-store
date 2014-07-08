@@ -294,19 +294,21 @@ public class TestTPCCLogicalRecovery extends RegressionSuite {
         results = client.callProcedure("@Statistics", "table", 0).getResults();
         System.out.println(results[0]);
                 
-        //File logDir = new File("/mnt/pmfs" + File.separator + "cmdlog");                               
-        File logDir = new File("./obj" + File.separator + "cmdlog");                               
-        
-        // Parse WAL logs for all sites
-        CatalogMap<Site> sites = cc.sites;
+        //File logDir = new File("/mnt/pmfs" + File.separator + "cmdlog");   
 
-        for(Site site : sites){
-            String siteName = site.getName().toLowerCase();
-            siteName = "h0" + siteName;            
-            System.err.println("Site Prefix : "+siteName);
-            
-            parseAndApplyCommandLog(logDir, siteName);            
-        }
+// Commented out by Marco - I've stripped off ARIES 
+//        File logDir = new File("./obj" + File.separator + "cmdlog");                               
+        
+//        // Parse WAL logs for all sites
+//        CatalogMap<Site> sites = cc.sites;
+//
+//        for(Site site : sites){
+//            String siteName = site.getName().toLowerCase();
+//            siteName = "h0" + siteName;            
+//            System.err.println("Site Prefix : "+siteName);
+//            
+//            parseAndApplyCommandLog(logDir, siteName);            
+//        }
 
         calendar = Calendar.getInstance();                    
         t2 = calendar.getTimeInMillis();

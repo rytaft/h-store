@@ -233,6 +233,7 @@ public abstract class VoltProcedure implements Poolable {
         assert(executor != null);
         
         this.executor = executor;
+        this.execution_context = executor.getSystemProcedureExecutionContext();
         this.p_estimator = executor.getPartitionEstimator();
         this.hstore_site = executor.getHStoreSite();
         this.hstore_conf = HStoreConf.singleton();
