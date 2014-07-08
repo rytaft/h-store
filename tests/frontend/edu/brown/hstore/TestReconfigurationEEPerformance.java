@@ -3,33 +3,23 @@
  */
 package edu.brown.hstore;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.log4j.Logger;
 import org.junit.Before;
 import org.junit.Test;
 import org.voltdb.VoltTable;
-import org.voltdb.VoltType;
 import org.voltdb.benchmark.tpcc.TPCCConstants;
 import org.voltdb.catalog.Site;
 import org.voltdb.catalog.Table;
 import org.voltdb.client.Client;
 import org.voltdb.jni.ExecutionEngine;
 import org.voltdb.jni.ExecutionEngineJNI;
-import org.voltdb.regressionsuites.RegressionSuiteUtil;
 import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTableUtil;
 
 import edu.brown.BaseTestCase;
-import edu.brown.benchmark.ycsb.YCSBConstants;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.designer.MemoryEstimator;
-import edu.brown.hashing.PlannedHasher;
-import edu.brown.hashing.PlannedPartitions.PartitionRange;
-import edu.brown.hashing.PlannedPartitions.PartitionedTable;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
-import edu.brown.hashing.ReconfigurationPlan.ReconfigurationTable;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
 import edu.brown.utils.CollectionUtil;
@@ -123,29 +113,78 @@ public class TestReconfigurationEEPerformance extends BaseTestCase {
 
     }
     
-
     @Test
-    public void testOrderLine() throws Exception {
-        long recs = 100000; //300000
+    public void testNewOrder() throws Exception {
+        long recs = 100000;
         int warehouses = 5;
-        for (int i=0; i <4; i++){
+        for (int i=0; i < warehouses; i++){
             LOG.info("Loading order lines: " + recs);
-            loadTPCCData(recs, orderline, this.ordline_ind, i);
+            loadTPCCData(recs, neworder_tbl, this.neworder_p_index, i);
         }
 
-        int EXTRACT_LIMIT = 20000;
+        int EXTRACT_LIMIT = 200000;
         ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
 
 
         ReconfigurationRange range; 
         VoltTable extractTable;
         
-        int wid =1;
+        int wid =2;
+        range = ReconfigurationUtil.getReconfigurationRange(neworder_tbl, new Long[][]{{ new Long(wid) }}, new Long[][]{{ new Long(wid+1) }}, 1, 2);
+        extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
+        
+        
+        long tupleBytes = MemoryEstimator.estimateTupleSize(this.neworder_tbl);
+        int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
+        int expectedChunks = ((int)(NUM_TUPLES * 10)/tuplesInChunk);
+        int resCount = 0;
+        int chunks = 0;
+        Pair<VoltTable,Boolean> resTable = null;
+        long start,end;
+        int count=0;
+        do {
+            start = System.currentTimeMillis();
+            resTable = 
+                    this.ee.extractTable(this.neworder_tbl, this.neworder_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+            end = System.currentTimeMillis();
+            LOG.info(String.format("Rows:%s Size:%s Time taken: %s",resTable.getFirst().getRowCount(),(resTable.getFirst().getRowCount()*resTable.getFirst().getRowSize()),(end-start)));
+            resCount += resTable.getFirst().getRowCount();
+            //LOG.info("Total RowCount :" +resCount);
+            
+            chunks++;
+            count++;
+            if (count %10 == 0){
+                //loadTPCCData((long)(Math.random()*30), orderline, this.ordline_ind, wid);
+            }
+        } while (resTable != null && resTable.getSecond());
+        //System.out.println("Counts : " + count);
+        assertEquals(recs, resCount);
+       
+    }
+    
+    
+    @Test
+    public void testOrderLine() throws Exception {
+        long recs = 100000;
+        int warehouses = 5;
+        for (int i=0; i < warehouses; i++){
+            LOG.info("Loading order lines: " + recs);
+            loadTPCCData(recs, orderline, this.ordline_ind, i);
+        }
+
+        int EXTRACT_LIMIT = 200000;
+        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
+
+
+        ReconfigurationRange range; 
+        VoltTable extractTable;
+        
+        int wid =2;
         range = ReconfigurationUtil.getReconfigurationRange(orderline, new Long[][]{{ new Long(wid) }}, new Long[][]{{ new Long(wid+1) }}, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
         
         
-        long tupleBytes = MemoryEstimator.estimateTupleSize(this.customer_tbl);
+        long tupleBytes = MemoryEstimator.estimateTupleSize(this.orderline);
         int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
         int expectedChunks = ((int)(NUM_TUPLES * 10)/tuplesInChunk);
         int resCount = 0;
@@ -160,7 +199,7 @@ public class TestReconfigurationEEPerformance extends BaseTestCase {
             end = System.currentTimeMillis();
             LOG.info(String.format("Rows:%s Size:%s Time taken: %s",resTable.getFirst().getRowCount(),(resTable.getFirst().getRowCount()*resTable.getFirst().getRowSize()),(end-start)));
             resCount += resTable.getFirst().getRowCount();
-            LOG.info("Total RowCount :" +resCount);
+            //LOG.info("Total RowCount :" +resCount);
             
             chunks++;
             count++;
