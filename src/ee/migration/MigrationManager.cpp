@@ -339,8 +339,8 @@ Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& in
   std::string extract_id = "Extract:"+m_table->name()+" Range:"+globalMin.debugNoHeader().c_str()+"-"+globalMax.debugNoHeader().c_str();
   double time_taken= m_timer.elapsed();
   m_timingResults[extract_id] = (int32_t)time_taken;
-  VOLT_INFO("ExtractRange %s:%s %s - %s, RowsExamined: %d  TimeTaken: %0.4f ", m_table->name().c_str(),m_table->columnName(m_partitionColumns[0]).c_str(), 
-            globalMin.debugNoHeader().c_str(),globalMax.debugNoHeader().c_str(), m_rowsExamined, time_taken);        
+  VOLT_INFO("ExtractRange %s:%s %s - %s, RowsExamined:%d, RowsExtracted:%d, Selectivity %0.4f, TimeTaken: %0.4f ", m_table->name().c_str(),m_table->columnName(m_partitionColumns[0]).c_str(), 
+            globalMin.debugNoHeader().c_str(),globalMax.debugNoHeader().c_str(), m_rowsExamined, m_tuplesExtracted, (m_tuplesExtracted/(double)m_rowsExamined), time_taken);        
 
 #endif
 
