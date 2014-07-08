@@ -1546,7 +1546,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 
 
                 int size = (voltTable.getRowCount() * voltTable.getRowSize())/1000;
-                LOG.info(String.format("extract debug %s r:%s r:%s", tableName, records, voltTable.getRowCount()));
                 this.reconfiguration_stats.trackExtract(partitionId, tableName, records, size , timeTaken, 1, false);
                 
                 ByteString tableBytes = null;
