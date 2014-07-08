@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.qcri.PartitioningPlanner.placement.Plan;
+import org.voltdb.CatalogContext;
 
 
 public class OneTieredPlacement extends Placement {
@@ -66,7 +67,7 @@ public class OneTieredPlacement extends Placement {
 
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount, int timeLimit, CatalogContext catalogContext){
 		// ignore hotTuplesList
 		
 		Plan aPlan = new Plan(planFile);

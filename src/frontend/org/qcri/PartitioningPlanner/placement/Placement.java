@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.qcri.PartitioningPlanner.placement.Plan.Range;
+import org.voltdb.CatalogContext;
 import org.voltdb.catalog.Site;
 
 public class Placement {
@@ -24,7 +25,7 @@ public class Placement {
 	// siteLoads: partitionId --> total access count
 	// partitionCount: number of partitions actually in use
 	// timeLimit - time limit for planner in ms
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> siteLoads, String planFile, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> siteLoads, String planFile, int partitionCount, int timeLimit, CatalogContext catalogContext){
 		return new Plan(planFile);
 	}
 	

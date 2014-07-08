@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.qcri.PartitioningPlanner.placement.Plan;
+import org.voltdb.CatalogContext;
 
 
 public class BinPackerPlacement extends Placement {
@@ -109,7 +110,7 @@ public class BinPackerPlacement extends Placement {
 
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFile, int partitionCount, int timeLimit, CatalogContext catalogContext){
 
 		Plan aPlan = new Plan(planFile);
 		this.init(hotTuplesList, partitionTotals, aPlan, partitionCount);
@@ -262,7 +263,9 @@ public class BinPackerPlacement extends Placement {
 
 		GLPK.glp_delete_prob(lp);
 		
-		aPlan = demoteTuples(hotTuplesList, aPlan);
+		if(!catalogContext.jarPath.getName().contains("tpcc")) {
+			aPlan = demoteTuples(hotTuplesList, aPlan);
+		}
 		removeEmptyPartitions(aPlan);
 		return aPlan;
 

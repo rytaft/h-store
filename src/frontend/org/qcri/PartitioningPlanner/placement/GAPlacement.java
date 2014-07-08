@@ -21,6 +21,7 @@ import org.jaga.selection.RouletteWheelSelection;
 import org.jaga.util.DefaultParameterSet;
 import org.jaga.util.FittestIndividualResult;
 import org.qcri.PartitioningPlanner.placement.Plan;
+import org.voltdb.CatalogContext;
 
 public class GAPlacement extends Placement {
 	
@@ -111,7 +112,7 @@ public class GAPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit, CatalogContext catalogContext){
 		
 		Plan aPlan = new Plan(planFilename);
 		this.init(hotTuplesList, partitionTotals, aPlan, partitionCount);
@@ -202,8 +203,9 @@ public class GAPlacement extends Placement {
 		}
 
 		
-
-		aPlan = demoteTuples(hotTuplesList, aPlan);
+		if(!catalogContext.jarPath.getName().contains("tpcc")) {
+			aPlan = demoteTuples(hotTuplesList, aPlan);
+		}
 		removeEmptyPartitions(aPlan);
 		return aPlan;
 		

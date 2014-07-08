@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.qcri.PartitioningPlanner.placement.Plan;
+import org.voltdb.CatalogContext;
 
 
 public class GreedyExtendedPlacement extends Placement {
@@ -20,7 +21,7 @@ public class GreedyExtendedPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit, CatalogContext catalogContext){
 		
 		Integer dstPartition = -1;
 		Long totalAccesses = 0L;
@@ -138,7 +139,9 @@ public class GreedyExtendedPlacement extends Placement {
 			} 
 		} // end for each partition
 
-		aPlan = demoteTuples(hotTuplesListCopy, aPlan);
+		if(!catalogContext.jarPath.getName().contains("tpcc")) {
+			aPlan = demoteTuples(hotTuplesListCopy, aPlan);
+		}
 		removeEmptyPartitions(aPlan);
 		return aPlan;
 		

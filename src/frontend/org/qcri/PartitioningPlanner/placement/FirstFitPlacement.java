@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.qcri.PartitioningPlanner.placement.Plan;
+import org.voltdb.CatalogContext;
 
 
 public class FirstFitPlacement extends Placement {
@@ -19,7 +20,7 @@ public class FirstFitPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit, CatalogContext catalogContext){
 		
 
 		Integer dstPartition = -1;
@@ -128,7 +129,9 @@ public class FirstFitPlacement extends Placement {
 			
 		} // end for each partition
 
-		newPlan = demoteTuples(hotTuplesListCopy, newPlan);		
+		if(!catalogContext.jarPath.getName().contains("tpcc")) {
+			newPlan = demoteTuples(hotTuplesListCopy, newPlan);	
+		}
 		removeEmptyPartitions(newPlan);
 		return newPlan;
 
