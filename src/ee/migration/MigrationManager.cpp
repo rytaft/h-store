@@ -74,6 +74,7 @@ void MigrationManager::init(PersistentTable *table) {
   if(m_table == NULL) {
     m_partitionIndex = NULL;
     m_partitionColumnsIndexed = false;
+    m_exactMatch = false;
     m_outputTable = NULL;
     m_partitionKeySchema = NULL;
     m_matchingIndexColsSchema = NULL;
@@ -94,10 +95,12 @@ void MigrationManager::init(PersistentTable *table) {
       VOLT_DEBUG("partitionColumn is not indexed. partitionColumn[0]: %d",m_partitionColumns[0]);
       //TODO ae what do we do when we have no index for the partition colum?
       m_partitionColumnsIndexed = false;
+      m_exactMatch = false;
       m_matchingIndexColsSchema = NULL;
     } else {
       VOLT_DEBUG("partitionColumn is indexed. partitionColumn[0]: %d",m_partitionColumns[0]);
       m_partitionColumnsIndexed = true;
+      m_exactMatch = (m_matchingIndexCols == m_partitionColumns.size());
       m_matchingIndexColsSchema = createPartitionKeySchema(m_matchingIndexCols);
     }
 
@@ -151,7 +154,8 @@ bool MigrationManager::inIndexRange(const TableTuple& tuple, const TableTuple& m
     maxKeysCmp.setNValue(i, maxKeys.getNValue(i));
   }
 
-  if (maxKeysCmp.compare(keys) >= 0) {
+  int compare = maxKeysCmp.compare(keys);
+  if (compare > 0 || (!m_exactMatch && compare >= 0)) {
     return true;
   }
 
@@ -236,7 +240,7 @@ bool MigrationManager::searchBTree(const RangeMap& rangeMap) {
       m_rowsExamined++;
 #endif
 
-      if(inRange(tuple, rangeMap)) {
+      if(m_exactMatch || inRange(tuple, rangeMap)) {
         if(extractTuple(tuple)) {
           return true;
         }

@@ -84,6 +84,7 @@ private:
     TableIndex* m_partitionIndex;
     std::vector<int> m_partitionColumns;
     bool m_partitionColumnsIndexed;
+    bool m_exactMatch;
     Table* m_outputTable;
     int m_outTableSizeInBytes;
     const TupleSchema* m_partitionKeySchema;
