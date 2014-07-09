@@ -6687,7 +6687,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             currentTxnId = -1L;
         }
         long start = System.currentTimeMillis();
-        Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table, table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId);
+        int extractSize = hstore_conf.site.reconfig_async_chunk_size_kb*1024; 
+        if (isLive){
+            extractSize = hstore_conf.site.reconfig_chunk_size_kb*1024;
+        }
+        Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table, table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId, extractSize);
         long diff  = System.currentTimeMillis() - start;
 
         if (res != null) {
