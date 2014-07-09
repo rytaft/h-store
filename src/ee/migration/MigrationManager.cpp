@@ -196,13 +196,18 @@ bool MigrationManager::extractTuple(TableTuple& tuple) {
     VOLT_DEBUG("more tuples with limit");
     return true;
   }
-
+  if(tuple.isMigrated()){
+    VOLT_INFO("Tuple is migrated, skipping");
+    return false;
+  }
   if (!m_outputTable->insertTuple(tuple)) {
     VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",m_table->name().c_str(),m_outputTable->name().c_str());
     throw SerializableEEException(VOLT_EE_EXCEPTION_TYPE_EEEXCEPTION, "Failed to insert tuple");
   }
   
-  m_table->deleteTuple(tuple, true);
+  //m_table->deleteTuple(tuple, true);
+  //VOLT_INFO("Setting migrated to true");
+  tuple.setMigratedTrue();
   //Count if we have taken the max tuples
   if (++m_tuplesExtracted >= m_extractTupleLimit) {
     VOLT_DEBUG("tuple limit reached: %d", m_tuplesExtracted);
@@ -254,8 +259,13 @@ bool MigrationManager::searchBTree(const RangeMap& rangeMap) {
 bool MigrationManager::scanTable(const RangeMap& rangeMap) {
   //TODO ae andy -> assume we cannot leverage anything about hashing with ranges, correct?
   //Iterate through results
+  VOLT_INFO("Creating iterator");
   TableIterator iterator(m_table);
+  VOLT_INFO("Have iterator");
+  
   TableTuple tuple(m_table->schema());
+  VOLT_INFO("Creating tuple schema");
+  
   while (iterator.next(tuple)) {
 #ifdef EXTRACT_STAT_ENABLED
     m_rowsExamined++;

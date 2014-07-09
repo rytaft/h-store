@@ -228,7 +228,10 @@ bool NestLoopExecutor::p_execute(const NValueArray &params, ReadWriteTracker *tr
 
     TableIterator iterator0(outer_table);
     while (iterator0.next(outer_tuple)) {
-
+        if (outer_tuple.isMigrated()) {
+            //Skip this tuple as it is marked as migrated output
+            continue;
+        }        
         // populate output table's temp tuple with outer table's values
         // probably have to do this at least once - avoid doing it many
         // times per outer tuple
@@ -238,6 +241,10 @@ bool NestLoopExecutor::p_execute(const NValueArray &params, ReadWriteTracker *tr
 
         TableIterator iterator1(inner_table);
         while (iterator1.next(inner_tuple)) {
+            if (inner_tuple.isMigrated()) {
+                //Skip this tuple as it is marked as migrated output
+                continue;
+            }            
             if (predicate == NULL || predicate->eval(&outer_tuple, &inner_tuple).isTrue()) {
                 // Matched! Complete the joined tuple with the inner column values.
                 for (int col_ctr = 0; col_ctr < inner_cols; col_ctr++) {

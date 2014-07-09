@@ -205,6 +205,12 @@ bool SeqScanExecutor::p_execute(const NValueArray &params, ReadWriteTracker *tra
         int tuple_ctr = 0;
         while (iterator.next(tuple))
         {
+
+            if (tuple.isMigrated()) {
+                //Skip this tuple as it is marked as migrated output
+                continue;
+            }
+          
             // Read/Write Set Tracking
             if (tracker != NULL) {
                 tracker->markTupleRead(target_table, &tuple);

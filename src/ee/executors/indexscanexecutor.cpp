@@ -543,6 +543,12 @@ bool IndexScanExecutor::p_execute(const NValueArray &params, ReadWriteTracker *t
             tracker->markTupleRead(m_targetTable, &m_tuple);
         }
         
+        
+        if (m_tuple.isMigrated()) {
+            //Skip this tuple as it is marked as migrated output
+            continue;
+        }
+        
         #ifdef ANTICACHE
         // We are pointing to an entry for an evicted tuple
         if (m_tuple.isEvicted()) {            

@@ -284,6 +284,11 @@ public:
     {
         return (*(reinterpret_cast<const char*> (m_data)) & EVICTED_MASK) == 0 ? false : true;
     }
+    
+    inline bool isMigrated() const
+    {
+        return (*(reinterpret_cast<const char*> (m_data)) & MIGRATED_MASK) == 0 ? false : true;
+    }
 
     /** Is the column value null? */
     inline bool isNull(const int idx) const {
@@ -324,6 +329,13 @@ public:
     inline void setPreviousTupleInChain(uint32_t prev)
     {
         memcpy(m_data+TUPLE_HEADER_SIZE-8, &prev, 4);
+        
+    }
+    
+    inline void setMigratedTrue()
+    {
+        // treat the first "value" as a boolean flag
+        *(reinterpret_cast<char*> (m_data)) |= static_cast<char>(MIGRATED_MASK);
         
     }
 
@@ -396,6 +408,8 @@ public:
     void freeObjectColumns();
     size_t hashCode(size_t seed) const;
     size_t hashCode() const;
+    
+
 protected:
     inline void setDeletedTrue() {
         // treat the first "value" as a boolean flag
@@ -406,14 +420,10 @@ protected:
         *(reinterpret_cast<char*> (m_data)) &= static_cast<char>(~DELETED_MASK);
     }
 
-	inline void setMigratedTrue() {
-		// treat the first "value" as a boolean flag
-		*(reinterpret_cast<char*> (m_data)) |= static_cast<char>(MIGRATED_MASK);
-	}
-	inline void setMigratedFalse() {
-		// treat the first "value" as a boolean flag
-		*(reinterpret_cast<char*> (m_data)) &= static_cast<char>(~MIGRATED_MASK);
-	}
+    inline void setMigratedFalse() {
+        // treat the first "value" as a boolean flag
+        *(reinterpret_cast<char*> (m_data)) &= static_cast<char>(~MIGRATED_MASK);
+    }
 
     inline void setDirtyTrue() {
         // treat the first "value" as a boolean flag
@@ -435,6 +445,8 @@ protected:
         // treat the first "value" as a boolean flag
         *(reinterpret_cast<char*> (m_data)) &= static_cast<char>(~EVICTED_MASK);
     }
+    
+
 
     /** The types of the columns in the tuple */
     const TupleSchema *m_schema;
