@@ -272,7 +272,7 @@ public class TPCCSimulation {
         // ZIPFIAN SKEWED WAREHOUSE ID
         else if (config.neworder_skew_warehouse) {
             assert(this.zipf_gen != null);
-            w_id = (short) this.zipf_gen.nextInt();
+            w_id = (short) (this.zipf_gen.nextInt() + parameters.starting_warehouse);
         }
         
         // HOTSPOT SKEWED WAREHOUSE ID
