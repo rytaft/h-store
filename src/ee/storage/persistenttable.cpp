@@ -552,6 +552,7 @@ bool PersistentTable::insertTuple(TableTuple &source) {
     //
     m_tmpTarget1.copyForPersistentInsert(source); // tuple in freelist must be already cleared
     m_tmpTarget1.setDeletedFalse();
+    m_tmpTarget1.setMigratedFalse();
 
     /**
      * Inserts never "dirty" a tuple since the tuple is new, but...  The
@@ -830,6 +831,25 @@ void PersistentTable::updateTupleForUndo(TableTuple &source, TableTuple &target,
         m_wrapper->rollbackTo(wrapperOffset);
     }
 }
+
+bool PersistentTable::migrateTuple(TableTuple &target)
+{
+    // May no migrate an already deleted tuple.
+    assert(target.isActive());
+
+    // The tempTuple is forever!
+    assert(&target != &m_tempTuple);
+    
+    if (target.isMigrated()){
+      return false;
+    } else {
+      target.setMigratedTrue();
+      VOLT_DEBUG("Marking tuple as migrated %s ",target.debug("").c_str());
+      return true;
+    }
+}
+
+
 
 bool PersistentTable::deleteTuple(TableTuple &target, bool deleteAllocatedStrings) {
     // May not delete an already deleted tuple.

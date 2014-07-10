@@ -162,6 +162,8 @@ class PersistentTable : public Table {
      */
     bool deleteTuple(TableTuple &tuple, bool freeAllocatedStrings);
     void deleteTupleForUndo(voltdb::TableTuple &tupleCopy, size_t elMark);
+    
+    bool migrateTuple(TableTuple &tuple );
 
     /*
      * Lookup the address of the tuple that is identical to the specified tuple.

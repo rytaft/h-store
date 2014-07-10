@@ -201,8 +201,14 @@ bool MigrationManager::extractTuple(TableTuple& tuple) {
     VOLT_ERROR("Failed to insert tuple from table '%s' into  output table '%s'",m_table->name().c_str(),m_outputTable->name().c_str());
     throw SerializableEEException(VOLT_EE_EXCEPTION_TYPE_EEEXCEPTION, "Failed to insert tuple");
   }
+ 
+  if (!m_table->migrateTuple(tuple)){
+    VOLT_ERROR("Error migrating tuple");
+  } 
   
-  m_table->deleteTuple(tuple, true);
+  //m_table->deleteTuple(tuple, true);
+  
+  
   //Count if we have taken the max tuples
   if (++m_tuplesExtracted >= m_extractTupleLimit) {
     VOLT_DEBUG("tuple limit reached: %d", m_tuplesExtracted);
@@ -235,16 +241,19 @@ bool MigrationManager::searchBTree(const RangeMap& rangeMap) {
     // look through each tuple at this key and see if it's in our range
     while(((!(tuple = m_partitionIndex->nextValueAtKey()).isNullTuple()) ||
 	   (!(tuple = m_partitionIndex->nextValue()).isNullTuple())) && inIndexRange(tuple, maxKeys)) {
-
+        if (tuple.isMigrated()){
+          VOLT_DEBUG("Skipping migrated tuple %s", tuple.debug("").c_str());
+          continue;
+        }
 #ifdef EXTRACT_STAT_ENABLED
       m_rowsExamined++;
 #endif
 
-      if(m_exactMatch || inRange(tuple, rangeMap)) {
-        if(extractTuple(tuple)) {
-          return true;
+        if(m_exactMatch || inRange(tuple, rangeMap)) {
+          if(extractTuple(tuple)) {
+            return true;
+          }
         }
-      }
     }
   }
 
@@ -257,13 +266,16 @@ bool MigrationManager::scanTable(const RangeMap& rangeMap) {
   TableIterator iterator(m_table);
   TableTuple tuple(m_table->schema());
   while (iterator.next(tuple)) {
+    if (tuple.isMigrated()){
+      continue;
+    }
 #ifdef EXTRACT_STAT_ENABLED
     m_rowsExamined++;
 #endif
 
     if(inRange(tuple, rangeMap)) {
       if(extractTuple(tuple)) {
-	return true;
+        return true;
       }
     }
 
