@@ -803,6 +803,27 @@ public final class HStoreConf {
         )
         public int reconfig_async_chunk_size_kb;
         
+        @ConfigProperty(
+                description="How many subplans should a reconfiguration be split into.",
+                defaultInt=1,
+                experimental=true
+        )
+        public int reconfig_subplan_split;
+        
+        @ConfigProperty(
+                description="Min transfer size for reconfiguration (used to merge chunks/ranges). To disable merging, set to <= 1",
+                defaultInt=0,
+                experimental=true
+        )
+        public int reconfig_min_transfer_bytes;
+        
+        @ConfigProperty(
+                description="Max transfer size for reconfiguration (used to split chunks/ranges)",
+                defaultInt=1024*1024*9,
+                experimental=true
+        )
+        public int reconfig_max_transfer_bytes;
+        
         // ----------------------------------------------------------------------------
         // Storage Options
         // ----------------------------------------------------------------------------

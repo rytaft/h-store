@@ -63,6 +63,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -119,6 +120,7 @@ import edu.brown.benchmark.AbstractProjectBuilder;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.HStoreThreadManager;
+import edu.brown.hstore.VoltProcedureInvoker;
 import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.logging.LoggerUtil;
@@ -274,6 +276,59 @@ public class BenchmarkController {
             }
         }
     };
+    
+    public class RunSysProc extends Thread {
+    	public final int waitTime;
+    	public final Client client;
+    	public final String procName;
+    	public final String[] params;
+    	
+    	public RunSysProc(int waitTime, Client client, String procName, String[] params) {
+    		this.waitTime = waitTime;
+        	this.client = client;
+        	this.procName = procName;
+        	this.params = params;
+    	}
+    	
+    	public void run() {
+    		long nowTime = System.currentTimeMillis();
+            long startTime = nowTime + waitTime;
+            while (nowTime < startTime) {
+    			long sleepTime = startTime - nowTime;
+    			try {
+    				Thread.sleep(sleepTime);
+    			} catch (InterruptedException e) {
+    				LOG.error("Error sleeping", e);
+    			}
+    			
+    			nowTime = System.currentTimeMillis();
+    		}
+    		
+    		// run sysproc
+            ClientResponse cr = null;
+            try {
+            	cr = VoltProcedureInvoker.invoke(getCatalog(), client, procName, params);
+            } 
+            catch(Exception ex) {
+            	LOG.error("Failed to execute sysproc " + procName, ex);
+            }
+            
+            if(cr != null) {
+            	Map<String, Object> m = new LinkedHashMap<String, Object>();
+            	for (int i = 0; i < cr.getResults().length; i++) {
+            		VoltTable vt = cr.getResults()[i];
+            		m.put(String.format("  [%02d]", i), vt);
+            	} // FOR
+            
+            	LOG.info(StringUtil.repeat("-", 50));
+            	LOG.info(String.format("%s Txn #%d - Status %s\n%s",
+                                   		procName,
+                                   		cr.getTransactionId(),
+                                   		cr.getStatus(),
+                                   		cr.toString()));
+            }
+    	}
+    }
     
     @SuppressWarnings("unchecked")
     public BenchmarkController(BenchmarkConfig config, CatalogContext catalogContext) {
@@ -1199,6 +1254,15 @@ public class BenchmarkController {
         }
         
         // 
+        if(m_config.procName != null) {
+        	String[] params = m_config.params;
+        	if(params == null) {
+        		params = new String[]{};
+        	}
+        	RunSysProc runSysProc = new RunSysProc(m_config.procStartTime, local_client, m_config.procName, params);
+        	runSysProc.start();
+        } 
+        
         long startTime = System.currentTimeMillis();
         nextIntervalTime += startTime;
         long nowTime = startTime;
@@ -1787,6 +1851,10 @@ public class BenchmarkController {
         boolean dumpDatabase = false;
         String dumpDatabaseDir = null;
         
+        String procName = null;
+        String[] params = null;
+        int procStartTime = 0;
+        
         // List of SiteIds that we won't start because they'll be started by the profiler
         Set<Integer> profileSiteIds = new HashSet<Integer>();
 
@@ -2026,11 +2094,34 @@ public class BenchmarkController {
             } else if (parts[0].equalsIgnoreCase("DUMPDATABASEDIR")) {
                 dumpDatabaseDir = parts[1];
                 
+            } else if (parts[0].equalsIgnoreCase("PROC")) {
+                procName = parts[1];                
+            } else if (parts[0].equalsIgnoreCase("PROCSTARTTIME")) {
+                procStartTime = Integer.parseInt(parts[1]);                
+            } else if (parts[0].equalsIgnoreCase("PARAMS")) {
+                params = new String[]{ parts[1] }; 
+            } else if (parts[0].matches("(?i)PARAM[0-9]")) {
+                if(params == null) {
+                	params = new String[10];
+                }
+            	int paramIndex = Integer.parseInt(parts[0].substring(5));
+            	params[paramIndex] = parts[1];
+                
             } else if (parts[0].equalsIgnoreCase(HStoreConstants.BENCHMARK_PARAM_PREFIX +  "INITIAL_POLLING_DELAY")) {
                 clientInitialPollingDelay = Integer.parseInt(parts[1]);
             } else {
                 clientParams.put(parts[0].toLowerCase(), parts[1]);
             }
+        }
+        
+        if(params != null) {
+        	ArrayList<String> paramsList = new ArrayList<String>();
+        	for(String param : params) {
+        		if(param != null) {
+        			paramsList.add(param);
+        		}
+        	}
+        	params = paramsList.toArray(new String[]{});
         }
 
         // Initialize HStoreConf
@@ -2147,7 +2238,10 @@ public class BenchmarkController {
                 evictable,
                 deferrable,
                 dumpDatabase,
-                dumpDatabaseDir
+                dumpDatabaseDir,
+                procName,
+                procStartTime,
+                params
         );
         
         // Always pass these parameters

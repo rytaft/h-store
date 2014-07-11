@@ -7,10 +7,8 @@ import org.json.JSONObject;
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Column;
-import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Procedure;
 import org.voltdb.catalog.Statement;
-import org.voltdb.catalog.Table;
 import org.voltdb.utils.NotImplementedException;
 
 import edu.brown.hstore.conf.HStoreConf;
@@ -22,7 +20,7 @@ import edu.brown.utils.FileUtil;
  * @author aelmore Hasher that uses a planned partition plan, stored in the
  *         database catalog. This partition plan can change over time
  */
-public class PlannedHasher extends DefaultHasher {
+public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
     public static final String YCSB_TEST = "YCSB_TEST";
@@ -147,12 +145,17 @@ public class PlannedHasher extends DefaultHasher {
         throw new NotImplementedException("Hashing without Catalog not supported");
     }
 
-    public synchronized PlannedPartitions getPlanned_partitions() {
-        return planned_partitions;
+    public synchronized ExplicitPartitions getPartitions() {
+        return (ExplicitPartitions)planned_partitions;
     }
 
     public void setReconfigCoord(ReconfigurationCoordinator reconfigCoord) {
         this.reconfigCoord = reconfigCoord;
+    }
+
+    @Override
+    public ReconfigurationPlan changePartitionPlan(String partition_json_file) throws Exception {
+        throw new NotImplementedException("TODO");
     }
 
 }

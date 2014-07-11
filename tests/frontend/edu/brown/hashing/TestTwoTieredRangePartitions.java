@@ -78,7 +78,7 @@ public class TestTwoTieredRangePartitions extends BaseTestCase {
         assertNotNull(f1);
         assert (f1.exists());
         JSONObject test_json = new JSONObject(FileUtil.readFile(f1));
-        TwoTieredRangePartitions p = new TwoTieredRangePartitions(catalogContext, test_json);
+        ExplicitPartitions p = new TwoTieredRangePartitions(catalogContext, test_json);
         p.setPartitionPlan(json_path1);
         assertEquals(1, p.getPartitionId("usertable", new Long(99)));
         assertEquals(2, p.getPartitionId("usertable", new Long(100)));
@@ -86,14 +86,14 @@ public class TestTwoTieredRangePartitions extends BaseTestCase {
 
     public void testExtractTableNames() throws Exception {
         JSONObject test_json = new JSONObject(test_json1);
-        TwoTieredRangePartitions p = new TwoTieredRangePartitions(catalogContext, test_json);
+        ExplicitPartitions p = new TwoTieredRangePartitions(catalogContext, test_json);
         Set<String> tbls = p.getExplicitPartitionedTables(test_json);
         assertTrue(tbls.contains("usertable"));
     }
 
     public void testBuildTablePartitions() throws Exception {
         JSONObject test_json = new JSONObject(test_json1);
-        TwoTieredRangePartitions p = new TwoTieredRangePartitions(catalogContext, test_json);
+        ExplicitPartitions p = new TwoTieredRangePartitions(catalogContext, test_json);
         p.setPartitionPlan(json_path1);
         assertEquals(1, p.getPartitionId("usertable", new Long(2)));
         assertEquals(1, p.getPartitionId("usertable", new Long(1)));

@@ -81,6 +81,7 @@ import com.google.protobuf.RpcCallback;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hashing.AbstractHasher;
 import edu.brown.hashing.PlannedHasher;
+import edu.brown.hashing.TwoTieredRangeHasher;
 import edu.brown.hstore.ClientInterface.ClientInputHandler;
 import edu.brown.hstore.HStoreThreadManager.ThreadGroupType;
 import edu.brown.hstore.Hstoreservice.QueryEstimate;
@@ -653,6 +654,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
             this.reconfiguration_coordinator = this.initReconfigCoordinator();
             if(this.hasher instanceof PlannedHasher){
                 ((PlannedHasher)this.hasher).setReconfigCoord(this.reconfiguration_coordinator);
+            }
+            else if(this.hasher instanceof TwoTieredRangeHasher){
+                ((TwoTieredRangeHasher)this.hasher).setReconfigCoord(this.reconfiguration_coordinator);
             }
         }
         

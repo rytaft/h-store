@@ -62,7 +62,7 @@ import edu.brown.utils.StringUtil;
  *         </ul>
  */
 
-public class TwoTieredRangePartitions implements JSONSerializable {
+public class TwoTieredRangePartitions implements JSONSerializable, ExplicitPartitions {
     private static final Logger LOG = Logger.getLogger(TwoTieredRangePartitions.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
@@ -202,13 +202,10 @@ public class TwoTieredRangePartitions implements JSONSerializable {
 
     }
 
-    /**
-     * Get the explicit partitioned tables and ensure that the old plan and the new plan have the
-     * same set of tables
-     * 
-     * @param partition_json
-     * @return the set of tables in the partition plan
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getExplicitPartitionedTables(org.json.JSONObject)
      */
+    @Override
     public Set<String> getExplicitPartitionedTables(JSONObject partition_json) {
     	try {
     		Set<String> tables = new HashSet<>();;
@@ -235,15 +232,10 @@ public class TwoTieredRangePartitions implements JSONSerializable {
         }
     }
 
-    /**
-     * Get the partition id for a given table and partition id/key
-     * 
-     * @param table_name
-     * @param id
-     * @return the partition id, or -1 / null partition if the id/key is not
-     *         found in the plan
-     * @throws Exception
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(java.lang.String, java.lang.Object)
      */
+    @Override
     public int getPartitionId(String table_name, Object id) throws Exception {
         PartitionPhase plan = this.getCurrentPlan();
         PartitionedTable<?> table = plan.getTable(table_name);
@@ -259,24 +251,27 @@ public class TwoTieredRangePartitions implements JSONSerializable {
         return table.findPartition(id);
     }
 
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
+     */
+    @Override
     public int getPartitionId(CatalogType catalog, Object id) throws Exception {
         String table_name = this.catalog_to_table_map.get(catalog);
         return this.getPartitionId(table_name, id);
     }
 
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getTableName(org.voltdb.catalog.CatalogType)
+     */
+    @Override
     public String getTableName(CatalogType catalog) {
         return this.catalog_to_table_map.get(catalog);
     }
 
-    /**
-     * Get the previous partition id for a given table and partition id/key
-     * 
-     * @param table_name
-     * @param id
-     * @return the partition id, or -1 / null partition if the id/key is not
-     *         found in the plan OR if there is no previous plan
-     * @throws Exception
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPreviousPartitionId(java.lang.String, java.lang.Object)
      */
+    @Override
     public int getPreviousPartitionId(String table_name, Object id) throws Exception {
         PartitionPhase previousPlan = this.getPreviousPlan();
         if (previousPlan == null)
@@ -286,21 +281,27 @@ public class TwoTieredRangePartitions implements JSONSerializable {
         return table.findPartition(id);
     }
 
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPreviousPartitionId(org.voltdb.catalog.CatalogType, java.lang.Object)
+     */
+    @Override
     public int getPreviousPartitionId(CatalogType catalog, Object id) throws Exception {
         String table_name = this.catalog_to_table_map.get(catalog);
         return this.getPartitionId(table_name, id);
     }
 
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#setPartitionPlan(java.io.File)
+     */
+    @Override
     public ReconfigurationPlan setPartitionPlan(File partition_json_file) throws Exception {
     	return setPartitionPlan(new JSONObject(FileUtil.readFile(partition_json_file)));
     }
 
-    /**
-     * Update the current partition plan
-     * 
-     * @param partition_json
-     * @return The delta between the plans or null if there is no change
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#setPartitionPlan(org.json.JSONObject)
      */
+    @Override
     public ReconfigurationPlan setPartitionPlan(JSONObject partition_json) {
         try {
         	// check that the new tables match the old tables
@@ -333,16 +334,18 @@ public class TwoTieredRangePartitions implements JSONSerializable {
 
     }
     
-    /**
-     * @return the current partition plan
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getCurrentPlan()
      */
+    @Override
     public synchronized PartitionPhase getCurrentPlan() {
         return this.partition_plan;
     }
 
-    /**
-     * @return the previous partition plan
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getPreviousPlan()
      */
+    @Override
     public synchronized PartitionPhase getPreviousPlan() {
         return this.old_partition_plan;
     }
@@ -351,6 +354,9 @@ public class TwoTieredRangePartitions implements JSONSerializable {
     /*
      * (non-Javadoc)
      * @see org.json.JSONString#toJSONString()
+     */
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#toJSONString()
      */
     @Override
     public String toJSONString() {
@@ -361,6 +367,9 @@ public class TwoTieredRangePartitions implements JSONSerializable {
     /*
      * (non-Javadoc)
      * @see edu.brown.utils.JSONSerializable#save(java.io.File)
+     */
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#save(java.io.File)
      */
     @Override
     public void save(File output_path) throws IOException {
@@ -373,6 +382,9 @@ public class TwoTieredRangePartitions implements JSONSerializable {
      * @see edu.brown.utils.JSONSerializable#load(java.io.File,
      * org.voltdb.catalog.Database)
      */
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#load(java.io.File, org.voltdb.catalog.Database)
+     */
     @Override
     public void load(File input_path, Database catalog_db) throws IOException {
         // TODO Auto-generated method stub
@@ -382,6 +394,9 @@ public class TwoTieredRangePartitions implements JSONSerializable {
     /*
      * (non-Javadoc)
      * @see edu.brown.utils.JSONSerializable#toJSON(org.json.JSONStringer)
+     */
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#toJSON(org.json.JSONStringer)
      */
     @Override
     public void toJSON(JSONStringer stringer) throws JSONException {
@@ -394,12 +409,19 @@ public class TwoTieredRangePartitions implements JSONSerializable {
      * @see edu.brown.utils.JSONSerializable#fromJSON(org.json.JSONObject,
      * org.voltdb.catalog.Database)
      */
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#fromJSON(org.json.JSONObject, org.voltdb.catalog.Database)
+     */
     @Override
     public void fromJSON(JSONObject json_object, Database catalog_db) throws JSONException {
         // TODO Auto-generated method stub
 
     }
 
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#getRelatedTablesMap()
+     */
+    @Override
     public Map<String, List<String>> getRelatedTablesMap() {
         return relatedTablesMap;
     }
