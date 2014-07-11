@@ -1110,8 +1110,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         if (nextTxn.isPredictSinglePartition()) {
                             LocalTransaction localTxn = (LocalTransaction) nextTxn;
                             nextWork = localTxn.getStartTxnMessage();
-                            if (hstore_conf.site.txn_profiling && localTxn.profiler != null)
-                                localTxn.profiler.startQueueExec();
+                            if (hstore_conf.site.txn_profiling && localTxn.profiler != null){
+                                long txnQueueTime = localTxn.profiler.startQueueExec();
+                                if (localTxn.isArrivedInReconfig()){
+                                    daljadjl test this not working
+                                    this.reconfiguration_coordinator.profilers[this.partitionId].queueReconfigTotalTime+=txnQueueTime;
+                                    this.reconfiguration_coordinator.profilers[this.partitionId].queueReconfigTotalInvocations++;
+                                } else {
+                                    this.reconfiguration_coordinator.profilers[this.partitionId].queueTotalTime+=txnQueueTime;
+                                    this.reconfiguration_coordinator.profilers[this.partitionId].queueTotalInvocations++;
+                                }
+                            }
                         }
                         // If it's as distribued txn, then we'll want to just
                         // set it as our

@@ -66,6 +66,7 @@ public class ProfileMeasurement implements JSONSerializable {
     private long total_time;
     /** The number of times that this ProfileMeasurement has been started */
     private int invocations = 0;
+    private long last_time = -1;
 
     private Buffer<Long> history = null;
     
@@ -300,6 +301,7 @@ public class ProfileMeasurement implements JSONSerializable {
         } else {
             this.total_time += added;
             if (this.history != null) this.history.add(added);
+            this.last_time = added;
         }
         this.marker = NULL_MARKER;
         if (this.stop_observable != null)
@@ -480,5 +482,9 @@ public class ProfileMeasurement implements JSONSerializable {
                 this.history.add(json_arr.getLong(i));
             } // FOR
         }
+    }
+
+    public long getLast_time() {
+        return last_time;
     }
 }

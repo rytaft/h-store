@@ -116,6 +116,12 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
             // new ConcurrentLinkedQueue<Pair<LocalTransaction, Status>>(); 
     
     // ----------------------------------------------------------------------------
+    // RECONFIG
+    // ----------------------------------------------------------------------------
+    private boolean reconfigEnabled;
+    private boolean inReconfig;
+    
+    // ----------------------------------------------------------------------------
     // INTIALIZATION
     // ----------------------------------------------------------------------------
     
@@ -135,6 +141,9 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
         this.initQueue = new LinkedBlockingQueue<AbstractTransaction>();
         this.restartQueue = new LinkedBlockingQueue<Pair<LocalTransaction,Status>>();
         this.profilers = new TransactionQueueManagerProfiler[catalogContext.numberOfPartitions];
+        
+        this.reconfigEnabled = hstore_conf.global.reconfiguration_enable;
+        this.inReconfig = false;
         
         // Initialize internal queues
         for (int partition : this.localPartitions.values()) {
@@ -345,6 +354,9 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
             // If this txn gets rejected when we try to insert it, then we 
             // just need to stop trying to add it to other partitions
             if (ret) {
+                if(reconfigEnabled && inReconfig){
+                    nextTxn.setArrivedInReconfig(true);
+                }
                 status = this.lockQueueInsert(nextTxn, partition, callback);
                 if (status != Status.OK) ret = false;
             // IMPORTANT: But we still need to go through and decrement the
@@ -875,5 +887,13 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
             cachedDebugContext = new TransactionQueueManager.Debug();
         }
         return cachedDebugContext;
+    }
+
+    public boolean isInReconfig() {
+        return inReconfig;
+    }
+
+    public void setInReconfig(boolean inReconfig) {
+        this.inReconfig = inReconfig;
     }
 }

@@ -29,5 +29,10 @@ public class ReconfigurationProfiler extends AbstractProfiler {
     public FastIntHistogram pe_block_queue_size = new FastIntHistogram(true);
     public FastIntHistogram pe_block_queue_size_growth = new FastIntHistogram(true);
     public FastIntHistogram pe_extract_queue_size_growth = new FastIntHistogram(true);
+
+    public long queueTotalTime =0;
+    public long queueTotalInvocations =0;
     
+    public long queueReconfigTotalTime =0;
+    public long queueReconfigTotalInvocations =0;
 }

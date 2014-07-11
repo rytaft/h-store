@@ -55,6 +55,7 @@ import edu.brown.hstore.Hstoreservice.ReconfigurationControlType;
 import edu.brown.hstore.Hstoreservice.ReconfigurationRequest;
 import edu.brown.hstore.Hstoreservice.ReconfigurationResponse;
 import edu.brown.hstore.PartitionExecutor;
+import edu.brown.hstore.TransactionQueueManager;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.internal.AsyncDataPullRequestMessage;
 import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
@@ -145,6 +146,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     
     private List<ReconfigurationPlan> reconfigPlanQueue;
     private int reconfig_split = 1;
+    private TransactionQueueManager queueManager;
     
     public static long STOP_COPY_TXNID = -2L;
     
@@ -184,7 +186,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.partitionStates = new ConcurrentHashMap<Integer, ReconfigurationCoordinator.ReconfigurationState>();
         this.hstore_conf = hstore_conf;
         executorMap = new HashMap<>();
-
+        this.queueManager = hstore_site.getTransactionQueueManager();
         int num_partitions = hstore_site.getCatalogContext().numberOfPartitions;
         this.num_of_sites = hstore_site.getCatalogContext().numberOfSites;
         if(hstore_conf.site.reconfig_profiling) 
@@ -302,6 +304,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
         // We may have reconfiguration initialized by PEs so need to ensure
         // atomic
         if (this.reconfigurationInProgress.compareAndSet(false, true)) {
+
+            this.queueManager.setInReconfig(true);
             LOG.info("Initializing reconfiguration. New reconfig plan.");
             livePullKBMap = new HashMap<>();
             for (PartitionExecutor executor : this.local_executors) {
@@ -410,7 +414,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         for (PartitionExecutor executor : this.local_executors) {
                         	if(abortsEnabledForStopCopy){
                         		executor.haltProcessing();
-                                hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId());
+                                queueManager.clearQueues(executor.getPartitionId());
                         	}
                         }
                         
@@ -597,6 +601,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         
     private void sendNextPlanToAllSites(){
     	this.reconfigurationInProgress.set(true);
+        this.queueManager.setInReconfig(true);
         //Reconfiguration leader sends ack that reconfiguration has been done
         FileUtil.appendEventToFile("RECONFIGURATION_SEND_NEXT_PLAN, siteId="+this.hstore_site.getSiteId() + " plansRemaining=" + this.reconfigPlanQueue.size());
         for(int i = 0;i < num_of_sites;i++){
@@ -636,6 +641,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 }
                 //sendNextPlanToAllSites();
                 this.reconfigurationInProgress.set(false);
+                this.queueManager.setInReconfig(false);
                 SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
                 send.start();
             } else { 
@@ -682,6 +688,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      */
     public void endReconfiguration() {
         this.reconfigurationInProgress.set(false);
+        this.queueManager.setInReconfig(false);
         LOG.info("Clearing the reconfiguration state for each partition at the site");
         for (PartitionExecutor executor : this.local_executors) {
             executor.endReconfiguration();
@@ -719,6 +726,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 //FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
                 //sendNextPlanToAllSites();
                 this.reconfigurationInProgress.set(false);
+                this.queueManager.setInReconfig(false);
                 SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
                 send.start();
             } else { 
@@ -748,6 +756,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.reconfigurationLeader = -1;
         this.reconfigurationProtocol = null;
         this.reconfigurationInProgress.set(false);
+        this.queueManager.setInReconfig(false);
     }
 
     // -------------------------------------------
@@ -1574,6 +1583,19 @@ public class ReconfigurationCoordinator implements Shutdownable {
         LOG.info(logMsg);
         if (writeToEventLog) FileUtil.appendEventToFile(logMsg);
     }
+
+    public static void reportProfiler(String desc, long total, long invocation, int partitionId, boolean writeToEventLog){
+        if (total == 0)
+            return;
+        String logMsg = String.format("%s, average=%.2f, invocations=%s, PartitionId=%s",
+                desc,
+                ((double)total/invocation),
+                invocation,
+                partitionId);
+        LOG.info(logMsg);
+        if (writeToEventLog) FileUtil.appendEventToFile(logMsg);
+    }
+
     
     public void showReconfigurationProfiler(boolean writeToEventLog) {
         if(hstore_conf.site.reconfig_profiling) {
@@ -1616,7 +1638,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id, writeToEventLog);
                     reportProfiler("REPORT_AVG_SRC_DATA_PULL_PROC",this.profilers[p_id].src_data_pull_req_proc_time, p_id, writeToEventLog);                    
                 }
-                
+                reportProfiler("AVG_QUEUE_TXN", this.profilers[p_id].queueTotalTime, this.profilers[p_id].queueTotalInvocations, p_id, writeToEventLog);
+                reportProfiler("AVG_QUEUE_RECONFIG_TXN", this.profilers[p_id].queueReconfigTotalTime, this.profilers[p_id].queueReconfigTotalInvocations, p_id, writeToEventLog);
                 
                 
             }

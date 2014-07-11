@@ -639,19 +639,19 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         LOG.info("Using plan: %s" % plan_path)
         fabric.env['global.hasher_plan'] = plan_path
 
-    if 'splitplan' in args:
+    if 'splitplan' in args and type(args['splitplan']) == int and args['splitplan'] is not None:
         fabric.env['site.reconfig_subplan_split']=args['splitplan']
 
-    if 'plandelay' in args:
+    if 'plandelay' in args  and type(args['plandelay']) == int and args['plandelay'] is not None:
         fabric.env['site.reconfig_plan_delay']=args['plandelay']
 
-    if 'asyncdelay' in args:
+    if 'asyncdelay' in args and type(args['asyncdelay']) == int and args['asyncdelay'] is not None:
         fabric.env['site.reconfig_async_delay_ms']=args['asyncdelay']
 
-    if 'asyncsize' in args:
+    if 'asyncsize' in args and type(args['asyncsize']) == int and args['asyncsize'] is not None:
         fabric.env['site.reconfig_async_chunk_size_kb']=args['asyncsize']
         
-    if 'chunksize' in args:
+    if 'chunksize' in args and type(args['splitplan']) == int and args['splitplan'] is not None:
         fabric.env['site.reconfig_chunk_size_kb']=args['chunksize']
 	
     if args['exp_type'] == 'reconfig-test':
