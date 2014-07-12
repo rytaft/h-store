@@ -517,7 +517,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
             fabric.env["benchmark.neworder_multip_remote"] = True
             fabric.env["benchmark.payment_multip_remote"] = True
             fabric.env["benchmark.temporal_skew_mix"] = hotspotPcnt
-            fabric.env["benchmark.neworder_skew_warehouse"] = True
+            fabric.env["benchmark.neworder_skew_warehouse"] = False
         
         ## ----------------------------------------------
         ## HERMES!
