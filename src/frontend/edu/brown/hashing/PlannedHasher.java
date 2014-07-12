@@ -13,6 +13,7 @@ import org.voltdb.catalog.Column;
 import org.voltdb.catalog.Procedure;
 import org.voltdb.catalog.Statement;
 import org.voltdb.utils.NotImplementedException;
+import org.voltdb.utils.Pair;
 
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator;
@@ -28,7 +29,8 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
     public static final String YCSB_TEST = "YCSB_TEST";
     public static final String TPCC_TEST = "TPCC_TEST";
-
+    Pair< List<CatalogType>, List<Object>> pair;
+    
     String ycsb_plan = "{"+
             "       \"default_table\":\"usertable\"," +        
             "       \"partition_plans\":{"+
@@ -116,6 +118,8 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
             }
             
             planned_partitions = new PlannedPartitions(catalogContext, partition_json);
+
+            this.enableLookupCache();
         } catch (Exception ex) {
             LOG.error("Error intializing planned partitions", ex);
             throw new RuntimeException(ex);
@@ -127,6 +131,7 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
      */
     public PlannedHasher(CatalogContext catalogContext) {
         super(catalogContext);
+        this.enableLookupCache();
     }
 
     @Override
@@ -172,22 +177,37 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     	}
     
         try {
+            Integer partition = -1;
+            pair = new Pair<>(catalogItems, values);
+            if (lookupCache!= null &&  lookupCache.containsKey(pair)){
+                Object ret = lookupCache.get(pair);
+                if (ret != null)
+                    return (Integer)ret;
+                else
+                    LOG.info("found null");
+            }
             //If we do not have an RC, or there is an RC but no reconfig is in progress
             if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !reconfigCoord.getReconfigurationInProgress())){
             	if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s",catalogItems.get(0),values.get(0),planned_partitions.getPartitionId(catalogItems, values)));
-                return planned_partitions.getPartitionId(catalogItems, values);
+                partition = planned_partitions.getPartitionId(catalogItems, values);
             } else {
                 int expectedPartition = planned_partitions.getPartitionId(catalogItems, values);
                 int previousPartition = planned_partitions.getPreviousPartitionId(catalogItems, values);
                 if (expectedPartition == previousPartition) {
                     //The item isn't moving
-                    return expectedPartition;
+                    partition = expectedPartition;
                 } else {
                     //the item is moving
                     //check with RC on which partition. 
-                    return reconfigCoord.getPartitionId(previousPartition, expectedPartition, catalogItems, values);
+                    partition =reconfigCoord.getPartitionId(previousPartition, expectedPartition, catalogItems, values);
                 }
             }
+            
+            if (lookupCache != null && partition != null && partition >= 0){
+                lookupCache.put(pair, partition);
+            }
+            return partition.intValue();
+            
         } catch (Exception e) {
             LOG.error("Error on looking up partitionId from planned partition", e);
             throw new RuntimeException(e);
@@ -217,5 +237,7 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     public boolean hasMultiColumnRanges() {
     	return true;
     }
+
+
 
 }

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.commons.collections.map.LRUMap;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
@@ -21,6 +22,8 @@ public abstract class AbstractHasher implements JSONSerializable {
     protected final int num_partitions;
     protected final CatalogContext catalogContext;
     protected final HStoreConf hstore_conf;
+    protected LRUMap lookupCache = null;
+    
     public AbstractHasher(CatalogContext catalogContext, int num_partitions, HStoreConf hstore_conf) {
         this.catalogContext = catalogContext;
         this.num_partitions = num_partitions;
@@ -111,5 +114,20 @@ public abstract class AbstractHasher implements JSONSerializable {
     @Override
     public String toJSONString() {
         return (JSONUtil.toJSONString(this));
+    }
+    
+    public void resetLookupCache() {
+        if(lookupCache != null)
+            lookupCache.clear();
+        else 
+            LOG.error("Resetting a disabled lookup cache");
+    }
+
+    public void disableLookupCache() {        
+        lookupCache = null;
+    }
+
+    public void enableLookupCache() {
+        lookupCache = new LRUMap(1000);        
     }
 }

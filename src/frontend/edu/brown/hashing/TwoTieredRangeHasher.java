@@ -3,19 +3,17 @@
  */
 package edu.brown.hashing;
 
-import org.json.JSONObject;
-
 import java.util.Arrays;
 import java.util.List;
 
+import org.json.JSONObject;
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Column;
-import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Procedure;
 import org.voltdb.catalog.Statement;
-import org.voltdb.catalog.Table;
 import org.voltdb.utils.NotImplementedException;
+import org.voltdb.utils.Pair;
 
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator;
@@ -29,6 +27,7 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
     public static final String YCSB_TEST = "YCSB_TEST";
+    Pair< List<CatalogType>, List<Object>> pair;
 
     String ycsb_plan = "{"+
             "       \"default_table\":\"usertable\"," +        
