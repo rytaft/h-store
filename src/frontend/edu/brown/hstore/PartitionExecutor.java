@@ -1243,15 +1243,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         
         if (hstore_conf.global.reconfiguration_enable && reconfig_plan != null){
             this.idle_click_count+=1;
-            if (this.inReconfiguration && reconfiguration_coordinator.queueAsyncPull()) {
+            if (this.inReconfiguration && queue_async_pulls) {
                 if (this.asyncRequestPullQueue.isEmpty() == false 
                         && (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )){
                     //IF the async queue has work and we have passed cycles
                     if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS) {
-                        LOG.info(String.format(" ### Adding the next async pull from the asyncRequestPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s",
+                        LOG.debug(String.format(" ### Adding the next async pull from the asyncRequestPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s",
     					   asyncRequestPullQueue.size(),idle_click_count));
                     } else {
-                        LOG.info(String.format(" ### Adding the next async pull from the asyncRequestPullQueue due to time. Items : %s  IdleCount:%s", 
+                        LOG.debug(String.format(" ### Adding the next async pull from the asyncRequestPullQueue due to time. Items : %s  IdleCount:%s", 
     					   asyncRequestPullQueue.size(),idle_click_count));
                     }
                     this.idle_click_count = 0;
@@ -1261,9 +1261,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         && ((idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS )  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )) {
                     //IF the scheduleAsync queue has work and we have passed cycles
                     if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS) {
-                        LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
+                        LOG.debug(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
                     } else {
-                        LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to time. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
+                        LOG.debug(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to time. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
                     }     
                     if(asyncOutstanding.get()) {
                         LOG.warn("Offering async request to the work queue when there is already an async request in progress");
@@ -6391,6 +6391,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private long currentLiveDataLoaded = 0;
     private long currentLiveRows = 0;
     private boolean inReconfiguration;
+    private boolean queue_async_pulls;
     private static int MAX_PULL_ASYNC_EVERY_CLICKS=700000;
 
 
@@ -6418,6 +6419,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.outgoing_ranges = reconfig_plan.getOutgoing_ranges().get(this.partitionId);
         this.incoming_ranges = reconfig_plan.getIncoming_ranges().get(this.partitionId);
         this.reconfiguration_tracker = new ReconfigurationTracking(planned_partitions, reconfig_plan, this.partitionId);
+        this.queue_async_pulls = false;
         if (asyncOutstanding.getAndSet(false)){
             LOG.warn("Async Outstanding was set to true!!!");
         }
@@ -6454,6 +6456,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
             else if (this.reconfiguration_coordinator.queueAsyncPull()){
                 LOG.info("Queueing chunked asynch pulls");           
+                this.queue_async_pulls = this.reconfiguration_coordinator.queueAsyncPull();
                 queueInitialAsyncPullRequests(incoming_ranges);
             }
             else {
