@@ -292,7 +292,7 @@ void TupleTrackerManager::getTopKPerPart(int k){
 	//long int kk = (v_tupleTrackingInfo.size()/ratio + (v_tupleTrackingInfo.size() % ratio != 0)); // ceil (size * (1/ratio) )
 
 	//For TPCC
-	int ratio = 1; // all
+	int ratio = 2; // 50%
 	long int kk = (v_tupleTrackingInfo.size()/ratio + (v_tupleTrackingInfo.size() % ratio != 0)); // ceil (size * (1/ratio) )
 
     //header first line
