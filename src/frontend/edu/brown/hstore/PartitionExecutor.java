@@ -781,6 +781,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.tmp_transactionRequestBuilders = null;
         this.reconfig_state = ReconfigurationState.NORMAL;
         this.pullStartTime = new HashMap<>();
+        this.inReconfiguration = false;
     }
 
     /**
@@ -809,7 +810,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.lastUndoToken = this.partitionId * 1000000;
         this.p_estimator = p_estimator;
         this.localTxnEstimator = t_estimator;
-
+        this.inReconfiguration = false;
         this.reconfig_state = ReconfigurationState.NORMAL;
         this.specExecComparator = new TransactionUndoTokenComparator(this.partitionId);
         
@@ -1113,7 +1114,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             if (hstore_conf.site.txn_profiling && localTxn.profiler != null){
                                 long txnQueueTime = localTxn.profiler.startQueueExec();
                                 if (localTxn.isArrivedInReconfig()){
-                                    daljadjl test this not working
+                                    //daljadjl test this not working
                                     this.reconfiguration_coordinator.profilers[this.partitionId].queueReconfigTotalTime+=txnQueueTime;
                                     this.reconfiguration_coordinator.profilers[this.partitionId].queueReconfigTotalInvocations++;
                                 } else {
@@ -1242,7 +1243,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         
         if (hstore_conf.global.reconfiguration_enable && reconfig_plan != null){
             this.idle_click_count+=1;
-            if (reconfiguration_coordinator.getReconfigurationInProgress() && reconfiguration_coordinator.queueAsyncPull()) {
+            if (this.inReconfiguration && reconfiguration_coordinator.queueAsyncPull()) {
                 if (this.asyncRequestPullQueue.isEmpty() == false 
                         && (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )){
                     //IF the async queue has work and we have passed cycles
@@ -3730,7 +3731,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                                Map<Integer, List<VoltTable>> input_deps) {
         assert(this.ee != null) : "The EE object is null. This is bad!";
 
-        if (reconfiguration_coordinator != null && reconfiguration_coordinator.getReconfigurationInProgress()) {
+        if (this.inReconfiguration) {
             if(reconfiguration_coordinator.isLive_pull()) {
             	checkReconfigurationTracking(fragmentIds, parameterSets, ts.isPredictSinglePartition());
             } else {
@@ -6389,6 +6390,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private int idle_click_count;
     private long currentLiveDataLoaded = 0;
     private long currentLiveRows = 0;
+    private boolean inReconfiguration;
     private static int MAX_PULL_ASYNC_EVERY_CLICKS=700000;
 
 
@@ -6412,6 +6414,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.reconfig_plan = reconfig_plan;        
         this.reconfig_protocol = reconfig_protocol;
         this.reconfig_state = reconfig_state;
+        this.inReconfiguration = true;
         this.outgoing_ranges = reconfig_plan.getOutgoing_ranges().get(this.partitionId);
         this.incoming_ranges = reconfig_plan.getIncoming_ranges().get(this.partitionId);
         this.reconfiguration_tracker = new ReconfigurationTracking(planned_partitions, reconfig_plan, this.partitionId);
@@ -6479,27 +6482,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         return this.reconfiguration_stats;
     }
 
-    public void startReconfiguration() throws Exception {
-        // TODO : Check if this function is even called / needed, remove if it
-        // is not
-        // because STOP and COPY procedure handles it directly
-        LOG.info(String.format("Starting reconfiguration"));
-        if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY) {
-            LOG.info("starting stopcopy");
-            Table catalog_tbl = null;
-            VoltTable table = null;
-            for (ReconfigurationRange out_range : outgoing_ranges) {
-
-                catalog_tbl = catalogContext.getTableByName(out_range.getTableName());
-                table = CatalogUtil.getVoltTable(catalog_tbl);
-                // TODO ae leftoff
-                // Push Tuples is not called from here
-                // reconfiguration_coordinator.pushTuples(
-                // this.partitionId, out_range.new_partition,
-                // out_range.table_name, table);
-            }
-        }
-    }
 
     /**
      * Clear the reconfiguration state after reconfiguration ends
@@ -6520,6 +6502,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.outgoing_ranges = null;
         this.incoming_ranges = null;
         this.reconfiguration_tracker = null;
+        this.inReconfiguration = false;
     }
     
     public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, List<Long> minInclusiveList, 

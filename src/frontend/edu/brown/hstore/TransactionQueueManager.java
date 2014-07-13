@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.log4j.Logger;
@@ -119,7 +120,7 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
     // RECONFIG
     // ----------------------------------------------------------------------------
     private boolean reconfigEnabled;
-    private boolean inReconfig;
+    public AtomicBoolean inReconfig;
     
     // ----------------------------------------------------------------------------
     // INTIALIZATION
@@ -143,7 +144,7 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
         this.profilers = new TransactionQueueManagerProfiler[catalogContext.numberOfPartitions];
         
         this.reconfigEnabled = hstore_conf.global.reconfiguration_enable;
-        this.inReconfig = false;
+        this.inReconfig = new AtomicBoolean(false);
         
         // Initialize internal queues
         for (int partition : this.localPartitions.values()) {
@@ -354,7 +355,7 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
             // If this txn gets rejected when we try to insert it, then we 
             // just need to stop trying to add it to other partitions
             if (ret) {
-                if(reconfigEnabled && inReconfig){
+                if(reconfigEnabled && inReconfig.get()){
                     nextTxn.setArrivedInReconfig(true);
                 }
                 status = this.lockQueueInsert(nextTxn, partition, callback);
@@ -889,11 +890,6 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
         return cachedDebugContext;
     }
 
-    public boolean isInReconfig() {
-        return inReconfig;
-    }
 
-    public void setInReconfig(boolean inReconfig) {
-        this.inReconfig = inReconfig;
-    }
+
 }

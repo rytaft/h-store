@@ -141,7 +141,7 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
             	List<CatalogType> catalogList = Arrays.asList(catalogItem);
             	List<Object> valueList = Arrays.asList(value);
                 //If we do not have an RC, or there is an RC but no reconfig is in progress
-                if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !reconfigCoord.getReconfigurationInProgress())){
+                if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !this.inReconfiguration.get())){
                     if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s Phase:%s",catalogItem,value,planned_partitions.getPartitionId(catalogList, valueList),planned_partitions.getCurrent_phase()));
                     return planned_partitions.getPartitionId(catalogList, valueList);
                 } else {
@@ -173,7 +173,7 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     
         try {
             //If we do not have an RC, or there is an RC but no reconfig is in progress
-            if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !reconfigCoord.getReconfigurationInProgress())){
+            if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !this.inReconfiguration.get())){
             	if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s",catalogItems.get(0),values.get(0),planned_partitions.getPartitionId(catalogItems, values)));
                 return planned_partitions.getPartitionId(catalogItems, values);
             } else {

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -21,10 +22,13 @@ public abstract class AbstractHasher implements JSONSerializable {
     protected final int num_partitions;
     protected final CatalogContext catalogContext;
     protected final HStoreConf hstore_conf;
+    
+    public AtomicBoolean inReconfiguration;
     public AbstractHasher(CatalogContext catalogContext, int num_partitions, HStoreConf hstore_conf) {
         this.catalogContext = catalogContext;
         this.num_partitions = num_partitions;
         this.hstore_conf = hstore_conf;
+        this.inReconfiguration = new AtomicBoolean(false);
     }
     
     /**
@@ -93,7 +97,10 @@ public abstract class AbstractHasher implements JSONSerializable {
      * @return
      */
     public abstract int hash(Object value, int num_partitions);
+
+
     
+     
     // -----------------------------------------------------------------
     // SERIALIZATION
     // -----------------------------------------------------------------

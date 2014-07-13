@@ -19,10 +19,7 @@ import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.jfree.util.Log;
 import org.voltdb.VoltTable;
-import org.voltdb.VoltType;
 import org.voltdb.catalog.CatalogType;
-import org.voltdb.catalog.Column;
-import org.voltdb.catalog.ColumnRef;
 import org.voltdb.catalog.Table;
 import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 import org.voltdb.messaging.FastDeserializer;
@@ -31,7 +28,6 @@ import org.voltdb.messaging.FastSerializer;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
 
-import edu.brown.catalog.CatalogUtil;
 import edu.brown.hashing.AbstractHasher;
 import edu.brown.hashing.ExplicitHasher;
 import edu.brown.hashing.ExplicitPartitions;
@@ -39,7 +35,6 @@ import edu.brown.hashing.PlannedHasher;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hashing.TwoTieredRangeHasher;
-import edu.brown.hashing.TwoTieredRangePartitions;
 import edu.brown.hstore.HStoreSite;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
@@ -111,7 +106,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private ReconfigurationState reconfigurationState;
     // Hostname of the reconfiguration leader site
     private Integer reconfigurationLeader;
-    private AtomicBoolean reconfigurationInProgress;
+    public AtomicBoolean reconfigurationInProgress;
     private ReconfigurationPlan currentReconfigurationPlan;
     private ReconfigurationProtocols reconfigurationProtocol;
     private String currentPartitionPlan;
@@ -305,8 +300,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
         // atomic
         if (this.reconfigurationInProgress.compareAndSet(false, true)) {
 
-            this.queueManager.setInReconfig(true);
             LOG.info("Initializing reconfiguration. New reconfig plan.");
+            this.setInReconfiguration(true);
             livePullKBMap = new HashMap<>();
             for (PartitionExecutor executor : this.local_executors) {
                 livePullKBMap.put(executor.getPartitionId(),new Integer(0));
@@ -599,9 +594,15 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
     }
         
+    private void setInReconfiguration(boolean inReconfig) {
+        this.reconfigurationInProgress.set(inReconfig);
+        this.queueManager.inReconfig.set(inReconfig);
+        this.hstore_site.getHasher().inReconfiguration.set(inReconfig);
+        
+    }
+    
     private void sendNextPlanToAllSites(){
-    	this.reconfigurationInProgress.set(true);
-        this.queueManager.setInReconfig(true);
+        setInReconfiguration(true);
         //Reconfiguration leader sends ack that reconfiguration has been done
         FileUtil.appendEventToFile("RECONFIGURATION_SEND_NEXT_PLAN, siteId="+this.hstore_site.getSiteId() + " plansRemaining=" + this.reconfigPlanQueue.size());
         for(int i = 0;i < num_of_sites;i++){
@@ -640,8 +641,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     this.reconfigurationDoneSites = new HashSet<Integer>();
                 }
                 //sendNextPlanToAllSites();
-                this.reconfigurationInProgress.set(false);
-                this.queueManager.setInReconfig(false);
+                this.setInReconfiguration(false);
                 SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
                 send.start();
             } else { 
@@ -687,8 +687,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * end of reconfiguration
      */
     public void endReconfiguration() {
-        this.reconfigurationInProgress.set(false);
-        this.queueManager.setInReconfig(false);
+        this.setInReconfiguration(false);
         LOG.info("Clearing the reconfiguration state for each partition at the site");
         for (PartitionExecutor executor : this.local_executors) {
             executor.endReconfiguration();
@@ -725,8 +724,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 }
                 //FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
                 //sendNextPlanToAllSites();
-                this.reconfigurationInProgress.set(false);
-                this.queueManager.setInReconfig(false);
+                this.setInReconfiguration(false);
                 SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
                 send.start();
             } else { 
@@ -755,8 +753,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.currentReconfigurationPlan = null;
         this.reconfigurationLeader = -1;
         this.reconfigurationProtocol = null;
-        this.reconfigurationInProgress.set(false);
-        this.queueManager.setInReconfig(false);
+        this.setInReconfiguration(false);
     }
 
     // -------------------------------------------
@@ -1447,9 +1444,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         return live_pull;
     }
     
-    public boolean getReconfigurationInProgress() {
-        return this.reconfigurationInProgress.get();
-    }
+
     
     public boolean areAbortsEnabledForStopCopy(){
     	return abortsEnabledForStopCopy;
