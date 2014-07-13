@@ -118,7 +118,7 @@ public class StopCopy extends VoltSystemProcedure {
                             Object row[] = null;
                             for (ReconfigurationRange range : outgoing_ranges) {
                                 catalog_tbl = this.catalogContext.getTableByName(range.getTableName());
-                                Pair<VoltTable, Boolean> res = executor.extractTableLive(catalog_tbl, range, 1);
+                                Pair<VoltTable, Boolean> res = executor.extractTable(catalog_tbl, range, -1, -1, true);
                                 table = res.getFirst();
                                 if (res.getSecond().booleanValue()){
                                     LOG.error("More data coming in stop and copy. This is deprecated");

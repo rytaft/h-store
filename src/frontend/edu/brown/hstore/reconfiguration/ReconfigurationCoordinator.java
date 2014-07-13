@@ -835,7 +835,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
         }
         
-        executor.receiveTuples(0L, partitionId, newPartitionId, table_name, minInclusive, maxExclusive, vt, moreData, false, -1);
+        executor.receiveTuples(0L, partitionId, newPartitionId, table_name, minInclusive, maxExclusive, vt, moreData, false, -1, -1);
         DataTransferResponse response = DataTransferResponse.newBuilder().setNewPartition(newPartitionId).setOldPartition(partitionId).setT0S(sentTimeStamp).setSenderSite(sourceId)
                 .setVoltTableName(table_name).setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes).build();
         return response;
@@ -1154,7 +1154,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
     }
 
-    public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, List<Long> min_inclusive, 
+    public void receiveLivePullTuples(int livePullId, int chunkId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, List<Long> min_inclusive, 
     		List<Long> max_exclusive, VoltTable voltTable, boolean moreDataNeeded) {
     	    	
     	assert(min_inclusive.size() == max_exclusive.size());
@@ -1162,11 +1162,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
     	VoltTable min_incl = ReconfigurationUtil.getVoltTable(table, min_inclusive);
         VoltTable max_excl = ReconfigurationUtil.getVoltTable(table, max_exclusive);
         
-        receiveLivePullTuples(livePullId, txnId, oldPartitionId, newPartitionId, table_name, min_incl, max_excl, voltTable, moreDataNeeded);
+        receiveLivePullTuples(livePullId, chunkId, txnId, oldPartitionId, newPartitionId, table_name, min_incl, max_excl, voltTable, moreDataNeeded);
     }
     
     
-    public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable min_inclusive, 
+    public void receiveLivePullTuples(int livePullId, int chunkId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable min_inclusive, 
 		VoltTable max_exclusive, VoltTable voltTable, boolean moreDataNeeded) {
         
         long start=0, receive=0, done=0;
@@ -1179,7 +1179,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         PartitionExecutor executor = executorMap.get(newPartitionId);
         assert(executor != null);
         try {        	
-            executor.receiveTuples(txnId, oldPartitionId, newPartitionId, table_name, min_inclusive, max_exclusive, voltTable, moreDataNeeded, false, livePullId);
+            executor.receiveTuples(txnId, oldPartitionId, newPartitionId, table_name, min_inclusive, max_exclusive, voltTable, moreDataNeeded, false, livePullId, chunkId);
             if (detailed_timing) {
                 receive = System.currentTimeMillis();
             }
@@ -1305,7 +1305,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // TODO : change the log status later. Info for testing.
             // LOG.info("Volt table Received in callback is "+vt.toString());
 
-            receiveLivePullTuples(msg.getLivePullIdentifier(), msg.getTransactionID(), msg.getOldPartition(), msg.getNewPartition(), msg.getVoltTableName(), minIncl,
+            receiveLivePullTuples(msg.getLivePullIdentifier(), msg.getChunkId(), msg.getTransactionID(), msg.getOldPartition(), msg.getNewPartition(), msg.getVoltTableName(), minIncl,
                     maxExcl, vt, msg.getMoreDataNeeded());
             
             // send Acknowledgement 
