@@ -287,7 +287,12 @@ void TupleTrackerManager::getTopKPerPart(int k){
 	HTfile.open (fileName.c_str());
 
 	std::vector<TupleTrackingInfo>::const_iterator iter = v_tupleTrackingInfo.begin();
-	int ratio = 100; // %1
+	//for YCSB and Voter
+	//int ratio = 100; // %1
+	//long int kk = (v_tupleTrackingInfo.size()/ratio + (v_tupleTrackingInfo.size() % ratio != 0)); // ceil (size * (1/ratio) )
+
+	//For TPCC
+	int ratio = 1; // all
 	long int kk = (v_tupleTrackingInfo.size()/ratio + (v_tupleTrackingInfo.size() % ratio != 0)); // ceil (size * (1/ratio) )
 
     //header first line
