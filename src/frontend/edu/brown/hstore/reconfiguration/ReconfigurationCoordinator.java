@@ -149,6 +149,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         private long sleep_time;
 
         public SendNextPlan(long sleep_time) { 
+            super("SendNext");
             this.sleep_time = sleep_time;
         }
         

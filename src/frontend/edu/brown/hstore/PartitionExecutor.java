@@ -1531,22 +1531,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             LOG.info("Extracting data for a async data pull request at partition " + this.partitionId + " : " + pull.getAsyncPullIdentifier());
             try {                
                 String tableName = pull.getVoltTableName();
-                Table catalog_tbl = this.catalogContext.getTableByName(tableName);
-                int table_id = catalog_tbl.getRelativeIndex();
                 
                 ByteString minInclBytes = pull.getMinInclusive();
                 ByteString maxExclBytes = pull.getMaxExclusive();
                 VoltTable minIncl = FastDeserializer.deserialize(minInclBytes.toByteArray(), VoltTable.class);
                 VoltTable maxExcl = FastDeserializer.deserialize(maxExclBytes.toByteArray(), VoltTable.class);
                 
-                VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(minIncl, maxExcl);
                 if(hstore_conf.site.reconfig_replication_delay){
                     replicationDelay();
                 }
 
                 int chunkId = pullMsg.getAndIncrementChunk();
                 long start = System.currentTimeMillis();
-                Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, pull.getTransactionID(), lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId, hstore_conf.site.reconfig_async_chunk_size_kb*1024);
+                Pair<VoltTable,Boolean> vt = extractTuples(pull.getTransactionID(), pull.getOldPartition(), 
+                        pull.getNewPartition(), pull.getVoltTableName(),
+                        minIncl, maxExcl, chunkId, false); 
                 long timeTaken = System.currentTimeMillis() - start;
                 
                 VoltTable voltTable = vt.getFirst();
@@ -6644,7 +6643,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         VoltTable vt = null;
         // FIXME make generic
         Table catalog_tbl = this.catalogContext.getTableByName(table_name);
-        return extractTable(catalog_tbl, new ReconfigurationRange(catalog_tbl, min_inclusive, max_exclusive, oldPartitionId, newPartitionId), chunkId, isLive);
+        if (isLive){
+            return extractTableLive(catalog_tbl, new ReconfigurationRange(catalog_tbl, min_inclusive, max_exclusive, oldPartitionId, newPartitionId), chunkId);
+            
+        } else {
+            return extractTableAsync(catalog_tbl, new ReconfigurationRange(catalog_tbl, min_inclusive, max_exclusive, oldPartitionId, newPartitionId), chunkId);
+        }
     }
 
     
@@ -6662,6 +6666,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         
     }
     
+    public Pair<VoltTable,Boolean> extractTableLive(Table table, ReconfigurationRange range, int chunkId) {
+        return extractTableMarked(table, range, chunkId, true);
+    }
+
+    public Pair<VoltTable,Boolean> extractTableAsync(Table table, ReconfigurationRange range, int chunkId) {
+        return extractTableMarked(table, range, chunkId, false);
+
+    }
+    
     /**
      * Extract the table from the underlying EE engine
      * 
@@ -6669,7 +6682,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param range
      * @return
      */
-    public Pair<VoltTable,Boolean> extractTable(Table table, ReconfigurationRange range, int chunkId, boolean isLive) {
+    public Pair<VoltTable,Boolean> extractTableMarked(Table table, ReconfigurationRange range, int chunkId, boolean isLive) {
         LOG.debug(String.format("Extract table %s Range:%s", table.toString(), range.toString()));
         int table_id = table.getRelativeIndex();
         if(hstore_conf.site.reconfig_replication_delay){
