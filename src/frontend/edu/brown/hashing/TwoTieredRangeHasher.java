@@ -113,7 +113,7 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
             	List<CatalogType> catalogList = Arrays.asList(catalogItem);
             	List<Object> valueList = Arrays.asList(value);
                 //If we do not have an RC, or there is an RC but no reconfig is in progress
-                if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !reconfigCoord.getReconfigurationInProgress())){
+                if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !this.inReconfiguration.get())){
                 	if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s",catalogItem,value,partitions.getPartitionId(catalogList, valueList)));
                     return partitions.getPartitionId(catalogList, valueList);
                 } else {
@@ -145,7 +145,7 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
     
         try {
             //If we do not have an RC, or there is an RC but no reconfig is in progress
-            if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !reconfigCoord.getReconfigurationInProgress())){
+            if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !this.inReconfiguration.get())){
             	if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s",catalogItems.get(0),values.get(0),partitions.getPartitionId(catalogItems, values)));
                 return partitions.getPartitionId(catalogItems, values);
             } else {

@@ -294,6 +294,29 @@ public class ReconfigurationUtil {
     	return keySplits;
     }
     
+    public static Number getFirstNumber(VoltTable vt){
+        try{
+            vt.resetRowPosition();
+            vt.advanceRow();       
+            return (Number)vt.get(0);
+        } catch (Exception e){
+            LOG.error(e);
+        }
+        return new Long(-1);
+    }
+    
+    public static Pair<Number, Number> getFirst(ReconfigurationRange range) {
+        // TODO Auto-generated method stub
+        try{
+            Number min= (Number)range.getMaxExcl().get(0)[0];
+            Number max = (Number)range.getMaxExcl().get(0)[0];
+            return new Pair<Number,Number>(min,max);
+        } catch (Exception e) {
+            LOG.error(e);
+        }
+        return new Pair<Number,Number>(new Long(-1), new Long(-1));
+    }
+    
     public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(ReconfigurationPlan plan, int numberOfSplits){
     	
     	if(numberOfSplits <= 1) {
@@ -570,5 +593,7 @@ public class ReconfigurationUtil {
     	}
         return CatalogUtil.getVoltTable(Arrays.asList(cols));
     }
+
+
   
 }

@@ -66,6 +66,8 @@ std::string TableTuple::debug(const std::string& tableName) const {
     if (isEvicted()) buffer << " **EVICTED**";
     buffer << " ->";
 
+    if (isMigrated()) buffer << " **MIGRATED** ";
+    
     if (isActive() == false) {
         buffer << " <DELETED>";
     } else {

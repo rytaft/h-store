@@ -19,10 +19,7 @@ import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.jfree.util.Log;
 import org.voltdb.VoltTable;
-import org.voltdb.VoltType;
 import org.voltdb.catalog.CatalogType;
-import org.voltdb.catalog.Column;
-import org.voltdb.catalog.ColumnRef;
 import org.voltdb.catalog.Table;
 import org.voltdb.exceptions.ReconfigurationException.ExceptionTypes;
 import org.voltdb.messaging.FastDeserializer;
@@ -31,7 +28,6 @@ import org.voltdb.messaging.FastSerializer;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
 
-import edu.brown.catalog.CatalogUtil;
 import edu.brown.hashing.AbstractHasher;
 import edu.brown.hashing.ExplicitHasher;
 import edu.brown.hashing.ExplicitPartitions;
@@ -39,7 +35,6 @@ import edu.brown.hashing.PlannedHasher;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hashing.TwoTieredRangeHasher;
-import edu.brown.hashing.TwoTieredRangePartitions;
 import edu.brown.hstore.HStoreSite;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
 import edu.brown.hstore.Hstoreservice.AsyncPullResponse;
@@ -55,6 +50,7 @@ import edu.brown.hstore.Hstoreservice.ReconfigurationControlType;
 import edu.brown.hstore.Hstoreservice.ReconfigurationRequest;
 import edu.brown.hstore.Hstoreservice.ReconfigurationResponse;
 import edu.brown.hstore.PartitionExecutor;
+import edu.brown.hstore.TransactionQueueManager;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.internal.AsyncDataPullRequestMessage;
 import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
@@ -110,7 +106,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private ReconfigurationState reconfigurationState;
     // Hostname of the reconfiguration leader site
     private Integer reconfigurationLeader;
-    private AtomicBoolean reconfigurationInProgress;
+    public AtomicBoolean reconfigurationInProgress;
     private ReconfigurationPlan currentReconfigurationPlan;
     private ReconfigurationProtocols reconfigurationProtocol;
     private String currentPartitionPlan;
@@ -145,6 +141,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     
     private List<ReconfigurationPlan> reconfigPlanQueue;
     private int reconfig_split = 1;
+    private TransactionQueueManager queueManager;
     
     public static long STOP_COPY_TXNID = -2L;
     
@@ -152,6 +149,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         private long sleep_time;
 
         public SendNextPlan(long sleep_time) { 
+            super("SendNext");
             this.sleep_time = sleep_time;
         }
         
@@ -184,7 +182,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.partitionStates = new ConcurrentHashMap<Integer, ReconfigurationCoordinator.ReconfigurationState>();
         this.hstore_conf = hstore_conf;
         executorMap = new HashMap<>();
-
+        this.queueManager = hstore_site.getTransactionQueueManager();
         int num_partitions = hstore_site.getCatalogContext().numberOfPartitions;
         this.num_of_sites = hstore_site.getCatalogContext().numberOfSites;
         if(hstore_conf.site.reconfig_profiling) 
@@ -302,7 +300,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
         // We may have reconfiguration initialized by PEs so need to ensure
         // atomic
         if (this.reconfigurationInProgress.compareAndSet(false, true)) {
+
             LOG.info("Initializing reconfiguration. New reconfig plan.");
+            this.setInReconfiguration(true);
             livePullKBMap = new HashMap<>();
             for (PartitionExecutor executor : this.local_executors) {
                 livePullKBMap.put(executor.getPartitionId(),new Integer(0));
@@ -410,7 +410,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         for (PartitionExecutor executor : this.local_executors) {
                         	if(abortsEnabledForStopCopy){
                         		executor.haltProcessing();
-                                hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId());
+                                queueManager.clearQueues(executor.getPartitionId());
                         	}
                         }
                         
@@ -595,8 +595,15 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
     }
         
+    private void setInReconfiguration(boolean inReconfig) {
+        this.reconfigurationInProgress.set(inReconfig);
+        this.queueManager.inReconfig.set(inReconfig);
+        this.hstore_site.getHasher().inReconfiguration.set(inReconfig);
+        
+    }
+    
     private void sendNextPlanToAllSites(){
-    	this.reconfigurationInProgress.set(true);
+        setInReconfiguration(true);
         //Reconfiguration leader sends ack that reconfiguration has been done
         FileUtil.appendEventToFile("RECONFIGURATION_SEND_NEXT_PLAN, siteId="+this.hstore_site.getSiteId() + " plansRemaining=" + this.reconfigPlanQueue.size());
         for(int i = 0;i < num_of_sites;i++){
@@ -635,7 +642,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     this.reconfigurationDoneSites = new HashSet<Integer>();
                 }
                 //sendNextPlanToAllSites();
-                this.reconfigurationInProgress.set(false);
+                this.setInReconfiguration(false);
                 SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
                 send.start();
             } else { 
@@ -681,7 +688,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * end of reconfiguration
      */
     public void endReconfiguration() {
-        this.reconfigurationInProgress.set(false);
+        this.setInReconfiguration(false);
         LOG.info("Clearing the reconfiguration state for each partition at the site");
         for (PartitionExecutor executor : this.local_executors) {
             executor.endReconfiguration();
@@ -718,7 +725,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 }
                 //FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
                 //sendNextPlanToAllSites();
-                this.reconfigurationInProgress.set(false);
+                this.setInReconfiguration(false);
                 SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
                 send.start();
             } else { 
@@ -747,7 +754,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.currentReconfigurationPlan = null;
         this.reconfigurationLeader = -1;
         this.reconfigurationProtocol = null;
-        this.reconfigurationInProgress.set(false);
+        this.setInReconfiguration(false);
     }
 
     // -------------------------------------------
@@ -828,7 +835,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
         }
         
-        executor.receiveTuples(0L, partitionId, newPartitionId, table_name, minInclusive, maxExclusive, vt, moreData, false, -1);
+        executor.receiveTuples(0L, partitionId, newPartitionId, table_name, minInclusive, maxExclusive, vt, moreData, false, -1, -1);
         DataTransferResponse response = DataTransferResponse.newBuilder().setNewPartition(newPartitionId).setOldPartition(partitionId).setT0S(sentTimeStamp).setSenderSite(sourceId)
                 .setVoltTableName(table_name).setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes).build();
         return response;
@@ -1147,7 +1154,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
     }
 
-    public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, List<Long> min_inclusive, 
+    public void receiveLivePullTuples(int livePullId, int chunkId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, List<Long> min_inclusive, 
     		List<Long> max_exclusive, VoltTable voltTable, boolean moreDataNeeded) {
     	    	
     	assert(min_inclusive.size() == max_exclusive.size());
@@ -1155,11 +1162,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
     	VoltTable min_incl = ReconfigurationUtil.getVoltTable(table, min_inclusive);
         VoltTable max_excl = ReconfigurationUtil.getVoltTable(table, max_exclusive);
         
-        receiveLivePullTuples(livePullId, txnId, oldPartitionId, newPartitionId, table_name, min_incl, max_excl, voltTable, moreDataNeeded);
+        receiveLivePullTuples(livePullId, chunkId, txnId, oldPartitionId, newPartitionId, table_name, min_incl, max_excl, voltTable, moreDataNeeded);
     }
     
     
-    public void receiveLivePullTuples(int livePullId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable min_inclusive, 
+    public void receiveLivePullTuples(int livePullId, int chunkId, Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable min_inclusive, 
 		VoltTable max_exclusive, VoltTable voltTable, boolean moreDataNeeded) {
         
         long start=0, receive=0, done=0;
@@ -1172,7 +1179,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         PartitionExecutor executor = executorMap.get(newPartitionId);
         assert(executor != null);
         try {        	
-            executor.receiveTuples(txnId, oldPartitionId, newPartitionId, table_name, min_inclusive, max_exclusive, voltTable, moreDataNeeded, false, livePullId);
+            executor.receiveTuples(txnId, oldPartitionId, newPartitionId, table_name, min_inclusive, max_exclusive, voltTable, moreDataNeeded, false, livePullId, chunkId);
             if (detailed_timing) {
                 receive = System.currentTimeMillis();
             }
@@ -1298,7 +1305,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // TODO : change the log status later. Info for testing.
             // LOG.info("Volt table Received in callback is "+vt.toString());
 
-            receiveLivePullTuples(msg.getLivePullIdentifier(), msg.getTransactionID(), msg.getOldPartition(), msg.getNewPartition(), msg.getVoltTableName(), minIncl,
+            receiveLivePullTuples(msg.getLivePullIdentifier(), msg.getChunkId(), msg.getTransactionID(), msg.getOldPartition(), msg.getNewPartition(), msg.getVoltTableName(), minIncl,
                     maxExcl, vt, msg.getMoreDataNeeded());
             
             // send Acknowledgement 
@@ -1438,9 +1445,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         return live_pull;
     }
     
-    public boolean getReconfigurationInProgress() {
-        return this.reconfigurationInProgress.get();
-    }
+
     
     public boolean areAbortsEnabledForStopCopy(){
     	return abortsEnabledForStopCopy;
@@ -1574,6 +1579,19 @@ public class ReconfigurationCoordinator implements Shutdownable {
         LOG.info(logMsg);
         if (writeToEventLog) FileUtil.appendEventToFile(logMsg);
     }
+
+    public static void reportProfiler(String desc, long total, long invocation, int partitionId, boolean writeToEventLog){
+        if (total == 0)
+            return;
+        String logMsg = String.format("%s, average=%.2f, invocations=%s, PartitionId=%s",
+                desc,
+                ((double)total/invocation),
+                invocation,
+                partitionId);
+        LOG.info(logMsg);
+        if (writeToEventLog) FileUtil.appendEventToFile(logMsg);
+    }
+
     
     public void showReconfigurationProfiler(boolean writeToEventLog) {
         if(hstore_conf.site.reconfig_profiling) {
@@ -1616,7 +1634,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id, writeToEventLog);
                     reportProfiler("REPORT_AVG_SRC_DATA_PULL_PROC",this.profilers[p_id].src_data_pull_req_proc_time, p_id, writeToEventLog);                    
                 }
-                
+                reportProfiler("AVG_QUEUE_TXN", this.profilers[p_id].queueTotalTime, this.profilers[p_id].queueTotalInvocations, p_id, writeToEventLog);
+                reportProfiler("AVG_QUEUE_RECONFIG_TXN", this.profilers[p_id].queueReconfigTotalTime, this.profilers[p_id].queueReconfigTotalInvocations, p_id, writeToEventLog);
                 
                 
             }

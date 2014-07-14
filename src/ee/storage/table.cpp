@@ -173,6 +173,7 @@ void Table::initializeWithColumns(TupleSchema *schema, const std::string* column
     m_tempTuple = TableTuple(m_tempTupleMemory, m_schema);
     ::memset(m_tempTupleMemory, 0, m_tempTuple.tupleLength());
     m_tempTuple.setDeletedFalse();
+    m_tempTuple.setMigratedFalse();
 
     // set the data to be empty
     m_tupleCount = 0;
@@ -493,6 +494,7 @@ void Table::loadTuplesFromNoHeader(bool allowExport,
         m_tmpTarget1.setDeletedFalse();
         m_tmpTarget1.setDirtyFalse();
         m_tmpTarget1.setEvictedFalse();
+        m_tmpTarget1.setMigratedFalse();
         m_tmpTarget1.deserializeFrom(serialize_io, stringPool);
 
         processLoadedTuple( allowExport, m_tmpTarget1);
