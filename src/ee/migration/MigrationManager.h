@@ -31,6 +31,7 @@
 #include "common/tabletuple.h"
 #include "indexes/tableindex.h"
 #include "storage/tableiterator.h"
+#include <list>
 
 #ifndef EXTRACT_STAT_ENABLED
 #define EXTRACT_STAT_ENABLED
@@ -49,6 +50,10 @@ class ExecutorContext;
 
 
 typedef std::map<TableTuple,TableTuple,TableTuple::ltTableTuple> RangeMap;
+typedef std::list<TableTuple*> TupleList;
+typedef std::map<TableTuple,TupleList,TableTuple::ltTableTuple> TupleCacheMap;
+//typedef std::map<std::string, TupleCacheMap> TableCache;
+typedef std::map<std::string, TupleList> TableCache;
 
 class MigrationManager {
         
@@ -89,6 +94,7 @@ private:
     int m_outTableSizeInBytes;
     const TupleSchema* m_partitionKeySchema;
     const TupleSchema* m_matchingIndexColsSchema;
+    TableCache tableCache;
 
 #ifdef EXTRACT_STAT_ENABLED
     boost::timer m_timer;

@@ -115,27 +115,28 @@ public class TestReconfigurationEEPerformance extends BaseTestCase {
     
     @Test
     public void testNewOrder() throws Exception {
-        long recs = 100000;
-        int warehouses = 5;
+        long recs = 10;
+        int warehouses = 2;
         for (int i=0; i < warehouses; i++){
             LOG.info("Loading order lines: " + recs);
             loadTPCCData(recs, neworder_tbl, this.neworder_p_index, i);
         }
 
-        int EXTRACT_LIMIT = 200000;
+        int EXTRACT_LIMIT = 50;
         ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
 
 
         ReconfigurationRange range; 
         VoltTable extractTable;
         
-        int wid =2;
+        int wid =1;
         range = ReconfigurationUtil.getReconfigurationRange(neworder_tbl, new Long[][]{{ new Long(wid) }}, new Long[][]{{ new Long(wid+1) }}, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
         
         
         long tupleBytes = MemoryEstimator.estimateTupleSize(this.neworder_tbl);
         int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
+        LOG.info("Tuples in a chunk : "+  tuplesInChunk);
         int expectedChunks = ((int)(NUM_TUPLES * 10)/tuplesInChunk);
         int resCount = 0;
         int chunks = 0;
@@ -164,15 +165,15 @@ public class TestReconfigurationEEPerformance extends BaseTestCase {
     
     
     @Test
-    public void testOrderLine() throws Exception {
-        long recs = 100000;
-        int warehouses = 5;
+    public void texstOrderLine() throws Exception {
+        long recs = 10;
+        int warehouses = 2;
         for (int i=0; i < warehouses; i++){
             LOG.info("Loading order lines: " + recs);
             loadTPCCData(recs, orderline, this.ordline_ind, i);
         }
 
-        int EXTRACT_LIMIT = 200000;
+        int EXTRACT_LIMIT = 200;
         ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
 
 
