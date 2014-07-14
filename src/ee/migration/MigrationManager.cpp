@@ -271,22 +271,22 @@ bool MigrationManager::scanTable(const RangeMap& rangeMap) {
     TupleList tupleList = tableCache[m_table->name()];
 
     //Iterate through list of tuples to be migrated for this table
-    for (TupleList::iterator iterator = tupleList.begin(), end = tupleList.end(); iterator != end; ++iterator) {
+    //for (TupleList::iterator iterator = tupleList.begin(), end = tupleList.end(); iterator != end; ++iterator) {
+    while(!tupleList.empty()) {
       #ifdef EXTRACT_STAT_ENABLED
         m_rowsExamined++;
       #endif
-      VOLT_INFO("Examine cached tuple");
-      if((*iterator)->isToBeMigrated()){
+      TableTuple* _tuple = tupleList.front();
+      tupleList.pop();
+      VOLT_INFO("Examine cached tuple %s", _tuple->debug("").c_str() );
+      
+      if(_tuple->isToBeMigrated()){
         VOLT_INFO("cached tuple is to extracted");
         //Extract this tuple
-        if(extractTuple(*(*iterator))){
+        if(extractTuple(*_tuple)){
             VOLT_INFO("extracted cached tuple and stopping due to limit");           
-            tupleList.remove(*iterator);
             return true;
-        } else {
-            VOLT_INFO("extracted cached tuple");           
-            tupleList.remove(*iterator);
-        }
+        } 
       }
     }    
     //If we hit end of list do we need to scan again?
@@ -325,15 +325,19 @@ bool MigrationManager::scanTable(const RangeMap& rangeMap) {
             VOLT_INFO("Extracted tuple");           
           }
         } else {
-          VOLT_INFO(" ** Indexing tuple");
+          
+          VOLT_INFO(" ** Indexing tuple %s", tuple.debug("").c_str());
           if (!m_table->flagToMigrateTuple(tuple)){
             VOLT_ERROR("Error setting toMigrateFlag for tuple");
           }             
-          tupleList.push_back(&tuple);
+          tupleList.push(&tuple);
+          VOLT_INFO(" ** added: %s",(tupleList.back())->debug("").c_str());
         } 
       }
 
     }
+    
+    //check if keepExtracting and tupleList is empty() might be able to return moreData = false
     if (tupleList.empty()) {
       VOLT_INFO("No tuples cached");
       tableCache[m_table->name()] = tupleList;

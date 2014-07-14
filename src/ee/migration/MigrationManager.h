@@ -32,6 +32,7 @@
 #include "indexes/tableindex.h"
 #include "storage/tableiterator.h"
 #include <list>
+#include <queue>
 
 #ifndef EXTRACT_STAT_ENABLED
 #define EXTRACT_STAT_ENABLED
@@ -49,11 +50,13 @@ class PersistentTable;
 class ExecutorContext;
 
 
-typedef std::map<TableTuple,TableTuple,TableTuple::ltTableTuple> RangeMap;
-typedef std::list<TableTuple*> TupleList;
-typedef std::map<TableTuple,TupleList,TableTuple::ltTableTuple> TupleCacheMap;
-//typedef std::map<std::string, TupleCacheMap> TableCache;
+typedef std::queue<TableTuple*> TupleList;
 typedef std::map<std::string, TupleList> TableCache;
+typedef std::map<TableTuple,TableTuple,TableTuple::ltTableTuple> RangeMap;
+
+
+//typedef std::map<TableToRangeMap,TupleList,TableTuple::ltTableTuple> TupleCacheMap;
+//typedef std::map<std::string, TupleCacheMap> TableCache;
 
 class MigrationManager {
         
