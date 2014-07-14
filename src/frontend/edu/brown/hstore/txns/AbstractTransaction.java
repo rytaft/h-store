@@ -235,6 +235,12 @@ public abstract class AbstractTransaction implements Poolable, Comparable<Abstra
      * PartitionId -> TableId
      */
     protected final boolean writeTables[][];
+ 
+    // ----------------------------------------------------------------------------
+    // RECONFIGURATION
+    // ----------------------------------------------------------------------------
+    protected boolean arrivedInReconfig;
+    protected boolean causedPull;
     
     // ----------------------------------------------------------------------------
     // INITIALIZATION
@@ -263,6 +269,9 @@ public abstract class AbstractTransaction implements Poolable, Comparable<Abstra
         
         this.readTables = new boolean[numPartitions][];
         this.writeTables = new boolean[numPartitions][];
+        
+        this.arrivedInReconfig = false;
+        this.causedPull = false;
         
         Arrays.fill(this.exec_firstUndoToken, HStoreConstants.NULL_UNDO_LOGGING_TOKEN);
         Arrays.fill(this.exec_lastUndoToken, HStoreConstants.NULL_UNDO_LOGGING_TOKEN);
@@ -1308,5 +1317,21 @@ public abstract class AbstractTransaction implements Poolable, Comparable<Abstra
             this.cachedDebugContext = new Debug();
         }
         return this.cachedDebugContext;
+    }
+
+    public boolean isArrivedInReconfig() {
+        return arrivedInReconfig;
+    }
+
+    public void setArrivedInReconfig(boolean arrivedInReconfig) {
+        this.arrivedInReconfig = arrivedInReconfig;
+    }
+
+    public boolean isCausedPull() {
+        return causedPull;
+    }
+
+    public void setCausedPull(boolean causedPull) {
+        this.causedPull = causedPull;
     }
 }

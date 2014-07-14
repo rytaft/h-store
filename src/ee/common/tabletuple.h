@@ -97,7 +97,7 @@ namespace voltdb {
     
 #define DELETED_MASK 1
 #define DIRTY_MASK 2
-#define MIGRATED_MASK 3
+#define MIGRATED_MASK 8
 #define EVICTED_MASK 4
 
 class TableColumn;
@@ -285,6 +285,11 @@ public:
         return (*(reinterpret_cast<const char*> (m_data)) & EVICTED_MASK) == 0 ? false : true;
     }
 
+    inline bool isMigrated() const
+    {
+        return (*(reinterpret_cast<const char*> (m_data)) & MIGRATED_MASK) == 0 ? false : true;
+    }
+    
     /** Is the column value null? */
     inline bool isNull(const int idx) const {
         return getNValue(idx).isNull();
@@ -406,14 +411,14 @@ protected:
         *(reinterpret_cast<char*> (m_data)) &= static_cast<char>(~DELETED_MASK);
     }
 
-	inline void setMigratedTrue() {
-		// treat the first "value" as a boolean flag
-		*(reinterpret_cast<char*> (m_data)) |= static_cast<char>(MIGRATED_MASK);
-	}
-	inline void setMigratedFalse() {
-		// treat the first "value" as a boolean flag
-		*(reinterpret_cast<char*> (m_data)) &= static_cast<char>(~MIGRATED_MASK);
-	}
+    inline void setMigratedTrue() {
+      // treat the first "value" as a boolean flag
+      *(reinterpret_cast<char*> (m_data)) |= static_cast<char>(MIGRATED_MASK);
+    }
+    inline void setMigratedFalse() {
+      // treat the first "value" as a boolean flag
+      *(reinterpret_cast<char*> (m_data)) &= static_cast<char>(~MIGRATED_MASK);
+    }
 
     inline void setDirtyTrue() {
         // treat the first "value" as a boolean flag
