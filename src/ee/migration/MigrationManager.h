@@ -50,7 +50,7 @@ class PersistentTable;
 class ExecutorContext;
 
 
-typedef std::queue<TableTuple*> TupleList;
+typedef std::queue<uint32_t> TupleList;
 typedef std::map<std::string, TupleList> TableCache;
 typedef std::map<TableTuple,TableTuple,TableTuple::ltTableTuple> RangeMap;
 
