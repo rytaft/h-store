@@ -26,6 +26,7 @@ import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTableComparator;
 
 import edu.brown.designer.MemoryEstimator;
+import edu.brown.hashing.PlannedPartitions.PartitionKeyComparator;
 import edu.brown.hashing.PlannedPartitions.PartitionPhase;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
@@ -178,12 +179,7 @@ public class ReconfigurationPlan {
           Iterator<PartitionRange> new_ranges = new_table.partitions.iterator();
 
           PartitionRange new_range = new_ranges.next();
-          
-          // get a volt table and volt table comparator
-          Table table = old_table.getCatalog_table();
-          VoltTable voltTable = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-          
-          VoltTableComparator cmp = ReconfigurationUtil.getComparator(voltTable);
+          PartitionKeyComparator cmp = new PartitionKeyComparator();
           
           Object[] max_old_accounted_for = null;
           
@@ -479,10 +475,9 @@ public class ReconfigurationPlan {
         private int new_partition;
         private String table_name; 
         private VoltTable keySchema;
-        private VoltTable keySchemaCopy; // not exposed outside of the class
         private List<Object[]> min_incl;
         private List<Object[]> max_excl;
-        private VoltTableComparator cmp;
+        private PartitionKeyComparator cmp;
         private Table catalog_table;
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, VoltTable min_incl, VoltTable max_excl, int old_partition, int new_partition) {
@@ -523,9 +518,8 @@ public class ReconfigurationPlan {
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, List<Object[]> min_incl, List<Object[]> max_excl, int old_partition, int new_partition) {
         	this.keySchema = keySchema;
-            this.keySchemaCopy = this.keySchema.clone(0);
-        	
-            this.cmp = ReconfigurationUtil.getComparator(keySchema);
+            
+            this.cmp = new PartitionKeyComparator();
             
             this.min_incl = min_incl;
             this.max_excl = max_excl;
@@ -538,9 +532,8 @@ public class ReconfigurationPlan {
         public ReconfigurationRange(Table table, List<Object[]> min_incl, List<Object[]> max_excl, int old_partition, int new_partition) {
         	this.catalog_table = table;
         	this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-        	this.keySchemaCopy = this.keySchema.clone(0);
         	
-            this.cmp = ReconfigurationUtil.getComparator(keySchema);
+            this.cmp = new PartitionKeyComparator();
             
             this.min_incl = min_incl;
             this.max_excl = max_excl;
@@ -697,7 +690,7 @@ public class ReconfigurationPlan {
 	    return true;
         }
         
-        public synchronized boolean inRange(List<Object> ids) {
+        public boolean inRange(List<Object> ids) {
         	Object[] keys = new Object[this.keySchema.getColumnCount()];
         	int col = 0;
         	for(Object id : ids) {
@@ -712,11 +705,7 @@ public class ReconfigurationPlan {
             	keys[col] = vt.getNullValue();
         	}
         	
-        	keySchemaCopy.addRow(keys);
-        	keySchemaCopy.advanceToRow(0);
-        	Object[] rowArray = keySchemaCopy.getRowArray();
-        	keySchemaCopy.clearRowData();
-        	return inRange(rowArray, ids.size());
+        	return inRange(keys, ids.size());
         }
         
         public boolean inRange(Object[] keys, int orig_size) {
@@ -746,11 +735,7 @@ public class ReconfigurationPlan {
         		col++;
         	}
         	
-        	keySchemaCopy.addRow(keys);
-        	keySchemaCopy.advanceToRow(0);
-        	Object[] rowArray = keySchemaCopy.getRowArray();
-        	keySchemaCopy.clearRowData();
-        	return inRangeIgnoreNullCols(rowArray, ids.size());
+        	return inRangeIgnoreNullCols(keys, ids.size());
         }
         
         public boolean inRangeIgnoreNullCols(Object[] keys, int orig_size) {

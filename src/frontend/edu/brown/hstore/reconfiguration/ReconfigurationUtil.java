@@ -548,18 +548,6 @@ public class ReconfigurationUtil {
         return new ReconfigurationRange(table.getName(), clone, min_incl, max_excl, old_partition, new_partition);
     }
     
-    public static VoltTableComparator getComparator(VoltTable vt) {
-    	ArrayList<Pair<Integer, SortDirectionType>> sortCol = new ArrayList<Pair<Integer, SortDirectionType>>();
-    	for(int i = 0; i < vt.getColumnCount(); i++) {
-    		sortCol.add(Pair.of(i, SortDirectionType.ASC));
-    	}
-    	return createComparator(vt, sortCol, sortCol.get(0));
-    }
-    
-    private static VoltTableComparator createComparator(VoltTable vt, ArrayList<Pair<Integer, SortDirectionType>> sortCol, Pair<Integer, SortDirectionType>...pairs ) {
-    	return new VoltTableComparator(vt, sortCol.toArray(pairs));
-    }
-    
     public static VoltTable getVoltTable(Table table, List<Long> list) {
     	VoltTable voltTable = getPartitionKeysVoltTable(table);
         

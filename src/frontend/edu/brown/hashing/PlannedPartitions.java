@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -26,6 +27,8 @@ import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Table;
+import org.voltdb.types.SortDirectionType;
+import org.voltdb.types.TimestampType;
 import org.voltdb.utils.VoltTableComparator;
 import org.voltdb.utils.VoltTypeUtil;
 import org.voltdb.utils.Pair;
@@ -490,6 +493,26 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             return catalog_table;
         }
     }
+    
+    public static class PartitionKeyComparator implements Comparator<Object[]> {
+
+    	@Override
+    	public int compare(Object[] o1, Object[] o2) {
+    		assert (o1 != null);
+    		assert (o2 != null);
+    		assert (o1.length == o2.length);
+    		int cmp = 0;
+    		for (int i = 0; i < o1.length; i++) {
+    			cmp = (new Long(((Number) o1[i]).longValue())).compareTo(new Long(((Number) o2[i]).longValue()));
+
+    			if (cmp != 0)
+    				break;
+    		} // FOR
+
+    		return (cmp);
+    	}
+    
+    }
 
     /**
      * A defined range of keys and an associated partition id. Sorts by min id,
@@ -502,10 +525,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     public static class PartitionRange implements Comparable<PartitionRange> {
         private int partition;
         private VoltTable keySchema;
-        private VoltTable keySchemaCopy; // not exposed outside of the class
         private Object[] min_incl;
         private Object[] max_excl;
-        private VoltTableComparator cmp;
+        private PartitionKeyComparator cmp;
         private Table catalog_table;
 
         public PartitionRange(Table table, int partition_id, String range_str) throws ParseException {
@@ -513,7 +535,6 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.catalog_table = table;
 
             this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-            this.keySchemaCopy = this.keySchema.clone(0);
             Object[] min_row;
             Object[] max_row;
 
@@ -528,17 +549,17 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 throw new ParseException("keys must be specified as min-max. range: " + range_str, -1);
             }
 
-            this.cmp = ReconfigurationUtil.getComparator(keySchema);
+            this.cmp = new PartitionKeyComparator();
 
-            keySchemaCopy.addRow(min_row);
-            keySchemaCopy.advanceToRow(0);
-            this.min_incl = keySchemaCopy.getRowArray();
-            keySchemaCopy.clearRowData();
+            keySchema.addRow(min_row);
+            keySchema.advanceToRow(0);
+            this.min_incl = keySchema.getRowArray();
+            keySchema.clearRowData();
 
-            keySchemaCopy.addRow(max_row);
-            keySchemaCopy.advanceToRow(0);
-            this.max_excl = keySchemaCopy.getRowArray();
-            keySchemaCopy.clearRowData();
+            keySchema.addRow(max_row);
+            keySchema.advanceToRow(0);
+            this.max_excl = keySchema.getRowArray();
+            keySchema.clearRowData();
 
             if (cmp.compare(this.min_incl, this.max_excl) > 0) {
                 throw new ParseException("Min cannot be greater than max", -1);
@@ -550,8 +571,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.catalog_table = table;
 
             this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-            this.keySchemaCopy = this.keySchema.clone(0);
-            this.cmp = ReconfigurationUtil.getComparator(keySchema);
+            this.cmp = new PartitionKeyComparator();
 
             this.min_incl = min_incl;
             this.max_excl = max_excl;
@@ -640,7 +660,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
         }
 
-        public synchronized boolean inRange(List<Object> ids) {
+        public boolean inRange(List<Object> ids) {
             Object[] keys = new Object[this.min_incl.length];
             int col = 0;
             for (Object id : ids) {
@@ -655,11 +675,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 keys[col] = vt.getNullValue();
             }
 
-            keySchemaCopy.addRow(keys);
-            keySchemaCopy.advanceToRow(0);
-            Object[] rowArray = keySchemaCopy.getRowArray();
-            keySchemaCopy.clearRowData();
-            return inRange(rowArray, ids.size());
+            return inRange(keys, ids.size());
         }
 
         public boolean inRange(Object[] keys, int orig_size) {
@@ -672,7 +688,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             return false;
         }
 
-        public synchronized boolean inRangeIgnoreNullCols(List<Object> ids) {
+        public boolean inRangeIgnoreNullCols(List<Object> ids) {
             Object[] keys = new Object[this.keySchema.getColumnCount()];
             int col = 0;
             for (Object id : ids) {
@@ -683,11 +699,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 col++;
             }
 
-            keySchemaCopy.addRow(keys);
-            keySchemaCopy.advanceToRow(0);
-            Object[] rowArray = keySchemaCopy.getRowArray();
-            keySchemaCopy.clearRowData();
-            return inRangeIgnoreNullCols(rowArray, ids.size());
+            return inRangeIgnoreNullCols(keys, ids.size());
         }
 
         public boolean inRangeIgnoreNullCols(Object[] keys, int orig_size) {
@@ -731,10 +743,6 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
         public int getPartition() {
             return this.partition;
-        }
-        
-        public VoltTableComparator getComparator() {
-        	return this.cmp;
         }
 
     }
