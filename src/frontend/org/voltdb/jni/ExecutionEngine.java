@@ -98,6 +98,10 @@ public abstract class ExecutionEngine implements FastDeserializer.Deserializatio
             throwExceptionForError(errorCode);
         }
     }
+    
+    public PartitionExecutor getPartitionExecutor(){
+		return executor;
+    }
 
     /** Utility method to verify return code and throw as required */
     final protected boolean checkIfMoreDataOrError(final int errorCode) {
