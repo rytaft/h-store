@@ -81,12 +81,12 @@ public class Controller implements Runnable {
 
 		ttExecutor = new TupleTrackerExecutor();
 		// connect to VoltDB server
-		client = ClientFactory.createClient();
-		client.configureBlocking(false);
-		sites = CatalogUtil.getAllSites(catalog);
+		//client = ClientFactory.createClient();
+		//client.configureBlocking(false);
+		//sites = CatalogUtil.getAllSites(catalog);
 		this.catalog_context = catalog_context;
-		connectToHost();
-		provisioning = new Provisioning(sites, no_of_partitions, sitesPerHost, partPerSite, highCPU, lowCPU);
+		//connectToHost();
+		//provisioning = new Provisioning(sites, no_of_partitions, sitesPerHost, partPerSite, highCPU, lowCPU);
 
 		if(hstore_conf.global.hasher_plan == null){
 			System.out.println("Must set global.hasher_plan to specify plan file!");
@@ -169,7 +169,7 @@ public class Controller implements Runnable {
 			//System.out.println("Essam Before: hotTuplesList size is " + hotTuplesList.size());
 			System.out.println("Starting tuple tracking");	
 
-			ttExecutor.turnOnOff(time_window,client);	// turn on tuple tracking for time window of X seconds
+			//ttExecutor.turnOnOff(time_window,client);	// turn on tuple tracking for time window of X seconds
 
 			
 			
@@ -212,28 +212,29 @@ public class Controller implements Runnable {
 			String outputPlan = FileUtil.readFile(outputPlanFile.toString());
 
 			ClientResponse cresponse = null;
-			try {
-				cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
-                                //cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
-                                System.out.println("Controller: received response: " + cresponse);
-			} catch (NoConnectionsException e) {
-				System.out.println("Controller: lost connection");
-				e.printStackTrace();
-				System.exit(1);
-			} catch (IOException e) {
-				System.out.println("Controller: IO Exception while connecting to host");
-				e.printStackTrace();
-				System.exit(1);
-			} catch (ProcCallException e) {
-				System.out.println("Controller: @Reconfiguration transaction rejected (backpressure?)");
-				e.printStackTrace();
-				System.exit(1);
-			}
+			System.out.println("Reconfiguration would happen here");
+			//try {
+			//	cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
+                        //        //cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
+                        //        System.out.println("Controller: received response: " + cresponse);
+			//} catch (NoConnectionsException e) {
+			//	System.out.println("Controller: lost connection");
+			//	e.printStackTrace();
+			//	System.exit(1);
+			//} catch (IOException e) {
+			//	System.out.println("Controller: IO Exception while connecting to host");
+			//	e.printStackTrace();
+			//	System.exit(1);
+			//} catch (ProcCallException e) {
+			//	System.out.println("Controller: @Reconfiguration transaction rejected (backpressure?)");
+			//	e.printStackTrace();
+			//	System.exit(1);
+			//}
 
-			if(cresponse.getStatus() != Status.OK){
-				System.out.println("@Reconfiguration transaction aborted");
-				System.exit(1);
-			}
+			//if(cresponse.getStatus() != Status.OK){
+			//	System.out.println("@Reconfiguration transaction aborted");
+			//	System.exit(1);
+			//}
 
 		} catch(Exception e) {
 			System.out.println("Caught on exception " + e.toString());
