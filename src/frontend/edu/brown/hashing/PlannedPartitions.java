@@ -16,8 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.collections.map.LRUMap;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.json.JSONException;
@@ -379,14 +379,14 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         protected String table_name;
         private Table catalog_table;
         private JSONObject table_json;
-        private ConcurrentHashMap<List<Object>, Integer> find_partition_cache;
+        private LRUMap find_partition_cache;
 
         public PartitionedTable(String table_name, JSONObject table_json, Table catalog_table) throws Exception {
             this.catalog_table = catalog_table;
             this.partitions = new ArrayList<>();
             this.table_name = table_name;
             this.table_json = table_json;
-            this.find_partition_cache = new ConcurrentHashMap<>();
+            this.find_partition_cache = new LRUMap(1000);
             assert (table_json.has(PARTITIONS));
             JSONObject partitions_json = table_json.getJSONObject(PARTITIONS);
             Iterator<String> partitions = partitions_json.keys();
@@ -409,7 +409,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.partitions = partitions;
             this.table_name = table_name;
             this.catalog_table = catalog_table;
-            this.find_partition_cache = new ConcurrentHashMap<>();
+            this.find_partition_cache = new LRUMap(1000);
         }
 
         /**
@@ -425,10 +425,14 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
 
             try {
-            	// check the cache first
-            	if(this.find_partition_cache.containsKey(ids)) {
-            		return this.find_partition_cache.get(ids);
-            	}
+            	try {
+            		// check the cache first
+            		if(this.find_partition_cache.containsKey(ids)) {
+            			return (Integer) this.find_partition_cache.get(ids);
+            		}
+            	} catch (Exception e) {
+        			LOG.error("Error looking up partition from cache", e);
+        		}
             	
                 for (PartitionRange p : this.partitions) {
                     // if this greater than or equal to the min inclusive val
@@ -437,8 +441,12 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
                     if (p.inRange(ids)) {
-                    	this.find_partition_cache.put(ids, p.partition);
-                        return p.partition;
+                    	try {
+                    		this.find_partition_cache.put(ids, p.partition);
+                    	} catch (Exception e) {
+                			LOG.error("Error updating cache", e);
+                		}
+                    	return p.partition;
                     }
                 }
             } catch (Exception e) {
@@ -447,7 +455,12 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             if (debug.val)
                 LOG.debug("Partition not found. ids: " + ids.toString() + ", partitions: " + this.partitions.toString());
-            this.find_partition_cache.put(ids, HStoreConstants.NULL_PARTITION_ID);
+            try {
+        		this.find_partition_cache.put(ids, HStoreConstants.NULL_PARTITION_ID);
+            } catch (Exception e) {
+    			LOG.error("Error updating cache", e);
+    		}
+            
             return HStoreConstants.NULL_PARTITION_ID;
         }
 
@@ -491,7 +504,11 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
          * @throws ParseException
          */
         public void addPartitionRanges(int partition_id, String partition_values) throws ParseException {
-        	this.find_partition_cache.clear();
+        	try {
+        		this.find_partition_cache.clear();
+        	} catch (Exception e) {
+    			LOG.error("Error clearing cache", e);
+    		}
             for (String range : partition_values.split(",")) {
                 this.partitions.add(new PartitionRange(this.catalog_table, partition_id, range));
             }

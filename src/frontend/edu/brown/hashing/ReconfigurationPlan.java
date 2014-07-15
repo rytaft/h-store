@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Collection;
 
+import org.apache.commons.collections.map.LRUMap;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -44,6 +45,7 @@ public class ReconfigurationPlan {
 
 	private static final Logger LOG = Logger.getLogger(ReconfigurationPlan.class);
     protected Map<String,ReconfigurationTable> tables_map;
+    private LRUMap find_range_cache;
     
     //Helper map of partition ID and outgoing/incoming ranges for this reconfiguration
     protected Map<Integer, List<ReconfigurationRange>> outgoing_ranges;
@@ -59,9 +61,16 @@ public class ReconfigurationPlan {
         incoming_ranges = new HashMap<>();
         range_map = new HashMap<>();
         this.partitionedTablesByFK = partitionedTablesByFK;
+        this.find_range_cache = new LRUMap(1000);
     }
     
     public void addRange(ReconfigurationRange range){
+    	try {
+			this.find_range_cache.clear();
+    	} catch (Exception e) {
+			LOG.error("Error clearing cache", e);
+		}
+    	
         if(!outgoing_ranges.containsKey(range.old_partition)) {
             outgoing_ranges.put(range.old_partition, new ArrayList<ReconfigurationRange>());
         }
@@ -94,6 +103,7 @@ public class ReconfigurationPlan {
         registerReconfigurationRanges();
         planDebug = String.format("Reconfiguration plan generated \n Out: %s \n In: %s",outgoing_ranges.toString(),incoming_ranges.toString());
         LOG.info(planDebug);
+        this.find_range_cache = new LRUMap(1000);
     }
     
     protected void registerReconfigurationRanges(){
@@ -112,17 +122,38 @@ public class ReconfigurationPlan {
      *         found
      */
     public ReconfigurationRange findReconfigurationRange(String table_name, List<Object> ids) throws Exception {
+    	Pair<String, List<Object>> key = new Pair<>(table_name, ids);
     	try {
+    		try {
+    			// check the cache first
+    			if(this.find_range_cache.containsKey(key)) {
+    				return (ReconfigurationRange) this.find_range_cache.get(key);
+    			}
+    		} catch (Exception e) {
+    			LOG.error("Error looking up reconfiguration range from cache", e);
+    		}
+            
     		List<ReconfigurationRange> ranges = this.range_map.get(table_name);
     		if (ranges == null) {
+    			try {
+    				this.find_range_cache.put(key, null);
+    			} catch (Exception e) {
+        			LOG.error("Error updating cache", e);
+        		}
     			return null;
     		}
+    		
     		for (ReconfigurationRange r : ranges) {
     			// if this greater than or equal to the min inclusive val
     			// and
     			// less than
     			// max_exclusive or equal to both min and max (singleton)
     			if (r.inRange(ids)) {
+    				try {
+        				this.find_range_cache.put(key, r);
+    				} catch (Exception e) {
+            			LOG.error("Error updating cache", e);
+            		}
     				return r;
     			}
     		}
@@ -131,6 +162,11 @@ public class ReconfigurationPlan {
             LOG.error("Error looking up reconfiguration range", e);
         }
 
+    	try {
+			this.find_range_cache.put(key, null);
+    	} catch (Exception e) {
+			LOG.error("Error updating cache", e);
+		}
         return null;
     }
     
@@ -169,6 +205,7 @@ public class ReconfigurationPlan {
         String table_name;
         HStoreConf conf = null;
         CatalogContext catalogContext;
+        private LRUMap find_range_cache;
         
         public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table) throws Exception {
           this.catalogContext = catalogContext;
@@ -177,6 +214,7 @@ public class ReconfigurationPlan {
           setReconfigurations(new ArrayList<ReconfigurationRange>());
           Iterator<PartitionRange> old_ranges = old_table.partitions.iterator();
           Iterator<PartitionRange> new_ranges = new_table.partitions.iterator();
+          this.find_range_cache = new LRUMap(1000);
 
           PartitionRange new_range = new_ranges.next();
           PartitionKeyComparator cmp = new PartitionKeyComparator();
@@ -431,6 +469,11 @@ public class ReconfigurationPlan {
 
         public void setReconfigurations(List<ReconfigurationRange> reconfigurations) {
             this.reconfigurations = reconfigurations;
+            try {
+    			this.find_range_cache.clear();
+            } catch (Exception e) {
+    			LOG.error("Error clearing cache", e);
+    		}
         }
         
         /**
@@ -441,13 +484,27 @@ public class ReconfigurationPlan {
          *         found
          */
         public ReconfigurationRange findReconfigurationRange(List<Object> ids) throws Exception {
-            try {
-                for (ReconfigurationRange r : this.reconfigurations) {
+        	try {
+        		try {
+        			// check the cache first
+        			if(this.find_range_cache.containsKey(ids)) {
+        				return (ReconfigurationRange) this.find_range_cache.get(ids);
+        			}
+        		} catch (Exception e) {
+        			LOG.error("Error looking up reconfiguration range from cache", e);
+        		}
+        		
+        		for (ReconfigurationRange r : this.reconfigurations) {
                     // if this greater than or equal to the min inclusive val
                     // and
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
                     if (r.inRange(ids)) {
+                    	try {
+                			this.find_range_cache.put(ids, r);
+                    	} catch (Exception e) {
+                			LOG.error("Error updating cache", e);
+                		}
                 		return r;
                 	}
                 }
@@ -455,7 +512,12 @@ public class ReconfigurationPlan {
                 LOG.error("Error looking up reconfiguration range", e);
             }
 
-            return null;
+            try {
+    			this.find_range_cache.put(ids, null);
+            } catch (Exception e) {
+    			LOG.error("Error updating cache", e);
+    		}
+    		return null;
         }
       }
       
