@@ -128,6 +128,7 @@ import edu.brown.catalog.CatalogUtil;
 import edu.brown.catalog.PlanFragmentIdGenerator;
 import edu.brown.catalog.special.CountedStatement;
 import edu.brown.hashing.ExplicitPartitions;
+import edu.brown.hashing.PlannedPartitions.PartitionKeyComparator;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
@@ -6549,7 +6550,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         //Iterate over the ranges for this receive to mark all as received (partially or full)
         minInclusiveList.resetRowPosition();
         maxExclusiveList.resetRowPosition();
-        VoltTableComparator cmp = ReconfigurationUtil.getComparator(minInclusiveList);
+        PartitionKeyComparator cmp = new PartitionKeyComparator();
 
         Long startTime = null; //pullStartTime.remove(pullId);
         while(minInclusiveList.advanceRow() && maxExclusiveList.advanceRow()) {
