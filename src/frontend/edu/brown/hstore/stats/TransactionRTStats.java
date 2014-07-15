@@ -80,6 +80,10 @@ public class TransactionRTStats extends StatsSource {
 	}
 	
 	public void addResponseTime(Procedure catalog_proc, long time){
+	    if(catalog_proc == null){
+	        LOG.debug("TransactionRTStats: Tried to measure response time for null procedure");
+	        return;
+	    }
 		Buckets b = this.responseTimes.get(catalog_proc);
 		if (b == null){
 			b = new Buckets();
