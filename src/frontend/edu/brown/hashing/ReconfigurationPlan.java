@@ -211,10 +211,10 @@ public class ReconfigurationPlan {
           this.catalogContext = catalogContext;
           table_name = old_table.table_name;
           this.conf = HStoreConf.singleton(false);
+          this.find_range_cache = new LRUMap(1000);
           setReconfigurations(new ArrayList<ReconfigurationRange>());
           Iterator<PartitionRange> old_ranges = old_table.partitions.iterator();
           Iterator<PartitionRange> new_ranges = new_table.partitions.iterator();
-          this.find_range_cache = new LRUMap(1000);
 
           PartitionRange new_range = new_ranges.next();
           PartitionKeyComparator cmp = new PartitionKeyComparator();
