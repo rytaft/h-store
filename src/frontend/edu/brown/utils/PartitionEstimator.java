@@ -1280,11 +1280,52 @@ public class PartitionEstimator {
                     }
                     Column partition_col = catalog_tbl.getPartitioncolumn();
                     if (partition_col instanceof MultiColumn) {
-                        if (debug.val)
-                            LOG.warn(String.format("%s references %s, which is partitioned on %s. " +
-                            		 "Cannot be used for fast look-ups",
-                            		 catalog_frag.fullName(), catalog_tbl.getName(), partition_col.fullName()));
-                        return (null);
+                    	if(this.multi_col_ranges) {
+                    		MultiColumn mc = (MultiColumn) partition_col;
+                        	ArrayList<ArrayList<Integer>> offsetListList = new ArrayList<ArrayList<Integer>>();
+                        	
+                        	for (int i = 0, mc_cnt = mc.size(); i < mc_cnt; i++) {
+                        		Column mc_column = mc.get(i);
+                        		List<Pair<ExpressionType, CatalogType>> predicates;
+                            	
+                        		if (cache_entry.predicates.containsKey(mc_column)) {
+                        			predicates = cache_entry.predicates.get(mc_column);
+                        		} else {
+                        			break;
+                        		}
+
+                        		ArrayList<Integer> offsetList = new ArrayList<Integer>();
+                        		// Note that we have to go through all of the mappings from the partitioning column
+                        		// to parameters. This can occur when the partitioning column is referenced multiple times
+                        		// This allows us to handle complex WHERE clauses and what not.
+                        		for (Pair<ExpressionType, CatalogType> pair : predicates) {
+                        			if (pair.getFirst() == ExpressionType.COMPARE_EQUAL &&
+                                            pair.getSecond() instanceof StmtParameter) {
+                        				offsetList.add(((StmtParameter)pair.getSecond()).getIndex());
+                        			}
+                        		} // FOR
+                        		
+                        		if(offsetList.size() > 0) {
+                        			offsetListList.add(offsetList);
+                        		} else {
+                        			break;
+                        		}
+                        	} // FOR
+
+                        	// get all combinations of the param offsets
+                        	// in the case of two partition columns, we are effectively taking the cross product
+                        	List<List<Integer>> allCombinations = PartitionEstimator.combinations(offsetListList);    	
+                        	for(List<Integer> indexes : allCombinations) {
+                        		param_idxs.addAll(indexes);
+                        	}
+                    	}
+                    	else {
+                    		if (debug.val)
+                                LOG.warn(String.format("%s references %s, which is partitioned on %s. " +
+                                		 "Cannot be used for fast look-ups",
+                                		 catalog_frag.fullName(), catalog_tbl.getName(), partition_col.fullName()));
+                            return (null);
+                    	}
                     }
                     else if (partition_col != null && cache_entry.predicates.containsKey(partition_col)) {
                         for (Pair<ExpressionType, CatalogType> pair : cache_entry.predicates.get(partition_col)) {
@@ -1302,6 +1343,7 @@ public class PartitionEstimator {
         return (all_param_idxs);
     }
 
+    
     /**
      * @param frag_partitions
      * @param fragments
