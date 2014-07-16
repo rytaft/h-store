@@ -8,13 +8,17 @@ then
         echo "2) skew (uniform, high-skew, low-skew)"
         echo "3) number of tuples"
         echo "4) number of partitions per server"
-        echo "2) initial server"
-        echo "3) number of servers"
-        echo "5) servers to skip (optional)"
+        echo "5) first server"
+        echo "6) initial number of servers"
+	echo "7) maximum number of servers"
+        echo "8) servers to skip (optional)"
         echo
-        echo "Press ENTER to continue with default parameters"
-        read
-        exit
+        echo "Type DEF to continue with default parameters"
+        read command
+	if [ "$command" != "DEF" ]
+	then
+        	exit
+	fi
 fi
 
 if [ -z "$1" ]
@@ -37,7 +41,7 @@ then
         exit
 fi
 
-if [ $2 = "uniform" ]
+if [[ $2 == "uniform" ]]
 then
         sed -i".bak" '/requestdistribution/d' properties/benchmarks/ycsb.properties
         sed -i".bak" '/skew_factor/d' properties/benchmarks/ycsb.properties
@@ -46,7 +50,7 @@ then
         echo "requestdistribution=uniform" >> properties/benchmarks/ycsb.properties
 fi
 
-if [ $2 = "low-skew" ]
+if [[ $2 == "low-skew" ]]
 then
         sed -i".bak" '/requestdistribution/d' properties/benchmarks/ycsb.properties
         sed -i".bak" '/skew_factor/d' properties/benchmarks/ycsb.properties
@@ -56,7 +60,7 @@ then
         echo "skew_factor = 0.65" >> properties/benchmarks/ycsb.properties
 fi
 
-if [ $2 = "high-skew" ]
+if [[ $2 == "high-skew" ]]
 then
         sed -i".bak" '/requestdistribution/d' properties/benchmarks/ycsb.properties
         sed -i".bak" '/skew_factor/d' properties/benchmarks/ycsb.properties
@@ -98,10 +102,18 @@ else
         num_servers=$6
 fi
 
-skip_list="${@:7}"
+if [ -z "$7" ]
+then
+        max_servers=5
+else
+        max_servers=$7
+fi
+
+skip_list="${@:8}"
 partitions=$(( $part_per_server * $num_servers ))
 
 python scripts/reconfiguration/plan-generator.py -t ycsb -s $tuples -p $partitions > plan.json
-./prepare.sh $bench $init_server $num_servers $part_per_server $skip_list
+echo "./prepare.sh $bench $init_server $max_servers $part_per_server $skip_list"
+./prepare.sh $bench $init_server $max_servers $part_per_server $skip_list
 
 ant hstore-benchmark -Dproject=$bench -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnoshutdown=true -Dnoexecute=true -Dsite.txn_restart_limit_sysproc=100 -Dsite.jvm_asserts=false -Dsite.reconfig_live=false | tee load.log

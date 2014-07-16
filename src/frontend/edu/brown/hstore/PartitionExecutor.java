@@ -6908,4 +6908,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public ReconfigurationTrackingInterface getReconfiguration_tracker() {
         return reconfiguration_tracker;
     }
+    
+    public SystemProcedureExecutionContext getSystemProcedureExecutionContext(){
+        return m_systemProcedureContext;
+    }  
 }
