@@ -113,7 +113,7 @@ public class TestReconfigurationEEDynIndex extends BaseTestCase {
     }
     
     @Test
-    public void testNewOrder() throws Exception {
+    public void txestNewOrder() throws Exception {
         long recs = 22;
         int warehouses = 2;
         for (int i=0; i < warehouses; i++){
@@ -165,5 +165,71 @@ public class TestReconfigurationEEDynIndex extends BaseTestCase {
        
     }
      
+    
+    @Test
+    public void testNewOrderMixed() throws Exception {
+        long recs = 22;
+        int warehouses = 3;
+        for (int i=10; i <= 10+warehouses; i++){
+            LOG.info("(" + i + ") Loading order lines: " + recs);
+            loadTPCCData(recs, neworder_tbl, this.neworder_p_index, i);
+        }
+
+        int EXTRACT_LIMIT = 50;
+        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = EXTRACT_LIMIT;
+
+
+        ReconfigurationRange range1, range2; 
+        VoltTable extractTable1, extractTable2;
+        
+        int wid1 =11;
+        int wid2 =12;
+        
+        range1 = ReconfigurationUtil.getReconfigurationRange(neworder_tbl, new Long[][]{{ new Long(wid1) }}, new Long[][]{{ new Long(wid1+1) }}, 1, 2);
+        extractTable1 = ReconfigurationUtil.getExtractVoltTable(range1);   
+
+        range2 = ReconfigurationUtil.getReconfigurationRange(neworder_tbl, new Long[][]{{ new Long(wid2) }}, new Long[][]{{ new Long(wid2+1) }}, 1, 2);
+        extractTable2 = ReconfigurationUtil.getExtractVoltTable(range2);   
+        
+        
+        long tupleBytes = MemoryEstimator.estimateTupleSize(this.neworder_tbl);
+        int tuplesInChunk = (int)(EXTRACT_LIMIT / tupleBytes);
+        LOG.info("Tuples in a chunk : "+  tuplesInChunk);
+        int resCount1 = 0, resCount2=0;
+        Pair<VoltTable,Boolean> resTable1 = null, resTable2=null;
+        long start,end;
+        int count=0;
+        long expected1 = recs;
+        long expected2 = recs;
+        
+        do {
+            start = System.currentTimeMillis();
+            count++;
+            if (count %2 == 0){
+               LOG.info("Adding 2 rows");
+               loadTPCCData((long)2, neworder_tbl, this.neworder_p_index, wid1);
+               expected1+=2;
+            }
+            resTable1 = 
+                    this.ee.extractTable(this.neworder_tbl, this.neworder_tbl.getRelativeIndex(), extractTable1, 1, 1, undo++, -1, 1);
+            end = System.currentTimeMillis();
+            LOG.info(String.format("Ext1 Rows:%s Size:%s Time taken: %s",resTable1.getFirst().getRowCount(),(resTable1.getFirst().getRowCount()*resTable1.getFirst().getRowSize()),(end-start)));
+            resCount1 += resTable1.getFirst().getRowCount();
+
+            start = System.currentTimeMillis();
+            resTable2 = 
+                    this.ee.extractTable(this.neworder_tbl, this.neworder_tbl.getRelativeIndex(), extractTable2, 1, 1, undo++, -1, 1);
+            end = System.currentTimeMillis();
+            LOG.info(String.format("Ext2 Rows:%s Size:%s Time taken: %s",resTable2.getFirst().getRowCount(),(resTable2.getFirst().getRowCount()*resTable2.getFirst().getRowSize()),(end-start)));
+            resCount2 += resTable2.getFirst().getRowCount();
+            //LOG.info("Total RowCount :" +resCount);
+            
+
+        } while ((resTable1.getSecond() || resTable2.getSecond()));
+        //System.out.println("Counts : " + count);
+        assertEquals(expected1, resCount1);
+        assertEquals(expected2, resCount2);
+        
+    }
     
 }

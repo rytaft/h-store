@@ -211,7 +211,7 @@ bool MigrationManager::extractTuple(TableTuple& tuple) {
   
   //Count if we have taken the max tuples
   if (++m_tuplesExtracted >= m_extractTupleLimit) {
-    VOLT_INFO("tuple limit reached: %d", m_tuplesExtracted);
+    VOLT_DEBUG("tuple limit reached: %d", m_tuplesExtracted);
     m_dataLimitReach = true;
   }
 
@@ -263,13 +263,13 @@ bool MigrationManager::searchBTree(const RangeMap& rangeMap) {
 bool MigrationManager::scanTable(const RangeMap& rangeMap) {
   //Iterate through results
   
-  //TODO add a map of rangeMaps insite of tableName or joined w/tableName
-  
   uint32_t current_tuple_id = 0;
+  TableRange tableRange(m_table->name(),rangeMap);
+  
   TableTuple tuple(m_table->schema());
   TupleList tupleList;
-  if (tableCache.count(m_table->name())){
-      tupleList = tableCache[m_table->name()];
+  if (tableCache.count(tableRange)){
+      tupleList = tableCache[tableRange];
   }
 
   if (!tupleList.empty()) {
@@ -277,26 +277,25 @@ bool MigrationManager::scanTable(const RangeMap& rangeMap) {
     //We have a cached list of tuples
 
     //Iterate through list of tuples to be migrated for this table
-    //for (TupleList::iterator iterator = tupleList.begin(), end = tupleList.end(); iterator != end; ++iterator) {
     while(!tupleList.empty()) {
       #ifdef EXTRACT_STAT_ENABLED
         m_rowsExamined++;
       #endif
       current_tuple_id = tupleList.front();
       tuple.move(m_table->dataPtrForTuple(current_tuple_id));
-      
+      //VOLT_INFO(" ** Indexed tuple %s", tuple.debug("").c_str());
+        
       if(tuple.isToBeMigrated()){
-        VOLT_INFO("cached tuple is to extracted");
+        //VOLT_INFO("cached tuple is to extracted");
         //Extract this tuple
         if(extractTuple(tuple)){
             //VOLT_INFO("extracted cached tuple and stopping due to limit"); 
             //update tuple cahce
-            tableCache[m_table->name()] = tupleList;
+            tableCache[tableRange] = tupleList;
             return true;
         } else{
           //Remove tuple from cahce if we extracted
           tupleList.pop();
-
         }
       }
     }    
@@ -331,7 +330,7 @@ bool MigrationManager::scanTable(const RangeMap& rangeMap) {
   } //end while
   
   //check if keepExtracting and tupleList is empty() might be able to return moreData = false
-  tableCache[m_table->name()] = tupleList;  
+  tableCache[tableRange] = tupleList;  
   return moreData; 
 }
 
