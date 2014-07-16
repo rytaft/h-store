@@ -45,7 +45,6 @@ public class ReconfigurationPlan {
 
 	private static final Logger LOG = Logger.getLogger(ReconfigurationPlan.class);
     protected Map<String,ReconfigurationTable> tables_map;
-    private LRUMap find_range_cache;
     
     //Helper map of partition ID and outgoing/incoming ranges for this reconfiguration
     protected Map<Integer, List<ReconfigurationRange>> outgoing_ranges;
@@ -61,13 +60,10 @@ public class ReconfigurationPlan {
         incoming_ranges = new HashMap<>();
         range_map = new HashMap<>();
         this.partitionedTablesByFK = partitionedTablesByFK;
-        this.find_range_cache = new LRUMap(1000);
     }
     
     public void addRange(ReconfigurationRange range){
-    	synchronized(this.find_range_cache) {
-			this.find_range_cache.clear();
-    	}
+
     	
         if(!outgoing_ranges.containsKey(range.old_partition)) {
             outgoing_ranges.put(range.old_partition, new ArrayList<ReconfigurationRange>());
@@ -92,7 +88,6 @@ public class ReconfigurationPlan {
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
         range_map = new HashMap<>();
-        this.find_range_cache = new LRUMap(1000);
         partitionedTablesByFK = old_phase.partitionedTablesByFK;
         assert old_phase.tables_map.keySet().equals(new_phase.tables_map.keySet()) : "Partition plans have different tables";
         tables_map = new HashMap<String, ReconfigurationPlan.ReconfigurationTable>();
@@ -122,18 +117,10 @@ public class ReconfigurationPlan {
     public ReconfigurationRange findReconfigurationRange(String table_name, List<Object> ids) throws Exception {
     	Pair<String, List<Object>> key = new Pair<>(table_name, ids);
     	try {
-    		synchronized(this.find_range_cache) {
-    			// check the cache first
-    			if(this.find_range_cache.containsKey(key)) {
-    				return (ReconfigurationRange) this.find_range_cache.get(key);
-    			}
-    		}
+
             
     		List<ReconfigurationRange> ranges = this.range_map.get(table_name);
     		if (ranges == null) {
-    			synchronized(this.find_range_cache) {
-    				this.find_range_cache.put(key, null);
-    			}
     			return null;
     		}
     		
@@ -143,9 +130,7 @@ public class ReconfigurationPlan {
     			// less than
     			// max_exclusive or equal to both min and max (singleton)
     			if (r.inRange(ids)) {
-    				synchronized(this.find_range_cache) {
-        				this.find_range_cache.put(key, r);
-    				}
+
     				return r;
     			}
     		}
@@ -154,9 +139,6 @@ public class ReconfigurationPlan {
             LOG.error("Error looking up reconfiguration range", e);
         }
 
-    	synchronized(this.find_range_cache) {
-			this.find_range_cache.put(key, null);
-    	}
         return null;
     }
     
