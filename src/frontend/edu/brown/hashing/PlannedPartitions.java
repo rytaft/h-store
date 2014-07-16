@@ -425,14 +425,12 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
 
             try {
-            	try {
+            	synchronized(this.find_partition_cache) {
             		// check the cache first
             		if(this.find_partition_cache.containsKey(ids)) {
             			return (Integer) this.find_partition_cache.get(ids);
             		}
-            	} catch (Exception e) {
-        			LOG.error("Error looking up partition from cache", e);
-        		}
+            	}
             	
                 for (PartitionRange p : this.partitions) {
                     // if this greater than or equal to the min inclusive val
@@ -441,11 +439,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
                     if (p.inRange(ids)) {
-                    	try {
+                    	synchronized(this.find_partition_cache) {
                     		this.find_partition_cache.put(ids, p.partition);
-                    	} catch (Exception e) {
-                			LOG.error("Error updating cache", e);
-                		}
+                    	}
                     	return p.partition;
                     }
                 }
@@ -455,11 +451,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             if (debug.val)
                 LOG.debug("Partition not found. ids: " + ids.toString() + ", partitions: " + this.partitions.toString());
-            try {
+            synchronized(this.find_partition_cache) {
         		this.find_partition_cache.put(ids, HStoreConstants.NULL_PARTITION_ID);
-            } catch (Exception e) {
-    			LOG.error("Error updating cache", e);
-    		}
+            }
             
             return HStoreConstants.NULL_PARTITION_ID;
         }
@@ -504,11 +498,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
          * @throws ParseException
          */
         public void addPartitionRanges(int partition_id, String partition_values) throws ParseException {
-        	try {
+        	synchronized(this.find_partition_cache) {
         		this.find_partition_cache.clear();
-        	} catch (Exception e) {
-    			LOG.error("Error clearing cache", e);
-    		}
+        	} 
             for (String range : partition_values.split(",")) {
                 this.partitions.add(new PartitionRange(this.catalog_table, partition_id, range));
             }
