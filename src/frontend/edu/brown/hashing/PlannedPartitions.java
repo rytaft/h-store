@@ -379,14 +379,14 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         protected String table_name;
         private Table catalog_table;
         private JSONObject table_json;
-        private LRUMap find_partition_cache;
+//        private LRUMap find_partition_cache;
 
         public PartitionedTable(String table_name, JSONObject table_json, Table catalog_table) throws Exception {
             this.catalog_table = catalog_table;
             this.partitions = new ArrayList<>();
             this.table_name = table_name;
             this.table_json = table_json;
-            this.find_partition_cache = new LRUMap(1000);
+//            this.find_partition_cache = new LRUMap(1000);
             assert (table_json.has(PARTITIONS));
             JSONObject partitions_json = table_json.getJSONObject(PARTITIONS);
             Iterator<String> partitions = partitions_json.keys();
@@ -409,7 +409,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.partitions = partitions;
             this.table_name = table_name;
             this.catalog_table = catalog_table;
-            this.find_partition_cache = new LRUMap(1000);
+//            this.find_partition_cache = new LRUMap(1000);
         }
 
         /**
@@ -425,12 +425,12 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
 
             try {
-            	synchronized(this.find_partition_cache) {
-            		// check the cache first
-            		if(this.find_partition_cache.containsKey(ids)) {
-            			return (Integer) this.find_partition_cache.get(ids);
-            		}
-            	}
+//            	synchronized(this.find_partition_cache) {
+//            		// check the cache first
+//            		if(this.find_partition_cache.containsKey(ids)) {
+//            			return (Integer) this.find_partition_cache.get(ids);
+//            		}
+//            	}
             	
                 for (PartitionRange p : this.partitions) {
                     // if this greater than or equal to the min inclusive val
@@ -439,9 +439,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
                     if (p.inRange(ids)) {
-                    	synchronized(this.find_partition_cache) {
-                    		this.find_partition_cache.put(ids, p.partition);
-                    	}
+//                    	synchronized(this.find_partition_cache) {
+//                    		this.find_partition_cache.put(ids, p.partition);
+//                    	}
                     	return p.partition;
                     }
                 }
@@ -451,9 +451,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             if (debug.val)
                 LOG.debug("Partition not found. ids: " + ids.toString() + ", partitions: " + this.partitions.toString());
-            synchronized(this.find_partition_cache) {
-        		this.find_partition_cache.put(ids, HStoreConstants.NULL_PARTITION_ID);
-            }
+//            synchronized(this.find_partition_cache) {
+//        		this.find_partition_cache.put(ids, HStoreConstants.NULL_PARTITION_ID);
+//            }
             
             return HStoreConstants.NULL_PARTITION_ID;
         }
@@ -498,9 +498,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
          * @throws ParseException
          */
         public void addPartitionRanges(int partition_id, String partition_values) throws ParseException {
-        	synchronized(this.find_partition_cache) {
-        		this.find_partition_cache.clear();
-        	} 
+        	//synchronized(this.find_partition_cache) {
+        	//	this.find_partition_cache.clear();
+        	//} 
             for (String range : partition_values.split(",")) {
                 this.partitions.add(new PartitionRange(this.catalog_table, partition_id, range));
             }

@@ -2978,8 +2978,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             if (error != null) {
                 // error.printStackTrace();
                 LOG.warn(String.format("%s - Unexpected %s on partition %d",
-                         ts, error.getClass().getSimpleName(), this.partitionId),
-                         error); // (debug.val ? error : null));
+                         ts, error.getClass().getSimpleName(), this.partitionId)); // (debug.val ? error : null));
             }
             // Success, but without any results???
             if (result == null && status == Status.OK) {
@@ -4057,13 +4056,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
         }
         if (restartsNeeded.size() > 0 || partitionsForRestart.size() > 0) {
-            LOG.info("Restarts needed due to migrated data : " + restartsNeeded.size());
             Histogram<Integer> partitionHistogram = new FastIntHistogram();
             partitionHistogram.put(this.currentTxn.getPredictTouchedPartitions(), 1);
+            StringBuilder sb = new StringBuilder("Restarts for:");
             for (ReconfigurationRange range : restartsNeeded) {
-                LOG.info(" *** adding a restart on partition " + range.getNewPartition());
+                sb.append(range.toString() +", ");
                 partitionHistogram.put(range.getNewPartition());
             }
+            LOG.info("Restarts needed due to migrated data : " + restartsNeeded.size() + ", " + sb.toString());
+            
             partitionHistogram.put(partitionsForRestart);
             throw new MispredictionException(this.currentTxnId, partitionHistogram);
 
