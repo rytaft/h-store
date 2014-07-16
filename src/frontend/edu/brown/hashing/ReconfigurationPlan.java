@@ -65,11 +65,9 @@ public class ReconfigurationPlan {
     }
     
     public void addRange(ReconfigurationRange range){
-    	try {
+    	synchronized(this.find_range_cache) {
 			this.find_range_cache.clear();
-    	} catch (Exception e) {
-			LOG.error("Error clearing cache", e);
-		}
+    	}
     	
         if(!outgoing_ranges.containsKey(range.old_partition)) {
             outgoing_ranges.put(range.old_partition, new ArrayList<ReconfigurationRange>());
@@ -124,22 +122,18 @@ public class ReconfigurationPlan {
     public ReconfigurationRange findReconfigurationRange(String table_name, List<Object> ids) throws Exception {
     	Pair<String, List<Object>> key = new Pair<>(table_name, ids);
     	try {
-    		try {
+    		synchronized(this.find_range_cache) {
     			// check the cache first
     			if(this.find_range_cache.containsKey(key)) {
     				return (ReconfigurationRange) this.find_range_cache.get(key);
     			}
-    		} catch (Exception e) {
-    			LOG.error("Error looking up reconfiguration range from cache", e);
     		}
             
     		List<ReconfigurationRange> ranges = this.range_map.get(table_name);
     		if (ranges == null) {
-    			try {
+    			synchronized(this.find_range_cache) {
     				this.find_range_cache.put(key, null);
-    			} catch (Exception e) {
-        			LOG.error("Error updating cache", e);
-        		}
+    			}
     			return null;
     		}
     		
@@ -149,11 +143,9 @@ public class ReconfigurationPlan {
     			// less than
     			// max_exclusive or equal to both min and max (singleton)
     			if (r.inRange(ids)) {
-    				try {
+    				synchronized(this.find_range_cache) {
         				this.find_range_cache.put(key, r);
-    				} catch (Exception e) {
-            			LOG.error("Error updating cache", e);
-            		}
+    				}
     				return r;
     			}
     		}
@@ -162,11 +154,9 @@ public class ReconfigurationPlan {
             LOG.error("Error looking up reconfiguration range", e);
         }
 
-    	try {
+    	synchronized(this.find_range_cache) {
 			this.find_range_cache.put(key, null);
-    	} catch (Exception e) {
-			LOG.error("Error updating cache", e);
-		}
+    	}
         return null;
     }
     
@@ -469,11 +459,9 @@ public class ReconfigurationPlan {
 
         public void setReconfigurations(List<ReconfigurationRange> reconfigurations) {
             this.reconfigurations = reconfigurations;
-            try {
+            synchronized(this.find_range_cache) {
     			this.find_range_cache.clear();
-            } catch (Exception e) {
-    			LOG.error("Error clearing cache", e);
-    		}
+            }
         }
         
         /**
@@ -485,13 +473,11 @@ public class ReconfigurationPlan {
          */
         public ReconfigurationRange findReconfigurationRange(List<Object> ids) throws Exception {
         	try {
-        		try {
+        		synchronized(this.find_range_cache) {
         			// check the cache first
         			if(this.find_range_cache.containsKey(ids)) {
         				return (ReconfigurationRange) this.find_range_cache.get(ids);
         			}
-        		} catch (Exception e) {
-        			LOG.error("Error looking up reconfiguration range from cache", e);
         		}
         		
         		for (ReconfigurationRange r : this.reconfigurations) {
@@ -500,11 +486,9 @@ public class ReconfigurationPlan {
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
                     if (r.inRange(ids)) {
-                    	try {
+                    	synchronized(this.find_range_cache) {
                 			this.find_range_cache.put(ids, r);
-                    	} catch (Exception e) {
-                			LOG.error("Error updating cache", e);
-                		}
+                    	}
                 		return r;
                 	}
                 }
@@ -512,11 +496,9 @@ public class ReconfigurationPlan {
                 LOG.error("Error looking up reconfiguration range", e);
             }
 
-            try {
+        	synchronized(this.find_range_cache) {
     			this.find_range_cache.put(ids, null);
-            } catch (Exception e) {
-    			LOG.error("Error updating cache", e);
-    		}
+            }
     		return null;
         }
       }
