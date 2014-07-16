@@ -261,28 +261,82 @@ bool MigrationManager::searchBTree(const RangeMap& rangeMap) {
 }
 
 bool MigrationManager::scanTable(const RangeMap& rangeMap) {
-  //TODO ae andy -> assume we cannot leverage anything about hashing with ranges, correct?
   //Iterate through results
-  TableIterator iterator(m_table);
+  
+  uint32_t current_tuple_id = 0;
+  TableRange tableRange(m_table->name(),rangeMap);
+  
   TableTuple tuple(m_table->schema());
-  while (iterator.next(tuple)) {
-    if (tuple.isMigrated()){
-      continue;
-    }
-#ifdef EXTRACT_STAT_ENABLED
-    m_rowsExamined++;
-#endif
-
-    if(inRange(tuple, rangeMap)) {
-      if(extractTuple(tuple)) {
-        return true;
-      }
-    }
-
+  TupleList tupleList;
+  if (tableCache.count(tableRange)){
+      tupleList = tableCache[tableRange];
   }
 
-  return false;
+  if (!tupleList.empty()) {
+    VOLT_DEBUG("Found a cached list (%zu)",tupleList.size());
+    //We have a cached list of tuples
+
+    //Iterate through list of tuples to be migrated for this table
+    while(!tupleList.empty()) {
+      #ifdef EXTRACT_STAT_ENABLED
+        m_rowsExamined++;
+      #endif
+      current_tuple_id = tupleList.front();
+      tuple.move(m_table->dataPtrForTuple(current_tuple_id));
+      //VOLT_INFO(" ** Indexed tuple %s", tuple.debug("").c_str());
+        
+      if(tuple.isToBeMigrated()){
+        //VOLT_INFO("cached tuple is to extracted");
+        //Extract this tuple
+        if(extractTuple(tuple)){
+            //VOLT_INFO("extracted cached tuple and stopping due to limit"); 
+            //update tuple cahce
+            tableCache[tableRange] = tupleList;
+            return true;
+        } else{
+          //Remove tuple from cahce if we extracted
+          tupleList.pop();
+        }
+      }
+    }    
+  }  
+   
+  //We either had no cache or iterated through entire cache, do one more table scan to make sure
+  TableIterator iterator(m_table);
+  bool moreData = false;
+  VOLT_DEBUG("Scanning table");
+  while (iterator.next(tuple)) {
+    if (tuple.isMigrated() || tuple.isToBeMigrated()){
+      continue;
+    }
+    #ifdef EXTRACT_STAT_ENABLED
+      m_rowsExamined++;
+    #endif
+
+    if(inRange(tuple, rangeMap)) {       
+      if(extractTuple(tuple)){
+        //VOLT_INFO(" ** Indexing tuple %s", tuple.debug("").c_str());
+        current_tuple_id =  m_table->getTupleID(tuple.address());
+        if (!m_table->flagToMigrateTuple(tuple)){
+          VOLT_ERROR("Error setting toMigrateFlag for tuple");
+        }             
+        tupleList.push(current_tuple_id);
+        if (!moreData) moreData = true;
+      }
+      else {
+        //VOLT_INFO("Extracted tuple %s", tuple.debug("").c_str());           
+      }
+    }  // end inRange
+  } //end while
+  
+  //check if keepExtracting and tupleList is empty() might be able to return moreData = false
+  tableCache[tableRange] = tupleList;  
+  return moreData; 
 }
+
+
+
+
 
 void MigrationManager::getRangeMap(RangeMap& rangeMap, TableIterator& inputIterator, TableTuple& extractTuple) {
 

@@ -151,11 +151,7 @@ public class TPCCSimulation {
             zipf_gen.setNumHotSpots(numHotSpots);
             zipf_gen.setPercentAccessHotSpots(percentAccessHotSpots);
 
-			this.custom_skew = new RandomDistribution.HotWarmCold(new Random(), 
-																  parameters.starting_warehouse+1,
-																  parameters.last_warehouse,
-																  TPCCConstants.HOT_DATA_WORKLOAD_SKEW, TPCCConstants.HOT_DATA_SIZE, 
-																  TPCCConstants.WARM_DATA_WORKLOAD_SKEW, TPCCConstants.WARM_DATA_SIZE);
+
         }
         if (config.warehouse_debug) {
             LOG.info("Enabling WAREHOUSE debug mode");

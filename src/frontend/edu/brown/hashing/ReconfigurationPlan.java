@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Collection;
 
+import org.apache.commons.collections.map.LRUMap;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -26,6 +27,7 @@ import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTableComparator;
 
 import edu.brown.designer.MemoryEstimator;
+import edu.brown.hashing.PlannedPartitions.PartitionKeyComparator;
 import edu.brown.hashing.PlannedPartitions.PartitionPhase;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
@@ -61,6 +63,8 @@ public class ReconfigurationPlan {
     }
     
     public void addRange(ReconfigurationRange range){
+
+    	
         if(!outgoing_ranges.containsKey(range.old_partition)) {
             outgoing_ranges.put(range.old_partition, new ArrayList<ReconfigurationRange>());
         }
@@ -111,17 +115,22 @@ public class ReconfigurationPlan {
      *         found
      */
     public ReconfigurationRange findReconfigurationRange(String table_name, List<Object> ids) throws Exception {
+    	Pair<String, List<Object>> key = new Pair<>(table_name, ids);
     	try {
+
+            
     		List<ReconfigurationRange> ranges = this.range_map.get(table_name);
     		if (ranges == null) {
     			return null;
     		}
+    		
     		for (ReconfigurationRange r : ranges) {
     			// if this greater than or equal to the min inclusive val
     			// and
     			// less than
     			// max_exclusive or equal to both min and max (singleton)
     			if (r.inRange(ids)) {
+
     				return r;
     			}
     		}
@@ -168,22 +177,19 @@ public class ReconfigurationPlan {
         String table_name;
         HStoreConf conf = null;
         CatalogContext catalogContext;
+        private LRUMap find_range_cache;
         
         public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table) throws Exception {
           this.catalogContext = catalogContext;
           table_name = old_table.table_name;
           this.conf = HStoreConf.singleton(false);
+          this.find_range_cache = new LRUMap(1000);
           setReconfigurations(new ArrayList<ReconfigurationRange>());
           Iterator<PartitionRange> old_ranges = old_table.partitions.iterator();
           Iterator<PartitionRange> new_ranges = new_table.partitions.iterator();
 
           PartitionRange new_range = new_ranges.next();
-          
-          // get a volt table and volt table comparator
-          Table table = old_table.getCatalog_table();
-          VoltTable voltTable = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-          
-          VoltTableComparator cmp = ReconfigurationUtil.getComparator(voltTable);
+          PartitionKeyComparator cmp = new PartitionKeyComparator();
           
           Object[] max_old_accounted_for = null;
           
@@ -435,6 +441,9 @@ public class ReconfigurationPlan {
 
         public void setReconfigurations(List<ReconfigurationRange> reconfigurations) {
             this.reconfigurations = reconfigurations;
+            synchronized(this.find_range_cache) {
+    			this.find_range_cache.clear();
+            }
         }
         
         /**
@@ -445,13 +454,23 @@ public class ReconfigurationPlan {
          *         found
          */
         public ReconfigurationRange findReconfigurationRange(List<Object> ids) throws Exception {
-            try {
-                for (ReconfigurationRange r : this.reconfigurations) {
+        	try {
+        		synchronized(this.find_range_cache) {
+        			// check the cache first
+        			if(this.find_range_cache.containsKey(ids)) {
+        				return (ReconfigurationRange) this.find_range_cache.get(ids);
+        			}
+        		}
+        		
+        		for (ReconfigurationRange r : this.reconfigurations) {
                     // if this greater than or equal to the min inclusive val
                     // and
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
                     if (r.inRange(ids)) {
+                    	synchronized(this.find_range_cache) {
+                			this.find_range_cache.put(ids, r);
+                    	}
                 		return r;
                 	}
                 }
@@ -459,7 +478,10 @@ public class ReconfigurationPlan {
                 LOG.error("Error looking up reconfiguration range", e);
             }
 
-            return null;
+        	synchronized(this.find_range_cache) {
+    			this.find_range_cache.put(ids, null);
+            }
+    		return null;
         }
       }
       
@@ -479,10 +501,9 @@ public class ReconfigurationPlan {
         private int new_partition;
         private String table_name; 
         private VoltTable keySchema;
-        private VoltTable keySchemaCopy; // not exposed outside of the class
         private List<Object[]> min_incl;
         private List<Object[]> max_excl;
-        private VoltTableComparator cmp;
+        private PartitionKeyComparator cmp;
         private Table catalog_table;
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, VoltTable min_incl, VoltTable max_excl, int old_partition, int new_partition) {
@@ -523,9 +544,8 @@ public class ReconfigurationPlan {
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, List<Object[]> min_incl, List<Object[]> max_excl, int old_partition, int new_partition) {
         	this.keySchema = keySchema;
-            this.keySchemaCopy = this.keySchema.clone(0);
-        	
-            this.cmp = ReconfigurationUtil.getComparator(keySchema);
+            
+            this.cmp = new PartitionKeyComparator();
             
             this.min_incl = min_incl;
             this.max_excl = max_excl;
@@ -538,9 +558,8 @@ public class ReconfigurationPlan {
         public ReconfigurationRange(Table table, List<Object[]> min_incl, List<Object[]> max_excl, int old_partition, int new_partition) {
         	this.catalog_table = table;
         	this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-        	this.keySchemaCopy = this.keySchema.clone(0);
         	
-            this.cmp = ReconfigurationUtil.getComparator(keySchema);
+            this.cmp = new PartitionKeyComparator();
             
             this.min_incl = min_incl;
             this.max_excl = max_excl;
@@ -697,7 +716,7 @@ public class ReconfigurationPlan {
 	    return true;
         }
         
-        public synchronized boolean inRange(List<Object> ids) {
+        public boolean inRange(List<Object> ids) {
         	Object[] keys = new Object[this.keySchema.getColumnCount()];
         	int col = 0;
         	for(Object id : ids) {
@@ -712,11 +731,7 @@ public class ReconfigurationPlan {
             	keys[col] = vt.getNullValue();
         	}
         	
-        	keySchemaCopy.addRow(keys);
-        	keySchemaCopy.advanceToRow(0);
-        	Object[] rowArray = keySchemaCopy.getRowArray();
-        	keySchemaCopy.clearRowData();
-        	return inRange(rowArray, ids.size());
+        	return inRange(keys, ids.size());
         }
         
         public boolean inRange(Object[] keys, int orig_size) {
@@ -746,11 +761,7 @@ public class ReconfigurationPlan {
         		col++;
         	}
         	
-        	keySchemaCopy.addRow(keys);
-        	keySchemaCopy.advanceToRow(0);
-        	Object[] rowArray = keySchemaCopy.getRowArray();
-        	keySchemaCopy.clearRowData();
-        	return inRangeIgnoreNullCols(rowArray, ids.size());
+        	return inRangeIgnoreNullCols(keys, ids.size());
         }
         
         public boolean inRangeIgnoreNullCols(Object[] keys, int orig_size) {

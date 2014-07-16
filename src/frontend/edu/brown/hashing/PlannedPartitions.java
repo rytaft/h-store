@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.apache.commons.collections.map.LRUMap;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.json.JSONException;
@@ -26,6 +28,8 @@ import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Table;
+import org.voltdb.types.SortDirectionType;
+import org.voltdb.types.TimestampType;
 import org.voltdb.utils.VoltTableComparator;
 import org.voltdb.utils.VoltTypeUtil;
 import org.voltdb.utils.Pair;
@@ -375,12 +379,14 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         protected String table_name;
         private Table catalog_table;
         private JSONObject table_json;
+//        private LRUMap find_partition_cache;
 
         public PartitionedTable(String table_name, JSONObject table_json, Table catalog_table) throws Exception {
             this.catalog_table = catalog_table;
             this.partitions = new ArrayList<>();
             this.table_name = table_name;
             this.table_json = table_json;
+//            this.find_partition_cache = new LRUMap(1000);
             assert (table_json.has(PARTITIONS));
             JSONObject partitions_json = table_json.getJSONObject(PARTITIONS);
             Iterator<String> partitions = partitions_json.keys();
@@ -403,6 +409,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.partitions = partitions;
             this.table_name = table_name;
             this.catalog_table = catalog_table;
+//            this.find_partition_cache = new LRUMap(1000);
         }
 
         /**
@@ -418,6 +425,13 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
 
             try {
+//            	synchronized(this.find_partition_cache) {
+//            		// check the cache first
+//            		if(this.find_partition_cache.containsKey(ids)) {
+//            			return (Integer) this.find_partition_cache.get(ids);
+//            		}
+//            	}
+            	
                 for (PartitionRange p : this.partitions) {
                     // if this greater than or equal to the min inclusive val
                     // and
@@ -425,7 +439,10 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
                     if (p.inRange(ids)) {
-                        return p.partition;
+//                    	synchronized(this.find_partition_cache) {
+//                    		this.find_partition_cache.put(ids, p.partition);
+//                    	}
+                    	return p.partition;
                     }
                 }
             } catch (Exception e) {
@@ -434,6 +451,10 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             if (debug.val)
                 LOG.debug("Partition not found. ids: " + ids.toString() + ", partitions: " + this.partitions.toString());
+//            synchronized(this.find_partition_cache) {
+//        		this.find_partition_cache.put(ids, HStoreConstants.NULL_PARTITION_ID);
+//            }
+            
             return HStoreConstants.NULL_PARTITION_ID;
         }
 
@@ -477,6 +498,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
          * @throws ParseException
          */
         public void addPartitionRanges(int partition_id, String partition_values) throws ParseException {
+        	//synchronized(this.find_partition_cache) {
+        	//	this.find_partition_cache.clear();
+        	//} 
             for (String range : partition_values.split(",")) {
                 this.partitions.add(new PartitionRange(this.catalog_table, partition_id, range));
             }
@@ -490,6 +514,26 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             return catalog_table;
         }
     }
+    
+    public static class PartitionKeyComparator implements Comparator<Object[]> {
+
+    	@Override
+    	public int compare(Object[] o1, Object[] o2) {
+    		assert (o1 != null);
+    		assert (o2 != null);
+    		assert (o1.length == o2.length);
+    		int cmp = 0;
+    		for (int i = 0; i < o1.length; i++) {
+    			cmp = (new Long(((Number) o1[i]).longValue())).compareTo(new Long(((Number) o2[i]).longValue()));
+
+    			if (cmp != 0)
+    				break;
+    		} // FOR
+
+    		return (cmp);
+    	}
+    
+    }
 
     /**
      * A defined range of keys and an associated partition id. Sorts by min id,
@@ -502,10 +546,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     public static class PartitionRange implements Comparable<PartitionRange> {
         private int partition;
         private VoltTable keySchema;
-        private VoltTable keySchemaCopy; // not exposed outside of the class
         private Object[] min_incl;
         private Object[] max_excl;
-        private VoltTableComparator cmp;
+        private PartitionKeyComparator cmp;
         private Table catalog_table;
 
         public PartitionRange(Table table, int partition_id, String range_str) throws ParseException {
@@ -513,7 +556,6 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.catalog_table = table;
 
             this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-            this.keySchemaCopy = this.keySchema.clone(0);
             Object[] min_row;
             Object[] max_row;
 
@@ -528,17 +570,17 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 throw new ParseException("keys must be specified as min-max. range: " + range_str, -1);
             }
 
-            this.cmp = ReconfigurationUtil.getComparator(keySchema);
+            this.cmp = new PartitionKeyComparator();
 
-            keySchemaCopy.addRow(min_row);
-            keySchemaCopy.advanceToRow(0);
-            this.min_incl = keySchemaCopy.getRowArray();
-            keySchemaCopy.clearRowData();
+            keySchema.addRow(min_row);
+            keySchema.advanceToRow(0);
+            this.min_incl = keySchema.getRowArray();
+            keySchema.clearRowData();
 
-            keySchemaCopy.addRow(max_row);
-            keySchemaCopy.advanceToRow(0);
-            this.max_excl = keySchemaCopy.getRowArray();
-            keySchemaCopy.clearRowData();
+            keySchema.addRow(max_row);
+            keySchema.advanceToRow(0);
+            this.max_excl = keySchema.getRowArray();
+            keySchema.clearRowData();
 
             if (cmp.compare(this.min_incl, this.max_excl) > 0) {
                 throw new ParseException("Min cannot be greater than max", -1);
@@ -550,8 +592,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.catalog_table = table;
 
             this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-            this.keySchemaCopy = this.keySchema.clone(0);
-            this.cmp = ReconfigurationUtil.getComparator(keySchema);
+            this.cmp = new PartitionKeyComparator();
 
             this.min_incl = min_incl;
             this.max_excl = max_excl;
@@ -640,7 +681,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
         }
 
-        public synchronized boolean inRange(List<Object> ids) {
+        public boolean inRange(List<Object> ids) {
             Object[] keys = new Object[this.min_incl.length];
             int col = 0;
             for (Object id : ids) {
@@ -655,11 +696,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 keys[col] = vt.getNullValue();
             }
 
-            keySchemaCopy.addRow(keys);
-            keySchemaCopy.advanceToRow(0);
-            Object[] rowArray = keySchemaCopy.getRowArray();
-            keySchemaCopy.clearRowData();
-            return inRange(rowArray, ids.size());
+            return inRange(keys, ids.size());
         }
 
         public boolean inRange(Object[] keys, int orig_size) {
@@ -672,7 +709,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             return false;
         }
 
-        public synchronized boolean inRangeIgnoreNullCols(List<Object> ids) {
+        public boolean inRangeIgnoreNullCols(List<Object> ids) {
             Object[] keys = new Object[this.keySchema.getColumnCount()];
             int col = 0;
             for (Object id : ids) {
@@ -683,11 +720,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 col++;
             }
 
-            keySchemaCopy.addRow(keys);
-            keySchemaCopy.advanceToRow(0);
-            Object[] rowArray = keySchemaCopy.getRowArray();
-            keySchemaCopy.clearRowData();
-            return inRangeIgnoreNullCols(rowArray, ids.size());
+            return inRangeIgnoreNullCols(keys, ids.size());
         }
 
         public boolean inRangeIgnoreNullCols(Object[] keys, int orig_size) {
@@ -731,10 +764,6 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
         public int getPartition() {
             return this.partition;
-        }
-        
-        public VoltTableComparator getComparator() {
-        	return this.cmp;
         }
 
     }
