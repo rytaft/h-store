@@ -92,6 +92,7 @@ public class ReconfigurationPlan {
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
         range_map = new HashMap<>();
+        this.find_range_cache = new LRUMap(1000);
         partitionedTablesByFK = old_phase.partitionedTablesByFK;
         assert old_phase.tables_map.keySet().equals(new_phase.tables_map.keySet()) : "Partition plans have different tables";
         tables_map = new HashMap<String, ReconfigurationPlan.ReconfigurationTable>();
@@ -101,7 +102,6 @@ public class ReconfigurationPlan {
         registerReconfigurationRanges();
         planDebug = String.format("Reconfiguration plan generated \n Out: %s \n In: %s",outgoing_ranges.toString(),incoming_ranges.toString());
         LOG.info(planDebug);
-        this.find_range_cache = new LRUMap(1000);
     }
     
     protected void registerReconfigurationRanges(){
