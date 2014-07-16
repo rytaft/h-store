@@ -188,16 +188,22 @@ public class Controller implements Runnable {
 				System.out.println("Provisioning is on");	
 				int numberOfPartitions = provisioning.partitionsRequired(CPUUtilPerPartitionMap);
 				System.out.println("Provisioning requires " + numberOfPartitions + " partitions");
+                long before = System.currentTimeMillis();
 				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
 						numberOfPartitions, timeLimit, catalog_context);
+                long after = System.currentTimeMillis();
+                System.out.println("The planner took " + (after-before) + " ms to find a new plan");
 				provisioning.setPartitions(numberOfPartitions);
 
 			}
 			else
 			{
 				System.out.println("Provisioning is off");
+                long before = System.currentTimeMillis();
 				currentPlan = algo.computePlan(hotTuplesList, mSiteLoad, planFile.toString(), 
 						no_of_partitions, timeLimit, catalog_context);
+                long after = System.currentTimeMillis();
+                System.out.println("The planner took " + (after-before) + " ms to find a new plan");
 			}
 
 			System.out.println("Calculated new plan");
