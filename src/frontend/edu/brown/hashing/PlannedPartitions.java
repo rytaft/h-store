@@ -518,7 +518,6 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     			if (cmp != 0)
     				break;
     		} // FOR
-    		LOG.info("Returning cmp: " + cmp + " for o1: " + StringUtils.join(o1, ',') + " o2: " +  StringUtils.join(o2, ','));
     		
     		return (cmp < 0 ? -1 : (cmp > 0 ? 1 : 0));
     	}
