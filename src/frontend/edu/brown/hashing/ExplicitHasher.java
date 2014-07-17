@@ -60,6 +60,11 @@ public interface ExplicitHasher {
      * @return
      */
     public abstract int hash(Object value, int num_partitions);
+    
+    /**
+     * clone the hasher
+     */
+    public abstract AbstractHasher clone();
 
     public abstract void load(File input_path, Database catalog_db) throws IOException;
 

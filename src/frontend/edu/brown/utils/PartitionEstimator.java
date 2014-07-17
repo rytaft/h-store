@@ -319,6 +319,10 @@ public class PartitionEstimator {
         if (trace.val)
             LOG.trace("Created a new PartitionEstimator with a " + hasher.getClass() + " hasher!");
     }
+    
+    public PartitionEstimator clone() {
+    	return new PartitionEstimator(this.catalogContext, this.hasher.clone());
+    }
 
     // ----------------------------------------------------------------------------
     // BASE DATA MEMBERS METHODS

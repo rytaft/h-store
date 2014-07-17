@@ -441,9 +441,7 @@ public class ReconfigurationPlan {
 
         public void setReconfigurations(List<ReconfigurationRange> reconfigurations) {
             this.reconfigurations = reconfigurations;
-            synchronized(this.find_range_cache) {
-    			this.find_range_cache.clear();
-            }
+            this.find_range_cache.clear();
         }
         
         /**
@@ -455,11 +453,9 @@ public class ReconfigurationPlan {
          */
         public ReconfigurationRange findReconfigurationRange(List<Object> ids) throws Exception {
         	try {
-        		synchronized(this.find_range_cache) {
-        			// check the cache first
-        			if(this.find_range_cache.containsKey(ids)) {
-        				return (ReconfigurationRange) this.find_range_cache.get(ids);
-        			}
+        		// check the cache first
+        		if(this.find_range_cache.containsKey(ids)) {
+        			return (ReconfigurationRange) this.find_range_cache.get(ids);
         		}
         		
         		for (ReconfigurationRange r : this.reconfigurations) {
@@ -468,9 +464,7 @@ public class ReconfigurationPlan {
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
                     if (r.inRange(ids)) {
-                    	synchronized(this.find_range_cache) {
-                			this.find_range_cache.put(ids, r);
-                    	}
+                    	this.find_range_cache.put(ids, r);
                 		return r;
                 	}
                 }
@@ -478,9 +472,7 @@ public class ReconfigurationPlan {
                 LOG.error("Error looking up reconfiguration range", e);
             }
 
-        	synchronized(this.find_range_cache) {
-    			this.find_range_cache.put(ids, null);
-            }
+        	this.find_range_cache.put(ids, null);
     		return null;
         }
       }
@@ -750,7 +742,7 @@ public class ReconfigurationPlan {
             return false;
         }
         
-        public synchronized boolean inRangeIgnoreNullCols(List<Object> ids) {
+        public boolean inRangeIgnoreNullCols(List<Object> ids) {
         	Object[] keys = new Object[this.keySchema.getColumnCount()];
         	int col = 0;
         	for(Object id : ids) {
