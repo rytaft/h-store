@@ -177,13 +177,11 @@ public class ReconfigurationPlan {
         String table_name;
         HStoreConf conf = null;
         CatalogContext catalogContext;
-        private LRUMap find_range_cache;
         
         public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table) throws Exception {
           this.catalogContext = catalogContext;
           table_name = old_table.table_name;
           this.conf = HStoreConf.singleton(false);
-          this.find_range_cache = new LRUMap(1000);
           setReconfigurations(new ArrayList<ReconfigurationRange>());
           Iterator<PartitionRange> old_ranges = old_table.partitions.iterator();
           Iterator<PartitionRange> new_ranges = new_table.partitions.iterator();
@@ -441,7 +439,6 @@ public class ReconfigurationPlan {
 
         public void setReconfigurations(List<ReconfigurationRange> reconfigurations) {
             this.reconfigurations = reconfigurations;
-            this.find_range_cache.clear();
         }
         
         /**
@@ -453,27 +450,20 @@ public class ReconfigurationPlan {
          */
         public ReconfigurationRange findReconfigurationRange(List<Object> ids) throws Exception {
         	try {
-        		// check the cache first
-        		if(this.find_range_cache.containsKey(ids)) {
-        			return (ReconfigurationRange) this.find_range_cache.get(ids);
-        		}
-        		
         		for (ReconfigurationRange r : this.reconfigurations) {
                     // if this greater than or equal to the min inclusive val
                     // and
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
                     if (r.inRange(ids)) {
-                    	this.find_range_cache.put(ids, r);
-                		return r;
+                    	return r;
                 	}
                 }
             } catch (Exception e) {
                 LOG.error("Error looking up reconfiguration range", e);
             }
 
-        	this.find_range_cache.put(ids, null);
-    		return null;
+        	return null;
         }
       }
       
