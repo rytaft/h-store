@@ -512,14 +512,15 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     			try {
     				cmp = ((Number) o1[i]).longValue() - ((Number) o2[i]).longValue();
     			} catch (Exception ex) {
-    				LOG.error("Array index error! o1: " + StringUtils.join(o1) + " o2: " +  StringUtils.join(o2), ex);
+    				LOG.error("Array index error! o1: " + StringUtils.join(o1, ',') + " o2: " +  StringUtils.join(o2, ','), ex);
     			}
 
     			if (cmp != 0)
     				break;
     		} // FOR
-
-    		return (int) cmp;
+    		LOG.info("Returning cmp: " + cmp + " for o1: " + StringUtils.join(o1, ',') + " o2: " +  StringUtils.join(o2, ','));
+    		
+    		return (cmp < 0 ? -1 : (cmp > 0 ? 1 : 0));
     	}
     
     }
