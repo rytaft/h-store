@@ -19,6 +19,7 @@ import java.util.Set;
 
 import org.apache.commons.collections.map.LRUMap;
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -506,15 +507,19 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     		assert (o1 != null);
     		assert (o2 != null);
     		assert (o1.length == o2.length);
-    		int cmp = 0;
+    		long cmp = 0;
     		for (int i = 0; i < o1.length; i++) {
-    			cmp = (new Long(((Number) o1[i]).longValue())).compareTo(new Long(((Number) o2[i]).longValue()));
+    			try {
+    				cmp = ((Number) o1[i]).longValue() - ((Number) o2[i]).longValue();
+    			} catch (Exception ex) {
+    				LOG.error("Array index error! o1: " + StringUtils.join(o1) + " o2: " +  StringUtils.join(o2), ex);
+    			}
 
     			if (cmp != 0)
     				break;
     		} // FOR
 
-    		return (cmp);
+    		return (int) cmp;
     	}
     
     }
