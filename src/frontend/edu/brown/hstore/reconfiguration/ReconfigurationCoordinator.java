@@ -55,6 +55,8 @@ import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.internal.AsyncDataPullRequestMessage;
 import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
 import edu.brown.hstore.internal.MultiDataPullResponseMessage;
+import edu.brown.hstore.internal.ReconfigUtilRequestMessage;
+import edu.brown.hstore.internal.ReconfigUtilRequestMessage.RequestType;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
 import edu.brown.interfaces.Shutdownable;
 import edu.brown.logging.LoggerUtil;
@@ -671,7 +673,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
             if(rplan != null) {
                 this.reconfigurationDonePartitionIds = new HashSet<Integer>();
                 for (PartitionExecutor executor : this.local_executors) {
-                    executor.initReconfiguration(rplan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);                    
+                	ReconfigUtilRequestMessage reconfigUtilMsg = new ReconfigUtilRequestMessage(RequestType.INIT_RECONFIGURATION, rplan, 
+                			reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
+                	executor.queueReconfigUtilRequest(reconfigUtilMsg);                 
                     this.partitionStates.put(executor.getPartitionId(), ReconfigurationState.PREPARE);
                 }
                 //FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId() + " plansRemaining=" + this.reconfigPlanQueue.size());

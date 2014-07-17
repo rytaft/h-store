@@ -168,6 +168,7 @@ import edu.brown.hstore.internal.LivePullRequestMessage;
 import edu.brown.hstore.internal.MultiDataPullResponseMessage;
 import edu.brown.hstore.internal.PotentialSnapshotWorkMessage;
 import edu.brown.hstore.internal.PrepareTxnMessage;
+import edu.brown.hstore.internal.ReconfigUtilRequestMessage;
 import edu.brown.hstore.internal.ScheduleAsyncPullRequestMessage;
 import edu.brown.hstore.internal.SetDistributedTxnMessage;
 import edu.brown.hstore.internal.StartTxnMessage;
@@ -1486,6 +1487,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             //this.reconfiguration_coordinator.asyncPullRequestFromPE(livePullId, txnId, callingPartition, pullRequests, pullBlockSemaphore);
             processScheduleAsyncPullRequestMessage((ScheduleAsyncPullRequestMessage)work);
         }  
+        else if (work instanceof ReconfigUtilRequestMessage) {
+        	LOG.info(String.format("(%s) Reconfig util request. Work Queue Size: %s", this.partitionId, this.work_queue.size()));
+        	processReconfigUtilRequestMessage((ReconfigUtilRequestMessage)work);
+        } 
         else if (work instanceof AsyncDataPullResponseMessage) {
             //We have received and are processing a data pull response
         	LOG.info("Processing the pull response message received");
@@ -3377,6 +3382,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.reconfiguration_coordinator.asyncPullRequestFromPE(pullID, txnID, this.partitionId, pullRequests);
         this.reconfiguration_stats.trackAsyncPullInit(this.partitionId, pullRange.getNewPartition(), pullRange.getTableName());
         LOG.debug("("+ this.partitionId + ") ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());       
+    }
+    
+    public void processReconfigUtilRequestMessage(ReconfigUtilRequestMessage reconfigUtilMsg) {
+    	switch(reconfigUtilMsg.getRequestType()) {
+    	case INIT_RECONFIGURATION:
+    		try {
+    			initReconfiguration(reconfigUtilMsg.getReconfigPlan(), reconfigUtilMsg.getReconfigProtocol(), 
+    					reconfigUtilMsg.getReconfigState(), reconfigUtilMsg.getExplicitPartitions());
+    		} catch(Exception ex) {
+    			throw new RuntimeException("Unexpected error when initializing reconfiguration", ex);
+    		}
+    		break;
+    	default:
+    		throw new RuntimeException("Invalid request type: " + reconfigUtilMsg.getRequestType());	
+    	}
     }
     
     
@@ -6735,6 +6755,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     
     public void queueLivePullReplyResponse(MultiDataPullResponseMessage pullResponseMsg){
         this.work_queue.offer(pullResponseMsg);
+    }
+    
+    public void queueReconfigUtilRequest(ReconfigUtilRequestMessage reconfigUtilMsg){
+        this.work_queue.offer(reconfigUtilMsg);
     }
     
     /**
