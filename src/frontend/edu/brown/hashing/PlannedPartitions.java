@@ -423,13 +423,14 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             		return (Integer) this.find_partition_cache.get(ids);
             	}
             	
+            	Object[] keys = ids.toArray();
                 for (PartitionRange p : this.partitions) {
                     // if this greater than or equal to the min inclusive val
                     // and
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
-                    if (p.inRange(ids)) {
+                    if (p.inRange(keys)) {
                     	this.find_partition_cache.put(ids, p.partition);
                     	return p.partition;
                     }
@@ -457,6 +458,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
 
             List<Integer> partitionIds = new ArrayList<Integer>();
+            Object[] keys = ids.toArray();
             for (PartitionRange p : this.partitions) {
                 try {
 
@@ -465,7 +467,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
-                    if (p.inRangeIgnoreNullCols(ids)) {
+                    if (p.inRangeIgnoreNullCols(keys)) {
                         partitionIds.add(p.partition);
                     }
                 } catch (Exception e) {
@@ -506,20 +508,23 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     	public int compare(Object[] o1, Object[] o2) {
     		assert (o1 != null);
     		assert (o2 != null);
-    		assert (o1.length == o2.length);
+    		
+    		int length = Math.min(o1.length, o2.length);
     		long cmp = 0;
-    		for (int i = 0; i < o1.length; i++) {
-    			try {
-    				cmp = ((Number) o1[i]).longValue() - ((Number) o2[i]).longValue();
-    			} catch (Exception ex) {
-    				LOG.error("Array index error! o1: " + StringUtils.join(o1, ',') + " o2: " +  StringUtils.join(o2, ','), ex);
-    			}
-
+    		for (int i = 0; i < length; i++) {
+    			cmp = ((Number) o1[i]).longValue() - ((Number) o2[i]).longValue();
+    			
     			if (cmp != 0)
     				break;
     		} // FOR
     		
-    		return (cmp < 0 ? -1 : (cmp > 0 ? 1 : 0));
+    		if(cmp == 0) {
+    			if(o1.length > o2.length) return 1;
+    			else if(o2.length > o1.length) return -1;
+    			else return 0;
+    		}
+    		
+    		return (cmp < 0 ? -1 : 1);
     	}
     
     }
@@ -539,6 +544,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         private Object[] max_excl;
         private PartitionKeyComparator cmp;
         private Table catalog_table;
+        private int non_null_cols;
 
         public PartitionRange(Table table, int partition_id, String range_str) throws ParseException {
             this.partition = partition_id;
@@ -574,6 +580,8 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             if (cmp.compare(this.min_incl, this.max_excl) > 0) {
                 throw new ParseException("Min cannot be greater than max", -1);
             }
+            
+            this.non_null_cols = this.getNonNullCols();
         }
 
         public PartitionRange(Table table, int partition_id, Object[] min_incl, Object[] max_excl) {
@@ -585,6 +593,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             this.min_incl = min_incl;
             this.max_excl = max_excl;
+            this.non_null_cols = this.getNonNullCols();
         }
 
         private Object[] getRangeKeys(String key_str) throws ParseException {
@@ -670,27 +679,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
         }
 
-        public boolean inRange(List<Object> ids) {
-            Object[] keys = new Object[this.min_incl.length];
-            int col = 0;
-            for (Object id : ids) {
-                if (col >= keys.length) {
-                    break;
-                }
-                keys[col] = id;
-                col++;
-            }
-            for (; col < keys.length; col++) {
-                VoltType vt = this.keySchema.getColumnType(col);
-                keys[col] = vt.getNullValue();
-            }
-
-            return inRange(keys, ids.size());
-        }
-
-        public boolean inRange(Object[] keys, int orig_size) {
+        public boolean inRange(Object[] keys) {
             if (cmp.compare(min_incl, keys) <= 0 && (cmp.compare(max_excl, keys) > 0 || (cmp.compare(min_incl, max_excl) == 0 && cmp.compare(min_incl, keys) == 0))) {
-                if (orig_size >= getNonNullCols()) {
+                if (keys.length >= this.non_null_cols) {
                     return true;
                 }
             }
@@ -698,25 +689,15 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             return false;
         }
 
-        public boolean inRangeIgnoreNullCols(List<Object> ids) {
-            Object[] keys = new Object[this.keySchema.getColumnCount()];
-            int col = 0;
-            for (Object id : ids) {
-                if (col >= keys.length) {
-                    break;
-                }
-                keys[col] = id;
-                col++;
+        public boolean inRangeIgnoreNullCols(Object[] keys) {
+        	Object[] keys_all = new Object[min_incl.length];
+        	for (int j = 0; j < keys.length; j++) {
+                keys_all[j] = keys[j];
             }
-
-            return inRangeIgnoreNullCols(keys, ids.size());
-        }
-
-        public boolean inRangeIgnoreNullCols(Object[] keys, int orig_size) {
-            for (int j = orig_size; j < keys.length; j++) {
-                keys[j] = min_incl[j];
+            for (int j = keys.length; j < keys_all.length; j++) {
+                keys_all[j] = min_incl[j];
             }
-            if (cmp.compare(min_incl, keys) <= 0 && (cmp.compare(max_excl, keys) > 0 || (cmp.compare(min_incl, max_excl) == 0 && cmp.compare(min_incl, keys) == 0))) {
+            if (cmp.compare(min_incl, keys_all) <= 0 && (cmp.compare(max_excl, keys_all) > 0 || (cmp.compare(min_incl, max_excl) == 0 && cmp.compare(min_incl, keys_all) == 0))) {
                 return true;
             }
 
