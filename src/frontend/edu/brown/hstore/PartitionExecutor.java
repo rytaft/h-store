@@ -1593,8 +1593,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     //this.work_queue.offer(pullMsg);
                 }
                 
-                LOG.info(String.format("CompletedExtract, Async2, PullId=%s, Chunks=%s, Time=%s, Records=%s, Table=%s ",
-                        pull.getAsyncPullIdentifier(), chunkId, timeTaken, records, tableName)); 
+                LOG.info(String.format("CompletedExtract, Async2, PullId=%s, Chunks=%s, MoreData=%s, Time=%s, Records=%s, Table=%s ",
+                        pull.getAsyncPullIdentifier(), chunkId, moreDataNeeded, timeTaken, records, tableName)); 
             } catch (Exception e) {
                 LOG.error("Exception when processing async data pull response", e);
             }
@@ -3340,8 +3340,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         int qGrowth = this.lockQueue.size()-queueSize;
         this.reconfiguration_coordinator.profilers[this.partitionId].pe_extract_queue_size_growth.put(qGrowth);
         
-        LOG.info(String.format("CompletedExtract, Live, PullId=%s, Chunks=%s, Records=%s, EmptyRecordSet=%s, QueueTimeMS=%s, TotalExtractTimeMS=%s, QueueGrowth=%s ",
-                livePullRequest.getLivePullIdentifier(), chunkId, records, emptyRecordCount, queueTime/ 1000000, (extractEndTime-extractStartTime)/ 1000000, qGrowth)); 
+        LOG.info(String.format("CompletedExtract, Live, PullId=%s, Chunks=%s, MoreData=%s, Records=%s, EmptyRecordSet=%s, QueueTimeMS=%s, TotalExtractTimeMS=%s, QueueGrowth=%s ",
+                livePullRequest.getLivePullIdentifier(), chunkId, moreDataNeeded, records, emptyRecordCount, queueTime/ 1000000, (extractEndTime-extractStartTime)/ 1000000, qGrowth)); 
     }
  
     

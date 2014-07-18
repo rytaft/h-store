@@ -202,7 +202,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.rcRequestId = 1;
         this.reconfigurationDonePartitionIds = new HashSet<Integer>();
         this.reconfigPlanQueue = new ArrayList<>();
-        reconfigurationDoneSites = new HashSet<Integer>();
+        this.reconfigurationDoneSites = new HashSet<Integer>();
         
         dataPullResponseTimes = new HashMap<>(); 
         
@@ -331,8 +331,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
             ReconfigurationPlan reconfig_plan;
             
             //Used by the leader to track the reconfiguration state of each partition and each site respectively 
-            this.reconfigurationDonePartitionIds = new HashSet<Integer>();
-            reconfigurationDoneSites = new HashSet<Integer>();
+            this.reconfigurationDonePartitionIds.clear();
+            reconfigurationDoneSites.clear();
             
             try {
                 // Find reconfig plan
@@ -589,11 +589,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     .setReceiverSite(i)
                     .setMessageIdentifier(-1).build();
         	if(i != localSiteId) {
+                LOG.info("Sending reconfig end acknowledgement to site " + i);
         		this.channels[i].reconfigurationControlMsg(controller, reconfigEndAck, null);
         	} else {
+                LOG.info("Sending (locally) reconfig end acknowledgement to site " + i);
         		receiveReconfigurationCompleteFromLeader();
         	}
-        	LOG.info("Sent reconfig end acknowledgement to site " + i);
         }
     }
         
@@ -640,8 +641,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 if (this.hstore_site.getSiteId() == this.reconfigurationLeader) {
                     this.num_sites_complete = 0;
                     this.sites_complete = new HashSet<Integer>();
-                    this.reconfigurationDonePartitionIds = new HashSet<Integer>();
-                    this.reconfigurationDoneSites = new HashSet<Integer>();
+                    this.reconfigurationDonePartitionIds.clear();
+                    this.reconfigurationDoneSites.clear();
                 }
                 //sendNextPlanToAllSites();
                 this.setInReconfiguration(false);
@@ -670,7 +671,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         ReconfigurationPlan rplan = checkForAdditionalReconfigs();
         try {            
             if(rplan != null) {
-                this.reconfigurationDonePartitionIds = new HashSet<Integer>();
+                this.reconfigurationDonePartitionIds.clear();
                 for (PartitionExecutor executor : this.local_executors) {
                 	ReconfigUtilRequestMessage reconfigUtilMsg = new ReconfigUtilRequestMessage(RequestType.INIT_RECONFIGURATION, rplan, 
                 			reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
@@ -710,22 +711,21 @@ public class ReconfigurationCoordinator implements Shutdownable {
             LOG.error("This message should only go to reconfiguration leader");
             return;
         } 
-        LOG.info("Got a message to end Reconfiguration from site Id :"+ siteId);
+        LOG.info(String.format("Received  message from siteID:%s that is has completed local Reconfiguration", siteId));
         this.reconfigurationDoneSites.add(siteId);
         
         //All sites have checked in, including leader previously
         if(reconfigurationDoneSites.size() == this.hstore_site.getCatalogContext().numberOfSites){
             // Now the leader can be sure that the reconfiguration is done as all sites have checked in
-            LOG.info("All sites have reported reconfiguration is complete. " +
-                    "Sending a message to notify all sites that reconfiguration has ended");
+
             
             if (hasNextReconfigPlan()){
                 LOG.info("Moving to next plan. Leader received all notifications and another plan is scheduled");
                 if (this.hstore_site.getSiteId() == this.reconfigurationLeader) {
                     this.num_sites_complete = 0;
                     this.sites_complete = new HashSet<Integer>();
-                    this.reconfigurationDonePartitionIds = new HashSet<Integer>();
-                    this.reconfigurationDoneSites = new HashSet<Integer>();
+                    this.reconfigurationDonePartitionIds.clear();
+                    this.reconfigurationDoneSites.clear();
                 }
                 //FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
                 //sendNextPlanToAllSites();
@@ -733,6 +733,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
                 send.start();
             } else { 
+                LOG.info("All sites have reported reconfiguration is complete. " +
+                        "Sending a message to notify all sites that reconfiguration has ended");
                 sendReconfigEndAcknowledgementToAllSites();
                 FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+" , siteId="+this.hstore_site.getSiteId());
             }
