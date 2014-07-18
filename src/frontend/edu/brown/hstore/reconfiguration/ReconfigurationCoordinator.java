@@ -571,7 +571,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         	} else{
         		this.channels[destinationId].reconfigurationControlMsg(controller, leaderCallback, null);
         		FileUtil.appendEventToFile("RECONFIGURATION_SITE_DONE, siteId="+this.hstore_site.getSiteId());
-                showReconfigurationProfiler(true);
+                
         	}
         }
     }
@@ -652,7 +652,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 LOG.info("Sending a message to notify all sites that reconfiguration has ended");
                 FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+", siteId="+this.hstore_site.getSiteId());
                 sendReconfigEndAcknowledgementToAllSites();
-                showReconfigurationProfiler(true);
             }
         }
     }
@@ -692,7 +691,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * end of reconfiguration
      */
     public void endReconfiguration() {
-        this.setInReconfiguration(false);
+    	showReconfigurationProfiler(true);
+    	this.setInReconfiguration(false);
         LOG.info("Clearing the reconfiguration state for each partition at the site");
         for (PartitionExecutor executor : this.local_executors) {
             executor.endReconfiguration();
@@ -735,7 +735,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
             } else { 
                 sendReconfigEndAcknowledgementToAllSites();
                 FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+" , siteId="+this.hstore_site.getSiteId());
-                showReconfigurationProfiler(true);
             }
         }
     }
