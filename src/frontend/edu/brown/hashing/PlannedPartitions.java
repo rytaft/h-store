@@ -19,7 +19,6 @@ import java.util.Set;
 
 import org.apache.commons.collections.map.LRUMap;
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -29,11 +28,7 @@ import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Table;
-import org.voltdb.types.SortDirectionType;
-import org.voltdb.types.TimestampType;
-import org.voltdb.utils.VoltTableComparator;
 import org.voltdb.utils.VoltTypeUtil;
-import org.voltdb.utils.Pair;
 
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.HStoreConstants;
@@ -419,9 +414,11 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             try {
             	// check the cache first
-            	if(this.find_partition_cache.containsKey(ids)) {
-            		return (Integer) this.find_partition_cache.get(ids);
-            	}
+                synchronized(this){
+                	if(this.find_partition_cache.containsKey(ids)) {
+                		return (Integer) this.find_partition_cache.get(ids);
+                	}
+                }
             	
             	Object[] keys = ids.toArray();
                 for (PartitionRange p : this.partitions) {
@@ -431,7 +428,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
                     if (p.inRange(keys)) {
-                    	this.find_partition_cache.put(ids, p.partition);
+                        synchronized (this) {
+                            this.find_partition_cache.put(ids, p.partition);
+                        }
                     	return p.partition;
                     }
                 }
@@ -441,7 +440,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             if (debug.val)
                 LOG.debug("Partition not found. ids: " + ids.toString() + ", partitions: " + this.partitions.toString());
-        		this.find_partition_cache.put(ids, HStoreConstants.NULL_PARTITION_ID);
+            synchronized(this){
+                this.find_partition_cache.put(ids, HStoreConstants.NULL_PARTITION_ID);
+            }
             
             return HStoreConstants.NULL_PARTITION_ID;
         }
@@ -487,7 +488,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
          * @throws ParseException
          */
         public void addPartitionRanges(int partition_id, String partition_values) throws ParseException {
-        	this.find_partition_cache.clear();
+            synchronized (this) {
+                this.find_partition_cache.clear();   
+            }
             for (String range : partition_values.split(",")) {
                 this.partitions.add(new PartitionRange(this.catalog_table, partition_id, range));
             }
