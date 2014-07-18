@@ -57,7 +57,6 @@ public class PartitionMessageQueue extends PriorityBlockingQueue<InternalMessage
         @SuppressWarnings("unchecked")
         private final Class<? extends InternalMessage> compareOrder[] = (Class<? extends InternalMessage>[])new Class<?>[]{
             LivePullRequestMessage.class,
-            ReconfigUtilRequestMessage.class,
             SetDistributedTxnMessage.class,
             PrepareTxnMessage.class,
             FinishTxnMessage.class,
@@ -67,7 +66,8 @@ public class PartitionMessageQueue extends PriorityBlockingQueue<InternalMessage
             AsyncNonChunkPushRequestMessage.class,
             AsyncNonChunkPullRequestMessage.class,
             MultiDataPullResponseMessage.class,
-            ScheduleAsyncPullRequestMessage.class
+            ScheduleAsyncPullRequestMessage.class,
+            ReconfigUtilRequestMessage.class
         };
         
         @Override

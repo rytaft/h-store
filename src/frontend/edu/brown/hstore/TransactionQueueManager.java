@@ -355,9 +355,7 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
             // If this txn gets rejected when we try to insert it, then we 
             // just need to stop trying to add it to other partitions
             if (ret) {
-                if(reconfigEnabled && inReconfig.get()){
-                    nextTxn.setArrivedInReconfig(true);
-                }
+
                 status = this.lockQueueInsert(nextTxn, partition, callback);
                 if (status != Status.OK) ret = false;
             // IMPORTANT: But we still need to go through and decrement the
