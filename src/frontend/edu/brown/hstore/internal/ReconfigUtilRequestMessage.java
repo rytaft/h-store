@@ -8,7 +8,8 @@ import edu.brown.profilers.ProfileMeasurement;
 
 public class ReconfigUtilRequestMessage extends InternalMessage {
 	public enum RequestType {
-		INIT_RECONFIGURATION
+		INIT_RECONFIGURATION,
+		END_RECONFIGURATION
 	}
     
 	private RequestType requestType;	
@@ -32,6 +33,16 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
         this.reconfig_protocol = reconfig_protocol;
         this.reconfig_state = reconfig_state;
         this.planned_partitions = planned_partitions;
+    }
+    
+    public ReconfigUtilRequestMessage(RequestType requestType) {
+        super();
+        this.createTime = ProfileMeasurement.getTime();
+        this.requestType = requestType;
+        this.reconfig_plan = null; 
+        this.reconfig_protocol = null;
+        this.reconfig_state = null;
+        this.planned_partitions = null;
     }
 
     public long getQueueTime(){
