@@ -3966,7 +3966,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         Set<ReconfigurationRange> pullRequestsNeeded = new TreeSet<>();
         Set<ReconfigurationRange> restartsNeeded = new TreeSet<>();
         Set<Integer> partitionsForRestart = new HashSet<>();
-        
+      
         //this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.start();
         for (int i = 0; i < fragmentIds.length; i++) {
             // Calls andy's methods for calculaitng the offsets
@@ -3985,11 +3985,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         LOG.trace(String.format("CatalogObj:%s Parameter:%s  KeyOwned:%s ",offsetPair.getFirst(), parametersToCheck.toString(), keyOwned));
                     if(!keyOwned && predict_single_partition) {
                     	try {
+                    	    //String currentDXN = (this.currentDtxn == null) ? "noDTXN" : this.currentDtxn.toString(); 
+                    	    //LOG.info(String.format("Restarting due to key not ownded CatalogObj:%s Parameter:%s  KeyOwned:%s d:%s",offsetPair.getFirst(), 
+                    	      //      parametersToCheck.toString(), keyOwned, currentDXN));
                     		partitionsForRestart.addAll(this.reconfiguration_tracker.getAllPartitionIds(offsetPair.getFirst(), parametersToCheck));
                     	} catch (Exception e) {
                     		LOG.error("Error while finding partitions for restart: " + e);
                     	}
-                    }
+                    } 
                 } catch (ReconfigurationException rex) {
                     // A reconfigurationException was thrown for this key
                     if (debug.val) LOG.debug(String.format("(%d) Exception thrown from reconfig check : %s for txn %s ", this.partitionId, rex.toString(),currentTxn));
@@ -6579,7 +6582,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         minInclusiveList.resetRowPosition();
         maxExclusiveList.resetRowPosition();
         PartitionKeyComparator cmp = new PartitionKeyComparator();
-
+        boolean receivedAllTuples = false;
         Long startTime = null; //pullStartTime.remove(pullId);
         while(minInclusiveList.advanceRow() && maxExclusiveList.advanceRow()) {
             // Currently we don't have any tracking for Stop and Copy.
@@ -6624,9 +6627,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
                         }                       
                     } catch (ReconfigurationException re) {
-                        if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_IN)
-                            this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
-                        else
+                        if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_IN) {
+                            receivedAllTuples = true;
+                        } else
                             LOG.error("Unexpected reconfiguration Exception", re);
                     }
     
@@ -6651,16 +6654,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.reconfiguration_stats.trackAsyncReceived(this.partitionId, oldPartitionId, table_name, (vt.getRowSize()*vt.getRowCount())/1000, timeTaken, isAsyncRequest, moreDataComing);
             reconfiguration_stats.addMessage(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s, ",timeTaken, pullId,table_name, minInclusiveList.toString().replace("\n", " | "), maxExclusiveList));
         }
-        
-        if(this.reconfiguration_tracker == null) {
-            LOG.error(String.format("(%s) ReconfigTracker is Null!! ", this.partitionId));
+        if(receivedAllTuples){
+            this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
         }
-        else if(this.reconfiguration_tracker.checkIfAllRangesAreMigratedIn()){
-            // Now reconfiguration resposnibilty of a destination of Live Pull is done,
-            // so it tells the leader it is done
-            this.hstore_site.getReconfigurationCoordinator().finishReconfiguration(partitionId);
-        }
-        
     }
 
     /**

@@ -246,10 +246,7 @@ public class TransactionInitializer {
             int idx = (int)(Math.abs(client_handle) % this.local_partitions.size());
             base_partition = this.local_partitions.values()[idx];
         }
-        
-        LOG.info("Getting partition " + base_partition + " in calculateBasePartition(). Values: " + procParams.toString() + ", CatalogItems: " + catalog_proc);
-    	
-        
+                
         return (base_partition);
     }
     

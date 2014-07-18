@@ -1601,51 +1601,55 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     
     public void showReconfigurationProfiler(boolean writeToEventLog) {
-        if(hstore_conf.site.reconfig_profiling) {
-            for (PartitionExecutor p : local_executors){
-                LOG.info("------------------------------------\n" +
-                         "   Stats for partition " +  p.getPartitionId() +"  \n"  +
-                         "-------------------------------------");
-                ReconfigurationStats stats = p.getReconfigStats();
-                for (ReconfigurationStats.EEStat s : stats.getEeStats()){
-                    //LOG.info(s.toString());
-                    FileUtil.appendReconfigStat(s.toCSVString());
+        try{
+            if(hstore_conf.site.reconfig_profiling) {
+                for (PartitionExecutor p : local_executors){
+                    LOG.info("\n------------------------------------\n" +
+                             "   Stats for partition " +  p.getPartitionId() +"  \n"  +
+                             "-------------------------------------\n");
+                    ReconfigurationStats stats = p.getReconfigStats();
+                    for (ReconfigurationStats.EEStat s : stats.getEeStats()){
+                        //LOG.info(s.toString());
+                        FileUtil.appendReconfigStat(s.toCSVString());
+                    }
+                    
+                    //Messages?
                 }
                 
-                //Messages?
-            }
-            
-            for (int p_id : hstore_site.getLocalPartitionIds().values()) {
-                LOG.info("Showing reconfig stats");
-                LOG.info(this.profilers[p_id].toString());
-                
-                reportProfiler("REPORT_AVG_DEMAND_PULL_TIME",this.profilers[p_id].on_demand_pull_time, p_id, writeToEventLog);
-                
-                reportProfiler("REPORT_AVG_ASYNC_PULL_TIME",this.profilers[p_id].async_pull_time, p_id, writeToEventLog);
-                reportProfiler("REPORT_AVG_ASYNC_DEST_QUEUE_TIME",this.profilers[p_id].async_dest_queue_time, p_id, writeToEventLog);
-                reportProfiler("REPORT_AVG_LIVE_PULL_RESPONSE_QUEUE_TIME",this.profilers[p_id].on_demand_pull_response_queue, p_id, writeToEventLog);
-                reportProfiler("REPORT_PE_CHECK_TXN_TIME",this.profilers[p_id].pe_check_txn_time, p_id, writeToEventLog);
-                reportProfiler("REPORT_PE_LIVE_PULL_BLOCK_TIME",this.profilers[p_id].pe_live_pull_block_time, p_id, writeToEventLog);
-                
-
-                reportProfiler("REPORT_EMPTY_LOADS", "Count", this.profilers[p_id].empty_loads, p_id, writeToEventLog);
-
-                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE",  this.profilers[p_id].pe_block_queue_size, p_id, writeToEventLog);
-                reportProfiler("REPORT_BLOCKED_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_block_queue_size_growth, p_id, writeToEventLog);
-                reportProfiler("REPORT_EXTRACT_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_extract_queue_size_growth, p_id, writeToEventLog);
-                reportProfiler("REPORT_EXTRACT_PROC_TIME",  this.profilers[p_id].src_extract_proc_time, p_id, writeToEventLog);
-                if(livePullKBMap != null && livePullKBMap.containsKey(p_id))
-                    reportProfiler("REPORT_TOTAL_PULL_SIZE", "KB", livePullKBMap.get(p_id), p_id, writeToEventLog);
-
-                if (detailed_timing) {
-                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id, writeToEventLog);
-                    reportProfiler("REPORT_AVG_SRC_DATA_PULL_PROC",this.profilers[p_id].src_data_pull_req_proc_time, p_id, writeToEventLog);                    
+                for (int p_id : hstore_site.getLocalPartitionIds().values()) {
+                    LOG.info("Showing reconfig stats for p_id " + p_id);
+                    LOG.info(this.profilers[p_id].toString());
+                    
+                    reportProfiler("REPORT_AVG_DEMAND_PULL_TIME",this.profilers[p_id].on_demand_pull_time, p_id, writeToEventLog);
+                    
+                    reportProfiler("REPORT_AVG_ASYNC_PULL_TIME",this.profilers[p_id].async_pull_time, p_id, writeToEventLog);
+                    reportProfiler("REPORT_AVG_ASYNC_DEST_QUEUE_TIME",this.profilers[p_id].async_dest_queue_time, p_id, writeToEventLog);
+                    reportProfiler("REPORT_AVG_LIVE_PULL_RESPONSE_QUEUE_TIME",this.profilers[p_id].on_demand_pull_response_queue, p_id, writeToEventLog);
+                    reportProfiler("REPORT_PE_CHECK_TXN_TIME",this.profilers[p_id].pe_check_txn_time, p_id, writeToEventLog);
+                    reportProfiler("REPORT_PE_LIVE_PULL_BLOCK_TIME",this.profilers[p_id].pe_live_pull_block_time, p_id, writeToEventLog);
+                    
+    
+                    reportProfiler("REPORT_EMPTY_LOADS", "Count", this.profilers[p_id].empty_loads, p_id, writeToEventLog);
+    
+                    reportProfiler("REPORT_BLOCKED_QUEUE_SIZE",  this.profilers[p_id].pe_block_queue_size, p_id, writeToEventLog);
+                    reportProfiler("REPORT_BLOCKED_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_block_queue_size_growth, p_id, writeToEventLog);
+                    reportProfiler("REPORT_EXTRACT_QUEUE_SIZE_GROWTH",  this.profilers[p_id].pe_extract_queue_size_growth, p_id, writeToEventLog);
+                    reportProfiler("REPORT_EXTRACT_PROC_TIME",  this.profilers[p_id].src_extract_proc_time, p_id, writeToEventLog);
+                    if(livePullKBMap != null && livePullKBMap.containsKey(p_id))
+                        reportProfiler("REPORT_TOTAL_PULL_SIZE", "KB", livePullKBMap.get(p_id), p_id, writeToEventLog);
+    
+                    if (detailed_timing) {
+                        reportProfiler("REPORT_AVG_SRC_DATA_PULL_INIT",this.profilers[p_id].src_data_pull_req_init_time, p_id, writeToEventLog);
+                        reportProfiler("REPORT_AVG_SRC_DATA_PULL_PROC",this.profilers[p_id].src_data_pull_req_proc_time, p_id, writeToEventLog);                    
+                    }
+                    reportProfiler("AVG_QUEUE_TXN", this.profilers[p_id].queueTotalTime, this.profilers[p_id].queueTotalInvocations, p_id, writeToEventLog);
+                    reportProfiler("AVG_QUEUE_RECONFIG_TXN", this.profilers[p_id].queueReconfigTotalTime, this.profilers[p_id].queueReconfigTotalInvocations, p_id, writeToEventLog);
+                    
+                    LOG.info("\n------------------------------------");
                 }
-                reportProfiler("AVG_QUEUE_TXN", this.profilers[p_id].queueTotalTime, this.profilers[p_id].queueTotalInvocations, p_id, writeToEventLog);
-                reportProfiler("AVG_QUEUE_RECONFIG_TXN", this.profilers[p_id].queueReconfigTotalTime, this.profilers[p_id].queueReconfigTotalInvocations, p_id, writeToEventLog);
-                
-                
             }
+        } catch (Exception e){
+            LOG.error("Exception when showing reconfig stats", e);
         }
     }
 

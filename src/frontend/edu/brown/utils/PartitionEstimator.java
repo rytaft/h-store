@@ -937,7 +937,7 @@ public class PartitionEstimator {
             	} // FOR
             	// @TODO - currently we do not support arrays for multi-column range partitioning
             	partition = this.hasher.hash(Arrays.asList(values), Arrays.asList(catalogItems));
-            	LOG.info("Getting partition " + partition + " in getBasePartition(). Values: " + StringUtils.join(values, ',') + ", CatalogItems: " + StringUtils.join(catalogItems, ','));
+            	//LOG.info("Getting partition " + partition + " in getBasePartition(). Values: " + StringUtils.join(values, ',') + ", CatalogItems: " + StringUtils.join(catalogItems, ','));
             	
             } else {
             	int hashes[] = new int[mpp.size()];
