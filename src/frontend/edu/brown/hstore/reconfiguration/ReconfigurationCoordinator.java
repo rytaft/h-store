@@ -671,10 +671,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
         ReconfigurationPlan rplan = checkForAdditionalReconfigs();
         try {            
             if(rplan != null) {
+
                 this.reconfigurationDonePartitionIds.clear();
-                for (PartitionExecutor executor : this.local_executors) {
-                	ReconfigUtilRequestMessage reconfigUtilMsg = new ReconfigUtilRequestMessage(RequestType.INIT_RECONFIGURATION, rplan, 
-                			reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
+                ReconfigUtilRequestMessage reconfigUtilMsg = new ReconfigUtilRequestMessage(RequestType.INIT_RECONFIGURATION, rplan, 
+            			reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
+            	for (PartitionExecutor executor : this.local_executors) {
                 	executor.queueReconfigUtilRequest(reconfigUtilMsg);                 
                     this.partitionStates.put(executor.getPartitionId(), ReconfigurationState.PREPARE);
                 }
@@ -695,8 +696,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
     	showReconfigurationProfiler(true);
     	this.setInReconfiguration(false);
         LOG.info("Clearing the reconfiguration state for each partition at the site");
-        for (PartitionExecutor executor : this.local_executors) {
-            executor.endReconfiguration();
+        ReconfigUtilRequestMessage reconfigUtilMsg = new ReconfigUtilRequestMessage(RequestType.END_RECONFIGURATION);
+    	for (PartitionExecutor executor : this.local_executors) {
+        	executor.queueReconfigUtilRequest(reconfigUtilMsg);
             this.partitionStates.put(executor.getPartitionId(), ReconfigurationState.END);
         }
     }

@@ -3394,6 +3394,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     			throw new RuntimeException("Unexpected error when initializing reconfiguration", ex);
     		}
     		break;
+    	case END_RECONFIGURATION:
+    		try {
+    			endReconfiguration();
+    		} catch(Exception ex) {
+    			throw new RuntimeException("Unexpected error when ending reconfiguration", ex);
+    		}
+    		break;
     	default:
     		throw new RuntimeException("Invalid request type: " + reconfigUtilMsg.getRequestType());	
     	}
