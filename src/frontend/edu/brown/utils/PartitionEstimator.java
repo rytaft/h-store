@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.pool.BasePoolableObjectFactory;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -936,6 +937,7 @@ public class PartitionEstimator {
             	} // FOR
             	// @TODO - currently we do not support arrays for multi-column range partitioning
             	partition = this.hasher.hash(Arrays.asList(values), Arrays.asList(catalogItems));
+            	LOG.info("Getting partition " + partition + " in getBasePartition(). Values: " + StringUtils.join(values, ',') + ", CatalogItems: " + StringUtils.join(catalogItems, ','));
             	
             } else {
             	int hashes[] = new int[mpp.size()];
