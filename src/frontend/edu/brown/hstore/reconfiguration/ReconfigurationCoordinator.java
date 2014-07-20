@@ -338,8 +338,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 // Find reconfig plan
                 if (absHasher instanceof TwoTieredRangeHasher) {
                     reconfig_plan = hasher.changePartitionPlan(partitionPlan);
+                    for(PartitionExecutor executor : this.local_executors) {
+                    	((TwoTieredRangeHasher) executor.getPartitionEstimator().getHasher()).changePartitionPlan(partitionPlan);
+                    }
                 } else if (absHasher instanceof PlannedHasher) {
                     reconfig_plan = hasher.changePartitionPhase(partitionPlan);
+                    for(PartitionExecutor executor : this.local_executors) {
+                    	((TwoTieredRangeHasher) executor.getPartitionEstimator().getHasher()).changePartitionPhase(partitionPlan);
+                    }
                 } else {
                     throw new Exception("Unsupported hasher : " + absHasher.getClass());
                 }
