@@ -675,9 +675,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 this.reconfigurationDonePartitionIds.clear();
                 ReconfigUtilRequestMessage reconfigUtilMsg = new ReconfigUtilRequestMessage(RequestType.INIT_RECONFIGURATION, rplan, 
             			reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
-                if(this.hstore_site.getPartitionEstimator().getHasher() instanceof ExplicitHasher) {
-                	((ExplicitHasher) this.hstore_site.getPartitionEstimator().getHasher()).getPartitions().setReconfigurationPlan(rplan);
-                }
                 
             	for (PartitionExecutor executor : this.local_executors) {
                 	executor.queueReconfigUtilRequest(reconfigUtilMsg);                 
