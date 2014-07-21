@@ -844,7 +844,10 @@ public class BatchPlanner {
                 // Only mark that we touched these partitions if the Statement
                 // is not on a replicated table or it's not read-only
                 if (is_replicated_only == false || is_read_only == false) {
-                    touched_partitions.put(stmt_all_partitions.get());
+                    int part = stmt_all_partitions.get();
+                    if (part >= 0) {
+                        touched_partitions.put(part);
+                    }
                 }
             }
             // Distributed Query
