@@ -91,7 +91,6 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     
     public ReconfigurationTracking(ExplicitPartitions partitionPlan, ReconfigurationPlan plan, int partition_id){
         this(partitionPlan,plan.getOutgoing_ranges().get(partition_id), plan.getIncoming_ranges().get(partition_id),partition_id);
-        this.partitionPlan.setReconfigurationPlan(plan);      
     }
   
     @Override 
@@ -420,11 +419,6 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     	partitionIds.addAll(this.partitionPlan.getAllPartitionIds(table_name, key));
     	partitionIds.addAll(this.partitionPlan.getAllPreviousPartitionIds(table_name, key));
     	return partitionIds;
-    }
-    
-    @Override
-    public void endReconfiguration() {
-    	this.partitionPlan.setReconfigurationPlan(null);
     }
     
     

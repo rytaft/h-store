@@ -6546,15 +6546,16 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         
         LOG.info("Clearing up reconfiguration state for p_id " + this.partitionId);
-        if (this.reconfiguration_tracker!=null)
-            this.reconfiguration_tracker.endReconfiguration();
-        
-    	this.reconfig_plan = null;
+        this.reconfig_plan = null;
     	this.reconfig_state = ReconfigurationState.END;
         this.outgoing_ranges = null;
         this.incoming_ranges = null;
         this.reconfiguration_tracker = null;
         this.inReconfiguration = false;
+        if(this.p_estimator.getHasher() instanceof ExplicitHasher) {
+        	((ExplicitHasher) this.p_estimator.getHasher()).getPartitions().setReconfigurationPlan(null);
+        }
+        
         this.showPostReconfig  = true;
         this.loopCount = 0;
         if (this.currentDtxn != null){
