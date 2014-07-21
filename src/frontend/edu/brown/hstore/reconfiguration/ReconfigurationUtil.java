@@ -186,9 +186,9 @@ public class ReconfigurationUtil {
     	}
     	
     	// HACK for TPCC
-    	if(table_name.equals("orders")) {
-    		maxSplits *= 10;
-    	}
+//    	if(table_name.equals("orders")) {
+//    		maxSplits *= 10;
+//    	}
     	
     	List<ReconfigurationRange> res = new ArrayList<>();
     	LOG.info("Old range: " + range.toString());
