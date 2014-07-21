@@ -81,6 +81,9 @@ public class TransactionRTStats extends StatsSource {
 	
 	public void addResponseTime(Procedure catalog_proc, long time){
 		Buckets b = this.responseTimes.get(catalog_proc);
+		if(catalog_proc == null) {
+			return;
+		}
 		if (b == null){
 			b = new Buckets();
 			this.responseTimes.put(catalog_proc, b);
