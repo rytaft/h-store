@@ -199,6 +199,11 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     public int hash(Object value, int num_partitions) {
         throw new NotImplementedException("Hashing without Catalog not supported");
     }
+    
+    @Override
+    public AbstractHasher clone() {
+    	return new PlannedHasher(this.catalogContext, this.num_partitions, this.hstore_conf);
+    }
 
     public synchronized ExplicitPartitions getPartitions() {
         return (ExplicitPartitions)planned_partitions;

@@ -33,4 +33,9 @@ public class CachedHasher extends DefaultHasher {
         }
         return (hash.intValue());
     }
+    
+    @Override
+    public AbstractHasher clone() {
+    	return new CachedHasher(this.catalogContext, this.num_partitions, this.hstore_conf);
+    }
 }

@@ -27,6 +27,7 @@ import org.voltdb.catalog.Table;
 import org.voltdb.utils.VoltTableComparator;
 
 import edu.brown.catalog.DependencyUtil;
+import edu.brown.hashing.PlannedPartitions.PartitionKeyComparator;
 import edu.brown.hashing.PlannedPartitions.PartitionPhase;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
@@ -47,6 +48,7 @@ public abstract class ExplicitPartitions {
 	protected Map<String, List<String>> relatedTablesMap;
 	protected ReconfigurationPlan reconfigurationPlan;
 	protected PartitionPhase incrementalPlan;
+	protected PartitionPhase previousIncrementalPlan;
 	
 	private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
@@ -361,7 +363,7 @@ public abstract class ExplicitPartitions {
     	return this.catalog_context;
     }
     
-    public synchronized void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan) {
+    public void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan) {
 	if(reconfigurationPlan == null) {
 	    this.reconfigurationPlan = null;
 	    return;
@@ -374,6 +376,7 @@ public abstract class ExplicitPartitions {
 
    	this.reconfigurationPlan = reconfigurationPlan;
     	if(this.incrementalPlan == null) {
+    		this.previousIncrementalPlan = this.getPreviousPlan();
     		this.incrementalPlan = this.getPreviousPlan();
     	}
 	assert (this.reconfigurationPlan.range_map != null) : "Null reconfiguration range map";
@@ -389,13 +392,9 @@ public abstract class ExplicitPartitions {
 		    newRanges.addAll(tables.getValue().getRanges());
 		    continue;
 		}
- 		Table table = this.catalog_context.getTableByName(table_name);
-
+ 		
     		ReconfigurationRange reconfigRange = reconfigRanges.next();
-
-    		// get a volt table and volt table comparator
-    		VoltTable voltTable = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-    		VoltTableComparator cmp = ReconfigurationUtil.getComparator(voltTable);
+    		PartitionKeyComparator cmp = new PartitionKeyComparator();
 
     		Object[] max_old_accounted_for = null;
 
@@ -454,6 +453,7 @@ public abstract class ExplicitPartitions {
 	LOG.info("New incremental plan ranges: " + newRanges.toString());
 		
 		try {
+			this.previousIncrementalPlan = this.incrementalPlan;
 			this.incrementalPlan = new PartitionPhase(this.incrementalPlan.catalog_context, newRanges, this.partitionedTablesByFK);
 		} catch (Exception e) {
 			LOG.error(e);
@@ -464,7 +464,7 @@ public abstract class ExplicitPartitions {
     
     public List<PartitionRange> addAndMergeRanges(List<PartitionRange> ranges, PartitionRange newRange) {
     	ArrayList<PartitionRange> newRanges = new ArrayList<>();
-    	VoltTableComparator cmp = newRange.getComparator();
+    	PartitionKeyComparator cmp = new PartitionKeyComparator();
     	
     	for(PartitionRange range : ranges) {
     		if(range.getTable().equals(newRange.getTable()) && range.getPartition() == newRange.getPartition()) {

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Collection;
 
+import org.apache.commons.collections.map.LRUMap;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -26,6 +27,7 @@ import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTableComparator;
 
 import edu.brown.designer.MemoryEstimator;
+import edu.brown.hashing.PlannedPartitions.PartitionKeyComparator;
 import edu.brown.hashing.PlannedPartitions.PartitionPhase;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
@@ -61,6 +63,8 @@ public class ReconfigurationPlan {
     }
     
     public void addRange(ReconfigurationRange range){
+
+    	
         if(!outgoing_ranges.containsKey(range.old_partition)) {
             outgoing_ranges.put(range.old_partition, new ArrayList<ReconfigurationRange>());
         }
@@ -111,17 +115,23 @@ public class ReconfigurationPlan {
      *         found
      */
     public ReconfigurationRange findReconfigurationRange(String table_name, List<Object> ids) throws Exception {
+    	Pair<String, List<Object>> key = new Pair<>(table_name, ids);
     	try {
+
+            
     		List<ReconfigurationRange> ranges = this.range_map.get(table_name);
     		if (ranges == null) {
     			return null;
     		}
+    		
+    		Object[] keys = ids.toArray();
     		for (ReconfigurationRange r : ranges) {
     			// if this greater than or equal to the min inclusive val
     			// and
     			// less than
     			// max_exclusive or equal to both min and max (singleton)
-    			if (r.inRange(ids)) {
+    			if (r.inRange(keys)) {
+
     				return r;
     			}
     		}
@@ -145,6 +155,8 @@ public class ReconfigurationPlan {
 		if (ranges == null) {
 			return matchingRanges;
 		}
+		
+		Object[] keys = ids.toArray();
 		for (ReconfigurationRange r : ranges) {
 			try {
 
@@ -152,7 +164,7 @@ public class ReconfigurationPlan {
 				// and
 				// less than
 				// max_exclusive or equal to both min and max (singleton)
-				if (r.inRangeIgnoreNullCols(ids)) {
+				if (r.inRangeIgnoreNullCols(keys)) {
 					matchingRanges.add(r);
 				} 
 			} catch (Exception e) {
@@ -178,12 +190,7 @@ public class ReconfigurationPlan {
           Iterator<PartitionRange> new_ranges = new_table.partitions.iterator();
 
           PartitionRange new_range = new_ranges.next();
-          
-          // get a volt table and volt table comparator
-          Table table = old_table.getCatalog_table();
-          VoltTable voltTable = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-          
-          VoltTableComparator cmp = ReconfigurationUtil.getComparator(voltTable);
+          PartitionKeyComparator cmp = new PartitionKeyComparator();
           
           Object[] max_old_accounted_for = null;
           
@@ -445,21 +452,22 @@ public class ReconfigurationPlan {
          *         found
          */
         public ReconfigurationRange findReconfigurationRange(List<Object> ids) throws Exception {
-            try {
-                for (ReconfigurationRange r : this.reconfigurations) {
+        	try {
+        		Object[] keys = ids.toArray();
+        		for (ReconfigurationRange r : this.reconfigurations) {
                     // if this greater than or equal to the min inclusive val
                     // and
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
-                    if (r.inRange(ids)) {
-                		return r;
+                    if (r.inRange(keys)) {
+                    	return r;
                 	}
                 }
             } catch (Exception e) {
                 LOG.error("Error looking up reconfiguration range", e);
             }
 
-            return null;
+        	return null;
         }
       }
       
@@ -479,11 +487,11 @@ public class ReconfigurationPlan {
         private int new_partition;
         private String table_name; 
         private VoltTable keySchema;
-        private VoltTable keySchemaCopy; // not exposed outside of the class
         private List<Object[]> min_incl;
         private List<Object[]> max_excl;
-        private VoltTableComparator cmp;
+        private PartitionKeyComparator cmp;
         private Table catalog_table;
+        private int[] non_null_cols;
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, VoltTable min_incl, VoltTable max_excl, int old_partition, int new_partition) {
         	this(table_name, keySchema, new ArrayList<Object[]>(), new ArrayList<Object[]>(), old_partition, new_partition);
@@ -493,6 +501,11 @@ public class ReconfigurationPlan {
         	while(min_incl.advanceRow() && max_excl.advanceRow()) {
         		this.min_incl.add(min_incl.getRowArray());
         		this.max_excl.add(max_excl.getRowArray());
+        	}
+        	
+        	this.non_null_cols = new int[this.min_incl.size()];
+        	for(int i = 0; i < this.min_incl.size(); i++) {
+        		this.non_null_cols[i] = this.getNonNullCols(i);
         	}
         }
         
@@ -505,6 +518,11 @@ public class ReconfigurationPlan {
         		this.min_incl.add(min_incl.getRowArray());
         		this.max_excl.add(max_excl.getRowArray());
         	}
+        	
+        	this.non_null_cols = new int[this.min_incl.size()];
+        	for(int i = 0; i < this.min_incl.size(); i++) {
+        		this.non_null_cols[i] = this.getNonNullCols(i);
+        	}
         }
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition) {
@@ -512,6 +530,11 @@ public class ReconfigurationPlan {
         	
         	this.min_incl.add(min_incl);
         	this.max_excl.add(max_excl);
+        	
+        	this.non_null_cols = new int[this.min_incl.size()];
+        	for(int i = 0; i < this.min_incl.size(); i++) {
+        		this.non_null_cols[i] = this.getNonNullCols(i);
+        	}
         }
         
         public ReconfigurationRange(Table table, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition) {
@@ -519,13 +542,17 @@ public class ReconfigurationPlan {
         
         	this.min_incl.add(min_incl);
         	this.max_excl.add(max_excl);
+        	
+        	this.non_null_cols = new int[this.min_incl.size()];
+        	for(int i = 0; i < this.min_incl.size(); i++) {
+        		this.non_null_cols[i] = this.getNonNullCols(i);
+        	}
         }
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, List<Object[]> min_incl, List<Object[]> max_excl, int old_partition, int new_partition) {
         	this.keySchema = keySchema;
-            this.keySchemaCopy = this.keySchema.clone(0);
-        	
-            this.cmp = ReconfigurationUtil.getComparator(keySchema);
+            
+            this.cmp = new PartitionKeyComparator();
             
             this.min_incl = min_incl;
             this.max_excl = max_excl;
@@ -533,14 +560,18 @@ public class ReconfigurationPlan {
             this.old_partition = old_partition;
             this.new_partition = new_partition;
             this.table_name = table_name;
+            
+            this.non_null_cols = new int[this.min_incl.size()];
+        	for(int i = 0; i < this.min_incl.size(); i++) {
+        		this.non_null_cols[i] = this.getNonNullCols(i);
+        	}
         }
         
         public ReconfigurationRange(Table table, List<Object[]> min_incl, List<Object[]> max_excl, int old_partition, int new_partition) {
         	this.catalog_table = table;
         	this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-        	this.keySchemaCopy = this.keySchema.clone(0);
         	
-            this.cmp = ReconfigurationUtil.getComparator(keySchema);
+            this.cmp = new PartitionKeyComparator();
             
             this.min_incl = min_incl;
             this.max_excl = max_excl;
@@ -548,6 +579,11 @@ public class ReconfigurationPlan {
         	this.old_partition = old_partition;
             this.new_partition = new_partition;
             this.table_name = table.getName().toLowerCase();
+            
+            this.non_null_cols = new int[this.min_incl.size()];
+        	for(int i = 0; i < this.min_incl.size(); i++) {
+        		this.non_null_cols[i] = this.getNonNullCols(i);
+        	}
         }
         
         public ReconfigurationRange clone(Table new_table) {
@@ -697,29 +733,7 @@ public class ReconfigurationPlan {
 	    return true;
         }
         
-        public synchronized boolean inRange(List<Object> ids) {
-        	Object[] keys = new Object[this.keySchema.getColumnCount()];
-        	int col = 0;
-        	for(Object id : ids) {
-        		if(col >= keys.length) {
-        			break;
-        		}
-        		keys[col] = id;
-        		col++;
-        	}
-        	for( ; col < keys.length; col++) {
-        		VoltType vt = this.keySchema.getColumnType(col);
-            	keys[col] = vt.getNullValue();
-        	}
-        	
-        	keySchemaCopy.addRow(keys);
-        	keySchemaCopy.advanceToRow(0);
-        	Object[] rowArray = keySchemaCopy.getRowArray();
-        	keySchemaCopy.clearRowData();
-        	return inRange(rowArray, ids.size());
-        }
-        
-        public boolean inRange(Object[] keys, int orig_size) {
+        public boolean inRange(Object[] keys) {
         	for(int i = 0; i < this.min_incl.size() && i < this.max_excl.size(); i++) {
         		Object[] min_incl_i = this.min_incl.get(i);
         		Object[] max_excl_i = this.max_excl.get(i);
@@ -727,7 +741,7 @@ public class ReconfigurationPlan {
             			(cmp.compare(max_excl_i, keys) > 0 || 
                         (cmp.compare(min_incl_i, max_excl_i) == 0 && 
                         cmp.compare(min_incl_i, keys) == 0))){
-            		if (orig_size >= getNonNullCols(i)) {
+            		if (keys.length >= this.non_null_cols[i]) {
             			return true;
             		}
                 }
@@ -735,35 +749,23 @@ public class ReconfigurationPlan {
             return false;
         }
         
-        public synchronized boolean inRangeIgnoreNullCols(List<Object> ids) {
-        	Object[] keys = new Object[this.keySchema.getColumnCount()];
-        	int col = 0;
-        	for(Object id : ids) {
-        		if(col >= keys.length) {
-        			break;
-        		}
-        		keys[col] = id;
-        		col++;
-        	}
+        public boolean inRangeIgnoreNullCols(Object[] keys) {
+        	if(this.min_incl.size() == 0) return false;
         	
-        	keySchemaCopy.addRow(keys);
-        	keySchemaCopy.advanceToRow(0);
-        	Object[] rowArray = keySchemaCopy.getRowArray();
-        	keySchemaCopy.clearRowData();
-        	return inRangeIgnoreNullCols(rowArray, ids.size());
-        }
-        
-        public boolean inRangeIgnoreNullCols(Object[] keys, int orig_size) {
+        	Object[] keys_all = new Object[this.min_incl.get(0).length];
+    		for(int j = 0; j < keys.length; j++) {
+    			keys_all[j] = keys[j];
+    		}
         	for(int i = 0; i < this.min_incl.size() && i < this.max_excl.size(); i++) {
         		Object[] min_incl_i = this.min_incl.get(i);
         		Object[] max_excl_i = this.max_excl.get(i);
-        		for(int j = orig_size; j < keys.length; j++) {
-        			keys[j] = min_incl_i[j];
+        		for(int j = keys.length; j < keys_all.length; j++) {
+        			keys_all[j] = min_incl_i[j];
         		}
-            	if(cmp.compare(min_incl_i, keys) <= 0 && 
-            			(cmp.compare(max_excl_i, keys) > 0 || 
+            	if(cmp.compare(min_incl_i, keys_all) <= 0 && 
+            			(cmp.compare(max_excl_i, keys_all) > 0 || 
                         (cmp.compare(min_incl_i, max_excl_i) == 0 && 
-                        cmp.compare(min_incl_i, keys) == 0))){
+                        cmp.compare(min_incl_i, keys_all) == 0))){
             		return true;
                 }
             }

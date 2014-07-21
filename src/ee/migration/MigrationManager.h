@@ -31,6 +31,8 @@
 #include "common/tabletuple.h"
 #include "indexes/tableindex.h"
 #include "storage/tableiterator.h"
+#include <list>
+#include <queue>
 
 #ifndef EXTRACT_STAT_ENABLED
 #define EXTRACT_STAT_ENABLED
@@ -48,7 +50,52 @@ class PersistentTable;
 class ExecutorContext;
 
 
+typedef std::queue<uint32_t> TupleList;
 typedef std::map<TableTuple,TableTuple,TableTuple::ltTableTuple> RangeMap;
+
+
+//typedef std::map<TableToRangeMap,TupleList,TableTuple::ltTableTuple> TupleCacheMap;
+//typedef std::map<std::string, TupleCacheMap> TableCache;
+
+
+class TableRange {
+  public:
+    std::string tableName;
+    TableTuple minKey;
+    TableTuple maxKey;
+    
+    
+    TableRange(std::string _tableName, const RangeMap rangeMap){
+      tableName = _tableName;
+       for(RangeMap::const_iterator it=rangeMap.begin(); it!=rangeMap.end(); ++it) {
+          minKey = it->second;
+          maxKey = it->first;
+       }
+       //VOLT_INFO("TR %s %s - %s",  tableName.c_str(), minKey.debugNoHeader().c_str(),maxKey.debugNoHeader().c_str());
+    }
+    struct ltTableRange {
+      bool operator()(const TableRange &v1, const TableRange &v2) const {
+        //VOLT_INFO("Comparing %s %s-%s to %s %s-%s", v1.tableName.c_str(), v1.minKey.debugNoHeader().c_str(),v1.maxKey.debugNoHeader().c_str(),
+          //        v2.tableName.c_str(), v2.minKey.debugNoHeader().c_str(),v2.maxKey.debugNoHeader().c_str());
+        if (v1.tableName.compare(v2.tableName) == 0) {
+          //Same tableName
+          if (v1.minKey.compare(v2.minKey) == 0) {
+            //same talbeName minKey
+            return v1.maxKey.compare(v2.maxKey) < 0;
+          } else {
+            //same tableName different minKey
+            return v1.minKey.compare(v2.minKey) < 0;
+          }
+        } else {
+          //different tableName
+          return v1.tableName.compare(v2.tableName) < 0;
+        }
+      }
+    };
+};
+
+typedef std::map<TableRange, TupleList, TableRange::ltTableRange> TableCache;
+
 
 class MigrationManager {
         
@@ -89,6 +136,7 @@ private:
     int m_outTableSizeInBytes;
     const TupleSchema* m_partitionKeySchema;
     const TupleSchema* m_matchingIndexColsSchema;
+    TableCache tableCache;
 
 #ifdef EXTRACT_STAT_ENABLED
     boost::timer m_timer;
