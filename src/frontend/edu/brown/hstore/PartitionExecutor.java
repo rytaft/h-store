@@ -1169,10 +1169,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 if (nextWork != null) {
                     if (trace.val)
                         LOG.trace("Next Work: " + nextWork);
-                    if (showPostReconfig && (loopCount++ %1 )==0){
-                        LOG.info("post Squall : " + nextWork+ " -- lockQueueSize " + this.lockQueue.size() + " -- workQueueSize:"+this.work_queue.size());                        
-                    }
-                    
                     if (hstore_conf.site.exec_profiling) {
                         profiler.numMessages.put(nextWork.getClass().getSimpleName());
                         profiler.exec_time.start();
@@ -1207,12 +1203,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 //                    if (trace.val)
 //                        LOG.trace(String.format("The %s for partition %s empty. Checking for utility work...",
 //                                  this.work_queue.getClass().getSimpleName(), this.partitionId));
-
                     if (this.utilityWork()) {
                         nextWork = UTIL_WORK_MSG;
-                    }
-                    if (showPostReconfig && (loopCount++ %500 )==0){
-                        LOG.info("post Squall utilityWork gave: " + nextWork + " -- lockQueueSize " + this.lockQueue.size()+ " -- workQueueSize:"+this.work_queue.size());                        
                     }
                 }
             } // WHILE
@@ -3976,7 +3968,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         Set<ReconfigurationRange> pullRequestsNeeded = new TreeSet<>();
         Set<ReconfigurationRange> restartsNeeded = new TreeSet<>();
         Set<Integer> partitionsForRestart = new HashSet<>();
-      
+        
         //this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.start();
         for (int i = 0; i < fragmentIds.length; i++) {
             // Calls andy's methods for calculaitng the offsets
@@ -6436,8 +6428,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private long currentLiveRows = 0;
     private boolean inReconfiguration;
     private boolean queue_async_pulls;
-    private int loopCount = 0;
-    private boolean showPostReconfig = false;
     private static int MAX_PULL_ASYNC_EVERY_CLICKS=700000;
 
 
@@ -6555,8 +6545,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.incoming_ranges = null;
         this.reconfiguration_tracker = null;
         this.inReconfiguration = false;
-        this.showPostReconfig  = true;
-        this.loopCount = 0;
         if (this.currentDtxn != null){
             LOG.info("CurrentDTXN in clean up " + this.currentDtxn.toString());
         }
