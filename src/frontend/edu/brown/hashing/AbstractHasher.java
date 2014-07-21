@@ -97,6 +97,11 @@ public abstract class AbstractHasher implements JSONSerializable {
      * @return
      */
     public abstract int hash(Object value, int num_partitions);
+    
+    /**
+     * clone the hasher
+     */
+    public abstract AbstractHasher clone();
 
 
     

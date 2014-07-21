@@ -143,9 +143,5 @@ public interface ReconfigurationTrackingInterface {
      * @throws Exception
      */
     public Set<Integer> getAllPartitionIds(List<CatalogType> catalog, List<Object> key) throws Exception;
-    
-    /**
-     * end the reconfiguration
-     */
-    public void endReconfiguration();
+   
 }

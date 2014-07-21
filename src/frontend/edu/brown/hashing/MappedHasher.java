@@ -72,6 +72,11 @@ public class MappedHasher extends AbstractHasher {
     }
     
     @Override
+    public AbstractHasher clone() {
+    	return new MappedHasher(this.catalogContext, this.num_partitions, this.hstore_conf);
+    }
+    
+    @Override
     public void toJSON(JSONStringer stringer) throws JSONException {
         JSONUtil.fieldsToJSON(stringer, this, MappedHasher.class, MappedHasher.Members.values());
     }

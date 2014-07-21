@@ -72,6 +72,11 @@ public class DefaultHasher extends AbstractHasher {
     }
     
     @Override
+    public AbstractHasher clone() {
+    	return new DefaultHasher(this.catalogContext, this.num_partitions, this.hstore_conf);
+    }
+    
+    @Override
     public void toJSON(JSONStringer stringer) throws JSONException {
         // Nothing to do
     }
