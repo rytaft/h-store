@@ -679,6 +679,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             if(rplan != null) {
 
                 this.reconfigurationDonePartitionIds.clear();
+                this.planned_partitions.setReconfigurationPlan(rplan);
                 ReconfigUtilRequestMessage reconfigUtilMsg = new ReconfigUtilRequestMessage(RequestType.INIT_RECONFIGURATION, rplan, 
             			reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
                 
@@ -703,6 +704,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     	showReconfigurationProfiler(true);
     	this.setInReconfiguration(false);
         LOG.info("Clearing the reconfiguration state for each partition at the site");
+        this.planned_partitions.setReconfigurationPlan(null);
         ReconfigUtilRequestMessage reconfigUtilMsg = new ReconfigUtilRequestMessage(RequestType.END_RECONFIGURATION);
     	for (PartitionExecutor executor : this.local_executors) {
         	executor.queueReconfigUtilRequest(reconfigUtilMsg);
