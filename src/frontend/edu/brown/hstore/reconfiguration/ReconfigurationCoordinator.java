@@ -344,7 +344,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 } else if (absHasher instanceof PlannedHasher) {
                     reconfig_plan = hasher.changePartitionPhase(partitionPlan);
                     for(PartitionExecutor executor : this.local_executors) {
-                    	((TwoTieredRangeHasher) executor.getPartitionEstimator().getHasher()).changePartitionPhase(partitionPlan);
+                    	((PlannedHasher) executor.getPartitionEstimator().getHasher()).changePartitionPhase(partitionPlan);
                     }
                 } else {
                     throw new Exception("Unsupported hasher : " + absHasher.getClass());
