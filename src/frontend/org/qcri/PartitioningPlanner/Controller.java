@@ -15,6 +15,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.CopyOption;
 import java.nio.file.StandardCopyOption;
 
+import org.qcri.PartitioningPlanner.placement.GreedyPlacementRelaxed;
 import org.qcri.PartitioningPlanner.placement.Placement;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
 import org.qcri.PartitioningPlanner.placement.GreedyExtendedPlacement;
@@ -116,6 +117,7 @@ public class Controller implements Runnable {
 		case 4:  algo = new OneTieredPlacement(); System.out.println("OneTieredPlacement is selected"); break;
 		case 5:  algo = new GAPlacement(); System.out.println("GAPlacement is selected"); break;
 		case 6:  algo = new GreedyExtendedOneTieredPlacement(); System.out.println("GreedyExtendedOneTieredPlacement is selected"); break;
+        case 7:  algo = new GreedyPlacementRelaxed(); System.out.println("GreedyExtendedOneTieredPlacement is selected"); break;
 		}
 
 	}
