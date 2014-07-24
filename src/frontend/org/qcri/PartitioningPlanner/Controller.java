@@ -15,6 +15,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.CopyOption;
 import java.nio.file.StandardCopyOption;
 
+import org.qcri.PartitioningPlanner.placement.GreedyPlacementRelaxed;
 import org.qcri.PartitioningPlanner.placement.Placement;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacement;
 import org.qcri.PartitioningPlanner.placement.GreedyPlacementRelaxed;
