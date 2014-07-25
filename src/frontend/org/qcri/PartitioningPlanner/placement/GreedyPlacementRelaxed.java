@@ -21,6 +21,10 @@ public class GreedyPlacementRelaxed extends Placement {
         
     }
     
+    public GreedyPlacementRelaxed(int partPerSite){
+        super(partPerSite);
+    }
+    
 ArrayList<Map<Long, Long>>  clone(ArrayList<Map<Long, Long>> hotTuplesList) {
         ArrayList<Map<Long, Long>>  hotTuplesListCopy = new ArrayList<Map<Long, Long>>();       
         
@@ -166,7 +170,7 @@ ArrayList<Map<Long, Long>>  clone(ArrayList<Map<Long, Long>> hotTuplesList) {
             //System.out.println("Processing hot tuple id " + _hotTupleId + " with access count " + _hotAccessCount);
 
             if(partitionTotals.get(_srcPartition) > meanAccesses || _srcPartition >= partitionCount) {
-                    dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount);
+                    dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount, true);
                     if(dstPartition != _srcPartition) {
                         //System.out.println(" sending it to " + dstPartition);
                         partitionTotals.put(_srcPartition, partitionTotals.get(_srcPartition)  - _hotAccessCount);
