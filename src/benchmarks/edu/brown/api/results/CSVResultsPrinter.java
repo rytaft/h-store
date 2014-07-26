@@ -33,7 +33,7 @@ public class CSVResultsPrinter implements BenchmarkInterest {
         new ColumnInfo("LATENCY_50", VoltType.FLOAT),
         new ColumnInfo("LATENCY_95", VoltType.FLOAT),
         new ColumnInfo("LATENCY_99", VoltType.FLOAT),
-        new ColumnInfo("ABORT_RECTED", VoltType.BIGINT),
+        new ColumnInfo("ABORT_REJECT", VoltType.BIGINT),
         new ColumnInfo("ABORT_MISPREDICT", VoltType.BIGINT),
         new ColumnInfo("ABORT_UNEXPECTED", VoltType.BIGINT),
 
