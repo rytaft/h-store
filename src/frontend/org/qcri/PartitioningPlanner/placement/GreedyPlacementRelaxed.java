@@ -170,11 +170,11 @@ ArrayList<Map<Long, Long>>  clone(ArrayList<Map<Long, Long>> hotTuplesList) {
             //System.out.println("Processing hot tuple id " + _hotTupleId + " with access count " + _hotAccessCount);
 
             if(partitionTotals.get(_srcPartition) > meanAccesses || _srcPartition >= partitionCount) {
-                    dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount, true);
+            		partitionTotals.put(_srcPartition, partitionTotals.get(_srcPartition)  - _hotAccessCount);
+            		dstPartition = getMostUnderloadedPartitionId(partitionTotals, partitionCount, true);
+                    partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + _hotAccessCount);
                     if(dstPartition != _srcPartition) {
                         //System.out.println(" sending it to " + dstPartition);
-                        partitionTotals.put(_srcPartition, partitionTotals.get(_srcPartition)  - _hotAccessCount);
-                        partitionTotals.put(dstPartition,partitionTotals.get(dstPartition)  + _hotAccessCount);
                         aPlan.removeTupleId(_srcPartition, _hotTupleId);
                         if(!aPlan.hasPartition(dstPartition)) {
                             aPlan.addPartition(dstPartition);
