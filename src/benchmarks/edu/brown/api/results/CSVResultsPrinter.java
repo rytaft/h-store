@@ -97,9 +97,9 @@ public class CSVResultsPrinter implements BenchmarkInterest {
         double intervalLatency_50 = latencies[0];
         double intervalLatency_95 = latencies[1];
         double intervalLatency_99 = latencies[2];
-        long abort_rejected = (br.getResponseStatuses().get("ABORT_REJECTED") != null) ? br.getResponseStatuses().get("ABORT_REJECTED") : 0;
-        long abort_mispredict = (br.getResponseStatuses().get("ABORT_MISPREDICT") != null) ? br.getResponseStatuses().get("ABORT_MISPREDICT") : 0;
-        long abort_unexpected = (br.getResponseStatuses().get("ABORT_UNEXPECTED") != null) ? br.getResponseStatuses().get("ABORT_UNEXPECTED") : 0;
+        long abort_rejected = br.getResponseStatuses().get("ABORT_REJECT",0) ;
+        long abort_mispredict = br.getResponseStatuses().get("ABORT_MISPREDICT",0);
+        long abort_unexpected = br.getResponseStatuses().get("ABORT_UNEXPECTED",0);
         
         Object row[] = {
             this.intervalCounter++,
