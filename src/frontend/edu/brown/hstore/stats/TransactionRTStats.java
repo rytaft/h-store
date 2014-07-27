@@ -1,9 +1,9 @@
 package edu.brown.hstore.stats;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.TreeMap;
 
 import org.apache.log4j.Logger;
 import org.voltdb.StatsSource;
@@ -13,7 +13,6 @@ import org.voltdb.VoltType;
 import org.voltdb.VoltTable.ColumnInfo;
 import org.voltdb.catalog.Procedure;
 
-import edu.brown.hstore.HStoreSite;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 
@@ -33,7 +32,7 @@ public class TransactionRTStats extends StatsSource {
         LoggerUtil.attachObserver(LOG, debug, trace);
     }
 	
-	private final Map <Procedure, Buckets> responseTimes = new TreeMap <Procedure, Buckets> ();
+	private final Map <Procedure, Buckets> responseTimes = new HashMap <Procedure, Buckets> ();
 	private final long[] boundaries;
 	private int column_offset;
 
@@ -80,10 +79,11 @@ public class TransactionRTStats extends StatsSource {
 	}
 	
 	public void addResponseTime(Procedure catalog_proc, long time){
+	    if(catalog_proc == null){
+	        LOG.debug("TransactionRTStats: Tried to measure response time for null procedure");
+	        return;
+	    }
 		Buckets b = this.responseTimes.get(catalog_proc);
-		if(catalog_proc == null) {
-			return;
-		}
 		if (b == null){
 			b = new Buckets();
 			this.responseTimes.put(catalog_proc, b);
