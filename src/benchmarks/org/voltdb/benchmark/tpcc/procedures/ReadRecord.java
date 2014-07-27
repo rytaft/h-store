@@ -40,10 +40,35 @@ import org.voltdb.VoltTable;
 )
 public class ReadRecord extends VoltProcedure {
 	
-    public final SQLStmt readStmt = new SQLStmt("SELECT * FROM WAREHOUSE WHERE W_ID=?");
+	public final SQLStmt readWarehouse = new SQLStmt("SELECT * FROM WAREHOUSE WHERE W_ID=?");
+    public final SQLStmt readDistrict = new SQLStmt("SELECT * FROM DISTRICT WHERE D_W_ID=?");
+    public final SQLStmt readOrders = new SQLStmt("SELECT * FROM ORDERS WHERE O_W_ID=?");
+    public final SQLStmt readNewOrder = new SQLStmt("SELECT * FROM NEW_ORDER WHERE NO_W_ID=?");
+    public final SQLStmt readOrderLine = new SQLStmt("SELECT * FROM ORDER_LINE WHERE OL_W_ID=?");
+    public final SQLStmt readStock = new SQLStmt("SELECT * FROM STOCK WHERE S_W_ID=?");
+    public final SQLStmt readCustomer = new SQLStmt("SELECT * FROM CUSTOMER WHERE C_W_ID=?");
+    public final SQLStmt readHistory = new SQLStmt("SELECT * FROM HISTORY WHERE H_W_ID=?");
 
-    public VoltTable[] run(long id) {
-        voltQueueSQL(readStmt, id);
+    public VoltTable[] run(long id, String table) {
+    	switch(table.toUpperCase()) {
+    	default:
+    	case "WAREHOUSE":
+    		voltQueueSQL(readWarehouse, id); break;
+    	case "DISTRICT":
+    		voltQueueSQL(readDistrict, id); break;
+    	case "ORDERS":
+    		voltQueueSQL(readOrders, id); break;
+    	case "NEW_ORDER":
+    		voltQueueSQL(readNewOrder, id); break;
+    	case "ORDER_LINE":
+    		voltQueueSQL(readOrderLine, id); break;
+    	case "STOCK":
+    		voltQueueSQL(readStock, id); break;
+    	case "CUSTOMER":
+    		voltQueueSQL(readCustomer, id); break;
+    	case "HISTORY":
+    		voltQueueSQL(readHistory, id); break;
+    	}
         return (voltExecuteSQL(true));
     }
 }
