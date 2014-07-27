@@ -129,8 +129,6 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["site.planner_caching"] = False
         fabric.env["benchmark.loadthread_per_warehouse"] = False
         fabric.env["benchmark.loadthreads"] = max(16, partitions)
-        fabric.env["hstore.partitions_per_site"]=1
-        fabric.env["hstore.sites_per_host"]=2
 
         
     if 'reconfig-dynsplit' in  args['exp_type'] or 'stopcopy-2slpit' in args['exp_type']:
