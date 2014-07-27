@@ -126,6 +126,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.skewfactor"] = 0.65
         fabric.env["client.txnrate"] = 1000
         fabric.env["client.interval"] = 1000
+        fabric.env["client.weights"] = "NewOrder:100,*:0"
         fabric.env["site.planner_caching"] = False
         fabric.env["benchmark.loadthread_per_warehouse"] = False
         fabric.env["benchmark.loadthreads"] = max(16, partitions)
