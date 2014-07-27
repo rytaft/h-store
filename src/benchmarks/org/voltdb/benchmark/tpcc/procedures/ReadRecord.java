@@ -40,7 +40,17 @@ import org.voltdb.VoltTable;
 )
 public class ReadRecord extends VoltProcedure {
 	
-    public final SQLStmt readStmt = new SQLStmt("SELECT * FROM WAREHOUSE WHERE W_ID=?");
+    public final SQLStmt readStmt = new SQLStmt(
+    		"SELECT W.*, COUNT(*) FROM WAREHOUSE W, DISTRICT, CUSTOMER, STOCK, "
+    		+ "ORDERS, ORDER_LINE, NEW_ORDER, HISTORY "
+    		+ "WHERE W_ID=? AND "
+    		+ "D_W_ID = W_ID AND "
+    		+ "C_W_ID = W_ID AND "
+    		+ "S_W_ID = W_ID AND "
+    		+ "O_W_ID = W_ID AND "
+    		+ "OL_W_ID = W_ID AND "
+    		+ "NO_W_ID = W_ID AND "
+    		+ "H_W_ID = W_ID");
 
     public VoltTable[] run(long id) {
         voltQueueSQL(readStmt, id);
