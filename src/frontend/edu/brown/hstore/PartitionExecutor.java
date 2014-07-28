@@ -6455,8 +6455,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.outgoing_ranges = reconfig_plan.getOutgoing_ranges().get(this.partitionId);
         this.incoming_ranges = reconfig_plan.getIncoming_ranges().get(this.partitionId);
         this.reconfiguration_tracker = new ReconfigurationTracking(planned_partitions, reconfig_plan, this.partitionId);
-        this.p_estimator.getHasher().inReconfiguration.set(true);
-    	if(this.p_estimator.getHasher() instanceof ExplicitHasher) {
+        if(this.p_estimator.getHasher() instanceof ExplicitHasher) {
         	((ExplicitHasher) this.p_estimator.getHasher()).getPartitions().setReconfigurationPlan(reconfig_plan);
         }
         this.queue_async_pulls = false;
@@ -6544,8 +6543,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.reconfiguration_tracker = null;
         this.inReconfiguration = false;
 
-        this.p_estimator.getHasher().inReconfiguration.set(false);
-    	if(this.p_estimator.getHasher() instanceof ExplicitHasher) {
+        if(this.p_estimator.getHasher() instanceof ExplicitHasher) {
         	((ExplicitHasher) this.p_estimator.getHasher()).getPartitions().setReconfigurationPlan(null);
         }
 

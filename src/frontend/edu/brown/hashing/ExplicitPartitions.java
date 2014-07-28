@@ -366,6 +366,7 @@ public abstract class ExplicitPartitions {
     public void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan) {
 	if(reconfigurationPlan == null) {
 	    this.reconfigurationPlan = null;
+	    this.incrementalPlan = null;
 	    return;
 	}
 
