@@ -205,7 +205,7 @@ public abstract class HStore {
                                                 local_partition,
                                                 singleton.getCatalogContext(),
                                                 BackendTarget.NATIVE_EE_JNI, // BackendTarget.NULL,
-                                                p_estimator.clone(),
+                                                p_estimator,
                                                 t_estimator);
             singleton.addPartitionExecutor(local_partition, executor);
             first = false;

@@ -338,14 +338,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 // Find reconfig plan
                 if (absHasher instanceof TwoTieredRangeHasher) {
                     reconfig_plan = hasher.changePartitionPlan(partitionPlan);
-                    for(PartitionExecutor executor : this.local_executors) {
-                    	((TwoTieredRangeHasher) executor.getPartitionEstimator().getHasher()).changePartitionPlan(partitionPlan);
-                    }
                 } else if (absHasher instanceof PlannedHasher) {
                     reconfig_plan = hasher.changePartitionPhase(partitionPlan);
-                    for(PartitionExecutor executor : this.local_executors) {
-                    	((PlannedHasher) executor.getPartitionEstimator().getHasher()).changePartitionPhase(partitionPlan);
-                    }
                 } else {
                     throw new Exception("Unsupported hasher : " + absHasher.getClass());
                 }
@@ -606,7 +600,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         
     private void setInReconfiguration(boolean inReconfig) {
         this.reconfigurationInProgress.set(inReconfig);
-        this.queueManager.inReconfig.set(inReconfig);
+        //this.queueManager.inReconfig.set(inReconfig);
         this.hstore_site.getHasher().inReconfiguration.set(inReconfig);
         
     }

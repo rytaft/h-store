@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.log4j.Logger;
@@ -117,12 +116,6 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
             // new ConcurrentLinkedQueue<Pair<LocalTransaction, Status>>(); 
     
     // ----------------------------------------------------------------------------
-    // RECONFIG
-    // ----------------------------------------------------------------------------
-    private boolean reconfigEnabled;
-    public AtomicBoolean inReconfig;
-    
-    // ----------------------------------------------------------------------------
     // INTIALIZATION
     // ----------------------------------------------------------------------------
     
@@ -142,9 +135,6 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
         this.initQueue = new LinkedBlockingQueue<AbstractTransaction>();
         this.restartQueue = new LinkedBlockingQueue<Pair<LocalTransaction,Status>>();
         this.profilers = new TransactionQueueManagerProfiler[catalogContext.numberOfPartitions];
-        
-        this.reconfigEnabled = hstore_conf.global.reconfiguration_enable;
-        this.inReconfig = new AtomicBoolean(false);
         
         // Initialize internal queues
         for (int partition : this.localPartitions.values()) {
@@ -355,7 +345,6 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
             // If this txn gets rejected when we try to insert it, then we 
             // just need to stop trying to add it to other partitions
             if (ret) {
-
                 status = this.lockQueueInsert(nextTxn, partition, callback);
                 if (status != Status.OK) ret = false;
             // IMPORTANT: But we still need to go through and decrement the
@@ -887,7 +876,4 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
         }
         return cachedDebugContext;
     }
-
-
-
 }
