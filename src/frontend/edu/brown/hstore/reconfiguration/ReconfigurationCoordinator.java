@@ -418,7 +418,33 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         for (PartitionExecutor executor : this.local_executors) {
                         	if(abortsEnabledForStopCopy){
                         		executor.haltProcessing();
-                                this.planned_partitions.setReconfigurationPlan(reconfig_plan);                       
+                                queueManager.clearQueues(executor.getPartitionId());
+                               }
+                        }
+                        
+                        //TODO this file is horrible and needs refactoring....
+                        //we have an end, reset and finish reconfiguration...
+                        endReconfiguration();
+                        resetReconfigurationInProgress();
+                        long siteTime = System.currentTimeMillis() - siteStart;
+                        String timeMsg = String.format("STOPCOPY for site %s took %s ms and send %s kb", this.hstore_site.getSiteId(), siteTime, siteKBSent);
+                        LOG.info(timeMsg);
+                        FileUtil.appendEventToFile(timeMsg);
+                    } else {
+                        LOG.info("No reconfig plan, nothing to do");
+                    }
+
+
+
+                } else if (reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL) {
+                    if (reconfig_plan != null) {
+                        if(this.reconfig_split  > 1 && reconfig_plan.getIncoming_ranges().size() > 0){
+                            // split plan & put into queue
+                            reconfigPlanQueue = ReconfigurationUtil.naiveSplitReconfigurationPlan(reconfig_plan, this.reconfig_split);
+                            // set reconfig_plan = 1st split
+                            reconfig_plan = reconfigPlanQueue.remove(0);
+                        }
+                       this.planned_partitions.setReconfigurationPlan(reconfig_plan);                        
  
                         if (this.hstore_site.getSiteId() == leaderId) {
                             this.num_sites_complete = 0;
