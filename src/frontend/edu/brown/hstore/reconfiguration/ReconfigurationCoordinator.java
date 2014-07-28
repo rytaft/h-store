@@ -608,10 +608,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.reconfigurationInProgress.set(inReconfig);
         this.queueManager.inReconfig.set(inReconfig);
         this.hstore_site.getHasher().inReconfiguration.set(inReconfig);
-        for (PartitionExecutor executor : this.local_executors) {
-            executor.getPartitionEstimator().getHasher().inReconfiguration.set(inReconfig);
-        }
-        
     }
     
     private void sendNextPlanToAllSites(){
@@ -703,7 +699,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * end of reconfiguration
      */
     public void endReconfiguration() {
-    	showReconfigurationProfiler(true);
+    	if(!this.hasNextReconfigPlan()) {
+    		showReconfigurationProfiler(true);
+    	}
     	this.setInReconfiguration(false);
         LOG.info("Clearing the reconfiguration state for each partition at the site");
         this.planned_partitions.setReconfigurationPlan(null);
