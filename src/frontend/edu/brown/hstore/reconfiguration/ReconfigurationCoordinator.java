@@ -754,11 +754,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     
     public void receiveReconfigurationCompleteFromLeader() {
     	LOG.info("Got a message from the reconfiguration leader to end the reconfiguration");
-    	if(hasNextReconfigPlan()) {
-    		this.setInReconfiguration(false);
-    	} else {
-    		endReconfiguration();
-    	}
+    	endReconfiguration();
     }
 
     private boolean allPartitionsFinished() {
