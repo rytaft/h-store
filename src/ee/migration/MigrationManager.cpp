@@ -37,6 +37,10 @@
 #define EXTRACT_STAT_ENABLED
 #endif
 
+#ifndef MIGRATE_DELETE_ENABLED
+#define MIGRATE_DELETE_ENABLED
+#endif
+
 #ifdef EXTRACT_STAT_ENABLED
 #include "boost/timer.hpp"
 #endif
@@ -202,11 +206,16 @@ bool MigrationManager::extractTuple(TableTuple& tuple) {
     throw SerializableEEException(VOLT_EE_EXCEPTION_TYPE_EEEXCEPTION, "Failed to insert tuple");
   }
  
-  if (!m_table->migrateTuple(tuple)){
-    VOLT_ERROR("Error migrating tuple");
-  } 
+ 
+  #ifdef MIGRATE_DELETE_ENABLED
+    m_table->deleteTuple(tuple, true);
+  #else  
+    if (!m_table->migrateTuple(tuple)){
+      VOLT_ERROR("Error migrating tuple");
+    }
+  #endif  
   
-  //m_table->deleteTuple(tuple, true);
+  //
   
   
   //Count if we have taken the max tuples
