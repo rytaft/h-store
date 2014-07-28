@@ -127,6 +127,7 @@ import com.google.protobuf.RpcCallback;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.catalog.PlanFragmentIdGenerator;
 import edu.brown.catalog.special.CountedStatement;
+import edu.brown.hashing.ExplicitHasher;
 import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.PlannedPartitions.PartitionKeyComparator;
 import edu.brown.hashing.ReconfigurationPlan;
@@ -168,6 +169,7 @@ import edu.brown.hstore.internal.LivePullRequestMessage;
 import edu.brown.hstore.internal.MultiDataPullResponseMessage;
 import edu.brown.hstore.internal.PotentialSnapshotWorkMessage;
 import edu.brown.hstore.internal.PrepareTxnMessage;
+import edu.brown.hstore.internal.ReconfigUtilRequestMessage;
 import edu.brown.hstore.internal.ScheduleAsyncPullRequestMessage;
 import edu.brown.hstore.internal.SetDistributedTxnMessage;
 import edu.brown.hstore.internal.StartTxnMessage;
@@ -1082,6 +1084,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 this.currentTxnId = null;
                 nextTxn = null;
                 nextWork = null;
+              
 
                 // This is the starting state of the PartitionExecutor.
                 // At this point here we currently don't have a txn to execute
@@ -1112,17 +1115,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         if (nextTxn.isPredictSinglePartition()) {
                             LocalTransaction localTxn = (LocalTransaction) nextTxn;
                             nextWork = localTxn.getStartTxnMessage();
-                            if (hstore_conf.site.txn_profiling && localTxn.profiler != null){
-                                long txnQueueTime = localTxn.profiler.startQueueExec();
-                                if (localTxn.isArrivedInReconfig()){
-                                    //daljadjl test this not working
-                                    this.reconfiguration_coordinator.profilers[this.partitionId].queueReconfigTotalTime+=txnQueueTime;
-                                    this.reconfiguration_coordinator.profilers[this.partitionId].queueReconfigTotalInvocations++;
-                                } else {
-                                    this.reconfiguration_coordinator.profilers[this.partitionId].queueTotalTime+=txnQueueTime;
-                                    this.reconfiguration_coordinator.profilers[this.partitionId].queueTotalInvocations++;
-                                }
-                            }
+                            //if (hstore_conf.site.txn_profiling && localTxn.profiler != null){
+                                //long txnQueueTime = localTxn.profiler.startQueueExec();
+//                                if (localTxn.isArrivedInReconfig()){
+//                                    //daljadjl test this not working
+//                                    //this.reconfiguration_coordinator.profilers[this.partitionId].queueReconfigTotalTime+=txnQueueTime;
+//                                    //this.reconfiguration_coordinator.profilers[this.partitionId].queueReconfigTotalInvocations++;
+//                                } else {
+//                                    //this.reconfiguration_coordinator.profilers[this.partitionId].queueTotalTime+=txnQueueTime;
+//                                    //this.reconfiguration_coordinator.profilers[this.partitionId].queueTotalInvocations++;
+//                                }
+//                            }
                         }
                         // If it's as distribued txn, then we'll want to just
                         // set it as our
@@ -1240,9 +1243,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @return true if there is more utility work that can be done
      */
     private boolean utilityWork() {
-        if (hstore_conf.site.exec_profiling) this.profiler.util_time.start();
         
-        if (hstore_conf.global.reconfiguration_enable && reconfig_plan != null){
+        if (this.inReconfiguration && this.reconfig_plan != null){
             this.idle_click_count+=1;
             if (this.inReconfiguration && queue_async_pulls) {
                 if (this.asyncRequestPullQueue.isEmpty() == false 
@@ -1289,6 +1291,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
         LocalTransaction specTxn = null;
         InternalMessage work = null;
+        if (hstore_conf.site.exec_profiling) this.profiler.util_time.start();
 
         // Check whether there is something we can speculatively execute right
         // now
@@ -1486,6 +1489,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             //this.reconfiguration_coordinator.asyncPullRequestFromPE(livePullId, txnId, callingPartition, pullRequests, pullBlockSemaphore);
             processScheduleAsyncPullRequestMessage((ScheduleAsyncPullRequestMessage)work);
         }  
+        else if (work instanceof ReconfigUtilRequestMessage) {
+        	LOG.info(String.format("(%s) Reconfig util request. Work Queue Size: %s", this.partitionId, this.work_queue.size()));
+        	processReconfigUtilRequestMessage((ReconfigUtilRequestMessage)work);
+        } 
         else if (work instanceof AsyncDataPullResponseMessage) {
             //We have received and are processing a data pull response
         	LOG.info("Processing the pull response message received");
@@ -1544,12 +1551,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 }
 
                 int chunkId = pullMsg.getAndIncrementChunk();
+                int queueSize = this.lockQueue.size();
                 long start = System.currentTimeMillis();
                 Pair<VoltTable,Boolean> vt = extractTuples(pull.getTransactionID(), pull.getOldPartition(), 
                         pull.getNewPartition(), pull.getVoltTableName(),
                         minIncl, maxExcl, pull.getAsyncPullIdentifier(), chunkId, false); 
                 long timeTaken = System.currentTimeMillis() - start;
-                
+                int queueGrowth = this.lockQueue.size() - queueSize;
                 VoltTable voltTable = vt.getFirst();
                 int records = -1;
                 if (voltTable != null) 
@@ -1576,8 +1584,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes)
                         .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
                 
-                LOG.debug("Sending a multi pull async request");
-                LOG.debug("TODO do we need to invoke something different if local? Right now both remote / local put in with callback");
                 this.reconfiguration_coordinator.sendMultiPullReplyRequestFromPE(pull.getSenderSite(), multiPullReplyRequest);
                
                         
@@ -1588,8 +1594,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     //this.work_queue.offer(pullMsg);
                 }
                 
-                LOG.info(String.format("CompletedExtract, Async2, PullId=%s, Chunks=%s, Time=%s, Records=%s, Table=%s ",
-                        pull.getAsyncPullIdentifier(), chunkId, timeTaken, records, tableName)); 
+                LOG.info(String.format("CompletedExtract, Async2, PullId=%s, Chunks=%s, MoreData=%s, Time=%s, QueueGrowth=%s, Records=%s, Table=%s ",
+                        pull.getAsyncPullIdentifier(), chunkId, moreDataNeeded, timeTaken, queueGrowth, records, tableName)); 
             } catch (Exception e) {
                 LOG.error("Exception when processing async data pull response", e);
             }
@@ -3304,6 +3310,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 records+=voltTable.getRowCount();
             if (voltTable == null || voltTable.getRowCount() == 0 ){
                 emptyRecordCount++;
+                LOG.info(" ### Extracted an empty result set");
             }
             ByteString tableBytes = null;
             try {
@@ -3335,8 +3342,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         int qGrowth = this.lockQueue.size()-queueSize;
         this.reconfiguration_coordinator.profilers[this.partitionId].pe_extract_queue_size_growth.put(qGrowth);
         
-        LOG.info(String.format("CompletedExtract, Live, PullId=%s, Chunks=%s, Records=%s, EmptyRecordSet=%s, QueueTimeMS=%s, TotalExtractTimeMS=%s, QueueGrowth=%s ",
-                livePullRequest.getLivePullIdentifier(), chunkId, records, emptyRecordCount, queueTime/ 1000000, (extractEndTime-extractStartTime)/ 1000000, qGrowth)); 
+        LOG.info(String.format("CompletedExtract, Live, PullId=%s, Chunks=%s, MoreData=%s, Records=%s, EmptyRecordSet=%s, QueueTimeMS=%s, TotalExtractTimeMS=%s, QueueGrowth=%s ",
+                livePullRequest.getLivePullIdentifier(), chunkId, moreDataNeeded, records, emptyRecordCount, queueTime/ 1000000, (extractEndTime-extractStartTime)/ 1000000, qGrowth)); 
     }
  
     
@@ -3377,6 +3384,28 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.reconfiguration_coordinator.asyncPullRequestFromPE(pullID, txnID, this.partitionId, pullRequests);
         this.reconfiguration_stats.trackAsyncPullInit(this.partitionId, pullRange.getNewPartition(), pullRange.getTableName());
         LOG.debug("("+ this.partitionId + ") ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());       
+    }
+    
+    public void processReconfigUtilRequestMessage(ReconfigUtilRequestMessage reconfigUtilMsg) {
+    	switch(reconfigUtilMsg.getRequestType()) {
+    	case INIT_RECONFIGURATION:
+    		try {
+    			initReconfiguration(reconfigUtilMsg.getReconfigPlan(), reconfigUtilMsg.getReconfigProtocol(), 
+    					reconfigUtilMsg.getReconfigState(), reconfigUtilMsg.getExplicitPartitions());
+    		} catch(Exception ex) {
+    			throw new RuntimeException("Unexpected error when initializing reconfiguration", ex);
+    		}
+    		break;
+    	case END_RECONFIGURATION:
+    		try {
+    			endReconfiguration();
+    		} catch(Exception ex) {
+    			throw new RuntimeException("Unexpected error when ending reconfiguration", ex);
+    		}
+    		break;
+    	default:
+    		throw new RuntimeException("Invalid request type: " + reconfigUtilMsg.getRequestType());	
+    	}
     }
     
     
@@ -3958,11 +3987,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         LOG.trace(String.format("CatalogObj:%s Parameter:%s  KeyOwned:%s ",offsetPair.getFirst(), parametersToCheck.toString(), keyOwned));
                     if(!keyOwned && predict_single_partition) {
                     	try {
+                    	    //String currentDXN = (this.currentDtxn == null) ? "noDTXN" : this.currentDtxn.toString(); 
+                    	    //LOG.info(String.format("Restarting due to key not ownded CatalogObj:%s Parameter:%s  KeyOwned:%s d:%s",offsetPair.getFirst(), 
+                    	      //      parametersToCheck.toString(), keyOwned, currentDXN));
                     		partitionsForRestart.addAll(this.reconfiguration_tracker.getAllPartitionIds(offsetPair.getFirst(), parametersToCheck));
                     	} catch (Exception e) {
                     		LOG.error("Error while finding partitions for restart: " + e);
                     	}
-                    }
+                    } 
                 } catch (ReconfigurationException rex) {
                     // A reconfigurationException was thrown for this key
                     if (debug.val) LOG.debug(String.format("(%d) Exception thrown from reconfig check : %s for txn %s ", this.partitionId, rex.toString(),currentTxn));
@@ -6500,16 +6532,23 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             haltProcessing();
         }
         
-        LOG.info("Clearing up reconfiguration state");
-        if (this.reconfiguration_tracker!=null)
-            this.reconfiguration_tracker.endReconfiguration();
-        
-    	this.reconfig_plan = null;
+        LOG.info("Clearing up reconfiguration state for p_id " + this.partitionId);
+        this.reconfig_plan = null;
     	this.reconfig_state = ReconfigurationState.END;
         this.outgoing_ranges = null;
         this.incoming_ranges = null;
         this.reconfiguration_tracker = null;
         this.inReconfiguration = false;
+
+
+        if (this.currentDtxn != null){
+            LOG.info("CurrentDTXN in clean up " + this.currentDtxn.toString());
+        }
+        if (this.currentTxn != null){
+            LOG.info("CurrentTXN in clean up " + this.currentTxn.toString());
+            
+        }
+        LOG.info("Finished clearing up reconfiguration state for p_id " + this.partitionId);
     }
     
     public void receiveTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, List<Long> minInclusiveList, 
@@ -6552,7 +6591,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         minInclusiveList.resetRowPosition();
         maxExclusiveList.resetRowPosition();
         PartitionKeyComparator cmp = new PartitionKeyComparator();
-
+        boolean receivedAllTuples = false;
         Long startTime = null; //pullStartTime.remove(pullId);
         while(minInclusiveList.advanceRow() && maxExclusiveList.advanceRow()) {
             // Currently we don't have any tracking for Stop and Copy.
@@ -6597,9 +6636,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
                         }                       
                     } catch (ReconfigurationException re) {
-                        if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_IN)
-                            this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
-                        else
+                        if (re.exceptionType == ExceptionTypes.ALL_RANGES_MIGRATED_IN) {
+                            receivedAllTuples = true;
+                        } else
                             LOG.error("Unexpected reconfiguration Exception", re);
                     }
     
@@ -6624,16 +6663,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.reconfiguration_stats.trackAsyncReceived(this.partitionId, oldPartitionId, table_name, (vt.getRowSize()*vt.getRowCount())/1000, timeTaken, isAsyncRequest, moreDataComing);
             reconfiguration_stats.addMessage(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s, ",timeTaken, pullId,table_name, minInclusiveList.toString().replace("\n", " | "), maxExclusiveList));
         }
-        
-        if(this.reconfiguration_tracker == null) {
-            LOG.error(String.format("(%s) ReconfigTracker is Null!! ", this.partitionId));
+        if(receivedAllTuples){
+            this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
         }
-        else if(this.reconfiguration_tracker.checkIfAllRangesAreMigratedIn()){
-            // Now reconfiguration resposnibilty of a destination of Live Pull is done,
-            // so it tells the leader it is done
-            this.hstore_site.getReconfigurationCoordinator().finishReconfiguration(partitionId);
-        }
-        
     }
 
     /**
@@ -6735,6 +6767,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     
     public void queueLivePullReplyResponse(MultiDataPullResponseMessage pullResponseMsg){
         this.work_queue.offer(pullResponseMsg);
+    }
+    
+    public void queueReconfigUtilRequest(ReconfigUtilRequestMessage reconfigUtilMsg){
+        this.work_queue.offer(reconfigUtilMsg);
     }
     
     /**

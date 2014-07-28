@@ -172,6 +172,11 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
         throw new NotImplementedException("Hashing without Catalog not supported");
     }
 
+    @Override
+    public AbstractHasher clone() {
+    	return new TwoTieredRangeHasher(this.catalogContext, this.num_partitions, this.hstore_conf);
+    }
+
     public synchronized ExplicitPartitions getPartitions() {
         return (ExplicitPartitions)partitions;
     }
