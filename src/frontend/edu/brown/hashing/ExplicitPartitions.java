@@ -363,7 +363,7 @@ public abstract class ExplicitPartitions {
     	return this.catalog_context;
     }
     
-    public void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan) {
+    public synchronized void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan) {
 	if(reconfigurationPlan == null) {
 	    this.reconfigurationPlan = null;
 	    this.incrementalPlan = null;
