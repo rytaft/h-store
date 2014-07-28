@@ -64,7 +64,7 @@ MigrationManager::MigrationManager(ExecutorContext *executorContext, catalog::Da
     
     m_extractedTables.clear();
     m_extractedTableNames.clear();
-
+    tuplesToClean = 100;
     init(NULL);
 }
 
@@ -193,6 +193,34 @@ bool MigrationManager::inRange(const TableTuple& tuple, const RangeMap& rangeMap
   return false;
 }
 
+bool MigrationManager::cleanTuples()
+{
+  
+  if (!tuplesToDelete.empty()){
+      VOLT_INFO("Have tuples to delete : %zu", tuplesToDelete.size());
+      for (int i =0; i < tuplesToClean && !tuplesToDelete.empty(); i++) {
+            
+          TableTuplePair p = tuplesToDelete.front();
+          int current_tuple_id = p.tupleId;
+          tempDeleteTable = p.table;
+          TableTuple tuple(tempDeleteTable->schema());
+          tuple.move(tempDeleteTable->dataPtrForTuple(current_tuple_id));
+          //VOLT_INFO(" tuple to delete: %s",tuple.debug("").c_str());
+          tuplesToDelete.pop();
+          if(tuple.isMigrated() && tuple.isActive()){
+            if(tempDeleteTable->deleteTuple(tuple, true)){
+           //   tuplesToDelete.pop();      
+            } else{
+              VOLT_ERROR("Error deleting tuples");
+            }
+          }
+        }      
+      return true;
+  }  
+  return false;
+}
+
+
 
 bool MigrationManager::extractTuple(TableTuple& tuple) {
   //Have we reached our datalimit and found another tuple
@@ -212,6 +240,11 @@ bool MigrationManager::extractTuple(TableTuple& tuple) {
   #else  
     if (!m_table->migrateTuple(tuple)){
       VOLT_ERROR("Error migrating tuple");
+    } else {
+      TableTuplePair _t(m_table, m_table->getTupleID(tuple.address()));
+      tuplesToDelete.push(_t);
+      VOLT_DEBUG("Added tuples to delete : %zu", tuplesToDelete.size());
+
     }
   #endif  
   
