@@ -117,12 +117,6 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
             // new ConcurrentLinkedQueue<Pair<LocalTransaction, Status>>(); 
     
     // ----------------------------------------------------------------------------
-    // RECONFIG
-    // ----------------------------------------------------------------------------
-    private boolean reconfigEnabled;
-    public AtomicBoolean inReconfig;
-    
-    // ----------------------------------------------------------------------------
     // INTIALIZATION
     // ----------------------------------------------------------------------------
     
@@ -142,9 +136,6 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
         this.initQueue = new LinkedBlockingQueue<AbstractTransaction>();
         this.restartQueue = new LinkedBlockingQueue<Pair<LocalTransaction,Status>>();
         this.profilers = new TransactionQueueManagerProfiler[catalogContext.numberOfPartitions];
-        
-        this.reconfigEnabled = hstore_conf.global.reconfiguration_enable;
-        this.inReconfig = new AtomicBoolean(false);
         
         // Initialize internal queues
         for (int partition : this.localPartitions.values()) {
