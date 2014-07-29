@@ -431,10 +431,25 @@ public class ReconfigurationUtil {
     
     private static Comparator<ReconfigurationRange> numericReconfigurationRangeComparator = new Comparator<ReconfigurationRange>() {
     	public int compare(ReconfigurationRange r1, ReconfigurationRange r2) {
-    		if (numericVoltTableComparator.compare(r1.getMinIncl().get(0), r2.getMinIncl().get(0)) < 0) {
+    		Object[] r1_min = r1.getMinIncl().get(0);
+    		Object[] r1_max = r1.getMaxExcl().get(0);
+    		Object[] r2_min = r2.getMinIncl().get(0);
+    		Object[] r2_max = r2.getMaxExcl().get(0);
+    		
+    		// HACK!!
+    		if(r1.getTableName().equalsIgnoreCase("warehouse")) {
+    			r1_min = new Object[]{ r1_min[0], 6 };
+    			r1_max = new Object[]{ r1_min[0], 6 };
+    		}
+    		if(r2.getTableName().equalsIgnoreCase("warehouse")) {
+    			r2_min = new Object[]{ r2_min[0], 6 };
+    			r2_max = new Object[]{ r2_min[0], 6 };
+    		}
+    		
+    		if (numericVoltTableComparator.compare(r1_min, r2_min) < 0) {
     			return -1;
-    		} else if (numericVoltTableComparator.compare(r1.getMinIncl().get(0), r2.getMinIncl().get(0)) == 0) {
-    			return numericVoltTableComparator.compare(r1.getMaxExcl().get(0), r2.getMaxExcl().get(0));
+    		} else if (numericVoltTableComparator.compare(r1_min, r2_min) == 0) {
+    			return numericVoltTableComparator.compare(r1_max, r2_max);
     		} else {
     			return 1;
     		}
