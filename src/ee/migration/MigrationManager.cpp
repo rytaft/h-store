@@ -197,7 +197,10 @@ bool MigrationManager::cleanTuples()
 {
   
   if (!tuplesToDelete.empty()){
-      VOLT_INFO("Have tuples to delete : %zu", tuplesToDelete.size());
+      VOLT_DEBUG("Have tuples to delete : %zu", tuplesToDelete.size());
+      //voltdb::UndoQuantum *undoQuantum = m_executorContext->getCurrentUndoQuantum();
+      
+      //VOLT_INFO("undo %" PRId64 "\n",undoQuantum->getUndoToken());
       for (int i =0; i < tuplesToClean && !tuplesToDelete.empty(); i++) {
             
           TableTuplePair p = tuplesToDelete.front();
@@ -208,7 +211,7 @@ bool MigrationManager::cleanTuples()
           //VOLT_INFO(" tuple to delete: %s",tuple.debug("").c_str());
           tuplesToDelete.pop();
           if(tuple.isMigrated() && tuple.isActive()){
-            if(tempDeleteTable->deleteTuple(tuple, true)){
+            if(tempDeleteTable->deleteTupleNoUndo(tuple, true)){
            //   tuplesToDelete.pop();      
             } else{
               VOLT_ERROR("Error deleting tuples");

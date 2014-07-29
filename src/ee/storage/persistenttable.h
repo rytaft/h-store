@@ -161,6 +161,7 @@ class PersistentTable : public Table {
      * index lookup.
      */
     bool deleteTuple(TableTuple &tuple, bool freeAllocatedStrings);
+    bool deleteTupleNoUndo(TableTuple &tuple, bool freeAllocatedStrings);
     void deleteTupleForUndo(voltdb::TableTuple &tupleCopy, size_t elMark);
     
     bool migrateTuple(TableTuple &tuple );
