@@ -64,7 +64,8 @@ MigrationManager::MigrationManager(ExecutorContext *executorContext, catalog::Da
     
     m_extractedTables.clear();
     m_extractedTableNames.clear();
-    tuplesToClean = 100;
+    tuplesToClean = 10;
+    deleteMigrated = true;
     init(NULL);
 }
 
@@ -196,7 +197,7 @@ bool MigrationManager::inRange(const TableTuple& tuple, const RangeMap& rangeMap
 bool MigrationManager::cleanTuples()
 {
   
-  if (!tuplesToDelete.empty()){
+  if (deleteMigrated && !tuplesToDelete.empty()){
       VOLT_DEBUG("Have tuples to delete : %zu", tuplesToDelete.size());
       //voltdb::UndoQuantum *undoQuantum = m_executorContext->getCurrentUndoQuantum();
       

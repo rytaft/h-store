@@ -153,6 +153,7 @@ private:
     TupleTableList tuplesToDelete;
     int tuplesToClean;
     PersistentTable *tempDeleteTable;
+    bool deleteMigrated;
 
     
 #ifdef EXTRACT_STAT_ENABLED
