@@ -123,6 +123,7 @@ public:
     
     bool confirmExtractDelete(int32_t requestTokenId);
     bool undoExtractDelete(int32_t requestTokenId);
+    bool updateExtractProcess(int32_t requestType);    
     bool cleanTuples();
     
 private:

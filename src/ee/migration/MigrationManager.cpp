@@ -65,7 +65,7 @@ MigrationManager::MigrationManager(ExecutorContext *executorContext, catalog::Da
     m_extractedTables.clear();
     m_extractedTableNames.clear();
     tuplesToClean = 10;
-    deleteMigrated = true;
+    deleteMigrated = false;
     init(NULL);
 }
 
@@ -224,6 +224,14 @@ bool MigrationManager::cleanTuples()
   return false;
 }
 
+bool MigrationManager::updateExtractProcess(int32_t requestType)
+{
+  if (requestType == 1) {
+      deleteMigrated = true;
+      return true;
+  }
+  return false;
+}
 
 
 bool MigrationManager::extractTuple(TableTuple& tuple) {
