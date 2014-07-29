@@ -32,6 +32,8 @@
 
 #include <string>
 #include <vector>
+#include <time.h>
+#include <stdlib.h>
 
 #ifndef EXTRACT_STAT_ENABLED
 #define EXTRACT_STAT_ENABLED
@@ -66,6 +68,7 @@ MigrationManager::MigrationManager(ExecutorContext *executorContext, catalog::Da
     m_extractedTableNames.clear();
     tuplesToClean = 10;
     deleteMigrated = false;
+    srand((int)time(NULL));
     init(NULL);
 }
 
@@ -196,14 +199,14 @@ bool MigrationManager::inRange(const TableTuple& tuple, const RangeMap& rangeMap
 
 bool MigrationManager::cleanTuples()
 {
-  
+  int CLEAN_CHANCE = 50;
   if (deleteMigrated && !tuplesToDelete.empty()){
-      VOLT_DEBUG("Have tuples to delete : %zu", tuplesToDelete.size());
-      //voltdb::UndoQuantum *undoQuantum = m_executorContext->getCurrentUndoQuantum();
-      
-      //VOLT_INFO("undo %" PRId64 "\n",undoQuantum->getUndoToken());
-      for (int i =0; i < tuplesToClean && !tuplesToDelete.empty(); i++) {
-            
+      if (rand() % 100 < CLEAN_CHANCE) {
+        VOLT_DEBUG("Have tuples to delete : %zu", tuplesToDelete.size());
+        //voltdb::UndoQuantum *undoQuantum = m_executorContext->getCurrentUndoQuantum();
+        
+        //VOLT_INFO("undo %" PRId64 "\n",undoQuantum->getUndoToken());
+        for (int i =0; i < tuplesToClean && !tuplesToDelete.empty(); i++) {
           TableTuplePair p = tuplesToDelete.front();
           int current_tuple_id = p.tupleId;
           tempDeleteTable = p.table;
@@ -213,12 +216,13 @@ bool MigrationManager::cleanTuples()
           tuplesToDelete.pop();
           if(tuple.isMigrated() && tuple.isActive()){
             if(tempDeleteTable->deleteTupleNoUndo(tuple, true)){
-           //   tuplesToDelete.pop();      
+          //   tuplesToDelete.pop();      
             } else{
               VOLT_ERROR("Error deleting tuples");
             }
           }
-        }      
+        }  
+      }
       return true;
   }  
   return false;
