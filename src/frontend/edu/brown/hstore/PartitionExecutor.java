@@ -3398,7 +3398,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     		break;
     	case END_RECONFIGURATION:
     		try {
-    			endReconfiguration();
+    			endReconfiguration(reconfigUtilMsg.getFinalPlan());
     		} catch(Exception ex) {
     			throw new RuntimeException("Unexpected error when ending reconfiguration", ex);
     		}
@@ -6529,7 +6529,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     /**
      * Clear the reconfiguration state after reconfiguration ends
      */
-    public void endReconfiguration() {
+    public void endReconfiguration(boolean final_plan) {
         if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY){
             LOG.info("Ending S&C");
             this.currentExecMode = ExecutionMode.COMMIT_ALL;
@@ -6547,6 +6547,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.p_estimator.getHasher().inReconfiguration.set(false);
     	if(this.p_estimator.getHasher() instanceof ExplicitHasher) {
         	((ExplicitHasher) this.p_estimator.getHasher()).getPartitions().setReconfigurationPlan(null);
+        	if(final_plan) {
+        		((ExplicitHasher) this.p_estimator.getHasher()).getPartitions().setIncrementalPlan(null);
+        	}
         }
 
         if (this.currentDtxn != null){

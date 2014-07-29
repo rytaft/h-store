@@ -484,5 +484,13 @@ public abstract class ExplicitPartitions {
     	
     	return newRanges;
     }
+    
+    public synchronized void setIncrementalPlan(PartitionPhase plan) {
+    	this.incrementalPlan = plan;
+    }
+    
+    public synchronized void setPreviousIncrementalPlan(PartitionPhase plan) {
+    	this.previousIncrementalPlan = plan;
+    }
 
 }

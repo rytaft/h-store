@@ -17,6 +17,7 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
 	private ReconfigurationProtocols reconfig_protocol;
 	private ReconfigurationState reconfig_state;
 	private ExplicitPartitions planned_partitions;
+	private boolean final_plan;
 	public long createTime;
     
     
@@ -33,6 +34,7 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
         this.reconfig_protocol = reconfig_protocol;
         this.reconfig_state = reconfig_state;
         this.planned_partitions = planned_partitions;
+        this.final_plan = false;
     }
     
     public ReconfigUtilRequestMessage(RequestType requestType) {
@@ -43,6 +45,18 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
         this.reconfig_protocol = null;
         this.reconfig_state = null;
         this.planned_partitions = null;
+        this.final_plan = false;
+    }
+    
+    public ReconfigUtilRequestMessage(RequestType requestType, boolean final_plan) {
+        super();
+        this.createTime = ProfileMeasurement.getTime();
+        this.requestType = requestType;
+        this.reconfig_plan = null; 
+        this.reconfig_protocol = null;
+        this.reconfig_state = null;
+        this.planned_partitions = null;
+        this.final_plan = final_plan;
     }
 
     public long getQueueTime(){
@@ -67,6 +81,10 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
     
     public ExplicitPartitions getExplicitPartitions() {
     	return planned_partitions;
+    }
+    
+    public boolean getFinalPlan() {
+    	return final_plan;
     }
     
 }
