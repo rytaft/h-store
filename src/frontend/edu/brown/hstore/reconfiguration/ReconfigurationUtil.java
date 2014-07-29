@@ -187,7 +187,7 @@ public class ReconfigurationUtil {
     	
     	// HACK for TPCC
     	if(table_name.equals("orders")) {
-    		maxSplits *= 10;
+    		maxSplits *= 5;
     	}
     	
     	List<ReconfigurationRange> res = new ArrayList<>();
@@ -393,7 +393,7 @@ public class ReconfigurationUtil {
         } else if (partitionedTable.equals("customer")) {
         	res = new Pair<Object[], Object[]>(new Object[] { 1, 0 }, new Object[] { 11, 60000 });
         } else if (partitionedTable.equals("orders")) {
-        	res = new Pair<Object[], Object[]>(new Object[] { 1, 0 }, new Object[] { 11, 6000 });
+        	res = new Pair<Object[], Object[]>(new Object[] { 1, 0 }, new Object[] { 11, 25000 });
         } else if (partitionedTable.equals("stock")) {
         	res = new Pair<Object[], Object[]>(new Object[] { 0 }, new Object[] { 100000 });
         }
