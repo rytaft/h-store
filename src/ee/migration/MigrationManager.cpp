@@ -263,7 +263,7 @@ bool MigrationManager::extractTuple(TableTuple& tuple) {
 
     }
   #endif  
-  
+ 
   //
   
   

@@ -366,7 +366,6 @@ public abstract class ExplicitPartitions {
     public void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan) {
 	if(reconfigurationPlan == null) {
 	    this.reconfigurationPlan = null;
-	    this.incrementalPlan = null;
 	    return;
 	}
 
@@ -484,6 +483,14 @@ public abstract class ExplicitPartitions {
     	newRanges.add(newRange);
     	
     	return newRanges;
+    }
+    
+    public synchronized void setIncrementalPlan(PartitionPhase plan) {
+    	this.incrementalPlan = plan;
+    }
+    
+    public synchronized void setPreviousIncrementalPlan(PartitionPhase plan) {
+    	this.previousIncrementalPlan = plan;
     }
 
 }
