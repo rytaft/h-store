@@ -29,7 +29,7 @@ RECONFIG_EXPERIMENTS = [
     "reconfig-test" 
 ]
 
-RECONFIG_CLIENT_COUNT = 1
+RECONFIG_CLIENT_COUNT = 6
 
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
@@ -204,7 +204,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.threads_per_host"] = 16
         fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.loadthread_per_warehouse"] = False
-        fabric.env["benchmark.loadthreads"] = max(16, partitions)        
+        fabric.env["benchmark.loadthreads"] = max(100, partitions)        
         fabric.env["hstore.partitions_per_site"]=6
         fabric.env["hstore.sites_per_host"]=1
         fabric.env["client.skewfactor"] = 0.65
