@@ -25,6 +25,7 @@ RECONFIG_EXPERIMENTS = [
     "reconfig-dynsplit",
     "reconfig-dynsplit-becca",
     "reconfig-dynsplit-fine-grained",
+    "reconfig-fine-test",
     "reconfig-test" 
 ]
 
@@ -103,8 +104,8 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.loadthread_per_warehouse"] = False
         fabric.env["benchmark.loadthreads"] = max(16, partitions)
-        fabric.env["hstore.partitions_per_site"]=1
-        fabric.env["hstore.sites_per_host"]=2
+        fabric.env["hstore.partitions_per_site"]=4
+        fabric.env["hstore.sites_per_host"]=1
         
     if 'reconfig-test' in  args['exp_type']:
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
@@ -123,11 +124,11 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["site.reconfig_async_delay_ms"] = 50
         fabric.env["site.reconfig_plan_delay"] = 500
         fabric.env["site.reconfig_subplan_split"] = 10
-        fabric.env["client.skewfactor"] = 0.65
         fabric.env["client.txnrate"] = 1000
         fabric.env["client.interval"] = 1000
         #fabric.env["client.weights"] = "NewOrder:100,*:0"
         fabric.env["client.weights"] = "slev:100,*:0"
+        fabric.env["client.skewfactor"] = 0.65
         fabric.env["site.planner_caching"] = False
         fabric.env["benchmark.loadthread_per_warehouse"] = False
         fabric.env["benchmark.loadthreads"] = max(16, partitions)
@@ -188,6 +189,27 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["hstore.sites_per_host"]=1
         fabric.env["site.network_incoming_limit_txns"] = 5000
 
+
+    if 'reconfig-fine-test' in  args['exp_type']:
+        fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
+        fabric.env["partitionplan"]="tpcc-plan-fine-grained.pplan" #"tpcc-plan.pplan"
+        fabric.env["client.blocking_concurrent"] = 10
+        fabric.env["client.blocking"] = True
+        fabric.env["client.txnrate"] = 1000
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.output_exec_profiling"] = "execprofile.csv"
+        fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
+        fabric.env["client.output_txn_profiling_combine"] = True
+        fabric.env["client.output_txn_counters"] = "txncounters.csv"
+        fabric.env["client.threads_per_host"] = 16
+        fabric.env["site.commandlog_enable"] = False
+        fabric.env["benchmark.loadthread_per_warehouse"] = False
+        fabric.env["benchmark.loadthreads"] = max(16, partitions)        
+        fabric.env["hstore.partitions_per_site"]=6
+        fabric.env["hstore.sites_per_host"]=1
+        fabric.env["client.skewfactor"] = 0.65
+        fabric.env["site.planner_caching"] = False
+        #fabric.env["site.network_incoming_limit_txns"] = 5000
 
     if 'reconfig-10b' in  args['exp_type'] or 'stopcopy-10b' in args['exp_type']:
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT

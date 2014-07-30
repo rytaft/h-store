@@ -15,7 +15,7 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( 
-    "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100 --splitplan=4 --plandelay=500 --chunksize=10048 --asyncsize=8048 --asyncdelay=100 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
+    "reconfig-fine-test --partitions=18 --benchmark-size=100 --splitplan=20 --plandelay=100 --chunksize=10048 --asyncsize=8048 --asyncdelay=50 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
     )
 
 for b in tpcc; do
