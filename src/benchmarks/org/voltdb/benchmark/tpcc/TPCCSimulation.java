@@ -65,6 +65,7 @@ import org.voltdb.catalog.Partition;
 import org.voltdb.catalog.Site;
 import org.voltdb.types.TimestampType;
 
+import edu.brown.benchmark.ycsb.distributions.VaryingZipfianGenerator;
 import edu.brown.hashing.DefaultHasher;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
@@ -114,6 +115,7 @@ public class TPCCSimulation {
     
 	private RandomDistribution.HotWarmCold custom_skew; 
     private RandomDistribution.Zipf zipf;
+    private VaryingZipfianGenerator zipf_gen;
     
     private int tick_counter = 0;
     private int temporal_counter = 0;
@@ -138,12 +140,18 @@ public class TPCCSimulation {
                                                     parameters.starting_warehouse,
                                                     parameters.last_warehouse+1,
                                                     Math.max(1.001d, this.skewFactor));
+            
+            int numHotSpots = 0;
+            double percentAccessHotSpots = 0;
+            if(config.neworder_hotspot) {
+            	numHotSpots = config.hotspot_size;
+            	percentAccessHotSpots = config.hotspot_ops_percent / 100.0;
+            }
+            this.zipf_gen = new VaryingZipfianGenerator(parameters.last_warehouse + 1 - parameters.starting_warehouse, skewFactor);
+            zipf_gen.setNumHotSpots(numHotSpots);
+            zipf_gen.setPercentAccessHotSpots(percentAccessHotSpots);
 
-			this.custom_skew = new RandomDistribution.HotWarmCold(new Random(), 
-																  parameters.starting_warehouse+1,
-																  parameters.last_warehouse,
-																  TPCCConstants.HOT_DATA_WORKLOAD_SKEW, TPCCConstants.HOT_DATA_SIZE, 
-																  TPCCConstants.WARM_DATA_WORKLOAD_SKEW, TPCCConstants.WARM_DATA_SIZE);
+
         }
         if (config.warehouse_debug) {
             LOG.info("Enabling WAREHOUSE debug mode");
@@ -259,13 +267,8 @@ public class TPCCSimulation {
         
         // ZIPFIAN SKEWED WAREHOUSE ID
         else if (config.neworder_skew_warehouse) {
-            assert(this.zipf != null);
-            //w_id = (short)this.zipf.nextInt();
-            if (generator.number(1, 100) <= config.temporal_skew_mix) {
-                w_id = (short)this.custom_skew.nextInt();
-            } else {
-                w_id = (short)generator.number(parameters.starting_warehouse, parameters.last_warehouse);
-            }
+            assert(this.zipf_gen != null);
+            w_id = (short) (this.zipf_gen.nextInt() + parameters.starting_warehouse);
         }
         
         // HOTSPOT SKEWED WAREHOUSE ID

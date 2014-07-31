@@ -52,7 +52,8 @@ def getParser():
     
     parser.add_argument("--no-display", action="store_true", help="Do not display the graph")
     parser.add_argument("-v","--save", dest="save",  help="filename to save the generated plot")
-   
+    parser.add_argument("--csv", dest="csv", help="filename to save csv results in")
+
     parser.add_argument("--tsd", action="store_true", help="Plot Time Series Data (intervals)")
     parser.add_argument("-r","--recursive", dest="recursive", action="store_true", help="Check directories recursively")
     parser.add_argument("--reconfig", dest="reconfig", action="store_true", help="Plot reconfig bars") 
@@ -95,12 +96,14 @@ def getReconfigEvents(hevent_log):
                         protocol = items[len(items)-1].strip().split("=")[1]
                     elif "INIT" in line and "REPORT" not in line:
                         event = "INIT"
-                    elif "END" in line:
+                    elif "END" in line and "SEND" not in line:
                         event = "END"
                     elif "ASYNC_PULL_REQUESTED" in line:
                         event = "ASYNC_PULL_REQUESTED"
                     elif "LIVE_PULL_REQUESTED" in line:
                         event = "LIVE_PULL_REQUESTED"    
+                    elif "SEND_NEXT_PLAN" in line:
+                        event = "NEXT_PLAN"
                     else:
                         event = "UNKNOWN"
                     if event != "UNKNOWN":
@@ -164,19 +167,17 @@ def addReconfigEvent(df, reconfig_events):
       else:
         #LATENCY.isnull()
         #if we have new event set, otherwise append      
-        if df.RECONFIG[_i] == "":
-           df.RECONFIG[_i] = event[1]
+        if hasattr(df.RECONFIG,'empty') and df.RECONFIG[_i].empty:
+               df.RECONFIG[_i] = event[1]
+        elif not hasattr(df.RECONFIG,'empty') and df.RECONFIG[_i] == "":        
+               df.RECONFIG[_i] = event[1]
         else:
            df.RECONFIG[_i] = df.RECONFIG[_i] + "-" + event[1]
-
        
     df['IN_RECONFIG'][(df.TIMESTAMP >= start-1000) & (df.TIMESTAMP <= end)] = True
     df['MISSING_DATA'] = df.LATENCY.isnull()
     df['DOWNTIME'] = df['MISSING_DATA'].sum()
     df['RECONFIG_TIME'] = end-start
-    print df['ASYNC_PULLS'].values
-    print df['LIVE_PULLS'].values
-    print df['IN_RECONFIG'].values
     #df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].mean()
     
 def getIntStats(interval_file):
@@ -217,9 +218,9 @@ def getDirStat(directory,reconfigs, stops, show="mean", keepfilter=None, display
     print "No interval file found in %s %s" % (directory,','.join(os.listdir(directory)))
     return
   for interval_file in interval_files:  
-    print  
+    #print
     df = getIntStats(interval_file)
-    print interval_file 
+    #print interval_file
 
     if "recon" in interval_file:
       alt_version = interval_file.replace("reconfig","stopcopy")
@@ -357,7 +358,7 @@ def plotResults(args, files, ax):
 	    if args.type == "aborts":
                 LOG.info("Plotting Aborts")
                 txnstats = getTxnStats(_file.replace("interval_res.csv", "txncounters.csv"))
-                print txnstats
+                #print txnstats
                 if len(txnstats) > 0:
                     aborts = getAbortedTxns(txnstats)
                 else:
@@ -405,11 +406,11 @@ def plotReconfigs(args, d, ax):
     y2 = ymean - ax.get_ylim()[1]*0.1
     lives = d[d.LIVE_PULLS>0]['LIVE_PULLS']
     asyncs = d[d.ASYNC_PULLS>0]['ASYNC_PULLS']
-    label = 'Live Pull'
+    label = None #'Live Pull'
     for z in lives.iteritems():
         plot.plot(z[0],y1,'^',ms=z[1]*2,color='black',label=label)
         label = None
-    label = 'Async Pull'
+    label = None #'Async Pull'
     for z in asyncs.iteritems():
         plot.plot(z[0],y2,'D',ms=z[1]*2,color='blue',label=label)
         label = None
@@ -422,8 +423,8 @@ def plotTSD(args, files, ax):
     if args.subplots:
         f,axarr = plot.subplots(len(dfs), sharex=True, sharey=False)
     data = {}
-    init_legend = "Reconfig Init"
-    end_legend = "Reconfig End"
+    init_legend = None #= "Reconfig Init"
+    end_legend = None #= "Reconfig End"
     x = 0
     for i,(_file, df) in enumerate(dfs):
         name = os.path.basename(_file).split("-interval")[0] 
@@ -459,21 +460,26 @@ def plotTSD(args, files, ax):
                             LOG.error(" NO END FOUND %s " % name)
                             LOG.error("*****************************************")
                             LOG.error("*****************************************")
-            
+                        if any(df.RECONFIG.str.contains('NEXT_PLAN')):
+                            for x in range(len(df[df.RECONFIG.str.contains('NEXT_PLAN')])):
+                                ax.axvline(df[df.RECONFIG.str.contains('NEXT_PLAN')].index[x], color='0.8', lw=1.5, linestyle=":",label=None)
+                            end_legend = None
                         init_legend = None
                     elif len(df[df.RECONFIG.str.contains('TXN')]) < 1:
                         LOG.error("NO reconfig event found!")
                     else:
                         LOG.error("Multiple reconfig events not currently supported")
-            print name     
-            print "="*80
-            print df
+            #print name
+            #print "="*80
+            #print df
             #print df.groupby('IN_RECONFIG')['LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','THROUGHPUT'].mean()
-            print ""
+            #print ""
+            if args.csv:
+                df.to_csv(args.csv)
             if args.type == "line":
                 #plot the line with the same color 
                 ax.plot(df.index, data[name], color=color,label=name,ls=linestyle, lw=2.0)
-                if reconfig_events:
+                if args.reconfig and reconfig_events:
                     plotReconfigs(args, df, ax)
             x+=1 # FOR
     plotFrame = pandas.DataFrame(data=data)
@@ -492,12 +498,12 @@ def plotTSD(args, files, ax):
 def plotter(args, files):
 
     if not args.subplots:
-        plot.figure()
+        plot.figure(figsize=(15,11))
         ax = plot.subplot(111)
     else:
         ax = None
     
-    print args
+    #print args
     if args.show == "latall":
         if args.tsd:
             keymap = INTERVAL_TYPE_MAP
@@ -521,7 +527,7 @@ if __name__=="__main__":
     parser = getParser()
     args = parser.parse_args()
     
-    print args
+    #print args
     files = []
     if args.dir:
         if args.recursive:
@@ -535,7 +541,7 @@ if __name__=="__main__":
     if args.filter:
         for filt in args.filter.split(","):
             files = [f for f in  files if filt not in f]
-    LOG.info("Files : %s " % "\n".join(files) ) 
+    LOG.debug("Files : %s " % "\n".join(files) ) 
     
     plotter(args, files)
     

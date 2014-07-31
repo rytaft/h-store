@@ -144,6 +144,7 @@ inline bool TableIterator::next(TableTuple &out) {
         }
         assert (out.sizeInValues() == m_table->columnCount());
         out.move(m_dataPtr);
+        
         assert(m_dataPtr < m_dataPtr + m_table->m_tableAllocationTargetSize);
         //assert(m_foundTuples == m_location);
         ++m_location;

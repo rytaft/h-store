@@ -121,9 +121,9 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
     @Test 
     public void testMultiExtract() throws Exception {
         int wid = 2;
-        ReconfigurationRange<Long> range; 
+        ReconfigurationRange range; 
         VoltTable extractTable;
-        range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(wid), new Long(wid+1), 1, 2);
+        range = ReconfigurationUtil.getReconfigurationRange(customer_tbl, new Long[][]{{ new Long(wid) }}, new Long[][]{{ new Long(wid+1) }}, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
         this.loadTPCCData(NUM_TUPLES * 10, this.customer_tbl,this.cust_p_index, wid);
         int EXTRACT_LIMIT = 2048;
@@ -165,7 +165,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
         
     	assertTrue(true);
     	
-    	ReconfigurationRange<Long> range; 
+    	ReconfigurationRange range; 
     	VoltTable extractTable;
     	long start, extract, load;
     	Pair<VoltTable,Boolean> resTable;
@@ -176,7 +176,7 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
     	    int scale = scales[i];
     	    LOG.info("Testing for scale : " + scale);
     	    //extract
-            range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale+1), 1, 2);
+            range = ReconfigurationUtil.getReconfigurationRange(customer_tbl, new Long[][]{{ new Long(scale) }}, new Long[][]{{ new Long(scale+1) }}, 1, 2);
             extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
             start = System.currentTimeMillis();
             resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
@@ -215,70 +215,5 @@ public class TestReconfigurationExtractImportEE extends BaseTestCase {
         */
     }
     
-    @Test
-    public void testExtractDataSameKeys() throws Exception {
-        ((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = DEFAULT_LIMIT;
-
-        for (int i=0; i< scales.length; i++) {
-            long tuples = NUM_TUPLES * scales[i];
-            LOG.info(String.format("Loading %s tuples for customers with W_ID :%s ", tuples,scales[i]));
-            this.loadTPCCData(tuples, this.customer_tbl,this.cust_p_index,scales[i]);
-                
-        }
-        LOG.info("load done");
-
-        
-        assertTrue(true);
-        
-        ReconfigurationRange<Long> range; 
-        VoltTable extractTable;
-        long start, extract, load;
-        Pair<VoltTable,Boolean> resTable;
-        Pair<VoltTable,Boolean> resTableVerify;
-        
-        
-        for (int i=0; i< scales.length; i++) {
-            int scale = scales[i];
-            LOG.info("Testing for scale : " + scale);
-            //extract
-            range = new ReconfigurationRange<Long>(this.customer_tbl.getName(), VoltType.SMALLINT, new Long(scale), new Long(scale), 1, 2);
-            extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
-            start = System.currentTimeMillis();
-            resTable= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
-            extract = System.currentTimeMillis()-start;
-            assertFalse(resTable.getSecond());
-            LOG.info("Tuples : " + resTable.getFirst().getRowCount());
-            assertTrue(resTable.getFirst().getRowCount()==NUM_TUPLES *scale);
-            
-            //assert empty     
-            resTableVerify= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
-            assertTrue(resTableVerify.getFirst().getRowCount()==0);
-            
-            
-            //load
-            start = System.currentTimeMillis();
-            this.executor.loadTable(2000L, this.customer_tbl, resTable.getFirst(), false);
-            load = System.currentTimeMillis() - start;
-            LOG.info(String.format("size=%s Extract=%s Load=%s Diff:%s", NUM_TUPLES*scale, extract, load, load-extract));
-
-            //re extract and check its there
-            resTableVerify= this.ee.extractTable(this.customer_tbl, this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
-            assertTrue(resTableVerify.getFirst().getRowCount()==NUM_TUPLES *scale);
-            
-            
-            
-            
-        }
-        
-
-        
-        /*
-        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(998), new Long(1002), 1, 2);
-        extractTable = ReconfigurationUtil.getExtractVoltTable(range);        
-        resTable= this.ee.extractTable(this.customer_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken());       
-        assertTrue(resTable.getRowCount()==2);
-        */
-
-    }
     
 }

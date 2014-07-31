@@ -3,12 +3,14 @@ package org.qcri.PartitioningPlanner.placement;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.qcri.PartitioningPlanner.placement.Plan.Range;
+import org.voltdb.CatalogContext;
 import org.voltdb.catalog.Site;
 import org.voltdb.utils.Pair;
 
@@ -16,25 +18,40 @@ public class Placement {
 	Collection<Site> allSites;
 	Map<Site,Collection<Integer>> siteToPartitions;	
 	Map<Integer, Site> partitionToSite;
-
+	int partPerSite;
+	
 	public Placement(){
-		
+		this.partPerSite = 0;
+	}
+	
+	public Placement(int partPerSite){
+		this.partPerSite = partPerSite;
 	}
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
 	// partitionCount: number of partitions actually in use
 	// timeLimit - time limit for planner in ms
-	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Pair<Long,Integer>> siteLoads, String planFile, int partitionCount, int timeLimit){
+	public Plan computePlan(ArrayList<Map<Long, Pair<Long,Integer> >> hotTuplesList, Map<Integer, Pair<Long,Integer>> siteLoads, String planFile, int partitionCount, int timeLimit, CatalogContext catalogContext){
 		return new Plan(planFile);
 	}
 	
-	static Integer getMostUnderloadedPartitionId(Map<Integer, Pair<Long,Integer>> partitionTotals, int partitionCount) {
+	Integer getMostUnderloadedPartitionId(Map<Integer, Pair<Long,Integer>> partitionTotals, int partitionCount) {
+		return getMostUnderloadedPartitionId(partitionTotals, partitionCount, false);
+	}
+	
+	Integer getMostUnderloadedPartitionId(Map<Integer, Pair<Long,Integer>> partitionTotals, int partitionCount, boolean filterBySite) {
 		Long minTotal = java.lang.Long.MAX_VALUE; 
 		Integer minPartition = -1;
 
+		int minSite = 0;
+		if(filterBySite) {
+			minSite = getMostUnderloadedSiteId(partitionTotals, partitionCount);
+		}
+		
 		for(Integer i : partitionTotals.keySet()) {
-			if(i < partitionCount && partitionTotals.get(i).getFirst() < minTotal) {
+			if((!filterBySite || i / this.partPerSite == minSite) && 
+					i < partitionCount && partitionTotals.get(i).getFirst() < minTotal) {
 				minPartition = i;
 				minTotal = partitionTotals.get(i).getFirst();
 			}
@@ -42,6 +59,32 @@ public class Placement {
 		}
 		
 		return minPartition;
+	}
+	
+	Integer getMostUnderloadedSiteId(Map<Integer, Pair<Long,Integer>> partitionTotals, int partitionCount) {
+		Long minTotal = java.lang.Long.MAX_VALUE; 
+		Integer minSite = -1;
+
+		HashMap<Integer, Long> siteTotals = new HashMap<>();
+		
+		for(Integer i : partitionTotals.keySet()) {
+			int site = i / this.partPerSite;
+			if(!siteTotals.containsKey(site)) {
+				siteTotals.put(site, 0L);
+			}
+			siteTotals.put(site, siteTotals.get(site) + partitionTotals.get(i).getFirst());
+		}
+		
+		int siteCount = (int) Math.ceil(partitionCount / this.partPerSite);
+		for(Integer i : siteTotals.keySet()) {
+			if(i < siteCount && siteTotals.get(i) < minTotal) {
+				minSite = i;
+				minTotal = siteTotals.get(i);
+			}
+			
+		}
+		
+		return minSite;
 	}
 	
 	static void getHottestTuplePartition(Map<Long, Pair<Long,Integer> > hotTuples, Long tupleId, Long accessCount) {

@@ -4,10 +4,10 @@ import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.profilers.ProfileMeasurement;
 
 public class AsyncNonChunkPullRequestMessage extends InternalMessage {
-    private ReconfigurationRange<? extends Comparable<?>> pullRange;
+    private ReconfigurationRange pullRange;
     public long createTime;
     
-    public AsyncNonChunkPullRequestMessage(ReconfigurationRange<? extends Comparable<?>> pullRange) {
+    public AsyncNonChunkPullRequestMessage(ReconfigurationRange pullRange) {
         super();
         this.pullRange = pullRange;
         this.createTime = ProfileMeasurement.getTime();
@@ -17,7 +17,7 @@ public class AsyncNonChunkPullRequestMessage extends InternalMessage {
         return ProfileMeasurement.getTime() - this.createTime;
     }
     
-    public ReconfigurationRange<? extends Comparable<?>> getPullRange() {
+    public ReconfigurationRange getPullRange() {
         return pullRange;
     }
     

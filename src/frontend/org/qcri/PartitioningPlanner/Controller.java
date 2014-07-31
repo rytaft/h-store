@@ -24,6 +24,7 @@ import org.qcri.PartitioningPlanner.placement.FirstFitPlacement;
 import org.qcri.PartitioningPlanner.placement.OneTieredPlacement;
 import org.qcri.PartitioningPlanner.placement.GAPlacement;
 import org.qcri.PartitioningPlanner.placement.Plan;
+import org.voltdb.CatalogContext;
 import org.voltdb.client.ClientFactory;
 import org.voltdb.client.ClientResponse;
 import org.voltdb.client.NoConnectionsException;
@@ -47,6 +48,7 @@ public class Controller implements Runnable {
 	private org.voltdb.client.Client client;
 	private String connectedHost;
 	private Collection<Site> sites;
+	private CatalogContext catalog_context;
 
 	private Placement algo;
 	private Plan currentPlan;
@@ -76,7 +78,7 @@ public class Controller implements Runnable {
 
 	// used HStoreTerminal as model to handle the catalog
 
-	public Controller (Catalog catalog, HStoreConf hstore_conf){
+	public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context){
 
 		
 		ttExecutor = new TupleTrackerExecutor();
@@ -84,6 +86,7 @@ public class Controller implements Runnable {
 		client = ClientFactory.createClient();
 		client.configureBlocking(false);
 		sites = CatalogUtil.getAllSites(catalog);
+		this.catalog_context = catalog_context;
 		connectToHost();
 		provisioning = new Provisioning(sites, no_of_partitions, sitesPerHost, partPerSite, highCPU, lowCPU);
 
@@ -132,11 +135,13 @@ public class Controller implements Runnable {
 					doReconfiguration();
 					System.out.println("Waiting until reconfiguration has completed");
 					String ip = sites.iterator().next().getHost().getIpaddr();
-					String response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END /localdisk/rytaft/h-store/hevent.log");
+					String response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END /home/mserafini/h-store/hevent.log");
+//                    String response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END /localdisk/rytaft/h-store/hevent.log");
 					int previousReconfigurations = response.split("\n").length; 
 					while(true){
 						Thread.sleep(1000);
-						response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END /localdisk/rytaft/h-store/hevent.log");
+						response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END /home/mserafini/h-store/hevent.log");
+//						response = ShellTools.cmd("ssh " + ip + " grep RECONFIGURATION_END /localdisk/rytaft/h-store/hevent.log");
 						if(response.split("\n").length > previousReconfigurations) break;
 					}
 					System.out.println("Reconfiguration has completed");
@@ -189,16 +194,22 @@ public class Controller implements Runnable {
 				System.out.println("Provisioning is on");	
 				int numberOfPartitions = provisioning.partitionsRequired(CPUUtilPerPartitionMap);
 				System.out.println("Provisioning requires " + numberOfPartitions + " partitions");
+                long before = System.currentTimeMillis();
 				currentPlan = algo.computePlan(hotTuplesList, mPartitionLoad, planFile.toString(), 
-						numberOfPartitions, timeLimit);
+						numberOfPartitions, timeLimit, catalog_context);
+                long after = System.currentTimeMillis();
+                System.out.println("The planner took " + (after-before) + " ms to find a new plan");
 				provisioning.setPartitions(numberOfPartitions);
 
 			}
 			else
 			{
 				System.out.println("Provisioning is off");
+                long before = System.currentTimeMillis();
 				currentPlan = algo.computePlan(hotTuplesList, mPartitionLoad, planFile.toString(), 
-						no_of_partitions, timeLimit);
+						no_of_partitions, timeLimit, catalog_context);
+                long after = System.currentTimeMillis();
+                System.out.println("The planner took " + (after-before) + " ms to find a new plan");
 			}
 
 			System.out.println("Calculated new plan");
@@ -307,7 +318,7 @@ public class Controller implements Runnable {
 		}
 
 
-		Controller c = new Controller(args.catalog, hstore_conf);
+		Controller c = new Controller(args.catalog, hstore_conf, args.catalogContext);
 		c.run();
 	}
 }

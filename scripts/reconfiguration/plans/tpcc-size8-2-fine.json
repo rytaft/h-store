@@ -1,0 +1,75 @@
+{
+  "partition_plans": {
+    "0": {
+      "tables": {
+          "warehouse": {
+            "partitions": {
+              "0": "1-5", 
+              "1": "5-9"
+            }
+          }, 
+          "customer": {
+            "partitions": {
+              "0": "1-5", 
+              "1": "5-9"
+            }
+          }, 
+          "orders": {
+            "partitions": {
+              "0": "1-5", 
+              "1": "5-9"
+            }
+          }, 
+          "district": {
+            "partitions": {
+              "0": "1-5", 
+              "1": "5-9"
+            }
+          }, 
+          "stock": {
+            "partitions": {
+              "0": "1-5", 
+              "1": "5-9"
+            }
+          }
+
+    }
+   },
+    "1": {
+          "tables": {
+          "warehouse": {
+            "partitions": {
+              "0": "1-4", 
+              "1": "4-9"
+            }
+          }, 
+          "customer": {
+            "partitions": {
+              "0": "1-4", 
+              "1": "4-9"
+            }
+          }, 
+          "orders": {
+            "partitions": {
+              "0": "1-4", 
+              "1": "4-9"
+            }
+          }, 
+          "district": {
+            "partitions": {
+              "0": "1-4", 
+              "1": "4-9"
+            }
+          }, 
+          "stock": {
+            "partitions": {
+              "0": "1-4", 
+              "1": "4-9"
+            }
+          }
+
+        }
+    }
+  }, 
+  "default_table": "district"
+}

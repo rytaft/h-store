@@ -162,6 +162,9 @@ class PersistentTable : public Table {
      */
     bool deleteTuple(TableTuple &tuple, bool freeAllocatedStrings);
     void deleteTupleForUndo(voltdb::TableTuple &tupleCopy, size_t elMark);
+    
+    bool migrateTuple(TableTuple &tuple );
+    bool flagToMigrateTuple(TableTuple &tuple );
 
     /*
      * Lookup the address of the tuple that is identical to the specified tuple.
@@ -186,6 +189,8 @@ class PersistentTable : public Table {
     virtual std::string debug();
 
     int partitionColumn() { return m_partitionColumn; }
+    const std::vector<int>& partitionColumns() const { return m_partitionColumns; }
+    void setPartitionColumns(const std::vector<int>& columns);
 
     /** inlined here because it can't be inlined in base Table, as it
      *  uses Tuple.copy.
@@ -357,8 +362,9 @@ protected:
     
     #endif
     
-    // partition key
+    // partition key(s)
     int m_partitionColumn;
+    std::vector<int> m_partitionColumns;
     
     // TODO: Partition id of where this table is stored in
     int32_t m_partitionId;

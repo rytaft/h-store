@@ -1181,14 +1181,14 @@ public class VoltTable extends VoltTableRow implements FastSerializable {
     }
 
     private final boolean verifyTableInvariants() {
-        assert(m_buffer != null);
-        assert(m_rowCount >= 0);
-        assert(m_colCount > 0);
-        assert(m_rowStart > 0);
+        assert(m_buffer != null) : "Buffer is null";
+        assert(m_rowCount >= 0) : "Row count should be >= 0. m_rowCount: " + m_rowCount;
+        assert(m_colCount > 0) : "Column count should be > 0. m_colCount: " + m_colCount;
+        assert(m_rowStart > 0) : "Row start should be > 0. m_rowStart: " + m_rowStart;
         // minimum reasonable table size
         final int minsize = 4 + 1 + 2 + 1 + 4 + 4;
-        assert(m_buffer.capacity() >= minsize);
-        assert(m_buffer.limit() >= minsize);
+        assert(m_buffer.capacity() >= minsize) : "Buffer capacity is " + m_buffer.capacity() + " but should be >= " + minsize;
+        assert(m_buffer.limit() >= minsize) : "Buffer limit is " + m_buffer.limit() + " but should be >= " + minsize;
         if (m_buffer.position() < minsize) {
             System.err.printf("Buffer position %d is smaller than it should be.\n", m_buffer.position());
             return false;
@@ -1203,7 +1203,7 @@ public class VoltTable extends VoltTableRow implements FastSerializable {
             String.format("Buffer position is %d but row start is %d", m_buffer.position(), m_rowStart);
 
         int colCount = m_buffer.getShort(5);
-        assert(colCount > 0);
+        assert(colCount > 0) : "Column count should be > 0. colCount: " + colCount;
 
         return true;
     }

@@ -21,16 +21,15 @@ skip_list="${@:5}"
 
 curr_host=0
 curr_part=0
+curr_server=$init_server
 first_loop=""
 
 for (( var=1; var<=$num_servers; var++ ))
 do
 	end_part=`expr $curr_part + $part_per_server - 1`
-	curr_server=`expr $init_server + $curr_host`
 	if [[ $skip_list =~ $curr_server ]]
 	then
 		var=`expr $var - 1`
-		curr_host=`expr $curr_host + 1`
 	else
 		if [ "$curr_server" -lt "10" ]
 		then
@@ -42,6 +41,7 @@ do
 		curr_host=`expr $curr_host + 1`
 		first_loop=";"
 	fi
+	curr_server=`expr $curr_server + 1`
 done
 
 echo "$cmd\""

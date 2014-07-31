@@ -97,8 +97,9 @@ namespace voltdb {
     
 #define DELETED_MASK 1
 #define DIRTY_MASK 2
-#define MIGRATED_MASK 3
 #define EVICTED_MASK 4
+#define MIGRATED_MASK 8
+#define TO_BE_MIGRATED_MASK 16
 
 class TableColumn;
 
@@ -285,6 +286,16 @@ public:
         return (*(reinterpret_cast<const char*> (m_data)) & EVICTED_MASK) == 0 ? false : true;
     }
 
+    inline bool isMigrated() const
+    {
+        return (*(reinterpret_cast<const char*> (m_data)) & MIGRATED_MASK) == 0 ? false : true;
+    }
+
+    inline bool isToBeMigrated() const
+    {
+        return (*(reinterpret_cast<const char*> (m_data)) & TO_BE_MIGRATED_MASK) == 0 ? false : true;
+    }
+    
     /** Is the column value null? */
     inline bool isNull(const int idx) const {
         return getNValue(idx).isNull();
@@ -359,6 +370,13 @@ public:
         return m_schema;
     }
 
+    /* Functor comparator for use with std::set */
+    struct ltTableTuple {
+      bool operator()(const TableTuple &v1, const TableTuple &v2) const {
+	return v1.compare(v2) < 0;
+      }
+    };
+
     /** Print out a human readable description of this tuple */
     std::string debug(const std::string& tableName) const;
     std::string debugNoHeader() const;
@@ -399,14 +417,23 @@ protected:
         *(reinterpret_cast<char*> (m_data)) &= static_cast<char>(~DELETED_MASK);
     }
 
-	inline void setMigratedTrue() {
-		// treat the first "value" as a boolean flag
-		*(reinterpret_cast<char*> (m_data)) |= static_cast<char>(MIGRATED_MASK);
-	}
-	inline void setMigratedFalse() {
-		// treat the first "value" as a boolean flag
-		*(reinterpret_cast<char*> (m_data)) &= static_cast<char>(~MIGRATED_MASK);
-	}
+    inline void setMigratedTrue() {
+      // treat the first "value" as a boolean flag
+      *(reinterpret_cast<char*> (m_data)) |= static_cast<char>(MIGRATED_MASK);
+    }
+    inline void setMigratedFalse() {
+      // treat the first "value" as a boolean flag
+      *(reinterpret_cast<char*> (m_data)) &= static_cast<char>(~MIGRATED_MASK);
+    }
+    
+    inline void setToBeMigratedTrue() {
+      // treat the first "value" as a boolean flag
+      *(reinterpret_cast<char*> (m_data)) |= static_cast<char>(TO_BE_MIGRATED_MASK);
+    }
+    inline void setToBeMigratedFalse() {
+      // treat the first "value" as a boolean flag
+      *(reinterpret_cast<char*> (m_data)) &= static_cast<char>(~TO_BE_MIGRATED_MASK);
+    }
 
     inline void setDirtyTrue() {
         // treat the first "value" as a boolean flag

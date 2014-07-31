@@ -1,11 +1,21 @@
 {
   "partition_plans": {
-    "1": {
+    "0": {
       "tables": {
         "usertable": {
           "partitions": {
             "0": "0-50000", 
             "1": "50000-100000"
+          }
+        } 
+      }
+    }, 
+    "1": {
+      "tables": {
+        "usertable": {
+          "partitions": {
+            "0": "0-60000", 
+            "1": "60000-100000"
           }
         } 
       }

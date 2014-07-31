@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.pool.BasePoolableObjectFactory;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -102,6 +103,7 @@ public class PartitionEstimator {
     // ----------------------------------------------------------------------------
     private CatalogContext catalogContext;
     private final AbstractHasher hasher;
+    private final boolean multi_col_ranges;
     private PartitionSet all_partitions = new PartitionSet();
     private int num_partitions;
 
@@ -312,10 +314,15 @@ public class PartitionEstimator {
     public PartitionEstimator(CatalogContext catalogContext, AbstractHasher hasher) {
         this.catalogContext = catalogContext;
         this.hasher = hasher;
+        this.multi_col_ranges = hasher.hasMultiColumnRanges();
         this.initCatalog(catalogContext);
         
         if (trace.val)
             LOG.trace("Created a new PartitionEstimator with a " + hasher.getClass() + " hasher!");
+    }
+    
+    public PartitionEstimator clone() {
+    	return new PartitionEstimator(this.catalogContext, this.hasher.clone());
     }
 
     // ----------------------------------------------------------------------------
@@ -792,12 +799,18 @@ public class PartitionEstimator {
                 LOG.debug(catalog_tbl.getName() + " MultiColumn: " + mc);
 
             Object values[] = new Object[mc.size()];
+            CatalogType catalogItems[] = new Column[mc.size()];
             for (int i = 0; i < values.length; i++) {
                 Column inner = mc.get(i);
                 VoltType type = VoltType.get(inner.getType());
+                catalogItems[i] = inner;
                 values[i] = row.get(inner.getIndex(), type);
             } // FOR
-            partition = this.hasher.multiValueHash(values);
+            if(this.multi_col_ranges) {
+            	partition = this.hasher.hash(Arrays.asList(values), Arrays.asList(catalogItems));
+            } else {
+            	partition = this.hasher.multiValueHash(values);
+            }
 
             // Single-Column Partitioning
         } else {
@@ -912,19 +925,35 @@ public class PartitionEstimator {
             MultiProcParameter mpp = (MultiProcParameter) catalog_param;
             if (debug.val)
                 LOG.debug(catalog_proc.getName() + " MultiProcParameter: " + mpp);
-            int hashes[] = new int[mpp.size()];
-            for (int i = 0; i < hashes.length; i++) {
-                int mpp_param_idx = mpp.get(i).getIndex();
-                assert (mpp_param_idx >= 0) : "Invalid Partitioning MultiProcParameter #" + mpp_param_idx;
-                assert (mpp_param_idx < params.length) : CatalogUtil.getDisplayName(mpp) + " < " + params.length;
-                int hash = this.calculatePartition(catalog_proc, params[mpp_param_idx], is_array);
-                hashes[i] = (hash == HStoreConstants.NULL_PARTITION_ID ? 0 : hash);
-                if (debug.val)
-                    LOG.debug(mpp.get(i) + " value[" + params[mpp_param_idx] + "] => hash[" + hashes[i] + "]");
-            } // FOR
-            partition = this.hasher.multiValueHash(hashes);
-            if (debug.val)
-                LOG.debug(Arrays.toString(hashes) + " => " + partition);
+            if(this.multi_col_ranges) {
+            	Object[] values = new Object[mpp.size()];
+            	CatalogType[] catalogItems = new CatalogType[mpp.size()];
+            	for (int i = 0; i < values.length; i++) {
+            		int mpp_param_idx = mpp.get(i).getIndex();
+            		assert (mpp_param_idx >= 0) : "Invalid Partitioning MultiProcParameter #" + mpp_param_idx;
+            		assert (mpp_param_idx < params.length) : CatalogUtil.getDisplayName(mpp) + " < " + params.length;
+            		values[i] = params[mpp_param_idx];
+            		catalogItems[i] = catalog_proc;
+            	} // FOR
+            	// @TODO - currently we do not support arrays for multi-column range partitioning
+            	partition = this.hasher.hash(Arrays.asList(values), Arrays.asList(catalogItems));
+            	//LOG.info("Getting partition " + partition + " in getBasePartition(). Values: " + StringUtils.join(values, ',') + ", CatalogItems: " + StringUtils.join(catalogItems, ','));
+            	
+            } else {
+            	int hashes[] = new int[mpp.size()];
+            	for (int i = 0; i < hashes.length; i++) {
+            		int mpp_param_idx = mpp.get(i).getIndex();
+            		assert (mpp_param_idx >= 0) : "Invalid Partitioning MultiProcParameter #" + mpp_param_idx;
+            		assert (mpp_param_idx < params.length) : CatalogUtil.getDisplayName(mpp) + " < " + params.length;
+            		int hash = this.calculatePartition(catalog_proc, params[mpp_param_idx], is_array);
+            		hashes[i] = (hash == HStoreConstants.NULL_PARTITION_ID ? 0 : hash);
+            		if (debug.val)
+            			LOG.debug(mpp.get(i) + " value[" + params[mpp_param_idx] + "] => hash[" + hashes[i] + "]");
+            	} // FOR
+            	partition = this.hasher.multiValueHash(hashes);
+            	if (debug.val)
+            		LOG.debug(Arrays.toString(hashes) + " => " + partition);
+            }
         }
         // Single ProcParameter
         else {
@@ -1106,6 +1135,107 @@ public class PartitionEstimator {
     }
     
     /**
+     * Populate the list of partitioning key and offset pairs for the given PlanFragment.
+     * For each pair, the Column is the partitioning key for a particular table referenced
+     * in the PlanFragment and its corresponding Integer is the offset in the StmtParameters
+     * to use to determine what partition to execute the PlanFragment on.
+     * Note that this method does not consider how the parameter is being used in the
+     * predicate (e.g., it does not check whether the parameter is used in an equality expression
+     * or a range expression).
+     * @param catalog_frag
+     * @param offsets
+     * @return true if the offsets collection was successfully updated.
+     */
+    public boolean getPlanFragmentEstimationParametersMultiCol(final PlanFragment catalog_frag, final Collection<Pair<List<CatalogType>, List<Integer>>> offsets) {
+        if (debug.val)
+            LOG.debug("Retrieving estimation parameter offsets for " + catalog_frag.fullName());
+        PartitionEstimator.CacheEntry cache_entry = null;
+        try {
+            cache_entry = this.getFragmentCacheEntry(catalog_frag);
+        } catch (Exception ex) {
+            throw new RuntimeException("Failed to retrieve CacheEntry for " + catalog_frag.fullName());
+        }
+
+        // If this PlanFragment has a broadcast, then this statement
+        // can't be used for fast look-ups
+        if (cache_entry.hasBroadcast()) {
+            if (debug.val)
+                LOG.warn(String.format("%s contains an operation that must be broadcast. " +
+                		 "Cannot be used for fast look-ups",
+                		 catalog_frag.fullName()));
+            return (false);
+        }
+
+        for (Table catalog_tbl : cache_entry.getTables()) {
+            if (catalog_tbl.getMaterializer() != null) {
+                catalog_tbl = catalog_tbl.getMaterializer();
+            }
+            Column partition_col = catalog_tbl.getPartitioncolumn();
+            if (partition_col instanceof MultiColumn) {
+            	if(this.multi_col_ranges) {
+            		MultiColumn mc = (MultiColumn) partition_col;
+                	List<CatalogType> columns = new ArrayList<CatalogType>();
+                	ArrayList<ArrayList<Integer>> offsetListList = new ArrayList<ArrayList<Integer>>();
+                	
+                	for (int i = 0, mc_cnt = mc.size(); i < mc_cnt; i++) {
+                		Column mc_column = mc.get(i);
+                		List<Pair<ExpressionType, CatalogType>> predicates;
+                    	
+                		if (cache_entry.predicates.containsKey(mc_column)) {
+                			predicates = cache_entry.predicates.get(mc_column);
+                		} else {
+                			break;
+                		}
+
+                		ArrayList<Integer> offsetList = new ArrayList<Integer>();
+                		// Note that we have to go through all of the mappings from the partitioning column
+                		// to parameters. This can occur when the partitioning column is referenced multiple times
+                		// This allows us to handle complex WHERE clauses and what not.
+                		for (Pair<ExpressionType, CatalogType> pair : predicates) {
+                			if (pair.getFirst() == ExpressionType.COMPARE_EQUAL &&
+                                    pair.getSecond() instanceof StmtParameter) {
+                				offsetList.add(((StmtParameter)pair.getSecond()).getIndex());
+                			}
+                		} // FOR
+                		
+                		if(offsetList.size() > 0) {
+                			columns.add(mc_column);
+                			offsetListList.add(offsetList);
+                		} else {
+                			break;
+                		}
+                	} // FOR
+
+                	// get all combinations of the param offsets
+                	// in the case of two partition columns, we are effectively taking the cross product
+                	List<List<Integer>> allCombinations = PartitionEstimator.combinations(offsetListList);    	
+                	for(List<Integer> indexes : allCombinations) {
+                		offsets.add(Pair.of(columns, indexes));
+                	}
+            	}
+            	else {
+            		if (debug.val)
+                        LOG.warn(String.format("%s references %s, which is partitioned on %s. " +
+                        		 "Cannot be used for fast look-ups",
+                                 catalog_frag.fullName(), catalog_tbl.getName(), partition_col.fullName()));
+                    // Do nothing?
+            	}
+            }
+            else if (partition_col != null && cache_entry.predicates.containsKey(partition_col)) {
+                for (Pair<ExpressionType, CatalogType> pair : cache_entry.predicates.get(partition_col)) {
+                    if (pair.getFirst() == ExpressionType.COMPARE_EQUAL &&
+                            pair.getSecond() instanceof StmtParameter) {
+                    	List<CatalogType> columns = new ArrayList<CatalogType>();
+                    	columns.add(partition_col);
+                        offsets.add(Pair.of(columns,Arrays.asList(((StmtParameter)pair.getSecond()).getIndex())));
+                    }
+                } // FOR
+            }
+        } // FOR
+        return (true);
+    }
+    
+    /**
      * Return the set of StmtParameter offsets that can be used to figure out
      * what partitions the Statement invocation will touch. This is used to
      * quickly figure out whether that invocation is single-partition or not. If
@@ -1156,11 +1286,52 @@ public class PartitionEstimator {
                     }
                     Column partition_col = catalog_tbl.getPartitioncolumn();
                     if (partition_col instanceof MultiColumn) {
-                        if (debug.val)
-                            LOG.warn(String.format("%s references %s, which is partitioned on %s. " +
-                            		 "Cannot be used for fast look-ups",
-                            		 catalog_frag.fullName(), catalog_tbl.getName(), partition_col.fullName()));
-                        return (null);
+                    	if(this.multi_col_ranges) {
+                    		MultiColumn mc = (MultiColumn) partition_col;
+                        	ArrayList<ArrayList<Integer>> offsetListList = new ArrayList<ArrayList<Integer>>();
+                        	
+                        	for (int i = 0, mc_cnt = mc.size(); i < mc_cnt; i++) {
+                        		Column mc_column = mc.get(i);
+                        		List<Pair<ExpressionType, CatalogType>> predicates;
+                            	
+                        		if (cache_entry.predicates.containsKey(mc_column)) {
+                        			predicates = cache_entry.predicates.get(mc_column);
+                        		} else {
+                        			break;
+                        		}
+
+                        		ArrayList<Integer> offsetList = new ArrayList<Integer>();
+                        		// Note that we have to go through all of the mappings from the partitioning column
+                        		// to parameters. This can occur when the partitioning column is referenced multiple times
+                        		// This allows us to handle complex WHERE clauses and what not.
+                        		for (Pair<ExpressionType, CatalogType> pair : predicates) {
+                        			if (pair.getFirst() == ExpressionType.COMPARE_EQUAL &&
+                                            pair.getSecond() instanceof StmtParameter) {
+                        				offsetList.add(((StmtParameter)pair.getSecond()).getIndex());
+                        			}
+                        		} // FOR
+                        		
+                        		if(offsetList.size() > 0) {
+                        			offsetListList.add(offsetList);
+                        		} else {
+                        			break;
+                        		}
+                        	} // FOR
+
+                        	// get all combinations of the param offsets
+                        	// in the case of two partition columns, we are effectively taking the cross product
+                        	List<List<Integer>> allCombinations = PartitionEstimator.combinations(offsetListList);    	
+                        	for(List<Integer> indexes : allCombinations) {
+                        		param_idxs.addAll(indexes);
+                        	}
+                    	}
+                    	else {
+                    		if (debug.val)
+                                LOG.warn(String.format("%s references %s, which is partitioned on %s. " +
+                                		 "Cannot be used for fast look-ups",
+                                		 catalog_frag.fullName(), catalog_tbl.getName(), partition_col.fullName()));
+                            return (null);
+                    	}
                     }
                     else if (partition_col != null && cache_entry.predicates.containsKey(partition_col)) {
                         for (Pair<ExpressionType, CatalogType> pair : cache_entry.predicates.get(partition_col)) {
@@ -1178,6 +1349,7 @@ public class PartitionEstimator {
         return (all_param_idxs);
     }
 
+    
     /**
      * @param frag_partitions
      * @param fragments
@@ -1419,54 +1591,61 @@ public class PartitionEstimator {
                         table_partitions.addAll(this.all_partitions);
                     } else {
                         MultiColumn mc = (MultiColumn) catalog_col;
-                        PartitionSet mc_partitions[] = this.mcPartitionSetPool.borrowObject();
-
+                        
                         if (trace.val)
                             LOG.trace("Calculating columns for multi-partition colunmn: " + mc);
                         boolean is_valid = true;
-                        for (int i = 0, mc_cnt = mc.size(); i < mc_cnt; i++) {
-                            Column mc_column = mc.get(i);
-                            // assert(cache_entry.get(mc_column_key) != null) :
-                            // "Null CacheEntry: " + mc_column_key;
-                            if (target.predicates.containsKey(mc_column)) {
-                                this.calculatePartitions(mc_partitions[i],
-                                                         params,
-                                                         target.is_array,
-                                                         target.predicates.get(mc_column),
-                                                         mc_column);
-                            }
+                        
+                        if(this.multi_col_ranges) {
+                        	if (trace.val)
+                        		LOG.trace("Calculating partitions for " + target + " using multi-column range partitioning");
+                        	this.calculatePartitions(table_partitions, params, target, mc);
+                        } else {
+                        	PartitionSet mc_partitions[] = this.mcPartitionSetPool.borrowObject();
+                        	for (int i = 0, mc_cnt = mc.size(); i < mc_cnt; i++) {
+                        		Column mc_column = mc.get(i);
+                        		// assert(cache_entry.get(mc_column_key) != null) :
+                        		// "Null CacheEntry: " + mc_column_key;
+                        		if (target.predicates.containsKey(mc_column)) {
+                        			this.calculatePartitions(mc_partitions[i],
+                        					params,
+                        					target.is_array,
+                        					target.predicates.get(mc_column),
+                        					mc_column);
+                        		}
 
-                            // Unless we have partition values for both keys,
-                            // then it has to be a broadcast
-                            if (mc_partitions[i].isEmpty()) {
-                                if (debug.val)
-                                    LOG.warn(String.format("No partitions for %s from %s. " +
-                                    		 "Cache entry %s must be broadcast to all partitions",
-                                    		 mc_column.fullName(), mc.fullName(), target));
-                                table_partitions.addAll(this.all_partitions);
-                                is_valid = false;
-                                break;
-                            }
-                            if (trace.val)
-                                LOG.trace(CatalogUtil.getDisplayName(mc_column) + ": " + mc_partitions[i]);
-                        } // FOR
+                        		// Unless we have partition values for both keys,
+                        		// then it has to be a broadcast
+                        		if (mc_partitions[i].isEmpty()) {
+                        			if (debug.val)
+                        				LOG.warn(String.format("No partitions for %s from %s. " +
+                        						"Cache entry %s must be broadcast to all partitions",
+                        						mc_column.fullName(), mc.fullName(), target));
+                        			table_partitions.addAll(this.all_partitions);
+                        			is_valid = false;
+                        			break;
+                        		}
+                        		if (trace.val)
+                        			LOG.trace(CatalogUtil.getDisplayName(mc_column) + ": " + mc_partitions[i]);
+                        	} // FOR
 
-                        // Now if we're here, then we have partitions for both
-                        // of the columns and we're legit
-                        // We therefore just need to take the cross product of
-                        // the two sets and hash them together
-                        if (is_valid) {
-                            for (int part0 : mc_partitions[0]) {
-                                for (int part1 : mc_partitions[1]) {
-                                    int partition = this.hasher.multiValueHash(part0, part1);
-                                    table_partitions.add(partition);
-                                    if (trace.val)
-                                        LOG.trace(String.format("MultiColumn Partitions[%d, %d] => %d",
-                                                  part0, part1, partition));
-                                } // FOR
-                            } // FOR
+                        	// Now if we're here, then we have partitions for both
+                        	// of the columns and we're legit
+                        	// We therefore just need to take the cross product of
+                        	// the two sets and hash them together
+                        	if (is_valid) {
+                        		for (int part0 : mc_partitions[0]) {
+                        			for (int part1 : mc_partitions[1]) {
+                        				int partition = this.hasher.multiValueHash(part0, part1);
+                        				table_partitions.add(partition);
+                        				if (trace.val)
+                        					LOG.trace(String.format("MultiColumn Partitions[%d, %d] => %d",
+                        							part0, part1, partition));
+                        			} // FOR
+                        		} // FOR
+                        	}
+                        	this.mcPartitionSetPool.returnObject(mc_partitions);
                         }
-                        this.mcPartitionSetPool.returnObject(mc_partitions);
                     }
                 }
                 // SINGLE COLUMN PARTITIONING
@@ -1593,6 +1772,154 @@ public class PartitionEstimator {
             }
         } // FOR
         return;
+    }
+    
+    /**
+     * Calculate the partitions touched for the given multi-column
+     * 
+     * @param partitions
+     * @param params
+     * @param target
+     * @param mc
+     */
+    private void calculatePartitions(final PartitionSet partitions,
+                                     final Object params[],
+                                     final CacheEntry target,
+                                     final MultiColumn mc) throws Exception {
+    	
+    	ArrayList<CatalogType> catalogItems = new ArrayList<CatalogType>();
+    	ArrayList<ArrayList<Object>> valuesList = new ArrayList<ArrayList<Object>>();
+    	
+    	for (int i = 0, mc_cnt = mc.size(); i < mc_cnt; i++) {
+    		Column mc_column = mc.get(i);
+    		List<Pair<ExpressionType, CatalogType>> predicates;
+        	
+    		if (target.predicates.containsKey(mc_column)) {
+    			predicates = target.predicates.get(mc_column);
+    		} else {
+    			break;
+    		}
+
+    		boolean col_is_valid = true;
+    		ArrayList<Object> columnValues = new ArrayList<Object>();
+    		// Note that we have to go through all of the mappings from the partitioning column
+    		// to parameters. This can occur when the partitioning column is referenced multiple times
+    		// This allows us to handle complex WHERE clauses and what not.
+    		for (Pair<ExpressionType, CatalogType> pair : predicates) {
+    			ExpressionType expType = pair.getFirst();
+    			// HACK HACK HACK
+    			// If this is not an equality comparison, then it has to go to all partitions.
+    			// If we ever want to support smarter range partitioning, then 
+    			// we will need to move the logic that examines the expression type into
+    			// the hasher code.
+    			if (expType != ExpressionType.COMPARE_EQUAL) {
+    				col_is_valid = false;
+    				break;
+    			}
+
+    			CatalogType param = pair.getSecond();
+
+    			// STATEMENT PARAMETER
+    			if (param instanceof StmtParameter) {
+    				int param_idx = ((StmtParameter)param).getIndex();
+    				
+    				columnValues.add(params[param_idx]);
+    			}
+    			// CONSTANT VALUE
+    	        // This is more rare
+    	        else if (param instanceof ConstantValue) {
+    				ConstantValue const_param = (ConstantValue)param;
+                    VoltType vtype = VoltType.get(const_param.getType());
+                    Object const_value = VoltTypeUtil.getObjectFromString(vtype, const_param.getValue());
+                    columnValues.add(const_value);
+    			}
+    			// BUSTED!
+    			else {
+    				throw new RuntimeException("Unexpected parameter type: " + param.fullName());
+    			}
+    		} // FOR
+    		
+    		if(col_is_valid) {
+    			catalogItems.add(mc_column);
+    			valuesList.add(columnValues);
+    		} else {
+    			break;
+    		}
+    	} // FOR
+    	
+    	if(catalogItems.isEmpty()) {
+    		partitions.addAll(this.all_partitions);
+    		return;
+    	}
+
+    	// get all combinations of the different values for the partition columns
+    	// in the case of two partition columns, we are effectively taking the cross product
+    	List<List<Object>> allCombinations = PartitionEstimator.combinations(valuesList);    	
+    	for(List<Object> values : allCombinations) {
+    		int partition_id = this.hasher.hash(values, catalogItems);
+    		if(partition_id == HStoreConstants.NULL_PARTITION_ID) {
+    			partitions.addAll(this.all_partitions);
+    			return;
+    		}
+    		partitions.add(partition_id);
+    	}
+    }
+
+    /**
+     * Produce a List<List<Object>> which contains every combination which can be
+     * made by taking one Object from each inner Object list within the
+     * provided list of lists.
+     * @param objListList a list of lists which contains
+     * Object lists of variable length.
+     * @return a List which contains every list which can be formed by taking
+     * one Object from each Object list within the specified list of lists.
+     */
+    public static <T> List<List<T>> combinations(List<ArrayList<T>> objListList) {
+    	// keep track of the size of each inner Object list
+    	int sizeArray[] = new int[objListList.size()];
+
+    	// keep track of the index of each inner Object list which will be used
+    	// to make the next combination
+    	int counterArray[] = new int[objListList.size()];
+
+    	// Discover the size of each inner list and populate sizeArray.
+    	// Also calculate the total number of combinations possible using the
+    	// inner Object list sizes.
+    	int totalCombinationCount = 1;
+    	for(int i = 0; i < objListList.size(); ++i) {
+    		sizeArray[i] = objListList.get(i).size();
+    		totalCombinationCount *= objListList.get(i).size();
+    	}
+
+    	// Store the combinations in a List of Object lists
+    	List<List<T>> comboListList = new ArrayList<List<T>>(totalCombinationCount);
+
+    	for (int i = 0; i < totalCombinationCount; ++i) {
+    		// Run through the inner lists, grabbing the member from the list
+    		// specified by the counterArray for each inner list, and build a
+    		// combination list.
+    		ArrayList<T> comboList = new ArrayList<T>(objListList.size());
+    		for(int j = 0; j < objListList.size(); ++j) {
+    			comboList.add(objListList.get(j).get(counterArray[j]));
+    		}
+    		comboListList.add(comboList);  // add new combination to list
+
+    		// Now we need to increment the counterArray so that the next
+    		// combination is taken on the next iteration of this loop.
+    		for(int incIndex = 0; incIndex < objListList.size(); ++incIndex) {
+    			if(counterArray[incIndex] + 1 < sizeArray[incIndex]) {
+    				++counterArray[incIndex];
+    				// None of the indices of higher significance need to be
+    				// incremented, so jump out of this for loop at this point.
+    				break;
+    			}
+    			// The index at this position is at its max value, so zero it
+    			// and continue this loop to increment the index which is more
+    			// significant than this one.
+    			counterArray[incIndex] = 0;
+    		}
+    	}
+    	return comboListList;
     }
 
     /**

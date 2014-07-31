@@ -3,11 +3,14 @@ package edu.brown.hashing;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Database;
+import org.voltdb.utils.NotImplementedException;
 
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.JSONSerializable;
@@ -19,10 +22,13 @@ public abstract class AbstractHasher implements JSONSerializable {
     protected final int num_partitions;
     protected final CatalogContext catalogContext;
     protected final HStoreConf hstore_conf;
+    
+    public AtomicBoolean inReconfiguration;
     public AbstractHasher(CatalogContext catalogContext, int num_partitions, HStoreConf hstore_conf) {
         this.catalogContext = catalogContext;
         this.num_partitions = num_partitions;
         this.hstore_conf = hstore_conf;
+        this.inReconfiguration = new AtomicBoolean(false);
     }
     
     /**
@@ -45,6 +51,14 @@ public abstract class AbstractHasher implements JSONSerializable {
             o[i] = values[i];
         }
         return this.multiValueHash(o);
+    }
+    
+    public boolean hasMultiColumnRanges() {
+    	return false;
+    }
+    
+    public int hash(List<Object> values, List<CatalogType> catalogItems) {
+    	throw new NotImplementedException("TODO");
     }
     
     /**
@@ -84,6 +98,14 @@ public abstract class AbstractHasher implements JSONSerializable {
      */
     public abstract int hash(Object value, int num_partitions);
     
+    /**
+     * clone the hasher
+     */
+    public abstract AbstractHasher clone();
+
+
+    
+     
     // -----------------------------------------------------------------
     // SERIALIZATION
     // -----------------------------------------------------------------

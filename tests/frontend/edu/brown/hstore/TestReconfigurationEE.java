@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.log4j.Logger;
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.voltdb.VoltTable;
@@ -19,8 +20,10 @@ import org.voltdb.utils.Pair;
 import org.voltdb.utils.VoltTableUtil;
 
 import edu.brown.BaseTestCase;
+import edu.brown.benchmark.AbstractProjectBuilder;
 import edu.brown.benchmark.ycsb.YCSBConstants;
 import edu.brown.catalog.CatalogUtil;
+import edu.brown.designer.partitioners.plan.PartitionPlan;
 import edu.brown.hashing.PlannedHasher;
 import edu.brown.hashing.TwoTieredRangeHasher;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
@@ -104,21 +107,21 @@ public class TestReconfigurationEE extends BaseTestCase {
 
     @Test
     public void testExtractDataLarge() throws Exception {
-        List<PartitionRange<Long>> olds = new ArrayList<>();
-        List<PartitionRange<Long>> news = new ArrayList<>();
+        List<PartitionRange> olds = new ArrayList<>();
+        List<PartitionRange> news = new ArrayList<>();
         long tuples = 15000;
         this.loadData(tuples);
         assertTrue(true);
         String rangeString = String.format("0-%s", tuples);
-        olds.add(new PartitionRange<Long>(VoltType.BIGINT, 1, rangeString));
-        PartitionedTable<Long> old_table = new PartitionedTable<Long>(olds, TARGET_TABLE, VoltType.BIGINT, this.catalog_tbl);
+        olds.add(new PartitionRange(catalog_tbl, 1, rangeString));
+        PartitionedTable old_table = new PartitionedTable(olds, TARGET_TABLE, this.catalog_tbl);
 
-        news.add(new PartitionRange<Long>(VoltType.BIGINT, 2, rangeString));
-        PartitionedTable<Long> new_table = new PartitionedTable<Long>(news, TARGET_TABLE, VoltType.BIGINT, this.catalog_tbl);
+        news.add(new PartitionRange(catalog_tbl, 2, rangeString));
+        PartitionedTable new_table = new PartitionedTable(news, TARGET_TABLE, this.catalog_tbl);
 
-        ReconfigurationTable<Long> reconfig = new ReconfigurationTable<>(old_table, new_table);
+        ReconfigurationTable reconfig = new ReconfigurationTable(catalogContext, old_table, new_table);
         long rowCount = 0;
-        for (ReconfigurationRange<Long> range : reconfig.getReconfigurations()) {
+        for (ReconfigurationRange range : reconfig.getReconfigurations()) {
             assertNotNull(range);
             // assertEquals((Long)tuples, range.getMax_exclusive());
 
@@ -141,7 +144,7 @@ public class TestReconfigurationEE extends BaseTestCase {
     public void testExtractSize() throws Exception {
         this.loadData(150l);
         assertTrue(true);
-        ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(1), new Long(100), 1, 2);
+        ReconfigurationRange range = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{1L}, new Long[]{100L}, 1, 2);
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         int deleteToken = 47;
         Pair<VoltTable, Boolean> resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken, 1, 10 * 1024);
@@ -155,8 +158,8 @@ public class TestReconfigurationEE extends BaseTestCase {
         assertTrue(true);
         List<ReconfigurationRange> ranges = new ArrayList<>();
 
-        ranges.add(new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(1), new Long(10), 1, 2));
-        ranges.add(new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(104), 1, 2));
+        ranges.add(ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{1L}, new Long[]{10L}, 1, 2));
+        ranges.add(ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{100L}, new Long[]{104L}, 1, 2));
 
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(ranges);
         int deleteToken = 47;
@@ -171,8 +174,8 @@ public class TestReconfigurationEE extends BaseTestCase {
         assertTrue(true);
         List<ReconfigurationRange> ranges = new ArrayList<>();
 
-        ranges.add(new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(1), new Long(50), 1, 2));
-        ranges.add(new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(104), 1, 2));
+        ranges.add(ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{1L}, new Long[]{50L}, 1, 2));
+        ranges.add(ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{100L}, new Long[]{104L}, 1, 2));
 
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(ranges);
         int deleteToken = 47;
@@ -194,7 +197,7 @@ public class TestReconfigurationEE extends BaseTestCase {
     public void testExtractAndConfirmData() throws Exception {
         this.loadData(NUM_TUPLES);
         assertTrue(true);
-        ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(102), 1, 2);
+        ReconfigurationRange range = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{100L}, new Long[]{102L}, 1, 2);
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         int deleteToken = 47;
         Pair<VoltTable, Boolean> resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, deleteToken, 1);
@@ -206,7 +209,7 @@ public class TestReconfigurationEE extends BaseTestCase {
         // success = this.ee.updateExtractRequest(deleteToken, true);
         // assertTrue(success==false);
 
-        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(110), new Long(120), 1, 2);
+        range = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{110L}, new Long[]{120L}, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);
 
         resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, ++deleteToken, 1);
@@ -222,7 +225,7 @@ public class TestReconfigurationEE extends BaseTestCase {
 
         this.loadData(NUM_TUPLES);
         assertTrue(true);
-        ReconfigurationRange<Long> range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(100), new Long(102), 1, 2);
+        ReconfigurationRange range = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{100L}, new Long[]{102L}, 1, 2);
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         Pair<VoltTable, Boolean> resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken(), 1);
         assertTrue(resTable.getFirst().getRowCount() == 2);
@@ -230,39 +233,39 @@ public class TestReconfigurationEE extends BaseTestCase {
         resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken(), 1);
         assertTrue(resTable.getFirst().getRowCount() == 0);
 
-        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(50), new Long(60), 1, 2);
+        range = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{50L}, new Long[]{60L}, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);
 
         resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken(), 1);
         assertTrue(resTable.getFirst().getRowCount() == 10);
         LOG.info("Results : " + resTable.getFirst().toString(true));
 
-        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(55), new Long(55), 1, 2);
+        range = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{55L}, new Long[]{55L}, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken(), 1);
         assertTrue(resTable.getFirst().getRowCount() == 0);
 
-        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(998), new Long(1002), 1, 2);
+        range = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{998L}, new Long[]{1002L}, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken(), 1);
         assertTrue(resTable.getFirst().getRowCount() == 2);
 
-        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(995), new Long(998), 1, 2);
+        range = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{995L}, new Long[]{998L}, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken(), 1);
         assertTrue(resTable.getFirst().getRowCount() == 3);
 
-        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(200), new Long(300), 1, 2);
+        range = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{200L}, new Long[]{300L}, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken(), 1);
         assertTrue(resTable.getFirst().getRowCount() == 100);
 
-        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(300), new Long(300), 1, 2);
+        range = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{300L}, new Long[]{300L}, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken(), 1);
         assertTrue(resTable.getFirst().getRowCount() == 1);
 
-        range = new ReconfigurationRange<Long>("usertable", VoltType.BIGINT, new Long(301), new Long(302), 1, 2);
+        range = ReconfigurationUtil.getReconfigurationRange(catalog_tbl, new Long[]{301L}, new Long[]{302L}, 1, 2);
         extractTable = ReconfigurationUtil.getExtractVoltTable(range);
         resTable = this.ee.extractTable(this.catalog_tbl, this.catalog_tbl.getRelativeIndex(), extractTable, 1, 1, 1, executor.getNextRequestToken(), 1);
         assertTrue(resTable.getFirst().getRowCount() == 1);
@@ -280,5 +283,6 @@ public class TestReconfigurationEE extends BaseTestCase {
          */
 
     }
+
 
 }

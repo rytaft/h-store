@@ -245,6 +245,10 @@ public class ResultsPrinter implements BenchmarkInterest {
         long pollCount = duration / results.getIntervalDuration();
         long currentTime = pollIndex * results.getIntervalDuration();
 
+        long abort_rejected = results.getResponseStatuses().get("ABORT_REJECT",0) ;
+        long abort_mispredict = results.getResponseStatuses().get("ABORT_MISPREDICT",0);
+        long abort_unexpected = results.getResponseStatuses().get("ABORT_UNEXPECTED",0);
+        
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("At time %d out of %d (%d%%):",
                                 currentTime, duration, currentTime * 100 / duration));
@@ -265,8 +269,8 @@ public class ResultsPrinter implements BenchmarkInterest {
         sb.append(String.format("Completed %d txns at a rate of " + RESULT_FORMAT + " txns/s",
                                 totalTxnCount, totalTxnCount / (double)(pollIndex * results.getIntervalDuration()) * 1000d));
         sb.append(String.format(" with " + RESULT_FORMAT + " ms avg latency", totalLatency));
+        sb.append(String.format("\n"+ SPACER + SPACER +"ABORT_REJECT: %d ABORT_MISPREDICT: %d ABORT_UNEXPECTED: %d", abort_rejected, abort_mispredict, abort_unexpected));
         
-        System.out.println();
         if (LOG.isDebugEnabled()) LOG.debug("Printing result information for poll index " + pollIndex);
         System.out.println(sb);
         System.out.flush();

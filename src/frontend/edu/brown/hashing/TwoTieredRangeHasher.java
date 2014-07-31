@@ -4,6 +4,10 @@
 package edu.brown.hashing;
 
 import org.json.JSONObject;
+
+import java.util.Arrays;
+import java.util.List;
+
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Column;
@@ -106,13 +110,15 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
     public int hash(Object value, CatalogType catalogItem) {
         if (catalogItem instanceof Column || catalogItem instanceof Procedure || catalogItem instanceof Statement) {
             try {
+            	List<CatalogType> catalogList = Arrays.asList(catalogItem);
+            	List<Object> valueList = Arrays.asList(value);
                 //If we do not have an RC, or there is an RC but no reconfig is in progress
-                if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !reconfigCoord.getReconfigurationInProgress())){
-                	if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s",catalogItem,value,partitions.getPartitionId(catalogItem, value)));
-                    return partitions.getPartitionId(catalogItem, value);
+                if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !this.inReconfiguration.get())){
+                	if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s",catalogItem,value,partitions.getPartitionId(catalogList, valueList)));
+                    return partitions.getPartitionId(catalogList, valueList);
                 } else {
-                    int expectedPartition = partitions.getPartitionId(catalogItem, value);
-                    int previousPartition = partitions.getPreviousPartitionId(catalogItem, value);
+                    int expectedPartition = partitions.getPartitionId(catalogList, valueList);
+                    int previousPartition = partitions.getPreviousPartitionId(catalogList, valueList);
                     if (expectedPartition == previousPartition) {
                         //The item isn't moving
                         return expectedPartition;
@@ -129,10 +135,46 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
         }
         throw new NotImplementedException("TODO");
     }
+    
+    public int hash(List<Object> values, List<CatalogType> catalogItems) {
+    	for (CatalogType catalogItem : catalogItems) {
+    		if (!(catalogItem instanceof Column) && !(catalogItem instanceof Procedure) && !(catalogItem instanceof Statement)) {
+    			throw new NotImplementedException("TODO");
+    		}
+    	}
+    
+        try {
+            //If we do not have an RC, or there is an RC but no reconfig is in progress
+            if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !this.inReconfiguration.get())){
+            	if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s",catalogItems.get(0),values.get(0),partitions.getPartitionId(catalogItems, values)));
+                return partitions.getPartitionId(catalogItems, values);
+            } else {
+                int expectedPartition = partitions.getPartitionId(catalogItems, values);
+                int previousPartition = partitions.getPreviousPartitionId(catalogItems, values);
+                if (expectedPartition == previousPartition) {
+                    //The item isn't moving
+                    return expectedPartition;
+                } else {
+                    //the item is moving
+                    //check with RC on which partition. 
+                    return reconfigCoord.getPartitionId(previousPartition, expectedPartition, catalogItems, values);
+                }
+            }
+        } catch (Exception e) {
+            LOG.error("Error on looking up partitionId from planned partition", e);
+            throw new RuntimeException(e);
+        }
+        
+    }
 
     @Override
     public int hash(Object value, int num_partitions) {
         throw new NotImplementedException("Hashing without Catalog not supported");
+    }
+
+    @Override
+    public AbstractHasher clone() {
+    	return new TwoTieredRangeHasher(this.catalogContext, this.num_partitions, this.hstore_conf);
     }
 
     public synchronized ExplicitPartitions getPartitions() {
@@ -146,6 +188,11 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
     @Override
     public ReconfigurationPlan changePartitionPhase(String partition_plan) throws Exception {
         throw new NotImplementedException("TODO");
+    }
+    
+    @Override
+    public boolean hasMultiColumnRanges() {
+    	return true;
     }
 
 }

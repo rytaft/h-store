@@ -1,4 +1,4 @@
-confi#!/bin/bash
+#!/bin/bash
 
 # ---------------------------------------------------------------------
 
@@ -10,21 +10,22 @@ function onexit() {
 
 # ---------------------------------------------------------------------
 
-DATA_DIR="t-out"
+DATA_DIR="out"
 FABRIC_TYPE="ssh"
-FIRST_PARAM_OFFSET=0
+FIRST_PARAM_OFFSET=1
 
 EXP_TYPES=( \
-    "reconfig-2b --partitions=16 --benchmark-size=64  --exp-suffix=t-s64-16" \
-    "reconfig-2b --partitions=4  --benchmark-size=64  --exp-suffix=t-s64-4" \
-    "reconfig-2b --partitions=4 --benchmark-size=48  --exp-suffix=t-s48-4" \
-    "reconfig-2b --partitions=8 --benchmark-size=48  --exp-suffix=t-s48-8" \
-    "reconfig-2b --partitions=12 --benchmark-size=48  --exp-suffix=t-s48-12" \
+#    "reconfig-2b --partitions=16 --benchmark-size=64  --exp-suffix=t-s64-16" \
+#    "reconfig-2b --partitions=4  --benchmark-size=64  --exp-suffix=t-s64-4" \
+    "reconfig-2b --partitions=4 --benchmark-size=8 --reconfig=30000:1:0 --exp-suffix=t4-move1 "\
+    "reconfig-2b --partitions=4 --benchmark-size=16 --reconfig=30000:1:0 --exp-suffix=t16-move1 "\
+    "reconfig-10b --partitions=4 --benchmark-size=8 --reconfig=30000:1:0 --exp-suffix=t4-move1 "\
+    "reconfig-10b --partitions=4 --benchmark-size=16 --reconfig=30000:1:0 --exp-suffix=t16-move1 "\
+#    "reconfig-2b --partitions=8 --benchmark-size=48  --exp-suffix=t-s48-8" \
+#    "reconfig-2b --partitions=12 --benchmark-size=48  --exp-suffix=t-s48-12" \
 )
 
-#for b in smallbank tpcc seats; do
 for b in tpcc; do
-# for b in seats; do
     PARAMS=( \
         --no-update \
         --results-dir=$DATA_DIR \
@@ -33,11 +34,13 @@ for b in tpcc; do
         --exp-trials=1 \
         --exp-attempts=1 \        
         --no-json \
-	    --client.interval=10000 \
+        --plot \
+	--client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=280000 \
+        --client.duration=100000 \
         --client.warmup=30000 \
-        --client.output_results_csv=interval_res.csv
+        --client.output_results_csv=interval_res.csv \
+        --sweep-reconfiguration 
     )
     
     i=0

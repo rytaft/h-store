@@ -3,6 +3,9 @@
  */
 package edu.brown.hashing;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.json.JSONObject;
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
@@ -24,6 +27,7 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
     public static final String YCSB_TEST = "YCSB_TEST";
+    public static final String TPCC_TEST = "TPCC_TEST";
 
     String ycsb_plan = "{"+
             "       \"default_table\":\"usertable\"," +        
@@ -60,6 +64,21 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
             "        }"+
             "}";
     
+    String tpcc_plan = "{"+
+            "       \"default_table\":\"warehouse\"," +        
+            "       \"partition_plans\":{"+
+            "          \"0\" : {"+
+            "            \"tables\":{"+
+            "              \"warehouse\":{"+
+            "                \"partitions\":{"+
+            "                  0 : \"1-10000\""+
+            "                }     "+
+            "              }"+
+            "            }"+
+            "          }"+
+            "        }"+
+            "}";
+    
     private PlannedPartitions planned_partitions = null;
 
     private ReconfigurationCoordinator reconfigCoord = null;
@@ -85,6 +104,9 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
             if(hstore_conf != null && hstore_conf.global.hasher_plan.equalsIgnoreCase(YCSB_TEST)){
                 LOG.info("Using YCSB test plan");
                 partition_json = new JSONObject(ycsb_plan);
+            } else if(hstore_conf != null && hstore_conf.global.hasher_plan.equalsIgnoreCase(TPCC_TEST)){
+                LOG.info("Using TPCC test plan");
+                partition_json = new JSONObject(tpcc_plan);
             } else if(hstore_conf != null && hstore_conf.global.hasher_plan != null){
                 LOG.info("Attempting to use partition plan at : " + hstore_conf.global.hasher_plan);
                 partition_json = new JSONObject(FileUtil.readFile(hstore_conf.global.hasher_plan));
@@ -116,13 +138,15 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     public int hash(Object value, CatalogType catalogItem) {
         if (catalogItem instanceof Column || catalogItem instanceof Procedure || catalogItem instanceof Statement) {
             try {
+            	List<CatalogType> catalogList = Arrays.asList(catalogItem);
+            	List<Object> valueList = Arrays.asList(value);
                 //If we do not have an RC, or there is an RC but no reconfig is in progress
-                if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !reconfigCoord.getReconfigurationInProgress())){
-                    if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s Phase:%s",catalogItem,value,planned_partitions.getPartitionId(catalogItem, value),planned_partitions.getCurrent_phase()));
-                    return planned_partitions.getPartitionId(catalogItem, value);
+                if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !this.inReconfiguration.get())){
+                    if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s Phase:%s",catalogItem,value,planned_partitions.getPartitionId(catalogList, valueList),planned_partitions.getCurrent_phase()));
+                    return planned_partitions.getPartitionId(catalogList, valueList);
                 } else {
-                    int expectedPartition = planned_partitions.getPartitionId(catalogItem, value);
-                    int previousPartition = planned_partitions.getPreviousPartitionId(catalogItem, value);
+                    int expectedPartition = planned_partitions.getPartitionId(catalogList, valueList);
+                    int previousPartition = planned_partitions.getPreviousPartitionId(catalogList, valueList);
                     if (expectedPartition == previousPartition) {
                         //The item isn't moving
                         return expectedPartition;
@@ -139,10 +163,46 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
         }
         throw new NotImplementedException("TODO");
     }
+    
+    public int hash(List<Object> values, List<CatalogType> catalogItems) {
+    	for (CatalogType catalogItem : catalogItems) {
+    		if (!(catalogItem instanceof Column) && !(catalogItem instanceof Procedure) && !(catalogItem instanceof Statement)) {
+    			throw new NotImplementedException("TODO");
+    		}
+    	}
+    
+        try {
+            //If we do not have an RC, or there is an RC but no reconfig is in progress
+            if(reconfigCoord == null || ReconfigurationCoordinator.FORCE_DESTINATION || (reconfigCoord != null && !this.inReconfiguration.get())){
+            	if (debug.val) LOG.debug(String.format("\t%s Id:%s Partition:%s",catalogItems.get(0),values.get(0),planned_partitions.getPartitionId(catalogItems, values)));
+                return planned_partitions.getPartitionId(catalogItems, values);
+            } else {
+                int expectedPartition = planned_partitions.getPartitionId(catalogItems, values);
+                int previousPartition = planned_partitions.getPreviousPartitionId(catalogItems, values);
+                if (expectedPartition == previousPartition) {
+                    //The item isn't moving
+                    return expectedPartition;
+                } else {
+                    //the item is moving
+                    //check with RC on which partition. 
+                    return reconfigCoord.getPartitionId(previousPartition, expectedPartition, catalogItems, values);
+                }
+            }
+        } catch (Exception e) {
+            LOG.error("Error on looking up partitionId from planned partition", e);
+            throw new RuntimeException(e);
+        }
+        
+    }
 
     @Override
     public int hash(Object value, int num_partitions) {
         throw new NotImplementedException("Hashing without Catalog not supported");
+    }
+    
+    @Override
+    public AbstractHasher clone() {
+    	return new PlannedHasher(this.catalogContext, this.num_partitions, this.hstore_conf);
     }
 
     public synchronized ExplicitPartitions getPartitions() {
@@ -156,6 +216,11 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     @Override
     public ReconfigurationPlan changePartitionPlan(String partition_json_file) throws Exception {
         throw new NotImplementedException("TODO");
+    }
+    
+    @Override
+    public boolean hasMultiColumnRanges() {
+    	return true;
     }
 
 }

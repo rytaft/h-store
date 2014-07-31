@@ -313,12 +313,14 @@ class AbstractFabric(object):
         if extraParams:
             hstore_options = dict(hstore_options.items() + extraParams.items())
         
+        '''
         if reconfigEvents:
             LOG.info("Reconfig events : %s" % reconfigEvents)
             t = Thread(target=self.exec_reconfigs, args=(inst, reconfigEvents, project))
             t.setDaemon(True)
             t.start()
-
+        '''
+      
         ## Any other option not listed in the above dict should be written to 
         ## a properties file
         workloads = None
@@ -339,7 +341,14 @@ class AbstractFabric(object):
                 ## IF
                     
                 LOG.info("Running benchmark on %s", inst)
-                cmd = "ant %s hstore-benchmark %s" % (prefix, hstore_opts_cmd)
+                reconfig_cmd = ''
+                if reconfigEvents:
+                    if len(reconfigEvents) > 1:
+                      raise NotImplementedError()
+                    reconfig = reconfigEvents[0]
+                    reconfig_cmd = "-Dproc=@ReconfigurationStatic -Dproc_start_time=%d -Dparam0=%s -Dparam1=%s -Dparam2=%s" % (reconfig['delayTimeMS'], reconfig['leaderID'], reconfig['planID'], reconfig['reconfigType'])
+           
+                cmd = "ant %s hstore-benchmark %s %s" % (prefix, hstore_opts_cmd, reconfig_cmd)
                 output = run(cmd)
                 
                 ## If they wanted a trace file, then we have to ship it back to ourselves
@@ -412,7 +421,7 @@ class AbstractFabric(object):
     ## __writeConf__
     ## ----------------------------------------------
     def __writeConf__(self, inst, project, removals=[ ], revertFirst=False):
-        prefix_include = [ 'site', 'client', 'global', 'benchmark' ]
+        prefix_include = [ 'site', 'client', 'global', 'benchmark', 'partitionplan' ]
         
         hstoreConf_updates = { }
         hstoreConf_removals = set()
@@ -460,8 +469,7 @@ class AbstractFabric(object):
     ## __updateConf__
     ## ----------------------------------------------
     def __updateConf__(self, inst, conf_file, updates={ }, removals=[ ], noSpaces=False):
-        LOG.info("Updating configuration file '%s' - Updates[%d] / Removals[%d]", conf_file, len(updates), len(removals))
-        
+        LOG.debug("Updating configuration file '%s' - Updates[%d] / Removals[%d]", conf_file, len(updates), len(removals))
         contents = self.get_file(inst, conf_file)
         assert len(contents) > 0, "Configuration file '%s' is empty" % conf_file
         

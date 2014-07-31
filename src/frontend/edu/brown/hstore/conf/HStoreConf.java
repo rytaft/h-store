@@ -788,6 +788,21 @@ public final class HStoreConf {
                 experimental=true
         )
         public boolean reconfig_replication_delay;
+        
+        @ConfigProperty(
+                description="The introduce delay to inject replication latency into reconfiguraiton. ",
+                defaultLong=1000,
+                experimental=true
+        )
+        public long reconfig_plan_delay;        
+        
+        
+        @ConfigProperty(
+                description="The amount of  delay to between async pulls. ",
+                defaultLong=100,
+                experimental=true
+        )
+        public long reconfig_async_delay_ms;
 
         @ConfigProperty(
                 description="The default live chunk size for reconfiguration ",
@@ -1405,6 +1420,7 @@ public final class HStoreConf {
             experimental=false
         )
         public int pool_pathestimators_idle;
+
         
     }
     
@@ -2433,11 +2449,27 @@ public final class HStoreConf {
             Object value = null;
             
             if (f_class.equals(int.class)) {
-                value = this.config.getInt(k, (Integer)defaultValue);
+                try {
+                 value = this.config.getInt(k, (Integer)defaultValue);
+                } catch (NumberFormatException ex) {
+                    LOG.info("Number format exception. Using default. Original value : " + k );
+                    value = (Integer)defaultValue;
+                }
+                
             } else if (f_class.equals(long.class)) {
-                value = this.config.getLong(k, (Long)defaultValue);
+                try { 
+                    value = this.config.getLong(k, (Long)defaultValue);
+                } catch (NumberFormatException ex) {
+                    LOG.info("Number format exception. Using default. Original value : " + k );
+                    value = (Long)defaultValue;
+                }
             } else if (f_class.equals(double.class)) {
-                value = this.config.getDouble(k, (Double)defaultValue);
+                try {
+                    value = this.config.getDouble(k, (Double)defaultValue);
+                } catch (NumberFormatException ex) {
+                    LOG.info("Number format exception. Using default. Original value : " + k );
+                    value = (Double)defaultValue;
+                }
             } else if (f_class.equals(boolean.class)) {
                 value = this.config.getBoolean(k, (Boolean)defaultValue);
             } else if (f_class.equals(String.class)) {

@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 import org.voltdb.ClientResponseImpl;
@@ -137,6 +138,9 @@ public class TransactionInitializer {
             this.isSysProc[id] = proc.getSystemproc();
             this.isReadOnly[id] = proc.getReadonly();
             this.expectedParams[id] = proc.getParameters().size();
+            if(proc.getPartitionparameters().size() > 1) {
+            	this.expectedParams[id]--; // we need to account for the MultiProcParameter 
+            }
         } // FOR
         
         this.txnIdManagers = new TransactionIdManager[this.catalogContext.numberOfPartitions];
@@ -242,7 +246,7 @@ public class TransactionInitializer {
             int idx = (int)(Math.abs(client_handle) % this.local_partitions.size());
             base_partition = this.local_partitions.values()[idx];
         }
-        
+                
         return (base_partition);
     }
     

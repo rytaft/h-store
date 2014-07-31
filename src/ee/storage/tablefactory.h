@@ -82,6 +82,7 @@ namespace voltdb {
                                          TupleSchema* schema,
                                          const std::string* columnNames,
                                          int partitionColumn,
+					 const std::vector<int>& partitionColumns,
                                          bool exportEnabled,
                                          bool exportOnly);
         
@@ -95,6 +96,7 @@ namespace voltdb {
                                          const std::string* columnNames,
                                          const TableIndexScheme &pkey_index,
                                          int partitionColumn,
+					 const std::vector<int>& partitionColumns,
                                          bool exportEnabled,
                                          bool exportOnly);
         
@@ -109,6 +111,7 @@ namespace voltdb {
                                          const std::string* columnNames,
                                          const std::vector<TableIndexScheme> &indexes,
                                          int partitionColumn,
+					 const std::vector<int>& partitionColumns,
                                          bool exportEnabled,
                                          bool exportOnly);
         
@@ -124,6 +127,7 @@ namespace voltdb {
                                          const TableIndexScheme &pkeyIndex,
                                          const std::vector<TableIndexScheme> &indexes,
                                          int partitionColumn,
+					 const std::vector<int>& partitionColumns,
                                          bool exportEnabled,
                                          bool exportOnly);
         

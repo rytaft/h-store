@@ -552,6 +552,8 @@ bool PersistentTable::insertTuple(TableTuple &source) {
     //
     m_tmpTarget1.copyForPersistentInsert(source); // tuple in freelist must be already cleared
     m_tmpTarget1.setDeletedFalse();
+    m_tmpTarget1.setMigratedFalse();
+    m_tmpTarget1.setToBeMigratedFalse();
 
     /**
      * Inserts never "dirty" a tuple since the tuple is new, but...  The
@@ -830,6 +832,41 @@ void PersistentTable::updateTupleForUndo(TableTuple &source, TableTuple &target,
         m_wrapper->rollbackTo(wrapperOffset);
     }
 }
+
+bool PersistentTable::migrateTuple(TableTuple &target)
+{
+    // May no migrate an already deleted tuple.
+    assert(target.isActive());
+
+    // The tempTuple is forever!
+    assert(&target != &m_tempTuple);
+    
+    if (target.isMigrated()){
+      return false;
+    } else {
+      target.setMigratedTrue();
+      target.setToBeMigratedFalse();
+      return true;
+    }
+}
+
+
+bool PersistentTable::flagToMigrateTuple(TableTuple& target)
+{
+    // May no migrate an already deleted tuple.
+    assert(target.isActive());
+
+    // The tempTuple is forever!
+    assert(&target != &m_tempTuple);
+    
+    if (target.isMigrated() || target.isToBeMigrated()){
+      return false;
+    } else {
+      target.setToBeMigratedTrue();
+      return true;
+    }
+}
+
 
 bool PersistentTable::deleteTuple(TableTuple &target, bool deleteAllocatedStrings) {
     // May not delete an already deleted tuple.
@@ -1323,6 +1360,11 @@ size_t PersistentTable::hashCode() {
          tuple.hashCode(hashCode);
     }
     return hashCode;
+}
+
+void PersistentTable::setPartitionColumns(const std::vector<int>& columns) {
+    m_partitionColumns.clear();
+    m_partitionColumns.insert(m_partitionColumns.begin(), columns.begin(), columns.end());
 }
 
 }

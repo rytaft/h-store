@@ -30,6 +30,7 @@ public class Table extends CatalogType {
     CatalogMap<Index> m_indexes;
     CatalogMap<Constraint> m_constraints;
     boolean m_isreplicated;
+    CatalogMap<ColumnRef> m_partitioncolumns;
     int m_estimatedtuplecount;
     CatalogMap<MaterializedViewInfo> m_views;
     boolean m_systable;
@@ -46,6 +47,8 @@ public class Table extends CatalogType {
         m_childCollections.put("constraints", m_constraints);
         m_fields.put("isreplicated", m_isreplicated);
         m_fields.put("partitioncolumn", null);
+        m_partitioncolumns = new CatalogMap<ColumnRef>(catalog, this, path + "/" + "partitioncolumns", ColumnRef.class);
+        m_childCollections.put("partitioncolumns", m_partitioncolumns);
         m_fields.put("estimatedtuplecount", m_estimatedtuplecount);
         m_views = new CatalogMap<MaterializedViewInfo>(catalog, this, path + "/" + "views", MaterializedViewInfo.class);
         m_childCollections.put("views", m_views);
@@ -94,6 +97,11 @@ public class Table extends CatalogType {
             return retval;
         }
         return (Column) o;
+    }
+
+    /** GETTER: On which columns is the table horizontally partitioned */
+    public CatalogMap<ColumnRef> getPartitioncolumns() {
+        return m_partitioncolumns;
     }
 
     /** GETTER: A rough estimate of the number of tuples in the table; used for planning */

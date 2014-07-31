@@ -40,8 +40,11 @@ import string
 import math
 import types
 import subprocess
+import shlex
 import csv
 from datetime import datetime
+import time
+import zipfile
 from pprint import pprint, pformat
 from types import *
 from reconfiguration_experiments import *
@@ -514,7 +517,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
             fabric.env["benchmark.neworder_multip_remote"] = True
             fabric.env["benchmark.payment_multip_remote"] = True
             fabric.env["benchmark.temporal_skew_mix"] = hotspotPcnt
-            fabric.env["benchmark.neworder_skew_warehouse"] = True
+            fabric.env["benchmark.neworder_skew_warehouse"] = False
         
         ## ----------------------------------------------
         ## HERMES!
@@ -605,8 +608,11 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         LOG.info("Disabling command logging for reconfig experiments ******")
         fabric.env["site.commandlog_enable"] = False
         fabric.env["client.txn_hints"] = False
+        #fabric.env["site.planner_caching"]=False 
+        fabric.env["site.exec_early_prepare"]=False
+
         fabric.env["site.exec_force_singlepartitioned"] = True
-        fabric.env["site.specexec_enable"] = False
+        fabric.env["site.specexec_enable"] = True
         fabric.env['global.hasher_class'] = 'edu.brown.hashing.PlannedHasher'
         fabric.env["client.output_response_status"] = True
         fabric.env["client.output_exec_profiling"] = "execprofile.csv"
@@ -633,6 +639,21 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         LOG.info("Using plan: %s" % plan_path)
         fabric.env['global.hasher_plan'] = plan_path
 
+    if 'splitplan' in args and type(args['splitplan']) == int and args['splitplan'] is not None:
+        fabric.env['site.reconfig_subplan_split']=args['splitplan']
+
+    if 'plandelay' in args  and type(args['plandelay']) == int and args['plandelay'] is not None:
+        fabric.env['site.reconfig_plan_delay']=args['plandelay']
+
+    if 'asyncdelay' in args and type(args['asyncdelay']) == int and args['asyncdelay'] is not None:
+        fabric.env['site.reconfig_async_delay_ms']=args['asyncdelay']
+
+    if 'asyncsize' in args and type(args['asyncsize']) == int and args['asyncsize'] is not None:
+        fabric.env['site.reconfig_async_chunk_size_kb']=args['asyncsize']
+        
+    if 'chunksize' in args and type(args['splitplan']) == int and args['splitplan'] is not None:
+        fabric.env['site.reconfig_chunk_size_kb']=args['chunksize']
+	
     if args['exp_type'] == 'reconfig-test':
         fabric.env["client.count"] = 1
         #fabric.env["client.txnrate"] = 100000
@@ -980,6 +1001,48 @@ def createFabricHandle(name, env):
     return klass(env)
 ## DEF
 
+
+## ==============================================
+## plotResults
+## ==============================================
+def plotResults(args):
+    LOG.info("Plotting")
+    resultsDir = os.path.join(args['results_dir'], args['exp_type'])
+    reconfig = ""
+    if args and args['sweep_reconfiguration']:
+        reconfig = " --reconfig "
+    base = "python plotter.py --tsd %s -d %s -s %s -t line --no-display -v %s %s"
+    csv_base = "%s-results.csv" % args['exp_type']
+    csv = "--csv %s" % os.path.join(resultsDir,csv_base)
+    for show_type in ["tps", "lat50","lat","lat95"]:
+        _file_base = args['exp_type']
+        if 'exp-suffix' in args:
+            _file_base = '%s-%s' % (_file_base, args['exp-suffix'])
+        _file_name = "%s-%s" % (_file_base, show_type)
+        _file = os.path.join(resultsDir, _file_name )
+        _cmd = base % (reconfig, resultsDir, show_type, _file, csv)
+        LOG.info("Executing:\n\t %s"% _cmd)
+        _res = subprocess.call(shlex.split(_cmd))
+        csv = ""
+        if _res != 0:
+            LOG.error("Error code %s when running %s" % (_res, _cmd))
+            
+            
+#Used from http://stackoverflow.com/questions/1855095/how-to-create-a-zip-archive-of-a-directory-in-python
+def zipdir(path, zip):
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            zip.write(os.path.join(root, file))
+
+def saveResults(args):
+    resultsDir = os.path.join(args['results_dir'], args['exp_type'])
+    st = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H:%M')
+    zipname = "%s-%s.zip" %( args['exp_type'],st)
+    zipf = zipfile.ZipFile(zipname, 'w')
+    zipdir(resultsDir, zipf)
+    zipf.close()    
+    
+
 ## ==============================================
 ## reconfiguration
 ## ==============================================
@@ -996,6 +1059,10 @@ def sweepReconfiguration(client_inst, fabric, args, benchmark, partitions):
     if os.path.exists(localFile):
         LOG.info("Removing local event file %s" % localFile)
         os.remove(localFile)
+    configFile = os.path.join(resultsDir,"%s-config.txt" % args['exp_type'] )
+    with open(configFile,'w') as outf:
+        pretty_args = {z:y for z,y in args.iteritems() if y}
+	outf.write(str(pretty_args))
     for inst in fabric.getRunningInstances():
         if str(inst) not in swept_inst:
             LOG.info("Swepts :%s " % ",".join(swept_inst))
@@ -1052,11 +1119,13 @@ def extractReconfigEvents(rawReconfigs, expType, warmUp):
             raise Exception("Invalid reconfig param: %s. Have at least a delayTimeMS:planID")
 
         delayTimeMS = float(vals[0])
+        '''
         if not warmUpApplied and warmUp > 0:
             delayTimeMS += warmUp 
             #add slight buffer
             delayTimeMS += 1000
             warmUpApplied = True
+        '''
         reconfig = { "delayTimeMS": delayTimeMS, "planID": vals[1], "leaderID": 0, "reconfigType": reconfigType }
         if len(vals) == 3:
             reconfig["leaderID"] = vals[2]
@@ -1098,6 +1167,13 @@ if __name__ == '__main__':
     agroup.add_argument("--reconfig", action="append", help="Configuration for an optional reconfig event [delayTimeMS]:[planId]:[optLeaderId]. Can accept multiple")
     agroup.add_argument("--sweep-reconfiguration", action='store_true',default=False, help='Collect hevent.log from servers')
     agroup.add_argument("--benchmark-size", type=int, help="The size of a benchmark (usertable size, warehouses, etc)")
+    agroup.add_argument("--splitplan", type=int,  help="Number of plan splits")
+    agroup.add_argument("--plandelay", type=int,  help="Amount of time between plans")
+    agroup.add_argument("--asyncdelay", type=int,  help="Amount of time between async pull")
+    agroup.add_argument("--chunksize", type=int,  help="Size of chunk splits")
+    agroup.add_argument("--asyncsize", type=int,  help="Size of async chunk splits")
+    agroup.add_argument("--plot", action='store_true',default=False, help='Plot results')
+    agroup.add_argument("--no-zip", action='store_true',default=False, help='Do not zip and save results')
     
     ## Experiment Parameters
     agroup = aparser.add_argument_group('Experiment Parameters')
@@ -1166,7 +1242,8 @@ if __name__ == '__main__':
     agroup.add_argument("--debug-log4j-client", action='store_true')
 
     args = vars(aparser.parse_args())
-    
+    if 'exp_suffix' in  args:
+        args['exp_type'] = '%s-%s' % (args['exp_type'], args['exp_suffix'])
     ## ----------------------------------------------
     ## ARGUMENT PROCESSING 
     ## ----------------------------------------------
@@ -1381,6 +1458,12 @@ if __name__ == '__main__':
                             sweepReconfiguration(client_inst, fabric, args, benchmark, partitions)
                         # Only compile for the very first invocation
                         needCompile = False
+
+                        if args["plot"]:
+                            plotResults(args)
+                        if not args["no_zip"]:
+                            saveResults(args)
+
                     except KeyboardInterrupt:
                         stop = True
                         break

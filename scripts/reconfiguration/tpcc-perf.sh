@@ -1,4 +1,4 @@
-confi#!/bin/bash
+#!/bin/bash
 
 # ---------------------------------------------------------------------
 
@@ -14,19 +14,12 @@ DATA_DIR="out"
 FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
-EXP_TYPES=( \
-#    "reconfig-.5 --partitions=2" \
-#    "reconfig-1 --partitions=2" \
-    "reconfig-slow --partitions=2 --benchmark-size=100000" \
-#    "reconfig-4 --partitions=2" \
-#    "reconfig-2 --partitions=4" \
-#    "stopcopy-2 --partitions=2" \
-#    "stopcopy-2 --partitions=4" \
-)
+EXP_TYPES=( 
 
-#for b in smallbank tpcc seats; do
-for b in ycsb; do
-# for b in seats; do
+    "reconfig-test --partitions=4 --benchmark-size=8  --global.hasher_plan=scripts/reconfiguration/plans/t/plans.json" 
+    )
+
+for b in tpcc; do
     PARAMS=( \
         --no-update \
         --results-dir=$DATA_DIR \
@@ -35,14 +28,16 @@ for b in ycsb; do
         --exp-trials=1 \
         --exp-attempts=1 \        
         --no-json \
-	--sweep-reconfiguration \
-        --client.interval=1000 \
+        --plot \
+	    --client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=120000 \
+        --client.duration=300000 \
         --client.warmup=10000 \
-        --client.output_results_csv=interval_res.csv
-        --reconfig=95000:2:0
+        --client.output_results_csv=interval_res.csv \
+        --reconfig=60000:1:0 \
+        --sweep-reconfiguration 
     )
+   
     
     i=0
     cnt=${#EXP_TYPES[@]}

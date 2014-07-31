@@ -24,6 +24,7 @@
 #include "catalog.h"
 #include "index.h"
 #include "column.h"
+#include "columnref.h"
 #include "constraint.h"
 #include "materializedviewinfo.h"
 #include "table.h"
@@ -33,7 +34,7 @@ using namespace std;
 
 Table::Table(Catalog *catalog, CatalogType *parent, const string &path, const string &name)
 : CatalogType(catalog, parent, path, name),
-  m_columns(catalog, this, path + "/" + "columns"), m_indexes(catalog, this, path + "/" + "indexes"), m_constraints(catalog, this, path + "/" + "constraints"), m_views(catalog, this, path + "/" + "views")
+  m_columns(catalog, this, path + "/" + "columns"), m_indexes(catalog, this, path + "/" + "indexes"), m_constraints(catalog, this, path + "/" + "constraints"), m_partitioncolumns(catalog, this, path + "/" + "partitioncolumns"), m_views(catalog, this, path + "/" + "views")
 {
     CatalogValue value;
     m_childCollections["columns"] = &m_columns;
@@ -41,6 +42,7 @@ Table::Table(Catalog *catalog, CatalogType *parent, const string &path, const st
     m_childCollections["constraints"] = &m_constraints;
     m_fields["isreplicated"] = value;
     m_fields["partitioncolumn"] = value;
+    m_childCollections["partitioncolumns"] = &m_partitioncolumns;
     m_fields["estimatedtuplecount"] = value;
     m_childCollections["views"] = &m_views;
     m_fields["materializer"] = value;
@@ -70,6 +72,13 @@ Table::~Table() {
         constraint_iter++;
     }
     m_constraints.clear();
+
+    std::map<std::string, ColumnRef*>::const_iterator columnref_iter = m_partitioncolumns.begin();
+    while (columnref_iter != m_partitioncolumns.end()) {
+        delete columnref_iter->second;
+        columnref_iter++;
+    }
+    m_partitioncolumns.clear();
 
     std::map<std::string, MaterializedViewInfo*>::const_iterator materializedviewinfo_iter = m_views.begin();
     while (materializedviewinfo_iter != m_views.end()) {
@@ -109,6 +118,12 @@ CatalogType * Table::addChild(const std::string &collectionName, const std::stri
             return NULL;
         return m_constraints.add(childName);
     }
+    if (collectionName.compare("partitioncolumns") == 0) {
+        CatalogType *exists = m_partitioncolumns.get(childName);
+        if (exists)
+            return NULL;
+        return m_partitioncolumns.add(childName);
+    }
     if (collectionName.compare("views") == 0) {
         CatalogType *exists = m_views.get(childName);
         if (exists)
@@ -125,6 +140,8 @@ CatalogType * Table::getChild(const std::string &collectionName, const std::stri
         return m_indexes.get(childName);
     if (collectionName.compare("constraints") == 0)
         return m_constraints.get(childName);
+    if (collectionName.compare("partitioncolumns") == 0)
+        return m_partitioncolumns.get(childName);
     if (collectionName.compare("views") == 0)
         return m_views.get(childName);
     return NULL;
@@ -140,6 +157,9 @@ bool Table::removeChild(const std::string &collectionName, const std::string &ch
     }
     if (collectionName.compare("constraints") == 0) {
         return m_constraints.remove(childName);
+    }
+    if (collectionName.compare("partitioncolumns") == 0) {
+        return m_partitioncolumns.remove(childName);
     }
     if (collectionName.compare("views") == 0) {
         return m_views.remove(childName);
@@ -165,6 +185,10 @@ bool Table::isreplicated() const {
 
 const Column * Table::partitioncolumn() const {
     return dynamic_cast<Column*>(m_partitioncolumn);
+}
+
+const CatalogMap<ColumnRef> & Table::partitioncolumns() const {
+    return m_partitioncolumns;
 }
 
 int32_t Table::estimatedtuplecount() const {

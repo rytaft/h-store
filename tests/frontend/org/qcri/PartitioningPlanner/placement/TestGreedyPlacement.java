@@ -88,7 +88,7 @@ public class TestGreedyPlacement extends BaseTestCase {
 		}
 		
 
-		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  "test.txt", partitionTotals.size(), 60000);
+		aPlan = aPlacement.computePlan(hotTuplesList, partitionTotals,  "test.txt", partitionTotals.size(), 60000, this.getCatalogContext());
 
 		System.out.println("Ending with plan:");
 		aPlan.printPlan();

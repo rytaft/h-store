@@ -41,22 +41,22 @@ public class VoltTableComparator implements Comparator<Object[]> {
 
             switch (this.types[sort_idx]) {
                 case TINYINT:
-                    cmp = ((Byte) o1[col_idx]) - ((Byte) o2[col_idx]);
+                    cmp = ((Byte) o1[col_idx]).compareTo((Byte) o2[col_idx]);
                     break;
                 case SMALLINT:
-                    cmp = ((Short) o1[col_idx]) - ((Short) o2[col_idx]);
+                    cmp = ((Short) o1[col_idx]).compareTo((Short) o2[col_idx]);
                     break;
                 case INTEGER:
-                    cmp = ((Integer) o1[col_idx]) - ((Integer) o2[col_idx]);
+                    cmp = ((Integer) o1[col_idx]).compareTo((Integer) o2[col_idx]);
                     break;
                 case BIGINT:
-                    cmp = (int) (((Long) o1[col_idx]) - ((Long) o2[col_idx]));
+                    cmp = (int) (((Long) o1[col_idx]).compareTo((Long) o2[col_idx]));
                     break;
                 case FLOAT:
-                    cmp = (int) (((Float) o1[col_idx]) - ((Float) o2[col_idx]));
+                    cmp = (int) (((Float) o1[col_idx]).compareTo((Float) o2[col_idx]));
                     break;
                 case DECIMAL:
-                    cmp = (int) (((Double) o1[col_idx]) - ((Double) o2[col_idx]));
+                    cmp = (int) (((Double) o1[col_idx]).compareTo((Double) o2[col_idx]));
                     break;
                 case STRING:
                     cmp = ((String) o1[col_idx]).compareTo((String) o2[col_idx]);

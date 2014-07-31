@@ -535,13 +535,19 @@ bool IndexScanExecutor::p_execute(const NValueArray &params, ReadWriteTracker *t
            ((m_lookupType != INDEX_LOOKUP_TYPE_EQ || m_numOfSearchkeys == 0) &&
             !(m_tuple = m_index->nextValue()).isNullTuple()))
     {
+        if (m_tuple.isMigrated()){
+          //Skip migrated
+          continue;
+        }
+      
         m_targetTable->updateTupleAccessCount();
-       // m_tuple.updateTupleAccessFreq() ; //Essam Tuple
+        // m_tuple.updateTupleAccessFreq() ; //Essam Tuple
         
         // Read/Write Set Tracking
         if (tracker != NULL) {
             tracker->markTupleRead(m_targetTable, &m_tuple);
         }
+        
         
         #ifdef ANTICACHE
         // We are pointing to an entry for an evicted tuple
