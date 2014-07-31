@@ -915,6 +915,44 @@ bool PersistentTable::deleteTuple(TableTuple &target, bool deleteAllocatedString
     return true;
 }
 
+
+bool PersistentTable::deleteTupleNoUndo(TableTuple &target, bool deleteAllocatedStrings) {
+    // May not delete an already deleted tuple.
+    assert(target.isActive());
+
+    // The tempTuple is forever!
+    assert(&target != &m_tempTuple);
+
+    #ifdef ANTICACHE
+    AntiCacheEvictionManager* eviction_manager = m_executorContext->getAntiCacheEvictionManager();
+    eviction_manager->removeTuple(this, &target);
+    #endif
+
+    // Just like insert, we want to remove this tuple from all of our indexes
+    deleteFromAllIndexes(&target);
+
+    /**
+     * A user initiated delete needs to have the tuple "marked dirty" so that the copy is made.
+     */
+    if (m_COWContext.get() != NULL) {
+        m_COWContext->markTupleDirty(target, false);
+    }
+
+    // handle any materialized views
+    for (int i = 0; i < m_views.size(); i++) {
+        m_views[i]->processTupleDelete(target);
+    }
+
+    // if EL is enabled, append the tuple to the buffer
+    if (m_exportEnabled) {
+        //size_t elMark = appendToELBuffer(target, m_tsSeqNo++, TupleStreamWrapper::DELETE);
+    }
+
+    deleteTupleStorage(target);
+    return true;
+}
+
+
 /*
  * Delete a tuple by looking it up via table scan or a primary key
  * index lookup. An undo initiated delete like deleteTupleForUndo

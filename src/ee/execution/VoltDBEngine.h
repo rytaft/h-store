@@ -288,7 +288,9 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         int extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken, int32_t extractTupleLimit);
 
         bool updateExtractRequest(int32_t requestToken, bool confirmDelete);
+        bool updateExtractProcess(int32_t requestType);
 
+        
         // -------------------------------------------------
         // Debug functions
         // -------------------------------------------------

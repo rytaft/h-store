@@ -304,6 +304,7 @@ int VoltDBEngine::executeQuery(int64_t planfragmentId,
                                int64_t txnId, int64_t lastCommittedTxnId,
                                bool first, bool last)
 {
+    m_migrationManager->cleanTuples();
     Table *cleanUpTable = NULL;
     m_currentOutputDepId = outputDependencyId;
     m_currentInputDepId = inputDependencyId;
@@ -1476,6 +1477,13 @@ bool VoltDBEngine::updateExtractRequest(int32_t requestToken, bool confirmDelete
         return m_migrationManager->undoExtractDelete(requestToken);            
 }
 
+
+bool VoltDBEngine::updateExtractProcess(int32_t requestType)
+{
+   return m_migrationManager->updateExtractProcess(requestType);
+}
+
+
 int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken, int32_t extractTupleLimit){
     VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
     m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
@@ -1531,7 +1539,7 @@ int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &seriali
     if (inputIterator.hasNext()) {
         //TODO ae more than 1 range -> into a single result?
         VOLT_DEBUG("Extract %s ", extractTuple.debugNoHeader().c_str());
-	bool moreData = false;
+        bool moreData = false;
         //Table* outputTable = m_migrationManager->extractRange(table,extractTuple.getNValue(2),extractTuple.getNValue(3),requestToken, extractTupleLimit, moreData);
         Table* outputTable = m_migrationManager->extractRanges(table,inputIterator,extractTuple,requestToken, extractTupleLimit, moreData);
         size_t lengthPosition = m_resultOutput.reserveBytes(sizeof(int32_t));

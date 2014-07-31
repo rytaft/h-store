@@ -6559,6 +6559,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             LOG.info("CurrentTXN in clean up " + this.currentTxn.toString());
             
         }
+        this.ee.updateExtractProcess(1);
         LOG.info("Finished clearing up reconfiguration state for p_id " + this.partitionId);
     }
     

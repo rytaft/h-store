@@ -32,13 +32,15 @@
 
 #include <string>
 #include <vector>
+#include <time.h>
+#include <stdlib.h>
 
 #ifndef EXTRACT_STAT_ENABLED
 #define EXTRACT_STAT_ENABLED
 #endif
 
-#ifndef MIGRATE_DELETE_ENABLED
-#define MIGRATE_DELETE_ENABLED
+#ifndef XMIGRATE_DELETE_ENABLED
+#define XMIGRATE_DELETE_ENABLED
 #endif
 
 #ifdef EXTRACT_STAT_ENABLED
@@ -64,7 +66,9 @@ MigrationManager::MigrationManager(ExecutorContext *executorContext, catalog::Da
     
     m_extractedTables.clear();
     m_extractedTableNames.clear();
-
+    tuplesToClean = 10;
+    deleteMigrated = false;
+    srand((int)time(NULL));
     init(NULL);
 }
 
@@ -193,6 +197,46 @@ bool MigrationManager::inRange(const TableTuple& tuple, const RangeMap& rangeMap
   return false;
 }
 
+bool MigrationManager::cleanTuples()
+{
+  int CLEAN_CHANCE = 50;
+  if (deleteMigrated && !tuplesToDelete.empty()){
+      if (rand() % 100 < CLEAN_CHANCE) {
+        VOLT_DEBUG("Have tuples to delete : %zu", tuplesToDelete.size());
+        //voltdb::UndoQuantum *undoQuantum = m_executorContext->getCurrentUndoQuantum();
+        
+        //VOLT_INFO("undo %" PRId64 "\n",undoQuantum->getUndoToken());
+        for (int i =0; i < tuplesToClean && !tuplesToDelete.empty(); i++) {
+          TableTuplePair p = tuplesToDelete.front();
+          int current_tuple_id = p.tupleId;
+          tempDeleteTable = p.table;
+          TableTuple tuple(tempDeleteTable->schema());
+          tuple.move(tempDeleteTable->dataPtrForTuple(current_tuple_id));
+          //VOLT_INFO(" tuple to delete: %s",tuple.debug("").c_str());
+          tuplesToDelete.pop();
+          if(tuple.isMigrated() && tuple.isActive()){
+            if(tempDeleteTable->deleteTupleNoUndo(tuple, true)){
+          //   tuplesToDelete.pop();      
+            } else{
+              VOLT_ERROR("Error deleting tuples");
+            }
+          }
+        }  
+      }
+      return true;
+  }  
+  return false;
+}
+
+bool MigrationManager::updateExtractProcess(int32_t requestType)
+{
+  if (requestType == 1) {
+      deleteMigrated = true;
+      return true;
+  }
+  return false;
+}
+
 
 bool MigrationManager::extractTuple(TableTuple& tuple) {
   //Have we reached our datalimit and found another tuple
@@ -212,9 +256,14 @@ bool MigrationManager::extractTuple(TableTuple& tuple) {
   #else  
     if (!m_table->migrateTuple(tuple)){
       VOLT_ERROR("Error migrating tuple");
+    } else {
+      TableTuplePair _t(m_table, m_table->getTupleID(tuple.address()));
+      tuplesToDelete.push(_t);
+      VOLT_DEBUG("Added tuples to delete : %zu", tuplesToDelete.size());
+
     }
   #endif  
-  
+ 
   //
   
   
