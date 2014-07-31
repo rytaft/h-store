@@ -1517,10 +1517,4 @@ public class ExecutionEngineIPC extends ExecutionEngine {
     {
         throw new NotImplementedException("Reconfiguration is disabled for IPC EE");      
     }
-
-    @Override
-    public boolean updateExtractProcess(int requestType) {
-        // TODO Auto-generated method stub
-        return false;
-    }
 }

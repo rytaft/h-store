@@ -57,18 +57,6 @@ typedef std::map<TableTuple,TableTuple,TableTuple::ltTableTuple> RangeMap;
 //typedef std::map<TableToRangeMap,TupleList,TableTuple::ltTableTuple> TupleCacheMap;
 //typedef std::map<std::string, TupleCacheMap> TableCache;
 
-class TableTuplePair {
-  public:
-    PersistentTable *table;
-    uint32_t tupleId;
-    TableTuplePair(PersistentTable *t, u_int32_t id) {
-        table = t;
-        tupleId = id;
-    }
-};
-typedef std::queue<TableTuplePair> TupleTableList;
-
-
 
 class TableRange {
   public:
@@ -123,8 +111,6 @@ public:
     
     bool confirmExtractDelete(int32_t requestTokenId);
     bool undoExtractDelete(int32_t requestTokenId);
-    bool updateExtractProcess(int32_t requestType);    
-    bool cleanTuples();
     
 private:
     ExecutorContext *m_executorContext;
@@ -151,12 +137,7 @@ private:
     const TupleSchema* m_partitionKeySchema;
     const TupleSchema* m_matchingIndexColsSchema;
     TableCache tableCache;
-    TupleTableList tuplesToDelete;
-    int tuplesToClean;
-    PersistentTable *tempDeleteTable;
-    bool deleteMigrated;
 
-    
 #ifdef EXTRACT_STAT_ENABLED
     boost::timer m_timer;
     int m_rowsExamined;

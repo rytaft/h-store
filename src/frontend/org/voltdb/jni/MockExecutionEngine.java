@@ -244,10 +244,4 @@ public class MockExecutionEngine extends ExecutionEngine {
         // TODO Auto-generated method stub
         return false;
     }
-
-    @Override
-    public boolean updateExtractProcess(int requestType) {
-        // TODO Auto-generated method stub
-        return false;
-    }
 }

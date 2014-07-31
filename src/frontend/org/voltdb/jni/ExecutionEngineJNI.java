@@ -548,15 +548,6 @@ public class ExecutionEngineJNI extends ExecutionEngine {
 
     }
     
-    @Override
-    public boolean updateExtractProcess(int requestType)
-    {
-        if (debug.val) LOG.debug("updateExtractRequest table");
-        final int errorCode = nativeUpdateExtractProcess(this.pointer, requestType);
-        checkErrorCode(errorCode);  
-        return true;
-
-    }
     
 
     /**

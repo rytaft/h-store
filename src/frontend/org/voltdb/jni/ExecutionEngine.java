@@ -912,8 +912,5 @@ public abstract class ExecutionEngine implements FastDeserializer.Deserializatio
     
     protected native int nativeUpdateExtractRequest(long pointer, int requestToken, boolean deleteRequestedData);
     
-    public abstract boolean updateExtractProcess(int requestType);
-    protected native int nativeUpdateExtractProcess(long pointer, int requestType);
-    
 }
 
