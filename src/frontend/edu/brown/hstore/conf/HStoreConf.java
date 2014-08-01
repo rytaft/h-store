@@ -839,6 +839,13 @@ public final class HStoreConf {
         )
         public int reconfig_max_transfer_bytes;
         
+        @ConfigProperty(
+                description="Whether or not to merge small ranges for extraction",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_merge_ranges;
+        
         // ----------------------------------------------------------------------------
         // Storage Options
         // ----------------------------------------------------------------------------
