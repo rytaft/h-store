@@ -171,6 +171,8 @@
 <arg value="site.reconfig_subplan_split=${site.reconfig_subplan_split}" />
 <arg value="site.reconfig_min_transfer_bytes=${site.reconfig_min_transfer_bytes}" />
 <arg value="site.reconfig_max_transfer_bytes=${site.reconfig_max_transfer_bytes}" />
+<arg value="site.reconfig_split_merge_ranges=${site.reconfig_split_merge_ranges}" />
+<arg value="site.reconfig_pull_single_key=${site.reconfig_pull_single_key}" />
 <arg value="site.storage_mmap=${site.storage_mmap}" />
 <arg value="site.storage_mmap_dir=${site.storage_mmap_dir}" />
 <arg value="site.mr_map_blocking=${site.mr_map_blocking}" />
