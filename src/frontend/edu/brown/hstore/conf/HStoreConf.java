@@ -840,11 +840,18 @@ public final class HStoreConf {
         public int reconfig_max_transfer_bytes;
         
         @ConfigProperty(
-                description="Whether or not to merge small ranges for extraction",
+                description="Whether or not to split large ranges and merge small ranges for extraction",
                 defaultBoolean=true,
                 experimental=true
         )
-        public boolean reconfig_merge_ranges;
+        public boolean reconfig_split_merge_ranges;
+        
+        @ConfigProperty(
+                description="Whether to pull a single key or an entire range during live pulls",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_pull_single_key;
         
         // ----------------------------------------------------------------------------
         // Storage Options

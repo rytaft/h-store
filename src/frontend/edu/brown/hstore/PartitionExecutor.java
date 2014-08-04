@@ -6466,13 +6466,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (!scheduleAsyncPullQueue.isEmpty()){
             LOG.warn("Schedule async pull queue was not empty... " + StringUtil.join(",",scheduleAsyncPullQueue));
         }
-        if (this.catalogContext.jarPath.getName().contains("ycsb")){
-            LOG.info("Pulling ranges instead of keys ************");
-            ReconfigurationTracking.PULL_SINGLE_KEY = false;
-        } else {
-            LOG.info("Pulling single keys and not ranges ************");
-            ReconfigurationTracking.PULL_SINGLE_KEY = true;
-        }
+        ReconfigurationTracking.PULL_SINGLE_KEY = this.hstore_conf.site.reconfig_pull_single_key;
+        LOG.info((ReconfigurationTracking.PULL_SINGLE_KEY ? "Pulling single keys and not ranges ************" : "Pulling ranges instead of keys ************"));
         if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY) {
             LOG.info("Stopping exeuction");
             if(hstore_site.getReconfigurationCoordinator().areAbortsEnabledForStopCopy()){

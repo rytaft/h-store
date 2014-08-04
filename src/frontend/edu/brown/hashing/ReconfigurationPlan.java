@@ -259,12 +259,9 @@ public class ReconfigurationPlan {
             }
           }
           if(!this.catalogContext.jarPath.getName().contains("tpcc")) { 
-        	  if(conf.site.reconfig_merge_ranges) {
+        	  if(conf.site.reconfig_split_merge_ranges) {
         		  setReconfigurations(
         				  mergeReconfigurations(splitReconfigurations(getReconfigurations(),new_table.getCatalog_table()), new_table.getCatalog_table()));
-        	  } 
-        	  else {
-        		  setReconfigurations(splitReconfigurations(getReconfigurations(),new_table.getCatalog_table()));
         	  }
           }
              
