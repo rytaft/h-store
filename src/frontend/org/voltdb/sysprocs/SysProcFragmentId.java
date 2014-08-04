@@ -107,6 +107,12 @@ public class SysProcFragmentId {
     public static final int PF_loadDistribute = 70;
     public static final int PF_loadAggregate = 71;
     
+    // @SnapshotRestoreLocal
+    public static final int PF_SRLloadDistribute = 75;
+    public static final int PF_SRLloadAggregate = 76;
+    public static final int PF_SRLrestoreScan = 77;
+    public static final int PF_SRLrestoreScanResults = 78;
+    
     // @SnapshotRestore
     public static final int PF_restoreScan = 80;
     public static final int PF_restoreScanResults = 81;
@@ -199,4 +205,8 @@ public class SysProcFragmentId {
     // @StopCopy
     public static final int PF_stopCopyDistribute = 404;
     public static final int PF_stopCopyAggregate = 405;
+
+    // @ReconfigurationRemote 
+    public static final int PF_reconfigurationRemoteDistribute = 406;
+    public static final int PF_reconfigurationRemoteAggregate = 407;
 }

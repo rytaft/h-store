@@ -46,6 +46,8 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     public List<ReconfigurationRange<? extends Comparable<?>>> dataMigratedIn;
     private int rangesMigratedInCount = 0;
     private int rangesMigratedOutCount = 0;
+    private int incomingRangesCount = 0;
+    private int outgoingRangesCount = 0;
     
     //set of individual keys migrated out/in status, stored in a map by table name as key 
     public Map<String,Set<Comparable>> migratedKeyIn;
@@ -65,6 +67,22 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         this.incoming_ranges = new ArrayList<ReconfigurationRange<? extends Comparable<?>>>();
         if (incoming_ranges != null)
             this.incoming_ranges.addAll(incoming_ranges);
+	for(ReconfigurationRange<? extends Comparable<?>> range : this.incoming_ranges) {
+	    if(range.isSingleRange()) {
+		incomingRangesCount++;
+	    }
+	    else {
+		incomingRangesCount += range.getMinList().size();
+	    }
+	}
+	for(ReconfigurationRange<? extends Comparable<?>> range: this.outgoing_ranges){
+            if(range.isSingleRange()) {
+		outgoingRangesCount++;
+            }
+            else {
+		outgoingRangesCount += range.getMinList().size();
+            }
+        }
         this.partition_id = partition_id;
         this.migratedKeyIn = new HashMap<String, Set<Comparable>>();
         this.migratedKeyOut = new HashMap<String, Set<Comparable>>();
@@ -91,7 +109,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         boolean added =  this.dataMigratedOut.add(range);
         if(added){
             rangesMigratedOutCount++;
-            if(rangesMigratedOutCount==this.outgoing_ranges.size()){
+            if(rangesMigratedOutCount==outgoingRangesCount){
                 throw new ReconfigurationException(ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
             }
         }
@@ -131,7 +149,8 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         boolean added =  this.dataMigratedIn.add(range);
         if(added){
             rangesMigratedInCount++;
-            if(rangesMigratedInCount==this.incoming_ranges.size()){
+	    LOG.info(String.format("Migrated in range %s-%s, number %s out of %s", range.getMin_inclusive(), range.getMax_exclusive(), rangesMigratedInCount, incomingRangesCount));
+            if(rangesMigratedInCount==incomingRangesCount){
                 throw new ReconfigurationException(ExceptionTypes.ALL_RANGES_MIGRATED_IN);
             }
         }
@@ -391,7 +410,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
 
     @Override
     public boolean checkIfAllRangesAreMigratedIn() {       
-        if(this.incoming_ranges.size() == rangesMigratedInCount){
+        if(incomingRangesCount == rangesMigratedInCount){
             return true;
         } 
         return false;     
