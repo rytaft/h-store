@@ -367,7 +367,18 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             //TODO hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId())
                             executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
                             this.partitionStates.put(partitionId, ReconfigurationState.PREPARE);
+                            if(abortsEnabledForStopCopy){
+                                executor.haltProcessing();
+                                queueManager.clearQueues(executor.getPartitionId());
+                            }
                         }
+                        if(abortsEnabledForStopCopy){
+                            LOG.info("Setting rejects");
+                            queueManager.setRejectNewTxns(true);
+                        }
+                        LOG.info("Sleeping");
+                        Thread.sleep(5000);
+                        LOG.info("Awake");
                         //push outgoing ranges for all local PEs
                         //TODO remove this loop and schedule chunked pulls/ 
                         for (PartitionExecutor executor : this.local_executors) {
@@ -422,6 +433,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
                                }
                         }
                         
+
+                        if(abortsEnabledForStopCopy){
+                            queueManager.setRejectNewTxns(false);
+                        }
                         //TODO this file is horrible and needs refactoring....
                         //we have an end, reset and finish reconfiguration...
                         endReconfiguration();
@@ -1037,7 +1052,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // If the callback is null, it shows that the request is from a
             // partition in
             // the local site itself.
-            LOG.info("TODO verify passing callback locally works"); //TODO
+            LOG.debug("TODO verify passing callback locally works"); //TODO
             queueAsyncDataPullRequest(asyncPullRequest, asyncPullRequestCallback);
             return;
         }
@@ -1054,7 +1069,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         AsyncDataPullRequestMessage asyncPullRequestMsg = new AsyncDataPullRequestMessage(asyncPullRequest, asyncPullRequestCallback2);
         if(asyncPullRequest.getTransactionID() == STOP_COPY_TXNID){
           // This is a s&c request so set the protocol to stop and copy
-          LOG.info("Stop & Copy transaction");
+          LOG.debug("Stop & Copy transaction");
           asyncPullRequestMsg.setProtocol("s&c");
         }
         PartitionExecutor executor = executorMap.get(asyncPullRequest.getOldPartition());
