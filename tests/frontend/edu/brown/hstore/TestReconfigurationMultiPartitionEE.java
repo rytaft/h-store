@@ -708,4 +708,61 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	    }
 	}
     }    
+
+    public void testBTreeSearchSingleColumn() throws Exception {
+    	((ExecutionEngineJNI)(this.ee)).DEFAULT_EXTRACT_LIMIT_BYTES = DEFAULT_LIMIT;
+
+        for (int i=0; i< scales.length; i++) {
+	    for (int j = 0; j < scales.length; j++) {
+		for (int k = 0; k < scales.length; k++) {
+		    LOG.info(String.format("Loading %s tuples for order lines with W_ID:%s, D_ID:%s and O_ID:%s", NUM_TUPLES,scales[i],scales[j],scales[k]));
+		    for (int l = 0; l < NUM_TUPLES; l++) {
+			this.loadTPCCData(new Long(1), this.orderline_tbl,this.orderline_p_index,new int[]{ scales[i], scales[j], scales[k], l });
+		    }
+		}
+	    }
+        }
+        LOG.info("load done");
+       
+    	assertTrue(true);
+    	
+    	VoltTable extractTable;
+        long start, extract, load;
+    	Pair<VoltTable,Boolean> resTable;
+    	Pair<VoltTable,Boolean> resTableVerify;
+        
+
+    	for (int i=0; i< scales.length; i++) {
+    		int warehouse_scale = scales[i];
+    		LOG.info("Testing for warehouse scale : " + warehouse_scale);
+    		//extract
+
+    		Long[][] mins = new Long[][]{{ new Long(warehouse_scale)}};
+    		Long[][] maxs = new Long[][]{{ new Long(warehouse_scale+1)}};
+    		ReconfigurationRange range = ReconfigurationUtil.getReconfigurationRange(this.orderline_tbl, mins, maxs, 1, 2);
+
+    		extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
+    		start = System.currentTimeMillis();
+    		resTable= this.ee.extractTable(this.orderline_tbl, this.orderline_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+    		extract = System.currentTimeMillis()-start; 
+    		assertFalse(resTable.getSecond());
+    		LOG.info("Tuples : " + resTable.getFirst().getRowCount());
+    		assertEquals(1600, resTable.getFirst().getRowCount());
+
+    		//assert empty     
+    		resTableVerify= this.ee.extractTable(this.orderline_tbl, this.orderline_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+    		assertEquals(0, resTableVerify.getFirst().getRowCount());
+
+
+    		//load
+    		start = System.currentTimeMillis();
+    		this.executor.loadTable(2000L, this.orderline_tbl, resTable.getFirst(), false);
+    		load = System.currentTimeMillis() - start;
+    		LOG.info(String.format("size=%s Extract=%s Load=%s Diff:%s", 24, extract, load, load-extract));
+
+    		//re extract and check its there
+    		resTableVerify= this.ee.extractTable(this.orderline_tbl, this.orderline_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
+    		assertEquals(1600, resTableVerify.getFirst().getRowCount());
+    	}
+    }    
 }
