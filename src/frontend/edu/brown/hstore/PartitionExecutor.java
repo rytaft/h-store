@@ -3922,7 +3922,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         res.addAll(dataNotYetMigrated);
         for(ReconfigurationRange range: dataNotYetMigrated){
             if (filterList.contains(range.getTableName())){
-                LOG.info(String.format("For %s removing %s from list %s ",procName, range.getTableName(),dataNotYetMigrated));
+                if(debug.val) LOG.debug(String.format("For %s removing %s from list %s ",procName, range.getTableName(),dataNotYetMigrated));
                 res.remove(range);               
             }
         }
@@ -3965,8 +3965,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // migrated)
 
         // Get all the fragments
-        Set<ReconfigurationRange> pullRequestsNeeded = new TreeSet<>();
-        Set<ReconfigurationRange> restartsNeeded = new TreeSet<>();
+        Set<ReconfigurationRange> pullRequestsNeeded = new HashSet<>();
+        Set<ReconfigurationRange> restartsNeeded = new HashSet<>();
         Set<Integer> partitionsForRestart = new HashSet<>();
         
         //this.reconfiguration_coordinator.profilers[this.partitionId].pe_check_txn_time.start();
@@ -4009,9 +4009,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             rex.dataNotYetMigrated = staticFilter(rex.dataNotYetMigrated, currentTxn.getProcedure().getName());
                         }
                         if (rex.dataNotYetMigrated.isEmpty()){
-                            LOG.info("All needed data for a transaction has been filtered");
+                            if(debug.val) LOG.debug("All needed data for a transaction has been filtered");
                         } else {
                             pullRequestsNeeded.addAll(rex.dataNotYetMigrated);
+                            //LOG.info("Pull Requests : " + pullRequestsNeeded.size());
                         }
                     } else {
                         throw new NotImplementedException("Unknown reconfigurationException type " + rex.toString());
@@ -6619,9 +6620,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             long timeTaken = System.currentTimeMillis() - startTime;
                             FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%s",timeTaken, pullId, table_name));
                         }
-                        this.reconfiguration_tracker.markKeyAsReceived(table_name, Arrays.asList(minInclusiveList.getRowArray()));
-                    }               
-                    this.reconfiguration_tracker.markRangeAsPartiallyReceived(new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
+                        if (vt.getRowCount() > 0)
+                            this.reconfiguration_tracker.markKeyAsReceived(table_name, Arrays.asList(minInclusiveList.getRowArray()));
+                    }   
+                    if (vt.getRowCount() > 0)
+                        this.reconfiguration_tracker.markRangeAsPartiallyReceived(new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
                 } else {
                     try {
                     	if (moreDataComing) {
@@ -6639,7 +6642,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                 long timeTaken = System.currentTimeMillis() - startTime;
                                 FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s, ",timeTaken, pullId,table_name, minInclusiveList.toString().replace("\n", " | "), maxExclusiveList));
                             }
-                            this.reconfiguration_tracker.markRangeAsReceived(
+                            if (vt.getRowCount() > 0)
+                                this.reconfiguration_tracker.markRangeAsReceived(
                             		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
                         }                       
                     } catch (ReconfigurationException re) {
