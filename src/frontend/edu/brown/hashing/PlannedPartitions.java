@@ -545,6 +545,8 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         private VoltTable keySchema;
         private Object[] min_incl;
         private Object[] max_excl;
+        private Object[] min_incl_non_null;
+        private Object[] max_excl_non_null;
         private PartitionKeyComparator cmp;
         private Table catalog_table;
         private int non_null_cols;
@@ -585,6 +587,13 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
             
             this.non_null_cols = this.getNonNullCols();
+            this.min_incl_non_null = new Object[this.non_null_cols];
+            this.max_excl_non_null = new Object[this.non_null_cols];
+            
+            for(int i = 0; i < this.non_null_cols; i++) {
+            	this.min_incl_non_null[i] = this.min_incl[i];
+            	this.max_excl_non_null[i] = this.max_excl[i];
+            }
         }
 
         public PartitionRange(Table table, int partition_id, Object[] min_incl, Object[] max_excl) {
@@ -596,7 +605,15 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             this.min_incl = min_incl;
             this.max_excl = max_excl;
+            
             this.non_null_cols = this.getNonNullCols();
+            this.min_incl_non_null = new Object[this.non_null_cols];
+            this.max_excl_non_null = new Object[this.non_null_cols];
+            
+            for(int i = 0; i < this.non_null_cols; i++) {
+            	this.min_incl_non_null[i] = this.min_incl[i];
+            	this.max_excl_non_null[i] = this.max_excl[i];
+            }
         }
 
         private Object[] getRangeKeys(String key_str) throws ParseException {
@@ -683,10 +700,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         }
 
         public boolean inRange(Object[] keys) {
-            if (cmp.compare(min_incl, keys) <= 0 && (cmp.compare(max_excl, keys) > 0 || (cmp.compare(min_incl, max_excl) == 0 && cmp.compare(min_incl, keys) == 0))) {
-                if (keys.length >= this.non_null_cols) {
-                    return true;
-                }
+            if (cmp.compare(min_incl_non_null, keys) <= 0 && (cmp.compare(max_excl_non_null, keys) > 0 || 
+            		(cmp.compare(min_incl_non_null, max_excl_non_null) == 0 && cmp.compare(min_incl_non_null, keys) == 0))) {
+                return true;
             }
 
             return false;
