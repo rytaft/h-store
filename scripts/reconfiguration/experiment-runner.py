@@ -603,6 +603,12 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
     elif "stopcopy" in args['exp_type']:
         LOG.info("StopCopy Experiment")
         _reconfig = True
+    elif "reactive" in args['exp_type']:
+        LOG.info("Reactive Experiment")
+        _reconfig = True
+    elif "nonopt" in args['exp_type']:
+        LOG.info("nonopt Experiment")
+        _reconfig = True
     
     if _reconfig:
         LOG.info("Disabling command logging for reconfig experiments ******")
@@ -1109,6 +1115,10 @@ def extractReconfigEvents(rawReconfigs, expType, warmUp):
         reconfigType = "livepull"
     elif "stopcopy" in expType:
         reconfigType = "stopcopy"
+    elif "reactive" in expType:
+        reconfigType = "reactive"
+    elif "nonopt" in expType:
+        reconfigType = "nonopt"
     else:
         raise Exception("Unknown recongfiguration experiment type with --reconfig param set : %s " % expType)
     

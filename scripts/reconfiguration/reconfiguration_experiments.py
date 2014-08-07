@@ -20,6 +20,7 @@ RECONFIG_EXPERIMENTS = [
     "stopcopy-tpcc-small",
     "reconfig-fast",
     "stopcopy-fast",
+    "reactive-fast",
     "reconfig-slow",
     "reconfig-2split",
     "reconfig-dynsplit",
@@ -88,7 +89,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     
     if 'reconfig-2b' in  args['exp_type'] or 'stopcopy-2b' in args['exp_type']:
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
-        fabric.env["client.blocking_concurrent"] = 1
+        fabric.env["client.blocking_concurrent"] = 10
         #fabric.env["client.txnrate"] = 100000
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
@@ -189,10 +190,24 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
-        fabric.env["site.reconfig_chunk_size_kb"] = 2048 
-        fabric.env["site.reconfig_async_chunk_size_kb"] = 2048
+        fabric.env["site.reconfig_chunk_size_kb"] = 10048 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 8048
         fabric.env["site.commandlog_enable"] = False
 
+    if 'reactive-fast' in  args['exp_type']  in args['exp_type']:
+        fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
+        fabric.env["client.blocking_concurrent"] = 4
+        #fabric.env["client.txnrate"] = 100000
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.output_exec_profiling"] = "execprofile.csv"
+        fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
+        fabric.env["client.output_txn_profiling_combine"] = True
+        fabric.env["client.output_txn_counters"] = "txncounters.csv"
+        fabric.env["client.threads_per_host"] = partitions * 1  # max(1, int(partitions/2))
+        fabric.env["site.reconfig_chunk_size_kb"] = 10048 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 8048
+        fabric.env["site.commandlog_enable"] = False
     
     if 'reconfig-2l' in args['exp_type']:
         fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
