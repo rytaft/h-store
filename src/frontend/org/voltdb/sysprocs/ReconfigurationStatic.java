@@ -68,7 +68,8 @@ public class ReconfigurationStatic extends VoltSystemProcedure {
       try {
         hstore_site.getReconfigurationCoordinator().initReconfiguration(coordinator, reconfig_protocol, partition_plan, currentPartitionId);
       } catch (Exception ex) {
-        throw new ServerFaultException(ex.getMessage(), txn_id);
+          LOG.error("Excpetion init reconfig",ex);
+          throw new ServerFaultException(ex.getMessage(), txn_id);
       }
 
       VoltTable vt = new VoltTable(nodeResultsColumns);

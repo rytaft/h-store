@@ -66,6 +66,7 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
     private final HStoreConf hstore_conf;
     private final PartitionSet localPartitions;
     private boolean stop = false;
+    private boolean rejectNewTxns = false;
     
     /**
      * PartitionLock Configuration
@@ -420,41 +421,44 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
         Long txn_id = ts.getTransactionId();
         Long next_safe_id = null;
         Status status = Status.OK;
-        
-        this.lockQueueBarriers[partition].lock();
-        try {
-            next_safe_id = this.lockQueues[partition].noteTransactionRecievedAndReturnLastSafeTxnId(txn_id);
-        } finally {
-            this.lockQueueBarriers[partition].unlock();
-        } // SYNCH
-        
-        // The next txnId that we're going to try to execute is already greater
-        // than this new txnId that we were given! Rejection!
-        if (next_safe_id != null && next_safe_id.compareTo(txn_id) > 0) {
-             if (debug.val)
-                LOG.warn(String.format("The next safe lockQueue txn for partition #%d is %s but this " +
-                         "is greater than our new txn %s. Rejecting...",
-                         partition, next_safe_id, ts));
-             status = Status.ABORT_RESTART;
-        }
-        // Our queue is overloaded. We have to reject the txnId!
-        else {
-            boolean ret = false;
-            if (ts.isPredictSinglePartition() || callback.isAborted() == false) {
-                // 2013-04-04
-                // I think that we don't need to hold the lockQueueBarrier for this part here,
-                // because the PartitionLockQueue will already have an internal lock...
-                ret = this.lockQueues[partition].offer(ts, ts.isSysProc());
+        if (rejectNewTxns){
+            LOG.info("Rejecting txn");
+            status = Status.ABORT_REJECT;            
+        } else {        
+            this.lockQueueBarriers[partition].lock();
+            try {
+                next_safe_id = this.lockQueues[partition].noteTransactionRecievedAndReturnLastSafeTxnId(txn_id);
+            } finally {
+                this.lockQueueBarriers[partition].unlock();
+            } // SYNCH
+            
+            // The next txnId that we're going to try to execute is already greater
+            // than this new txnId that we were given! Rejection!
+            if (next_safe_id != null && next_safe_id.compareTo(txn_id) > 0) {
+                 if (debug.val)
+                    LOG.warn(String.format("The next safe lockQueue txn for partition #%d is %s but this " +
+                             "is greater than our new txn %s. Rejecting...",
+                             partition, next_safe_id, ts));
+                 status = Status.ABORT_RESTART;
             }
-            if (ret == false) {
-                if (debug.val)
-                    LOG.debug(String.format("The initQueue for partition #%d is overloaded. " +
-                              "Throttling %s until id is greater than %s [queueSize=%d]",
-                              partition, ts, next_safe_id, this.lockQueues[partition].size()));
-                status = Status.ABORT_REJECT;
+            // Our queue is overloaded. We have to reject the txnId!
+            else {
+                boolean ret = false;
+                if (ts.isPredictSinglePartition() || callback.isAborted() == false) {
+                    // 2013-04-04
+                    // I think that we don't need to hold the lockQueueBarrier for this part here,
+                    // because the PartitionLockQueue will already have an internal lock...
+                    ret = this.lockQueues[partition].offer(ts, ts.isSysProc());
+                }
+                if (ret == false) {
+                    if (debug.val)
+                        LOG.debug(String.format("The initQueue for partition #%d is overloaded. " +
+                                  "Throttling %s until id is greater than %s [queueSize=%d]",
+                                  partition, ts, next_safe_id, this.lockQueues[partition].size()));
+                    status = Status.ABORT_REJECT;
+                }
             }
         }
-        
 
         // Reject the txn
         if (status != Status.OK) {
@@ -877,6 +881,10 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
             cachedDebugContext = new TransactionQueueManager.Debug();
         }
         return cachedDebugContext;
+    }
+
+    public void setRejectNewTxns(boolean rejectNewTxns) {
+        this.rejectNewTxns = rejectNewTxns;
     }
 
 

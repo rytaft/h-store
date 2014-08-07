@@ -6473,29 +6473,30 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             if(hstore_site.getReconfigurationCoordinator().areAbortsEnabledForStopCopy()){
             	haltProcessing();
             }
-        } else if (reconfig_protocol == ReconfigurationProtocols.LIVEPULL) {
+        } else  {
             LOG.debug("Creating reconfiguration tracker");
 
-
-            if(this.reconfiguration_coordinator.scheduleAsyncNonChunkPush()){
-                LOG.info("Scheduling nonchunked asynch pushes");
-                scheduleInitialAsyncNonChunkPushRequests(outgoing_ranges);
-            }
-            else if(this.reconfiguration_coordinator.scheduleAsyncNonChunkPull()){
-                LOG.info("Scheduling nonchunked asynch pulls");
-                scheduleInitialAsyncNonChunkPullRequests(incoming_ranges);
-            }
-            else if (this.reconfiguration_coordinator.scheduleAsyncPull()){
-                LOG.info("Scheduling chunked asynch pulls");           
-                scheduleInitialAsyncPullRequests(incoming_ranges);
-            }
-            else if (this.reconfiguration_coordinator.queueAsyncPull()){
-                LOG.info("Queueing chunked asynch pulls");           
-                this.queue_async_pulls = this.reconfiguration_coordinator.queueAsyncPull();
-                queueInitialAsyncPullRequests(incoming_ranges);
-            }
-            else {
-                LOG.info("Scheduling no asyn msgs");
+            if (reconfig_protocol != ReconfigurationProtocols.REACTIVE) {
+                if(this.reconfiguration_coordinator.scheduleAsyncNonChunkPush()){
+                    LOG.info("Scheduling nonchunked asynch pushes");
+                    scheduleInitialAsyncNonChunkPushRequests(outgoing_ranges);
+                }
+                else if(this.reconfiguration_coordinator.scheduleAsyncNonChunkPull()){
+                    LOG.info("Scheduling nonchunked asynch pulls");
+                    scheduleInitialAsyncNonChunkPullRequests(incoming_ranges);
+                }
+                else if (this.reconfiguration_coordinator.scheduleAsyncPull()){
+                    LOG.info("Scheduling chunked asynch pulls");           
+                    scheduleInitialAsyncPullRequests(incoming_ranges);
+                }
+                else if (this.reconfiguration_coordinator.queueAsyncPull()){
+                    LOG.info("Queueing chunked asynch pulls");           
+                    this.queue_async_pulls = this.reconfiguration_coordinator.queueAsyncPull();
+                    queueInitialAsyncPullRequests(incoming_ranges);
+                }
+                else {
+                    LOG.info("Scheduling no asyn msgs");
+                }
             }
             if (this.incoming_ranges == null || this.incoming_ranges.isEmpty()) {
                 this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
