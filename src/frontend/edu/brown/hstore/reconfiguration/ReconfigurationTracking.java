@@ -412,9 +412,11 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                             for (String rTableName : relatedTables) {
                                 if (range.getTableName().equalsIgnoreCase(rTableName) && range.inRangeIgnoreNullCols(key_arr)) {
                                     if (dataMigratedIn.contains(range)) {
-                                        LOG.info(String.format("Range %s has already been migrated in. Not pulling again", range));
+                                        if (debug.val)
+                                            LOG.debug(String.format("Range %s has already been migrated in. Not pulling again", range));
                                     } else {
-                                        LOG.info(String.format("Access for key %s, pulling entire range :%s (%s)", key, range.toString(), rTableName));
+                                        if (debug.val)
+                                            LOG.debug(String.format("Access for key %s, pulling entire range :%s (%s)", key, range.toString(), rTableName));
                                         rangesToPull.add(range);
                                     }
                                 }

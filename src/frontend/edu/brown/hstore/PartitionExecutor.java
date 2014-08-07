@@ -4096,7 +4096,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 sb.append(range.toString() +", ");
                 partitionHistogram.put(range.getNewPartition());
             }
-            LOG.info("Restarts needed due to migrated data : " + restartsNeeded.size() + ", " + sb.toString());
+            LOG.debug("Restarts needed due to migrated data : " + restartsNeeded.size() + ", " + sb.toString());
             
             partitionHistogram.put(partitionsForRestart);
             throw new MispredictionException(this.currentTxnId, partitionHistogram);
@@ -6620,10 +6620,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             long timeTaken = System.currentTimeMillis() - startTime;
                             FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%s",timeTaken, pullId, table_name));
                         }
-                        if (vt.getRowCount() > 0)
+                        //if (vt.getRowCount() > 0)
                             this.reconfiguration_tracker.markKeyAsReceived(table_name, Arrays.asList(minInclusiveList.getRowArray()));
                     }   
-                    if (vt.getRowCount() > 0)
+                    //if (vt.getRowCount() > 0)
                         this.reconfiguration_tracker.markRangeAsPartiallyReceived(new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
                 } else {
                     try {

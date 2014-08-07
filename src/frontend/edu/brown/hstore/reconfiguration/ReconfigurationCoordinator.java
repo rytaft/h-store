@@ -303,6 +303,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
             LOG.info("Disabling optimizations");
             hstore_conf.site.reconfig_split_merge_ranges = false;
             hstore_conf.site.reconfig_pull_single_key = true;
+        } else if (reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL){
+            hstore_conf.site.reconfig_split_merge_ranges = true;
+            hstore_conf.site.reconfig_pull_single_key = false;
         }
         // We may have reconfiguration initialized by PEs so need to ensure
         // atomic
@@ -381,9 +384,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             LOG.info("Setting rejects");
                             queueManager.setRejectNewTxns(true);
                         }
-                        LOG.info("Sleeping");
-                        Thread.sleep(5000);
-                        LOG.info("Awake");
+
                         //push outgoing ranges for all local PEs
                         //TODO remove this loop and schedule chunked pulls/ 
                         for (PartitionExecutor executor : this.local_executors) {
@@ -660,7 +661,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         if(reconfigurationDoneSites.size() == num_of_sites){
         	sendReconfigEndAcknowledgementToAllSites();
             if (hasNextReconfigPlan()){
-                LOG.info("Moving to next plan. Leader received all notifications (it was last) and another plan is scheduled");
+                LOG.info(" @@@@@@@@@@@@@   Moving to next plan. Leader received all notifications (it was last) and another plan is scheduled");
                 if (this.hstore_site.getSiteId() == this.reconfigurationLeader) {
                     this.num_sites_complete = 0;
                     this.sites_complete = new HashSet<Integer>();
@@ -671,7 +672,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
                 send.start();
             } else { 
-                LOG.info("All sites have reported that reconfiguration is complete "); 
+                LOG.info(" @@@@@@@@@  All sites have reported that reconfiguration is complete "); 
                 LOG.info("Sending a message to notify all sites that reconfiguration has ended");
                 FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+", siteId="+this.hstore_site.getSiteId());
             }
@@ -752,7 +753,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             
         	sendReconfigEndAcknowledgementToAllSites();
             if (hasNextReconfigPlan()){
-                LOG.info("Moving to next plan. Leader received all notifications and another plan is scheduled");
+                LOG.info(" @@@@@@@@@@   Moving to next plan. Leader received all notifications and another plan is scheduled");
                 if (this.hstore_site.getSiteId() == this.reconfigurationLeader) {
                     this.num_sites_complete = 0;
                     this.sites_complete = new HashSet<Integer>();
@@ -764,7 +765,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
                 send.start();
             } else { 
-                LOG.info("All sites have reported reconfiguration is complete. " +
+                LOG.info(" @@@@@@@@@   All sites have reported reconfiguration is complete. " +
                         "Sending a message to notify all sites that reconfiguration has ended");
                 FileUtil.appendEventToFile("RECONFIGURATION_" + ReconfigurationState.END.toString()+" , siteId="+this.hstore_site.getSiteId());
             }
