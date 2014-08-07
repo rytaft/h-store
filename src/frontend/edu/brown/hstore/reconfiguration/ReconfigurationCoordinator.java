@@ -292,13 +292,18 @@ public class ReconfigurationCoordinator implements Shutdownable {
             LOG.info("Ignoring initReconfiguration request. Requested plan is already set");
             return null;
         }
-        if (reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
-        } else if (reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL) {
-
-        } else {
+        if ( !(reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY ||  
+                reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL ||
+                reconfigurationProtocol == ReconfigurationProtocols.REACTIVE ||
+                reconfigurationProtocol == ReconfigurationProtocols.NONOPT )) {
             throw new NotImplementedException();
         }
 
+        if (reconfigurationProtocol == ReconfigurationProtocols.REACTIVE || reconfigurationProtocol == ReconfigurationProtocols.NONOPT){
+            LOG.info("Disabling optimizations");
+            hstore_conf.site.reconfig_split_merge_ranges = false;
+            hstore_conf.site.reconfig_pull_single_key = true;
+        }
         // We may have reconfiguration initialized by PEs so need to ensure
         // atomic
         if (this.reconfigurationInProgress.compareAndSet(false, true)) {
@@ -451,7 +456,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
 
 
-                } else if (reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL) {
+                } else  {
                     if (reconfig_plan != null) {
                         if(this.reconfig_split  > 1 && reconfig_plan.getIncoming_ranges().size() > 0){
                             // split plan & put into queue
@@ -473,9 +478,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     } else {
                         LOG.info("No reconfig plan, nothing to do");
                     }
-                } else {
-                    throw new NotImplementedException();
-                }
+                } 
             } catch (Exception e) {
                 LOG.error("Exception converting plan", e);
                 throw new RuntimeException(e);
@@ -515,18 +518,18 @@ public class ReconfigurationCoordinator implements Shutdownable {
      */
     public void prepareReconfiguration() {
         if (this.reconfigurationInProgress.get()) {
-            if (this.reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL) {
+            if (this.reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
+                // First set the state to send control messages
+                LOG.info("Preparing STOPCOPY reconfiguration");
+                this.reconfigurationState = ReconfigurationState.PREPARE;
+                this.sendPrepare(this.findDestinationSites());
+            } else  {
                 // Move the reconfiguration state to data transfer and data will
                 // be
                 // pulled based on
                 // demand form the destination
                 this.reconfigurationState = ReconfigurationState.DATA_TRANSFER;
-            } else if (this.reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
-                // First set the state to send control messages
-                LOG.info("Preparing STOPCOPY reconfiguration");
-                this.reconfigurationState = ReconfigurationState.PREPARE;
-                this.sendPrepare(this.findDestinationSites());
-            }
+            } 
         }
     }
 
@@ -548,7 +551,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 LOG.info("Last PE finished reconfiguration for STOPCOPY");
                 resetReconfigurationInProgress();
             }
-        } else if (this.reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL){
+        } else {
             // send a message to the leader that the reconfiguration is done
             this.reconfigurationDonePartitionIds.add(partitionId);
             LOG.info(" ** Partition has finished : " + partitionId + " " + reconfigurationDonePartitionIds.size() + " / " + this.local_executors.size());
