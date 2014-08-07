@@ -57,8 +57,8 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     private int outgoingRangesCount = 0;
     
     //set of individual keys migrated out/in status, stored in a map by table name as key 
-    public Map<String,Set<List<Object>>> migratedKeyIn;
-    public Map<String,Set<List<Object>>> migratedKeyOut;
+    public Map<String,Set<List<Long>>> migratedKeyIn;
+    public Map<String,Set<List<Long>>> migratedKeyOut;
     
     private int partition_id;
     private ExplicitPartitions partitionPlan;
@@ -81,8 +81,8 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         	outgoingRangesCount += range.getMinIncl().size();
         }
         this.partition_id = partition_id;
-        this.migratedKeyIn = new HashMap<String, Set<List<Object>>>();
-        this.migratedKeyOut = new HashMap<String, Set<List<Object>>>();
+        this.migratedKeyIn = new HashMap<String, Set<List<Long>>>();
+        this.migratedKeyOut = new HashMap<String, Set<List<Long>>>();
         this.dataMigratedIn = new ArrayList<>();
         this.dataMigratedOut = new ArrayList<>();
         this.dataPartiallyMigratedOut = new ArrayList<>();
@@ -137,7 +137,8 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     public boolean markRangeAsReceived(ReconfigurationRange range ){
         boolean added =  this.dataMigratedIn.add(range);
         if(added){
-            rangesMigratedInCount++;if(rangesMigratedInCount==incomingRangesCount){
+            rangesMigratedInCount++;
+            if(rangesMigratedInCount==incomingRangesCount){
                 throw new ReconfigurationException(ExceptionTypes.ALL_RANGES_MIGRATED_IN);
             }
         }
@@ -149,21 +150,55 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         return this.dataPartiallyMigratedIn.add(range);        
     }
     
-
-    private boolean markAsMigrated(Map<String,Set<List<Object>>> migratedMapSet, String table_name, List<Object> key){
+    private boolean markAsMigrated(Map<String,Set<List<Long>>> migratedMapSet, String table_name, List<Object> key){
+        List<Long> newkeys = new ArrayList<>();
+        for(Object k : key){
+            newkeys.add(((Number)k).longValue());
+        }
+        return markAsMigratedLong(migratedMapSet, table_name, newkeys);
+    }
+    
+    private boolean markAsMigratedLong(Map<String,Set<List<Long>>> migratedMapSet, String table_name, List<Long> key){
+        table_name = table_name.toLowerCase();
         if(migratedMapSet.containsKey(table_name) == false){
-            migratedMapSet.put(table_name, new HashSet<List<Object>>());
+            migratedMapSet.put(table_name, new HashSet<List<Long>>());
         }
         return migratedMapSet.get(table_name).add(key);
         	
     }
 
-    private boolean checkMigratedMapSet(Map<String,Set<List<Object>>> migratedMapSet, String table_name, Object key){
+    private boolean checkMigratedMapSet(Map<String,Set<List<Long>>> migratedMapSet, String table_name, List<Object> key){
+        table_name = table_name.toLowerCase();
     	if(migratedMapSet.containsKey(table_name) == false){
            if (trace.val) LOG.trace("Checking a key for which there is no table tracking for yet " + table_name); 
            return false;
         }
-        return migratedMapSet.get(table_name).contains(key);
+        List<Long> newkeys = new ArrayList<>();
+        for(Object k : key){
+            newkeys.add(((Number)k).longValue());
+        }
+        return migratedMapSet.get(table_name).contains(newkeys);
+    }
+    
+    private boolean checkMigratedMapSetOtherTypes(Map<String,Set<List<Long>>> migratedMapSet, String table_name, Object key){
+        table_name = table_name.toLowerCase();
+        if(migratedMapSet.containsKey(table_name) == false){
+           if (trace.val) LOG.trace("Checking a key for which there is no table tracking for yet " + table_name); 
+           return false;
+        }
+        boolean found = migratedMapSet.get(table_name).contains(key);
+        if(found) return found;
+        try{
+            found = migratedMapSet.get(table_name).contains((Long)key);
+            if(found) return found;
+            found = migratedMapSet.get(table_name).contains((Short)key);
+            if(found) return found;
+            found = migratedMapSet.get(table_name).contains((Integer)key);
+            if(found) return found;
+        } catch (Exception e){
+            LOG.error(e);
+        }
+        return false;
     }
     
     @Override
@@ -273,6 +308,17 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         return false;
 
     }
+    public static String getKeyS(List<Object> key){
+        StringBuilder sb = new StringBuilder("[");
+        for (Object k : key){
+            sb.append(k);
+            sb.append(":");
+            sb.append(k.getClass().getName());
+            sb.append(", ");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
     
     @Override
     public boolean checkKeyOwned(Table table, List<Object> key) throws ReconfigurationException {
@@ -295,11 +341,11 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                 return true;
             } else if (expectedPartition == partition_id &&  previousPartition != partition_id) {
                 //Key should be moving to here
-                if (debug.val) LOG.debug(String.format("Key %s should be at %s. Checking if migrated in",key,partition_id));
+                if (debug.val) LOG.debug(String.format("Key (%s):%s should be at %s. Checking if migrated in",table_name,key,partition_id));
                 
                 //Has the key been received as a single key
                 if (checkMigratedMapSet(migratedKeyIn,table_name,key)== true){
-                    if (debug.val) LOG.debug(String.format("Key has been migrated in %s (%s)",key,table_name));
+                    if (debug.val) LOG.debug(String.format("Key has been migrated in %s (%s)",getKeyS(key),table_name));
                     return true;
                 } else {                       
                     //check if the key was received out in a range        
@@ -322,7 +368,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                             List<Table> relatedTablesToPull = new ArrayList<>();
                             for(String rTableName : relatedTables){
                             	Table rTable = this.partitionPlan.getCatalogContext().getTableByName(rTableName);
-                            	if (checkMigratedMapSet(migratedKeyIn,rTableName,key)== false) {
+                            	if (checkMigratedMapSet(migratedKeyIn,rTableName.toLowerCase(),key)== false) {
                                     if (debug.val) LOG.debug(" Related table key not migrated, adding to pull : " + rTable);
                                     relatedTablesToPull.add(rTable);
                                 } else {
