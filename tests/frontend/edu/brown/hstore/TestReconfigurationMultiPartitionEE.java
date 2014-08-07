@@ -675,10 +675,12 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	    	    Long[][] mins = new Long[][]{
 	    	    		{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(2) },
 		    			{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(37) },
+		    			{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(39) },
 		    			{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(90) }};
 	    	    Long[][] maxs = new Long[][]{
 	    	    		{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(20) },
         				{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(38) },
+        				{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(39) },
         				{ new Long(warehouse_scale), new Long(district_scale), new Long(order_scale), new Long(95) }};
 	    	    ReconfigurationRange range = ReconfigurationUtil.getReconfigurationRange(this.orderline_tbl, mins, maxs, 1, 2);
         
@@ -688,7 +690,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	            extract = System.currentTimeMillis()-start; 
 	            assertFalse(resTable.getSecond());
 	            LOG.info("Tuples : " + resTable.getFirst().getRowCount());
-	            assertEquals(24, resTable.getFirst().getRowCount());
+	            assertEquals(25, resTable.getFirst().getRowCount());
 	            
 	            //assert empty     
 	            resTableVerify= this.ee.extractTable(this.orderline_tbl, this.orderline_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
@@ -703,7 +705,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
 	
 	            //re extract and check its there
 	            resTableVerify= this.ee.extractTable(this.orderline_tbl, this.orderline_tbl.getRelativeIndex(), extractTable, 1, 1, undo++, -1, 1);
-	            assertEquals(24, resTableVerify.getFirst().getRowCount());
+	            assertEquals(25, resTableVerify.getFirst().getRowCount());
     		}
 	    }
 	}
@@ -738,7 +740,7 @@ public class TestReconfigurationMultiPartitionEE extends BaseTestCase {
     		//extract
 
     		Long[][] mins = new Long[][]{{ new Long(warehouse_scale)}};
-    		Long[][] maxs = new Long[][]{{ new Long(warehouse_scale+1)}};
+    		Long[][] maxs = (i%2 == 0 ? new Long[][]{{ new Long(warehouse_scale+1)}} : new Long[][]{{ new Long(warehouse_scale)}});
     		ReconfigurationRange range = ReconfigurationUtil.getReconfigurationRange(this.orderline_tbl, mins, maxs, 1, 2);
 
     		extractTable = ReconfigurationUtil.getExtractVoltTable(range);   
