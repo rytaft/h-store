@@ -174,19 +174,15 @@ bool MigrationManager::inRange(const TableTuple& tuple, const RangeMap& rangeMap
   }
 
   RangeMap::const_iterator it = rangeMap.upper_bound(keys);
-  if(it == rangeMap.end() || ((it->second).compare(keys) > 0)) {
-    it = rangeMap.lower_bound(keys);
-  }
   if(it == rangeMap.end()) {
     return false;
   }
 
   TableTuple minKeys = it->second;
   TableTuple maxKeys = it->first;
-    
+
   //Is the partitionColumn in the range between min inclusive and max exclusive
-  if ((minKeys.compare(keys) <= 0) && ((maxKeys.compare(keys) > 0) || 
-      ((minKeys.compare(maxKeys) == 0) && maxKeys.compare(keys) == 0))){
+  if ((minKeys.compare(keys) <= 0) && (maxKeys.compare(keys) > 0)) {
     return true;
   }
 
@@ -364,6 +360,18 @@ void MigrationManager::getRangeMap(RangeMap& rangeMap, TableIterator& inputItera
     if(minKeys.compare(maxKeys) > 0) {
       //Min key should never be greater than maxKey
       throwFatalException("Max extract key is smaller than min key");
+    }
+
+    // special case: if we are extracting a single key, increment maxKeys
+    if(minKeys.compare(maxKeys) == 0) {
+      int lastNonNull = 0;
+      for(int i = 0; i < minKeys.sizeInValues(); i++) {
+	if(minKeys.getNValue(i).isNull()) {
+	  break;
+	}
+	lastNonNull = i;
+      }
+      maxKeys.setNValue(lastNonNull, maxKeys.getNValue(lastNonNull).op_increment());
     }
 
     if(rangeMap.find(maxKeys) == rangeMap.end()) {
