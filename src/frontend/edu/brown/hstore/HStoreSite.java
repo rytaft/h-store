@@ -721,6 +721,12 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
             PartitionExecutor executor = this.getPartitionExecutor(partition);
             if (hstore_conf.global.reconfiguration_enable) {
                 executor.setReconfigurationCoordinator(reconfiguration_coordinator);
+                AbstractHasher h = executor.getPartitionEstimator().getHasher();
+                if(h instanceof PlannedHasher){
+                    ((PlannedHasher)(h)).setReconfigCoord(reconfiguration_coordinator);
+                } else if(h instanceof TwoTieredRangeHasher){
+                    ((TwoTieredRangeHasher)(h)).setReconfigCoord(reconfiguration_coordinator);
+                }
             }
             //executor.initHStoreSite(this);
             

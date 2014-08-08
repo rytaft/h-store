@@ -121,6 +121,15 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
             throw new RuntimeException(ex);
         }
     }
+    
+    /**
+     * @param catalog_db
+     * @param num_partitions
+     */
+    public PlannedHasher(CatalogContext catalogContext, int num_partitions, HStoreConf hstore_conf, ReconfigurationCoordinator rc) {
+        this(catalogContext, num_partitions,hstore_conf);
+        this.reconfigCoord = rc;
+    }
 
     /**
      * @param catalog_db
@@ -202,7 +211,7 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     
     @Override
     public AbstractHasher clone() {
-    	return new PlannedHasher(this.catalogContext, this.num_partitions, this.hstore_conf);
+        return new PlannedHasher(this.catalogContext, this.num_partitions, this.hstore_conf, this.reconfigCoord);
     }
 
     public synchronized ExplicitPartitions getPartitions() {

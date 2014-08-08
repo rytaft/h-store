@@ -94,6 +94,11 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
         }
     }
 
+    public TwoTieredRangeHasher(CatalogContext catalogContext, int num_partitions, HStoreConf hstore_conf, ReconfigurationCoordinator rc) {
+        this(catalogContext,num_partitions,hstore_conf);
+        this.reconfigCoord = rc;
+    }
+    
     /**
      * @param catalog_db
      */
@@ -174,7 +179,7 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
 
     @Override
     public AbstractHasher clone() {
-    	return new TwoTieredRangeHasher(this.catalogContext, this.num_partitions, this.hstore_conf);
+    	return new TwoTieredRangeHasher(this.catalogContext, this.num_partitions, this.hstore_conf, this.reconfigCoord);
     }
 
     public synchronized ExplicitPartitions getPartitions() {

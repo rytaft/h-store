@@ -4035,7 +4035,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 int pullID =getNextRequestToken();
                 int queueSize = this.lockQueue.size();
                 long blockStartTime = ProfileMeasurement.getTime();
-                LOG.info(String.format("(%s) PullId:%s pulling number of ranges and then blocking: %s",partitionId, pullID, pullRequestsNeeded.size()));
+                LOG.info(String.format("(%s) TxnID:%s PullId:%s pulling number of ranges and then blocking: %s",partitionId, this.currentTxnId , pullID, pullRequestsNeeded.size()));
                 if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.start();
                 //Issue the pull
                 if (this.reconfiguration_coordinator == null){
