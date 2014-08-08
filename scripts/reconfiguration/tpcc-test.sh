@@ -14,9 +14,10 @@ DATA_DIR="out"
 FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
-EXP_TYPES=( \
-    "reconfig-dynsplit --partitions=4 --benchmark-size=12 --splitplan=10 --plandelay=2000 --chunksize=20000 --asyncsize=20000 --asyncdelay=1000 " 
-#    "reconfig-2b --partitions=2 --benchmark-size=4 --splitplan=10 --plandelay=2000 --chunksize=20000 --asyncsize=20000 --asyncdelay=1000  --exp-suffix=base" 
+EXP_TYPES=( 
+    #"reconfig-fast --partitions=2 --benchmark-size=4 --splitplan=1 --plandelay=200 --chunksize=20000 --asyncsize=10000 --asyncdelay=100  --exp-suffix=base --global.hasher_plan=scripts/reconfiguration/plans/t-4-2.json" 
+    "reconfig-fast --partitions=2 --benchmark-size=4 --splitplan=8 --plandelay=200 --chunksize=20000 --asyncsize=10000 --asyncdelay=100  --exp-suffix=base " 
+#    "reactive-fast --partitions=2 --benchmark-size=4 --splitplan=1 --plandelay=200 --chunksize=20000 --asyncsize=10000 --asyncdelay=100  --exp-suffix=reactive --global.hasher_plan=scripts/reconfiguration/plans/t-4-2.json" 
     )
 #    "reconfig-dynsplit --partitions=2 --benchmark-size=4 --splitplan=10 --plandelay=2000 --chunksize=20000 --asyncsize=20000 --asyncdelay=2000  --exp-suffix=split-10-size-20-delay-2-asyncdelay-2" 
 #    "reconfig-dynsplit --partitions=2 --benchmark-size=4 --splitplan=10 --plandelay=2000 --chunksize=20000 --asyncsize=20000 --asyncdelay=5000  --exp-suffix=split-10-size-20-delay-2-asyncdelay-5" 
@@ -48,10 +49,10 @@ for b in tpcc; do
         --plot \
 	    --client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=300000 \
-        --client.warmup=30000 \
+        --client.duration=60000 \
+        --client.warmup=5000 \
         --client.output_results_csv=interval_res.csv \
-        --reconfig=60000:1:0 \
+        --reconfig=10000:1:0 \
         --sweep-reconfiguration 
     )
     

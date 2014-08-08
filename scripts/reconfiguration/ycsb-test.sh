@@ -14,8 +14,9 @@ DATA_DIR="y-out"
 FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
-EXP_TYPES=( \
-    "reconfig-2b --partitions=2 --benchmark-size=100000" \
+EXP_TYPES=( 
+#    "reconfig-2b --partitions=2 --benchmark-size=100000" 
+    "stopcopy-2b --partitions=2 --benchmark-size=100000" 
 #    "reconfig-2b --partitions=8 --benchmark-size=10000000  --exp-suffix=y-s10000000-8" \
 #    "reconfig-2b --partitions=8 --benchmark-size=20000000  --exp-suffix=y-s20000000-8" \
 #    "reconfig-2b --partitions=12 --benchmark-size=20000000  --exp-suffix=y-s20000000-12" \

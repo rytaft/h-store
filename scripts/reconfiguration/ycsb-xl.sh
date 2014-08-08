@@ -15,10 +15,16 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( 
-    "reactive-fast --partitions=2 --benchmark-size=4 --splitplan=10 --plandelay=2000 --chunksize=20000 --asyncsize=20000 --asyncdelay=5000 --exp-suffix=s10-p2-c20-a5" 
-    )
+    "stopcopy-ycsb-zipf --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
+    "reconfig-ycsb-zipf --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
+)
 
-for b in tpcc; do
+#    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=20000000 --exp-suffix=xl1contract --reconfig=2565000:1:0 " \
+#    "reconfig-ycsb-unirom --partitions=8 --benchmark-size=20000000 --exp-suffix=xl1contract --reconfig=2565000:1:0 " \
+
+
+
+for b in ycsb; do
     PARAMS=( \
         --no-update \
         --results-dir=$DATA_DIR \
@@ -28,13 +34,12 @@ for b in tpcc; do
         --exp-attempts=1 \        
         --no-json \
         --plot \
-	    --client.interval=1000 \
+        --sweep-reconfiguration \
+        --client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=150000 \
-        --client.warmup=15000 \
-        --client.output_results_csv=interval_res.csv \
-        --reconfig=30000:1:0 \
-        --sweep-reconfiguration 
+        --client.duration=300000 \
+        --client.warmup=30000 \
+        --client.output_results_csv=interval_res.csv
     )
     
     i=0
