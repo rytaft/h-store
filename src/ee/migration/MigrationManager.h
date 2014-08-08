@@ -137,6 +137,9 @@ private:
     const TupleSchema* m_partitionKeySchema;
     const TupleSchema* m_matchingIndexColsSchema;
     TableCache tableCache;
+    
+    bool m_markNotDelete;
+    bool m_dynamicIndex;
 
 #ifdef EXTRACT_STAT_ENABLED
     boost::timer m_timer;

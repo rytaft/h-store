@@ -37,9 +37,6 @@
 #define EXTRACT_STAT_ENABLED
 #endif
 
-#ifndef MIGRATE_DELETE_ENABLED
-#define MIGRATE_DELETE_ENABLED
-#endif
 
 #ifdef EXTRACT_STAT_ENABLED
 #include "boost/timer.hpp"
@@ -64,7 +61,8 @@ MigrationManager::MigrationManager(ExecutorContext *executorContext, catalog::Da
     
     m_extractedTables.clear();
     m_extractedTableNames.clear();
-
+    m_markNotDelete = true;
+    m_dynamicIndex = true;
     init(NULL);
 }
 
@@ -203,13 +201,13 @@ bool MigrationManager::extractTuple(TableTuple& tuple) {
   }
  
  
-  #ifdef MIGRATE_DELETE_ENABLED
+  if (m_markNotDelete == false) {
     m_table->deleteTuple(tuple, true);
-  #else  
+  } else {
     if (!m_table->migrateTuple(tuple)){
       VOLT_ERROR("Error migrating tuple");
     }
-  #endif  
+  }
   
   //
   
@@ -273,7 +271,7 @@ bool MigrationManager::scanTable(const RangeMap& rangeMap) {
   
   TableTuple tuple(m_table->schema());
   TupleList tupleList;
-  if (tableCache.count(tableRange)){
+  if (m_dynamicIndex == true && tableCache.count(tableRange)){
       tupleList = tableCache[tableRange];
   }
 
@@ -324,9 +322,13 @@ bool MigrationManager::scanTable(const RangeMap& rangeMap) {
         current_tuple_id =  m_table->getTupleID(tuple.address());
         if (!m_table->flagToMigrateTuple(tuple)){
           VOLT_ERROR("Error setting toMigrateFlag for tuple");
-        }             
-        tupleList.push(current_tuple_id);
+        }
         if (!moreData) moreData = true;
+        if (m_dynamicIndex == false){
+          //We are not going to index data
+          return moreData;
+        }
+        tupleList.push(current_tuple_id);
       }
       else {
         //VOLT_INFO("Extracted tuple %s", tuple.debug("").c_str());           
@@ -338,9 +340,6 @@ bool MigrationManager::scanTable(const RangeMap& rangeMap) {
   tableCache[tableRange] = tupleList;  
   return moreData; 
 }
-
-
-
 
 
 void MigrationManager::getRangeMap(RangeMap& rangeMap, TableIterator& inputIterator, TableTuple& extractTuple) {
