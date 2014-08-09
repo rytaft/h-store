@@ -28,7 +28,7 @@ RECONFIG_EXPERIMENTS = [
     "reconfig-dynsplit-fine-grained",
 ]
 
-RECONFIG_CLIENT_COUNT = 3
+RECONFIG_CLIENT_COUNT = 5
 
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
@@ -39,11 +39,16 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.output_response_status"] = True
         fabric.env["client.threads_per_host"] = min(50, int(partitions * 4))
     
-    
-    if args['exp_type'] in ['reconfig-ycsb-zipf','stopcopy-ycsb-zipf','reconfig-ycsb-uniform','stopcopy-ycsb-uniform','reconfig-ycsb-hotspot','stopcopy-ycsb-hotspot']  :
+    _et = args['exp_type']
+    ycsb_exps =['reconfig-ycsb-zipf','reconfig-ycsb-uniform','reconfig-ycsb-hotspot',
+       'stopcopy-ycsb-zipf','stopcopy-ycsb-uniform','stopcopy-ycsb-hotspot',
+       'reactive-ycsb-zipf','reactive-ycsb-uniform','reactive-ycsb-hotspot']
+
+    if any([x in _et for x in ycsb_exps]):
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
         #fabric.env["client.txnrate"] = 100000
         fabric.env["client.blocking"] = True
+        fabric.env["client.blocking_concurrent"] = 2 # * int(partitions/8)
         fabric.env["client.output_response_status"] = True
         fabric.env["client.output_exec_profiling"] = "execprofile.csv"
         fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
@@ -52,9 +57,9 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["site.reconfig_chunk_size_kb"] = 10048 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 8048
         fabric.env["site.commandlog_enable"] = False
-        fabric.env["client.threads_per_host"] = 12
-        fabric.env["benchmark.ReadRecordProportion"] = 0.95
-        fabric.env["benchmark.UpdateRecordProportion"] = 0.05
+        fabric.env["client.threads_per_host"] =12 
+        fabric.env["benchmark.ReadRecordProportion"] = 0.85
+        fabric.env["benchmark.UpdateRecordProportion"] = 0.15
         fabric.env["site.reconfig_chunk_size_kb"] = 10048 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 8048
         fabric.env["benchmark.loadthreads"] = max(16, partitions)

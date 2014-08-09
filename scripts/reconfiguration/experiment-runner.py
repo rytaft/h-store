@@ -237,6 +237,9 @@ EXPERIMENT_SETTINGS = [
     "stopcopy-ycsb-zipf",
     "stopcopy-ycsb-hotspot",
     "stopcopy-ycsb-uniform",
+    "reactive-ycsb-zipf",
+    "reactive-ycsb-hotspot",
+    "reactive-ycsb-uniform",
 
     "reconfig-tpcc-hotspot-0",
     "reconfig-tpcc-hotspot-20",

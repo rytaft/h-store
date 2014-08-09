@@ -17,6 +17,10 @@ FIRST_PARAM_OFFSET=0
 EXP_TYPES=( 
     "stopcopy-ycsb-zipf --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
     "reconfig-ycsb-zipf --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
+    "reactive-ycsb-zipf --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
+    "stopcopy-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
+    "reconfig-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
+    "reactive-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
 )
 
 #    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=20000000 --exp-suffix=xl1contract --reconfig=2565000:1:0 " \
