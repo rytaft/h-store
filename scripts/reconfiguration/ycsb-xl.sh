@@ -17,10 +17,12 @@ FIRST_PARAM_OFFSET=0
 EXP_TYPES=( 
     "stopcopy-ycsb-zipf --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
     "reconfig-ycsb-zipf --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
-    "reactive-ycsb-zipf --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
-    "stopcopy-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
-    "reconfig-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
-    "reactive-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
+    "stopcopy-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=shrink --reconfig=20000:shrink:0 " 
+    "reconfig-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=shrink --reconfig=20000:shrink:0 " 
+#    "reactive-ycsb-zipf --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
+#    "stopcopy-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
+#    "reconfig-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
+#    "reactive-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
 )
 
 #    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=20000000 --exp-suffix=xl1contract --reconfig=2565000:1:0 " \
@@ -42,7 +44,7 @@ for b in ycsb; do
         --client.interval=1000 \
         --client.output_interval=true \
         --client.duration=300000 \
-        --client.warmup=30000 \
+        --client.warmup=60000 \
         --client.output_results_csv=interval_res.csv
     )
     
