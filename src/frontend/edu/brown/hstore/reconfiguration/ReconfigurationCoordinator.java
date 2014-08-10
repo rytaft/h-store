@@ -90,7 +90,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     
     
     //Force reconfig look ups to go to destination
-    public static final boolean FORCE_DESTINATION = false;
+    public static boolean FORCE_DESTINATION = false;
     
     // Cached list of local executors
     private List<PartitionExecutor> local_executors;
@@ -303,9 +303,17 @@ public class ReconfigurationCoordinator implements Shutdownable {
             LOG.info("Disabling optimizations");
             hstore_conf.site.reconfig_split_merge_ranges = false;
             hstore_conf.site.reconfig_pull_single_key = true;
+            if (reconfigurationProtocol == ReconfigurationProtocols.REACTIVE){
+                FORCE_DESTINATION = true;
+            }
         } else if (reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL){
             hstore_conf.site.reconfig_split_merge_ranges = true;
             hstore_conf.site.reconfig_pull_single_key = false;
+        } else if (reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY ){
+
+            hstore_conf.site.reconfig_split_merge_ranges = false;
+            hstore_conf.site.reconfig_pull_single_key = true;
+            
         }
         // We may have reconfiguration initialized by PEs so need to ensure
         // atomic
