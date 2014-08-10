@@ -59,7 +59,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["site.reconfig_chunk_size_kb"] = 10048 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 8048
         fabric.env["site.commandlog_enable"] = False
-        fabric.env["client.threads_per_host"] =12 
+        fabric.env["client.threads_per_host"] =15
         fabric.env["benchmark.ReadRecordProportion"] = 0.85
         fabric.env["benchmark.UpdateRecordProportion"] = 0.15
         fabric.env["site.reconfig_chunk_size_kb"] = 10048 
@@ -68,7 +68,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
 
     if 'dynsplit' in args['exp_type']:
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
-        fabric.env["client.blocking_concurrent"] = 1
+        fabric.env["client.blocking_concurrent"] = 2
         fabric.env["site.reconfig_chunk_size_kb"] = 10048 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 8048
         #fabric.env["client.txnrate"] = 100000
@@ -78,7 +78,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
-        fabric.env["client.threads_per_host"] = 12
+        fabric.env["client.threads_per_host"] = 15
         fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.loadthread_per_warehouse"] = False
         fabric.env["benchmark.loadthreads"] = max(16, partitions)            
