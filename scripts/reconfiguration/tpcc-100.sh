@@ -15,7 +15,13 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( 
-    "reconfig-fine-test --partitions=18 --benchmark-size=100 --splitplan=20 --plandelay=100 --chunksize=10048 --asyncsize=8048 --asyncdelay=50 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
+    "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100 --exp-suffix=s20 --splitplan=20 --plandelay=100 --asyncdelay=50 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
+    "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100 --exp-suffix=s4 --splitplan=4 --plandelay=100 --asyncdelay=50 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
+    "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100  --plandelay=100 --asyncdelay=50 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
+    "reconfig-dynsplit --partitions=18 --benchmark-size=100 --exp-suffix=s2 --splitplan=2 --plandelay=100 --asyncdelay=50 " 
+    "reconfig-dynsplit --partitions=18 --benchmark-size=100 --plandelay=100 --asyncdelay=50 " 
+    "stopcopy-dynsplit --partitions=18 --benchmark-size=100  --plandelay=100 --asyncdelay=50 " 
+    "reactive -dynsplit --partitions=18 --benchmark-size=100 --plandelay=100 --asyncdelay=50 " 
     )
 
 for b in tpcc; do
