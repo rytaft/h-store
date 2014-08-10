@@ -606,6 +606,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
     elif "stopcopy" in args['exp_type']:
         LOG.info("StopCopy Experiment")
         _reconfig = True
+        fabric.env["site.reconfig_split_merge_ranges"] = False
     elif "reactive" in args['exp_type']:
         LOG.info("Reactive Experiment")
         _reconfig = True
