@@ -15,31 +15,38 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( 
-    "stopcopy-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls1 --reconfig=30000:spread1:0 " 
-    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls1 --reconfig=30000:spread1:0 " 
+    #"stopcopy-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls1 --reconfig=30000:spread1:0 " 
+    #"reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls1 --reconfig=30000:spread1:0 " 
+    "reactive-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2 --reconfig=30000:spread2:0 " 
     "stopcopy-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2 --reconfig=30000:spread2:0 " 
-    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2 --reconfig=30000:spread2:0 "
-     
-      
-    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2-s10 --splitplan=10 --reconfig=30000:spread2:0 "
-    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls1-s10 --splitplan=10 --reconfig=30000:spread1:0 " 
-
-    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2-s20 --splitplan=20 --reconfig=30000:spread2:0 "
-    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls1-s20 --splitplan=20 --reconfig=30000:spread1:0 " 
+    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2 --reconfig=30000:spread2:0 "      
+    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2_s10 --splitplan=10 --reconfig=30000:spread2:0 "
+#    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls1-s10 --splitplan=10 --reconfig=30000:spread1:0 " 
+    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2_s20 --splitplan=20 --reconfig=30000:spread2:0 "
+ #   "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls1-s20 --splitplan=20 --reconfig=30000:spread1:0 " 
 
      
-    "stopcopy-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc1 --reconfig=30000:contract1:0 " 
-    "reconfig-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc1 --reconfig=30000:contract1:0 " 
+   # "stopcopy-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc1 --reconfig=30000:contract1:0 " 
+   # "reconfig-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc1 --reconfig=30000:contract1:0 " 
     
     "stopcopy-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc2 --reconfig=30000:contract2:0 " 
+    "reactive-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc2 --reconfig=30000:contract2:0 " 
     "reconfig-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc2 --reconfig=30000:contract2:0 " 
+    "reconfig-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc2_s10 --splitplan=10  --reconfig=30000:contract2:0 " 
+    "reconfig-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc2_s20 --splitplan=20 --reconfig=30000:contract2:0 " 
+
+    "stopcopy-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=shuf --reconfig=30000:shuffle:0 " 
+    "reactive-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=shuf --reconfig=30000:shuffle:0 " 
+    "reconfig-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=shuf --reconfig=30000:shuffle:0 " 
+    "reconfig-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=shuf_s10 --splitplan=10  --reconfig=30000:shuffle:0 " 
+    "reconfig-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=shuf_s20 --splitplan=20 --reconfig=30000:shuffle:0 " 
     
-    "stopcopy-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=lc2 --reconfig=30000:contract2:0 " 
-    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=lc2 --reconfig=30000:contract2:0 " 
+   # "stopcopy-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=lc2 --reconfig=30000:contract2:0 " 
+   # "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=lc2 --reconfig=30000:contract2:0 " 
     
     
-    "reconfig-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc1-s10 --splitplan=10 --reconfig=30000:contract2:0 " 
-    "reconfig-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc1-s50 --splitplan=50 --reconfig=30000:contract2:0 " 
+   # "reconfig-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc1-s10 --splitplan=10 --reconfig=30000:contract2:0 " 
+   # "reconfig-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc1-s50 --splitplan=50 --reconfig=30000:contract2:0 " 
 
     
 #    "reactive-ycsb-zipf --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
