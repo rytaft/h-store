@@ -24,11 +24,13 @@ RECONFIG_EXPERIMENTS = [
     "reconfig-slow",
     "reconfig-2split",
     "reconfig-dynsplit",
+    "reactive-dynsplit",
+    "stopcopy-dynsplit",
     "reconfig-dynsplit-coarse",
     "reconfig-dynsplit-fine-grained",
 ]
 
-RECONFIG_CLIENT_COUNT = 5
+RECONFIG_CLIENT_COUNT = 4
 
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
@@ -83,6 +85,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["benchmark.neworder_hotspot"]= True
         fabric.env["benchmark.hotspot_ops_percent"]= 80
         fabric.env["benchmark.hotspot_size"]= 3
+        fabric.env["hstore.partitions_per_site"] = 6 
         
     if 'reconfig-dynsplit' in  args['exp_type']:
         pass
