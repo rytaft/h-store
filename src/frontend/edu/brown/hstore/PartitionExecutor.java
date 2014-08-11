@@ -1536,70 +1536,76 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         else if (work instanceof AsyncDataPullRequestMessage) {
             //We have received and are processing a data pull request
             AsyncDataPullRequestMessage pullMsg = (AsyncDataPullRequestMessage)work;
-            AsyncPullRequest pull = pullMsg.getAsyncPullRequest();
-            LOG.info("Extracting data for a async data pull request at partition " + this.partitionId + " : " + pull.getAsyncPullIdentifier());
-            try {                
-                String tableName = pull.getVoltTableName();
-                
-                ByteString minInclBytes = pull.getMinInclusive();
-                ByteString maxExclBytes = pull.getMaxExclusive();
-                VoltTable minIncl = FastDeserializer.deserialize(minInclBytes.toByteArray(), VoltTable.class);
-                VoltTable maxExcl = FastDeserializer.deserialize(maxExclBytes.toByteArray(), VoltTable.class);
-                
-                if(hstore_conf.site.reconfig_replication_delay){
-                    replicationDelay();
-                }
-
-                int chunkId = pullMsg.getAndIncrementChunk();
-                int queueSize = this.lockQueue.size();
-                long start = System.currentTimeMillis();
-                Pair<VoltTable,Boolean> vt = extractTuples(pull.getTransactionID(), pull.getOldPartition(), 
-                        pull.getNewPartition(), pull.getVoltTableName(),
-                        minIncl, maxExcl, pull.getAsyncPullIdentifier(), chunkId, false); 
-                long timeTaken = System.currentTimeMillis() - start;
-                int queueGrowth = this.lockQueue.size() - queueSize;
-                VoltTable voltTable = vt.getFirst();
-                int records = -1;
-                if (voltTable != null) 
-                	records = voltTable.getRowCount();
-                
-
-                int size = (voltTable.getRowCount() * voltTable.getRowSize())/1000;
-                
-                ByteString tableBytes = null;
-                try {
-                    ByteBuffer b = ByteBuffer.wrap(FastSerializer.serialize(voltTable));
-                    tableBytes = ByteString.copyFrom(b.array());
-                } catch (Exception ex) {
-                    throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
-                }
-                
-
-                boolean moreDataNeeded = vt.getSecond().booleanValue();  
-                MultiPullReplyRequest multiPullReplyRequest = MultiPullReplyRequest.newBuilder().
-                        setPullIdentifier(pull.getAsyncPullIdentifier()).
-                        setIsAsync(true).
-                        setSenderSite(this.hstore_site.getSiteId()).  
-                        setOldPartition(pull.getOldPartition()).setNewPartition(pull.getNewPartition()).setVoltTableName(pull.getVoltTableName())
-                        .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes)
-                        .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
-                
-                this.reconfiguration_coordinator.sendMultiPullReplyRequestFromPE(pull.getSenderSite(), multiPullReplyRequest);
-               
-                        
-                if(moreDataNeeded){
-                    LOG.info(" ### We have more data in the async pull to schedule. Queue the" +
-                    		"job to local requestPullQueue. Size : " + asyncRequestPullQueue.size());
-                    asyncRequestPullQueue.add(pullMsg);
-                    //this.work_queue.offer(pullMsg);
-                }
-                
-                LOG.info(String.format("CompletedExtract, Async2, PullId=%s, Chunks=%s, MoreData=%s, Time=%s, QueueGrowth=%s, Records=%s, Table=%s ",
-                        pull.getAsyncPullIdentifier(), chunkId, moreDataNeeded, timeTaken, queueGrowth, records, tableName)); 
-            } catch (Exception e) {
-                LOG.error("Exception when processing async data pull response", e);
+            if(pullMsg.getProtocol().equals("s&c")){
+                LOG.info("S&C");
+                processStopCopyPullRequestMessage(pullMsg);
             }
+            else {
+                AsyncPullRequest pull = pullMsg.getAsyncPullRequest();
+                LOG.info("Extracting data for a async data pull request at partition " + this.partitionId + " : " + pull.getAsyncPullIdentifier());
+                try {                
+                    String tableName = pull.getVoltTableName();
+                    
+                    ByteString minInclBytes = pull.getMinInclusive();
+                    ByteString maxExclBytes = pull.getMaxExclusive();
+                    VoltTable minIncl = FastDeserializer.deserialize(minInclBytes.toByteArray(), VoltTable.class);
+                    VoltTable maxExcl = FastDeserializer.deserialize(maxExclBytes.toByteArray(), VoltTable.class);
+                    
+                    if(hstore_conf.site.reconfig_replication_delay){
+                        replicationDelay();
+                    }
+    
+                    int chunkId = pullMsg.getAndIncrementChunk();
+                    int queueSize = this.lockQueue.size();
+                    long start = System.currentTimeMillis();
+                    Pair<VoltTable,Boolean> vt = extractTuples(pull.getTransactionID(), pull.getOldPartition(), 
+                            pull.getNewPartition(), pull.getVoltTableName(),
+                            minIncl, maxExcl, pull.getAsyncPullIdentifier(), chunkId, false); 
+                    long timeTaken = System.currentTimeMillis() - start;
+                    int queueGrowth = this.lockQueue.size() - queueSize;
+                    VoltTable voltTable = vt.getFirst();
+                    int records = -1;
+                    if (voltTable != null) 
+                    	records = voltTable.getRowCount();
+                    
+    
+                    int size = (voltTable.getRowCount() * voltTable.getRowSize())/1000;
+                    
+                    ByteString tableBytes = null;
+                    try {
+                        ByteBuffer b = ByteBuffer.wrap(FastSerializer.serialize(voltTable));
+                        tableBytes = ByteString.copyFrom(b.array());
+                    } catch (Exception ex) {
+                        throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
+                    }
+                    
+    
+                    boolean moreDataNeeded = vt.getSecond().booleanValue();  
+                    MultiPullReplyRequest multiPullReplyRequest = MultiPullReplyRequest.newBuilder().
+                            setPullIdentifier(pull.getAsyncPullIdentifier()).
+                            setIsAsync(true).
+                            setSenderSite(this.hstore_site.getSiteId()).  
+                            setOldPartition(pull.getOldPartition()).setNewPartition(pull.getNewPartition()).setVoltTableName(pull.getVoltTableName())
+                            .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes)
+                            .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
+                    
+                    this.reconfiguration_coordinator.sendMultiPullReplyRequestFromPE(pull.getSenderSite(), multiPullReplyRequest);
+                   
+                            
+                    if(moreDataNeeded){
+                        LOG.info(" ### We have more data in the async pull to schedule. Queue the" +
+                        		"job to local requestPullQueue. Size : " + asyncRequestPullQueue.size());
+                        asyncRequestPullQueue.add(pullMsg);
+                        //this.work_queue.offer(pullMsg);
+                    }
+                    
+                    LOG.info(String.format("CompletedExtract, Async2, PullId=%s, Chunks=%s, MoreData=%s, Time=%s, QueueGrowth=%s, Records=%s, Table=%s ",
+                            pull.getAsyncPullIdentifier(), chunkId, moreDataNeeded, timeTaken, queueGrowth, records, tableName)); 
+                } catch (Exception e) {
+                    LOG.error("Exception when processing async data pull response", e);
+                }
             
+            }   
         }
         // Async Pull Reply
         else if (work instanceof MultiDataPullResponseMessage) {
@@ -3266,7 +3272,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             	}
             	LOG.info("Processing the Pull Request for Stop and Copy");
             	//Its Stop and Copy Work so process the async Chunked Pull Messages
-            	processAsyncDataPullRequestMessage(asyncDataPullRequestMessage);
+            	processStopCopyPullRequestMessage(asyncDataPullRequestMessage);
             	this.work_queue.remove(work);
             	workDone = true;
             }
@@ -3409,10 +3415,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
     
     
-    public void processAsyncDataPullRequestMessage(AsyncDataPullRequestMessage pullMsg){
+    public void processStopCopyPullRequestMessage(AsyncDataPullRequestMessage pullMsg){
     	
         AsyncPullRequest pull = pullMsg.getAsyncPullRequest();
-        LOG.info("Extracting data for a async data pull request at partition " + this.partitionId + " : " + pull.getAsyncPullIdentifier());
+        LOG.info("Extracting data for a stop copy data pull request at partition " + this.partitionId + " : " + pull.getAsyncPullIdentifier());
         try {                
             String tableName = pull.getVoltTableName();
             Table catalog_tbl = this.catalogContext.getTableByName(tableName);
@@ -3428,51 +3434,47 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 replicationDelay();
             }
 
-            int chunkId = pullMsg.getAndIncrementChunk();
-            long start = System.currentTimeMillis();
-            Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, pull.getTransactionID(), lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId, hstore_conf.site.reconfig_async_chunk_size_kb*1024);
-            long timeTaken = System.currentTimeMillis() - start;
-            int size = (vt.getFirst().getRowCount() * vt.getFirst().getRowSize())/1000;
-            
-            this.reconfiguration_stats.trackExtract(partitionId, tableName, vt.getFirst().getRowSize(), size , timeTaken, 2, false, pull.getAsyncPullIdentifier(), chunkId, ReconfigurationUtil.getFirstNumber(minIncl), ReconfigurationUtil.getFirstNumber(maxExcl));
-            VoltTable voltTable = vt.getFirst();
-            int records = voltTable.getRowCount();
-            ByteString tableBytes = null;
-            try {
-                ByteBuffer b = ByteBuffer.wrap(FastSerializer.serialize(voltTable));
-                tableBytes = ByteString.copyFrom(b.array());
-            } catch (Exception ex) {
-                throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
-            }
-            
-            boolean moreDataNeeded = vt.getSecond().booleanValue();  
-            MultiPullReplyRequest multiPullReplyRequest = MultiPullReplyRequest.newBuilder().
-                    setPullIdentifier(pull.getAsyncPullIdentifier()).
-                    setIsAsync(true).
-                    setSenderSite(this.hstore_site.getSiteId()).  
-                    setOldPartition(pull.getOldPartition()).setNewPartition(pull.getNewPartition()).setVoltTableName(pull.getVoltTableName())
-                    .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes)
-                    .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
-            
-            this.reconfiguration_stats.trackAsyncSrcResponse(this.partitionId, pull.getNewPartition(), pull.getVoltTableName(), 
-                    multiPullReplyRequest.getVoltTableData().size()/1000, moreDataNeeded );
 
             
-            LOG.info("Sending a multi pull async request");
-            LOG.info("TODO do we need to invoke something different if local? Right now both remote / local put in with callback");
-            this.reconfiguration_coordinator.sendMultiPullReplyRequestFromPE(pull.getSenderSite(), multiPullReplyRequest);
-           
-                    
-            if(moreDataNeeded){
-                LOG.info(" ### We have more data in the async pull to schedule. Queue the" +
-                		"job to local requestPullQueue. Size : " + asyncRequestPullQueue.size());
-                asyncRequestPullQueue.add(pullMsg);
-                //this.work_queue.offer(pullMsg);
+            boolean moreDataNeeded = true;
+            while(moreDataNeeded) {
+                int chunkId = pullMsg.getAndIncrementChunk();
+                long start = System.currentTimeMillis();
+                Pair<VoltTable,Boolean> vt = this.ee.extractTable(catalog_tbl, table_id, extractTable, pull.getTransactionID(), lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId, hstore_conf.site.reconfig_async_chunk_size_kb*1024);
+                long timeTaken = System.currentTimeMillis() - start;
+                int size = (vt.getFirst().getRowCount() * vt.getFirst().getRowSize())/1000;
+                this.reconfiguration_stats.trackExtract(partitionId, tableName, vt.getFirst().getRowSize(), size , timeTaken, 2, false, pull.getAsyncPullIdentifier(), chunkId, ReconfigurationUtil.getFirstNumber(minIncl), ReconfigurationUtil.getFirstNumber(maxExcl));
+                VoltTable voltTable = vt.getFirst();
+                int records = voltTable.getRowCount();
+                ByteString tableBytes = null;
+                try {
+                    ByteBuffer b = ByteBuffer.wrap(FastSerializer.serialize(voltTable));
+                    tableBytes = ByteString.copyFrom(b.array());
+                } catch (Exception ex) {
+                    throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
+                }
+                
+                moreDataNeeded = vt.getSecond().booleanValue();  
+                MultiPullReplyRequest multiPullReplyRequest = MultiPullReplyRequest.newBuilder().
+                        setPullIdentifier(pull.getAsyncPullIdentifier()).
+                        setIsAsync(true).
+                        setSenderSite(this.hstore_site.getSiteId()).  
+                        setOldPartition(pull.getOldPartition()).setNewPartition(pull.getNewPartition()).setVoltTableName(pull.getVoltTableName())
+                        .setT0S(System.currentTimeMillis()).setVoltTableData(tableBytes).setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes)
+                        .setTransactionID(pull.getTransactionID()).setMoreDataNeeded(moreDataNeeded).setChunkId(chunkId-1).build();
+                
+                this.reconfiguration_stats.trackAsyncSrcResponse(this.partitionId, pull.getNewPartition(), pull.getVoltTableName(), 
+                        multiPullReplyRequest.getVoltTableData().size()/1000, moreDataNeeded );
+    
+                
+                //LOG.info("Sending a multi pull async request");
+                //LOG.info("TODO do we need to invoke something different if local? Right now both remote / local put in with callback");
+                this.reconfiguration_coordinator.sendMultiPullReplyRequestFromPE(pull.getSenderSite(), multiPullReplyRequest);
+               
+                
+                LOG.info(String.format("CompletedExtract, Async4, PullId=%s, Chunks=%s, Records=%s, Table=%s, MoreData=%s ",
+                        pull.getAsyncPullIdentifier(), chunkId, records, tableName,moreDataNeeded)); 
             }
-            
-            LOG.info(String.format("CompletedExtract, Async, PullId=%s, Chunks=%s, Records=%s, Table=%s ",
-                    pull.getAsyncPullIdentifier(), chunkId, records, tableName)); 
-      
             
         } catch (Exception e) {
             LOG.error("Exception when processing async data pull response", e);

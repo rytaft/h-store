@@ -422,7 +422,6 @@ public class TransactionQueueManager extends ExceptionHandlingRunnable implement
         Long next_safe_id = null;
         Status status = Status.OK;
         if (rejectNewTxns){
-            LOG.info("Rejecting txn");
             status = Status.ABORT_REJECT;            
         } else {        
             this.lockQueueBarriers[partition].lock();
