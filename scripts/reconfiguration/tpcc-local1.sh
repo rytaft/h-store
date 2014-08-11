@@ -15,7 +15,7 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( 
-    "reconfig-dynsplit --partitions=2 --benchmark-size=4 --splitplan=10 " 
+#    "reconfig-dynsplit --partitions=2 --benchmark-size=4 --splitplan=10 " 
     "stopcopy-dynsplit --partitions=2 --benchmark-size=4   " 
     )
 
@@ -34,6 +34,8 @@ for b in tpcc; do
         --client.duration=150000 \
         --client.warmup=15000 \
         --client.output_results_csv=interval_res.csv \
+        --chunksize=20000 \
+        --asyncsize=8000 \ 
         --reconfig=30000:1:0 \
         --sweep-reconfiguration 
     )

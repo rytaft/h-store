@@ -69,10 +69,10 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
 
     if 'dynsplit' in args['exp_type']:
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
-        fabric.env["client.blocking_concurrent"] = 10
-        fabric.env["site.reconfig_chunk_size_kb"] = 10048 
+        fabric.env["client.blocking_concurrent"] = 30
+        fabric.env["site.reconfig_chunk_size_kb"] = 20048 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 8048
-        #fabric.env["client.txnrate"] = 100000
+        fabric.env["client.txnrate"] = 1000
         fabric.env["client.blocking"] = True
         fabric.env["client.output_response_status"] = True
         fabric.env["client.output_exec_profiling"] = "execprofile.csv"

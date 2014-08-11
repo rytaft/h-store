@@ -16,10 +16,10 @@ FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( 
     
-    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=expand --reconfig=30000:expand:0 " 
-    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=expand --reconfig=30000:expand:0 " 
-    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=expand_s10 --splitplan=10 --reconfig=30000:expand:0 " 
-#    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=1000000 --exp-suffix=expand_s50 --splitplan=50 --reconfig=30000:expand:0 " 
+    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=10000000 --exp-suffix=expand --reconfig=30000:expand:0 " 
+    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=10000000 --exp-suffix=expand --reconfig=30000:expand:0 " 
+    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=10000000 --exp-suffix=expand_s10 --splitplan=10 --reconfig=30000:expand:0 " 
+    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=10000000 --exp-suffix=expand_s20 --splitplan=20 --reconfig=30000:expand:0 " 
 
 )
 
