@@ -26,11 +26,12 @@ RECONFIG_EXPERIMENTS = [
     "reconfig-dynsplit",
     "reactive-dynsplit",
     "stopcopy-dynsplit",
+    "nonopt-dynsplit",
     "reconfig-dynsplit-coarse",
     "reconfig-dynsplit-fine-grained",
 ]
 
-RECONFIG_CLIENT_COUNT = 4
+RECONFIG_CLIENT_COUNT = 3
 
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
@@ -59,7 +60,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["site.reconfig_chunk_size_kb"] = 10048 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 8048
         fabric.env["site.commandlog_enable"] = False
-        fabric.env["client.threads_per_host"] =15
+        fabric.env["client.threads_per_host"] = 20
         fabric.env["benchmark.ReadRecordProportion"] = 0.85
         fabric.env["benchmark.UpdateRecordProportion"] = 0.15
         fabric.env["site.reconfig_chunk_size_kb"] = 10048 
@@ -68,7 +69,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
 
     if 'dynsplit' in args['exp_type']:
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
-        fabric.env["client.blocking_concurrent"] = 2
+        fabric.env["client.blocking_concurrent"] = 10
         fabric.env["site.reconfig_chunk_size_kb"] = 10048 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 8048
         #fabric.env["client.txnrate"] = 100000
@@ -78,12 +79,13 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
-        fabric.env["client.threads_per_host"] = 15
+        fabric.env["client.threads_per_host"] = 20
         fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.loadthread_per_warehouse"] = False
         fabric.env["benchmark.loadthreads"] = max(16, partitions)            
         fabric.env["benchmark.neworder_hotspot"]= True
-        fabric.env["benchmark.hotspot_ops_percent"]= 80
+        fabric.env["benchmark.neworder_skew_warehouse"]= True
+        fabric.env["benchmark.hotspot_ops_percent"]= 60
         fabric.env["benchmark.hotspot_size"]= 3
         fabric.env["hstore.partitions_per_site"] = 6 
         
