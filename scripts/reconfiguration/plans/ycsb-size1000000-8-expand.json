@@ -12,7 +12,7 @@
         }
       }
     },
-    "4": {
+    "expand": {
       "tables": {
         "usertable": {
           "partitions": {
