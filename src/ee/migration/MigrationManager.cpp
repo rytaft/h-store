@@ -61,7 +61,7 @@ MigrationManager::MigrationManager(ExecutorContext *executorContext, catalog::Da
     
     m_extractedTables.clear();
     m_extractedTableNames.clear();
-    m_markNotDelete = true;
+    m_markNotDelete = false;
     m_dynamicIndex = true;
     init(NULL);
 }
