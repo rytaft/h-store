@@ -126,19 +126,19 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["benchmark.hotspot_size"]= 3
         fabric.env["hstore.partitions_per_site"] = 6 
 
-    if 'reconfig-motiv-80' == args['exp_type']:
+    if 'reconfig-motiv-80' in args['exp_type']:
         fabric.env["benchmark.hotspot_ops_percent"]= 80
 
-    if 'reconfig-motiv-60' == args['exp_type']:
+    if 'reconfig-motiv-60' in args['exp_type']:
         fabric.env["benchmark.hotspot_ops_percent"]= 60
 
-    if 'reconfig-motiv-40' == args['exp_type']:
+    if 'reconfig-motiv-40' in args['exp_type']:
         fabric.env["benchmark.hotspot_ops_percent"]= 40
 
-    if 'reconfig-motiv-20' == args['exp_type']:
+    if 'reconfig-motiv-20' in args['exp_type']:
         fabric.env["benchmark.hotspot_ops_percent"]= 20
 
-    if 'reconfig-motiv-00' == args['exp_type']:
+    if 'reconfig-motiv-00' in args['exp_type']:
         fabric.env["benchmark.hotspot_ops_percent"]= 00
     
     if args['exp_type'] == 'reconfig-localhost':
