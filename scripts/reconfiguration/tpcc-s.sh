@@ -15,7 +15,8 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( 
-    "reconfig-dynsplit-fine-grained --partitions=12 --benchmark-size=36 --splitplan=4 --plandelay=100 --chunksize=10048 --asyncsize=8048 --asyncdelay=500 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size36-12-fine.json" 
+    "reconfig-dynsplit-fine-grained --partitions=12 --benchmark-size=36 --splitplan=30 --exp-suffix=s30 --plandelay=100 --chunksize=10048 --asyncsize=8048 --asyncdelay=500 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size36-12-fine.json" 
+    "reconfig-dynsplit-fine-grained --partitions=12 --benchmark-size=36 --splitplan=20 --exp-suffix=s20 --plandelay=100 --chunksize=10048 --asyncsize=8048 --asyncdelay=500 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size36-12-fine.json" 
     "reconfig-dynsplit --partitions=12 --benchmark-size=36  --chunksize=10048 --asyncsize=8048 " 
     "stopcopy-dynsplit --partitions=12 --benchmark-size=36  --chunksize=10048 --asyncsize=8048 " 
     "nonopt-dynsplit --partitions=12 --benchmark-size=36  --chunksize=10048 --asyncsize=8048 " 
@@ -33,8 +34,8 @@ for b in tpcc; do
         --plot \
 	    --client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=300000 \
-        --client.warmup=10000 \
+        --client.duration=360000 \
+        --client.warmup=60000 \
         --client.output_results_csv=interval_res.csv \
         --reconfig=30000:contract:0 \
         --sweep-reconfiguration 

@@ -21,7 +21,7 @@ EXP_TYPES=(
     "stopcopy-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2 --reconfig=30000:spread2:0 " 
     "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2 --reconfig=30000:spread2:0 "      
     "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2_s10 --splitplan=10 --reconfig=30000:spread2:0 "
-#    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls1-s10 --splitplan=10 --reconfig=30000:spread1:0 " 
+    #"reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls1-s10 --splitplan=10 --reconfig=30000:spread1:0 " 
     "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2_s20 --splitplan=20 --reconfig=30000:spread2:0 "
  #   "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls1-s20 --splitplan=20 --reconfig=30000:spread1:0 " 
 
@@ -49,10 +49,10 @@ EXP_TYPES=(
    # "reconfig-ycsb-uniform --partitions=16 --benchmark-size=10000000 --exp-suffix=lc1-s50 --splitplan=50 --reconfig=30000:contract2:0 " 
 
     
-#    "reactive-ycsb-zipf --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
-#    "stopcopy-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
-#    "reconfig-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
-#    "reactive-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=20000:2:0 " 
+    #"reactive-ycsb-zipf --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=30000:2:0 " 
+#    "stopcopy-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=30000:2:0 " 
+#    "reconfig-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl_s20 --splitplan=20  --reconfig=30000:2:0 " 
+    #"reactive-ycsb-uniform --partitions=12 --benchmark-size=20000000 --exp-suffix=xl --reconfig=30000:2:0 " 
 )
 
 #    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=20000000 --exp-suffix=xl1contract --reconfig=2565000:1:0 " \
@@ -73,12 +73,12 @@ for b in ycsb; do
         --sweep-reconfiguration \
         --client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=300000 \
-        --client.warmup=60000 \
-        --plandelay=500 \
+        --client.duration=360000 \
+        --client.warmup=30000 \
+        --plandelay=200 \
         --chunksize=10000 \
         --asyncsize=8000 \ 
-        --asyncdelay=200 \ 
+        --asyncdelay=150 \ 
         --client.output_results_csv=interval_res.csv
     )
     

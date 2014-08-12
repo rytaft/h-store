@@ -15,18 +15,14 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( 
-    
-    "stopcopy-ycsb-uniform --partitions=8 --benchmark-size=10000000 --exp-suffix=expand --reconfig=30000:expand:0 " 
-    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=10000000 --exp-suffix=expand --reconfig=30000:expand:0 " 
-    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=10000000 --exp-suffix=expand_s10 --splitplan=10 --reconfig=30000:expand:0 " 
-    "reconfig-ycsb-uniform --partitions=8 --benchmark-size=10000000 --exp-suffix=expand_s20 --splitplan=20 --reconfig=30000:expand:0 " 
+    "reconfig-motiv-80  --partitions=18 --benchmark-size=100" 
+    "reconfig-motiv-60  --partitions=18 --benchmark-size=100" 
+    "reconfig-motiv-40  --partitions=18 --benchmark-size=100" 
+    "reconfig-motiv-20  --partitions=18 --benchmark-size=100" 
+    "reconfig-motiv-00  --partitions=18 --benchmark-size=100" 
+    )
 
-)
-
-
-
-
-for b in ycsb; do
+for b in tpcc; do
     PARAMS=( \
         --no-update \
         --results-dir=$DATA_DIR \
@@ -35,18 +31,14 @@ for b in ycsb; do
         --exp-trials=1 \
         --exp-attempts=1 \        
         --no-json \
-        --sweep-reconfiguration \
-        --client.interval=1000 \
+        --plot \
+	--client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=360000 \
+        --client.duration=300000 \
         --client.warmup=30000 \
-        --plandelay=200 \
-       --chunksize=10000 \
-        --asyncsize=8000 \ 
-        --asyncdelay=150 \ 
         --client.output_results_csv=interval_res.csv \
-        --global.hasher_plan=scripts/reconfiguration/plans/ycsb-size1000000-8-expand.json
     )
+   
     
     i=0
     cnt=${#EXP_TYPES[@]}

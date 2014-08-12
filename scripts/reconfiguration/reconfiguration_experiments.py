@@ -29,6 +29,11 @@ RECONFIG_EXPERIMENTS = [
     "nonopt-dynsplit",
     "reconfig-dynsplit-coarse",
     "reconfig-dynsplit-fine-grained",
+    "reconfig-motiv-80",
+    "reconfig-motiv-60",
+    "reconfig-motiv-40",
+    "reconfig-motiv-20",
+    "reconfig-motiv-00",
 ]
 
 RECONFIG_CLIENT_COUNT = 3
@@ -79,13 +84,14 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
-        fabric.env["client.threads_per_host"] = 20
+        fabric.env["client.threads_per_host"] = 24
         fabric.env["site.commandlog_enable"] = False
         fabric.env["benchmark.loadthread_per_warehouse"] = False
         fabric.env["benchmark.loadthreads"] = max(16, partitions)            
         fabric.env["benchmark.neworder_hotspot"]= True
         fabric.env["benchmark.neworder_skew_warehouse"]= True
-        fabric.env["benchmark.hotspot_ops_percent"]= 60
+        fabric.env["client.skewfactor"] = 0.65
+        fabric.env["benchmark.hotspot_ops_percent"]= 80
         fabric.env["benchmark.hotspot_size"]= 3
         fabric.env["hstore.partitions_per_site"] = 6 
         
@@ -98,6 +104,42 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     if 'reconfig-dynsplit-fine-grained' in  args['exp_type']:        
         fabric.env["partitionplan"]="tpcc-plan-fine-grained.pplan" #"tpcc-plan.pplan"
 
+    if 'reconfig-motiv' in args['exp_type']:
+        fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
+        fabric.env["client.blocking_concurrent"] = 30
+        fabric.env["site.reconfig_chunk_size_kb"] = 20048 
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 8048
+        fabric.env["client.txnrate"] = 1000
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["client.output_exec_profiling"] = "execprofile.csv"
+        fabric.env["client.output_txn_profiling"] = "txnprofile.csv"
+        fabric.env["client.output_txn_profiling_combine"] = True
+        fabric.env["client.output_txn_counters"] = "txncounters.csv"
+        fabric.env["client.threads_per_host"] = 24
+        fabric.env["site.commandlog_enable"] = False
+        fabric.env["benchmark.loadthread_per_warehouse"] = False
+        fabric.env["benchmark.loadthreads"] = max(16, partitions)            
+        fabric.env["benchmark.neworder_hotspot"]= True
+        fabric.env["benchmark.neworder_skew_warehouse"]= True
+        fabric.env["client.skewfactor"] = 0.65
+        fabric.env["benchmark.hotspot_size"]= 3
+        fabric.env["hstore.partitions_per_site"] = 6 
+
+    if 'reconfig-motiv-80' == args['exp_type']:
+        fabric.env["benchmark.hotspot_ops_percent"]= 80
+
+    if 'reconfig-motiv-60' == args['exp_type']:
+        fabric.env["benchmark.hotspot_ops_percent"]= 60
+
+    if 'reconfig-motiv-40' == args['exp_type']:
+        fabric.env["benchmark.hotspot_ops_percent"]= 40
+
+    if 'reconfig-motiv-20' == args['exp_type']:
+        fabric.env["benchmark.hotspot_ops_percent"]= 20
+
+    if 'reconfig-motiv-00' == args['exp_type']:
+        fabric.env["benchmark.hotspot_ops_percent"]= 00
     
     if args['exp_type'] == 'reconfig-localhost':
         fabric.env["client.blocking_concurrent"] = 4 # * int(partitions/8)
