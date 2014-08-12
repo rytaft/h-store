@@ -45,7 +45,7 @@ for b in ycsb; do
         --asyncsize=8000 \ 
         --asyncdelay=150 \ 
         --client.output_results_csv=interval_res.csv \
-        --global.hasher_plan=scripts/reconfiguration/plans/ycsb-size1000000-8-expand.json
+        --global.hasher_plan=scripts/reconfiguration/plans/ycsb-size10000000-8-expand.json
     )
     
     i=0
