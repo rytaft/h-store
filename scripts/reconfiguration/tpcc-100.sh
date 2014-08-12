@@ -15,7 +15,8 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( 
-    "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100 --exp-suffix=hs_s20 --splitplan=20 --plandelay=200 --asyncdelay=150 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
+    "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100 --exp-suffix=s20 --splitplan=20 --plandelay=200 --asyncdelay=150 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
+    "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100 --exp-suffix=s40 --splitplan=40 --plandelay=200 --asyncdelay=150 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
     "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100 --exp-suffix=s4 --splitplan=4 --plandelay=200 --asyncdelay=150 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
     "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100  --plandelay=100 --asyncdelay=150 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
     "reconfig-dynsplit --partitions=18 --benchmark-size=100 --exp-suffix=s2 --splitplan=2 --plandelay=10 --asyncdelay=10 " 
