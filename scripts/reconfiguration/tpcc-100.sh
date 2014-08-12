@@ -15,13 +15,14 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( 
-    "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100 --exp-suffix=s20 --splitplan=20 --plandelay=100 --asyncdelay=50 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
-    "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100 --exp-suffix=s4 --splitplan=4 --plandelay=100 --asyncdelay=50 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
-    "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100  --plandelay=100 --asyncdelay=50 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
-    "reconfig-dynsplit --partitions=18 --benchmark-size=100 --exp-suffix=s2 --splitplan=2 --plandelay=100 --asyncdelay=50 " 
+    "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100 --exp-suffix=hs_s20 --splitplan=20 --plandelay=200 --asyncdelay=150 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
+    "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100 --exp-suffix=s4 --splitplan=4 --plandelay=200 --asyncdelay=150 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
+    "reconfig-dynsplit-fine-grained --partitions=18 --benchmark-size=100  --plandelay=100 --asyncdelay=150 --global.hasher_plan=scripts/reconfiguration/plans/tpcc-size100-18-fine.json" 
+    "reconfig-dynsplit --partitions=18 --benchmark-size=100 --exp-suffix=s2 --splitplan=2 --plandelay=10 --asyncdelay=10 " 
     "reconfig-dynsplit --partitions=18 --benchmark-size=100 --plandelay=100 --asyncdelay=50 " 
     "stopcopy-dynsplit --partitions=18 --benchmark-size=100  --plandelay=100 --asyncdelay=50 " 
-    "reactive -dynsplit --partitions=18 --benchmark-size=100 --plandelay=100 --asyncdelay=50 " 
+    "reactive-dynsplit --partitions=18 --benchmark-size=100 --plandelay=100 --asyncdelay=50 " 
+    "nonopt-dynsplit --partitions=18 --benchmark-size=100 --plandelay=100 --asyncdelay=50 " 
     )
 
 for b in tpcc; do
@@ -36,8 +37,8 @@ for b in tpcc; do
         --plot \
 	    --client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=300000 \
-        --client.warmup=10000 \
+        --client.duration=360000 \
+        --client.warmup=30000 \
         --client.output_results_csv=interval_res.csv \
         --reconfig=60000:1:0 \
         --sweep-reconfiguration 
