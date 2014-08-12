@@ -116,7 +116,11 @@ public class ReconfigurationStatic extends VoltSystemProcedure {
     ParameterSet params = new ParameterSet();
 
     params.setParameters(coordinator, partition_plan, protocol);
-    return this.executeOncePerSite(SysProcFragmentId.PF_reconfigurationStaticDistribute, SysProcFragmentId.PF_reconfigurationStaticAggregate,
+    long start = System.currentTimeMillis();
+    VoltTable[] res = this.executeOncePerSite(SysProcFragmentId.PF_reconfigurationStaticDistribute, SysProcFragmentId.PF_reconfigurationStaticAggregate,
         params);
+    long time = System.currentTimeMillis()- start;
+    FileUtil.appendEventToFile(String.format("RECONFIG_TIME_SYSPROC, ms=%s", time));
+    return res;
   }
 }
