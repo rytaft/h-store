@@ -242,7 +242,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     private static final UtilityWorkMessage UTIL_WORK_MSG = new UtilityWorkMessage();
     private static final UpdateMemoryMessage STATS_WORK_MSG = new UpdateMemoryMessage();
-    private static int RAND_MS_BETWEEN_ASYNC_PULLS = 200;
+    private static int RAND_MS_BETWEEN_ASYNC_PULLS = 2000;
     private static Random rand = new Random();
 
     private ReconfigurationState reconfig_state;
@@ -256,6 +256,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     //Only schedule on async pull at a time
     private AtomicBoolean asyncOutstanding = new AtomicBoolean(false);
     private long nextAsyncPullTimeMS = 0;
+    private long nextAsyncPullRequestTimeMS = 0;
+    
     private Map<Integer, Long> pullStartTime;
 
     private int tempPullCounter=0;
@@ -1233,6 +1235,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.shutdown_latch.release();
         }
     }
+    
+    private long getNextAsyncPullRequestTimeMS(){
+        return System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+    }
+    
+    private long getNextAsyncPullTime() {
+        return System.currentTimeMillis() + (hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS))*2;
+    }
 
     /**
      * Special function that allows us to do some utility work while we are
@@ -1248,32 +1258,31 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.idle_click_count+=1;
             if (this.inReconfiguration && queue_async_pulls) {
                 if (this.asyncRequestPullQueue.isEmpty() == false 
-                        && (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )){
+                        && (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS  || System.currentTimeMillis() > this.nextAsyncPullRequestTimeMS )){
                     //IF the async queue has work and we have passed cycles
                     if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS) {
-                        LOG.debug(String.format(" ### Adding the next async pull from the asyncRequestPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s",
+                        LOG.info(String.format(" ### Adding the next async pull from the asyncRequestPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s",
     					   asyncRequestPullQueue.size(),idle_click_count));
                     } else {
-                        LOG.debug(String.format(" ### Adding the next async pull from the asyncRequestPullQueue due to time. Items : %s  IdleCount:%s", 
+                        LOG.info(String.format(" ### Adding the next async pull from the asyncRequestPullQueue due to time. Items : %s  IdleCount:%s", 
     					   asyncRequestPullQueue.size(),idle_click_count));
                     }
                     this.idle_click_count = 0;
-                    nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+                    nextAsyncPullRequestTimeMS = getNextAsyncPullRequestTimeMS(); 
                     this.work_queue.offer(asyncRequestPullQueue.remove());
                 } else if (this.scheduleAsyncPullQueue.isEmpty() == false && asyncOutstanding.get() == false
                         && ((idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS )  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )) {
                     //IF the scheduleAsync queue has work and we have passed cycles
                     if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS) {
-                        LOG.debug(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
+                        LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
                     } else {
-                        LOG.debug(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to time. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
+                        LOG.info(String.format(" ### Pulling and scheduling the next async pull from the scheduleAsyncPullQueue due to time. Items : %s  IdleCount:%s", scheduleAsyncPullQueue.size(),idle_click_count));
                     }     
                     if(asyncOutstanding.get()) {
                         LOG.warn("Offering async request to the work queue when there is already an async request in progress");
                     }
                     this.idle_click_count = 0;
-            		nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
-                    ScheduleAsyncPullRequestMessage pullMsg = scheduleAsyncPullQueue.poll();                    
+            		ScheduleAsyncPullRequestMessage pullMsg = scheduleAsyncPullQueue.poll();                    
                     if (pullMsg != null){
                         this.work_queue.offer(pullMsg);
                         asyncOutstanding.set(true);
@@ -6615,7 +6624,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         if(isAsyncRequest){
                             LOG.trace("Last chunk received for async request, unsetting async in progress");
                             asyncOutstanding.set(false);
-                            nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+                            nextAsyncPullTimeMS = getNextAsyncPullTime();
                         }
                         startTime = pullStartTime.remove(pullId);
                         if (isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
@@ -6632,12 +6641,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     	if (moreDataComing) {
                             this.reconfiguration_tracker.markRangeAsPartiallyReceived(
                             		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
-                            nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                         } else {
                             if(isAsyncRequest){
                                 LOG.trace("Last chunk received for async request, unsetting async in progress");
                                 asyncOutstanding.set(false);
-                                nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+                                nextAsyncPullTimeMS = getNextAsyncPullTime();
                             }
                             startTime = pullStartTime.remove(pullId);
                             if (isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
@@ -6864,7 +6872,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 //this.work_queue.offer(scheduleAsyncPull);
             }
             //Set the next time to do an async pull now
-            nextAsyncPullTimeMS = System.currentTimeMillis();
+            nextAsyncPullTimeMS = getNextAsyncPullTime();
         } else {
             if (debug.val)
                 LOG.debug("No incoming ranges to request");

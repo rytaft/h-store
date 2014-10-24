@@ -767,7 +767,14 @@ public final class HStoreConf {
                 experimental=true
         )
         public boolean reconfig_async;
-   
+ 
+        @ConfigProperty(
+                description="Use async reconfiguration.",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_async_time_adaptive;
+        
         @ConfigProperty(
                 description="Use live reconfiguration.",
                 defaultBoolean=true,

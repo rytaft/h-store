@@ -68,3 +68,6 @@ src/catgen/out
 
 ## KDevelop
 *.kdev*
+
+
+scripts/reconfiguration/*zip
