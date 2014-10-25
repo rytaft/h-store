@@ -6,12 +6,24 @@ package edu.brown.hstore.reconfiguration;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.log4j.Logger;
+
+import edu.brown.logging.LoggerUtil;
+import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import edu.brown.statistics.FastIntHistogram;
+
 /**
  * @author aelmore
  *
  */
 public class ReconfigurationStats {
-
+    private static final Logger LOG = Logger.getLogger(ReconfigurationStats.class);
+    private static final LoggerBoolean debug = new LoggerBoolean(); 
+    private static final LoggerBoolean trace = new LoggerBoolean();
+    static {
+        LoggerUtil.setupLogging();
+        LoggerUtil.attachObserver(LOG, debug, trace);
+    }
     
     private boolean on;
     private StringBuilder messages;
@@ -19,6 +31,16 @@ public class ReconfigurationStats {
     private List<PullStat> pullResponses;
     private List<EEStat> eeStats;
     private List<Stat> events;
+    public FastIntHistogram asyncRequestTimeLockQSize;
+    public long minAsyncRequestTime = 200;
+    public long maxAsyncRequestTime = 10000;
+    public long asyncRequestTime = minAsyncRequestTime;
+
+
+    public FastIntHistogram asyncTimeToAnswerLockQSize;
+    public long minTimeToAnswerAsync = 200;
+    public long maxTimeToAnswerAsync = 10000;
+    public long timeToAnswerAsync = minTimeToAnswerAsync;
     
    
     /**
@@ -31,7 +53,32 @@ public class ReconfigurationStats {
         pullResponses = new ArrayList<>();
         eeStats = new ArrayList<>();
         events = new ArrayList<>();
+        asyncTimeToAnswerLockQSize = new FastIntHistogram();
+        asyncRequestTimeLockQSize = new FastIntHistogram();
     }
+    
+    
+    public long updateTimeToAnswerAsync(int queueSize){
+        asyncTimeToAnswerLockQSize.put(queueSize);
+        long old = timeToAnswerAsync;
+        if (queueSize < 50) {
+            timeToAnswerAsync*=.40;
+        } else if (queueSize < 100) {
+            timeToAnswerAsync*=.80;            
+        } else if (queueSize < 300) {
+            LOG.info("default time");
+            return timeToAnswerAsync;            
+        } else if (queueSize < 400) {
+            timeToAnswerAsync*=1.20;            
+        } else if (queueSize > 500) {
+            timeToAnswerAsync*=1.40;            
+        }  
+        timeToAnswerAsync = Math.min(timeToAnswerAsync, maxTimeToAnswerAsync);
+        timeToAnswerAsync = Math.max(timeToAnswerAsync, minTimeToAnswerAsync);
+        LOG.info(String.format("Q:%s Updating time to answer from %s to %s",queueSize, old,timeToAnswerAsync));
+        return timeToAnswerAsync;        
+    }
+    
     
     public void addMessage(String m){
         messages.append(m);

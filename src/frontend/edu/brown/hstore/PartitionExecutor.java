@@ -44,6 +44,7 @@ package edu.brown.hstore;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -251,7 +252,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private Queue<ScheduleAsyncPullRequestMessage> scheduleAsyncPullQueue = new LinkedList<>();
     
     //Queue to schedule an async pull request at the source's work_queue when there is no work 
-    private Queue<AsyncDataPullRequestMessage> asyncRequestPullQueue = new LinkedList<>();
+    private Deque<AsyncDataPullRequestMessage> asyncRequestPullQueue = new ArrayDeque<>(50);
     
     //Only schedule on async pull at a time
     private AtomicBoolean asyncOutstanding = new AtomicBoolean(false);
@@ -1082,6 +1083,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (debug.val)
             LOG.debug("Starting PartitionExecutor run loop...");
         try {
+            long iter = 0;
             while (this.shutdown_state == ShutdownState.STARTED) {
                 this.currentTxnId = null;
                 nextTxn = null;
@@ -1209,6 +1211,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         nextWork = UTIL_WORK_MSG;
                     }
                 }
+                
+                if (inReconfiguration && queue_async_pulls && this.asyncRequestPullQueue.isEmpty() == false &&
+                        System.currentTimeMillis() > this.nextAsyncPullRequestTimeMS){
+                    LOG.info(" ### during loop adding to WORKQ the next async pull from the asyncRequestPullQueue due to time.");
+                    this.work_queue.offer(asyncRequestPullQueue.remove());
+                }
+                
+            
             } // WHILE
         } catch (final Throwable ex) {
             if (this.isShuttingDown() == false) {
@@ -1237,11 +1247,19 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
     
     private long getNextAsyncPullRequestTimeMS(){
-        return System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
+        if (hstore_conf.site.reconfig_async_time_adaptive){
+            int qSize = this.lockQueue.size();
+            return System.currentTimeMillis() +  this.reconfiguration_stats.updateTimeToAnswerAsync(qSize);
+            
+        } else {
+            return System.currentTimeMillis() + (hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS))*2;
+        }
     }
     
     private long getNextAsyncPullTime() {
-        return System.currentTimeMillis() + (hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS))*2;
+        long timeToWait = (hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS))*2;
+        LOG.info(" Time to wait for next pull : "+ timeToWait);
+        return System.currentTimeMillis() + timeToWait;
     }
 
     /**
@@ -1256,19 +1274,22 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         
         if (this.inReconfiguration && this.reconfig_plan != null){
             this.idle_click_count+=1;
+//            if (idle_click_count % 10000 == 0 ){
+//                LOG.info(String.format(" ** (%s) utility loop. nextAsyncPullRequest:%s  nextAyncPull:%s  outstanding:%s", 
+//                        this.partitionId,(this.nextAsyncPullRequestTimeMS-System.currentTimeMillis()),(this.nextAsyncPullTimeMS-System.currentTimeMillis()),asyncOutstanding.get()));
+//            }
             if (this.inReconfiguration && queue_async_pulls) {
                 if (this.asyncRequestPullQueue.isEmpty() == false 
                         && (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS  || System.currentTimeMillis() > this.nextAsyncPullRequestTimeMS )){
                     //IF the async queue has work and we have passed cycles
                     if (idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS) {
-                        LOG.info(String.format(" ### Adding the next async pull from the asyncRequestPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s",
+                        LOG.info(String.format(" ### Adding to WORKQ the next async pull from the asyncRequestPullQueue due to IDLE Clicks. Items : %s  IdleCount:%s",
     					   asyncRequestPullQueue.size(),idle_click_count));
                     } else {
-                        LOG.info(String.format(" ### Adding the next async pull from the asyncRequestPullQueue due to time. Items : %s  IdleCount:%s", 
+                        LOG.info(String.format(" ### Adding to WORKQ the next async pull from the asyncRequestPullQueue due to time. Items : %s  IdleCount:%s", 
     					   asyncRequestPullQueue.size(),idle_click_count));
                     }
                     this.idle_click_count = 0;
-                    nextAsyncPullRequestTimeMS = getNextAsyncPullRequestTimeMS(); 
                     this.work_queue.offer(asyncRequestPullQueue.remove());
                 } else if (this.scheduleAsyncPullQueue.isEmpty() == false && asyncOutstanding.get() == false
                         && ((idle_click_count > MAX_PULL_ASYNC_EVERY_CLICKS )  || System.currentTimeMillis() > this.nextAsyncPullTimeMS )) {
@@ -1551,7 +1572,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             }
             else {
                 AsyncPullRequest pull = pullMsg.getAsyncPullRequest();
-                LOG.info("Extracting data for a async data pull request at partition " + this.partitionId + " : " + pull.getAsyncPullIdentifier());
+                LOG.info("Extracting data for async data pull request at partition " + this.partitionId + " : " + pull.getAsyncPullIdentifier());
                 try {                
                     String tableName = pull.getVoltTableName();
                     
@@ -1604,8 +1625,16 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     if(moreDataNeeded){
                         LOG.info(" ### We have more data in the async pull to schedule. Queue the" +
                         		"job to local requestPullQueue. Size : " + asyncRequestPullQueue.size());
-                        asyncRequestPullQueue.add(pullMsg);
+                        //asyncRequestPullQueue.add(pullMsg);
+                        asyncRequestPullQueue.addFirst(pullMsg);
+                        nextAsyncPullRequestTimeMS = System.currentTimeMillis() + 200;//getNextAsyncPullRequestTimeMS(); 
+
                         //this.work_queue.offer(pullMsg);
+                    } else{
+                        if (!asyncRequestPullQueue.isEmpty()){
+                            //We have another msg in the request queue (from another a diff partition most likely)
+                            nextAsyncPullRequestTimeMS = getNextAsyncPullRequestTimeMS();                             
+                        }
                     }
                     
                     LOG.info(String.format("CompletedExtract, Async2, PullId=%s, Chunks=%s, MoreData=%s, Time=%s, QueueGrowth=%s, Records=%s, Table=%s ",
@@ -3275,7 +3304,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             	 workDone = true;
             } else if(work instanceof AsyncDataPullRequestMessage){
             	AsyncDataPullRequestMessage asyncDataPullRequestMessage = ((AsyncDataPullRequestMessage) work);
-            	LOG.info("An async pull message encountered while looking for queued work ");
+            	LOG.info(" *** An async pull message encountered while looking for queued work ");
             	if(!asyncDataPullRequestMessage.getProtocol().equals("s&c")) {
             		continue;
             	}
@@ -3418,6 +3447,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     			throw new RuntimeException("Unexpected error when ending reconfiguration", ex);
     		}
     		break;
+    	case QUEUE_ASYNC_REQUEST:
+            asyncRequestPullQueue.add(reconfigUtilMsg.asyncDataPull);
+            nextAsyncPullRequestTimeMS = getNextAsyncPullRequestTimeMS(); 
+            LOG.info(String.format(" (%s) ### added async pull. processing at : %s", this.partitionId, nextAsyncPullRequestTimeMS));            
+            break;
+            
     	default:
     		throw new RuntimeException("Invalid request type: " + reconfigUtilMsg.getRequestType());	
     	}
@@ -6502,7 +6537,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     scheduleInitialAsyncPullRequests(incoming_ranges);
                 }
                 else if (this.reconfiguration_coordinator.queueAsyncPull()){
-                    LOG.info("Queueing chunked asynch pulls");           
+                    if(incoming_ranges!=null)
+                        LOG.info("Queueing chunked asynch pulls: " + incoming_ranges.size());           
                     this.queue_async_pulls = this.reconfiguration_coordinator.queueAsyncPull();
                     queueInitialAsyncPullRequests(incoming_ranges);
                 }
@@ -6622,7 +6658,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     // We have received a single key
                     if(moreDataComing == false) {
                         if(isAsyncRequest){
-                            LOG.trace("Last chunk received for async request, unsetting async in progress");
+                            LOG.info("Last chunk received for async request, unsetting async in progress");
                             asyncOutstanding.set(false);
                             nextAsyncPullTimeMS = getNextAsyncPullTime();
                         }
@@ -6643,7 +6679,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
                         } else {
                             if(isAsyncRequest){
-                                LOG.trace("Last chunk received for async request, unsetting async in progress");
+                                LOG.info("Last chunk received for async request, unsetting async in progress");
                                 asyncOutstanding.set(false);
                                 nextAsyncPullTimeMS = getNextAsyncPullTime();
                             }
@@ -6926,8 +6962,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
     }
     
-    public boolean queueAsyncPullRequest(AsyncDataPullRequestMessage pull){
-        return this.work_queue.offer(pull);
+    public boolean queueAsyncPullRequest(AsyncDataPullRequestMessage pull){       
+        return this.work_queue.offer(new ReconfigUtilRequestMessage(pull));
     }
     
     public boolean queueAsyncPullResponse(AsyncDataPullResponseMessage response){

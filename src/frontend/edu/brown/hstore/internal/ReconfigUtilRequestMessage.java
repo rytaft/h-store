@@ -9,7 +9,8 @@ import edu.brown.profilers.ProfileMeasurement;
 public class ReconfigUtilRequestMessage extends InternalMessage {
 	public enum RequestType {
 		INIT_RECONFIGURATION,
-		END_RECONFIGURATION
+		END_RECONFIGURATION,
+		QUEUE_ASYNC_REQUEST
 	}
     
 	private RequestType requestType;	
@@ -19,6 +20,8 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
 	private ExplicitPartitions planned_partitions;
 	private boolean final_plan;
 	public long createTime;
+    public AsyncDataPullRequestMessage asyncDataPull;
+	
     
     
     public ReconfigUtilRequestMessage(
@@ -46,6 +49,11 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
         this.reconfig_state = null;
         this.planned_partitions = null;
         this.final_plan = false;
+    }
+    
+    public ReconfigUtilRequestMessage(AsyncDataPullRequestMessage msg){
+        this(RequestType.QUEUE_ASYNC_REQUEST);
+        this.asyncDataPull = msg;
     }
     
     public ReconfigUtilRequestMessage(RequestType requestType, boolean final_plan) {

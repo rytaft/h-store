@@ -1086,7 +1086,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
         PartitionExecutor executor = executorMap.get(asyncPullRequest.getOldPartition());
         assert(executor != null);
-        LOG.debug("Queue the async data pull request " + asyncPullRequest.toString());
+        LOG.info(String.format(" ### (%s) Queue the async data pull request id %s", asyncPullRequest.getOldPartition(), asyncPullRequest.getTransactionID()));
         executor.queueAsyncPullRequest(asyncPullRequestMsg);  
     }
 
