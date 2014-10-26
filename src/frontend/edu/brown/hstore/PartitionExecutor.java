@@ -243,7 +243,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 
     private static final UtilityWorkMessage UTIL_WORK_MSG = new UtilityWorkMessage();
     private static final UpdateMemoryMessage STATS_WORK_MSG = new UpdateMemoryMessage();
-    private static int RAND_MS_BETWEEN_ASYNC_PULLS = 2000;
+    private static int RAND_MS_BETWEEN_ASYNC_PULLS = 50;
     private static Random rand = new Random();
 
     private ReconfigurationState reconfig_state;
@@ -1252,7 +1252,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             return System.currentTimeMillis() +  this.reconfiguration_stats.updateTimeToAnswerAsync(qSize);
             
         } else {
-            return System.currentTimeMillis() + (hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS))*2;
+            return (System.currentTimeMillis() + (long) ((hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS))*1.2));
         }
     }
     
@@ -1627,7 +1627,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         		"job to local requestPullQueue. Size : " + asyncRequestPullQueue.size());
                         //asyncRequestPullQueue.add(pullMsg);
                         asyncRequestPullQueue.addFirst(pullMsg);
-                        nextAsyncPullRequestTimeMS = System.currentTimeMillis() + 200;//getNextAsyncPullRequestTimeMS(); 
+                        nextAsyncPullRequestTimeMS = getNextAsyncPullRequestTimeMS(); // System.currentTimeMillis() + 200; 
 
                         //this.work_queue.offer(pullMsg);
                     } else{

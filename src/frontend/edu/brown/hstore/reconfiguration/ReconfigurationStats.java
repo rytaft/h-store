@@ -38,8 +38,8 @@ public class ReconfigurationStats {
 
 
     public FastIntHistogram asyncTimeToAnswerLockQSize;
-    public long minTimeToAnswerAsync = 200;
-    public long maxTimeToAnswerAsync = 10000;
+    public long minTimeToAnswerAsync = 100;
+    public long maxTimeToAnswerAsync = 1500;
     public long timeToAnswerAsync = minTimeToAnswerAsync;
     
    
@@ -61,17 +61,18 @@ public class ReconfigurationStats {
     public long updateTimeToAnswerAsync(int queueSize){
         asyncTimeToAnswerLockQSize.put(queueSize);
         long old = timeToAnswerAsync;
-        if (queueSize < 50) {
+        if (queueSize < 100) {
             timeToAnswerAsync*=.40;
-        } else if (queueSize < 100) {
+        } else if (queueSize < 300) {
             timeToAnswerAsync*=.80;            
         } else if (queueSize < 300) {
             LOG.info("default time");
             return timeToAnswerAsync;            
-        } else if (queueSize < 400) {
-            timeToAnswerAsync*=1.20;            
-        } else if (queueSize > 500) {
-            timeToAnswerAsync*=1.40;            
+        } else if (queueSize < 500) {
+           timeToAnswerAsync*=1.05;
+            
+        } else if (queueSize > 700) {
+            timeToAnswerAsync*=1.10;            
         }  
         timeToAnswerAsync = Math.min(timeToAnswerAsync, maxTimeToAnswerAsync);
         timeToAnswerAsync = Math.max(timeToAnswerAsync, minTimeToAnswerAsync);
