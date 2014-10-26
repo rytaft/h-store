@@ -68,6 +68,7 @@ import java.util.Random;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
+import org.qcri.monitoring.Monitor;
 import org.voltdb.BackendTarget;
 import org.voltdb.CatalogContext;
 import org.voltdb.ClientResponseImpl;
@@ -83,11 +84,9 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltProcedure.VoltAbortException;
 import org.voltdb.VoltSystemProcedure;
 import org.voltdb.VoltTable;
-import org.voltdb.VoltType;
 import org.voltdb.catalog.Catalog;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Cluster;
-import org.voltdb.catalog.Column;
 import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Host;
 import org.voltdb.catalog.Partition;
@@ -119,7 +118,6 @@ import org.voltdb.utils.DBBPool.BBContainer;
 import org.voltdb.utils.Encoder;
 import org.voltdb.utils.EstTime;
 import org.voltdb.utils.Pair;
-import org.voltdb.utils.VoltTableComparator;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
@@ -758,6 +756,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private ReconfigurationStats reconfiguration_stats;
 
     // ----------------------------------------------------------------------------
+    // MONITORING 
+    // ----------------------------------------------------------------------------
+    Monitor monitor;
+    
+    
+    // ----------------------------------------------------------------------------
     // INITIALIZATION
     // ----------------------------------------------------------------------------
 
@@ -904,6 +908,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.pullStartTime = new HashMap<>();
         
         this.reconfiguration_stats = new ReconfigurationStats();
+        
+        // Monitoring
+        monitor = new Monitor(catalogContext, p_estimator, partitionId);
     }
 
     /**
@@ -4358,6 +4365,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                                    ts.getTouchedPartitions(),
                                                    batchParams);
         assert(plan != null);
+        
+        // EStore++ - monitoring of tables and partitioning attribute values accessed by this transaction
+        this.monitor.logPartitioningAttributes(ts, plan.getFragmentIds(), batchParams);
+        
         if (trace.val) {
             LOG.trace(ts + " - Touched Partitions: " + ts.getTouchedPartitions().values());
             LOG.trace(ts + " - Next BatchPlan:\n" + plan.toString());
@@ -6953,5 +6964,5 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     
     public SystemProcedureExecutionContext getSystemProcedureExecutionContext(){
         return m_systemProcedureContext;
-    }  
+    }
 }
