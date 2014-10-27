@@ -38,7 +38,7 @@ public class Monitor {
     private CatalogContext catalog_context;
     private PartitionEstimator p_estimator;
 
-    final int MAX_ENTRIES = 100;
+    final int MAX_ENTRIES = 1000;
     int curr_entries = 0;
     
     final boolean VERBOSE = false;
@@ -50,7 +50,7 @@ public class Monitor {
         // TODO one file per partition executor to avoid concurrent IO. will have to be merged at site level for complete stats.
         logFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + ".log");
         try {
-            this.writer = Files.newBufferedWriter(logFile, Charset.forName("US-ASCII"), StandardOpenOption.TRUNCATE_EXISTING);
+            this.writer = Files.newBufferedWriter(logFile, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
             LOG.warn("Failed while creating file " + this.logFile.toString());
             System.out.println("Failed while creating file " + this.logFile.toString());
@@ -71,9 +71,9 @@ public class Monitor {
      *  
      *  If VERBOSE = false, it output a CSV of the form
      * 
-     *  TRAN_ID, TABLE_NAME, COLUMN_NAME, VAL
+     *  TRANSACTION_ID, TABLE_NAME, COLUMN_NAME, VAL
      *  
-     *  There can be multiple equal entries if a tuple is accessed multiple times
+     *  With one entry per SQL statement. There can be multiple equal entries if a tuple is accessed multiple times
      */
     public void logPartitioningAttributes (LocalTransaction ts, long[] fragmentIds, ParameterSet[] parameterSets){
         if (!monitoring) return;
@@ -143,7 +143,7 @@ public class Monitor {
                                 s = "Coulumn: " + column.getName() + " Val: " + parameterSet.toArray()[offset] + " -- ";
                             }
                             else{
-                                s = ts.getTransactionId().toString() + "," + table.getName() + "," + column.getName() + "," + parameterSet.toArray()[offset];
+                                s = ts.getTransactionId().toString() + ";" + table.getName() + "," + column.getName() + "," + parameterSet.toArray()[offset];
                             }
                             this.writer.write(s, 0, s.length());
                             writer.newLine();

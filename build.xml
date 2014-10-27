@@ -2611,6 +2611,23 @@ UTILITIES
     </java>
 </target>
 
-
+<target name='affinity'
+        description="H-Store Affinity Controller">
+  <java fork="yes" failonerror="true" classname="org.qcri.affinityplanner.Controller">
+        <jvmarg value="-client" />
+        <jvmarg value="-Xms256m" />
+        <jvmarg value="-Xmx${client.memory}m" />
+        <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
+        <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
+        <arg value="catalog.jar=${benchmark.jar}" />
+        <arg value="${numPart}" />
+        <arg value="${tWindow}" />
+        <arg value="${plannerID}" />
+        <arg value="${provisioning}" />
+	&common;
+        <classpath refid='project.classpath' />
+    <assertions><enable/></assertions>
+    </java>
+</target>
 <!-- END PROJECT -->
 </project>
