@@ -30,10 +30,33 @@ public class AffinityGraph {
     private Map<String,Map<String,Integer>> edges = new HashMap<String,Map<String,Integer>> ();
     // weights of vertices
     private Map<String,Integer> vertices = new HashMap<String,Integer> ();
+    // location of vertices
+    private Map<String,Integer> vertexSites = new HashMap<String,Integer> ();
     
-    public AffinityGraph (int partitions) throws Exception{
+    public AffinityGraph (CatalogContext catalogContext, int partitions) throws Exception{
         BufferedReader reader;
         Path logFile;
+        
+        // get mapping of keys to partitions
+        // TODO use parameters instead of having this hardcoded
+        File planFile = new File ("plan.json");
+        JSONObject json;
+        try {
+            json = new JSONObject(FileUtil.readFile(planFile.getAbsolutePath()));
+        } catch (JSONException e1) {
+            e1.printStackTrace();
+            System.out.println("Problem while reading JSON file with the plan");
+            throw e1;
+        }
+        ExplicitPartitions p;
+        try {
+            p = new TwoTieredRangePartitions(catalogContext, json);
+        } catch (Exception e1) {
+            e1.printStackTrace();
+            System.out.println("Problem while creating the partitioner");
+            throw e1;
+        }
+        p.setPartitionPlan(planFile);
         
         // scan files for all partitions
         // TODO won't work with multiple servers having different sets of partitions
@@ -71,10 +94,10 @@ public class AffinityGraph {
                     System.out.println("Size of transaction:" + transaction.size());
                     for(Map.Entry<String,Integer> from : transaction.entrySet()){
                         // update edges first
-                        System.out.println("from: " + from.getKey());
+//                        System.out.println("from: " + from.getKey());
                         Set<String> visitedVertices = new HashSet<String>();
                         for(Map.Entry<String, Integer> to : transaction.entrySet()){
-                            System.out.println("to: " + to.getKey());
+//                            System.out.println("to: " + to.getKey());
                             if (! from.getKey().equals(to.getKey()) && ! visitedVertices.contains(to.getKey())){
                                 visitedVertices.add(to.getKey());
                                 Map<String,Integer> adjacency = edges.get(from.getKey());
@@ -103,6 +126,16 @@ public class AffinityGraph {
 //                            vertices.put(from.getKey(), currentVertexWeight+from.getValue());                            
                             vertices.put(from.getKey(), currentVertexWeight+1);                            
                         }
+                        // update locations
+                        String[] tupleData = from.getKey().split(",");
+                        String table = tupleData[0];
+                        String attribute = tupleData[1];
+                        Long value = Long.parseLong(tupleData[2]);
+                        // TODO how to handle multi-column partitioning attributes? need to talk to Aaron and Becca
+                        int partitionId = p.getPartitionId(table, new Long[] {value});
+//                        System.out.println("Tuple " + from.getKey() + " belongs to partition " + partitionId);
+                        // TODO assuming that sites get partition IDs in order
+                        vertexSites.put(from.getKey(), partitionId % Controller.PARTITIONS_PER_SITE);
                     }
                     //clear the transactions set
                     transaction.clear();

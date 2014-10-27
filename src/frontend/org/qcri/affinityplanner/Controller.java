@@ -63,7 +63,7 @@ public class Controller {
     }
     
     public void run () throws Exception {
-        AffinityGraph graph = new AffinityGraph(2);
+        AffinityGraph graph = new AffinityGraph(catalog_context, 2);
         graph.toFile();
 //        AffinityGraph[] partitions = GraphPartitioner.repartition(graph,2);
     }
