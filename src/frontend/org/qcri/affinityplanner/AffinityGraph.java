@@ -9,8 +9,10 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -26,20 +28,26 @@ import edu.brown.utils.FileUtil;
 public class AffinityGraph {
     private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
     
-    // the internal map is the adjacency list of <toVertex, edgeWeight>
-    private Map<String,Map<String,Integer>> edges = new HashMap<String,Map<String,Integer>> ();
+    // the first key is the fromVertex, the internal map is the adjacency list of <toVertex, edgeWeight>
+    private Map<String,Map<String,Integer>> m_edges = new HashMap<String,Map<String,Integer>> ();
     // weights of vertices
-    private Map<String,Integer> vertices = new HashMap<String,Integer> ();
+    private Map<String,Integer> m_vertices = new HashMap<String,Integer> ();
     // location of vertices
-    private Map<String,Integer> vertexSites = new HashMap<String,Integer> ();
+    private List<Set<String>> m_siteVertices = new ArrayList<Set<String>> ();
+    private Map<String,Integer> m_vertexSite = new HashMap<String,Integer> ();
     
-    public AffinityGraph (CatalogContext catalogContext, int partitions) throws Exception{
+    public void loadFromFiles (CatalogContext catalogContext, File planFile, int partitions, Path[] logFiles) throws Exception{
         BufferedReader reader;
-        Path logFile;
+        int sites = partitions / Controller.PARTITIONS_PER_SITE;
+        if (partitions % Controller.PARTITIONS_PER_SITE != 0){
+            sites++;
+        }
+        System.out.println("Sites = " + sites);
+        for (int i = 0; i <= sites; i++){
+            m_siteVertices.add(new HashSet<String>());
+        }
         
         // get mapping of keys to partitions
-        // TODO use parameters instead of having this hardcoded
-        File planFile = new File ("plan.json");
         JSONObject json;
         try {
             json = new JSONObject(FileUtil.readFile(planFile.getAbsolutePath()));
@@ -59,10 +67,7 @@ public class AffinityGraph {
         p.setPartitionPlan(planFile);
         
         // scan files for all partitions
-        // TODO won't work with multiple servers having different sets of partitions
-        for (int partition = 0; partition < partitions; partition++){
-            System.out.println("Doing partition " + partition);
-            logFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partition + ".log");
+        for (Path logFile : logFiles){
             try {
                 reader = Files.newBufferedReader(logFile, Charset.forName("US-ASCII"));
             } catch (IOException e) {
@@ -100,10 +105,10 @@ public class AffinityGraph {
 //                            System.out.println("to: " + to.getKey());
                             if (! from.getKey().equals(to.getKey()) && ! visitedVertices.contains(to.getKey())){
                                 visitedVertices.add(to.getKey());
-                                Map<String,Integer> adjacency = edges.get(from.getKey());
+                                Map<String,Integer> adjacency = m_edges.get(from.getKey());
                                 if(adjacency == null){
                                     adjacency = new HashMap<String,Integer>();
-                                    edges.put(from.getKey(), adjacency);
+                                    m_edges.put(from.getKey(), adjacency);
                                 }
                                 Integer currentEdgeWeight = adjacency.get(to.getKey());
                                 if (currentEdgeWeight == null){
@@ -117,14 +122,14 @@ public class AffinityGraph {
                             }
                         }
                         // update vertices
-                        Integer currentVertexWeight = vertices.get(from.getKey());
+                        Integer currentVertexWeight = m_vertices.get(from.getKey());
                         if (currentVertexWeight == null){
 //                            vertices.put(from.getKey(), from.getValue());
-                            vertices.put(from.getKey(), 1);
+                            m_vertices.put(from.getKey(), 1);
                         }
                         else{
 //                            vertices.put(from.getKey(), currentVertexWeight+from.getValue());                            
-                            vertices.put(from.getKey(), currentVertexWeight+1);                            
+                            m_vertices.put(from.getKey(), currentVertexWeight+1);                            
                         }
                         // update locations
                         String[] tupleData = from.getKey().split(",");
@@ -133,9 +138,10 @@ public class AffinityGraph {
                         Long value = Long.parseLong(tupleData[2]);
                         // TODO how to handle multi-column partitioning attributes? need to talk to Aaron and Becca
                         int partitionId = p.getPartitionId(table, new Long[] {value});
-//                        System.out.println("Tuple " + from.getKey() + " belongs to partition " + partitionId);
+                        System.out.println("Tuple " + from.getKey() + " belongs to partition " + partitionId);
                         // TODO assuming that sites get partition IDs in order
-                        vertexSites.put(from.getKey(), partitionId % Controller.PARTITIONS_PER_SITE);
+                        m_siteVertices.get(partitionId / Controller.PARTITIONS_PER_SITE).add(from.getKey());
+                        m_vertexSite.put(from.getKey(), partitionId / Controller.PARTITIONS_PER_SITE);
                     }
                     //clear the transactions set
                     transaction.clear();
@@ -165,19 +171,140 @@ public class AffinityGraph {
         }
     }
     
-    public void toFile(){
-        System.out.println("Writing graph. Size of edges: " + edges.size());
-        Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
+    public AffinityGraph[] fold () throws Exception{
+        // test inputs
+        if (m_siteVertices == null){
+            System.out.println("Graph has no mapping of sites to vertices");
+            throw new Exception ();
+        }
+        if (m_vertexSite == null){
+            System.out.println("Graph has no mapping of vertices to sites");
+            throw new Exception ();
+        }
+        if (m_edges == null){
+            System.out.println("Graph has no edges");
+            throw new Exception ();
+        }
+        if (m_vertices == null){
+            System.out.println("Graph has no vertices");
+            throw new Exception ();
+        }
+
+        // DEBUG
+        int i = 0;
+        for (Set<String> tupleSet : m_siteVertices){
+            System.out.println("Site " + i++);
+            for(String tuple : tupleSet){
+                System.out.println(tuple);
+            }
+            System.out.println("");
+        }
+        
+        // folding
+        System.out.println("Folding");
+        int sitesNo = m_siteVertices.size(); 
+        AffinityGraph[] res = new AffinityGraph[sitesNo];
+        for(int site = 0; site < sitesNo; site++){
+            AffinityGraph currGraph = res[site] = new AffinityGraph();
+            // add all local vertices and edges
+            Set<String> localTuples = m_siteVertices.get(site); 
+            if (localTuples == null) continue; // site has no tuples
+            for(String localTuple : localTuples){
+                // add local vertex
+                currGraph.putVertex(localTuple, m_vertices.get(localTuple));
+                // scan edges from local files
+                Map<String,Integer> adjacencyFromLocalTuple = m_edges.get(localTuple);
+                for(Map.Entry<String, Integer> fromLocalEdge : adjacencyFromLocalTuple.entrySet()){
+                    String toTuple = fromLocalEdge.getKey();
+                    Integer edgeWeight =  fromLocalEdge.getValue();
+                    if(localTuples.contains(toTuple)){
+                        currGraph.putEdgeAddWeight(localTuple, toTuple, edgeWeight);
+                    }
+                    else{
+                        // if other end remote, fold
+                        String siteName = "Site " + m_vertexSite.get(toTuple);
+                        currGraph.putVertexAddWeight(siteName, m_vertices.get(toTuple));
+                        currGraph.putEdgeAddWeight(localTuple, siteName, edgeWeight);
+                    }
+                }               
+            }
+        }
+        return res;
+    }
+    
+    public Map<String, Map<String, Integer>> getEdges() {
+        return m_edges;
+    }
+
+    public Map<String, Integer> getVertices() {
+        return m_vertices;
+    }
+    
+    public Integer getWeight(String tuple){
+        return m_vertices.get(tuple);
+    }
+
+    public List<Set<String>> getSiteVertices() {
+        return m_siteVertices;
+    }
+    
+    public Map<String,Integer> getVertexSite(){
+        return m_vertexSite;
+    }
+    
+    public void putVertex(String vertex, Integer weight){
+        m_vertices.put(vertex, weight);
+    }
+
+    public void putVertexAddWeight(String vertex, Integer weight){
+        Integer currWeight = m_vertices.get(vertex);
+        if(currWeight == null){
+            m_vertices.put(vertex, weight);
+        }
+        else{
+            m_vertices.put(vertex, weight + currWeight);
+        }
+    }
+
+    public void putEdge(String fromVertex, String toVertex, int weight){
+        Map<String,Integer> adjacency = m_edges.get(fromVertex);
+        if(adjacency == null){
+            adjacency = new HashMap<String,Integer>();
+            m_edges.put(fromVertex, adjacency);
+        }
+        adjacency.put(toVertex, weight);
+    }
+
+    public void putEdgeAddWeight(String fromVertex, String toVertex, int weight){
+        Map<String,Integer> adjacency = m_edges.get(fromVertex);
+        if(adjacency == null){
+            adjacency = new HashMap<String,Integer>();
+            m_edges.put(fromVertex, adjacency);
+        }
+        Integer currWeight = adjacency.get(toVertex);
+        if (currWeight == null){
+            adjacency.put(toVertex, weight);
+        }
+        else{
+            adjacency.put(toVertex, weight + currWeight);
+        }
+    }
+
+    public void toFile(Path file){
+        System.out.println("Writing graph. Size of edges: " + m_edges.size());
         BufferedWriter writer;
         String s;
         try {
-            writer = Files.newBufferedWriter(graphFile, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            for(String vertex : vertices.keySet()){
-                s = "Vertex " + vertex + " - weight " + vertices.get(vertex);
+            writer = Files.newBufferedWriter(file, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            for(String vertex : m_vertices.keySet()){
+                s = "Vertex " + vertex + " - weight " + m_vertices.get(vertex);
                 writer.write(s, 0, s.length());
                 writer.newLine();
-                Map<String,Integer> adjacency = edges.get(vertex);
-                if(adjacency == null) continue;
+                Map<String,Integer> adjacency = m_edges.get(vertex);
+                if(adjacency == null){
+                    writer.newLine();
+                    continue;
+                }
                 for (Map.Entry<String, Integer> edge : adjacency.entrySet()){
                     s = edge.getKey() + " - weight " + edge.getValue();
                     writer.write(s, 0, s.length());
@@ -188,8 +315,8 @@ public class AffinityGraph {
             writer.close();
         } catch (IOException e) {
             e.printStackTrace();
-            LOG.warn("Error while opening file " + graphFile.toString());
-            System.out.println("Error while opening file " + graphFile.toString());
+            LOG.warn("Error while opening file " + file.toString());
+            System.out.println("Error while opening file " + file.toString());
             return;
        }
     }

@@ -30,30 +30,30 @@ import edu.brown.utils.PartitionEstimator;
 
 public class Monitor {
     private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
-    private BufferedWriter writer;
-    private Path logFile;
-    private  boolean monitoring = true;
-    private ColumnToTableMap columnToTable;
+    private BufferedWriter m_writer;
+    private Path m_logFile;
+    private  boolean m_monitoring = true;
+    private ColumnToTableMap m_columnToTable;
     
-    private CatalogContext catalog_context;
-    private PartitionEstimator p_estimator;
+    private CatalogContext m_catalog_context;
+    private PartitionEstimator m_p_estimator;
 
     final int MAX_ENTRIES = 1000;
-    int curr_entries = 0;
+    int m_curr_entries = 0;
     
     final boolean VERBOSE = false;
 
     public Monitor(CatalogContext catalog_context, PartitionEstimator p_estimator, int partitionId){
-        this.columnToTable = new ColumnToTableMap(catalog_context);
-        this.catalog_context = catalog_context;
-        this.p_estimator = p_estimator;
+        this.m_columnToTable = new ColumnToTableMap(catalog_context);
+        this.m_catalog_context = catalog_context;
+        this.m_p_estimator = p_estimator;
         // TODO one file per partition executor to avoid concurrent IO. will have to be merged at site level for complete stats.
-        logFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + ".log");
+        m_logFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + ".log");
         try {
-            this.writer = Files.newBufferedWriter(logFile, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            this.m_writer = Files.newBufferedWriter(m_logFile, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
-            LOG.warn("Failed while creating file " + this.logFile.toString());
-            System.out.println("Failed while creating file " + this.logFile.toString());
+            LOG.warn("Failed while creating file " + this.m_logFile.toString());
+            System.out.println("Failed while creating file " + this.m_logFile.toString());
        }
     }
     
@@ -76,31 +76,31 @@ public class Monitor {
      *  With one entry per SQL statement. There can be multiple equal entries if a tuple is accessed multiple times
      */
     public void logPartitioningAttributes (LocalTransaction ts, long[] fragmentIds, ParameterSet[] parameterSets){
-        if (!monitoring) return;
+        if (!m_monitoring) return;
 
         String s = null;
-        this.curr_entries ++;
-        if (curr_entries > MAX_ENTRIES){
+        this.m_curr_entries ++;
+        if (m_curr_entries > MAX_ENTRIES){
             try {
-                this.writer.close();
+                this.m_writer.close();
             } catch (IOException e) {
                 e.printStackTrace();
-                LOG.warn("Failed while closing file " + this.logFile.toString());
+                LOG.warn("Failed while closing file " + this.m_logFile.toString());
             }
-            monitoring = false;
+            m_monitoring = false;
             return;
         }
 
         if(this.VERBOSE){
             try {
-                writer.newLine();
-                writer.newLine();
+                m_writer.newLine();
+                m_writer.newLine();
                 s = "New transaction with id " + ts.getTransactionId();
-                this.writer.write(s, 0, s.length());
+                this.m_writer.write(s, 0, s.length());
                
-                writer.newLine();
+                m_writer.newLine();
                 s = ts.getProcedure().getName();
-                this.writer.write(s, 0, s.length());
+                this.m_writer.write(s, 0, s.length());
     
 //                s = "\nPARAMS";
 //                this.writer.write(s, 0, s.length());
@@ -109,32 +109,32 @@ public class Monitor {
 //                    writer.write(s, 0, s.length());
 //                }
                 
-                writer.newLine();
+                m_writer.newLine();
                 s = "TUPLES";
-                this.writer.write(s, 0, s.length());
+                this.m_writer.write(s, 0, s.length());
             } catch (IOException e) {
                 e.printStackTrace();
-                LOG.warn("Failed while writing file " + this.logFile.toString());
+                LOG.warn("Failed while writing file " + this.m_logFile.toString());
             }
         }
         for (int i = 0; i < fragmentIds.length; i++) {
             List<Pair<List<CatalogType>, List<Integer>>> offsets = new ArrayList<>();
             // the following is slow but we can just keep a map to speed it up if needed - similar to columnToTable
-            p_estimator.getPlanFragmentEstimationParametersMultiCol(CatalogUtil.getPlanFragment(this.catalog_context.database, (int) fragmentIds[i]), offsets);
+            m_p_estimator.getPlanFragmentEstimationParametersMultiCol(CatalogUtil.getPlanFragment(this.m_catalog_context.database, (int) fragmentIds[i]), offsets);
             ParameterSet parameterSet = parameterSets[i];
             for (Pair<List<CatalogType>, List<Integer>> offsetPair : offsets) {
                 // considering a specific Table here
                 Table table = null;
                 try{
-                    table = this.columnToTable.getTable((Column) offsetPair.getFirst().get(0));
+                    table = this.m_columnToTable.getTable((Column) offsetPair.getFirst().get(0));
                     if (table == null){
                         LOG.warn("Monitoring cannot determine the table accessed by a transaction");
                     }
                     else{
                         if(this.VERBOSE){
-                            writer.newLine();
+                            m_writer.newLine();
                             s ="Table:" + table.getName() + " -- ";
-                            this.writer.write(s, 0, s.length());
+                            this.m_writer.write(s, 0, s.length());
                         }
                         Iterator<CatalogType> columnIter = offsetPair.getFirst().iterator(); // for debugging
                         for(Integer offset : offsetPair.getSecond()) {
@@ -145,8 +145,8 @@ public class Monitor {
                             else{
                                 s = ts.getTransactionId().toString() + ";" + table.getName() + "," + column.getName() + "," + parameterSet.toArray()[offset];
                             }
-                            this.writer.write(s, 0, s.length());
-                            writer.newLine();
+                            this.m_writer.write(s, 0, s.length());
+                            m_writer.newLine();
                         }
                     }
                 } catch (ClassCastException e) {
@@ -154,7 +154,7 @@ public class Monitor {
                    LOG.warn("Monitoring cannot determine the table accessed by a transaction");
                 } catch (IOException e) {
                     e.printStackTrace();
-                    LOG.warn("Failed while writing file " + this.logFile.toString());
+                    LOG.warn("Failed while writing file " + this.m_logFile.toString());
                 }
             }
         }

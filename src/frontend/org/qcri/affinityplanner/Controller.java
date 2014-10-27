@@ -1,5 +1,6 @@
 package org.qcri.affinityplanner;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
@@ -28,7 +29,7 @@ public class Controller {
 //    private Path planFile;
 //    private Path outputPlanFile;
     
-    public final static int PARTITIONS_PER_SITE = 6;
+    public final static int PARTITIONS_PER_SITE = 1;
 
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
 //        client = ClientFactory.createClient();
@@ -58,14 +59,25 @@ public class Controller {
 //        }
 
         //TODO select planners here
-
-
     }
     
     public void run () throws Exception {
-        AffinityGraph graph = new AffinityGraph(catalog_context, 2);
-        graph.toFile();
-//        AffinityGraph[] partitions = GraphPartitioner.repartition(graph,2);
+        // TODO hardcoded, for the moment
+        File planFile = new File ("plan.json");
+        Path[] logFiles = new Path[2];
+        logFiles[0] = FileSystems.getDefault().getPath(".", "transactions-partition-0.log");
+        logFiles[1] = FileSystems.getDefault().getPath(".", "transactions-partition-1.log");
+        
+        AffinityGraph graph = new AffinityGraph();
+        graph.loadFromFiles(catalog_context, planFile, 2, logFiles);
+        Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
+        graph.toFile(graphFile);
+        AffinityGraph[] partitions = graph.fold();
+        int i = 0;
+        for (AffinityGraph partition : partitions){
+            graphFile = FileSystems.getDefault().getPath(".", "graph-" + i++ +".log");
+            partition.toFile(graphFile);
+        }
     }
     
 //    public void connectToHost(){
