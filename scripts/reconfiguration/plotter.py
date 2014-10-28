@@ -476,6 +476,15 @@ def plotTSD(args, files, ax):
             #print ""
             if args.csv:
                 df.to_csv(args.csv)
+                gr = df.groupby('IN_RECONFIG')
+                meanCols = ['THROUGHPUT','LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','DOWNTIME','RECONFIG_TIME']
+                sumCols = ['ABORT_REJECT','ABORT_MISPREDICT','ABORT_UNEXPECTED','ASYNC_PULLS','LIVE_PULLS']
+                m = gr.mean()[meanCols]
+                s = gr.sum()[sumCols]
+                s = s.join(m).sort_index()
+                s.to_csv(args.csv.replace('-results.','-aggregate.'))
+                per_cng = s.pct_change().ix[1]
+                LOG.info("Percent change\n%s" % per_cng)
             if args.type == "line":
                 #plot the line with the same color 
                 ax.plot(df.index, data[name], color=color,label=name,ls=linestyle, lw=2.0)
