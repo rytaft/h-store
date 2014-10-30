@@ -30,7 +30,11 @@ public class Controller {
 //    private Path outputPlanFile;
     
     public final static int PARTITIONS_PER_SITE = 1;
-
+    public final static int DTXN_MULTIPLIER = 5;
+    public final static int MAX_MOVED_VERTICES = 30;
+    public final static int MIN_GAIN_FOR_MOVEMENT = 1;
+    public final static int MAX_SITES_ADDED_RECONF = 1;
+    
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
 //        client = ClientFactory.createClient();
 //        client.configureBlocking(false);
@@ -68,16 +72,25 @@ public class Controller {
         logFiles[0] = FileSystems.getDefault().getPath(".", "transactions-partition-0.log");
         logFiles[1] = FileSystems.getDefault().getPath(".", "transactions-partition-1.log");
         
-        AffinityGraph graph = new AffinityGraph();
+        GraphPartitioner graph = new GraphPartitioner();
         graph.loadFromFiles(catalog_context, planFile, 2, logFiles);
         Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
-        graph.toFile(graphFile);
+        graph.toFileDebug(graphFile);
         AffinityGraph[] partitions = graph.fold();
         int i = 0;
         for (AffinityGraph partition : partitions){
             graphFile = FileSystems.getDefault().getPath(".", "graph-" + i++ +".log");
-            partition.toFile(graphFile);
+            partition.toFileDebug(graphFile);
         }
+        
+        graph.repartition(250);
+        
+        partitions = graph.fold();
+        i = 0;
+        for (AffinityGraph partition : partitions){
+            graphFile = FileSystems.getDefault().getPath(".", "graph-" + i++ +"after-reconf.log");
+            partition.toFileDebug(graphFile);
+        }        
     }
     
 //    public void connectToHost(){

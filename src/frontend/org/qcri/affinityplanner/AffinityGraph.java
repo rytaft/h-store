@@ -5,7 +5,6 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.File;
 import java.nio.charset.Charset;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -15,6 +14,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import org.apache.log4j.Logger;
 import org.json.JSONException;
@@ -28,13 +29,20 @@ import edu.brown.utils.FileUtil;
 public class AffinityGraph {
     private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
     
-    // the first key is the fromVertex, the internal map is the adjacency list of <toVertex, edgeWeight>
-    private Map<String,Map<String,Integer>> m_edges = new HashMap<String,Map<String,Integer>> ();
-    // weights of vertices
-    private Map<String,Integer> m_vertices = new HashMap<String,Integer> ();
-    // location of vertices
-    private List<Set<String>> m_siteVertices = new ArrayList<Set<String>> ();
-    private Map<String,Integer> m_vertexSite = new HashMap<String,Integer> ();
+    // fromVertex -> adjacency list, where adjacency list is a toVertex -> edgeWeight map
+    protected Map<String,Map<String,Integer>> m_edges = new HashMap<String,Map<String,Integer>> ();
+    // vertex -> weight map
+    protected Map<String,Integer> m_vertices = new HashMap<String,Integer> ();
+    // site -> vertex and vertex -> site mappings
+    protected List<Set<String>> m_siteVertices = new ArrayList<Set<String>> ();
+    protected Map<String,Integer> m_vertexSite = new HashMap<String,Integer> ();
+    
+    // a folded graph has special edges for remote sites
+    private boolean folded = false;
+    
+    // load caches
+    private int[] m_cache_siteLoad = null;
+    private HashMap<String, Integer> m_cache_vertexLoad;
     
     public void loadFromFiles (CatalogContext catalogContext, File planFile, int partitions, Path[] logFiles) throws Exception{
         BufferedReader reader;
@@ -43,7 +51,7 @@ public class AffinityGraph {
             sites++;
         }
         System.out.println("Sites = " + sites);
-        for (int i = 0; i <= sites; i++){
+        for (int i = 0; i < sites; i++){
             m_siteVertices.add(new HashSet<String>());
         }
         
@@ -68,6 +76,7 @@ public class AffinityGraph {
         
         // scan files for all partitions
         for (Path logFile : logFiles){
+            // read first line
             try {
                 reader = Files.newBufferedReader(logFile, Charset.forName("US-ASCII"));
             } catch (IOException e) {
@@ -76,7 +85,7 @@ public class AffinityGraph {
                 throw e;
             }
             String line;
-            // tuples with number of SQL statements they are involved in
+            // vertices with number of SQL statements they are involved in
             Map<String,Integer> transaction = new HashMap<String,Integer>();
             try {
                 line = reader.readLine();
@@ -90,19 +99,30 @@ public class AffinityGraph {
             }
             String currTransactionId = (line.split(";"))[0];
             System.out.println("Tran ID = " + currTransactionId);
+            // process line
             while(line != null){
                 System.out.println("Reading next line");
-                String[] tuple = line.split(";");
+                String[] vertex = line.split(";");
                 
-                // if finished with one transaction, update graph and clear
-                if (!tuple[0].equals(currTransactionId)){
+                // if finished with one transaction, update graph and clear before moving on
+                if (!vertex[0].equals(currTransactionId)){
                     System.out.println("Size of transaction:" + transaction.size());
                     for(Map.Entry<String,Integer> from : transaction.entrySet()){
-                        // update edges first
-//                        System.out.println("from: " + from.getKey());
-                        Set<String> visitedVertices = new HashSet<String>();
+                        // update FROM vertex in graph
+                        Integer currentVertexWeight = m_vertices.get(from.getKey());
+                        if (currentVertexWeight == null){
+                            m_vertices.put(from.getKey(), 1);   // vertices.put(from.getKey(), from.getValue());
+                        }
+                        else{
+                            m_vertices.put(from.getKey(), currentVertexWeight+1);   // vertices.put(from.getKey(), currentVertexWeight+from.getValue());                         
+                        }
+                        // store site mappings for FROM vertex
+                        int site = getSite(from.getKey(), p);
+                        m_siteVertices.get(site).add(from.getKey());
+                        m_vertexSite.put(from.getKey(), site);
+                        // update FROM -> TO edges
+                        Set<String> visitedVertices = new HashSet<String>();    // removes duplicate vertex entries in the monitoring output
                         for(Map.Entry<String, Integer> to : transaction.entrySet()){
-//                            System.out.println("to: " + to.getKey());
                             if (! from.getKey().equals(to.getKey()) && ! visitedVertices.contains(to.getKey())){
                                 visitedVertices.add(to.getKey());
                                 Map<String,Integer> adjacency = m_edges.get(from.getKey());
@@ -112,50 +132,27 @@ public class AffinityGraph {
                                 }
                                 Integer currentEdgeWeight = adjacency.get(to.getKey());
                                 if (currentEdgeWeight == null){
-    //                              adjacency.put(to.getKey(), to.getValue());
-                                    adjacency.put(to.getKey(), 1);
+                                    adjacency.put(to.getKey(), 1);  // adjacency.put(to.getKey(), to.getValue());
                                 }
                                 else{
-    //                              adjacency.put(to.getKey(), currentEdgeWeight + to.getValue());
-                                    adjacency.put(to.getKey(), currentEdgeWeight + 1);
+                                    adjacency.put(to.getKey(), currentEdgeWeight + 1);  // adjacency.put(to.getKey(), currentEdgeWeight + to.getValue());
                                 }
                             }
                         }
-                        // update vertices
-                        Integer currentVertexWeight = m_vertices.get(from.getKey());
-                        if (currentVertexWeight == null){
-//                            vertices.put(from.getKey(), from.getValue());
-                            m_vertices.put(from.getKey(), 1);
-                        }
-                        else{
-//                            vertices.put(from.getKey(), currentVertexWeight+from.getValue());                            
-                            m_vertices.put(from.getKey(), currentVertexWeight+1);                            
-                        }
-                        // update locations
-                        String[] tupleData = from.getKey().split(",");
-                        String table = tupleData[0];
-                        String attribute = tupleData[1];
-                        Long value = Long.parseLong(tupleData[2]);
-                        // TODO how to handle multi-column partitioning attributes? need to talk to Aaron and Becca
-                        int partitionId = p.getPartitionId(table, new Long[] {value});
-                        System.out.println("Tuple " + from.getKey() + " belongs to partition " + partitionId);
-                        // TODO assuming that sites get partition IDs in order
-                        m_siteVertices.get(partitionId / Controller.PARTITIONS_PER_SITE).add(from.getKey());
-                        m_vertexSite.put(from.getKey(), partitionId / Controller.PARTITIONS_PER_SITE);
                     }
                     //clear the transactions set
                     transaction.clear();
-                    currTransactionId = tuple[0];
-                    System.out.println("New tran ID = " + currTransactionId);
+                    currTransactionId = vertex[0];
+                    System.out.println("Tran ID = " + currTransactionId);
                 }
                 
                 // update the current transaction
-                Integer weight = transaction.get(tuple[1]);
+                Integer weight = transaction.get(vertex[1]);
                 if (weight == null){
-                    transaction.put(tuple[1], 1);
+                    transaction.put(vertex[1], 1);
                 }
                 else{
-                    transaction.put(tuple[1], weight+1);
+                    transaction.put(vertex[1], weight+1);
                 } 
                 
                 // read next line
@@ -169,6 +166,24 @@ public class AffinityGraph {
                 }
             }
         }
+    }
+    
+    /*
+     * Returns the site of a vertex
+     * vertex is specified as "TABLE_ID,ATTRIBUTE_NAME,VALUE"
+     * 
+     * *******ASSUMPTIONS (TODO)********
+     * - Sites get partition IDs in order, ie., site 0 takes 0,..,N-1, site 1 takes N,...,2N-1 etc.
+     * - Does not handle multi-column partitioning attributes. This will depend on the output of monitoring for that case
+     */
+    private int getSite(String vertex, ExplicitPartitions p) throws Exception{
+        String[] vertexData = vertex.split(",");
+        String table = vertexData[0];
+        String attribute = vertexData[1];
+        Long value = Long.parseLong(vertexData[2]);
+        int partitionId = p.getPartitionId(table, new Long[] {value});
+//        System.out.println("Vertex " + from.getKey() + " belongs to partition " + partitionId);
+        return partitionId / Controller.PARTITIONS_PER_SITE;
     }
     
     public AffinityGraph[] fold () throws Exception{
@@ -189,13 +204,17 @@ public class AffinityGraph {
             System.out.println("Graph has no vertices");
             throw new Exception ();
         }
+        if (this.folded){
+            System.out.println("Graph has been folded already");
+            throw new Exception ();            
+        }
 
         // DEBUG
         int i = 0;
-        for (Set<String> tupleSet : m_siteVertices){
+        for (Set<String> vertexSet : m_siteVertices){
             System.out.println("Site " + i++);
-            for(String tuple : tupleSet){
-                System.out.println(tuple);
+            for(String vertex : vertexSet){
+                System.out.println(vertex);
             }
             System.out.println("");
         }
@@ -206,25 +225,28 @@ public class AffinityGraph {
         AffinityGraph[] res = new AffinityGraph[sitesNo];
         for(int site = 0; site < sitesNo; site++){
             AffinityGraph currGraph = res[site] = new AffinityGraph();
+            currGraph.folded = true;
             // add all local vertices and edges
-            Set<String> localTuples = m_siteVertices.get(site); 
-            if (localTuples == null) continue; // site has no tuples
-            for(String localTuple : localTuples){
+            Set<String> localVertices = m_siteVertices.get(site);
+            if (localVertices == null) continue; // site has no vertices
+            for(String localVertex : localVertices){
                 // add local vertex
-                currGraph.putVertex(localTuple, m_vertices.get(localTuple));
+                Integer vertexWeight = m_vertices.get(localVertex);
+                currGraph.putVertex(localVertex, vertexWeight);
                 // scan edges from local files
-                Map<String,Integer> adjacencyFromLocalTuple = m_edges.get(localTuple);
-                for(Map.Entry<String, Integer> fromLocalEdge : adjacencyFromLocalTuple.entrySet()){
-                    String toTuple = fromLocalEdge.getKey();
+                Map<String,Integer> adjacencyFromLocalVertex = m_edges.get(localVertex);
+                for(Map.Entry<String, Integer> fromLocalEdge : adjacencyFromLocalVertex.entrySet()){
+                    String toVertex = fromLocalEdge.getKey();
                     Integer edgeWeight =  fromLocalEdge.getValue();
-                    if(localTuples.contains(toTuple)){
-                        currGraph.putEdgeAddWeight(localTuple, toTuple, edgeWeight);
+                    if(localVertices.contains(toVertex)){
+                        currGraph.putEdgeAddWeight(localVertex, toVertex, edgeWeight);
                     }
                     else{
                         // if other end remote, fold
-                        String siteName = "Site " + m_vertexSite.get(toTuple);
-                        currGraph.putVertexAddWeight(siteName, m_vertices.get(toTuple));
-                        currGraph.putEdgeAddWeight(localTuple, siteName, edgeWeight);
+                        String siteName = "Site " + m_vertexSite.get(toVertex);
+                        // the weight of a remote site is the sum of the weights of the edges
+                        currGraph.putVertexAddWeight(siteName, edgeWeight);
+                        currGraph.putEdgeAddWeight(localVertex, siteName, edgeWeight);
                     }
                 }               
             }
@@ -240,8 +262,212 @@ public class AffinityGraph {
         return m_vertices;
     }
     
-    public Integer getWeight(String tuple){
-        return m_vertices.get(tuple);
+    public Integer getVertexWeight(String vertex){
+        return m_vertices.get(vertex);
+    }
+    
+    // gain of removing a server. considers both access load and load due to remote accesses
+    public SortedMap<Integer,String> getVertexGains(){
+        TreeMap<Integer,String> res = new TreeMap<Integer,String>();
+        for (Map.Entry<String, Integer> vertex : m_vertices.entrySet()){
+            String vertexName = vertex.getKey();
+            // local accesses
+            int gain = vertex.getValue();
+            // remote accesses
+            Map<String,Integer> adjacency = m_edges.get(vertexName);
+            for (Map.Entry<String, Integer> edge : adjacency.entrySet()){
+                if(edge.getKey().startsWith("Site ")){
+                    gain += edge.getValue() * Controller.DTXN_MULTIPLIER;
+                }
+            }
+            res.put(gain,vertexName);
+        }
+        return res;
+    }
+    
+    public int getSitesNo(){
+        if(m_siteVertices.size() <= 0){
+            return -1;
+        }
+        return m_siteVertices.size();
+    }
+    
+    /*
+     * populates the load caches so that the computation does not need to be done over and over again
+     */
+    private void fillLoadCaches(){
+        m_cache_siteLoad = new int [getSitesNo()];
+        m_cache_vertexLoad = new HashMap<String,Integer>();
+        // process each site
+        for (int i = 0; i < getSitesNo(); i++){
+            // iterate all vertices of site
+            Set<String> localVertices = m_siteVertices.get(i);
+            for(String vertex : localVertices){
+                m_cache_siteLoad[i] += getLoadInCurrSite(vertex);
+                m_cache_vertexLoad.put(vertex,getLoadInCurrSite(vertex));
+            }
+        }
+    }
+    
+    /*
+     * returns -1 if computeLoads has not been called
+     */
+    public int getLoadPerSite(int site){
+        if (m_cache_siteLoad == null){
+            fillLoadCaches();
+        }
+        return m_cache_siteLoad[site];
+    }
+    
+    /*
+     * computes load of a vertex if placed on a site. this is different from the weight of a vertex because it considers
+     * both direct accesses of the vertex and the cost of remote accesses
+     */
+    public int getLoadInCurrSite(String vertex){
+        // the cache is valid only for the current site
+        if(m_cache_vertexLoad == null){
+            // local accesses
+            int load = m_vertices.get(vertex);
+            // remote accesses
+            Map<String,Integer> adjacencyList = m_edges.get(vertex);
+            int site = m_vertexSite.get(vertex);
+            for(Map.Entry<String, Integer> edge : adjacencyList.entrySet()){
+                if(m_vertexSite.get(edge.getKey()) != site){
+                    load += edge.getValue() * Controller.DTXN_MULTIPLIER;
+                }
+            }
+            return load;
+        }
+        else{
+            return m_cache_vertexLoad.get(vertex);
+        }
+    }
+    
+    /*
+     * returns top-k vertices from site 
+     * if site has less than k vertices, return all vertices
+     */
+    public String[] getHottestVertices(int site, int k){
+        k = Math.min(k, m_siteVertices.get(site).size());
+        String[] res = new String[k];
+        int[] loads = new int[k];
+        int lowestLoad = Integer.MAX_VALUE;
+        int lowestPos = 0;
+        int filled = 0;
+        
+        for(String vertex : m_siteVertices.get(site)){
+            if (filled < k){
+                res[filled] = vertex;
+                loads[filled] = getLoadInCurrSite(vertex);
+                filled++;
+                if(filled == k){
+                    for (int i = 0; i < k; i++){
+                        if(loads[i] < lowestLoad){
+                            lowestLoad = loads[i];
+                            lowestPos = i;
+                        }
+                    }
+                }
+            }
+            else{
+                int vertexLoad = getLoadInCurrSite(vertex);
+                if(vertexLoad > lowestLoad){
+                    lowestLoad = vertexLoad;
+                    res[lowestPos] = vertex;
+                    loads[lowestPos] = vertexLoad;
+                    // find new lowest load
+                    for (int i = 0; i < k; i++){
+                        if(loads[i] < lowestLoad){
+                            lowestLoad = loads[i];
+                            lowestPos = i;
+                        }
+                    }
+                }
+            }
+        }
+        return res;
+    }
+    
+    /*
+     *     LOCAL gain a site gets by REMOVING a SET of local vertices out of a site
+     *     it ASSUMES that the vertices are on the same site
+     *     
+     *     this is NOT like computing the load because local edges come as a cost in this case 
+     *     it also considers a SET of vertices to be moved together
+     */
+    public int getRemoveVerticesGain(Set<String> movedVertices) throws Exception{
+        if (movedVertices == null){
+            System.out.println("Trying to move an empty set of vertices");
+            throw new Exception();
+        }
+        int gain = 0;
+        int site = m_vertexSite.get(movedVertices.iterator().next());
+        for(String vertex : movedVertices){ 
+            Integer vertexWeight = m_vertices.get(vertex);
+            if (vertexWeight == null){
+                System.out.println("Cannot include external node for gain computation");
+                throw new Exception();
+            }
+            
+            int outPull = 0;
+            int inPull = 0;
+            Map<String,Integer> adjacency = m_edges.get(vertex);
+            for (Map.Entry<String, Integer> edge : adjacency.entrySet()){
+                String toVertex = edge.getKey();
+                Integer edgeWeight = edge.getValue();
+                if(m_vertexSite.get(toVertex) == site && !movedVertices.contains(toVertex)){
+                    // edge to local vertex which will not be moved out
+                    inPull += edgeWeight;
+                }
+                else{
+                    // edge to remote vertex or vertex that will be moved out
+                    outPull += edgeWeight;
+                }
+            }
+            gain += vertexWeight + (outPull - inPull) * Controller.DTXN_MULTIPLIER;
+        }
+        return gain;
+    }
+    
+    /*
+     *     LOCAL gain a site gets by ADDING a SET of remote vertices
+     *     
+     *     this is NOT like computing the load because local edges come as a cost in this case 
+     *     it also considers a SET of vertices to be moved together
+     */
+    public int getAddVerticesGain(Set<String> movedVertices, int newSite) throws Exception{
+        if (movedVertices == null){
+            System.out.println("Trying to move an empty set of vertices");
+            throw new Exception();
+        }
+        int gain = 0;
+        for(String vertex : movedVertices){
+            // get tuple weight from original site
+            Integer vertexWeight = m_vertices.get(vertex);
+            if (vertexWeight == null){
+                System.out.println("Cannot include external node for gain computation");
+                throw new Exception();
+            }
+            
+            int outPull = 0;
+            int inPull = 0;
+            // get adjacency list from original site
+            Map<String,Integer> adjacency = m_edges.get(vertex);
+            for (Map.Entry<String, Integer> edge : adjacency.entrySet()){
+                String toVertex = edge.getKey();
+                Integer edgeWeight = edge.getValue();
+                if(m_vertexSite.get(toVertex) == newSite || movedVertices.contains(toVertex)){
+                    // edge to local vertex or to vertex that will be moved in
+                    inPull += edgeWeight;
+                }
+                else{
+                    // edge to remote vertex that will not be moved in
+                    outPull += edgeWeight;
+                }
+            }
+            gain = (inPull - outPull)  * Controller.DTXN_MULTIPLIER - vertexWeight;
+        }
+        return gain;
     }
 
     public List<Set<String>> getSiteVertices() {
@@ -289,7 +515,45 @@ public class AffinityGraph {
             adjacency.put(toVertex, weight + currWeight);
         }
     }
-
+    
+    public boolean isFolded(){
+        return folded;
+    }
+    
+    public void moveVertices(Set<String> movedVertices, int fromSite, int toSite){
+        m_cache_vertexLoad = null;
+        for (String movedVertex : movedVertices){
+            m_cache_siteLoad[fromSite] -= getLoadInCurrSite(movedVertex);
+            m_siteVertices.get(fromSite).remove(movedVertex);
+            m_siteVertices.get(toSite).add(movedVertex);
+            m_vertexSite.put(movedVertex, toSite);
+            m_cache_siteLoad[toSite] += getLoadInCurrSite(movedVertex);
+        }
+    }
+    
+    /*
+     * finds the LOCAL vertex with the highest affinity
+     * 
+     * ASSUMES that all vertices are on the same site
+     */
+    public String getMostAffineExtension(Set<String> vertices){
+        int maxAdjacency = -1;
+        String res = null;
+        int site = m_vertexSite.get(vertices.iterator().next());
+        for(String vertex : vertices){
+            Map<String,Integer> adjacency = m_edges.get(vertex);
+            for(Map.Entry<String, Integer> edge : adjacency.entrySet()){
+                if (edge.getValue() > maxAdjacency
+                        && m_vertexSite.get(edge.getKey()) == site
+                        && !vertices.contains(edge.getKey())){
+                    maxAdjacency = edge.getValue();
+                    res = edge.getKey();
+                }
+            }
+        }
+        return res;
+    }
+    
     public void toFile(Path file){
         System.out.println("Writing graph. Size of edges: " + m_edges.size());
         BufferedWriter writer;
@@ -297,7 +561,36 @@ public class AffinityGraph {
         try {
             writer = Files.newBufferedWriter(file, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             for(String vertex : m_vertices.keySet()){
+                s = vertex + "," + m_vertices.get(vertex) + ";";
+                writer.write(s, 0, s.length());
+                Map<String,Integer> adjacency = m_edges.get(vertex);
+                if(adjacency != null){
+                    for (Map.Entry<String, Integer> edge : adjacency.entrySet()){
+                        s = ";" + edge.getKey() + "," + edge.getValue();
+                        writer.write(s, 0, s.length());
+                    }
+                }
+                writer.newLine();
+            }
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            LOG.warn("Error while opening file " + file.toString());
+            System.out.println("Error while opening file " + file.toString());
+            return;
+       }
+    }
+
+    public void toFileDebug(Path file){
+        System.out.println("Writing graph. Number of vertices: " + m_edges.size());
+        BufferedWriter writer;
+        String s;
+        int totalWeight = 0;
+        try {
+            writer = Files.newBufferedWriter(file, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            for(String vertex : m_vertices.keySet()){
                 s = "Vertex " + vertex + " - weight " + m_vertices.get(vertex);
+                totalWeight += m_vertices.get(vertex);
                 writer.write(s, 0, s.length());
                 writer.newLine();
                 Map<String,Integer> adjacency = m_edges.get(vertex);
@@ -312,6 +605,8 @@ public class AffinityGraph {
                 }
                 writer.newLine();
             }
+            s = "Total weight: " + totalWeight;
+            writer.write(s, 0, s.length());
             writer.close();
         } catch (IOException e) {
             e.printStackTrace();
