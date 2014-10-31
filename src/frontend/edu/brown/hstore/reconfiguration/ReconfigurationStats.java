@@ -57,6 +57,9 @@ public class ReconfigurationStats {
         asyncRequestTimeLockQSize = new FastIntHistogram();
     }
     
+    public void resetAdaptive(){
+        timeToAnswerAsync = minTimeToAnswerAsync;
+    }
     
     public long updateTimeToAnswerAsync(int queueSize){
         asyncTimeToAnswerLockQSize.put(queueSize);

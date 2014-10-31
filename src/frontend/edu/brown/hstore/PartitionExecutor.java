@@ -6513,6 +6513,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (!scheduleAsyncPullQueue.isEmpty()){
             LOG.warn("Schedule async pull queue was not empty... " + StringUtil.join(",",scheduleAsyncPullQueue));
         }
+        
+        //reset dynamic stat configuration
+        if(reconfiguration_stats != null){
+            reconfiguration_stats.resetAdaptive();
+        }
+        
         ReconfigurationTracking.PULL_SINGLE_KEY = this.hstore_conf.site.reconfig_pull_single_key;
         LOG.info((ReconfigurationTracking.PULL_SINGLE_KEY ? "Pulling single keys and not ranges ************" : "Pulling ranges instead of keys ************"));
         if (reconfig_protocol == ReconfigurationProtocols.STOPCOPY) {
