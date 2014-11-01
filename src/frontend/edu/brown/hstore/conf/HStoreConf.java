@@ -777,7 +777,7 @@ public final class HStoreConf {
         
         @ConfigProperty(
                 description="Use adaptive reconfig sizing.",
-                defaultBoolean=true,
+                defaultBoolean=false,
                 experimental=true
         )
         public boolean reconfig_aysnc_size_adaptive;        
