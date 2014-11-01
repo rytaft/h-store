@@ -161,7 +161,8 @@
 <arg value="site.reconfig_async_nonchunk_pull=${site.reconfig_async_nonchunk_pull}" />
 <arg value="site.reconfig_async_nonchunk_push=${site.reconfig_async_nonchunk_push}" />
 <arg value="site.reconfig_async=${site.reconfig_async}" />
-<arg value="site.reconfig_adaptive=${site.reconfig_adaptive}" />
+<arg value="site.reconfig_async_time_adaptive=${site.reconfig_async_time_adaptive}" />
+<arg value="site.reconfig_aysnc_size_adaptive=${site.reconfig_aysnc_size_adaptive}" />
 <arg value="site.reconfig_live=${site.reconfig_live}" />
 <arg value="site.reconfig_initial_plan=${site.reconfig_initial_plan}" />
 <arg value="site.reconfig_replication_delay=${site.reconfig_replication_delay}" />
