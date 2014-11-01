@@ -6503,6 +6503,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.incoming_ranges = reconfig_plan.getIncoming_ranges().get(this.partitionId);
         this.reconfiguration_tracker = new ReconfigurationTracking(planned_partitions, reconfig_plan, this.partitionId);
         this.p_estimator.getHasher().inReconfiguration.set(true);
+
     	if(this.p_estimator.getHasher() instanceof ExplicitHasher) {
         	((ExplicitHasher) this.p_estimator.getHasher()).getPartitions().setReconfigurationPlan(reconfig_plan);
         }
@@ -6790,6 +6791,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (isLive){
             extractSize = hstore_conf.site.reconfig_chunk_size_kb*1024;
         }
+        else if (hstore_conf.site.reconfig_aysnc_size_adaptive){
+            extractSize = reconfiguration_stats.getAdaptiveExctactSize(this.lockQueue.size());
+        }
         Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table, table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId, extractSize);
         long diff  = System.currentTimeMillis() - start;
 
@@ -6828,6 +6832,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     // --------------------------------------
     
     
+
+
     public void queueLivePullReplyResponse(MultiDataPullResponseMessage pullResponseMsg){
         this.work_queue.offer(pullResponseMsg);
     }

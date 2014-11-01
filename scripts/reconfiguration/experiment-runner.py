@@ -636,6 +636,14 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
                 fabric.env["benchmark.warehouses"] = args["benchmark_size"]
                 fabric.env["benchmark.warehouse_per_partition"] = False
                 plan_base = "%s-size%s" % (plan_base, args["benchmark_size"])
+            if args['no_multi']:
+                LOG.info('Disabling multi-part txns')
+                fabric.env["benchmark.neworder_multip"] = False
+                fabric.env["benchmark.neworder_multip_remote"] = False
+                fabric.env["benchmark.neworder_multip_mix"] = -1
+                fabric.env["benchmark.payment_multip"] = False
+                fabric.env["benchmark.payment_multip_remote"] = False
+                fabric.env["benchmark.payment_multip_mix"] = -1
 
         if benchmark == "ycsb":
             plan_base = 'scripts/reconfiguration/plans/ycsb'
@@ -1144,6 +1152,7 @@ if __name__ == '__main__':
     agroup.add_argument("--chunksize", type=int,  help="Size of chunk splits")
     agroup.add_argument("--asyncsize", type=int,  help="Size of async chunk splits")
     agroup.add_argument("--plot", action='store_true',default=False, help='Plot results')
+    agroup.add_argument("--no-multi", action='store_true',default=False, help='Avoid multi-part txns')
     agroup.add_argument("--no-zip", action='store_true',default=False, help='Do not zip and save results')
     
     ## Experiment Parameters

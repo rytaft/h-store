@@ -42,6 +42,13 @@ public class ReconfigurationStats {
     public long maxTimeToAnswerAsync = 1500;
     public long timeToAnswerAsync = minTimeToAnswerAsync;
     
+    
+
+    public int adaptive_min_bytes;
+    public int adaptive_max_bytes;
+    public int adaptive_cur_bytes;
+    public FastIntHistogram queueSizeHist;
+    
    
     /**
      * 
@@ -55,6 +62,10 @@ public class ReconfigurationStats {
         events = new ArrayList<>();
         asyncTimeToAnswerLockQSize = new FastIntHistogram();
         asyncRequestTimeLockQSize = new FastIntHistogram();
+        this.adaptive_min_bytes = 1024;
+        this.adaptive_max_bytes = 20*1024; 
+        this.adaptive_cur_bytes = adaptive_min_bytes;
+        this.queueSizeHist = new FastIntHistogram();
     }
     
     public void resetAdaptive(){
@@ -83,6 +94,30 @@ public class ReconfigurationStats {
         return timeToAnswerAsync;        
     }
     
+    
+    public int getAdaptiveExctactSize(int queueSize) {
+        this.queueSizeHist.put(queueSize);
+        if (queueSize < 50) {
+            adaptive_cur_bytes = (int)(adaptive_cur_bytes*1.40);
+            LOG.info(String.format(" Adaptive Sizing * 1.40 Size:%s Q:%s", adaptive_cur_bytes, queueSize));
+        }
+        else if (queueSize < 100) {
+            adaptive_cur_bytes = (int)(adaptive_cur_bytes*1.20);
+            LOG.info(String.format(" Adaptive Sizing * 1.20 Size:%s Q:%s", adaptive_cur_bytes, queueSize));
+        }
+        else if (queueSize > 400) {
+            adaptive_cur_bytes = (int)(adaptive_cur_bytes*.80);
+            LOG.info(String.format(" Adaptive Sizing * .90 Size:%s Q:%s", adaptive_cur_bytes, queueSize));
+        }
+        else if (queueSize > 500) {
+            adaptive_cur_bytes = (int)(adaptive_cur_bytes*.50);
+            LOG.info(String.format(" Adaptive Sizing * .50 Size:%s Q:%s", adaptive_cur_bytes, queueSize));
+        }
+
+        adaptive_cur_bytes = Math.min(adaptive_max_bytes, adaptive_cur_bytes);
+        adaptive_cur_bytes = Math.max(adaptive_min_bytes, adaptive_cur_bytes);
+        return adaptive_cur_bytes; 
+    }
     
     public void addMessage(String m){
         messages.append(m);

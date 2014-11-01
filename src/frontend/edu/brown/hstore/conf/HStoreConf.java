@@ -776,6 +776,13 @@ public final class HStoreConf {
         public boolean reconfig_async_time_adaptive;
         
         @ConfigProperty(
+                description="Use adaptive reconfig sizing.",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_aysnc_size_adaptive;        
+        
+        @ConfigProperty(
                 description="Use live reconfiguration.",
                 defaultBoolean=true,
                 experimental=true
@@ -1442,6 +1449,7 @@ public final class HStoreConf {
         )
         public int pool_pathestimators_idle;
 
+    
         
     }
     
