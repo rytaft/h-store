@@ -1,7 +1,9 @@
 package org.qcri.affinityplanner;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -31,9 +33,10 @@ public class Controller {
     
     public final static int PARTITIONS_PER_SITE = 1;
     public final static int DTXN_MULTIPLIER = 5;
-    public final static int MAX_MOVED_VERTICES = 30;
-    public final static int MIN_GAIN_FOR_MOVEMENT = 1;
-    public final static int MAX_SITES_ADDED_RECONF = 1;
+    public final static int MAX_MOVED_VERTICES_PER_SOURCE_SITE = 8;
+    public final static int MIN_DELTA_FOR_MOVEMENT = -1;
+    public final static int MAX_SITES_ADDED_RECONF = 2;
+    public final static int MAX_SITES = 4;
     
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
 //        client = ClientFactory.createClient();
@@ -76,21 +79,26 @@ public class Controller {
         graph.loadFromFiles(catalog_context, planFile, 2, logFiles);
         Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
         graph.toFileDebug(graphFile);
-        AffinityGraph[] partitions = graph.fold();
-        int i = 0;
-        for (AffinityGraph partition : partitions){
-            graphFile = FileSystems.getDefault().getPath(".", "graph-" + i++ +".log");
-            partition.toFileDebug(graphFile);
+//        AffinityGraph[] partitions = graph.fold();
+//        int i = 0;
+//        for (AffinityGraph partition : partitions){
+//            graphFile = FileSystems.getDefault().getPath(".", "graph-" + i++ +".log");
+//            partition.toFileDebug(graphFile);
+//        }
+        
+        graph.repartition(190);
+        
+        System.out.println("Loads per site");
+        for (int j = 0; j < graph.getSitesNo(); j++){
+            System.out.println(j + " " + graph.getLoadPerSite(j));
         }
         
-        graph.repartition(250);
-        
-        partitions = graph.fold();
-        i = 0;
-        for (AffinityGraph partition : partitions){
-            graphFile = FileSystems.getDefault().getPath(".", "graph-" + i++ +"after-reconf.log");
-            partition.toFileDebug(graphFile);
-        }        
+//        partitions = graph.fold();
+//        i = 0;
+//        for (AffinityGraph partition : partitions){
+//            graphFile = FileSystems.getDefault().getPath(".", "graph-" + i++ +"-after-reconf.log");
+//            partition.toFileDebug(graphFile);
+//        }        
     }
     
 //    public void connectToHost(){
@@ -114,14 +122,28 @@ public class Controller {
     /**
      * @param args
      */
-    public static void main(String[] vargs) throws Exception{
+    public static void main(String[] vargs){
+        
+        try {
+            System.setErr(new PrintStream("error.log"));
+        } catch (FileNotFoundException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
 
         if(vargs.length == 0){
             System.out.println("Must specify server hostname");
             return;
         }       
 
-        ArgumentsParser args = ArgumentsParser.load(vargs,ArgumentsParser.PARAM_CATALOG);
+        ArgumentsParser args = null;
+        try {
+            args = ArgumentsParser.load(vargs,ArgumentsParser.PARAM_CATALOG);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Not good");
+            return;
+        }
 
         HStoreConf hstore_conf = HStoreConf.initArgumentsParser(args);
 
@@ -131,6 +153,12 @@ public class Controller {
         System.out.println("vargs.length: "+vargs.length);
 
         Controller c = new Controller(args.catalog, hstore_conf, args.catalogContext);
-        c.run();
+        try {
+            c.run();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Not good");
+            return;
+        }
     }
 }

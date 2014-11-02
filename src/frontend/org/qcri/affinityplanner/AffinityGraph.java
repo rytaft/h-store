@@ -11,6 +11,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -98,15 +99,15 @@ public class AffinityGraph {
                 LOG.warn("File " + logFile.toString() + " is empty");
             }
             String currTransactionId = (line.split(";"))[0];
-            System.out.println("Tran ID = " + currTransactionId);
+//            System.out.println("Tran ID = " + currTransactionId);
             // process line
             while(line != null){
-                System.out.println("Reading next line");
+//                System.out.println("Reading next line");
                 String[] vertex = line.split(";");
                 
                 // if finished with one transaction, update graph and clear before moving on
                 if (!vertex[0].equals(currTransactionId)){
-                    System.out.println("Size of transaction:" + transaction.size());
+//                    System.out.println("Size of transaction:" + transaction.size());
                     for(Map.Entry<String,Integer> from : transaction.entrySet()){
                         // update FROM vertex in graph
                         Integer currentVertexWeight = m_vertices.get(from.getKey());
@@ -143,7 +144,7 @@ public class AffinityGraph {
                     //clear the transactions set
                     transaction.clear();
                     currTransactionId = vertex[0];
-                    System.out.println("Tran ID = " + currTransactionId);
+//                    System.out.println("Tran ID = " + currTransactionId);
                 }
                 
                 // update the current transaction
@@ -266,25 +267,6 @@ public class AffinityGraph {
         return m_vertices.get(vertex);
     }
     
-    // gain of removing a server. considers both access load and load due to remote accesses
-    public SortedMap<Integer,String> getVertexGains(){
-        TreeMap<Integer,String> res = new TreeMap<Integer,String>();
-        for (Map.Entry<String, Integer> vertex : m_vertices.entrySet()){
-            String vertexName = vertex.getKey();
-            // local accesses
-            int gain = vertex.getValue();
-            // remote accesses
-            Map<String,Integer> adjacency = m_edges.get(vertexName);
-            for (Map.Entry<String, Integer> edge : adjacency.entrySet()){
-                if(edge.getKey().startsWith("Site ")){
-                    gain += edge.getValue() * Controller.DTXN_MULTIPLIER;
-                }
-            }
-            res.put(gain,vertexName);
-        }
-        return res;
-    }
-    
     public int getSitesNo(){
         if(m_siteVertices.size() <= 0){
             return -1;
@@ -296,7 +278,7 @@ public class AffinityGraph {
      * populates the load caches so that the computation does not need to be done over and over again
      */
     private void fillLoadCaches(){
-        m_cache_siteLoad = new int [getSitesNo()];
+        m_cache_siteLoad = new int [Controller.MAX_SITES];
         m_cache_vertexLoad = new HashMap<String,Integer>();
         // process each site
         for (int i = 0; i < getSitesNo(); i++){
@@ -306,6 +288,19 @@ public class AffinityGraph {
                 m_cache_siteLoad[i] += getLoadInCurrSite(vertex);
                 m_cache_vertexLoad.put(vertex,getLoadInCurrSite(vertex));
             }
+        }
+    }
+    
+    public void addSite(){
+        if(m_cache_siteLoad != null){
+            m_cache_siteLoad[m_siteVertices.size()] = 0;
+            m_siteVertices.add(new HashSet<String>());
+        }
+    }
+    
+    private void print(){
+        for (int i = 0; i < getSitesNo(); i++){
+            System.out.println("Site " + i + " having vertices " + m_siteVertices.get(i).toString());
         }
     }
     
@@ -323,9 +318,9 @@ public class AffinityGraph {
      * computes load of a vertex if placed on a site. this is different from the weight of a vertex because it considers
      * both direct accesses of the vertex and the cost of remote accesses
      */
-    public int getLoadInCurrSite(String vertex){
+    public Integer getLoadInCurrSite(String vertex){
         // the cache is valid only for the current site
-        if(m_cache_vertexLoad == null){
+        if(m_cache_vertexLoad == null || m_cache_vertexLoad.get(vertex) == null){
             // local accesses
             int load = m_vertices.get(vertex);
             // remote accesses
@@ -347,9 +342,9 @@ public class AffinityGraph {
      * returns top-k vertices from site 
      * if site has less than k vertices, return all vertices
      */
-    public String[] getHottestVertices(int site, int k){
+    public List<String> getHottestVertices(int site, int k){
         k = Math.min(k, m_siteVertices.get(site).size());
-        String[] res = new String[k];
+        List<String> res = new LinkedList<String>();
         int[] loads = new int[k];
         int lowestLoad = Integer.MAX_VALUE;
         int lowestPos = 0;
@@ -357,7 +352,7 @@ public class AffinityGraph {
         
         for(String vertex : m_siteVertices.get(site)){
             if (filled < k){
-                res[filled] = vertex;
+                res.add(vertex);
                 loads[filled] = getLoadInCurrSite(vertex);
                 filled++;
                 if(filled == k){
@@ -373,7 +368,7 @@ public class AffinityGraph {
                 int vertexLoad = getLoadInCurrSite(vertex);
                 if(vertexLoad > lowestLoad){
                     lowestLoad = vertexLoad;
-                    res[lowestPos] = vertex;
+                    res.set(lowestPos, vertex);
                     loads[lowestPos] = vertexLoad;
                     // find new lowest load
                     for (int i = 0; i < k; i++){
@@ -389,23 +384,24 @@ public class AffinityGraph {
     }
     
     /*
-     *     LOCAL gain a site gets by REMOVING a SET of local vertices out of a site
+     *     LOCAL delta a site gets by REMOVING a SET of local vertices out of a site
      *     it ASSUMES that the vertices are on the same site
      *     
      *     this is NOT like computing the load because local edges come as a cost in this case 
      *     it also considers a SET of vertices to be moved together
      */
-    public int getRemoveVerticesGain(Set<String> movedVertices) throws Exception{
+    public int getDeltaGiveVertices(Set<String> movedVertices) throws Exception{
         if (movedVertices == null){
             System.out.println("Trying to move an empty set of vertices");
             throw new Exception();
         }
-        int gain = 0;
+        int delta = 0;
         int site = m_vertexSite.get(movedVertices.iterator().next());
         for(String vertex : movedVertices){ 
+//            System.out.println("REMOVE delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
             Integer vertexWeight = m_vertices.get(vertex);
             if (vertexWeight == null){
-                System.out.println("Cannot include external node for gain computation");
+                System.out.println("Cannot include external node for delta computation");
                 throw new Exception();
             }
             
@@ -413,39 +409,48 @@ public class AffinityGraph {
             int inPull = 0;
             Map<String,Integer> adjacency = m_edges.get(vertex);
             for (Map.Entry<String, Integer> edge : adjacency.entrySet()){
+//                System.out.println("Considering edge to vertex " + edge.getKey() + " with weight " + edge.getValue());
                 String toVertex = edge.getKey();
                 Integer edgeWeight = edge.getValue();
-                if(m_vertexSite.get(toVertex) == site && !movedVertices.contains(toVertex)){
-                    // edge to local vertex which will not be moved out
-                    inPull += edgeWeight;
-                }
-                else{
-                    // edge to remote vertex or vertex that will be moved out
-                    outPull += edgeWeight;
+                // edges to vertices that are moved together do not contribute to in- or out-pull
+                if(!movedVertices.contains(toVertex)){
+                    if(m_vertexSite.get(toVertex) == site){
+                        // edge to local vertex which will not be moved out
+//                        System.out.println("Add weight to inpull: edge to local vertex which will not be moved out");
+                        inPull += edgeWeight;
+                    }
+                    else {
+                        // edge to remote vertex or vertex that will be moved out
+//                        System.out.println("Add weight to outpull: edge to remote vertex which will be moved out");
+                        outPull += edgeWeight;
+                    }
                 }
             }
-            gain += vertexWeight + (outPull - inPull) * Controller.DTXN_MULTIPLIER;
+            delta -= vertexWeight + outPull * Controller.DTXN_MULTIPLIER;
+            delta += inPull * Controller.DTXN_MULTIPLIER;
+//          System.out.println(String.format("inpull %d outpull %d addition to delta %d total delta %d", inPull, outPull, vertexWeight + (outPull - inPull) * Controller.DTXN_MULTIPLIER, delta));
         }
-        return gain;
+        return delta;
     }
     
     /*
-     *     LOCAL gain a site gets by ADDING a SET of remote vertices
+     *     LOCAL delta a site gets by ADDING a SET of remote vertices
      *     
      *     this is NOT like computing the load because local edges come as a cost in this case 
      *     it also considers a SET of vertices to be moved together
      */
-    public int getAddVerticesGain(Set<String> movedVertices, int newSite) throws Exception{
+    public int getDeltaReceiveVertices(Set<String> movedVertices, int newSite) throws Exception{
         if (movedVertices == null){
             System.out.println("Trying to move an empty set of vertices");
             throw new Exception();
         }
-        int gain = 0;
+        int delta = 0;
         for(String vertex : movedVertices){
             // get tuple weight from original site
             Integer vertexWeight = m_vertices.get(vertex);
+//            System.out.println("ADD delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
             if (vertexWeight == null){
-                System.out.println("Cannot include external node for gain computation");
+                System.out.println("Cannot include external node for delta computation");
                 throw new Exception();
             }
             
@@ -454,20 +459,28 @@ public class AffinityGraph {
             // get adjacency list from original site
             Map<String,Integer> adjacency = m_edges.get(vertex);
             for (Map.Entry<String, Integer> edge : adjacency.entrySet()){
+//                System.out.println("Considering edge to vertex " + edge.getKey() + " with weight " + edge.getValue());
                 String toVertex = edge.getKey();
                 Integer edgeWeight = edge.getValue();
-                if(m_vertexSite.get(toVertex) == newSite || movedVertices.contains(toVertex)){
-                    // edge to local vertex or to vertex that will be moved in
-                    inPull += edgeWeight;
-                }
-                else{
-                    // edge to remote vertex that will not be moved in
-                    outPull += edgeWeight;
+                // edges to vertices that are moved together do not contribute to in- or out-pull
+                if(!movedVertices.contains(toVertex)){
+                    if(m_vertexSite.get(toVertex) == newSite){
+                        // edge to local vertex or to vertex that will be moved in
+//                        System.out.println("Add weight to inpull");
+                        inPull += edgeWeight;
+                    }
+                    else{
+                        // edge to remote vertex that will not be moved in
+//                        System.out.println("Add weight to outpull");
+                        outPull += edgeWeight;
+                    }
                 }
             }
-            gain = (inPull - outPull)  * Controller.DTXN_MULTIPLIER - vertexWeight;
+            delta += vertexWeight + outPull * Controller.DTXN_MULTIPLIER;
+            delta -= inPull * Controller.DTXN_MULTIPLIER;
+//            System.out.println(String.format("inpull %d outpull %d addition to delta %d total delta %d", inPull, outPull, (inPull - outPull)  * Controller.DTXN_MULTIPLIER - vertexWeight, delta));
         }
-        return gain;
+        return delta;
     }
 
     public List<Set<String>> getSiteVertices() {
@@ -520,40 +533,17 @@ public class AffinityGraph {
         return folded;
     }
     
-    public void moveVertices(Set<String> movedVertices, int fromSite, int toSite){
+    public void moveVertices(Set<String> movedVertices, int fromSite, int toSite) throws Exception{
         m_cache_vertexLoad = null;
+        m_cache_siteLoad[fromSite] += getDeltaGiveVertices(movedVertices);
+        m_cache_siteLoad[toSite] += getDeltaReceiveVertices(movedVertices, toSite);
         for (String movedVertex : movedVertices){
-            m_cache_siteLoad[fromSite] -= getLoadInCurrSite(movedVertex);
             m_siteVertices.get(fromSite).remove(movedVertex);
             m_siteVertices.get(toSite).add(movedVertex);
             m_vertexSite.put(movedVertex, toSite);
-            m_cache_siteLoad[toSite] += getLoadInCurrSite(movedVertex);
         }
     }
-    
-    /*
-     * finds the LOCAL vertex with the highest affinity
-     * 
-     * ASSUMES that all vertices are on the same site
-     */
-    public String getMostAffineExtension(Set<String> vertices){
-        int maxAdjacency = -1;
-        String res = null;
-        int site = m_vertexSite.get(vertices.iterator().next());
-        for(String vertex : vertices){
-            Map<String,Integer> adjacency = m_edges.get(vertex);
-            for(Map.Entry<String, Integer> edge : adjacency.entrySet()){
-                if (edge.getValue() > maxAdjacency
-                        && m_vertexSite.get(edge.getKey()) == site
-                        && !vertices.contains(edge.getKey())){
-                    maxAdjacency = edge.getValue();
-                    res = edge.getKey();
-                }
-            }
-        }
-        return res;
-    }
-    
+        
     public void toFile(Path file){
         System.out.println("Writing graph. Size of edges: " + m_edges.size());
         BufferedWriter writer;
