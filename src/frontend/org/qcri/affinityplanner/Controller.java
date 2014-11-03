@@ -33,10 +33,11 @@ public class Controller {
     
     public final static int PARTITIONS_PER_SITE = 1;
     public final static int DTXN_MULTIPLIER = 5;
+    public final static int LOCAL_MPT_MULTIPLIER = 0;
     public final static int MAX_MOVED_VERTICES_PER_SOURCE_SITE = 8;
     public final static int MIN_DELTA_FOR_MOVEMENT = -1;
-    public final static int MAX_SITES_ADDED_RECONF = 2;
-    public final static int MAX_SITES = 4;
+    public final static int MAX_PARTITIONS_ADDED_RECONF = 4;
+    public final static int MAX_PARTITIONS = 8;
     
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
 //        client = ClientFactory.createClient();
@@ -71,12 +72,15 @@ public class Controller {
     public void run () throws Exception {
         // TODO hardcoded, for the moment
         File planFile = new File ("plan.json");
-        Path[] logFiles = new Path[2];
+        Path[] logFiles = new Path[4];
         logFiles[0] = FileSystems.getDefault().getPath(".", "transactions-partition-0.log");
         logFiles[1] = FileSystems.getDefault().getPath(".", "transactions-partition-1.log");
+        logFiles[2] = FileSystems.getDefault().getPath(".", "transactions-partition-2.log");
+        logFiles[3] = FileSystems.getDefault().getPath(".", "transactions-partition-3.log");
         
         GraphPartitioner graph = new GraphPartitioner();
-        graph.loadFromFiles(catalog_context, planFile, 2, logFiles);
+        int partitions = 4;
+        graph.loadFromFiles(catalog_context, planFile, partitions, logFiles);
         Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
         graph.toFileDebug(graphFile);
 //        AffinityGraph[] partitions = graph.fold();
@@ -86,11 +90,11 @@ public class Controller {
 //            partition.toFileDebug(graphFile);
 //        }
         
-        graph.repartition(190);
+        graph.repartition(2700);
         
-        System.out.println("Loads per site");
-        for (int j = 0; j < graph.getSitesNo(); j++){
-            System.out.println(j + " " + graph.getLoadPerSite(j));
+        System.out.println("Loads per partition");
+        for (int j = 0; j < graph.getPartitionsNo(); j++){
+            System.out.println(j + " " + graph.getLoadPerPartition(j));
         }
         
 //        partitions = graph.fold();
