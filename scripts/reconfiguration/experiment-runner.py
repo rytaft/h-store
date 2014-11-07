@@ -240,6 +240,12 @@ EXPERIMENT_SETTINGS = [
     "reactive-ycsb-zipf",
     "reactive-ycsb-hotspot",
     "reactive-ycsb-uniform",
+    "split-merge-only-ycsb-zipf",
+    "split-merge-only-ycsb-hotspot",
+    "split-merge-only-ycsb-uniform",
+    "eager-pull-only-ycsb-zipf",
+    "eager-pull-only-ycsb-hotspot",
+    "eager-pull-only-ycsb-uniform",
 
     "reconfig-tpcc-hotspot-0",
     "reconfig-tpcc-hotspot-20",
