@@ -6,7 +6,9 @@ public abstract class ReconfigurationConstants {
     STOPCOPY,
     LIVEPULL,
     REACTIVE,
-    NONOPT
+    NONOPT,
+    SPLIT_MERGE_ONLY,
+    EAGER_PULL_ONLY
   }
   
   public static long MAX_TRANSFER_BYTES = 1024*1024*9; //9 MB

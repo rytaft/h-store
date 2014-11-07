@@ -613,6 +613,12 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
     elif "nonopt" in args['exp_type']:
         LOG.info("nonopt Experiment")
         _reconfig = True
+    elif "split-merge-only" in args['exp_type']:
+        LOG.info("split-merge-only Experiment")
+        _reconfig = True
+    elif "eager-pull-only" in args['exp_type']:
+        LOG.info("eager-pull-only Experiment")
+        _reconfig = True
     
     if _reconfig:
         LOG.info("Disabling command logging for reconfig experiments ******")
@@ -1088,6 +1094,10 @@ def extractReconfigEvents(rawReconfigs, expType, warmUp):
         reconfigType = "reactive"
     elif "nonopt" in expType:
         reconfigType = "nonopt"
+    elif "split-merge-only" in expType:
+        reconfigType = "split-merge-only"
+    elif "eager-pull-only" in expType:
+        reconfigType = "eager-pull-only"
     else:
         raise Exception("Unknown recongfiguration experiment type with --reconfig param set : %s " % expType)
     

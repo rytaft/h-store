@@ -314,7 +314,14 @@ public class ReconfigurationCoordinator implements Shutdownable {
             hstore_conf.site.reconfig_split_merge_ranges = false;
             hstore_conf.site.reconfig_pull_single_key = true;
             
+        } else if (reconfigurationProtocol == ReconfigurationProtocols.SPLIT_MERGE_ONLY) {
+        	hstore_conf.site.reconfig_split_merge_ranges = true;
+            hstore_conf.site.reconfig_pull_single_key = true;
+        } else if (reconfigurationProtocol == ReconfigurationProtocols.EAGER_PULL_ONLY) {
+        	hstore_conf.site.reconfig_split_merge_ranges = false;
+            hstore_conf.site.reconfig_pull_single_key = false;
         }
+        	
         // We may have reconfiguration initialized by PEs so need to ensure
         // atomic
         if (this.reconfigurationInProgress.compareAndSet(false, true)) {
