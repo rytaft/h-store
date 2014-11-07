@@ -21,6 +21,8 @@ EXP_TYPES=(
     "split-merge-only-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2_s10 --splitplan=10 --reconfig=30000:spread2:0 "
     "eager-pull-only-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2 --reconfig=30000:spread2:0 " 
     "eager-pull-only-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2_s10 --splitplan=10 --reconfig=30000:spread2:0 "
+    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2 --reconfig=30000:spread2:0 " 
+    "reconfig-ycsb-zipf --partitions=16 --benchmark-size=10000000 --exp-suffix=ls2_s10 --splitplan=10 --reconfig=30000:spread2:0 "
 
 )
 
