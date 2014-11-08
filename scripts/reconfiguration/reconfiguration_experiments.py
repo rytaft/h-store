@@ -36,7 +36,7 @@ RECONFIG_EXPERIMENTS = [
     "reconfig-motiv-00",
 ]
 
-RECONFIG_CLIENT_COUNT = 1
+RECONFIG_CLIENT_COUNT = 2
 
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
@@ -68,7 +68,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["site.reconfig_chunk_size_kb"] = 10048 
         fabric.env["site.reconfig_async_chunk_size_kb"] = 8048
         fabric.env["site.commandlog_enable"] = False
-        fabric.env["client.threads_per_host"] = 80
+        fabric.env["client.threads_per_host"] = 40
         fabric.env["benchmark.ReadRecordProportion"] = 0.85
         fabric.env["benchmark.UpdateRecordProportion"] = 0.15
         fabric.env["site.reconfig_chunk_size_kb"] = 10048 
