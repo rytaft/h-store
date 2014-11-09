@@ -15,10 +15,10 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( 
-    "reconfig-ycsb-zipf --partitions=2 --benchmark-size=100000 --exp-suffix=shuffle --reconfig=30000:3:0 "
-    "nonopt-ycsb-zipf --partitions=2 --benchmark-size=100000 --exp-suffix=shuffle --reconfig=30000:3:0 "
-    "split-merge-only-ycsb-zipf --partitions=2 --benchmark-size=100000 --exp-suffix=shuffle --reconfig=30000:3:0 "
-    "eager-pull-only-ycsb-zipf --partitions=2 --benchmark-size=100000 --exp-suffix=shuffle --reconfig=30000:3:0 "
+    #"reconfig-ycsb-zipf --partitions=2 --benchmark-size=100000 --exp-suffix=shuffle --reconfig=10000:3:0 "
+    #"nonopt-ycsb-zipf --partitions=2 --benchmark-size=100000 --exp-suffix=shuffle --reconfig=10000:3:0 "
+    "split-merge-only-ycsb-zipf --partitions=2 --benchmark-size=100000 --exp-suffix=shuffle --reconfig=10000:3:0 "
+    #"eager-pull-only-ycsb-zipf --partitions=2 --benchmark-size=100000 --exp-suffix=shuffle --reconfig=10000:3:0 "
       
 )
 
@@ -36,8 +36,8 @@ for b in ycsb; do
         --sweep-reconfiguration \
         --client.interval=1000 \
         --client.output_interval=true \
-        --client.duration=200000 \
-        --client.warmup=10000 \
+        --client.duration=60000 \
+        --client.warmup=5000 \
         --plandelay=100 \
         --chunksize=10000 \
         --asyncsize=8000 \ 

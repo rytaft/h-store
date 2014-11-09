@@ -295,8 +295,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
         if ( !(reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY ||  
                 reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL ||
                 reconfigurationProtocol == ReconfigurationProtocols.REACTIVE ||
-                reconfigurationProtocol == ReconfigurationProtocols.NONOPT )) {
-            throw new NotImplementedException();
+                reconfigurationProtocol == ReconfigurationProtocols.NONOPT  || 
+                reconfigurationProtocol == ReconfigurationProtocols.SPLIT_MERGE_ONLY  || 
+                reconfigurationProtocol == ReconfigurationProtocols.EAGER_PULL_ONLY                  
+                )) {
+            LOG.fatal("Unknown reconfig protocol: " + reconfigurationProtocol);
+            throw new RuntimeException("Not implemented!!!");
         }
 
         if (reconfigurationProtocol == ReconfigurationProtocols.REACTIVE || reconfigurationProtocol == ReconfigurationProtocols.NONOPT){

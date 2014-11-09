@@ -1104,9 +1104,9 @@ def extractReconfigEvents(rawReconfigs, expType, warmUp):
     elif "nonopt" in expType:
         reconfigType = "nonopt"
     elif "split-merge-only" in expType:
-        reconfigType = "split-merge-only"
+        reconfigType = "split_merge_only"
     elif "eager-pull-only" in expType:
-        reconfigType = "eager-pull-only"
+        reconfigType = "eager_pull_only"
     else:
         raise Exception("Unknown recongfiguration experiment type with --reconfig param set : %s " % expType)
     

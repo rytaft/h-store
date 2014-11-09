@@ -59,8 +59,14 @@ public class ReconfigurationRemote extends VoltSystemProcedure {
     DependencySet result = null;
     int coordinator = (int) params.toArray()[0];
     String partition_plan = (String) params.toArray()[1];
-    String reconfiguration_protocol_string = (String) params.toArray()[2];        
-    ReconfigurationProtocols reconfig_protocol = ReconfigurationProtocols.valueOf(reconfiguration_protocol_string.toUpperCase());
+    String reconfiguration_protocol_string = (String) params.toArray()[2]; 
+    ReconfigurationProtocols reconfig_protocol = null;
+    try{
+        reconfig_protocol = ReconfigurationProtocols.valueOf(reconfiguration_protocol_string.toUpperCase());
+    } catch(Exception ex){
+        LOG.error("Exception setting protocol : " + reconfiguration_protocol_string.toUpperCase());
+        throw new RuntimeException();
+    }
     int currentPartitionId = context.getPartitionExecutor().getPartitionId();
     switch (fragmentId) {
 
