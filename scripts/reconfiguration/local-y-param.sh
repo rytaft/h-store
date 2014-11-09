@@ -15,10 +15,8 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( 
-    "reconfig-ycsb-zipf --partitions=2 --benchmark-size=100000 --exp-suffix=shuffle --reconfig=10000:3:0 "
-    "nonopt-ycsb-zipf --partitions=2 --benchmark-size=100000 --exp-suffix=shuffle --reconfig=10000:3:0 "
-    "split-merge-only-ycsb-zipf --partitions=2 --benchmark-size=100000 --exp-suffix=shuffle --reconfig=10000:3:0 "
-    "eager-pull-only-ycsb-zipf --partitions=2 --benchmark-size=100000 --exp-suffix=shuffle --reconfig=10000:3:0 "
+    "reconfig-ycsb-zipf  --exp-suffix=par-s1_64kb --chunksize=64 --asyncsize=64 --asyncdelay=150 --splitplan=1  --plandelay=100  "
+#    "reconfig-ycsb-zipf  --exp-suffix=par-s1_64kb --chunksize=1000 --asyncsize=1000 --asyncdelay=150 --splitplan=1  --plandelay=100  "
       
 )
 
@@ -33,15 +31,15 @@ for b in ycsb; do
         --exp-attempts=1 \        
         --no-json \
         --plot \
+        --partitions=2 \
+        --benchmark-size=100000 \
+        --reconfig=10000:3:0 \
         --sweep-reconfiguration \
         --client.interval=1000 \
         --client.output_interval=true \
         --client.duration=60000 \
         --client.warmup=5000 \
-        --plandelay=100 \
-        --chunksize=10000 \
-        --asyncsize=8000 \ 
-        --asyncdelay=200 
+       
 #        --site.reconfig_adaptive=true \
         --client.output_results_csv=interval_res.csv
     )
