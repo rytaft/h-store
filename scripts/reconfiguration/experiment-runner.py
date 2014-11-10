@@ -689,10 +689,14 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
 
     if 'asyncsize' in args and type(args['asyncsize']) == int and args['asyncsize'] is not None:
         fabric.env['site.reconfig_async_chunk_size_kb']=args['asyncsize']
-        
-    if 'chunksize' in args and type(args['splitplan']) == int and args['splitplan'] is not None:
+    else:
+        fabric.env["site.reconfig_async_chunk_size_kb"] = 8048
+            
+    if 'chunksize' in args and type(args['chunksize']) == int and args['chunksize'] is not None:
         fabric.env['site.reconfig_chunk_size_kb']=args['chunksize']
-	
+    else:
+        fabric.env["site.reconfig_chunk_size_kb"] = 10048 
+        	
     if args['exp_type'] == 'reconfig-test':
         fabric.env["client.count"] = 1
         #fabric.env["client.txnrate"] = 100000
