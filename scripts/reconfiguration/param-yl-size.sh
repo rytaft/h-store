@@ -25,6 +25,10 @@ EXP_TYPES=(
     "reconfig-ycsb-uniform --exp-suffix=par-lc2_s5_5mb --chunksize=5000 --asyncsize=5000 --asyncdelay=150 --splitplan=5  --plandelay=100  " 
     "reconfig-ycsb-uniform --exp-suffix=par-lc2_s5_10mb --chunksize=10000 --asyncsize=10000 --asyncdelay=150 --splitplan=5  --plandelay=100  " 
     "reconfig-ycsb-uniform --exp-suffix=par-lc2_s5_20mb --chunksize=20000 --asyncsize=20000 --asyncdelay=150 --splitplan=5  --plandelay=100  " 
+
+    "reconfig-ycsb-uniform --exp-suffix=par-lc2_s3 --chunksize=10000 --asyncsize=8000 --asyncdelay=150 --splitplan=3  --plandelay=100  " 
+    "reconfig-ycsb-uniform --exp-suffix=par-lc2_s4 --chunksize=10000 --asyncsize=8000 --asyncdelay=150 --splitplan=4  --plandelay=100  " 
+
     
 )
 
