@@ -90,7 +90,7 @@ public class Controller {
 //            partition.toFileDebug(graphFile);
 //        }
         
-        graph.repartition(2700);
+        graph.repartition(100,2700);
         
         System.out.println("Loads per partition");
         for (int j = 0; j < graph.getPartitionsNo(); j++){
