@@ -25,7 +25,7 @@ public class AffinityProjectBuilder extends AbstractProjectBuilder{
     };
     
     public AffinityProjectBuilder() {
-        super("Affinity", AffinityProjectBuilder.class, PROCEDURES, PARTITIONING);
+        super("affinity", AffinityProjectBuilder.class, PROCEDURES, PARTITIONING);
     }
 
 }
