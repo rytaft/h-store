@@ -26,7 +26,9 @@ public class AffinityClient extends BenchmarkComponent {
 
     public static enum Transaction {
         GET_A("Get A", AffinityConstants.FREQ_READ_A), 
-        GET_B("Get B", AffinityConstants.FREQ_READ_B); 
+        GET_B("Get B", AffinityConstants.FREQ_READ_B),
+        GET_C_BY_A("GetCByA", AffinityConstants.FREQ_READ_C_BY_A),
+        GET_C_BY_B("GetCByB", AffinityConstants.FREQ_READ_C_BY_B); 
         
         /**
          * Constructor
@@ -113,8 +115,20 @@ public class AffinityClient extends BenchmarkComponent {
     @Override
     protected boolean runOnce() throws IOException {
         Object params[];
-        params = new Object[]{ this.keyGenerator.nextInt() };
+
         final Transaction target = this.txnWeights.nextValue();
+        switch (target) {
+            case GET_A:
+                params = new Object[]{ this.keyGenerator.nextInt() };
+                break;
+            case GET_C_BY_A:
+                params = new Object[]{ this.keyGenerator.nextInt() };
+                break;
+            default:
+                throw new RuntimeException("Unexpected txn '" + target + "'");
+        }
+        assert(params != null);
+
         //LOG.info("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName);
         Callback callback = new Callback(target.ordinal());
         return this.getClientHandle().callProcedure(callback, target.callName, params);
