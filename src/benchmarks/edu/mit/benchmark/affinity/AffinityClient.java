@@ -9,8 +9,6 @@ import org.voltdb.client.ClientResponse;
 import org.voltdb.client.ProcedureCallback;
 
 import edu.brown.api.BenchmarkComponent;
-import edu.brown.benchmark.ycsb.YCSBConstants;
-import edu.brown.benchmark.ycsb.YCSBClient.Transaction;
 import edu.brown.benchmark.ycsb.distributions.IntegerGenerator;
 import edu.brown.benchmark.ycsb.distributions.UniformIntegerGenerator;
 import edu.brown.logging.LoggerUtil;
@@ -122,11 +120,6 @@ public class AffinityClient extends BenchmarkComponent {
         return this.getClientHandle().callProcedure(callback, target.callName, params);
     }
 
-    @Override
-    protected String[] getTransactionDisplayNames() {
-        // TODO Auto-generated method stub
-        return null;
-    }
 
     
     private class Callback implements ProcedureCallback {
@@ -144,5 +137,15 @@ public class AffinityClient extends BenchmarkComponent {
 
         }
     } // END CLASS
+    
+    @Override
+    public String[] getTransactionDisplayNames() {
+        // Return an array of transaction names
+        String procNames[] = new String[AffinityProjectBuilder.PROCEDURES.length];
+        for (int i = 0; i < procNames.length; i++) {
+            procNames[i] = AffinityProjectBuilder.PROCEDURES[i].getSimpleName();
+        }
+        return (procNames);
+    }
     
 }
