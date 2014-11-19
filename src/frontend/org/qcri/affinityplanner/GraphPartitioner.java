@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class GraphPartitioner extends AffinityGraph {
-    public int repartition (int maxLoadPerPartition) throws Exception{
+    public int repartition (int maxLoadPerPartition) {
         int currPartitions = getPartitionsNo();
         int addedPartitions = 0;
 
@@ -172,7 +172,7 @@ public class GraphPartitioner extends AffinityGraph {
     /*
      * returns the number of partitions moved
      */
-    private int tryMovePartition(Set<String> movingVertices, Integer overloadedPartition, Integer toPartition, Integer maxLoadPerPartition, List<String> hotVerticesNotMoved) throws Exception{
+    private int tryMovePartition(Set<String> movingVertices, Integer overloadedPartition, Integer toPartition, Integer maxLoadPerPartition, List<String> hotVerticesNotMoved) {
         int numMovedVertices = 0;
         System.out.println("Trying with partition " + toPartition);
         int deltaFromPartition = getDeltaGiveVertices(movingVertices, toPartition);
