@@ -25,8 +25,8 @@ public class AffinityClient extends BenchmarkComponent {
     }
 
     public static enum Transaction {
-        READ_A("Read Record", AffinityConstants.FREQ_READ_A), 
-        READ_B("Read Record", AffinityConstants.FREQ_READ_B); 
+        GET_A("Get A", AffinityConstants.FREQ_READ_A), 
+        GET_B("Get B", AffinityConstants.FREQ_READ_B); 
         
         /**
          * Constructor
@@ -115,7 +115,7 @@ public class AffinityClient extends BenchmarkComponent {
         Object params[];
         params = new Object[]{ this.keyGenerator.nextInt() };
         final Transaction target = this.txnWeights.nextValue();
-
+        //LOG.info("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName);
         Callback callback = new Callback(target.ordinal());
         return this.getClientHandle().callProcedure(callback, target.callName, params);
     }

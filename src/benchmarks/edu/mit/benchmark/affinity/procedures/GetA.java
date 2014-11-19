@@ -10,6 +10,15 @@ import org.voltdb.VoltTable;
         singlePartition = true
     )
 public class GetA extends VoltProcedure {
+//    private static final Logger LOG = Logger.getLogger(VoltProcedure.class);
+//    private static final LoggerBoolean debug = new LoggerBoolean();
+//    private static final LoggerBoolean trace = new LoggerBoolean();
+//    static {
+//        LoggerUtil.setupLogging();
+//        LoggerUtil.attachObserver(LOG, debug, trace);
+//    }
+    
+    
     public final SQLStmt getAStmt = new SQLStmt("SELECT * FROM TABLEA WHERE A_KEY = ? ");
     
     public VoltTable[] run(long a_key){
