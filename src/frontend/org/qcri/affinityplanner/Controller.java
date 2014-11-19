@@ -1,9 +1,7 @@
 package org.qcri.affinityplanner;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.UnknownHostException;
@@ -16,7 +14,6 @@ import org.voltdb.catalog.Catalog;
 import org.voltdb.catalog.Site;
 import org.voltdb.client.ClientFactory;
 import org.voltdb.client.ClientResponse;
-import org.voltdb.client.NoConnectionsException;
 import org.voltdb.client.ProcCallException;
 
 import edu.brown.catalog.CatalogUtil;
@@ -77,6 +74,7 @@ public class Controller {
         // turn monitoring on and off
         String[] confNames = {"site.access_tracking"};
         String[] confValues = {"true"};
+        @SuppressWarnings("unused")
         ClientResponse cresponse;
         try {
             cresponse = client.callProcedure("@SetConfiguration", confNames, confValues);
