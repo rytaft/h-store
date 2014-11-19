@@ -16,20 +16,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 import org.apache.log4j.Logger;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.voltdb.CatalogContext;
 
-import edu.brown.hashing.ExplicitPartitions;
-import edu.brown.hashing.TwoTieredRangePartitions;
-import edu.brown.utils.FileUtil;
-
 public class AffinityGraph {
-    private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
+    private static final Logger LOG = Logger.getLogger(Controller.class);
     
     // fromVertex -> adjacency list, where adjacency list is a toVertex -> edgeWeight map
     protected Map<String,Map<String,Integer>> m_edges = new HashMap<String,Map<String,Integer>> ();
@@ -42,13 +34,20 @@ public class AffinityGraph {
     // a folded graph has special edges for remote sites
     private boolean folded = false;
     
-    public void loadFromFiles (CatalogContext catalogContext, File planFile, int partitions, Path[] logFiles) throws Exception{
+    public boolean loadFromFiles (CatalogContext catalogContext, File planFile, int partitions, Path[] logFiles) {
         BufferedReader reader;
         for (int i = 0; i < partitions; i++){
             m_partitionVertices.add(new HashSet<String>());
         }
         
-        PlanHandler planHandler = new PlanHandler(planFile, catalogContext);
+        PlanHandler planHandler;
+        try {
+            planHandler = new PlanHandler(planFile, catalogContext);
+        } catch (Exception e) {
+            LOG.warn("Could not create plan handler " + Controller.stackTraceToString(e));
+            System.out.println("Could not create plan handler " + Controller.stackTraceToString(e));
+            return false;
+        }
         
         // scan files for all partitions
         for (Path logFile : logFiles){
@@ -56,9 +55,9 @@ public class AffinityGraph {
             try {
                 reader = Files.newBufferedReader(logFile, Charset.forName("US-ASCII"));
             } catch (IOException e) {
-                e.printStackTrace();
-                LOG.warn("Error while opening file " + logFile.toString());
-                throw e;
+                LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                System.out.println("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                return false;
             }
             String line;
             // vertices with number of SQL statements they are involved in
@@ -66,12 +65,13 @@ public class AffinityGraph {
             try {
                 line = reader.readLine();
             } catch (IOException e) {
-                e.printStackTrace();
-                LOG.warn("Error while reading file " + logFile.toString());
-                throw e;
+                LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                System.out.println("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                return false;
             }
             if (line == null){
                 LOG.warn("File " + logFile.toString() + " is empty");
+                return false;
             }
             String currTransactionId = (line.split(";"))[0];
 //            System.out.println("Tran ID = " + currTransactionId);
@@ -93,7 +93,14 @@ public class AffinityGraph {
                             m_vertices.put(from.getKey(), currentVertexWeight+1);   // vertices.put(from.getKey(), currentVertexWeight+from.getValue());                         
                         }
                         // store site mappings for FROM vertex
-                        int partition = planHandler.getPartition(from.getKey());
+                        int partition = 0;
+                        try {
+                            partition = planHandler.getPartition(from.getKey());
+                        } catch (Exception e) {
+                            LOG.warn("Could not get partition from plan handler " + Controller.stackTraceToString(e));
+                            System.out.println("Could not get partition from plan handler " + Controller.stackTraceToString(e));
+                            return false;                            
+                        }
                         m_partitionVertices.get(partition).add(from.getKey());
                         m_vertexPartition.put(from.getKey(), partition);
                         // update FROM -> TO edges
@@ -135,13 +142,13 @@ public class AffinityGraph {
                 try {
                     line = reader.readLine();
                 } catch (IOException e) {
-                    e.printStackTrace();
-                    LOG.warn("Error while reading file " + logFile.toString());
-                    System.out.println("Error while reading file " + logFile.toString());
-                    throw e;
+                    LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                    System.out.println("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                    return false;
                 }
             }
         }
+        return true;
     }
     
 //    public AffinityGraph[] fold () throws Exception{
@@ -323,10 +330,10 @@ public class AffinityGraph {
      *     
      *     if newPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
-    public int getDeltaGiveVertices(Set<String> movedVertices, int newPartition) throws Exception{
+    public int getDeltaGiveVertices(Set<String> movedVertices, int newPartition) {
         if (movedVertices == null){
             System.out.println("Trying to move an empty set of vertices");
-            throw new Exception();
+            throw new IllegalArgumentException("Trying to move an empty set of vertices");
         }
         int delta = 0;
         int fromPartition = m_vertexPartition.get(movedVertices.iterator().next());
@@ -334,8 +341,8 @@ public class AffinityGraph {
 //            System.out.println("REMOVE delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
             Integer vertexWeight = m_vertices.get(vertex);
             if (vertexWeight == null){
-                System.out.println("Unexisting vertex");
-                throw new Exception();
+            System.out.println("Cannot include external node for delta computation");
+            throw new IllegalStateException("Cannot include external node for delta computation");
             }
             
             int outPull = 0;
@@ -382,10 +389,10 @@ public class AffinityGraph {
      *     this is NOT like computing the load because local edges come as a cost in this case 
      *     it also considers a SET of vertices to be moved together
      */
-    public int getDeltaReceiveVertices(Set<String> movedVertices, int newPartition) throws Exception{
+    public int getDeltaReceiveVertices(Set<String> movedVertices, int newPartition) {
         if (movedVertices == null){
             System.out.println("Trying to move an empty set of vertices");
-            throw new Exception();
+            throw new IllegalArgumentException("Trying to move an empty set of vertices");
         }
         int delta = 0;
         for(String vertex : movedVertices){
@@ -394,7 +401,7 @@ public class AffinityGraph {
 //            System.out.println("ADD delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
             if (vertexWeight == null){
                 System.out.println("Cannot include external node for delta computation");
-                throw new Exception();
+                throw new IllegalStateException("Cannot include external node for delta computation");
             }
             
             int outPull = 0;
@@ -487,7 +494,7 @@ public class AffinityGraph {
         return folded;
     }
     
-    public void moveVertices(Set<String> movedVertices, int fromPartition, int toPartition) throws Exception{
+    public void moveVertices(Set<String> movedVertices, int fromPartition, int toPartition) {
 //        m_cache_vertexLoad = null;
 //        m_cache_siteLoad[fromSite] += getDeltaGiveVertices(movedVertices);
 //        m_cache_siteLoad[toSite] += getDeltaReceiveVertices(movedVertices, toSite);

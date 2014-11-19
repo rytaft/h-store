@@ -7,7 +7,6 @@ package org.qcri.monitoring;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -32,13 +31,12 @@ public class Monitor {
     private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
     private BufferedWriter m_writer;
     private Path m_logFile;
-    private  boolean m_monitoring = true;
     private ColumnToTableMap m_columnToTable;
     
     private CatalogContext m_catalog_context;
     private PartitionEstimator m_p_estimator;
 
-    final int MAX_ENTRIES = 1000;
+    final int MAX_ENTRIES = Integer.MAX_VALUE;
     int m_curr_entries = 0;
     
     final boolean VERBOSE = false;
@@ -47,14 +45,6 @@ public class Monitor {
         this.m_columnToTable = new ColumnToTableMap(catalog_context);
         this.m_catalog_context = catalog_context;
         this.m_p_estimator = p_estimator;
-        // TODO one file per partition executor to avoid concurrent IO. will have to be merged at site level for complete stats.
-        m_logFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + ".log");
-        try {
-            this.m_writer = Files.newBufferedWriter(m_logFile, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-        } catch (IOException e) {
-            LOG.warn("Failed while creating file " + this.m_logFile.toString());
-            System.out.println("Failed while creating file " + this.m_logFile.toString());
-       }
     }
     
     /*
@@ -74,23 +64,25 @@ public class Monitor {
      *  TRANSACTION_ID, TABLE_NAME, COLUMN_NAME, VAL
      *  
      *  With one entry per SQL statement. There can be multiple equal entries if a tuple is accessed multiple times
+     *  
+     *  Returns true if it has not already logged a max number of entries, false otherwise
      */
-    public void logPartitioningAttributes (LocalTransaction ts, long[] fragmentIds, ParameterSet[] parameterSets){
-        if (!m_monitoring) return;
+    public boolean logPartitioningAttributes (LocalTransaction ts, long[] fragmentIds, ParameterSet[] parameterSets){
 
         String s = null;
         this.m_curr_entries ++;
         if (m_curr_entries > MAX_ENTRIES){
+            LOG.warn("Must close access log file because of too many entries");
             try {
                 this.m_writer.close();
             } catch (IOException e) {
                 e.printStackTrace();
                 LOG.warn("Failed while closing file " + this.m_logFile.toString());
             }
-            m_monitoring = false;
-            return;
+            return false;
         }
 
+        // DEBUG begin
         if(this.VERBOSE){
             try {
                 m_writer.newLine();
@@ -117,6 +109,8 @@ public class Monitor {
                 LOG.warn("Failed while writing file " + this.m_logFile.toString());
             }
         }
+        // DEBUG end
+        
         for (int i = 0; i < fragmentIds.length; i++) {
             List<Pair<List<CatalogType>, List<Integer>>> offsets = new ArrayList<>();
             // the following is slow but we can just keep a map to speed it up if needed - similar to columnToTable
@@ -158,6 +152,34 @@ public class Monitor {
                 }
             }
         }
-        // 
+        return true;
+    }
+    
+    public void openLog(Path logFile){
+        if(m_writer != null){
+            LOG.warn("opened accessed monitoring log - " + logFile.toString() + " - before closing the previous one - " + this.m_logFile.toString());
+        }
+        this.m_logFile = logFile;
+        try {
+            this.m_writer = Files.newBufferedWriter(m_logFile, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (IOException e) {
+            this.m_writer = null;
+            LOG.warn("Failed while creating file " + this.m_logFile.toString());
+            System.out.println("Failed while creating file " + this.m_logFile.toString());
+       }       
+    }
+    
+    public void closeLog(){
+        if(m_writer == null){
+            LOG.warn("tried to close access log but it was not open");
+        }
+        else{
+            try {
+                this.m_writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+                LOG.warn("Failed while closing file " + this.m_logFile.toString());
+            }            
+        }
     }
 }
