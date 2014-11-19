@@ -15,6 +15,9 @@ import org.voltdb.CatalogContext;
 import org.voltdb.catalog.Catalog;
 import org.voltdb.catalog.Site;
 import org.voltdb.client.ClientFactory;
+import org.voltdb.client.ClientResponse;
+import org.voltdb.client.NoConnectionsException;
+import org.voltdb.client.ProcCallException;
 
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.HStoreConstants;
@@ -23,10 +26,10 @@ import edu.brown.utils.ArgumentsParser;
 import edu.brown.utils.CollectionUtil;
 
 public class Controller {
-//    private org.voltdb.client.Client client;
-//    private Collection<Site> sites;
+    private org.voltdb.client.Client client;
+    private Collection<Site> sites;
     private CatalogContext catalog_context;
-//    private String connectedHost;
+    private String connectedHost;
 //
 //    private Path planFile;
 //    private Path outputPlanFile;
@@ -40,11 +43,11 @@ public class Controller {
     public final static int MAX_PARTITIONS = 8;
     
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
-//        client = ClientFactory.createClient();
-//        client.configureBlocking(false);
-//        sites = CatalogUtil.getAllSites(catalog);
+        client = ClientFactory.createClient();
+        client.configureBlocking(false);
+        sites = CatalogUtil.getAllSites(catalog);
         this.catalog_context = catalog_context;
-//        connectToHost();
+        connectToHost();
 //
 //        if(hstore_conf.global.hasher_plan == null){
 //            System.out.println("Must set global.hasher_plan to specify plan file!");
@@ -69,8 +72,26 @@ public class Controller {
         //TODO select planners here
     }
     
-    public void run () throws Exception {
+    public void run () throws Exception{
         // TODO hardcoded, for the moment
+        System.out.println("Started running at time " + System.currentTimeMillis());
+        String[] confNames = {"site.access_tracking"};
+        String[] confValues = {"true"};
+        ClientResponse cresponse;
+        try {
+            cresponse = client.callProcedure("@SetConfiguration", confNames, confValues);
+        } catch (IOException | ProcCallException e) {
+            System.out.println("Problem with connection");
+            System.out.println(e.toString());
+            e.printStackTrace();
+        }
+        System.out.println("Configuration set at time " + System.currentTimeMillis());
+        Thread.sleep(2000);
+        confValues[0] = "false";
+        System.out.println("Stopped sleeping at time " + System.currentTimeMillis());
+        cresponse = client.callProcedure("@SetConfiguration", confNames, confValues);
+        System.out.println("Configuration set at time " + System.currentTimeMillis());
+        
         File planFile = new File ("plan.json");
         Path[] logFiles = new Path[4];
         logFiles[0] = FileSystems.getDefault().getPath(".", "transactions-partition-0.log");
@@ -105,23 +126,23 @@ public class Controller {
 //        }        
     }
     
-//    public void connectToHost(){
-//        Site catalog_site = CollectionUtil.random(sites);
-//        connectedHost= catalog_site.getHost().getIpaddr();
-//
-//        try {
-//            client.createConnection(null, connectedHost, HStoreConstants.DEFAULT_PORT, "user", "password");
-//        } catch (UnknownHostException e) {
-//            System.out.println("Controller: tried to connect to unknown host");
-//            e.printStackTrace();
-//            System.exit(1);
-//        } catch (IOException e) {
-//            System.out.println("Controller: IO Exception while connecting to host");
-//            e.printStackTrace();
-//            System.exit(1);
-//        }
-//        System.out.println("Connected to host " + connectedHost);
-//    }
+    public void connectToHost(){
+        Site catalog_site = CollectionUtil.random(sites);
+        connectedHost= catalog_site.getHost().getIpaddr();
+
+        try {
+            client.createConnection(null, connectedHost, HStoreConstants.DEFAULT_PORT, "user", "password");
+        } catch (UnknownHostException e) {
+            System.out.println("Controller: tried to connect to unknown host");
+            e.printStackTrace();
+            System.exit(1);
+        } catch (IOException e) {
+            System.out.println("Controller: IO Exception while connecting to host");
+            e.printStackTrace();
+            System.exit(1);
+        }
+        System.out.println("Connected to host " + connectedHost);
+    }
     
     /**
      * @param args

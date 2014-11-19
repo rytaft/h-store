@@ -72,6 +72,7 @@ public class AffinityGraph {
             }
             if (line == null){
                 LOG.warn("File " + logFile.toString() + " is empty");
+                return;
             }
             String currTransactionId = (line.split(";"))[0];
 //            System.out.println("Tran ID = " + currTransactionId);
