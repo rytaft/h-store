@@ -23,15 +23,16 @@ import edu.brown.utils.ArgumentsParser;
 import edu.brown.utils.CollectionUtil;
 
 public class Controller {
-    private org.voltdb.client.Client client;
-    private Collection<Site> sites;
-    private CatalogContext catalog_context;
-    private String connectedHost;
+    private org.voltdb.client.Client m_client;
+    private Collection<Site> m_sites;
+    private Catalog m_catalog;
+    private CatalogContext m_catalog_context;
+    private String m_connectedHost;
 //
 //    private Path planFile;
 //    private Path outputPlanFile;
     
-    public final static int PARTITIONS_PER_SITE = 1;
+    public final static int PARTITIONS_PER_SITE = 2;
     public final static int DTXN_MULTIPLIER = 5;
     public final static int LOCAL_MPT_MULTIPLIER = 0;
     public final static int MAX_MOVED_VERTICES_PER_SOURCE_SITE = 8;
@@ -41,10 +42,11 @@ public class Controller {
     public final static int MONITORING_PERIOD = 20000;
     
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
-        client = ClientFactory.createClient();
-        client.configureBlocking(false);
-        sites = CatalogUtil.getAllSites(catalog);
-        this.catalog_context = catalog_context;
+        m_catalog = catalog;
+        m_client = ClientFactory.createClient();
+        m_client.configureBlocking(false);
+        m_sites = CatalogUtil.getAllSites(catalog);
+        this.m_catalog_context = catalog_context;
         connectToHost();
 //
 //        if(hstore_conf.global.hasher_plan == null){
@@ -77,7 +79,7 @@ public class Controller {
         @SuppressWarnings("unused")
         ClientResponse cresponse;
         try {
-            cresponse = client.callProcedure("@SetConfiguration", confNames, confValues);
+            cresponse = m_client.callProcedure("@SetConfiguration", confNames, confValues);
         } catch (IOException | ProcCallException e) {
             System.out.println("Problem while turning on monitoring");
             System.out.println(stackTraceToString(e));
@@ -89,7 +91,7 @@ public class Controller {
         }
         confValues[0] = "false";
         try {
-            cresponse = client.callProcedure("@SetConfiguration", confNames, confValues);
+            cresponse = m_client.callProcedure("@SetConfiguration", confNames, confValues);
         } catch (IOException | ProcCallException e) {
             System.out.println("Problem while turning off");
             System.out.println(stackTraceToString(e));
@@ -102,10 +104,15 @@ public class Controller {
         logFiles[1] = FileSystems.getDefault().getPath(".", "transactions-partition-1.log");
         logFiles[2] = FileSystems.getDefault().getPath(".", "transactions-partition-2.log");
         logFiles[3] = FileSystems.getDefault().getPath(".", "transactions-partition-3.log");
-        
+
+        Path[] intervalFiles = new Path[4];
+        intervalFiles[0] = FileSystems.getDefault().getPath(".", "transactions-partition-0-interval.log");
+        intervalFiles[1] = FileSystems.getDefault().getPath(".", "transactions-partition-1-interval.log");
+        intervalFiles[2] = FileSystems.getDefault().getPath(".", "transactions-partition-2-interval.log");
+        intervalFiles[3] = FileSystems.getDefault().getPath(".", "transactions-partition-3-interval.log");
+
         GraphPartitioner graph = new GraphPartitioner();
-        int partitions = 4;
-        graph.loadFromFiles(catalog_context, planFile, partitions, logFiles);
+        graph.loadFromFiles(m_catalog_context, planFile, logFiles, intervalFiles);
         Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
         graph.toFileDebug(graphFile);
 //        AffinityGraph[] partitions = graph.fold();
@@ -115,7 +122,7 @@ public class Controller {
 //            partition.toFileDebug(graphFile);
 //        }
         
-        graph.repartition(100,2700);
+        graph.repartition(Double.MAX_VALUE,Double.MAX_VALUE, m_catalog);
         
         System.out.println("Loads per partition");
         for (int j = 0; j < graph.getPartitionsNo(); j++){
@@ -131,11 +138,11 @@ public class Controller {
     }
     
     public void connectToHost(){
-        Site catalog_site = CollectionUtil.random(sites);
-        connectedHost= catalog_site.getHost().getIpaddr();
+        Site catalog_site = CollectionUtil.random(m_sites);
+        m_connectedHost= catalog_site.getHost().getIpaddr();
 
         try {
-            client.createConnection(null, connectedHost, HStoreConstants.DEFAULT_PORT, "user", "password");
+            m_client.createConnection(null, m_connectedHost, HStoreConstants.DEFAULT_PORT, "user", "password");
         } catch (UnknownHostException e) {
             System.out.println("Controller: tried to connect to unknown host");
             e.printStackTrace();
@@ -145,7 +152,7 @@ public class Controller {
             e.printStackTrace();
             System.exit(1);
         }
-        System.out.println("Connected to host " + connectedHost);
+        System.out.println("Connected to host " + m_connectedHost);
     }
     
     /**

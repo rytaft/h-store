@@ -761,7 +761,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     // MONITORING (EStore++)  
     // ----------------------------------------------------------------------------
     Monitor m_access_monitor;
-    boolean access_monitoring_on = false;
     
     
     // ----------------------------------------------------------------------------
@@ -1038,14 +1037,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.specExecScheduler.updateConf(hstore_conf, changed);
         }
         // EStore++ turn access monitoring on and off
-        if(hstore_conf.site.access_tracking){
+        if(hstore_conf.site.access_tracking && !this.m_access_monitor.isMonitoring()){
            Path logFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + ".log");
-           this.m_access_monitor.openLog(logFile);
+           Path intervalFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + "-interval.log");
+           this.m_access_monitor.openLog(logFile, intervalFile);
         }
-        else{
+        else if(this.m_access_monitor.isMonitoring()){
             this.m_access_monitor.closeLog();
         }
-        this.access_monitoring_on = hstore_conf.site.access_tracking;
     }
 
     // ----------------------------------------------------------------------------
@@ -4355,8 +4354,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         assert(plan != null);
         
         // EStore++ - monitoring of tables and partitioning attribute values accessed by this transaction
-        if(this.access_monitoring_on){
-            this.access_monitoring_on = this.m_access_monitor.logPartitioningAttributes(ts, plan.getFragmentIds(), batchParams);
+        if(this.m_access_monitor.isMonitoring()){
+            this.m_access_monitor.logPartitioningAttributes(ts, plan.getFragmentIds(), batchParams);
         }
         
         if (trace.val) {
