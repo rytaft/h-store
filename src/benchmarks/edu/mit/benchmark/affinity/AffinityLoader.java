@@ -120,9 +120,6 @@ public class AffinityLoader extends Loader {
         } // FOR
         ThreadUtil.runGlobalPool(runnables);
 
-        if (debug.val)
-            LOG.info("Finished loading " + catalog_tbl_suppliers.getName());
-
     }
     
     public void loadSuppliers(int thread_id, int start, int stop, AtomicLong total) {
