@@ -1,37 +1,46 @@
 {"MAPPINGS": [
  {
-  "STATEMENT": "{'GetA':'getAStmt'}",
+  "STATEMENT": "{'GetSupplier':'getSupplierStmt'}",
   "STATEMENT_INDEX": 0,
-  "STATEMENT_PARAMETER": "{'GetA.getAStmt':'0'}",
-  "STATEMENT_COLUMN": "{'TABLEA':'A_KEY'}",
-  "PROCEDURE_PARAMETER": "{'GetA':'0'}",
+  "STATEMENT_PARAMETER": "{'GetSupplier.getSupplierStmt':'0'}",
+  "STATEMENT_COLUMN": "{'SUPPLIERS':'SUPPLIER_KEY'}",
+  "PROCEDURE_PARAMETER": "{'GetSupplier':'0'}",
   "PROCEDURE_PARAMETER_INDEX": 0,
   "COEFFICIENT": 1.0
  },
  {
-  "STATEMENT": "{'GetB':'getBStmt'}",
+  "STATEMENT": "{'GetProduct':'getProductStmt'}",
   "STATEMENT_INDEX": 0,
-  "STATEMENT_PARAMETER": "{'GetB.getBStmt':'0'}",
-  "STATEMENT_COLUMN": "{'TABLEB':'B_KEY'}",
-  "PROCEDURE_PARAMETER": "{'GetB':'0'}",
+  "STATEMENT_PARAMETER": "{'GetProduct.getProductStmt':'0'}",
+  "STATEMENT_COLUMN": "{'PRODUCTS':'PRODUCT_KEY'}",
+  "PROCEDURE_PARAMETER": "{'GetProduct':'0'}",
   "PROCEDURE_PARAMETER_INDEX": 0,
   "COEFFICIENT": 1.0
  },
  {
-  "STATEMENT": "{'GetCByA':'getCbyAStmt'}",
+  "STATEMENT": "{'GetPart':'getPartStmt'}",
   "STATEMENT_INDEX": 0,
-  "STATEMENT_PARAMETER": "{'GetCByA.getCbyAStmt':'0'}",
-  "STATEMENT_COLUMN": "{'TABLEACMAP':'A_KEY'}",
-  "PROCEDURE_PARAMETER": "{'GetCByA':'0'}",
+  "STATEMENT_PARAMETER": "{'GetPart.getPartStmt':'0'}",
+  "STATEMENT_COLUMN": "{'PARTS':'PART_KEY'}",
+  "PROCEDURE_PARAMETER": "{'GetPart':'0'}",
   "PROCEDURE_PARAMETER_INDEX": 0,
   "COEFFICIENT": 1.0
  },
  {
-  "STATEMENT": "{'GetCByB':'getCbyBStmt'}",
+  "STATEMENT": "{'GetPartsBySupplier':'getPartsBySupplierStmt'}",
   "STATEMENT_INDEX": 0,
-  "STATEMENT_PARAMETER": "{'GetCByB.getCbyBStmt':'0'}",
-  "STATEMENT_COLUMN": "{'TABLEBCMAP':'B_KEY'}",
-  "PROCEDURE_PARAMETER": "{'GetCByB':'0'}",
+  "STATEMENT_PARAMETER": "{'GetPartsBySupplier.getPartsBySupplierStmt':'0'}",
+  "STATEMENT_COLUMN": "{'SUPPLIES':'SUPPLIER_KEY'}",
+  "PROCEDURE_PARAMETER": "{'GetPartsBySupplier':'0'}",
+  "PROCEDURE_PARAMETER_INDEX": 0,
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetPartsByProduct':'getPartsByProductStmt'}",
+  "STATEMENT_INDEX": 0,
+  "STATEMENT_PARAMETER": "{'GetPartsByProduct.getPartsByProductStmt':'0'}",
+  "STATEMENT_COLUMN": "{'USES':'PRODUCT_KEY'}",
+  "PROCEDURE_PARAMETER": "{'GetPartsByProduct':'0'}",
   "PROCEDURE_PARAMETER_INDEX": 0,
   "COEFFICIENT": 1.0
  }

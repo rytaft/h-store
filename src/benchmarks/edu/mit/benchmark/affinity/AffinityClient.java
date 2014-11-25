@@ -9,8 +9,6 @@ import org.voltdb.client.ClientResponse;
 import org.voltdb.client.ProcedureCallback;
 
 import edu.brown.api.BenchmarkComponent;
-import edu.brown.benchmark.ycsb.distributions.IntegerGenerator;
-import edu.brown.benchmark.ycsb.distributions.UniformIntegerGenerator;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.rand.RandomDistribution.FlatHistogram;
@@ -25,10 +23,11 @@ public class AffinityClient extends BenchmarkComponent {
     }
 
     public static enum Transaction {
-        GET_A("Get A", AffinityConstants.FREQ_READ_A), 
-        GET_B("Get B", AffinityConstants.FREQ_READ_B),
-        GET_C_BY_A("GetCByA", AffinityConstants.FREQ_READ_C_BY_A),
-        GET_C_BY_B("GetCByB", AffinityConstants.FREQ_READ_C_BY_B); 
+        GET_SUPPLIER("Get Supplier", AffinityConstants.FREQ_READ_SUPPLIER), 
+        GET_PRODUCT("Get Product", AffinityConstants.FREQ_READ_PRODUCT),
+        GET_PART("Get Part", AffinityConstants.FREQ_READ_PART),
+        GET_PARTS_BY_SUPPLIER("GetPartsBySupplier", AffinityConstants.FREQ_READ_PARTS_BY_SUPPLIER),
+        GET_PARTS_BY_PRODUCT("GetPartsByProduct", AffinityConstants.FREQ_READ_PARTS_BY_PRODUCT); 
         
         /**
          * Constructor
@@ -51,9 +50,7 @@ public class AffinityClient extends BenchmarkComponent {
     }
 
 
-    private IntegerGenerator keyGenerator;
     private Random rand_gen;
-    private int init_record_count;
     private final FlatHistogram<Transaction> txnWeights;
 
   
@@ -63,8 +60,6 @@ public class AffinityClient extends BenchmarkComponent {
         super(args);
 
         this.rand_gen = new Random(); 
-        init_record_count= AffinityConstants.NUM_RECORDS;
-        this.keyGenerator = new UniformIntegerGenerator(rand_gen, 0, this.init_record_count);
         for (String key : m_extraParams.keySet()) {
 
         }
@@ -117,12 +112,22 @@ public class AffinityClient extends BenchmarkComponent {
         Object params[];
 
         final Transaction target = this.txnWeights.nextValue();
+        // @TODO change to use scale factor if not fixed size
         switch (target) {
-            case GET_A:
-                params = new Object[]{ this.keyGenerator.nextInt() };
+            case GET_SUPPLIER:
+                params = new Object[]{ this.rand_gen.nextInt(AffinityConstants.NUM_SUPPLIERS) };
                 break;
-            case GET_C_BY_A:
-                params = new Object[]{ this.keyGenerator.nextInt() };
+            case GET_PRODUCT:
+                params = new Object[]{ this.rand_gen.nextInt(AffinityConstants.NUM_PRODUCTS) };
+                break;
+            case GET_PART:
+                params = new Object[]{ this.rand_gen.nextInt(AffinityConstants.NUM_PARTS) };
+                break;
+            case GET_PARTS_BY_SUPPLIER:
+                params = new Object[]{ this.rand_gen.nextInt(AffinityConstants.NUM_SUPPLIERS) };
+                break;
+            case GET_PARTS_BY_PRODUCT:
+                params = new Object[]{ this.rand_gen.nextInt(AffinityConstants.NUM_PRODUCTS) };
                 break;
             default:
                 throw new RuntimeException("Unexpected txn '" + target + "'");

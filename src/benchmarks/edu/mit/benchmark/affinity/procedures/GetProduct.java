@@ -6,10 +6,10 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
 @ProcInfo(
-        partitionInfo = "TABLEBCMAP.B_KEY: 0",
+        partitionInfo = "PRODUCTS.PRODUCT_KEY: 0",
         singlePartition = true
     )
-public class GetCByB extends VoltProcedure {
+public class GetProduct extends VoltProcedure {
 //    private static final Logger LOG = Logger.getLogger(VoltProcedure.class);
 //    private static final LoggerBoolean debug = new LoggerBoolean();
 //    private static final LoggerBoolean trace = new LoggerBoolean();
@@ -19,12 +19,11 @@ public class GetCByB extends VoltProcedure {
 //    }
     
     
-    //public final SQLStmt getCbyBStmt = new SQLStmt("SELECT * FROM TABLEC WHERE B_KEY = ? ");
-    public final SQLStmt getCbyBStmt = new SQLStmt("SELECT C_KEY FROM TABLEBCMAP WHERE B_KEY = ? ");
+    public final SQLStmt getProductStmt = new SQLStmt("SELECT * FROM PRODUCTS WHERE PRODUCT_KEY = ? ");
     
-    public VoltTable[] run(long b_key){
-        voltQueueSQL(getCbyBStmt, b_key);
-        return (voltExecuteSQL());
+    public VoltTable[] run(long product_key){
+        voltQueueSQL(getProductStmt, product_key);
+        return voltExecuteSQL(true);
     }
 
 }
