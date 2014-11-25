@@ -26,8 +26,10 @@ public class GetPartsBySupplier extends VoltProcedure {
     public VoltTable[] run(long supplier_key){
     	voltQueueSQL(getPartsBySupplierStmt, supplier_key);
         final VoltTable[] parts = voltExecuteSQL();
-        for(int i = 0; i < parts.length; ++i) {
-        	voltQueueSQL(getPartInfoStmt, parts[i].fetchRow(0));
+        assert parts.length == 1;
+        	
+        for(int i = 0; i < parts[0].getRowCount(); ++i) {
+        	voltQueueSQL(getPartInfoStmt, parts[0].fetchRow(i).getLong(0));
         }
         return voltExecuteSQL(true);
     }
