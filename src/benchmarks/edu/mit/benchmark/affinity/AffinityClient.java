@@ -26,8 +26,8 @@ public class AffinityClient extends BenchmarkComponent {
         GET_SUPPLIER("Get Supplier", AffinityConstants.FREQ_READ_SUPPLIER), 
         GET_PRODUCT("Get Product", AffinityConstants.FREQ_READ_PRODUCT),
         GET_PART("Get Part", AffinityConstants.FREQ_READ_PART),
-        GET_PARTS_BY_SUPPLIER("GetPartsBySupplier", AffinityConstants.FREQ_READ_PARTS_BY_SUPPLIER),
-        GET_PARTS_BY_PRODUCT("GetPartsByProduct", AffinityConstants.FREQ_READ_PARTS_BY_PRODUCT); 
+        GET_PARTS_BY_SUPPLIER("Get Parts By Supplier", AffinityConstants.FREQ_READ_PARTS_BY_SUPPLIER),
+        GET_PARTS_BY_PRODUCT("Get Parts By Product", AffinityConstants.FREQ_READ_PARTS_BY_PRODUCT); 
         
         /**
          * Constructor
@@ -50,19 +50,53 @@ public class AffinityClient extends BenchmarkComponent {
     }
 
 
+    private final int init_supplier_count;
+    private final int init_product_count;
+    private final int init_part_count;
     private Random rand_gen;
     private final FlatHistogram<Transaction> txnWeights;
 
   
 
     public AffinityClient(String[] args) {
+        super(args);     
         
-        super(args);
-
         this.rand_gen = new Random(); 
+        boolean useFixedSize = true;
+        int num_suppliers = AffinityConstants.NUM_SUPPLIERS;
+        int num_products = AffinityConstants.NUM_PRODUCTS;
+        int num_parts = AffinityConstants.NUM_PARTS;
         for (String key : m_extraParams.keySet()) {
+            String value = m_extraParams.get(key);
 
+            if  (key.equalsIgnoreCase("fixed_size")) {
+            	useFixedSize = Boolean.valueOf(value);
+            }
+            // Used Fixed-size Database
+            // Parameter that points to where we can find the initial data files
+            else if  (key.equalsIgnoreCase("num_suppliers")) {
+                num_suppliers = Integer.valueOf(value);
+            }
+            else if  (key.equalsIgnoreCase("num_products")) {
+            	num_products = Integer.valueOf(value);
+            }
+            else if  (key.equalsIgnoreCase("num_parts")) {
+            	num_parts = Integer.valueOf(value);
+            }
+        } // FOR
+        
+        // Figure out the # of records that we need
+        if (useFixedSize) {
+            this.init_supplier_count = num_suppliers;
+            this.init_product_count = num_products;
+            this.init_part_count = num_parts;
         }
+        else {
+            this.init_supplier_count = (int) Math.round(AffinityConstants.NUM_SUPPLIERS * this.getScaleFactor());
+            this.init_product_count = (int) Math.round(AffinityConstants.NUM_PRODUCTS * this.getScaleFactor());
+            this.init_part_count = (int) Math.round(AffinityConstants.NUM_PARTS * this.getScaleFactor());
+        }
+
         
         // Initialize the sampling table
         Histogram<Transaction> txns = new ObjectHistogram<Transaction>(); 
@@ -112,22 +146,21 @@ public class AffinityClient extends BenchmarkComponent {
         Object params[];
 
         final Transaction target = this.txnWeights.nextValue();
-        // @TODO change to use scale factor if not fixed size
         switch (target) {
             case GET_SUPPLIER:
-                params = new Object[]{ this.rand_gen.nextInt(AffinityConstants.NUM_SUPPLIERS) };
+                params = new Object[]{ generateSupplier() };
                 break;
             case GET_PRODUCT:
-                params = new Object[]{ this.rand_gen.nextInt(AffinityConstants.NUM_PRODUCTS) };
+                params = new Object[]{ generateProduct() };
                 break;
             case GET_PART:
-                params = new Object[]{ this.rand_gen.nextInt(AffinityConstants.NUM_PARTS) };
+                params = new Object[]{ generatePart() };
                 break;
             case GET_PARTS_BY_SUPPLIER:
-                params = new Object[]{ this.rand_gen.nextInt(AffinityConstants.NUM_SUPPLIERS) };
+                params = new Object[]{ generateSupplier() };
                 break;
             case GET_PARTS_BY_PRODUCT:
-                params = new Object[]{ this.rand_gen.nextInt(AffinityConstants.NUM_PRODUCTS) };
+                params = new Object[]{ generateProduct() };
                 break;
             default:
                 throw new RuntimeException("Unexpected txn '" + target + "'");
@@ -138,8 +171,19 @@ public class AffinityClient extends BenchmarkComponent {
         Callback callback = new Callback(target.ordinal());
         return this.getClientHandle().callProcedure(callback, target.callName, params);
     }
+    
+    // @TODO add different distributions - hot spot, zipfian, etc
+    private int generateSupplier() {
+    	return this.rand_gen.nextInt(init_supplier_count);
+    }
+    
+    private int generateProduct() {
+    	return this.rand_gen.nextInt(init_product_count);
+    }
 
-
+    private int generatePart() {
+    	return this.rand_gen.nextInt(init_part_count);
+    }
     
     private class Callback implements ProcedureCallback {
         private final int idx;

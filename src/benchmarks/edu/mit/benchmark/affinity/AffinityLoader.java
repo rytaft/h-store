@@ -25,9 +25,9 @@ public class AffinityLoader extends Loader {
     static {
         LoggerUtil.attachObserver(LOG, debug);
     }
-    private final long init_supplier_count;
-    private final long init_product_count;
-    private final long init_part_count;
+    private final int init_supplier_count;
+    private final int init_product_count;
+    private final int init_part_count;
     private int loadthreads = ThreadUtil.availableProcessors();
     private Random rand;
 
@@ -43,23 +43,26 @@ public class AffinityLoader extends Loader {
             LOG.debug("CONSTRUCTOR: " + AffinityLoader.class.getName());
         
         boolean useFixedSize = true;
-        long num_suppliers = AffinityConstants.NUM_SUPPLIERS;
-        long num_products = AffinityConstants.NUM_PRODUCTS;
-        long num_parts = AffinityConstants.NUM_PARTS;
+        int num_suppliers = AffinityConstants.NUM_SUPPLIERS;
+        int num_products = AffinityConstants.NUM_PRODUCTS;
+        int num_parts = AffinityConstants.NUM_PARTS;
         rand = new Random();
         for (String key : m_extraParams.keySet()) {
             String value = m_extraParams.get(key);
 
+            if  (key.equalsIgnoreCase("fixed_size")) {
+            	useFixedSize = Boolean.valueOf(value);
+            }
             // Used Fixed-size Database
             // Parameter that points to where we can find the initial data files
-            if  (key.equalsIgnoreCase("num_suppliers")) {
-                num_suppliers = Long.valueOf(value);
+            else if  (key.equalsIgnoreCase("num_suppliers")) {
+                num_suppliers = Integer.valueOf(value);
             }
             else if  (key.equalsIgnoreCase("num_products")) {
-            	num_products = Long.valueOf(value);
+            	num_products = Integer.valueOf(value);
             }
             else if  (key.equalsIgnoreCase("num_parts")) {
-            	num_parts = Long.valueOf(value);
+            	num_parts = Integer.valueOf(value);
             }
             // Multi-Threaded Loader
             else if (key.equalsIgnoreCase("loadthreads")) {
