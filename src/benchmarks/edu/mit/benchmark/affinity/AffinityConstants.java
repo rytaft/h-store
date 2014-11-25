@@ -26,10 +26,10 @@ public class AffinityConstants {
     protected static final int USES_NUM_COLUMNS = 2;
     
     public static final int BATCH_SIZE = 10000;
-    public static final int FREQ_READ_SUPPLIER = 90; 
-    public static final int FREQ_READ_PRODUCT = 0;
-    public static final int FREQ_READ_PART = 0;
-    public static final int FREQ_READ_PARTS_BY_SUPPLIER = 10;
-    public static final int FREQ_READ_PARTS_BY_PRODUCT = 0;
+    public static final int FREQ_READ_SUPPLIER = 20; 
+    public static final int FREQ_READ_PRODUCT = 20;
+    public static final int FREQ_READ_PART = 20;
+    public static final int FREQ_READ_PARTS_BY_SUPPLIER = 20;
+    public static final int FREQ_READ_PARTS_BY_PRODUCT = 20;
 
 }
