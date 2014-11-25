@@ -33,7 +33,10 @@ public class GetPartsByProduct extends VoltProcedure {
         voltQueueSQL(getPartsByProductStmt, product_key);
         final VoltTable[] parts = voltExecuteSQL();
         if(debug.val) {
-        	LOG.debug("Parts: " + parts.toString());
+        	LOG.debug("Num parts: " + parts.length);
+        	if(parts.length > 0) {
+        		LOG.debug("Part 0: " + parts[0].toString());
+        	}
         }
         	
         for(int i = 0; i < parts.length; ++i) {
