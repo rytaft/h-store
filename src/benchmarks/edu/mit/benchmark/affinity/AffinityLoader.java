@@ -134,7 +134,7 @@ public class AffinityLoader extends Loader {
             row[0] = i;
 
             // randomly generate strings for each column
-            for (int col = 2; col < AffinityConstants.SUPPLIERS_NUM_COLUMNS; col++) {
+            for (int col = 1; col < AffinityConstants.SUPPLIERS_NUM_COLUMNS; col++) {
                 row[col] = YCSBUtil.astring(AffinityConstants.SUPPLIERS_COLUMN_LENGTH, AffinityConstants.SUPPLIERS_COLUMN_LENGTH);
             } // FOR
             table.addRow(row);
@@ -173,7 +173,7 @@ public class AffinityLoader extends Loader {
             row[0] = i;
 
             // randomly generate strings for each column
-            for (int col = 2; col < AffinityConstants.PRODUCTS_NUM_COLUMNS; col++) {
+            for (int col = 1; col < AffinityConstants.PRODUCTS_NUM_COLUMNS; col++) {
                 row[col] = YCSBUtil.astring(AffinityConstants.PRODUCTS_COLUMN_LENGTH, AffinityConstants.PRODUCTS_COLUMN_LENGTH);
             } // FOR
             table.addRow(row);
@@ -213,7 +213,7 @@ public class AffinityLoader extends Loader {
             row[0] = i;
 
             // randomly generate strings for each column
-            for (int col = 2; col < AffinityConstants.PARTS_NUM_COLUMNS; col++) {
+            for (int col = 1; col < AffinityConstants.PARTS_NUM_COLUMNS; col++) {
                 row[col] = YCSBUtil.astring(AffinityConstants.PARTS_COLUMN_LENGTH, AffinityConstants.PARTS_COLUMN_LENGTH);
             } // FOR
             table.addRow(row);
@@ -249,7 +249,7 @@ public class AffinityLoader extends Loader {
         Object row[] = new Object[table.getColumnCount()];
 
         for (int i = start; i < stop && i < init_supplier_count; i++) {
-            for(int j = start; j < stop && j < init_part_count; j++) {
+            for(int j = 0; j < init_part_count; j++) {
             	if(rand.nextDouble() < AffinityConstants.SUPPLIES_PROBABILITY) {
             		row[0] = j;
             		row[1] = i;
@@ -289,7 +289,7 @@ public class AffinityLoader extends Loader {
         Object row[] = new Object[table.getColumnCount()];
 
         for (int i = start; i < stop && i < init_product_count; i++) {
-            for(int j = start; j < stop && j < init_part_count; j++) {
+            for(int j = 0; j < init_part_count; j++) {
             	if(rand.nextDouble() < AffinityConstants.USES_PROBABILITY) {
             		row[0] = j;
             		row[1] = i;
