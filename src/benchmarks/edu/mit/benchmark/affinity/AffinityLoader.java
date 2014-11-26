@@ -91,8 +91,6 @@ public class AffinityLoader extends Loader {
         if (debug.val)
             LOG.debug("Starting AffinityLoader");
 
-        final CatalogContext catalogContext = this.getCatalogContext(); 
-        final Table catalog_tbl_suppliers = catalogContext.getTableByName(AffinityConstants.TABLENAME_SUPPLIERS);
         final AtomicLong total_suppliers = new AtomicLong(0);
         final AtomicLong total_products = new AtomicLong(0);
         final AtomicLong total_parts = new AtomicLong(0);
