@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -302,6 +303,15 @@ public class AffinityGraph {
     
     public Double getLoadPerPartition(int partition){
         return getLoadInCurrPartition(m_partitionVertices.get(partition));
+    }
+    
+    public Double getLoadPerSite(int site){
+        Collection<Integer> partitions = PlanHandler.getPartitionsSite(site);
+        double load = 0;
+        for (Integer partition : partitions){
+            load += getLoadPerPartition(partition);
+        }
+        return load;
     }
     
     /*
