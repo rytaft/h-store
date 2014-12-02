@@ -31,7 +31,7 @@ public class AffinityProjectBuilder extends AbstractProjectBuilder{
         // { "TABLE NAME", "PARTITIONING COLUMN NAME" }
         {"SUPPLIERS", "SUPPLIER_KEY"},
         {"PRODUCTS", "PRODUCT_KEY"},
-        //{"PARTS", "PART_KEY"},
+        {"PARTS", "PART_KEY"},
         {"SUPPLIES", "SUPPLIER_KEY"},
         {"USES", "PRODUCT_KEY"},
     };
