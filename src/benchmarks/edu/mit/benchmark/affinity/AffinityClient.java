@@ -50,54 +50,18 @@ public class AffinityClient extends BenchmarkComponent {
     }
 
 
-    private final int init_supplier_count;
-    private final int init_product_count;
-    private final int init_part_count;
-    private Random rand_gen;
     private final FlatHistogram<Transaction> txnWeights;
+    private AffinityConfig config;
 
   
 
     public AffinityClient(String[] args) {
         super(args);     
-        
-        this.rand_gen = new Random(); 
-        boolean useFixedSize = true;
-        int num_suppliers = AffinityConstants.NUM_SUPPLIERS;
-        int num_products = AffinityConstants.NUM_PRODUCTS;
-        int num_parts = AffinityConstants.NUM_PARTS;
-        for (String key : m_extraParams.keySet()) {
-            String value = m_extraParams.get(key);
+        this.config = new AffinityConfig(m_extraParams);
 
-            if  (key.equalsIgnoreCase("fixed_size")) {
-            	useFixedSize = Boolean.valueOf(value);
-            }
-            // Used Fixed-size Database
-            // Parameter that points to where we can find the initial data files
-            else if  (key.equalsIgnoreCase("num_suppliers")) {
-                num_suppliers = Integer.valueOf(value);
-            }
-            else if  (key.equalsIgnoreCase("num_products")) {
-            	num_products = Integer.valueOf(value);
-            }
-            else if  (key.equalsIgnoreCase("num_parts")) {
-            	num_parts = Integer.valueOf(value);
-            }
-        } // FOR
         
         // Figure out the # of records that we need
-        if (useFixedSize) {
-            this.init_supplier_count = num_suppliers;
-            this.init_product_count = num_products;
-            this.init_part_count = num_parts;
-        }
-        else {
-            this.init_supplier_count = (int) Math.round(AffinityConstants.NUM_SUPPLIERS * this.getScaleFactor());
-            this.init_product_count = (int) Math.round(AffinityConstants.NUM_PRODUCTS * this.getScaleFactor());
-            this.init_part_count = (int) Math.round(AffinityConstants.NUM_PARTS * this.getScaleFactor());
-        }
 
-        
         // Initialize the sampling table
         Histogram<Transaction> txns = new ObjectHistogram<Transaction>(); 
         for (Transaction t : Transaction.values()) {
@@ -119,7 +83,7 @@ public class AffinityClient extends BenchmarkComponent {
             }
         } // FOR
         assert(txns.getSampleCount() == 100) : txns;
-        this.txnWeights = new FlatHistogram<Transaction>(this.rand_gen, txns);
+        this.txnWeights = new FlatHistogram<Transaction>(config.rand_gen, txns);
     }
 
     @SuppressWarnings("unused")
@@ -148,19 +112,19 @@ public class AffinityClient extends BenchmarkComponent {
         final Transaction target = this.txnWeights.nextValue();
         switch (target) {
             case GET_SUPPLIER:
-                params = new Object[]{ generateSupplier() };
+                params = new Object[]{ config.supplier_gen.nextInt() };
                 break;
             case GET_PRODUCT:
-                params = new Object[]{ generateProduct() };
+                params = new Object[]{ config.product_gen.nextInt()};
                 break;
             case GET_PART:
-                params = new Object[]{ generatePart() };
+                params = new Object[]{ config.part_gen.nextInt() };
                 break;
             case GET_PARTS_BY_SUPPLIER:
-                params = new Object[]{ generateSupplier() };
+                params = new Object[]{ config.supplier_gen.nextInt() };
                 break;
             case GET_PARTS_BY_PRODUCT:
-                params = new Object[]{ generateProduct() };
+                params = new Object[]{ config.supplier_gen.nextInt() };
                 break;
             default:
                 throw new RuntimeException("Unexpected txn '" + target + "'");
@@ -172,18 +136,7 @@ public class AffinityClient extends BenchmarkComponent {
         return this.getClientHandle().callProcedure(callback, target.callName, params);
     }
     
-    // @TODO add different distributions - hot spot, zipfian, etc
-    private int generateSupplier() {
-    	return this.rand_gen.nextInt(init_supplier_count);
-    }
-    
-    private int generateProduct() {
-    	return this.rand_gen.nextInt(init_product_count);
-    }
 
-    private int generatePart() {
-    	return this.rand_gen.nextInt(init_part_count);
-    }
     
     private class Callback implements ProcedureCallback {
         private final int idx;
