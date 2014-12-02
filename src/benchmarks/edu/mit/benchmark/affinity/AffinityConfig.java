@@ -11,6 +11,7 @@ import edu.brown.benchmark.ycsb.distributions.UniformIntegerGenerator;
 import edu.brown.benchmark.ycsb.distributions.VaryingZipfianGenerator;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import edu.brown.utils.ThreadUtil;
 
 public class AffinityConfig {
     private static final Logger LOG = Logger.getLogger(AffinityConfig.class);
@@ -36,10 +37,12 @@ public class AffinityConfig {
     public IntegerGenerator supplier_gen;
     public IntegerGenerator product_gen;
     public IntegerGenerator part_gen;
+    public Integer loadthreads = ThreadUtil.availableProcessors();;
+    public boolean useFixedSize = true;
+
     
     public AffinityConfig(Map<String, String> m_extraParams) {
         this.rand_gen = new Random(); 
-        boolean useFixedSize = true;
 
         for (String key : m_extraParams.keySet()) {
             String value = m_extraParams.get(key);
@@ -62,6 +65,10 @@ public class AffinityConfig {
             else if (key.equalsIgnoreCase("fixed_size")) {
                 useFixedSize = Boolean.valueOf(value);
             }
+            // Multi-Threaded Loader
+            else if (key.equalsIgnoreCase("loadthreads")) {
+                this.loadthreads  = Integer.valueOf(value);
+            }
             else{
                 if (key.startsWith(AffinityConstants.PARTS_PRE) || key.startsWith(AffinityConstants.SUP_PRE) || key.startsWith(AffinityConstants.PROD_PRE))
                     continue;
@@ -79,6 +86,9 @@ public class AffinityConfig {
         part_gen = getGenerator(AffinityConstants.PARTS_PRE, num_parts, m_extraParams);
     }
 
+    
+    
+    
     private IntegerGenerator getGenerator(String pre, long num_keys, Map<String, String> m_extraParams) {
 
         String requestDistribution = AffinityConstants.REQUEST_DISTRIBUTION_PROPERTY_DEFAULT; 
@@ -142,7 +152,7 @@ public class AffinityConfig {
         // initialize distribution generators 
         // We must know where to start inserting
         if(requestDistribution.equals(AffinityConstants.CUSTOM_DISTRIBUTION)){
-            if(debug.val) LOG.debug("Using a custom key distribution");
+            if(debug.val) LOG.debug(pre+" Using a custom key distribution");
     
             keyGenerator = new CustomSkewGenerator(this.rand_gen, num_keys, 
                                                 AffinityConstants.HOT_DATA_WORKLOAD_SKEW, AffinityConstants.HOT_DATA_SIZE, 
@@ -150,12 +160,12 @@ public class AffinityConfig {
 
         } 
         else if(requestDistribution.equals(AffinityConstants.UNIFORM_DISTRIBUTION)){
-            if(debug.val) LOG.debug("Using a uniform key distribution");
+            if(debug.val) LOG.debug(pre+" Using a uniform key distribution");
             //Ints are used for keyGens and longs are used for record counts.
             keyGenerator = new UniformIntegerGenerator(this.rand_gen,0,(int)num_keys);
         }
         else if(requestDistribution.equals(AffinityConstants.ZIPFIAN_DISTRIBUTION)){
-            if(debug.val) LOG.debug("Using a default zipfian key distribution");
+            if(debug.val) LOG.debug(pre+" Using a default zipfian key distribution");
             //ints are used for keyGens and longs are used for record counts.            
             //TODO check on other zipf params
             VaryingZipfianGenerator gen = new VaryingZipfianGenerator(num_keys, skewFactor);
@@ -177,6 +187,17 @@ public class AffinityConfig {
         
         
         return keyGenerator;
+    }
+
+
+
+
+    @Override
+    public String toString() {
+        return "AffinityConfig [SUPPLIES_PROBABILITY=" + SUPPLIES_PROBABILITY + ", USES_PROBABILITY=" + USES_PROBABILITY + ", FREQ_READ_SUPPLIER=" + FREQ_READ_SUPPLIER + ", FREQ_READ_PRODUCT="
+                + FREQ_READ_PRODUCT + ", FREQ_READ_PART=" + FREQ_READ_PART + ", FREQ_READ_PARTS_BY_SUPPLIER=" + FREQ_READ_PARTS_BY_SUPPLIER + ", FREQ_READ_PARTS_BY_PRODUCT="
+                + FREQ_READ_PARTS_BY_PRODUCT + ", num_suppliers=" + num_suppliers + ", num_products=" + num_products + ", num_parts=" + num_parts + ", rand_gen=" + rand_gen + ", supplier_gen="
+                + supplier_gen + ", product_gen=" + product_gen + ", part_gen=" + part_gen + ", loadthreads=" + loadthreads + ", useFixedSize=" + useFixedSize + "]";
     }
 
 }

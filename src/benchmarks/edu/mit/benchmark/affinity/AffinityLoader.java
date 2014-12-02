@@ -25,11 +25,8 @@ public class AffinityLoader extends Loader {
     static {
         LoggerUtil.attachObserver(LOG, debug);
     }
-    private final int init_supplier_count;
-    private final int init_product_count;
-    private final int init_part_count;
-    private int loadthreads = ThreadUtil.availableProcessors();
-    private Random rand;
+
+    private AffinityConfig config;
 
     public static void main(String args[]) throws Exception {
         if (debug.val)
@@ -41,49 +38,9 @@ public class AffinityLoader extends Loader {
         super(args);
         if (debug.val)
             LOG.debug("CONSTRUCTOR: " + AffinityLoader.class.getName());
-        
-        boolean useFixedSize = true;
-        int num_suppliers = AffinityConstants.NUM_SUPPLIERS;
-        int num_products = AffinityConstants.NUM_PRODUCTS;
-        int num_parts = AffinityConstants.NUM_PARTS;
-        rand = new Random();
-        for (String key : m_extraParams.keySet()) {
-            String value = m_extraParams.get(key);
-
-            if  (key.equalsIgnoreCase("fixed_size")) {
-            	useFixedSize = Boolean.valueOf(value);
-            }
-            // Used Fixed-size Database
-            // Parameter that points to where we can find the initial data files
-            else if  (key.equalsIgnoreCase("num_suppliers")) {
-                num_suppliers = Integer.valueOf(value);
-            }
-            else if  (key.equalsIgnoreCase("num_products")) {
-            	num_products = Integer.valueOf(value);
-            }
-            else if  (key.equalsIgnoreCase("num_parts")) {
-            	num_parts = Integer.valueOf(value);
-            }
-            // Multi-Threaded Loader
-            else if (key.equalsIgnoreCase("loadthreads")) {
-                this.loadthreads = Integer.valueOf(value);
-            }
-        } // FOR
-        
-        // Figure out the # of records that we need
-        if (useFixedSize) {
-            this.init_supplier_count = num_suppliers;
-            this.init_product_count = num_products;
-            this.init_part_count = num_parts;
-        }
-        else {
-            this.init_supplier_count = (int) Math.round(AffinityConstants.NUM_SUPPLIERS * this.getScaleFactor());
-            this.init_product_count = (int) Math.round(AffinityConstants.NUM_PRODUCTS * this.getScaleFactor());
-            this.init_part_count = (int) Math.round(AffinityConstants.NUM_PARTS * this.getScaleFactor());
-        }
-        LOG.info("Initializing database with " + init_supplier_count + " suppliers, " + 
-        		+ init_product_count + " products, and " + init_part_count + 
-        		" parts. Using " + this.loadthreads + " load threads");
+        config = new AffinityConfig(m_extraParams);
+        if (debug.val)
+            LOG.debug(config.toString());
     }
 
     @Override
@@ -98,10 +55,10 @@ public class AffinityLoader extends Loader {
         final AtomicLong total_uses = new AtomicLong(0);
         
         // Multi-threaded loader
-        final int rows_per_thread = (int) Math.ceil(Math.max(init_supplier_count, Math.max(init_product_count, init_part_count)) / 
-        		(double) this.loadthreads);
+        final int rows_per_thread = (int) Math.ceil(Math.max(config.num_suppliers, Math.max(config.num_products, config.num_parts)) / 
+        		(double) config.loadthreads);
         final List<Runnable> runnables = new ArrayList<Runnable>();
-        for (int i = 0; i < this.loadthreads; i++) {
+        for (int i = 0; i < config.loadthreads; i++) {
             final int thread_id = i;
             final int start = rows_per_thread * i;
             final int stop = start + rows_per_thread;
@@ -128,7 +85,7 @@ public class AffinityLoader extends Loader {
         VoltTable table = CatalogUtil.getVoltTable(catalog_tbl_suppliers);
         Object row[] = new Object[table.getColumnCount()];
 
-        for (int i = start; i < stop && i < init_supplier_count; i++) {
+        for (int i = start; i < stop && i < config.num_suppliers; i++) {
             row[0] = i;
 
             // randomly generate strings for each column
@@ -144,7 +101,7 @@ public class AffinityLoader extends Loader {
                 table.clearRowData();
                 if (debug.val)
                     LOG.debug(String.format("[%d] %s records Loaded: %6d / %d",
-                              thread_id, AffinityConstants.TABLENAME_SUPPLIERS, total.get(), init_supplier_count));
+                              thread_id, AffinityConstants.TABLENAME_SUPPLIERS, total.get(), config.num_suppliers));
             }
         } // FOR
 
@@ -155,7 +112,7 @@ public class AffinityLoader extends Loader {
             table.clearRowData();
             if (debug.val)
                 LOG.debug(String.format("[%d] %s records Loaded: %6d / %d",
-                          thread_id, AffinityConstants.TABLENAME_SUPPLIERS, total.get(), init_supplier_count));
+                          thread_id, AffinityConstants.TABLENAME_SUPPLIERS, total.get(), config.num_suppliers));
         }
     }
     
@@ -167,7 +124,7 @@ public class AffinityLoader extends Loader {
         VoltTable table = CatalogUtil.getVoltTable(catalog_tbl_products);
         Object row[] = new Object[table.getColumnCount()];
 
-        for (int i = start; i < stop && i < init_product_count; i++) {
+        for (int i = start; i < stop && i < config.num_products; i++) {
             row[0] = i;
 
             // randomly generate strings for each column
@@ -183,7 +140,7 @@ public class AffinityLoader extends Loader {
                 table.clearRowData();
                 if (debug.val)
                     LOG.debug(String.format("[%d] %s records Loaded: %6d / %d",
-                              thread_id, AffinityConstants.TABLENAME_PRODUCTS, total.get(), init_product_count));
+                              thread_id, AffinityConstants.TABLENAME_PRODUCTS, total.get(), config.num_products));
             }
         } // FOR
 
@@ -194,7 +151,7 @@ public class AffinityLoader extends Loader {
             table.clearRowData();
             if (debug.val)
                 LOG.debug(String.format("[%d] %s records Loaded: %6d / %d",
-                          thread_id, AffinityConstants.TABLENAME_PRODUCTS, total.get(), init_product_count));
+                          thread_id, AffinityConstants.TABLENAME_PRODUCTS, total.get(), config.num_products));
         }
     }
 
@@ -207,7 +164,7 @@ public class AffinityLoader extends Loader {
         VoltTable table = CatalogUtil.getVoltTable(catalog_tbl_parts);
         Object row[] = new Object[table.getColumnCount()];
 
-        for (int i = start; i < stop && i < init_part_count; i++) {
+        for (int i = start; i < stop && i < config.num_parts; i++) {
             row[0] = i;
 
             // randomly generate strings for each column
@@ -223,7 +180,7 @@ public class AffinityLoader extends Loader {
                 table.clearRowData();
                 if (debug.val)
                     LOG.debug(String.format("[%d] %s records Loaded: %6d / %d",
-                              thread_id, AffinityConstants.TABLENAME_PARTS, total.get(), init_part_count));
+                              thread_id, AffinityConstants.TABLENAME_PARTS, total.get(), config.num_parts));
             }
         } // FOR
 
@@ -234,7 +191,7 @@ public class AffinityLoader extends Loader {
             table.clearRowData();
             if (debug.val)
                 LOG.debug(String.format("[%d] %s records Loaded: %6d / %d",
-                          thread_id, AffinityConstants.TABLENAME_PARTS, total.get(), init_part_count));
+                          thread_id, AffinityConstants.TABLENAME_PARTS, total.get(), config.num_parts));
         }
     }
 
@@ -246,9 +203,9 @@ public class AffinityLoader extends Loader {
         VoltTable table = CatalogUtil.getVoltTable(catalog_tbl_supplies);
         Object row[] = new Object[table.getColumnCount()];
 
-        for (int i = start; i < stop && i < init_supplier_count; i++) {
-            for(int j = 0; j < init_part_count; j++) {
-            	if(rand.nextDouble() < AffinityConstants.SUPPLIES_PROBABILITY) {
+        for (int i = start; i < stop && i < config.num_suppliers; i++) {
+            for(int j = 0; j < config.num_parts; j++) {
+            	if(config.rand_gen.nextDouble() < AffinityConstants.SUPPLIES_PROBABILITY) {
             		row[0] = j;
             		row[1] = i;
 
@@ -286,9 +243,9 @@ public class AffinityLoader extends Loader {
         VoltTable table = CatalogUtil.getVoltTable(catalog_tbl_uses);
         Object row[] = new Object[table.getColumnCount()];
 
-        for (int i = start; i < stop && i < init_product_count; i++) {
-            for(int j = 0; j < init_part_count; j++) {
-            	if(rand.nextDouble() < AffinityConstants.USES_PROBABILITY) {
+        for (int i = start; i < stop && i < config.num_products; i++) {
+            for(int j = 0; j < config.num_parts; j++) {
+            	if(config.rand_gen.nextDouble() < AffinityConstants.USES_PROBABILITY) {
             		row[0] = j;
             		row[1] = i;
 
