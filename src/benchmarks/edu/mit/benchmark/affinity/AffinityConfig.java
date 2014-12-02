@@ -70,17 +70,14 @@ public class AffinityConfig {
                 this.loadthreads  = Integer.valueOf(value);
             }
             else{
-                if (key.startsWith(AffinityConstants.PARTS_PRE) || key.startsWith(AffinityConstants.SUP_PRE) || key.startsWith(AffinityConstants.PROD_PRE))
+                if (key.toLowerCase().startsWith(AffinityConstants.PARTS_PRE.toLowerCase()) 
+                        || key.toLowerCase().startsWith(AffinityConstants.SUP_PRE.toLowerCase()) 
+                        || key.toLowerCase().startsWith(AffinityConstants.PROD_PRE.toLowerCase()))
                     continue;
                 if(debug.val) LOG.debug("Unknown prop : "  + key);
             }
         } // FOR
-        
-        
-
-
-   
-    
+            
         supplier_gen = getGenerator(AffinityConstants.SUP_PRE, num_suppliers, m_extraParams);
         product_gen = getGenerator(AffinityConstants.PROD_PRE, num_products, m_extraParams);
         part_gen = getGenerator(AffinityConstants.PARTS_PRE, num_parts, m_extraParams);
