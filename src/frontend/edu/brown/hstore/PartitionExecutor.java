@@ -6090,6 +6090,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     	if (hstore_conf.site.exec_readwrite_tracking ) {
             this.ee.trackingFinish(ts.getTransactionId());
         }
+        if(this.m_access_monitor.isMonitoring()){
+            this.m_access_monitor.logFinishTransaction(ts.getTransactionId());
+        }
         ts.markFinished(this.partitionId);
     }
     

@@ -1,4 +1,4 @@
-/*
+/**
  * @author Marco
  */
 
@@ -57,7 +57,7 @@ public class Monitor {
         max_entries = maxEntries;
     }
     
-    /*
+    /**
      * This method is called every time a batch of SQL statements is invoked. A transaction consists of multiple SQL statements. 
      * Typically, SQL statement batches are called like this in bechmarks:
      * 
@@ -158,6 +158,17 @@ public class Monitor {
             }
         }
         return true;
+    }
+    
+    public void logFinishTransaction(Long trans_id){
+        String s = "END;" + trans_id.toString();
+        try {
+            m_writer.write(s, 0, s.length());
+            m_writer.newLine();
+        } catch (IOException e) {
+            e.printStackTrace();
+            LOG.warn("Failed while writing file " + m_logFile.toString());
+        }
     }
     
     public void openLog(Path logFile, Path intervalPath){
