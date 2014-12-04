@@ -2,7 +2,7 @@ package org.qcri.affinityplanner;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -52,6 +52,7 @@ public class PlanHandler {
     public int getPartition(String vertex) throws Exception{
         String[] vertexData = vertex.split(",");
         String table = vertexData[0];
+        @SuppressWarnings("unused")
         String attribute = vertexData[1];
         Long value = Long.parseLong(vertexData[2]);
         int partitionId = m_partitioner.getPartitionId(table, new Long[] {value});
@@ -75,7 +76,7 @@ public class PlanHandler {
         return getSitePartition(getPartition(vertex));
     }
     
-    public static List<Integer> getPartitionsSite(int site){
+    public static Collection<Integer> getPartitionsSite(int site){
         ArrayList<Integer> res = new ArrayList<Integer> (Controller.PARTITIONS_PER_SITE);
         for (int i = site * Controller.PARTITIONS_PER_SITE; i < (site + 1) * Controller.PARTITIONS_PER_SITE; i++){
             res.add(i);

@@ -1421,6 +1421,16 @@ public final class HStoreConf {
         )
         public int pool_pathestimators_idle;
 
+        // ----------------------------------------------------------------------------
+        // EStore++
+        // ----------------------------------------------------------------------------
+        
+        @ConfigProperty(
+                description="Tracks the partitioning key values accessed by H-Store.",
+                defaultBoolean=false,
+                experimental=true
+        )
+        public boolean access_tracking;
         
     }
     

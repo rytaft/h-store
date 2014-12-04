@@ -1,20 +1,20 @@
 package org.qcri.affinityplanner;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.Catalog;
 import org.voltdb.catalog.Site;
 import org.voltdb.client.ClientFactory;
+import org.voltdb.client.ClientResponse;
+import org.voltdb.client.ProcCallException;
 
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.HStoreConstants;
@@ -23,28 +23,31 @@ import edu.brown.utils.ArgumentsParser;
 import edu.brown.utils.CollectionUtil;
 
 public class Controller {
-//    private org.voltdb.client.Client client;
-//    private Collection<Site> sites;
-    private CatalogContext catalog_context;
-//    private String connectedHost;
+    private org.voltdb.client.Client m_client;
+    private Collection<Site> m_sites;
+    private Catalog m_catalog;
+    private CatalogContext m_catalog_context;
+    private String m_connectedHost;
 //
 //    private Path planFile;
 //    private Path outputPlanFile;
     
-    public final static int PARTITIONS_PER_SITE = 1;
+    public final static int PARTITIONS_PER_SITE = 2;
     public final static int DTXN_MULTIPLIER = 5;
     public final static int LOCAL_MPT_MULTIPLIER = 0;
     public final static int MAX_MOVED_VERTICES_PER_SOURCE_SITE = 8;
     public final static int MIN_DELTA_FOR_MOVEMENT = -1;
     public final static int MAX_PARTITIONS_ADDED_RECONF = 4;
     public final static int MAX_PARTITIONS = 8;
+    public final static int MONITORING_PERIOD = 20000;
     
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
-//        client = ClientFactory.createClient();
-//        client.configureBlocking(false);
-//        sites = CatalogUtil.getAllSites(catalog);
-        this.catalog_context = catalog_context;
-//        connectToHost();
+        m_catalog = catalog;
+        m_client = ClientFactory.createClient();
+        m_client.configureBlocking(false);
+        m_sites = CatalogUtil.getAllSites(catalog);
+        this.m_catalog_context = catalog_context;
+        connectToHost();
 //
 //        if(hstore_conf.global.hasher_plan == null){
 //            System.out.println("Must set global.hasher_plan to specify plan file!");
@@ -69,7 +72,31 @@ public class Controller {
         //TODO select planners here
     }
     
-    public void run () throws Exception {
+    public void run (){
+        // turn monitoring on and off
+        String[] confNames = {"site.access_tracking"};
+        String[] confValues = {"true"};
+        @SuppressWarnings("unused")
+        ClientResponse cresponse;
+        try {
+            cresponse = m_client.callProcedure("@SetConfiguration", confNames, confValues);
+        } catch (IOException | ProcCallException e) {
+            System.out.println("Problem while turning on monitoring");
+            System.out.println(stackTraceToString(e));
+        }
+        try {
+            Thread.sleep(MONITORING_PERIOD);
+        } catch (InterruptedException e) {
+            System.out.println("sleeping interrupted while monitoring");
+        }
+        confValues[0] = "false";
+        try {
+            cresponse = m_client.callProcedure("@SetConfiguration", confNames, confValues);
+        } catch (IOException | ProcCallException e) {
+            System.out.println("Problem while turning off");
+            System.out.println(stackTraceToString(e));
+        }
+        
         // TODO hardcoded, for the moment
         File planFile = new File ("plan.json");
         Path[] logFiles = new Path[4];
@@ -77,10 +104,15 @@ public class Controller {
         logFiles[1] = FileSystems.getDefault().getPath(".", "transactions-partition-1.log");
         logFiles[2] = FileSystems.getDefault().getPath(".", "transactions-partition-2.log");
         logFiles[3] = FileSystems.getDefault().getPath(".", "transactions-partition-3.log");
-        
+
+        Path[] intervalFiles = new Path[4];
+        intervalFiles[0] = FileSystems.getDefault().getPath(".", "transactions-partition-0-interval.log");
+        intervalFiles[1] = FileSystems.getDefault().getPath(".", "transactions-partition-1-interval.log");
+        intervalFiles[2] = FileSystems.getDefault().getPath(".", "transactions-partition-2-interval.log");
+        intervalFiles[3] = FileSystems.getDefault().getPath(".", "transactions-partition-3-interval.log");
+
         GraphPartitioner graph = new GraphPartitioner();
-        int partitions = 4;
-        graph.loadFromFiles(catalog_context, planFile, partitions, logFiles);
+        graph.loadFromFiles(m_catalog_context, planFile, logFiles, intervalFiles);
         Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
         graph.toFileDebug(graphFile);
 //        AffinityGraph[] partitions = graph.fold();
@@ -90,7 +122,7 @@ public class Controller {
 //            partition.toFileDebug(graphFile);
 //        }
         
-        graph.repartition(2700);
+        graph.repartition(Double.MAX_VALUE,Double.MAX_VALUE, m_catalog);
         
         System.out.println("Loads per partition");
         for (int j = 0; j < graph.getPartitionsNo(); j++){
@@ -105,36 +137,29 @@ public class Controller {
 //        }        
     }
     
-//    public void connectToHost(){
-//        Site catalog_site = CollectionUtil.random(sites);
-//        connectedHost= catalog_site.getHost().getIpaddr();
-//
-//        try {
-//            client.createConnection(null, connectedHost, HStoreConstants.DEFAULT_PORT, "user", "password");
-//        } catch (UnknownHostException e) {
-//            System.out.println("Controller: tried to connect to unknown host");
-//            e.printStackTrace();
-//            System.exit(1);
-//        } catch (IOException e) {
-//            System.out.println("Controller: IO Exception while connecting to host");
-//            e.printStackTrace();
-//            System.exit(1);
-//        }
-//        System.out.println("Connected to host " + connectedHost);
-//    }
+    public void connectToHost(){
+        Site catalog_site = CollectionUtil.random(m_sites);
+        m_connectedHost= catalog_site.getHost().getIpaddr();
+
+        try {
+            m_client.createConnection(null, m_connectedHost, HStoreConstants.DEFAULT_PORT, "user", "password");
+        } catch (UnknownHostException e) {
+            System.out.println("Controller: tried to connect to unknown host");
+            e.printStackTrace();
+            System.exit(1);
+        } catch (IOException e) {
+            System.out.println("Controller: IO Exception while connecting to host");
+            e.printStackTrace();
+            System.exit(1);
+        }
+        System.out.println("Connected to host " + m_connectedHost);
+    }
     
     /**
      * @param args
      */
     public static void main(String[] vargs){
         
-        try {
-            System.setErr(new PrintStream("error.log"));
-        } catch (FileNotFoundException e1) {
-            // TODO Auto-generated catch block
-            e1.printStackTrace();
-        }
-
         if(vargs.length == 0){
             System.out.println("Must specify server hostname");
             return;
@@ -144,8 +169,8 @@ public class Controller {
         try {
             args = ArgumentsParser.load(vargs,ArgumentsParser.PARAM_CATALOG);
         } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Not good");
+            System.out.println("Problem while parsing Controller arguments");
+            System.out.println(stackTraceToString(e));
             return;
         }
 
@@ -164,5 +189,13 @@ public class Controller {
             System.out.println("Not good");
             return;
         }
+    }
+    
+    public static String stackTraceToString(Throwable e){
+        // alternatively can write StdErr to file
+        // System.setErr(new PrintStream("error.log"));
+        StringWriter sw = new StringWriter();
+        e.printStackTrace(new PrintWriter(sw));
+        return sw.toString();
     }
 }

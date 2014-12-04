@@ -67,38 +67,6 @@ public class AdHoc extends VoltSystemProcedure {
     @Override
     public DependencySet executePlanFragment(Long txn_id, Map<Integer, List<VoltTable>> dependencies, int fragmentId, ParameterSet params, SystemProcedureExecutionContext context) {
         
-    	/*
-    	
-    	// Essam Enable read/write set tracking 
-    	//context.getHStoreSite().getHStoreConf().site
-    	//hstore_conf.site.exec_readwrite_tracking
-    	//this.hstore_conf.site.exec_readwrite_tracking
-    	//del me
-    	String text = "Original flag is  " + hstore_conf.site.exec_readwrite_tracking +"\n"; 
-    	    	
-    	if(hstore_conf.site.exec_readwrite_tracking == false)
-    	  {
-    		hstore_conf.site.exec_readwrite_tracking = true; //Essam
-    		text = text +" in if false: new flag is "+ hstore_conf.site.exec_readwrite_tracking;
-    	  }
-    	else 
-    	  {
-    		hstore_conf.site.exec_readwrite_tracking = false; //Essam
-    		text = text +" in else true: new flag is "+ hstore_conf.site.exec_readwrite_tracking ;
-    	  }
-    	   	
-    	
-    	try {
-            File file = new File("readwrite_tracking.del");
-            BufferedWriter output = new BufferedWriter(new FileWriter(file));
-            
-            output.write(text);
-            output.close();
-          } catch ( IOException e ) {
-             e.printStackTrace();
-          }
-    	
-    	//*/
     	// get the three params (depId, json plan, sql stmt)
         int outputDepId = (Integer) params.toArray()[0];
         String plan = (String) params.toArray()[1];
@@ -129,18 +97,12 @@ public class AdHoc extends VoltSystemProcedure {
             AbstractTransaction ts = this.hstore_site.getTransaction(txn_id);
             
             // Enable read/write set tracking
-            //if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
-            if (hstore_conf.site.exec_readwrite_tracking) {//Essam
+            if (hstore_conf.site.exec_readwrite_tracking) {
                 if (debug.val)
                     LOG.trace(String.format("%s - Enabling read/write set tracking in EE at partition %d",
                               ts, this.partitionId));
                 ee.trackingEnable(txn_id);
             }
-            
-            // Essam Enable read/write set tracking
-            // if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
-           //     this.executor.getExecutionEngine().trackingEnable(txn_id);
-            // }
             
             // Always mark this information for the txn so that we can
             // rollback anything that it may do

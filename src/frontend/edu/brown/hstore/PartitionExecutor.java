@@ -44,6 +44,8 @@ package edu.brown.hstore;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -756,9 +758,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private ReconfigurationStats reconfiguration_stats;
 
     // ----------------------------------------------------------------------------
-    // MONITORING 
+    // MONITORING (EStore++)  
     // ----------------------------------------------------------------------------
-    Monitor monitor;
+    Monitor m_access_monitor;
     
     
     // ----------------------------------------------------------------------------
@@ -910,7 +912,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.reconfiguration_stats = new ReconfigurationStats();
         
         // Monitoring
-        monitor = new Monitor(catalogContext, p_estimator, partitionId);
+        m_access_monitor = new Monitor(catalogContext, p_estimator, partitionId);
     }
 
     /**
@@ -1030,8 +1032,18 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     
     @Override
     public void updateConf(HStoreConf hstore_conf, String[] changed) {
+        LOG.info("Started access tracking at time " + System.currentTimeMillis());
         if (this.specExecScheduler != null) {
             this.specExecScheduler.updateConf(hstore_conf, changed);
+        }
+        // EStore++ turn access monitoring on and off
+        if(hstore_conf.site.access_tracking && !this.m_access_monitor.isMonitoring()){
+           Path logFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + ".log");
+           Path intervalFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + "-interval.log");
+           this.m_access_monitor.openLog(logFile, intervalFile);
+        }
+        else if(this.m_access_monitor.isMonitoring()){
+            this.m_access_monitor.closeLog();
         }
     }
 
@@ -3618,31 +3630,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param plan
      * @return
      */
-    
-    public void turnOnOff_readwrite_tracking(long flagOnOff) //Essam
-    {
-    	//String text = "Original flag is  " + hstore_conf.site.exec_readwrite_tracking +"\n"; 
-    	
-    	if (flagOnOff == 1) // turn on tracking 
-    		hstore_conf.site.exec_readwrite_tracking = true;
-    	else // turn off tracking
-    		hstore_conf.site.exec_readwrite_tracking = false;
-    	
-    	/*
-    	if(hstore_conf.site.exec_readwrite_tracking == false)
-    	  {
-    		hstore_conf.site.exec_readwrite_tracking = true; //Essam
-    		text = text +" in if false: new flag is "+ hstore_conf.site.exec_readwrite_tracking;
-    	  }
-    	else 
-    	  {
-    		hstore_conf.site.exec_readwrite_tracking = false; //Essam
-    		text = text +" in else true: new flag is "+ hstore_conf.site.exec_readwrite_tracking ;
-    	  }
-    	//*/
-    	
-    }
-    
+        
     private VoltTable[] executeLocalPlan(LocalTransaction ts,
                                          BatchPlanner.BatchPlan plan,
                                          ParameterSet parameterSets[]) {
@@ -3836,8 +3824,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         
         // Enable read/write set tracking
-        if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId) == false) {
-      //if (hstore_conf.site.exec_readwrite_tracking ) {// Essam
+      if (hstore_conf.site.exec_readwrite_tracking ) {
             if (trace.val)
                 LOG.trace(String.format("%s - Enabling read/write set tracking in EE at partition %d",
                           ts, this.partitionId));
@@ -4367,7 +4354,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         assert(plan != null);
         
         // EStore++ - monitoring of tables and partitioning attribute values accessed by this transaction
-        this.monitor.logPartitioningAttributes(ts, plan.getFragmentIds(), batchParams);
+        if(this.m_access_monitor.isMonitoring()){
+            this.m_access_monitor.logPartitioningAttributes(ts, plan.getFragmentIds(), batchParams);
+        }
         
         if (trace.val) {
             LOG.trace(ts + " - Touched Partitions: " + ts.getTouchedPartitions().values());
@@ -6098,9 +6087,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param ts
      */
     private void markTransactionFinished(AbstractTransaction ts) {
-        if (hstore_conf.site.exec_readwrite_tracking && ts.hasExecutedWork(this.partitionId)) {
-    	//if (hstore_conf.site.exec_readwrite_tracking ) {//Essam
+    	if (hstore_conf.site.exec_readwrite_tracking ) {
             this.ee.trackingFinish(ts.getTransactionId());
+        }
+        if(this.m_access_monitor.isMonitoring()){
+            this.m_access_monitor.logFinishTransaction(ts.getTransactionId());
         }
         ts.markFinished(this.partitionId);
     }
