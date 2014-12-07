@@ -7,7 +7,6 @@ import java.io.StringWriter;
 import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collection;
 
 import org.voltdb.CatalogContext;
