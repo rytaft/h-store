@@ -7,6 +7,7 @@ import java.io.StringWriter;
 import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 
 import org.voltdb.CatalogContext;
@@ -15,6 +16,7 @@ import org.voltdb.catalog.Site;
 import org.voltdb.client.ClientFactory;
 import org.voltdb.client.ClientResponse;
 import org.voltdb.client.ProcCallException;
+import org.voltdb.processtools.ShellTools;
 
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.HStoreConstants;
@@ -34,7 +36,7 @@ public class Controller {
     
     public final static int PARTITIONS_PER_SITE = 2;
     public final static int DTXN_MULTIPLIER = 5;
-    public final static int LOCAL_MPT_MULTIPLIER = 0;
+    public final static int LOCAL_MPT_MULTIPLIER = 1;
     public final static int MAX_MOVED_VERTICES_PER_SOURCE_SITE = 8;
     public final static int MIN_DELTA_FOR_MOVEMENT = -1;
     public final static int MAX_PARTITIONS_ADDED_RECONF = 4;
@@ -83,11 +85,13 @@ public class Controller {
         } catch (IOException | ProcCallException e) {
             System.out.println("Problem while turning on monitoring");
             System.out.println(stackTraceToString(e));
+            System.exit(1);
         }
         try {
             Thread.sleep(MONITORING_PERIOD);
         } catch (InterruptedException e) {
             System.out.println("sleeping interrupted while monitoring");
+            System.exit(1);
         }
         confValues[0] = "false";
         try {
@@ -95,21 +99,34 @@ public class Controller {
         } catch (IOException | ProcCallException e) {
             System.out.println("Problem while turning off");
             System.out.println(stackTraceToString(e));
+            System.exit(1);
         }
         
-        // TODO hardcoded, for the moment
-        File planFile = new File ("plan.json");
-        Path[] logFiles = new Path[4];
-        logFiles[0] = FileSystems.getDefault().getPath(".", "transactions-partition-0.log");
-        logFiles[1] = FileSystems.getDefault().getPath(".", "transactions-partition-1.log");
-        logFiles[2] = FileSystems.getDefault().getPath(".", "transactions-partition-2.log");
-        logFiles[3] = FileSystems.getDefault().getPath(".", "transactions-partition-3.log");
+        // fetch remote monitoring outputs
+        String hStoreDir = ShellTools.cmd("pwd");
+        hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
+        for(Site site: m_sites){
+            String ip = site.getHost().getIpaddr();
+            for (int i = 0; i < MAX_PARTITIONS; i++){
+                String command = "scp " + ip + ":" + hStoreDir + "/transactions-partition-" + i + ".log .";
+//                System.out.println("Executing command:\n" + command);
+                @SuppressWarnings("unused")
+                String results = ShellTools.cmd(command);
+//                System.out.println("Result:\n" + results);
+                command = "scp " + ip + ":" + hStoreDir + "/transactions-partition-" + i + "-interval.log .";
+//                System.out.println("Executing command:\n" + command);
+                results = ShellTools.cmd(command);
+//                System.out.println("Result:\n" + results);
+            }
+        }
 
-        Path[] intervalFiles = new Path[4];
-        intervalFiles[0] = FileSystems.getDefault().getPath(".", "transactions-partition-0-interval.log");
-        intervalFiles[1] = FileSystems.getDefault().getPath(".", "transactions-partition-1-interval.log");
-        intervalFiles[2] = FileSystems.getDefault().getPath(".", "transactions-partition-2-interval.log");
-        intervalFiles[3] = FileSystems.getDefault().getPath(".", "transactions-partition-3-interval.log");
+        File planFile = new File ("plan.json");
+        Path[] logFiles = new Path[MAX_PARTITIONS];
+        Path[] intervalFiles = new Path[MAX_PARTITIONS];
+        for (int i = 0; i < MAX_PARTITIONS; i++){
+            logFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + ".log");
+            intervalFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + "-interval.log");
+        }
 
         GraphPartitioner graph = new GraphPartitioner();
         graph.loadFromFiles(m_catalog_context, planFile, logFiles, intervalFiles);
