@@ -110,6 +110,7 @@ public class Controller {
             for (int i = 0; i < MAX_PARTITIONS; i++){
                 String command = "scp " + ip + ":" + hStoreDir + "/transactions-partition-" + i + ".log .";
 //                System.out.println("Executing command:\n" + command);
+                @SuppressWarnings("unused")
                 String results = ShellTools.cmd(command);
 //                System.out.println("Result:\n" + results);
                 command = "scp " + ip + ":" + hStoreDir + "/transactions-partition-" + i + "-interval.log .";
