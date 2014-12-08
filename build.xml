@@ -2620,10 +2620,14 @@ UTILITIES
         <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
         <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
         <arg value="catalog.jar=${benchmark.jar}" />
-        <arg value="${numPart}" />
-        <arg value="${tWindow}" />
-        <arg value="${plannerID}" />
-        <arg value="${provisioning}" />
+	    <arg value="elastic.monitoring_time=${elastic.monitoring_time}" />
+	    <arg value="elastic.min_load=${elastic.min_load}" />
+    	<arg value="elastic.max_load=${elastic.max_load}" />
+    	<arg value="elastic.dtxn_cost=${elastic.dtxn_cost}" />
+    	<arg value="elastic.lmpt_cost=${elastic.lmpt_cost}" />
+    	<arg value="elastic.max_tuples_move=${elastic.max_tuples_move}" />
+    	<arg value="elastic.min_gain_move=${elastic.min_gain_move}" />
+    	<arg value="elastic.max_partitions_added=${elastic.max_partitions_added}" />
 	&common;
         <classpath refid='project.classpath' />
     <assertions><enable/></assertions>

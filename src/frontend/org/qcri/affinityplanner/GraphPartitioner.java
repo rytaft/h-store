@@ -1,19 +1,45 @@
 package org.qcri.affinityplanner;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.voltdb.catalog.Catalog;
-
-public class GraphPartitioner extends AffinityGraph {
+public class GraphPartitioner {
     
-    public int repartition (double minLoadPerPartition, double maxLoadPerPartition, Catalog catalog) {
-        int addedPartitions = 0;
+    public static int MIN_LOAD_PER_PART = Integer.MIN_VALUE;
+    public static int MAX_LOAD_PER_PART = Integer.MAX_VALUE;
+    public static double LMPT_COST = 1.1;
+    public static double DTXN_COST = 5.0;
+    public static int MAX_MOVED_TUPLES_PER_PART = 8;
+    public static int MIN_GAIN_MOVE = 0;
+    public static int MAX_PARTITIONS_ADDED = Integer.MAX_VALUE;
+
+    public static int PART_PER_SITE = -1;
+    public static int MAX_PARTITIONS = -1;
+
+    private AffinityGraph m_graph;
+    
+    public GraphPartitioner (AffinityGraph graph){
+        m_graph = graph;
+    }
+    
+    /**
+     * Partitions the graph
+     * 
+     * @return true if could find feasible partitioning, false otherwise
+     */
+    
+    public boolean repartition () {
+        if (PART_PER_SITE == -1 || MAX_PARTITIONS == -1){
+            System.out.println("GraphPartitioner: Must initialize PART_PER_SITE and MAX_PARTITIONS");
+            return false;
+        }
 
         System.out.println("Calculating site loads");
         
@@ -24,16 +50,17 @@ public class GraphPartitioner extends AffinityGraph {
         // detect overloaded and active partitions
         Set<Integer> activePartitions = new HashSet<Integer>();
         Set<Integer> overloadedPartitions = new HashSet<Integer>();
-        for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
-            if(!m_partitionVertices.get(i).isEmpty()){
+        for(int i = 0; i < MAX_PARTITIONS; i++){
+            if(!m_graph.m_partitionVertices.get(i).isEmpty()){
                 activePartitions.add(i);
                 System.out.println(getLoadPerPartition(i));
-                if (getLoadPerPartition(i) > maxLoadPerPartition){
+                if (getLoadPerPartition(i) > MAX_LOAD_PER_PART){
                     overloadedPartitions.add(i);
                 }
             }
         }
 
+        int addedPartitions = 0;
         if (! overloadedPartitions.isEmpty()){
             // offload each overloaded partition
             for(Integer overloadedPartition : overloadedPartitions){
@@ -44,7 +71,7 @@ public class GraphPartitioner extends AffinityGraph {
                 System.out.println("offloading site " + overloadedPartition);
     
                 // get hottest vertices. the actual length of the array is min(Controller.MAX_MOVED_VERTICES, #tuples held site);
-                List<String> hotVerticesNotMoved = getHottestVertices(overloadedPartition, Controller.MAX_MOVED_VERTICES_PER_SOURCE_SITE);
+                List<String> hotVerticesNotMoved = getHottestVertices(overloadedPartition, MAX_MOVED_TUPLES_PER_PART);
                 final int actualMaxMovedVertices = hotVerticesNotMoved.size();
     
                 // DEBUG
@@ -56,7 +83,7 @@ public class GraphPartitioner extends AffinityGraph {
                 int currHotVertex = 0;
                 int numMovedVertices = 0;
                 Set<String> movingVertices = new HashSet<String>();
-                while(getLoadPerPartition(overloadedPartition) > maxLoadPerPartition){
+                while(getLoadPerPartition(overloadedPartition) > MAX_LOAD_PER_PART){
                     
                     System.out.println("--------------------");
     
@@ -65,12 +92,12 @@ public class GraphPartitioner extends AffinityGraph {
                     // We fill up low-order partitions first to minimize the number of servers
                     if (numMovedVertices + movingVertices.size() >= actualMaxMovedVertices){
                         System.out.println("Adding a new partition");
-                        if(addedPartitions < Controller.MAX_PARTITIONS_ADDED_RECONF){
+                        if(activePartitions.size() < MAX_PARTITIONS && addedPartitions < MAX_PARTITIONS_ADDED){
                             currHotVertex = 0;
                             movingVertices.clear();
-                            addPartitions(1);
+                            m_graph.addPartitions(1);
                             addedPartitions++;
-                            for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+                            for(int i = 0; i < MAX_PARTITIONS; i++){
                                 if(!activePartitions.contains(i)){
                                     activePartitions.add(i);
                                 }
@@ -78,7 +105,7 @@ public class GraphPartitioner extends AffinityGraph {
                         }
                         else{
                             System.out.println("Partition " + overloadedPartitions + " cannot be offloaded.");
-                            return -1;
+                            return false;
                         }
                     }
                     System.out.println("Adding a new vertex");
@@ -90,7 +117,7 @@ public class GraphPartitioner extends AffinityGraph {
                         do{
                             nextHotVertex = hotVerticesNotMoved.get(currHotVertex);
                             currHotVertex++;
-                        } while (m_vertexPartition.get(nextHotVertex) != overloadedPartition);
+                        } while (m_graph.m_vertexPartition.get(nextHotVertex) != overloadedPartition);
                         assert (nextHotVertex != null); // If all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
                         System.out.println("Adding hot vertex " + nextHotVertex);
                         movingVertices.add(nextHotVertex);
@@ -142,7 +169,7 @@ public class GraphPartitioner extends AffinityGraph {
                     for(Integer toPartition : localPartitions){
                         if(!overloadedPartitions.contains(toPartition)){
                             System.out.println("Trying with partition " + toPartition);
-                            int movedVertices = tryMoveVertices(movingVertices, overloadedPartition, toPartition, new Double(maxLoadPerPartition), hotVerticesNotMoved);
+                            int movedVertices = tryMoveVertices(movingVertices, overloadedPartition, toPartition, new Double(MAX_LOAD_PER_PART), hotVerticesNotMoved);
                             if(movedVertices > 0){
                                 numMovedVertices += movedVertices;                            
                                 moved = true;
@@ -155,7 +182,7 @@ public class GraphPartitioner extends AffinityGraph {
                         for(Integer toPartition : activePartitions){
                             if(!overloadedPartitions.contains(toPartition) && !localPartitions.contains(toPartition)){
                                 System.out.println("Trying with partition " + toPartition);
-                                int movedVertices = tryMoveVertices(movingVertices, overloadedPartition, toPartition, new Double(maxLoadPerPartition), hotVerticesNotMoved);
+                                int movedVertices = tryMoveVertices(movingVertices, overloadedPartition, toPartition, new Double(MAX_LOAD_PER_PART), hotVerticesNotMoved);
                                 if(movedVertices > 0){
                                     numMovedVertices += movedVertices;    
                                     break;
@@ -178,7 +205,7 @@ public class GraphPartitioner extends AffinityGraph {
             // detect underloaded partitions
             TreeSet<Integer> underloadedPartitions = new TreeSet<Integer>();
             for(Integer part : activePartitions){
-                if (getLoadPerPartition(part) < minLoadPerPartition){
+                if (getLoadPerPartition(part) < MIN_LOAD_PER_PART){
                     underloadedPartitions.add(part);
                 }
             }
@@ -189,7 +216,7 @@ public class GraphPartitioner extends AffinityGraph {
                 Integer underloadedPartition = descending.next();
                 System.out.println("Offloading partition " + underloadedPartition);
                 Set<String> movingVertices = new HashSet<String>();
-                movingVertices.addAll(m_partitionVertices.get(underloadedPartition));
+                movingVertices.addAll(m_graph.m_partitionVertices.get(underloadedPartition));
                 // try to offload to remote partitions
                 Collection<Integer> localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(underloadedPartition));
                 for(Integer toPartition : activePartitions){
@@ -197,7 +224,7 @@ public class GraphPartitioner extends AffinityGraph {
                             && !localPartitions.contains(toPartition) 
                             && !removedPartitions.contains(toPartition)){
                         System.out.println("Trying with partition " + toPartition);
-                        int movedVertices = tryMoveVertices(movingVertices, underloadedPartition, toPartition, new Double(maxLoadPerPartition), null);
+                        int movedVertices = tryMoveVertices(movingVertices, underloadedPartition, toPartition, new Double(MAX_LOAD_PER_PART), null);
                         if(movedVertices > 0){
                             removedPartitions.add(underloadedPartition);
                             break;                            
@@ -207,7 +234,7 @@ public class GraphPartitioner extends AffinityGraph {
             }
             activePartitions.removeAll(removedPartitions);
         } // END if(overloadedPartitions.isEmpty())
-        return 1;
+        return true;
     }
 
     /*
@@ -218,12 +245,12 @@ public class GraphPartitioner extends AffinityGraph {
     private String getMostAffineExtension(Set<String> vertices){
         double maxAdjacency = -1;
         String res = null;
-        int partition = m_vertexPartition.get(vertices.iterator().next());
+        int partition = m_graph.m_vertexPartition.get(vertices.iterator().next());
         for(String vertex : vertices){
-            Map<String,Double> adjacency = m_edges.get(vertex);
+            Map<String,Double> adjacency = m_graph.m_edges.get(vertex);
             for(Map.Entry<String, Double> edge : adjacency.entrySet()){
                 if (edge.getValue() > maxAdjacency
-                        && m_vertexPartition.get(edge.getKey()) == partition
+                        && m_graph.m_vertexPartition.get(edge.getKey()) == partition
                         && !vertices.contains(edge.getKey())){
                     maxAdjacency = edge.getValue();
                     res = edge.getKey();
@@ -245,11 +272,11 @@ public class GraphPartitioner extends AffinityGraph {
         double deltaToPartition = getDeltaReceiveVertices(movingVertices, toPartition);
         // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
         System.out.println("Deltas from " + deltaFromPartition + " - to " + deltaToPartition);
-        if(deltaFromPartition <= Controller.MIN_DELTA_FOR_MOVEMENT 
+        if(deltaFromPartition <= MIN_GAIN_MOVE 
                 && getLoadPerPartition(toPartition) + deltaToPartition < maxLoadPerPartition){   // if gainToSite is negative, the load of the receiving site grows
             System.out.println("Moving to partition " + toPartition);
             System.out.println("Weights before moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
-            moveVertices(movingVertices, fromPartition, toPartition);
+            m_graph.moveVertices(movingVertices, fromPartition, toPartition);
             System.out.println("Weights after moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
             if(hotVerticesNotMoved != null){
                 hotVerticesNotMoved.removeAll(movingVertices);
@@ -258,5 +285,215 @@ public class GraphPartitioner extends AffinityGraph {
             movingVertices.clear();
         }
         return numMovedVertices;
+    }
+    
+    /*
+     * computes load of a set of vertices in the current partition. this is different from the weight of a vertex because it considers
+     * both direct accesses of the vertex and the cost of remote accesses
+     */
+    public Double getLoadInCurrPartition(Set<String> vertices){
+        double load = 0;
+        for(String vertex : vertices){
+            // local accesses
+            load += m_graph.m_vertices.get(vertex);
+            // remote accesses
+            int fromVertexPartition = m_graph.m_vertexPartition.get(vertex);
+            int fromVertexSite = PlanHandler.getSitePartition(fromVertexPartition);
+            Map<String,Double> adjacencyList = m_graph.m_edges.get(vertex);
+            for(Map.Entry<String, Double> edge : adjacencyList.entrySet()){
+                String toVertex = edge.getKey();
+                int toVertexPartition = m_graph.m_vertexPartition.get(toVertex);
+                int toVertexSite = PlanHandler.getSitePartition(toVertexPartition);
+                if(toVertexSite != fromVertexSite){
+                    load += edge.getValue() * DTXN_COST;
+                }
+                else if(toVertexPartition != fromVertexPartition){
+                    load += edge.getValue() * LMPT_COST;
+                }
+            }
+        }
+        return load;
+    }
+    
+    public Double getLoadPerPartition(int partition){
+        return getLoadInCurrPartition(m_graph.m_partitionVertices.get(partition));
+    }
+    
+    
+    public Double getLoadPerSite(int site){
+        Collection<Integer> partitions = PlanHandler.getPartitionsSite(site);
+        double load = 0;
+        for (Integer partition : partitions){
+            load += getLoadPerPartition(partition);
+        }
+        return load;
+    }
+    
+    /*
+     * returns top-k vertices from site 
+     * if site has less than k vertices, return all vertices
+     */
+    public List<String> getHottestVertices(int partition, int k){
+        k = Math.min(k, m_graph.m_partitionVertices.get(partition).size());
+        List<String> res = new LinkedList<String>();
+        double[] loads = new double[k];
+        double lowestLoad = Double.MAX_VALUE;
+        int lowestPos = 0;
+        int filled = 0;
+        
+        for(String vertex : m_graph.m_partitionVertices.get(partition)){
+            if (filled < k){
+                res.add(vertex);
+                loads[filled] = getLoadInCurrPartition(Collections.singleton(vertex));
+                filled++;
+                if(filled == k){
+                    for (int i = 0; i < k; i++){
+                        if(loads[i] < lowestLoad){
+                            lowestLoad = loads[i];
+                            lowestPos = i;
+                        }
+                    }
+                }
+            }
+            else{
+                double vertexLoad = getLoadInCurrPartition(Collections.singleton(vertex));
+                if(vertexLoad > lowestLoad){
+                    lowestLoad = vertexLoad;
+                    res.set(lowestPos, vertex);
+                    loads[lowestPos] = vertexLoad;
+                    // find new lowest load
+                    for (int i = 0; i < k; i++){
+                        if(loads[i] < lowestLoad){
+                            lowestLoad = loads[i];
+                            lowestPos = i;
+                        }
+                    }
+                }
+            }
+        }
+        return res;
+    }
+    
+    /*
+     *     LOCAL delta a partition gets by REMOVING a SET of local vertices out
+     *     it ASSUMES that the vertices are on the same partition
+     *     
+     *     this is NOT like computing the load because local edges come as a cost in this case 
+     *     it also considers a SET of vertices to be moved together
+     *     
+     *     if newPartition = -1 we evaluate moving to an unknown REMOTE partition
+     */
+    public double getDeltaGiveVertices(Set<String> movedVertices, int newPartition) {
+        if (movedVertices == null || movedVertices.isEmpty()){
+            System.out.println("Trying to move an empty set of vertices");
+            return 0;
+        }
+        double delta = 0;
+        int fromPartition = m_graph.m_vertexPartition.get(movedVertices.iterator().next());
+        for(String vertex : movedVertices){ 
+//            System.out.println("REMOVE delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
+            Double vertexWeight = m_graph.m_vertices.get(vertex);
+            if (vertexWeight == null){
+                System.out.println("Cannot include external node for delta computation");
+                throw new IllegalStateException("Cannot include external node for delta computation");
+            }
+            
+            double outPull = 0;
+            double inPull = 0;
+            Map<String,Double> adjacency = m_graph.m_edges.get(vertex);
+            for (Map.Entry<String, Double> edge : adjacency.entrySet()){
+//                System.out.println("Considering edge to vertex " + edge.getKey() + " with weight " + edge.getValue());
+                String toVertex = edge.getKey();
+                Double edgeWeight = edge.getValue();
+                // edges to vertices that are moved together do not contribute to in- or out-pull
+                if(!movedVertices.contains(toVertex)){
+                    int toPartition = m_graph.m_vertexPartition.get(toVertex); 
+                    if(toPartition == fromPartition){
+                        // edge to local vertex which will not be moved out
+//                        System.out.println("Add weight to inpull: edge to local vertex which will not be moved out");
+                        inPull += edgeWeight;
+                    }
+                    else {
+                        // edge to remote vertex or vertex that will be moved out
+//                        System.out.println("Add weight to outpull: edge to remote vertex which will be moved out");
+                        outPull += edgeWeight;
+                    }
+                }
+            }
+            // decides multiplier depending on whether the newPartition is local or not
+            double outMultiplier;
+            if (newPartition == -1 || PlanHandler.getSitePartition(newPartition) != PlanHandler.getSitePartition(fromPartition)){
+                outMultiplier = DTXN_COST;
+            }
+            else{
+                outMultiplier = LMPT_COST;
+            }
+            // update delta
+            delta -= vertexWeight + outPull * outMultiplier;
+            delta += inPull * outMultiplier;
+//          System.out.println(String.format("inpull %d outpull %d addition to delta %d total delta %d", inPull, outPull, vertexWeight + (outPull - inPull) * Controller.DTXN_MULTIPLIER, delta));
+        }
+        return delta;
+    }
+    
+    /*
+     *     LOCAL delta a partition gets by ADDING a SET of remote vertices
+     *     
+     *     this is NOT like computing the load because local edges come as a cost in this case 
+     *     it also considers a SET of vertices to be moved together
+     */
+    public double getDeltaReceiveVertices(Set<String> movedVertices, int newPartition) {
+        if (movedVertices == null || movedVertices.isEmpty()){
+            System.out.println("Trying to move an empty set of vertices");
+            return 0;
+        }
+        double delta = 0;
+        for(String vertex : movedVertices){
+            // get tuple weight from original site
+            Double vertexWeight = m_graph.m_vertices.get(vertex);
+//            System.out.println("ADD delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
+            if (vertexWeight == null){
+                System.out.println("Cannot include external node for delta computation");
+                throw new IllegalStateException("Cannot include external node for delta computation");
+            }
+            
+            double outPull = 0;
+            double inPull = 0;
+            // get adjacency list from original site
+            Map<String,Double> adjacency = m_graph.m_edges.get(vertex);
+            for (Map.Entry<String, Double> edge : adjacency.entrySet()){
+//                System.out.println("Considering edge to vertex " + edge.getKey() + " with weight " + edge.getValue());
+                String toVertex = edge.getKey();
+                Double edgeWeight = edge.getValue();
+                // edges to vertices that are moved together do not contribute to in- or out-pull
+                if(!movedVertices.contains(toVertex)){
+                    int toPartition = m_graph.m_vertexPartition.get(toVertex); 
+                    if(toPartition == newPartition){
+                        // edge to local vertex or to vertex that will be moved in
+//                        System.out.println("Add weight to inpull");
+                        inPull += edgeWeight;
+                    }
+                    else{
+                        // edge to remote vertex that will not be moved in
+//                        System.out.println("Add weight to outpull");
+                        outPull += edgeWeight;
+                    }
+                }
+            }
+            // determine multiplier
+            double outMultiplier;
+            int fromPartition = m_graph.m_vertexPartition.get(movedVertices.iterator().next());
+            if (PlanHandler.getSitePartition(newPartition) != PlanHandler.getSitePartition(fromPartition)){
+                outMultiplier = DTXN_COST;
+            }
+            else{
+                outMultiplier = LMPT_COST;
+            }
+            // determine delta
+            delta += vertexWeight + outPull * outMultiplier;
+            delta -= inPull * outMultiplier;
+//            System.out.println(String.format("inpull %d outpull %d addition to delta %d total delta %d", inPull, outPull, (inPull - outPull)  * Controller.DTXN_MULTIPLIER - vertexWeight, delta));
+        }
+        return delta;
     }
 }

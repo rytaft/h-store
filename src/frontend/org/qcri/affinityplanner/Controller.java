@@ -8,9 +8,12 @@ import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.TreeSet;
 
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.Catalog;
+import org.voltdb.catalog.Partition;
 import org.voltdb.catalog.Site;
 import org.voltdb.client.ClientFactory;
 import org.voltdb.client.ClientResponse;
@@ -26,30 +29,62 @@ import edu.brown.utils.CollectionUtil;
 public class Controller {
     private org.voltdb.client.Client m_client;
     private Collection<Site> m_sites;
-    private Catalog m_catalog;
     private CatalogContext m_catalog_context;
     private String m_connectedHost;
-//
+    private int m_partitions;
+    private int m_par_per_site;
+    
 //    private Path planFile;
 //    private Path outputPlanFile;
     
-    public final static int PARTITIONS_PER_SITE = 2;
-    public final static int DTXN_MULTIPLIER = 5;
-    public final static int LOCAL_MPT_MULTIPLIER = 1;
-    public final static int MAX_MOVED_VERTICES_PER_SOURCE_SITE = 8;
-    public final static int MIN_DELTA_FOR_MOVEMENT = -1;
-    public final static int MAX_PARTITIONS_ADDED_RECONF = 4;
-    public final static int MAX_PARTITIONS = 8;
-    public final static int MONITORING_PERIOD = 20000;
+    public static int MONITORING_TIME = 20000;
     
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
-        m_catalog = catalog;
         m_client = ClientFactory.createClient();
         m_client.configureBlocking(false);
         m_sites = CatalogUtil.getAllSites(catalog);
-        this.m_catalog_context = catalog_context;
+        m_catalog_context = catalog_context;
+        
+        TreeSet<Integer> partitionIds = new TreeSet<Integer>();
+        m_partitions = -1;
+        m_par_per_site = -1;
+        for(Site site: m_sites){
+            for (Partition part: site.getPartitions()){
+                int id = part.getId();
+                partitionIds.add(id);
+                if (id > m_partitions){
+                    m_partitions = id;
+                }
+            }
+            // verify that all sites have the same number of partitions
+            if (m_par_per_site == -1){
+                m_par_per_site = site.getPartitions().size();
+            }
+            else if (m_par_per_site != site.getPartitions().size()){
+                System.out.println("Not all sites have the same number of partitions. Exiting");
+                System.exit(1);
+            }
+        }
+        m_partitions++;
+        GraphPartitioner.MAX_PARTITIONS = m_partitions;
+        GraphPartitioner.PART_PER_SITE = m_par_per_site;
+        
+        // verify that all partition ids are contiguous
+        Iterator<Integer> partIdsIt = partitionIds.iterator();
+        int lastPart = partIdsIt.next();
+        while (partIdsIt.hasNext()){
+            int currPart = partIdsIt.next();
+            if (currPart == (lastPart + 1)){
+                lastPart = currPart;
+            }
+            else{
+                System.out.println("Gap in partition ids. Exiting");
+                System.exit(1);
+            }
+        }
+
         connectToHost();
-//
+
 //        if(hstore_conf.global.hasher_plan == null){
 //            System.out.println("Must set global.hasher_plan to specify plan file!");
 //            System.out.println("Using default (plan.json)");
@@ -87,7 +122,7 @@ public class Controller {
             System.exit(1);
         }
         try {
-            Thread.sleep(MONITORING_PERIOD);
+            Thread.sleep(MONITORING_TIME);
         } catch (InterruptedException e) {
             System.out.println("sleeping interrupted while monitoring");
             System.exit(1);
@@ -106,7 +141,7 @@ public class Controller {
         hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
         for(Site site: m_sites){
             String ip = site.getHost().getIpaddr();
-            for (int i = 0; i < MAX_PARTITIONS; i++){
+            for (int i = 0; i < m_partitions; i++){
                 String command = "scp " + ip + ":" + hStoreDir + "/transactions-partition-" + i + ".log .";
 //                System.out.println("Executing command:\n" + command);
                 @SuppressWarnings("unused")
@@ -120,15 +155,15 @@ public class Controller {
         }
 
         File planFile = new File ("plan.json");
-        Path[] logFiles = new Path[MAX_PARTITIONS];
-        Path[] intervalFiles = new Path[MAX_PARTITIONS];
-        for (int i = 0; i < MAX_PARTITIONS; i++){
+        Path[] logFiles = new Path[m_partitions];
+        Path[] intervalFiles = new Path[m_partitions];
+        for (int i = 0; i < m_partitions; i++){
             logFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + ".log");
             intervalFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + "-interval.log");
         }
 
-        GraphPartitioner graph = new GraphPartitioner();
-        graph.loadFromFiles(m_catalog_context, planFile, logFiles, intervalFiles);
+        AffinityGraph graph = new AffinityGraph();
+        graph.loadFromFiles(m_catalog_context, planFile, logFiles, intervalFiles, m_partitions);
         Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
         graph.toFileDebug(graphFile);
 //        AffinityGraph[] partitions = graph.fold();
@@ -138,11 +173,12 @@ public class Controller {
 //            partition.toFileDebug(graphFile);
 //        }
         
-        graph.repartition(Double.MAX_VALUE,Double.MAX_VALUE, m_catalog);
+        GraphPartitioner partitioner = new GraphPartitioner(graph);
+        partitioner.repartition();
         
         System.out.println("Loads per partition");
         for (int j = 0; j < graph.getPartitionsNo(); j++){
-            System.out.println(j + " " + graph.getLoadPerPartition(j));
+            System.out.println(j + " " + partitioner.getLoadPerPartition(j));
         }
         
 //        partitions = graph.fold();
@@ -189,7 +225,7 @@ public class Controller {
             System.out.println(stackTraceToString(e));
             return;
         }
-
+        
         HStoreConf hstore_conf = HStoreConf.initArgumentsParser(args);
 
         //System.out.println("Params: bench"+params[0] +" no. part " +vargs[1] + " twin "+vargs[2]+" plannerID "+vargs[3]);
