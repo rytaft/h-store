@@ -1,5 +1,6 @@
 package org.qcri.affinityplanner;
 
+import java.io.File;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -9,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+
+import org.voltdb.CatalogContext;
 
 public class GraphPartitioner {
     
@@ -24,9 +27,11 @@ public class GraphPartitioner {
     public static int MAX_PARTITIONS = -1;
 
     private AffinityGraph m_graph;
+    private PlanHandler m_plan_handler;
     
-    public GraphPartitioner (AffinityGraph graph){
+    public GraphPartitioner (AffinityGraph graph, File planFile, CatalogContext catalogContext){
         m_graph = graph;
+        m_plan_handler = new PlanHandler(planFile, catalogContext);
     }
     
     /**
@@ -40,7 +45,7 @@ public class GraphPartitioner {
             System.out.println("GraphPartitioner: Must initialize PART_PER_SITE and MAX_PARTITIONS");
             return false;
         }
-
+        
         System.out.println("Calculating site loads");
         
         /*
@@ -173,6 +178,11 @@ public class GraphPartitioner {
                             if(movedVertices > 0){
                                 numMovedVertices += movedVertices;                            
                                 moved = true;
+                                // update the plan
+                                for (String vertex : movingVertices){
+                                    m_plan_handler.removeTupleId(overloadedPartition, Long.parseLong(vertex));
+                                    m_plan_handler.addRange(toPartition, Long.parseLong(vertex), Long.parseLong(vertex));
+                                }
                                 break;
                             }
                         }
@@ -185,6 +195,11 @@ public class GraphPartitioner {
                                 int movedVertices = tryMoveVertices(movingVertices, overloadedPartition, toPartition, new Double(MAX_LOAD_PER_PART), hotVerticesNotMoved);
                                 if(movedVertices > 0){
                                     numMovedVertices += movedVertices;    
+                                    // update the plan
+                                    for (String vertex : movingVertices){
+                                        m_plan_handler.removeTupleId(overloadedPartition, Long.parseLong(vertex));
+                                        m_plan_handler.addRange(toPartition, Long.parseLong(vertex), Long.parseLong(vertex));
+                                    }
                                     break;
                                 }
                             }
@@ -235,6 +250,13 @@ public class GraphPartitioner {
             activePartitions.removeAll(removedPartitions);
         } // END if(overloadedPartitions.isEmpty())
         return true;
+    }
+    
+    public void moveVerticesPlan(Set<String> movingVertices, Integer fromPartition, Integer toPartition, PlanHandler planHandler){
+        for (String vertex : movingVertices){
+            planHandler.removeTupleId(fromPartition, Long.parseLong(vertex));
+            planHandler.addRange(toPartition, Long.parseLong(vertex), Long.parseLong(vertex));
+        }
     }
 
     /*
@@ -495,5 +517,9 @@ public class GraphPartitioner {
 //            System.out.println(String.format("inpull %d outpull %d addition to delta %d total delta %d", inPull, outPull, (inPull - outPull)  * Controller.DTXN_MULTIPLIER - vertexWeight, delta));
         }
         return delta;
+    }
+    
+    public void writePlan(String file){
+        m_plan_handler.toJSON(file);
     }
 }

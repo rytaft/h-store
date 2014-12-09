@@ -6,13 +6,10 @@ import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.FileSystems;
-import java.nio.file.CopyOption;
 import java.nio.file.StandardCopyOption;
 
 import org.qcri.PartitioningPlanner.placement.GreedyPlacementRelaxed;

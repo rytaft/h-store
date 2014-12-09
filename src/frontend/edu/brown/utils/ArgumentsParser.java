@@ -197,6 +197,11 @@ public class ArgumentsParser {
     public static final String PARAM_ELASTIC_MAX_TUPLE_MOVE = PARAM_ELASTIC + ".max_tuples_move";
     public static final String PARAM_ELASTIC_MIN_GAIN_MOVE = PARAM_ELASTIC + ".min_gain_move";
     public static final String PARAM_ELASTIC_MAX_PARTITIONS_ADDED = PARAM_ELASTIC + ".max_partitions_added";
+    public static final String PARAM_ELASTIC_RUN_MONITORING = PARAM_ELASTIC + ".run_monitoring";
+    public static final String PARAM_ELASTIC_UPDATE_PLAN = PARAM_ELASTIC + ".update_plan";
+    public static final String PARAM_ELASTIC_EXEC_RECONF = PARAM_ELASTIC + ".exec_reconf";
+    public static final String PARAM_ELASTIC_PLAN_IN = PARAM_ELASTIC + ".plan_in";
+    public static final String PARAM_ELASTIC_PLAN_OUT = PARAM_ELASTIC + ".plan_out";
 
     public static final List<String> PARAMS = new ArrayList<String>();
     static {
@@ -1021,6 +1026,26 @@ public class ArgumentsParser {
             GraphPartitioner.MAX_PARTITIONS_ADDED = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_PARTITIONS_ADDED));
         }        
 
+        if (this.params.containsKey(PARAM_ELASTIC_RUN_MONITORING)){
+            Controller.RUN_MONITORING = Boolean.parseBoolean(this.params.get(PARAM_ELASTIC_RUN_MONITORING));
+        }        
+
+        if (this.params.containsKey(PARAM_ELASTIC_UPDATE_PLAN)){
+            Controller.UPDATE_PLAN = Boolean.parseBoolean(this.params.get(PARAM_ELASTIC_UPDATE_PLAN));
+        }        
+
+        if (this.params.containsKey(PARAM_ELASTIC_EXEC_RECONF)){
+            Controller.EXEC_RECONF = Boolean.parseBoolean(this.params.get(PARAM_ELASTIC_EXEC_RECONF));
+        }        
+        
+        if (this.params.containsKey(PARAM_ELASTIC_PLAN_IN)){
+            Controller.PLAN_IN = this.params.get(PARAM_ELASTIC_PLAN_IN);
+        }        
+        
+        if (this.params.containsKey(PARAM_ELASTIC_PLAN_OUT)){
+            Controller.PLAN_OUT = this.params.get(PARAM_ELASTIC_PLAN_OUT);
+        }        
+        
         // -------------------------------------------------------
         // SAMPLE WORKLOAD TRACE
         // -------------------------------------------------------

@@ -2628,6 +2628,11 @@ UTILITIES
     	<arg value="elastic.max_tuples_move=${elastic.max_tuples_move}" />
     	<arg value="elastic.min_gain_move=${elastic.min_gain_move}" />
     	<arg value="elastic.max_partitions_added=${elastic.max_partitions_added}" />
+		<arg value="elastic.run_monitoring=${elastic.run_monitoring}" />
+		<arg value="elastic.update_plan=${elastic.update_plan}" />
+		<arg value="elastic.exec_reconf=${elastic.exec_reconf}" />
+		<arg value="elastic.plan_in=${elastic.plan_in}" />
+		<arg value="elastic.plan_out=${elastic.plan_out}" />
 	&common;
         <classpath refid='project.classpath' />
     <assertions><enable/></assertions>
