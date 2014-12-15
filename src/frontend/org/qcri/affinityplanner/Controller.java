@@ -98,7 +98,7 @@ public class Controller {
         }
         
         // TODO hardcoded, for the moment
-        File planFile = new File ("plan.json");
+        File planFile = new File ("plan_affinity.json");
         Path[] logFiles = new Path[4];
         logFiles[0] = FileSystems.getDefault().getPath(".", "transactions-partition-0.log");
         logFiles[1] = FileSystems.getDefault().getPath(".", "transactions-partition-1.log");
