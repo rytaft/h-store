@@ -19,7 +19,7 @@ public class GraphPartitioner {
     public static int MAX_LOAD_PER_PART = Integer.MAX_VALUE;
     public static double LMPT_COST = 1.1;
     public static double DTXN_COST = 5.0;
-    public static int MAX_MOVED_TUPLES_PER_PART = 8;
+    public static int MAX_MOVED_TUPLES_PER_PART = Integer.MAX_VALUE;
     public static int MIN_GAIN_MOVE = 0;
     public static int MAX_PARTITIONS_ADDED = Integer.MAX_VALUE;
 
@@ -88,18 +88,23 @@ public class GraphPartitioner {
                 int currHotVertex = 0;
                 int numMovedVertices = 0;
                 Set<String> movingVertices = new HashSet<String>();
+                boolean movingVerticesExpandable = true;
+               
                 while(getLoadPerPartition(overloadedPartition) > MAX_LOAD_PER_PART){
                     
                     System.out.println("--------------------");
     
-                    // Step 1) add partition if I have over-expanded movingVertices. 
+                    // Step 1) add partition if I have over-expanded movingVertices or if I cannot expand it anymore
+                    
                     // We expand movingVertices only if all partitions reject the previous movingVertices sets.
                     // We fill up low-order partitions first to minimize the number of servers
-                    if (numMovedVertices + movingVertices.size() >= actualMaxMovedVertices){
+                    
+                    if (numMovedVertices + movingVertices.size() >= actualMaxMovedVertices || movingVerticesExpandable == false){
                         System.out.println("Adding a new partition");
                         if(activePartitions.size() < MAX_PARTITIONS && addedPartitions < MAX_PARTITIONS_ADDED){
                             currHotVertex = 0;
                             movingVertices.clear();
+                            movingVerticesExpandable = true;
                             m_graph.addPartitions(1);
                             addedPartitions++;
                             for(int i = 0; i < MAX_PARTITIONS; i++){
@@ -114,6 +119,7 @@ public class GraphPartitioner {
                         }
                     }
                     System.out.println("Adding a new vertex");
+                    
                     // Step 2) add one vertex to movingVertices
                     if (movingVertices.isEmpty()){
                         // if empty, add a new hot vertex
@@ -127,38 +133,60 @@ public class GraphPartitioner {
                         System.out.println("Adding hot vertex " + nextHotVertex);
                         movingVertices.add(nextHotVertex);
                     } // END if(movedVertices.isEmpty())
+                    
                     else{
+                        
                         // extend current moved set
+                        
                         // assess gain with extension
-                        double deltaEdgeExtension = Double.MIN_VALUE;                        
+                        double deltaEdgeExtension;                        
                         String nextEdgeExtension = getMostAffineExtension(movingVertices);
                         if(nextEdgeExtension != null){
                             movingVertices.add(nextEdgeExtension);
                             deltaEdgeExtension = getDeltaGiveVertices(movingVertices, -1);
                             movingVertices.remove(nextEdgeExtension);
                         }
+                        else{
+                            // no available edge extension
+                            deltaEdgeExtension = Double.MIN_VALUE;
+                        }
+                        
                         // assess gain with next hot tuple. may need to skip a few hot tuples that are already included in hottestVerticesToMove. 
-                        double deltaHotTuple = Double.MIN_VALUE;
+                        double deltaHotTuple;
                         String nextHotVertex = null;
                         int skip = 0;
                         do{
-                            skip ++;
                             nextHotVertex = hotVerticesNotMoved.get(currHotVertex + skip);
-                        } while (movingVertices.contains(nextHotVertex)); // I could also check (currHotVertex + jump < hottestVerticesToMove.size()) but if all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
-                        assert(nextHotVertex != null);
-                        movingVertices.add(nextHotVertex);
-                        deltaHotTuple = getDeltaGiveVertices(movingVertices, -1);
-                        movingVertices.remove(nextHotVertex);
-                        // pick best available choice
-                        if (deltaEdgeExtension < deltaHotTuple){
-                            movingVertices.add(nextEdgeExtension);
-                            System.out.println("Adding edge extension " + nextEdgeExtension);
+                            skip ++;
+                        } while (movingVertices.contains(nextHotVertex) || currHotVertex + skip >= hotVerticesNotMoved.size()); // I could also check (currHotVertex + jump < hottestVerticesToMove.size()) but if all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
+                        if (! movingVertices.contains(nextHotVertex)){
+                            assert(nextHotVertex != null);
+                            movingVertices.add(nextHotVertex);
+                            deltaHotTuple = getDeltaGiveVertices(movingVertices, -1);
+                            movingVertices.remove(nextHotVertex);
                         }
                         else{
-                            movingVertices.add(nextHotVertex);
-                            System.out.println("Adding hot vertex " + nextHotVertex);
-                            currHotVertex += skip;
+                            // no available hot Vertex
+                            deltaHotTuple = Double.MIN_VALUE;
                         }
+                        
+                        // pick best available choice
+                        if(deltaEdgeExtension == Double.MIN_VALUE && deltaHotTuple == Double.MIN_VALUE){
+                            // no choice available
+                            movingVerticesExpandable = false;
+                        }
+                        else{
+                            if (deltaEdgeExtension < deltaHotTuple){
+                                movingVertices.add(nextEdgeExtension);
+                                System.out.println("Adding edge extension " + nextEdgeExtension);
+                            }
+                            else{
+                                movingVertices.add(nextHotVertex);
+                                System.out.println("Adding hot vertex " + nextHotVertex);
+                                currHotVertex += skip;
+                            }
+                        }
+                    
                     } // END if(!movedVertices.isEmpty())
     
                     // DEBUG
@@ -168,6 +196,7 @@ public class GraphPartitioner {
                     }
     
                     // Step 3) search site to offload (might not find it)
+                    
                     // first try to offload to local partitions
                     boolean moved = false;
                     Collection<Integer> localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(overloadedPartition));
@@ -187,6 +216,7 @@ public class GraphPartitioner {
                             }
                         }
                     }
+                    
                     // then try to offload to remote partitions
                     if (!moved){
                         for(Integer toPartition : activePartitions){
@@ -224,6 +254,7 @@ public class GraphPartitioner {
                     underloadedPartitions.add(part);
                 }
             }
+            
             // offload from partitions with higher id to partitions with lower id. this helps emptying up the latest servers.
             Iterator<Integer> descending = underloadedPartitions.descendingIterator();
             HashSet<Integer> removedPartitions = new HashSet<Integer>();
@@ -232,6 +263,7 @@ public class GraphPartitioner {
                 System.out.println("Offloading partition " + underloadedPartition);
                 Set<String> movingVertices = new HashSet<String>();
                 movingVertices.addAll(m_graph.m_partitionVertices.get(underloadedPartition));
+                
                 // try to offload to remote partitions
                 Collection<Integer> localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(underloadedPartition));
                 for(Integer toPartition : activePartitions){
@@ -246,6 +278,7 @@ public class GraphPartitioner {
                         }
                     }
                 }
+                
             }
             activePartitions.removeAll(removedPartitions);
         } // END if(overloadedPartitions.isEmpty())
@@ -270,12 +303,14 @@ public class GraphPartitioner {
         int partition = m_graph.m_vertexPartition.get(vertices.iterator().next());
         for(String vertex : vertices){
             Map<String,Double> adjacency = m_graph.m_edges.get(vertex);
-            for(Map.Entry<String, Double> edge : adjacency.entrySet()){
-                if (edge.getValue() > maxAdjacency
-                        && m_graph.m_vertexPartition.get(edge.getKey()) == partition
-                        && !vertices.contains(edge.getKey())){
-                    maxAdjacency = edge.getValue();
-                    res = edge.getKey();
+            if(adjacency != null){
+                for(Map.Entry<String, Double> edge : adjacency.entrySet()){
+                    if (edge.getValue() > maxAdjacency
+                            && m_graph.m_vertexPartition.get(edge.getKey()) == partition
+                            && !vertices.contains(edge.getKey())){
+                        maxAdjacency = edge.getValue();
+                        res = edge.getKey();
+                    }
                 }
             }
         }
@@ -292,6 +327,7 @@ public class GraphPartitioner {
         int numMovedVertices = 0;
         double deltaFromPartition = getDeltaGiveVertices(movingVertices, toPartition);
         double deltaToPartition = getDeltaReceiveVertices(movingVertices, toPartition);
+
         // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
         System.out.println("Deltas from " + deltaFromPartition + " - to " + deltaToPartition);
         if(deltaFromPartition <= MIN_GAIN_MOVE 
@@ -366,6 +402,7 @@ public class GraphPartitioner {
         int filled = 0;
         
         for(String vertex : m_graph.m_partitionVertices.get(partition)){
+ 
             if (filled < k){
                 res.add(vertex);
                 loads[filled] = getLoadInCurrPartition(Collections.singleton(vertex));
@@ -379,6 +416,7 @@ public class GraphPartitioner {
                     }
                 }
             }
+
             else{
                 double vertexLoad = getLoadInCurrPartition(Collections.singleton(vertex));
                 if(vertexLoad > lowestLoad){
@@ -408,12 +446,14 @@ public class GraphPartitioner {
      *     if newPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
     public double getDeltaGiveVertices(Set<String> movedVertices, int newPartition) {
+
         if (movedVertices == null || movedVertices.isEmpty()){
             System.out.println("Trying to move an empty set of vertices");
             return 0;
         }
         double delta = 0;
         int fromPartition = m_graph.m_vertexPartition.get(movedVertices.iterator().next());
+ 
         for(String vertex : movedVertices){ 
 //            System.out.println("REMOVE delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
             Double vertexWeight = m_graph.m_vertices.get(vertex);
@@ -421,41 +461,46 @@ public class GraphPartitioner {
                 System.out.println("Cannot include external node for delta computation");
                 throw new IllegalStateException("Cannot include external node for delta computation");
             }
-            
-            double outPull = 0;
-            double inPull = 0;
+
             Map<String,Double> adjacency = m_graph.m_edges.get(vertex);
-            for (Map.Entry<String, Double> edge : adjacency.entrySet()){
-//                System.out.println("Considering edge to vertex " + edge.getKey() + " with weight " + edge.getValue());
-                String toVertex = edge.getKey();
-                Double edgeWeight = edge.getValue();
-                // edges to vertices that are moved together do not contribute to in- or out-pull
-                if(!movedVertices.contains(toVertex)){
-                    int toPartition = m_graph.m_vertexPartition.get(toVertex); 
-                    if(toPartition == fromPartition){
-                        // edge to local vertex which will not be moved out
-//                        System.out.println("Add weight to inpull: edge to local vertex which will not be moved out");
-                        inPull += edgeWeight;
-                    }
-                    else {
-                        // edge to remote vertex or vertex that will be moved out
-//                        System.out.println("Add weight to outpull: edge to remote vertex which will be moved out");
-                        outPull += edgeWeight;
+            if(adjacency != null){
+                double outPull = 0;
+                double inPull = 0;
+                for (Map.Entry<String, Double> edge : adjacency.entrySet()){
+                    //                System.out.println("Considering edge to vertex " + edge.getKey() + " with weight " + edge.getValue());
+                    String toVertex = edge.getKey();
+                    Double edgeWeight = edge.getValue();
+
+                    // edges to vertices that are moved together do not contribute to in- or out-pull
+                    if(!movedVertices.contains(toVertex)){
+                        int toPartition = m_graph.m_vertexPartition.get(toVertex); 
+                        if(toPartition == fromPartition){
+                            // edge to local vertex which will not be moved out
+                            //                        System.out.println("Add weight to inpull: edge to local vertex which will not be moved out");
+                            inPull += edgeWeight;
+                        }
+                        else {
+                            // edge to remote vertex or vertex that will be moved out
+                            //                        System.out.println("Add weight to outpull: edge to remote vertex which will be moved out");
+                            outPull += edgeWeight;
+                        }
                     }
                 }
+
+                // decides multiplier depending on whether the newPartition is local or not
+                double outMultiplier;
+                if (newPartition == -1 || PlanHandler.getSitePartition(newPartition) != PlanHandler.getSitePartition(fromPartition)){
+                    outMultiplier = DTXN_COST;
+                }
+                else{
+                    outMultiplier = LMPT_COST;
+                }
+
+                // update delta
+                delta -= vertexWeight + outPull * outMultiplier;
+                delta += inPull * outMultiplier;
+                //          System.out.println(String.format("inpull %d outpull %d addition to delta %d total delta %d", inPull, outPull, vertexWeight + (outPull - inPull) * Controller.DTXN_MULTIPLIER, delta));
             }
-            // decides multiplier depending on whether the newPartition is local or not
-            double outMultiplier;
-            if (newPartition == -1 || PlanHandler.getSitePartition(newPartition) != PlanHandler.getSitePartition(fromPartition)){
-                outMultiplier = DTXN_COST;
-            }
-            else{
-                outMultiplier = LMPT_COST;
-            }
-            // update delta
-            delta -= vertexWeight + outPull * outMultiplier;
-            delta += inPull * outMultiplier;
-//          System.out.println(String.format("inpull %d outpull %d addition to delta %d total delta %d", inPull, outPull, vertexWeight + (outPull - inPull) * Controller.DTXN_MULTIPLIER, delta));
         }
         return delta;
     }
@@ -467,10 +512,12 @@ public class GraphPartitioner {
      *     it also considers a SET of vertices to be moved together
      */
     public double getDeltaReceiveVertices(Set<String> movedVertices, int newPartition) {
+
         if (movedVertices == null || movedVertices.isEmpty()){
             System.out.println("Trying to move an empty set of vertices");
             return 0;
         }
+
         double delta = 0;
         for(String vertex : movedVertices){
             // get tuple weight from original site
@@ -481,42 +528,48 @@ public class GraphPartitioner {
                 throw new IllegalStateException("Cannot include external node for delta computation");
             }
             
-            double outPull = 0;
-            double inPull = 0;
             // get adjacency list from original site
             Map<String,Double> adjacency = m_graph.m_edges.get(vertex);
-            for (Map.Entry<String, Double> edge : adjacency.entrySet()){
-//                System.out.println("Considering edge to vertex " + edge.getKey() + " with weight " + edge.getValue());
-                String toVertex = edge.getKey();
-                Double edgeWeight = edge.getValue();
-                // edges to vertices that are moved together do not contribute to in- or out-pull
-                if(!movedVertices.contains(toVertex)){
-                    int toPartition = m_graph.m_vertexPartition.get(toVertex); 
-                    if(toPartition == newPartition){
-                        // edge to local vertex or to vertex that will be moved in
-//                        System.out.println("Add weight to inpull");
-                        inPull += edgeWeight;
-                    }
-                    else{
-                        // edge to remote vertex that will not be moved in
-//                        System.out.println("Add weight to outpull");
-                        outPull += edgeWeight;
+            if(adjacency != null){
+                double outPull = 0;
+                double inPull = 0;
+                for (Map.Entry<String, Double> edge : adjacency.entrySet()){
+                    //                System.out.println("Considering edge to vertex " + edge.getKey() + " with weight " + edge.getValue());
+                    String toVertex = edge.getKey();
+                    Double edgeWeight = edge.getValue();
+
+                    // edges to vertices that are moved together do not contribute to in- or out-pull
+                    if(!movedVertices.contains(toVertex)){
+                        int toPartition = m_graph.m_vertexPartition.get(toVertex); 
+
+                        if(toPartition == newPartition){
+                            // edge to local vertex or to vertex that will be moved in
+                            //                        System.out.println("Add weight to inpull");
+                            inPull += edgeWeight;
+                        }
+                        else{
+                            // edge to remote vertex that will not be moved in
+                            //                        System.out.println("Add weight to outpull");
+                            outPull += edgeWeight;
+                        }
                     }
                 }
+
+                // determine multiplier
+                double outMultiplier;
+                int fromPartition = m_graph.m_vertexPartition.get(movedVertices.iterator().next());
+                if (PlanHandler.getSitePartition(newPartition) != PlanHandler.getSitePartition(fromPartition)){
+                    outMultiplier = DTXN_COST;
+                }
+                else{
+                    outMultiplier = LMPT_COST;
+                }
+
+                // determine delta
+                delta += vertexWeight + outPull * outMultiplier;
+                delta -= inPull * outMultiplier;
+                //            System.out.println(String.format("inpull %d outpull %d addition to delta %d total delta %d", inPull, outPull, (inPull - outPull)  * Controller.DTXN_MULTIPLIER - vertexWeight, delta));
             }
-            // determine multiplier
-            double outMultiplier;
-            int fromPartition = m_graph.m_vertexPartition.get(movedVertices.iterator().next());
-            if (PlanHandler.getSitePartition(newPartition) != PlanHandler.getSitePartition(fromPartition)){
-                outMultiplier = DTXN_COST;
-            }
-            else{
-                outMultiplier = LMPT_COST;
-            }
-            // determine delta
-            delta += vertexWeight + outPull * outMultiplier;
-            delta -= inPull * outMultiplier;
-//            System.out.println(String.format("inpull %d outpull %d addition to delta %d total delta %d", inPull, outPull, (inPull - outPull)  * Controller.DTXN_MULTIPLIER - vertexWeight, delta));
         }
         return delta;
     }
