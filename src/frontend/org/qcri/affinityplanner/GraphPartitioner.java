@@ -322,15 +322,17 @@ public class GraphPartitioner {
             int fromVertexPartition = m_graph.m_vertexPartition.get(vertex);
             int fromVertexSite = PlanHandler.getSitePartition(fromVertexPartition);
             Map<String,Double> adjacencyList = m_graph.m_edges.get(vertex);
-            for(Map.Entry<String, Double> edge : adjacencyList.entrySet()){
-                String toVertex = edge.getKey();
-                int toVertexPartition = m_graph.m_vertexPartition.get(toVertex);
-                int toVertexSite = PlanHandler.getSitePartition(toVertexPartition);
-                if(toVertexSite != fromVertexSite){
-                    load += edge.getValue() * DTXN_COST;
-                }
-                else if(toVertexPartition != fromVertexPartition){
-                    load += edge.getValue() * LMPT_COST;
+            if(adjacencyList != null){
+                for(Map.Entry<String, Double> edge : adjacencyList.entrySet()){
+                    String toVertex = edge.getKey();
+                    int toVertexPartition = m_graph.m_vertexPartition.get(toVertex);
+                    int toVertexSite = PlanHandler.getSitePartition(toVertexPartition);
+                    if(toVertexSite != fromVertexSite){
+                        load += edge.getValue() * DTXN_COST;
+                    }
+                    else if(toVertexPartition != fromVertexPartition){
+                        load += edge.getValue() * LMPT_COST;
+                    }
                 }
             }
         }
