@@ -17,28 +17,35 @@ import edu.brown.utils.FileUtil;
  * For the moment, it encapsulates all the hard-coded mappings we use
  */
 
-public class PlanHandler {
+public class PlanHandler extends Plan {
     
-    ExplicitPartitions m_partitioner;
+    private ExplicitPartitions m_partitioner;
 
-    public PlanHandler(File planFile, CatalogContext catalogContext) throws Exception{
+    public PlanHandler(File planFile, CatalogContext catalogContext) {
+        super(planFile.toString());
         // get mapping of keys to partitions
-        JSONObject json;
+        JSONObject json = null;
         try {
             json = new JSONObject(FileUtil.readFile(planFile.getAbsolutePath()));
-        } catch (JSONException e1) {
-            e1.printStackTrace();
+        } catch (JSONException e) {
             System.out.println("Problem while reading JSON file with the plan");
-            throw e1;
+            System.out.println("Stack trace:\n" + Controller.stackTraceToString(e));
+           System.exit(1);
         }
         try {
             m_partitioner = new TwoTieredRangePartitions(catalogContext, json);
-        } catch (Exception e1) {
-            e1.printStackTrace();
+        } catch (Exception e) {
             System.out.println("Problem while creating the partitioner");
-            throw e1;
+            System.out.println("Stack trace:\n" + Controller.stackTraceToString(e));
+            System.exit(1);
         }
-        m_partitioner.setPartitionPlan(planFile);
+        try {
+            m_partitioner.setPartitionPlan(planFile);
+        } catch (Exception e) {
+            System.out.println("Problem while setting the partition plan");
+            System.out.println("Stack trace:\n" + Controller.stackTraceToString(e));
+            System.exit(1);
+        }
     }
 
     /*

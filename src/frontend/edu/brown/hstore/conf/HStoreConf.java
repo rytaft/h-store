@@ -1431,8 +1431,7 @@ public final class HStoreConf {
                 experimental=true
         )
         public boolean access_tracking;
-        
-    }
+}
     
     // ============================================================================
     // CLIENT

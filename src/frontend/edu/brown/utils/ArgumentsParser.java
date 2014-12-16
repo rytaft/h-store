@@ -35,7 +35,8 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.collections15.map.ListOrderedMap;
 import org.apache.log4j.Logger;
-
+import org.qcri.affinityplanner.Controller;
+import org.qcri.affinityplanner.GraphPartitioner;
 import org.voltdb.CatalogContext;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.*;
@@ -186,6 +187,21 @@ public class ArgumentsParser {
     public static final String PARAM_SITE_CLEANUP_TXN_EXPIRE = PARAM_SITE + ".cleanup_txn_expire";
     public static final String PARAM_SITE_ENABLE_PROFILING = PARAM_SITE + ".enable_profiling";
     public static final String PARAM_SITE_MISPREDICT_CRASH = PARAM_SITE + ".mispredict_crash";
+
+    private static final String PARAM_ELASTIC = "elastic";
+    public static final String PARAM_ELASTIC_MONITORING_TIME = PARAM_ELASTIC + ".monitoring_time";
+    public static final String PARAM_ELASTIC_MIN_LOAD = PARAM_ELASTIC + ".min_load";
+    public static final String PARAM_ELASTIC_MAX_LOAD = PARAM_ELASTIC + ".max_load";
+    public static final String PARAM_ELASTIC_DTXN_COST = PARAM_ELASTIC + ".dtxn_cost";    
+    public static final String PARAM_ELASTIC_LMPT_COST = PARAM_ELASTIC + ".lmpt_cost";    
+    public static final String PARAM_ELASTIC_MAX_TUPLE_MOVE = PARAM_ELASTIC + ".max_tuples_move";
+    public static final String PARAM_ELASTIC_MIN_GAIN_MOVE = PARAM_ELASTIC + ".min_gain_move";
+    public static final String PARAM_ELASTIC_MAX_PARTITIONS_ADDED = PARAM_ELASTIC + ".max_partitions_added";
+    public static final String PARAM_ELASTIC_RUN_MONITORING = PARAM_ELASTIC + ".run_monitoring";
+    public static final String PARAM_ELASTIC_UPDATE_PLAN = PARAM_ELASTIC + ".update_plan";
+    public static final String PARAM_ELASTIC_EXEC_RECONF = PARAM_ELASTIC + ".exec_reconf";
+    public static final String PARAM_ELASTIC_PLAN_IN = PARAM_ELASTIC + ".plan_in";
+    public static final String PARAM_ELASTIC_PLAN_OUT = PARAM_ELASTIC + ".plan_out";
 
     public static final List<String> PARAMS = new ArrayList<String>();
     static {
@@ -700,6 +716,7 @@ public class ArgumentsParser {
      */
     @SuppressWarnings("unchecked")
     public void process(String[] args, String... required) throws Exception {
+        
         final boolean debug = LOG.isDebugEnabled();
 
         if (debug)
@@ -973,6 +990,62 @@ public class ArgumentsParser {
             }
         }
 
+        // -------------------------------------------------------
+        // ESTORE
+        // -------------------------------------------------------
+        
+        if (this.params.containsKey(PARAM_ELASTIC_MONITORING_TIME)){
+            Controller.MONITORING_TIME = Integer.parseInt(this.params.get(PARAM_ELASTIC_MONITORING_TIME));
+        }
+
+        if (this.params.containsKey(PARAM_ELASTIC_MIN_LOAD)){
+            GraphPartitioner.MIN_LOAD_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_LOAD));
+        }
+        
+        if (this.params.containsKey(PARAM_ELASTIC_MAX_LOAD)){
+            GraphPartitioner.MAX_LOAD_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_LOAD));
+        }
+        
+        if (this.params.containsKey(PARAM_ELASTIC_DTXN_COST)){
+            GraphPartitioner.DTXN_COST = Double.parseDouble(this.params.get(PARAM_ELASTIC_DTXN_COST));
+        }
+
+        if (this.params.containsKey(PARAM_ELASTIC_LMPT_COST)){
+            GraphPartitioner.LMPT_COST = Double.parseDouble(this.params.get(PARAM_ELASTIC_LMPT_COST));
+        }
+        
+        if (this.params.containsKey(PARAM_ELASTIC_MIN_GAIN_MOVE)){
+            GraphPartitioner.MIN_GAIN_MOVE = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_GAIN_MOVE));
+        }
+
+        if (this.params.containsKey(PARAM_ELASTIC_MAX_TUPLE_MOVE)){
+            GraphPartitioner.MIN_GAIN_MOVE = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_TUPLE_MOVE));
+        }
+        
+        if (this.params.containsKey(PARAM_ELASTIC_MAX_PARTITIONS_ADDED)){
+            GraphPartitioner.MAX_PARTITIONS_ADDED = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_PARTITIONS_ADDED));
+        }        
+
+        if (this.params.containsKey(PARAM_ELASTIC_RUN_MONITORING)){
+            Controller.RUN_MONITORING = Boolean.parseBoolean(this.params.get(PARAM_ELASTIC_RUN_MONITORING));
+        }        
+
+        if (this.params.containsKey(PARAM_ELASTIC_UPDATE_PLAN)){
+            Controller.UPDATE_PLAN = Boolean.parseBoolean(this.params.get(PARAM_ELASTIC_UPDATE_PLAN));
+        }        
+
+        if (this.params.containsKey(PARAM_ELASTIC_EXEC_RECONF)){
+            Controller.EXEC_RECONF = Boolean.parseBoolean(this.params.get(PARAM_ELASTIC_EXEC_RECONF));
+        }        
+        
+        if (this.params.containsKey(PARAM_ELASTIC_PLAN_IN)){
+            Controller.PLAN_IN = this.params.get(PARAM_ELASTIC_PLAN_IN);
+        }        
+        
+        if (this.params.containsKey(PARAM_ELASTIC_PLAN_OUT)){
+            Controller.PLAN_OUT = this.params.get(PARAM_ELASTIC_PLAN_OUT);
+        }        
+        
         // -------------------------------------------------------
         // SAMPLE WORKLOAD TRACE
         // -------------------------------------------------------
