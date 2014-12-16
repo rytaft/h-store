@@ -117,7 +117,9 @@ public class Controller {
     
     public void run (){
         // turn monitoring on and off
-        connectToHost();
+        if(RUN_MONITORING || EXEC_RECONF){
+            connectToHost();
+        }
 
         if(RUN_MONITORING){
             String[] confNames = {"site.access_tracking"};
