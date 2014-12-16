@@ -158,7 +158,7 @@ public class GraphPartitioner {
                         do{
                             nextHotVertex = hotVerticesNotMoved.get(currHotVertex + skip);
                             skip ++;
-                        } while (movingVertices.contains(nextHotVertex) || currHotVertex + skip >= hotVerticesNotMoved.size()); // I could also check (currHotVertex + jump < hottestVerticesToMove.size()) but if all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
+                        } while (movingVertices.contains(nextHotVertex) && currHotVertex + skip < hotVerticesNotMoved.size()); // I could also check (currHotVertex + jump < hottestVerticesToMove.size()) but if all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
                         if (! movingVertices.contains(nextHotVertex)){
                             assert(nextHotVertex != null);
                             movingVertices.add(nextHotVertex);
@@ -166,7 +166,7 @@ public class GraphPartitioner {
                             movingVertices.remove(nextHotVertex);
                         }
                         else{
-                            // no available hot Vertex
+                            // no available hot vertex
                             deltaHotTuple = Double.MIN_VALUE;
                         }
                         
