@@ -20,13 +20,15 @@ public class AffinityConstants {
     public static final int PARTS_COLUMN_LENGTH = 100;
     public static final String PARTS_PRE = "parts.";
 
-    public static final double SUPPLIES_PROBABILITY = 0.1;
+    public static final int MAX_PARTS_PER_SUPPLIER = 10;
     public static final String TABLENAME_SUPPLIES = "SUPPLIES";
     protected static final int SUPPLIES_NUM_COLUMNS = 2;
+    public static final String SUPPLIES_PRE = "supplies.";
 
-    public static final double USES_PROBABILITY = 0.1;
+    public static final int MAX_PARTS_PER_PRODUCT = 10;
     public static final String TABLENAME_USES = "USES";
     protected static final int USES_NUM_COLUMNS = 2;
+    public static final String USES_PRE = "uses.";
     
     public static final int BATCH_SIZE = 10000;
     public static final int FREQ_READ_SUPPLIER = 20; 
