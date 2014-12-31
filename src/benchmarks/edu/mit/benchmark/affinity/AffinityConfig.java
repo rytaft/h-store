@@ -19,10 +19,7 @@ public class AffinityConfig {
     static {
         LoggerUtil.attachObserver(LOG, debug);
     }
-    
-    public int MAX_PARTS_PER_SUPPLIER = AffinityConstants.MAX_PARTS_PER_SUPPLIER;
-    public int MAX_PARTS_PER_PRODUCT = AffinityConstants.MAX_PARTS_PER_PRODUCT;
- 
+     
     public int FREQ_READ_SUPPLIER = AffinityConstants.FREQ_READ_SUPPLIER;
     public int FREQ_READ_PRODUCT = AffinityConstants.FREQ_READ_PRODUCT;
     public int FREQ_READ_PART = AffinityConstants.FREQ_READ_PART;
@@ -32,6 +29,8 @@ public class AffinityConfig {
     public long num_suppliers = AffinityConstants.NUM_SUPPLIERS;
     public long num_products = AffinityConstants.NUM_PRODUCTS;
     public long num_parts = AffinityConstants.NUM_PARTS;
+    public int max_parts_per_supplier = AffinityConstants.MAX_PARTS_PER_SUPPLIER;
+    public int max_parts_per_product = AffinityConstants.MAX_PARTS_PER_PRODUCT;
     public Random rand_gen;
     public IntegerGenerator supplier_gen;
     public IntegerGenerator product_gen;
@@ -64,6 +63,12 @@ public class AffinityConfig {
             }
             else if  (key.equalsIgnoreCase("num_parts")) {
                 num_parts = Integer.valueOf(value);
+            }            
+            else if  (key.equalsIgnoreCase("max_parts_per_supplier")) {
+            	max_parts_per_supplier = Integer.valueOf(value);
+            }            
+            else if  (key.equalsIgnoreCase("max_parts_per_product")) {
+            	max_parts_per_product = Integer.valueOf(value);
             }            
             // Multi-Threaded Loader
             else if (key.equalsIgnoreCase("loadthreads")) {
@@ -280,7 +285,7 @@ public class AffinityConfig {
 
     @Override
     public String toString() {
-        return "AffinityConfig [MAX_PARTS_PER_SUPPLIER=" + MAX_PARTS_PER_SUPPLIER + ", MAX_PARTS_PER_PRODUCT=" + MAX_PARTS_PER_PRODUCT + ", FREQ_READ_SUPPLIER=" + FREQ_READ_SUPPLIER + ", FREQ_READ_PRODUCT="
+        return "AffinityConfig [max_parts_per_supplier=" + max_parts_per_supplier + ", max_parts_per_product=" + max_parts_per_product + ", FREQ_READ_SUPPLIER=" + FREQ_READ_SUPPLIER + ", FREQ_READ_PRODUCT="
                 + FREQ_READ_PRODUCT + ", FREQ_READ_PART=" + FREQ_READ_PART + ", FREQ_READ_PARTS_BY_SUPPLIER=" + FREQ_READ_PARTS_BY_SUPPLIER + ", FREQ_READ_PARTS_BY_PRODUCT="
                 + FREQ_READ_PARTS_BY_PRODUCT + ", num_suppliers=" + num_suppliers + ", num_products=" + num_products + ", num_parts=" + num_parts + ", rand_gen=" + rand_gen + ", supplier_gen="
                 + supplier_gen + ", product_gen=" + product_gen + ", part_gen=" + part_gen + ", loadthreads=" + loadthreads + ", useFixedSize=" + useFixedSize + "]";
