@@ -459,7 +459,7 @@ public class AffinityGenerator extends IntegerGenerator
 	 */
 	public long nextLong(long itemcount, double r1, double r2, int r3, double shift)
 	{
-		long totalShift = (long) (itemcount * shift) % itemcount;
+		long totalShift = Math.round(itemcount * shift) % itemcount;
 		if(!isRandom) {
 			if(lastItem == Long.MIN_VALUE) {
 				lastItem = totalShift;
