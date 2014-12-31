@@ -211,7 +211,8 @@ public class AffinityConfig {
         int numHotSpots = 0;
         double percentAccessHotSpots = 0.0;
         boolean randomHotSpots = false;    
-
+        boolean isRandom = true;
+        
         AffinityGenerator keyGenerator;
 
         for (String key : m_extraParams.keySet()) {
@@ -245,6 +246,10 @@ public class AffinityConfig {
             else if (key.equalsIgnoreCase(pre+"random_hot_spots")) {
                 randomHotSpots = Boolean.valueOf(value);
             }
+            // Whether to make this a random generator 
+            else if (key.equalsIgnoreCase(pre+"is_random")) {
+                isRandom = Boolean.valueOf(value);
+            }
         } // FOR
         // initialize distribution generators 
         // We must know where to start inserting
@@ -258,6 +263,7 @@ public class AffinityConfig {
             gen.setNumHotSpots(numHotSpots);
             gen.setPercentAccessHotSpots(percentAccessHotSpots);
             gen.setScrambled(scrambled);
+            gen.setIsRandom(isRandom);
             keyGenerator = gen;
         }
         else{

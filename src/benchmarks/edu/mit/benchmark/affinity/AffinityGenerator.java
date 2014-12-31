@@ -110,6 +110,16 @@ public class AffinityGenerator extends IntegerGenerator
      * Whether to make the location of the hot spots random
     */
     boolean randomHotSpots = false;
+    
+    /*
+     * Whether to make the number generation random or not
+     */
+    boolean isRandom = true;
+    
+    /**
+     * If not random, add one to the lastItem
+     */
+    long lastItem = Long.MIN_VALUE;
  
     /**
      * List of the k randomly selected hot spots
@@ -242,7 +252,15 @@ public class AffinityGenerator extends IntegerGenerator
     public boolean getMirrored() {
     	return mirrored;
     }
+
+    public boolean getIsRandom() {
+    	return isRandom;
+    }
     
+    public long getLastItem() {
+    	return lastItem;
+    }
+   
     public int getNumHotSpots() {
     	return numHotSpots;
     }
@@ -265,6 +283,18 @@ public class AffinityGenerator extends IntegerGenerator
     
     public void setMirrored(boolean mirrored) {
     	this.mirrored = mirrored;
+    }
+
+    public void setIsRandom(boolean isRandom) {
+    	this.isRandom = isRandom;
+    }
+
+    public void setLastItem(long lastItem) {
+    	this.lastItem = lastItem;
+    }
+  
+    public void resetLastItem() {
+    	this.lastItem = Long.MIN_VALUE;
     }
     
     public void setNumHotSpots(int numHotSpots) {
@@ -430,8 +460,18 @@ public class AffinityGenerator extends IntegerGenerator
 	public long nextLong(long itemcount, double r1, double r2, int r3, double shift)
 	{
 		long totalShift = (long) (itemcount * shift) % itemcount;
+		if(!isRandom) {
+			if(lastItem == Long.MIN_VALUE) {
+				lastItem = totalShift;
+			}
+			else {
+				lastItem = (lastItem + 1) % itemcount;
+			}
+			setLastInt((int)lastItem);
+			return lastItem;
+		}
+		
 		//from "Quickly Generating Billion-Record Synthetic Databases", Jim Gray et al, SIGMOD 1994
-
 		if (itemcount!=countforzeta)
 		{
 

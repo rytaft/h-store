@@ -213,6 +213,7 @@ public class AffinityLoader extends Loader {
         	else {
         		shift = (((double) i)/config.num_suppliers + config.supplierToPartsOffset) % 1.0;
         	}
+        	config.supplies_gen.resetLastItem();
         	for(int j = 0; j < config.MAX_PARTS_PER_SUPPLIER; j++) { 
         		parts.add(config.supplies_gen.nextInt(shift));
         	}
@@ -262,6 +263,7 @@ public class AffinityLoader extends Loader {
         	else {
         		shift = (((double) i)/config.num_products + config.productToPartsOffset) % 1.0;
         	}
+        	config.uses_gen.resetLastItem();
         	for(int j = 0; j < config.MAX_PARTS_PER_PRODUCT; j++) { 
         		parts.add(config.uses_gen.nextInt(shift));
         	}
