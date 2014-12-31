@@ -203,7 +203,7 @@ public class AffinityConfig {
 
     private AffinityGenerator getAffinityGenerator(String pre, long num_keys, Map<String, String> m_extraParams) {
 
-        String requestDistribution = AffinityConstants.REQUEST_DISTRIBUTION_PROPERTY_DEFAULT; 
+        String requestDistribution = AffinityConstants.ZIPFIAN_DISTRIBUTION; 
 
         double skewFactor = AffinityConstants.ZIPFIAN_CONSTANT;
         boolean scrambled = false;
