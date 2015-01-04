@@ -22,6 +22,8 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 
+import edu.brown.hstore.HStoreConstants;
+
 public class AffinityGraph {
     private static final Logger LOG = Logger.getLogger(Controller.class);
     
@@ -123,6 +125,11 @@ public class AffinityGraph {
                             } catch (Exception e) {
                                 LOG.warn("Could not get partition from plan handler " + Controller.stackTraceToString(e));
                                 System.out.println("Could not get partition from plan handler " + Controller.stackTraceToString(e));
+                                return false;                            
+                            }
+                            if (partition == HStoreConstants.NULL_PARTITION_ID){
+                                LOG.info("Exiting graph loading. Could not find partition for key " + from);
+                                System.out.println("Exiting graph loading. Could not find partition for key " + from);
                                 return false;                            
                             }
                             m_partitionVertices.get(partition).add(from);
