@@ -19,17 +19,18 @@ public class GetPartsBySupplier extends VoltProcedure {
 //    }
     
     
+	public final SQLStmt getSupplierInfoStmt = new SQLStmt("SELECT FIELD1, FIELD2, FIELD3 FROM SUPPLIERS WHERE SUPPLIER_KEY = ? ");
     public final SQLStmt getPartsBySupplierStmt = new SQLStmt("SELECT PART_KEY FROM SUPPLIES WHERE SUPPLIER_KEY = ? ");
-    
     public final SQLStmt getPartInfoStmt = new SQLStmt("SELECT FIELD1, FIELD2, FIELD3 FROM PARTS WHERE PART_KEY = ? ");
     
     public VoltTable[] run(long supplier_key){
-    	voltQueueSQL(getPartsBySupplierStmt, supplier_key);
-        final VoltTable[] parts = voltExecuteSQL();
-        assert parts.length == 1;
+    	voltQueueSQL(getSupplierInfoStmt, supplier_key);
+        voltQueueSQL(getPartsBySupplierStmt, supplier_key);
+        final VoltTable[] results = voltExecuteSQL();
+        assert results.length == 2;
         	
-        for(int i = 0; i < parts[0].getRowCount(); ++i) {
-        	voltQueueSQL(getPartInfoStmt, parts[0].fetchRow(i).getLong(0));
+        for(int i = 0; i < results[1].getRowCount(); ++i) {
+        	voltQueueSQL(getPartInfoStmt, results[1].fetchRow(i).getLong(0));
         }
         return voltExecuteSQL(true);
     }

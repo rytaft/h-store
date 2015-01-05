@@ -19,11 +19,7 @@ public class AffinityConfig {
     static {
         LoggerUtil.attachObserver(LOG, debug);
     }
-    
-    public double SUPPLIES_PROBABILITY = AffinityConstants.SUPPLIES_PROBABILITY;
-
-    public double USES_PROBABILITY = AffinityConstants.USES_PROBABILITY;
-
+     
     public int FREQ_READ_SUPPLIER = AffinityConstants.FREQ_READ_SUPPLIER;
     public int FREQ_READ_PRODUCT = AffinityConstants.FREQ_READ_PRODUCT;
     public int FREQ_READ_PART = AffinityConstants.FREQ_READ_PART;
@@ -33,12 +29,20 @@ public class AffinityConfig {
     public long num_suppliers = AffinityConstants.NUM_SUPPLIERS;
     public long num_products = AffinityConstants.NUM_PRODUCTS;
     public long num_parts = AffinityConstants.NUM_PARTS;
+    public int max_parts_per_supplier = AffinityConstants.MAX_PARTS_PER_SUPPLIER;
+    public int max_parts_per_product = AffinityConstants.MAX_PARTS_PER_PRODUCT;
     public Random rand_gen;
     public IntegerGenerator supplier_gen;
     public IntegerGenerator product_gen;
     public IntegerGenerator part_gen;
+    public AffinityGenerator uses_gen;
+    public AffinityGenerator supplies_gen;
     public Integer loadthreads = ThreadUtil.availableProcessors();;
     public boolean useFixedSize = true;
+    public boolean productToPartsRandomOffset = true;
+    public boolean supplierToPartsRandomOffset = true;
+    public double productToPartsOffset = 0;
+    public double supplierToPartsOffset = 0;
 
     
     public AffinityConfig(Map<String, String> m_extraParams) {
@@ -47,11 +51,10 @@ public class AffinityConfig {
         for (String key : m_extraParams.keySet()) {
             String value = m_extraParams.get(key);
 
+            // Used Fixed-size Database
             if  (key.equalsIgnoreCase("fixed_size")) {
                 useFixedSize = Boolean.valueOf(value);
             }
-            // Used Fixed-size Database
-            // Parameter that points to where we can find the initial data files
             else if  (key.equalsIgnoreCase("num_suppliers")) {
                 num_suppliers = Integer.valueOf(value);
             }
@@ -60,14 +63,29 @@ public class AffinityConfig {
             }
             else if  (key.equalsIgnoreCase("num_parts")) {
                 num_parts = Integer.valueOf(value);
-            }            // Used Fixed-size Database
-            // Parameter that points to where we can find the initial data files
-            else if (key.equalsIgnoreCase("fixed_size")) {
-                useFixedSize = Boolean.valueOf(value);
-            }
+            }            
+            else if  (key.equalsIgnoreCase("max_parts_per_supplier")) {
+            	max_parts_per_supplier = Integer.valueOf(value);
+            }            
+            else if  (key.equalsIgnoreCase("max_parts_per_product")) {
+            	max_parts_per_product = Integer.valueOf(value);
+            }            
             // Multi-Threaded Loader
             else if (key.equalsIgnoreCase("loadthreads")) {
                 this.loadthreads  = Integer.valueOf(value);
+            }
+            // affinity mapping
+            else if (key.equalsIgnoreCase("product_to_parts_random_offset")) {
+            	productToPartsRandomOffset = Boolean.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("supplier_to_parts_random_offset")) {
+            	supplierToPartsRandomOffset = Boolean.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("product_to_parts_offset")) {
+            	productToPartsOffset = Double.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("supplier_to_parts_offset")) {
+            	supplierToPartsOffset = Double.valueOf(value);
             }
             else{
                 if (key.toLowerCase().startsWith(AffinityConstants.PARTS_PRE.toLowerCase()) 
@@ -81,6 +99,8 @@ public class AffinityConfig {
         supplier_gen = getGenerator(AffinityConstants.SUP_PRE, num_suppliers, m_extraParams);
         product_gen = getGenerator(AffinityConstants.PROD_PRE, num_products, m_extraParams);
         part_gen = getGenerator(AffinityConstants.PARTS_PRE, num_parts, m_extraParams);
+        uses_gen = getAffinityGenerator(AffinityConstants.USES_PRE, num_parts, m_extraParams);
+        supplies_gen = getAffinityGenerator(AffinityConstants.SUPPLIES_PRE, num_parts, m_extraParams);
     }
 
     
@@ -186,12 +206,86 @@ public class AffinityConfig {
         return keyGenerator;
     }
 
+    private AffinityGenerator getAffinityGenerator(String pre, long num_keys, Map<String, String> m_extraParams) {
+
+        String requestDistribution = AffinityConstants.ZIPFIAN_DISTRIBUTION; 
+
+        double skewFactor = AffinityConstants.ZIPFIAN_CONSTANT;
+        boolean scrambled = false;
+        boolean mirrored = false;
+        int numHotSpots = 0;
+        double percentAccessHotSpots = 0.0;
+        boolean randomHotSpots = false;    
+        boolean isRandom = true;
+        
+        AffinityGenerator keyGenerator;
+
+        for (String key : m_extraParams.keySet()) {
+            String value = m_extraParams.get(key);
+
+            //single key distribution
+            if (key.equalsIgnoreCase(pre+AffinityConstants.REQUEST_DISTRIBUTION_PROPERTY)){
+                requestDistribution = value;
+            }
+            // Zipfian Skew Factor
+            else if (key.equalsIgnoreCase(pre+"skew_factor")) {
+                skewFactor = Double.valueOf(value);
+            }
+            // Whether or not to scramble the zipfian distribution
+            else if (key.equalsIgnoreCase(pre+"scrambled")) {
+                scrambled = Boolean.valueOf(value);
+            }
+            // Whether or not to mirror the zipfian distribution
+            else if (key.equalsIgnoreCase(pre+"mirrored")) {
+                mirrored = Boolean.valueOf(value);
+            }
+            // Number of hot spots
+            else if (key.equalsIgnoreCase(pre+"num_hot_spots")) {
+                numHotSpots = Integer.valueOf(value);
+            }
+            // Percent of access going to the hot spots
+            else if (key.equalsIgnoreCase(pre+"percent_accesses_to_hot_spots")) {
+                percentAccessHotSpots = Double.valueOf(value);
+            }
+        // Whether to make the location of the hot spots random
+            else if (key.equalsIgnoreCase(pre+"random_hot_spots")) {
+                randomHotSpots = Boolean.valueOf(value);
+            }
+            // Whether to make this a random generator 
+            else if (key.equalsIgnoreCase(pre+"is_random")) {
+                isRandom = Boolean.valueOf(value);
+            }
+        } // FOR
+        // initialize distribution generators 
+        // We must know where to start inserting
+        if(requestDistribution.equals(AffinityConstants.ZIPFIAN_DISTRIBUTION)){
+            if(debug.val) LOG.debug(pre+" Using a default zipfian key distribution");
+            //ints are used for keyGens and longs are used for record counts.            
+            //TODO check on other zipf params
+            AffinityGenerator gen = new AffinityGenerator(num_keys, skewFactor);
+            gen.setMirrored(mirrored);
+            gen.setRandomHotSpots(randomHotSpots);
+            gen.setNumHotSpots(numHotSpots);
+            gen.setPercentAccessHotSpots(percentAccessHotSpots);
+            gen.setScrambled(scrambled);
+            gen.setIsRandom(isRandom);
+            keyGenerator = gen;
+        }
+        else{
+            String msg = "Unsupported affinity key " + pre +" distribution type :" + requestDistribution;
+            LOG.error(msg);
+            throw new RuntimeException(msg);
+        }
+        
+        
+        return keyGenerator;
+    }
 
 
 
     @Override
     public String toString() {
-        return "AffinityConfig [SUPPLIES_PROBABILITY=" + SUPPLIES_PROBABILITY + ", USES_PROBABILITY=" + USES_PROBABILITY + ", FREQ_READ_SUPPLIER=" + FREQ_READ_SUPPLIER + ", FREQ_READ_PRODUCT="
+        return "AffinityConfig [max_parts_per_supplier=" + max_parts_per_supplier + ", max_parts_per_product=" + max_parts_per_product + ", FREQ_READ_SUPPLIER=" + FREQ_READ_SUPPLIER + ", FREQ_READ_PRODUCT="
                 + FREQ_READ_PRODUCT + ", FREQ_READ_PART=" + FREQ_READ_PART + ", FREQ_READ_PARTS_BY_SUPPLIER=" + FREQ_READ_PARTS_BY_SUPPLIER + ", FREQ_READ_PARTS_BY_PRODUCT="
                 + FREQ_READ_PARTS_BY_PRODUCT + ", num_suppliers=" + num_suppliers + ", num_products=" + num_products + ", num_parts=" + num_parts + ", rand_gen=" + rand_gen + ", supplier_gen="
                 + supplier_gen + ", product_gen=" + product_gen + ", part_gen=" + part_gen + ", loadthreads=" + loadthreads + ", useFixedSize=" + useFixedSize + "]";

@@ -2,6 +2,7 @@ package edu.mit.benchmark.affinity;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
@@ -204,24 +205,34 @@ public class AffinityLoader extends Loader {
         Object row[] = new Object[table.getColumnCount()];
 
         for (int i = start; i < stop && i < config.num_suppliers; i++) {
-            for(int j = 0; j < config.num_parts; j++) {
-            	if(config.rand_gen.nextDouble() < AffinityConstants.SUPPLIES_PROBABILITY) {
-            		row[0] = j;
-            		row[1] = i;
+        	HashSet<Integer> parts = new HashSet<Integer>();
+        	double shift = 0;
+        	if(config.supplierToPartsRandomOffset) {
+        		shift = config.rand_gen.nextDouble();
+        	}
+        	else {
+        		shift = (((double) i)/config.num_suppliers + config.supplierToPartsOffset) % 1.0;
+        	}
+        	config.supplies_gen.resetLastItem();
+        	for(int j = 0; j < config.max_parts_per_supplier; j++) { 
+        		parts.add(config.supplies_gen.nextInt(shift));
+        	}
+        	for(Integer part : parts) {
+        		row[0] = part;
+        		row[1] = i;
 
-            		table.addRow(row);
+        		table.addRow(row);
 
-            		// insert this batch of tuples
-            		if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
-            			loadVoltTable(AffinityConstants.TABLENAME_SUPPLIES, table);
-            			total.addAndGet(table.getRowCount());
-            			table.clearRowData();
-            			if (debug.val)
-            				LOG.debug(String.format("[%d] %s records Loaded: %6d",
-            						thread_id, AffinityConstants.TABLENAME_SUPPLIES, total.get()));
-            		}
-            	}
-            } // FOR
+        		// insert this batch of tuples
+        		if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
+        			loadVoltTable(AffinityConstants.TABLENAME_SUPPLIES, table);
+        			total.addAndGet(table.getRowCount());
+        			table.clearRowData();
+        			if (debug.val)
+        				LOG.debug(String.format("[%d] %s records Loaded: %6d",
+        						thread_id, AffinityConstants.TABLENAME_SUPPLIES, total.get()));
+        		}
+        	} // FOR
         } // FOR
 
         // load remaining records
@@ -244,24 +255,34 @@ public class AffinityLoader extends Loader {
         Object row[] = new Object[table.getColumnCount()];
 
         for (int i = start; i < stop && i < config.num_products; i++) {
-            for(int j = 0; j < config.num_parts; j++) {
-            	if(config.rand_gen.nextDouble() < AffinityConstants.USES_PROBABILITY) {
-            		row[0] = j;
-            		row[1] = i;
+        	HashSet<Integer> parts = new HashSet<Integer>();
+        	double shift = 0;
+        	if(config.productToPartsRandomOffset) {
+        		shift = config.rand_gen.nextDouble();
+        	}
+        	else {
+        		shift = (((double) i)/config.num_products + config.productToPartsOffset) % 1.0;
+        	}
+        	config.uses_gen.resetLastItem();
+        	for(int j = 0; j < config.max_parts_per_product; j++) { 
+        		parts.add(config.uses_gen.nextInt(shift));
+        	}
+        	for(Integer part : parts) {
+        		row[0] = part;
+        		row[1] = i;
 
-            		table.addRow(row);
+        		table.addRow(row);
 
-            		// insert this batch of tuples
-            		if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
-            			loadVoltTable(AffinityConstants.TABLENAME_USES, table);
-            			total.addAndGet(table.getRowCount());
-            			table.clearRowData();
-            			if (debug.val)
-            				LOG.debug(String.format("[%d] %s records Loaded: %6d",
-            						thread_id, AffinityConstants.TABLENAME_USES, total.get()));
-            		}
-            	}
-            } // FOR
+        		// insert this batch of tuples
+        		if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
+        			loadVoltTable(AffinityConstants.TABLENAME_USES, table);
+        			total.addAndGet(table.getRowCount());
+        			table.clearRowData();
+        			if (debug.val)
+        				LOG.debug(String.format("[%d] %s records Loaded: %6d",
+        						thread_id, AffinityConstants.TABLENAME_USES, total.get()));
+        		}
+        	} // FOR
         } // FOR
 
         // load remaining records
