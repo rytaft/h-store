@@ -27,11 +27,9 @@ public class GraphPartitioner {
     public static int MAX_PARTITIONS = -1;
 
     private AffinityGraph m_graph;
-    private PlanHandler m_plan_handler;
     
     public GraphPartitioner (AffinityGraph graph, File planFile, CatalogContext catalogContext){
         m_graph = graph;
-        m_plan_handler = new PlanHandler(planFile, catalogContext);
     }
     
     /**
@@ -281,8 +279,10 @@ public class GraphPartitioner {
     
     private void moveVerticesPlan(Set<String> movingVertices, Integer fromPartition, Integer toPartition){
         for (String vertex : movingVertices){
-            m_plan_handler.removeTupleId(fromPartition, Long.parseLong(vertex));
-            m_plan_handler.addRange(toPartition, Long.parseLong(vertex), Long.parseLong(vertex));
+            // format of vertices is <TABLE>,<PART-KEY>,<VALUE>
+            String [] fields = vertex.split(",");
+            m_graph.m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(vertex));
+            m_graph.m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(vertex), Long.parseLong(vertex));
         }
     }
 
@@ -569,6 +569,6 @@ public class GraphPartitioner {
     }
     
     public void writePlan(String oldPlanFile, String newPlanFile){
-        m_plan_handler.toJSON(oldPlanFile, newPlanFile);
+        m_graph.m_plan_handler.toJSON(oldPlanFile, newPlanFile);
     }
 }
