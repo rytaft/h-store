@@ -52,7 +52,7 @@ public class AffinityGraph {
             System.out.println("Could not create plan handler " + Controller.stackTraceToString(e));
             return false;
         }
-
+        
         // read monitoring intervals for all sites - in seconds
         long[] intervalsInSecs = new long[intervalFiles.length];
         int currInterval = 0;

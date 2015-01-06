@@ -64,7 +64,7 @@ public class Plan {
 	}
 
 	public Plan (String filename){
-		fromJSON(filename);
+        loadFromJSON(filename);
 	}
 
 	public Plan() {
@@ -275,6 +275,8 @@ public class Plan {
 
 			output = output + rangeStr;
 		}
+		
+		System.out.println("Range is " + output);
 
 		return output;
 
@@ -495,50 +497,47 @@ public class Plan {
 
 	}
 
-	private void fromJSON(String filename)  {
-		partitionToRanges.clear();
-		readInFile(filename);
-	}
-
-	public void toJSON (String filename)  {
-		JSONObject srcData = new JSONObject(), lastPlan, newPlan;
-		String oldPlan = new String();
-		System.out.println("Planner writing to " + filename);
+	public void toJSON (String oldPlanFile, String newPlanFile)  {
+		JSONObject srcData = new JSONObject(), oldPlanJSON, newPlan;
+		String oldPlanStr = new String();
+		System.out.println("Planner writing to " + newPlanFile);
 		try {
-			oldPlan = FileUtil.readFile(filename);
+			oldPlanStr = FileUtil.readFile(oldPlanFile);
 		} catch(Exception e) {
-			System.out.println("Failed to read in " + filename);
+			System.out.println("Failed to read in " + oldPlanFile);
 		}
 
 		// begin JSON block
+        JSONObject dstData = new JSONObject();
 		try {
-			if(oldPlan.length() > 0) {
-				srcData = new JSONObject(oldPlan);					
+			if(oldPlanStr.length() > 0) {
+				srcData = new JSONObject(oldPlanStr);					
 			}
 
 			newPlan = constructNewJSON();
+			
+			// verification 
 			if(srcData.has(PLANNED_PARTITIONS)) {
-				lastPlan = srcData.getJSONObject(PLANNED_PARTITIONS);
-				System.out.println("Comparing " + lastPlan.toString() + " to " + newPlan.toString());
-				if(!lastPlan.toString().equals(newPlan.toString())) {
+				oldPlanJSON = srcData.getJSONObject(PLANNED_PARTITIONS);
+				System.out.println("Comparing " + oldPlanJSON.toString() + " to " + newPlan.toString());
+				if(!oldPlanJSON.toString().equals(newPlan.toString())) {
 					System.out.println("Not a duplicate!");
 				}
 			}
 
-			srcData = new JSONObject();
-			srcData.put(PLANNED_PARTITIONS, newPlan);	
+			dstData.put(PLANNED_PARTITIONS, newPlan);	
 
 		} catch(JSONException f) {
 			System.out.println("Init of JSONObject in toJSON failed!");
 		}
 
 		try {
-			BufferedWriter output = new BufferedWriter(new FileWriter(filename));    	 
-			output.write(srcData.toString(2));
+			BufferedWriter output = new BufferedWriter(new FileWriter(newPlanFile));    	 
+			output.write(dstData.toString(2));
 			output.close();
 		}
 		catch (Exception e) {
-			System.out.println("Failed to write partitioning plan to " + filename);
+			System.out.println("Failed to write partitioning plan to " + newPlanFile);
 			return;
 		}
 	}
@@ -556,11 +555,12 @@ public class Plan {
 			partitionDelimiter.put("partitions", tableObject);
 		}
 
-		for(Integer partition : partitionToRanges.keySet()) {
+        for(Integer partition : partitionToRanges.keySet()) {
+            System.out.println("Entering partition " + partition);
 			tableObject.put(partition.toString(), printPartition(partition));
 		}
 
-		return jsonPlan;
+        return jsonPlan;
 
 	}
 
@@ -585,7 +585,8 @@ public class Plan {
 	}
 
 	// read in the last plan
-	public void readInFile(String filename) {
+	private void loadFromJSON(String filename) {
+        partitionToRanges.clear();
 		JSONObject srcData;
 		String inputData = FileUtil.readFile(filename);
 
