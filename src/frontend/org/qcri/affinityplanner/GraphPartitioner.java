@@ -208,10 +208,7 @@ public class GraphPartitioner {
                                 numMovedVertices += movedVertices;                            
                                 moved = true;
                                 // update the plan
-                                for (String vertex : movingVertices){
-                                    m_plan_handler.removeTupleId(overloadedPartition, Long.parseLong(vertex));
-                                    m_plan_handler.addRange(toPartition, Long.parseLong(vertex), Long.parseLong(vertex));
-                                }
+                                moveVerticesPlan(movingVertices, overloadedPartition, toPartition);
                                 break;
                             }
                         }
@@ -226,10 +223,7 @@ public class GraphPartitioner {
                                 if(movedVertices > 0){
                                     numMovedVertices += movedVertices;    
                                     // update the plan
-                                    for (String vertex : movingVertices){
-                                        m_plan_handler.removeTupleId(overloadedPartition, Long.parseLong(vertex));
-                                        m_plan_handler.addRange(toPartition, Long.parseLong(vertex), Long.parseLong(vertex));
-                                    }
+                                    moveVerticesPlan(movingVertices, overloadedPartition, toPartition);
                                     break;
                                 }
                             }
@@ -285,10 +279,10 @@ public class GraphPartitioner {
         return true;
     }
     
-    public void moveVerticesPlan(Set<String> movingVertices, Integer fromPartition, Integer toPartition, PlanHandler planHandler){
+    private void moveVerticesPlan(Set<String> movingVertices, Integer fromPartition, Integer toPartition){
         for (String vertex : movingVertices){
-            planHandler.removeTupleId(fromPartition, Long.parseLong(vertex));
-            planHandler.addRange(toPartition, Long.parseLong(vertex), Long.parseLong(vertex));
+            m_plan_handler.removeTupleId(fromPartition, Long.parseLong(vertex));
+            m_plan_handler.addRange(toPartition, Long.parseLong(vertex), Long.parseLong(vertex));
         }
     }
 
@@ -574,7 +568,7 @@ public class GraphPartitioner {
         return delta;
     }
     
-    public void writePlan(String file){
-        m_plan_handler.toJSON(file);
+    public void writePlan(String oldPlanFile, String newPlanFile){
+        m_plan_handler.toJSON(oldPlanFile, newPlanFile);
     }
 }

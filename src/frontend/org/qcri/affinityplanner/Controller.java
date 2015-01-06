@@ -183,7 +183,7 @@ public class Controller {
             
             GraphPartitioner partitioner = new GraphPartitioner(graph, planFile, m_catalog_context);
             partitioner.repartition();
-            partitioner.writePlan(PLAN_OUT);
+            partitioner.writePlan(PLAN_IN, PLAN_OUT);
  
             String outputPlan = FileUtil.readFile(PLAN_OUT);
             System.out.println("Output plan\n" + outputPlan);
