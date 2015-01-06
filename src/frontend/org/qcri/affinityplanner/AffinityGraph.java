@@ -34,6 +34,7 @@ public class AffinityGraph {
     // partition -> vertex and vertex -> partition mappings
     protected List<Set<String>> m_partitionVertices = new ArrayList<Set<String>> ();
     protected Map<String,Integer> m_vertexPartition = new HashMap<String,Integer> ();
+    protected PlanHandler m_plan_handler = null;
     
     // a folded graph has special edges for remote sites
     private boolean folded = false;
@@ -44,12 +45,10 @@ public class AffinityGraph {
             m_partitionVertices.add(new HashSet<String>());
         }
         
-        PlanHandler planHandler;
         try {
-            planHandler = new PlanHandler(planFile, catalogContext);
+            m_plan_handler = new PlanHandler(planFile, catalogContext);
         } catch (Exception e) {
             LOG.warn("Could not create plan handler " + Controller.stackTraceToString(e));
-            System.out.println("Could not create plan handler " + Controller.stackTraceToString(e));
             return false;
         }
         
@@ -65,7 +64,6 @@ public class AffinityGraph {
                 currInterval++;
             } catch (IOException e) {
                 LOG.warn("Error while reading file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                System.out.println("Error while reading file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
                 return false;
             }
         }
@@ -80,7 +78,6 @@ public class AffinityGraph {
                 reader = Files.newBufferedReader(logFile, Charset.forName("US-ASCII"));
             } catch (IOException e) {
                 LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                System.out.println("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
                 return false;
             }
             String line;
@@ -91,7 +88,6 @@ public class AffinityGraph {
                 line = reader.readLine();
             } catch (IOException e) {
                 LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                System.out.println("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
                 return false;
             }
             if (line == null){
@@ -121,7 +117,7 @@ public class AffinityGraph {
                             // store site mappings for FROM vertex
                             int partition = 0;
                             try {
-                                partition = planHandler.getPartition(from);
+                                partition = m_plan_handler.getPartition(from);
                             } catch (Exception e) {
                                 LOG.warn("Could not get partition from plan handler " + Controller.stackTraceToString(e));
                                 System.out.println("Could not get partition from plan handler " + Controller.stackTraceToString(e));
