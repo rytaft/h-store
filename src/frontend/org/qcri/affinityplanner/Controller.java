@@ -38,7 +38,7 @@ public class Controller {
 //    private Path planFile;
 //    private Path outputPlanFile;
     
-    public static int PARTITIONS;
+    public static int MAX_PARTITIONS;
     public static int PARTITIONS_PER_SITE;
 
     public static int MONITORING_TIME = 20000;
@@ -55,14 +55,14 @@ public class Controller {
         m_catalog_context = catalog_context;
         
         TreeSet<Integer> partitionIds = new TreeSet<Integer>();
-        PARTITIONS = -1;
+        MAX_PARTITIONS = -1;
         PARTITIONS_PER_SITE = -1;
         for(Site site: m_sites){
             for (Partition part: site.getPartitions()){
                 int id = part.getId();
                 partitionIds.add(id);
-                if (id > PARTITIONS){
-                    PARTITIONS = id;
+                if (id > MAX_PARTITIONS){
+                    MAX_PARTITIONS = id;
                 }
             }
             // verify that all sites have the same number of partitions
@@ -74,9 +74,7 @@ public class Controller {
                 System.exit(1);
             }
         }
-        PARTITIONS++;
-        GraphPartitioner.MAX_PARTITIONS = PARTITIONS;
-        GraphPartitioner.PART_PER_SITE = PARTITIONS_PER_SITE;
+        MAX_PARTITIONS++;
         
         // verify that all partition ids are contiguous
         Iterator<Integer> partIdsIt = partitionIds.iterator();
@@ -155,7 +153,7 @@ public class Controller {
             hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
             for(Site site: m_sites){
                 String ip = site.getHost().getIpaddr();
-                for (int i = 0; i < PARTITIONS; i++){
+                for (int i = 0; i < MAX_PARTITIONS; i++){
                     String command = "scp " + ip + ":" + hStoreDir + "/transactions-partition-" + i + ".log .";
     //                System.out.println("Executing command:\n" + command);
                     @SuppressWarnings("unused")
@@ -169,15 +167,15 @@ public class Controller {
             }
     
             File planFile = new File (PLAN_IN);
-            Path[] logFiles = new Path[PARTITIONS];
-            Path[] intervalFiles = new Path[PARTITIONS];
-            for (int i = 0; i < PARTITIONS; i++){
+            Path[] logFiles = new Path[MAX_PARTITIONS];
+            Path[] intervalFiles = new Path[MAX_PARTITIONS];
+            for (int i = 0; i < MAX_PARTITIONS; i++){
                 logFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + ".log");
                 intervalFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + "-interval.log");
             }
     
             AffinityGraph graph = new AffinityGraph();
-            graph.loadFromFiles(m_catalog_context, planFile, logFiles, intervalFiles, PARTITIONS);
+            graph.loadFromFiles(m_catalog_context, planFile, logFiles, intervalFiles, MAX_PARTITIONS);
             Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
             graph.toFileDebug(graphFile);
             
