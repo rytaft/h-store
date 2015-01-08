@@ -282,12 +282,6 @@ public class AffinityGraph {
         return m_partitionVertices.size();
     }
         
-    public void addPartitions(int noOfPartitions){
-        for (int i = 0; i < noOfPartitions; i++){
-            m_partitionVertices.add(new HashSet<String>());
-        }
-    }
-
 //    public List<Set<String>> getPartitionVertices() {
 //        return m_siteVertices;
 //    }
