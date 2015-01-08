@@ -68,10 +68,6 @@ public class Plan {
         loadFromJSON(filename);
 	}
 
-	public Plan() {
-		// TODO Only for testing
-	}
-
 	public void addPartition(String table, Integer partitionId) {
 	    HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
 	    if (partitionToRanges == null){
@@ -616,38 +612,34 @@ public class Plan {
 
 	}
 
-	public void toJSON (String oldPlanFile, String newPlanFile)  {
-		JSONObject srcData = new JSONObject(), oldPlanJSON, newPlan;
-		String oldPlanStr = new String();
+	public void toJSON (String newPlanFile)  {
+        JSONObject dstData = new JSONObject();
 		System.out.println("Planner writing to " + newPlanFile);
-		try {
-			oldPlanStr = FileUtil.readFile(oldPlanFile);
-		} catch(Exception e) {
-			System.out.println("Failed to read in " + oldPlanFile);
-		}
 
 		// begin JSON block
-        JSONObject dstData = new JSONObject();
 		try {
-			if(oldPlanStr.length() > 0) {
-				srcData = new JSONObject(oldPlanStr);					
-			}
+	        JSONObject jsonPlan = new JSONObject();
+	        JSONObject tableNameObject = new JSONObject();
 
-			newPlan = constructNewJSON();
-			
-			// verification 
-			if(srcData.has(PLANNED_PARTITIONS)) {
-				oldPlanJSON = srcData.getJSONObject(PLANNED_PARTITIONS);
-				System.out.println("Comparing " + oldPlanJSON.toString() + " to " + newPlan.toString());
-				if(!oldPlanJSON.toString().equals(newPlan.toString())) {
-					System.out.println("Not a duplicate!");
-				}
-			}
+	        jsonPlan.put("tables", tableNameObject);
+	        for(String table_name : table_names) {
+	            JSONObject tableObject = new JSONObject();
+	            JSONObject partitionDelimiter = new JSONObject();
 
-			dstData.put(PLANNED_PARTITIONS, newPlan);	
+	            tableNameObject.put(table_name, partitionDelimiter);
+	            partitionDelimiter.put("partitions", tableObject);
+
+	            Map<Integer, TreeMap<Long,Long>> partitionToRanges = tableToPartitionsToRanges.get(table_name); 
+	            for(Integer partition : partitionToRanges.keySet()) {
+	                tableObject.put(partition.toString(), printPartition(table_name, partition));
+	            }
+
+	        }
+	        dstData.put(PLANNED_PARTITIONS, jsonPlan);   
 
 		} catch(JSONException f) {
-			System.out.println("Init of JSONObject in toJSON failed!");
+			System.out.println("Convertion of the plan into a JSONObject failed!");
+			return;
 		}
 
 		try {
@@ -659,30 +651,6 @@ public class Plan {
 			System.out.println("Failed to write partitioning plan to " + newPlanFile);
 			return;
 		}
-	}
-
-	// build a JSON object using the current contents of this Plan object
-	private JSONObject constructNewJSON()  throws JSONException {
-		JSONObject jsonPlan = new JSONObject();
-		JSONObject tableNameObject = new JSONObject();
-
-		jsonPlan.put("tables", tableNameObject);
-		for(String table_name : table_names) {
-	        JSONObject tableObject = new JSONObject();
-	        JSONObject partitionDelimiter = new JSONObject();
-
-	        tableNameObject.put(table_name, partitionDelimiter);
-			partitionDelimiter.put("partitions", tableObject);
-
-			Map<Integer, TreeMap<Long,Long>> partitionToRanges = tableToPartitionsToRanges.get(table_name); 
-			for(Integer partition : partitionToRanges.keySet()) {
-	            tableObject.put(partition.toString(), printPartition(table_name, partition));
-	        }
-
-		}
-
-        return jsonPlan;
-
 	}
 
 	private JSONObject traverseLevel(JSONObject srcData, String key) {

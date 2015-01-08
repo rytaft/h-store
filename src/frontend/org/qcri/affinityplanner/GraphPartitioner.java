@@ -1,54 +1,63 @@
 package org.qcri.affinityplanner;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 
 public class GraphPartitioner {
-    
+
+    private static final Logger LOG = Logger.getLogger(GraphPartitioner.class);
+
     public static int MIN_LOAD_PER_PART = Integer.MIN_VALUE;
     public static int MAX_LOAD_PER_PART = Integer.MAX_VALUE;
     public static double LMPT_COST = 1.1;
     public static double DTXN_COST = 5.0;
-    public static int MAX_MOVED_TUPLES_PER_PART = Integer.MAX_VALUE;
+    public static int MAX_MOVED_TUPLES_PER_PART = 100;
     public static int MIN_GAIN_MOVE = 0;
-    public static int MAX_PARTITIONS_ADDED = Integer.MAX_VALUE;
+    public static int MAX_PARTITIONS_ADDED = 6;
 
     public static int PART_PER_SITE = -1;
     public static int MAX_PARTITIONS = -1;
 
     private AffinityGraph m_graph;
-    
+
     public GraphPartitioner (AffinityGraph graph, File planFile, CatalogContext catalogContext){
         m_graph = graph;
     }
-    
+
     /**
-     * Partitions the graph
+     * Repartitions the graph by using several heuristics
      * 
      * @return true if could find feasible partitioning, false otherwise
-     */
-    
+     */   
     public boolean repartition () {
         if (PART_PER_SITE == -1 || MAX_PARTITIONS == -1){
             System.out.println("GraphPartitioner: Must initialize PART_PER_SITE and MAX_PARTITIONS");
             return false;
         }
-        
-        System.out.println("Calculating site loads");
-        
+
+        System.out.println("Loads per partition before reconfiguration");
+
         /*
-         *  SCALE OUT
+         * MOVE BORDER TUPLES
          */
+
+        offloadBorderTuples();
 
         // detect overloaded and active partitions
         Set<Integer> activePartitions = new HashSet<Integer>();
@@ -63,227 +72,344 @@ public class GraphPartitioner {
             }
         }
 
-        int addedPartitions = 0;
         if (! overloadedPartitions.isEmpty()){
-            // offload each overloaded partition
-            for(Integer overloadedPartition : overloadedPartitions){
-                
-                // DEBUG
-                System.out.println("SCALING OUT");
-                System.out.println("#######################");
-                System.out.println("offloading site " + overloadedPartition);
-    
-                // get hottest vertices. the actual length of the array is min(Controller.MAX_MOVED_VERTICES, #tuples held site);
-                List<String> hotVerticesNotMoved = getHottestVertices(overloadedPartition, MAX_MOVED_TUPLES_PER_PART);
-                final int actualMaxMovedVertices = hotVerticesNotMoved.size();
-    
-                // DEBUG
-    //            System.out.println("hot vertices:");
-    //            for (String hotVertex : hotVerticesNotMoved){
-    //                System.out.println(hotVertex);
-    //            }
-    
-                int currHotVertex = 0;
+
+            /*
+             *  SCALE OUT
+             */
+
+            return offloadHottestTuples(overloadedPartitions, activePartitions);
+        }
+        else{
+            /*
+             *  SCALE IN
+             */
+
+            scaleIn(overloadedPartitions, activePartitions);
+        }
+        return true;
+    }
+
+    private void offloadBorderTuples(){
+
+        System.out.println("Moving border vertices");
+
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+
+        for (int from_part = 0; from_part < MAX_PARTITIONS; from_part++){
+            
+            List<List<String>> allBorderVertices = getBorderVertices(from_part, MAX_MOVED_TUPLES_PER_PART);
+
+            // vertices that will have to be removed from other lists
+            Set<String> movedVerticesSet = new HashSet<String>();
+
+            for (int to_part = 0; to_part < MAX_PARTITIONS; to_part++){
+
+                System.out.println("Moving FROM partition " + from_part + " TO partition " + to_part);
+
+                List<String> borderVertices = allBorderVertices.get(to_part);
+                final int actualMaxMovedVertices = borderVertices.size();
+
                 int numMovedVertices = 0;
                 Set<String> movingVertices = new HashSet<String>();
-                boolean movingVerticesExpandable = true;
-               
-                while(getLoadPerPartition(overloadedPartition) > MAX_LOAD_PER_PART){
+                int nextPosToMove = 0;
+                int lastHotVertexMoved = -1;
+
+                while(numMovedVertices < actualMaxMovedVertices){
+                    nextPosToMove = extendMovingVertices (movingVertices, borderVertices, nextPosToMove, from_part);
+
+                    if (nextPosToMove == -1){
+                        break;
+                    }
+
+                    int movedVertices = tryMoveVertices(movingVertices, from_part, to_part);
+                    if(movedVertices > 0){
+                        System.out.println("Moving!");
+                        numMovedVertices += movedVertices;  
+                        lastHotVertexMoved = nextPosToMove - 1;
+                        movedVerticesSet.addAll(movingVertices);
+                        movingVertices.clear();
+                    }
                     
-                    System.out.println("--------------------");
-    
-                    // Step 1) add partition if I have over-expanded movingVertices or if I cannot expand it anymore
-                    
-                    // We expand movingVertices only if all partitions reject the previous movingVertices sets.
-                    // We fill up low-order partitions first to minimize the number of servers
-                    
-                    if (numMovedVertices + movingVertices.size() >= actualMaxMovedVertices || movingVerticesExpandable == false){
-                        System.out.println("Adding a new partition");
-                        if(activePartitions.size() < MAX_PARTITIONS && addedPartitions < MAX_PARTITIONS_ADDED){
-                            currHotVertex = 0;
-                            movingVertices.clear();
-                            movingVerticesExpandable = true;
-                            m_graph.addPartitions(1);
-                            addedPartitions++;
-                            for(int i = 0; i < MAX_PARTITIONS; i++){
-                                if(!activePartitions.contains(i)){
-                                    activePartitions.add(i);
-                                }
+                    //DEBUG
+                    try {
+                        br.readLine();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                }
+
+            } // END for (int other_part = 0; other_part < MAX_PARTITIONS; other_part++)
+        } // END for (int part = 0; part < MAX_PARTITIONS; part++)
+
+        // 1) get list of tuples that have the highest external pull to a single other partition
+        // 2) expand the tuple with the most affine tuples such that adding these tuples reduces the cost after movement
+        // 3) assess if we can move the tuple
+    }
+
+    private boolean offloadHottestTuples(Set<Integer> overloadedPartitions, Set<Integer> activePartitions){
+        int addedPartitions = 0;
+        // offload each overloaded partition
+        System.out.println("SCALING OUT");
+        System.out.println("#######################");
+
+        for(Integer overloadedPartition : overloadedPartitions){
+
+            // DEBUG
+            System.out.println("offloading site " + overloadedPartition);
+
+            // get hottest vertices. the actual length of the array is min(Controller.MAX_MOVED_VERTICES, #tuples held site);
+            List<String> hotVerticesList = getHottestVertices(overloadedPartition, MAX_MOVED_TUPLES_PER_PART);
+            final int actualMaxMovedVertices = hotVerticesList.size();
+
+            // DEBUG
+            //            System.out.println("hot vertices:");
+            //            for (String hotVertex : hotVerticesNotMoved){
+            //                System.out.println(hotVertex);
+            //            }
+
+            int numMovedVertices = 0;
+            Set<String> movingVertices = new HashSet<String>();
+            boolean canExpandMovingVertices = true;
+            int nextPosToMove = 0;
+            int lastHotVertexMoved = -1;
+
+            // DEBUG
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            int count_iter = 0;
+
+            while(getLoadPerPartition(overloadedPartition) > MAX_LOAD_PER_PART){
+
+                // DEBUG
+                //                System.out.println("Press ENTER to continue");
+                //                try {
+                //                    br.readLine();
+                //                } catch (IOException e) {
+                //                    // TODO Auto-generated catch block
+                //                    e.printStackTrace();
+                //                }
+                System.out.println("Iteration " + (count_iter++));
+
+                // Step 1) add partition if I have over-expanded movingVertices or if I cannot expand it anymore
+
+                // We expand movingVertices only if all partitions reject the previous movingVertices sets.
+                // We fill up low-order partitions first to minimize the number of servers
+
+                if (numMovedVertices + movingVertices.size() > actualMaxMovedVertices || canExpandMovingVertices == false){
+                    System.out.println("Adding a new partition");
+
+                    if(activePartitions.size() < MAX_PARTITIONS && addedPartitions < MAX_PARTITIONS_ADDED){
+
+                        m_graph.addPartitions(1);
+                        addedPartitions++;
+                        for(int i = 0; i < MAX_PARTITIONS; i++){
+                            if(!activePartitions.contains(i)){
+                                activePartitions.add(i);
                             }
                         }
-                        else{
-                            System.out.println("Partition " + overloadedPartitions + " cannot be offloaded.");
-                            return false;
-                        }
+
+                        nextPosToMove = lastHotVertexMoved + 1;
+                        movingVertices.clear();
+                        canExpandMovingVertices = true;
+
                     }
-                    System.out.println("Adding a new vertex");
-                    
-                    // Step 2) add one vertex to movingVertices
-                    if (movingVertices.isEmpty()){
-                        // if empty, add a new hot vertex
-                        assert (currHotVertex < hotVerticesNotMoved.size()); // If all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here 
-                        String nextHotVertex = null;
-                        do{
-                            nextHotVertex = hotVerticesNotMoved.get(currHotVertex);
-                            currHotVertex++;
-                        } while (m_graph.m_vertexPartition.get(nextHotVertex) != overloadedPartition);
-                        assert (nextHotVertex != null); // If all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
-                        System.out.println("Adding hot vertex " + nextHotVertex);
-                        movingVertices.add(nextHotVertex);
-                    } // END if(movedVertices.isEmpty())
-                    
                     else{
-                        
-                        // extend current moved set
-                        
-                        // assess gain with extension
-                        double deltaEdgeExtension;                        
-                        String nextEdgeExtension = getMostAffineExtension(movingVertices);
-                        if(nextEdgeExtension != null){
-                            movingVertices.add(nextEdgeExtension);
-                            deltaEdgeExtension = getDeltaGiveVertices(movingVertices, -1);
-                            movingVertices.remove(nextEdgeExtension);
-                        }
-                        else{
-                            // no available edge extension
-                            deltaEdgeExtension = Double.MIN_VALUE;
-                        }
-                        
-                        // assess gain with next hot tuple. may need to skip a few hot tuples that are already included in hottestVerticesToMove. 
-                        double deltaHotTuple;
-                        String nextHotVertex = null;
-                        int skip = 0;
-                        do{
-                            nextHotVertex = hotVerticesNotMoved.get(currHotVertex + skip);
-                            skip ++;
-                        } while (movingVertices.contains(nextHotVertex) && currHotVertex + skip < hotVerticesNotMoved.size()); // I could also check (currHotVertex + jump < hottestVerticesToMove.size()) but if all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
-                        if (! movingVertices.contains(nextHotVertex)){
-                            assert(nextHotVertex != null);
-                            movingVertices.add(nextHotVertex);
-                            deltaHotTuple = getDeltaGiveVertices(movingVertices, -1);
-                            movingVertices.remove(nextHotVertex);
-                        }
-                        else{
-                            // no available hot vertex
-                            deltaHotTuple = Double.MIN_VALUE;
-                        }
-                        
-                        // pick best available choice
-                        if(deltaEdgeExtension == Double.MIN_VALUE && deltaHotTuple == Double.MIN_VALUE){
-                            // no choice available
-                            movingVerticesExpandable = false;
-                        }
-                        else{
-                            if (deltaEdgeExtension < deltaHotTuple){
-                                movingVertices.add(nextEdgeExtension);
-                                System.out.println("Adding edge extension " + nextEdgeExtension);
-                            }
-                            else{
-                                movingVertices.add(nextHotVertex);
-                                System.out.println("Adding hot vertex " + nextHotVertex);
-                                currHotVertex += skip;
-                            }
-                        }
-                    
-                    } // END if(!movedVertices.isEmpty())
-    
-                    // DEBUG
-                    System.out.println("Moving vertices: ");
-                    for (String vertex : movingVertices){
-                        System.out.println(vertex);
+                        System.out.println("Partition " + overloadedPartitions + " cannot be offloaded.");
+                        return false;
                     }
-    
-                    // Step 3) search site to offload (might not find it)
-                    
-                    // first try to offload to local partitions
-                    boolean moved = false;
-                    Collection<Integer> localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(overloadedPartition));
-                    for(Integer toPartition : localPartitions){
-                        if(!overloadedPartitions.contains(toPartition)){
+                }
+                //                System.out.println("Adding a new vertex");
+
+
+                // Step 2) add one vertex to movingVertices - either expand to vertex with highest affinity or with the next hot tuple
+                nextPosToMove = extendMovingVertices (movingVertices, hotVerticesList, nextPosToMove, overloadedPartition);
+
+                if (nextPosToMove == -1){
+                    canExpandMovingVertices = false;
+                    continue;
+                }
+
+                // Step 3) search site to offload (might not find it)
+
+                // first try to offload to local partitions
+                boolean moved = false;
+                Collection<Integer> localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(overloadedPartition));
+
+                for(Integer toPartition : localPartitions){
+
+                    //                        System.out.println("Trying with partition " + toPartition);
+                    int movedVertices = tryMoveVertices(movingVertices, overloadedPartition, toPartition);
+
+                    if(movedVertices > 0){
+                        numMovedVertices += movedVertices;  
+                        lastHotVertexMoved = nextPosToMove - 1;
+                        movingVertices.clear();
+                        moved = true;
+                        break;
+                    }
+                }
+
+                // then try to offload to remote partitions
+                if (!moved){
+
+                    for(Integer toPartition : activePartitions){
+
+                        if(!localPartitions.contains(toPartition)){
                             System.out.println("Trying with partition " + toPartition);
-                            int movedVertices = tryMoveVertices(movingVertices, overloadedPartition, toPartition, new Double(MAX_LOAD_PER_PART), hotVerticesNotMoved);
+                            int movedVertices = tryMoveVertices(movingVertices, overloadedPartition, toPartition);
+
                             if(movedVertices > 0){
-                                numMovedVertices += movedVertices;                            
-                                moved = true;
-                                // update the plan
-                                moveVerticesPlan(movingVertices, overloadedPartition, toPartition);
+                                numMovedVertices += movedVertices;    
+                                lastHotVertexMoved = nextPosToMove - 1;
+                                movingVertices.clear();
                                 break;
                             }
                         }
                     }
-                    
-                    // then try to offload to remote partitions
-                    if (!moved){
-                        for(Integer toPartition : activePartitions){
-                            if(!overloadedPartitions.contains(toPartition) && !localPartitions.contains(toPartition)){
-                                System.out.println("Trying with partition " + toPartition);
-                                int movedVertices = tryMoveVertices(movingVertices, overloadedPartition, toPartition, new Double(MAX_LOAD_PER_PART), hotVerticesNotMoved);
-                                if(movedVertices > 0){
-                                    numMovedVertices += movedVertices;    
-                                    // update the plan
-                                    moveVerticesPlan(movingVertices, overloadedPartition, toPartition);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                } // END while(getLoadPerSite(overloadedPartition) <= maxLoadPerSite)
-            }// END for(Integer overloadedPartition : overloadedPartitions)
-        } // END if (!overloadedPartitions.isEmpty())
-        else{
-            /*
-             *  SCALE IN
-             *  
-             *  very simple policy: if a partition is underloaded, try to move its whole content to another partition
-             */
-            
-            System.out.println("SCALING IN");
-            
-            // detect underloaded partitions
-            TreeSet<Integer> underloadedPartitions = new TreeSet<Integer>();
-            for(Integer part : activePartitions){
-                if (getLoadPerPartition(part) < MIN_LOAD_PER_PART){
-                    underloadedPartitions.add(part);
                 }
-            }
-            
-            // offload from partitions with higher id to partitions with lower id. this helps emptying up the latest servers.
-            Iterator<Integer> descending = underloadedPartitions.descendingIterator();
-            HashSet<Integer> removedPartitions = new HashSet<Integer>();
-            while(descending.hasNext()){
-                Integer underloadedPartition = descending.next();
-                System.out.println("Offloading partition " + underloadedPartition);
-                Set<String> movingVertices = new HashSet<String>();
-                movingVertices.addAll(m_graph.m_partitionVertices.get(underloadedPartition));
-                
-                // try to offload to remote partitions
-                Collection<Integer> localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(underloadedPartition));
-                for(Integer toPartition : activePartitions){
-                    if(!overloadedPartitions.contains(toPartition) 
-                            && !localPartitions.contains(toPartition) 
-                            && !removedPartitions.contains(toPartition)){
-                        System.out.println("Trying with partition " + toPartition);
-                        int movedVertices = tryMoveVertices(movingVertices, underloadedPartition, toPartition, new Double(MAX_LOAD_PER_PART), null);
-                        if(movedVertices > 0){
-                            removedPartitions.add(underloadedPartition);
-                            break;                            
-                        }
-                    }
-                }
-                
-            }
-            activePartitions.removeAll(removedPartitions);
-        } // END if(overloadedPartitions.isEmpty())
+            } // END while(getLoadPerSite(overloadedPartition) <= maxLoadPerSite)
+        }// END for(Integer overloadedPartition : overloadedPartitions)
         return true;
     }
-    
-    private void moveVerticesPlan(Set<String> movingVertices, Integer fromPartition, Integer toPartition){
-        for (String vertex : movingVertices){
-            // format of vertices is <TABLE>,<PART-KEY>,<VALUE>
-            String [] fields = vertex.split(",");
-            m_graph.m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(vertex));
-            m_graph.m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(vertex), Long.parseLong(vertex));
+
+    private void scaleIn(Set<Integer> overloadedPartitions, Set<Integer> activePartitions){
+        /*
+         *  SCALE IN
+         *  
+         *  very simple policy: if a partition is underloaded, try to move its whole content to another partition
+         */
+
+        // detect underloaded partitions
+        TreeSet<Integer> underloadedPartitions = new TreeSet<Integer>();
+        for(Integer part : activePartitions){
+            if (getLoadPerPartition(part) < MIN_LOAD_PER_PART){
+                underloadedPartitions.add(part);
+            }
         }
+
+        if (!underloadedPartitions.isEmpty()){
+            System.out.println("SCALING IN");
+        }
+
+
+        // offload from partitions with higher id to partitions with lower id. this helps emptying up the latest servers.
+        Iterator<Integer> descending = underloadedPartitions.descendingIterator();
+        HashSet<Integer> removedPartitions = new HashSet<Integer>();
+
+        while(descending.hasNext()){
+
+            Integer underloadedPartition = descending.next();
+            System.out.println("Offloading partition " + underloadedPartition);
+            Set<String> movingVertices = new HashSet<String>();
+            movingVertices.addAll(m_graph.m_partitionVertices.get(underloadedPartition));
+
+            // try to offload to remote partitions
+            Collection<Integer> localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(underloadedPartition));
+            for(Integer toPartition : activePartitions){
+
+                if(!localPartitions.contains(toPartition) && !removedPartitions.contains(toPartition)){
+
+                    System.out.println("Trying with partition " + toPartition);
+                    int movedVertices = tryMoveVertices(movingVertices, underloadedPartition, toPartition);
+
+                    if(movedVertices > 0){
+                        removedPartitions.add(underloadedPartition);
+                        break;                            
+                    }
+                }
+            }
+        }
+        activePartitions.removeAll(removedPartitions);
+    }
+
+    /**
+     * updates the set movingVertices with one more vertex, either the most affine to the current movingVertices 
+     * or the next vertex in the verticesToMove list, depending on which one is more convenient to move out.
+     * 
+     * @param partition
+     * @param movingVertices
+     * @param verticesToMove
+     * @param nextPosToMove
+     * @return the new nextVertexToMove such that all previous elements of verticesToMove have been added already
+     */
+    private int extendMovingVertices (Set<String> movingVertices, List<String> verticesToMove, int nextPosToMove, int partition){
+
+        if (movingVertices.isEmpty()){
+            // if empty, add a new hot vertex
+            assert (nextPosToMove < verticesToMove.size()); // If all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here 
+            String nextHotVertex = null;
+            do{
+                nextHotVertex = verticesToMove.get(nextPosToMove);
+                nextPosToMove++;
+            } while (m_graph.m_vertexPartition.get(nextHotVertex) != partition);
+            assert (nextHotVertex != null); // If all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
+            //            System.out.println("Adding hot vertex " + nextHotVertex);
+            movingVertices.add(nextHotVertex);
+        } // END if(movedVertices.isEmpty())
+
+        else{
+
+            // extend current moved set
+
+            // assess gain with extension
+            double deltaEdgeExtension;                        
+            String nextEdgeExtension = getMostAffineExtension(movingVertices);
+            if(nextEdgeExtension != null){
+                movingVertices.add(nextEdgeExtension);
+                deltaEdgeExtension = getDeltaGiveVertices(movingVertices, -1);
+                movingVertices.remove(nextEdgeExtension);
+            }
+            else{
+                // no available edge extension
+                deltaEdgeExtension = Double.MIN_VALUE;
+            }
+
+            // assess gain with next hot tuple. may need to skip a few hot tuples that are already included in hottestVerticesToMove. 
+            double deltaHotTuple;
+            String nextVertexToMove = null;
+            int skip = 0;
+            do{
+                nextVertexToMove = verticesToMove.get(nextPosToMove + skip);
+                skip ++;
+            } while (movingVertices.contains(nextVertexToMove) && nextPosToMove + skip < verticesToMove.size()); // I could also check (currHotVertex + jump < hottestVerticesToMove.size()) but if all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
+            if (! movingVertices.contains(nextVertexToMove)){
+                assert(nextVertexToMove != null);
+                movingVertices.add(nextVertexToMove);
+                deltaHotTuple = getDeltaGiveVertices(movingVertices, -1);
+                movingVertices.remove(nextVertexToMove);
+            }
+            else{
+                // no available hot vertex
+                deltaHotTuple = Double.MIN_VALUE;
+            }
+
+            // pick best available choice
+            if(deltaEdgeExtension == Double.MIN_VALUE && deltaHotTuple == Double.MIN_VALUE){
+                // no choice available
+                return -1;
+            }
+            else{
+                if (deltaEdgeExtension < deltaHotTuple){
+                    movingVertices.add(nextEdgeExtension);
+                    System.out.println("Adding edge extension: " + nextEdgeExtension);
+                }
+                else{
+                    movingVertices.add(nextVertexToMove);
+                    System.out.println("Adding vertex from list: " + nextVertexToMove);
+                    nextPosToMove += skip;
+                }
+            }
+
+        } // END if(!movedVertices.isEmpty())
+
+        // DEBUG
+        System.out.println("Moving vertices: ");
+        for (String vertex : movingVertices){
+            System.out.println(vertex);
+        }       
+        return nextPosToMove;
+
     }
 
     /*
@@ -310,40 +436,44 @@ public class GraphPartitioner {
         }
         return res;
     }
-    
-    /*
+
+    /**
      * Tries to move movingVertices from overloadedPartition to toPartition. 
+     * 
      * Fails if the move does not result in a minimal gain threshold for the fromPartition OR
-     * if the toPartition becomes overloaded as an effect of the transfer.
-     * Returns the number of partitions actually moved.
+     *      if the toPartition becomes overloaded as an effect of the transfer.
+     * 
+     * If the move is allowed, it updates the graph and the plan
+     * 
+     * @param movingVertices
+     * @param fromPartition
+     * @param toPartition
+     * @return number of partitions actually moved
      */
-    private int tryMoveVertices(Set<String> movingVertices, Integer fromPartition, Integer toPartition, Double maxLoadPerPartition, List<String> hotVerticesNotMoved) {
+    private int tryMoveVertices(Set<String> movingVertices, Integer fromPartition, Integer toPartition) {
         int numMovedVertices = 0;
         double deltaFromPartition = getDeltaGiveVertices(movingVertices, toPartition);
         double deltaToPartition = getDeltaReceiveVertices(movingVertices, toPartition);
 
+        //      System.out.println("Deltas from " + deltaFromPartition + " - to " + deltaToPartition);
+
         // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
-        System.out.println("Deltas from " + deltaFromPartition + " - to " + deltaToPartition);
-        if(deltaFromPartition <= MIN_GAIN_MOVE 
-                && getLoadPerPartition(toPartition) + deltaToPartition < maxLoadPerPartition){   // if gainToSite is negative, the load of the receiving site grows
-            System.out.println("Moving to partition " + toPartition);
-            System.out.println("Weights before moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
+        if(deltaFromPartition <= MIN_GAIN_MOVE * -1
+                && getLoadPerPartition(toPartition) + deltaToPartition < MAX_LOAD_PER_PART){   // if gainToSite is negative, the load of the receiving site grows
+            //            System.out.println("Moving to partition " + toPartition);
+            //            System.out.println("Weights before moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
             m_graph.moveVertices(movingVertices, fromPartition, toPartition);
-            System.out.println("Weights after moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
-            if(hotVerticesNotMoved != null){
-                hotVerticesNotMoved.removeAll(movingVertices);
-            }
+            //            System.out.println("Weights after moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
             numMovedVertices = movingVertices.size();
-            movingVertices.clear();
         }
         return numMovedVertices;
     }
-    
+
     /*
      * computes load of a set of vertices in the current partition. this is different from the weight of a vertex because it considers
      * both direct accesses of the vertex and the cost of remote accesses
      */
-    public Double getLoadInCurrPartition(Set<String> vertices){
+    private Double getLoadInCurrPartition(Set<String> vertices){
         double load = 0;
         for(String vertex : vertices){
             // local accesses
@@ -368,12 +498,12 @@ public class GraphPartitioner {
         }
         return load;
     }
-    
+
     public Double getLoadPerPartition(int partition){
         return getLoadInCurrPartition(m_graph.m_partitionVertices.get(partition));
     }
-    
-    
+
+
     public Double getLoadPerSite(int site){
         Collection<Integer> partitions = PlanHandler.getPartitionsSite(site);
         double load = 0;
@@ -382,54 +512,218 @@ public class GraphPartitioner {
         }
         return load;
     }
-    
-    /*
-     * returns top-k vertices from site 
-     * if site has less than k vertices, return all vertices
+
+    /**
+     * Returns sorted (descending order) list of top-k vertices from site
+     * 
+     * @param partition
+     * @param k
+     * @return
      */
-    public List<String> getHottestVertices(int partition, int k){
+    private List<String> getHottestVertices(int partition, int k){
+
+        List<String> res = new ArrayList<String>(k);
+        final Map<String, Double> hotnessMap = new HashMap<String,Double>(k);
+
         k = Math.min(k, m_graph.m_partitionVertices.get(partition).size());
-        List<String> res = new LinkedList<String>();
-        double[] loads = new double[k];
-        double lowestLoad = Double.MAX_VALUE;
         int lowestPos = 0;
-        int filled = 0;
-        
+        double lowestLoad = Double.MAX_VALUE;
+
         for(String vertex : m_graph.m_partitionVertices.get(partition)){
- 
-            if (filled < k){
+
+            double vertexLoad = getLoadInCurrPartition(Collections.singleton(vertex));
+
+            if (res.size() < k){
+
                 res.add(vertex);
-                loads[filled] = getLoadInCurrPartition(Collections.singleton(vertex));
-                filled++;
-                if(filled == k){
-                    for (int i = 0; i < k; i++){
-                        if(loads[i] < lowestLoad){
-                            lowestLoad = loads[i];
-                            lowestPos = i;
-                        }
-                    }
+                hotnessMap.put(vertex, vertexLoad);
+                if (lowestLoad > vertexLoad){
+                    lowestPos = res.size() - 1;
+                    lowestLoad = vertexLoad;
                 }
             }
 
             else{
-                double vertexLoad = getLoadInCurrPartition(Collections.singleton(vertex));
                 if(vertexLoad > lowestLoad){
-                    lowestLoad = vertexLoad;
+
+                    hotnessMap.remove(res.get(lowestPos));
+
                     res.set(lowestPos, vertex);
-                    loads[lowestPos] = vertexLoad;
+                    hotnessMap.put(vertex, vertexLoad);
+
                     // find new lowest load
+                    lowestLoad = vertexLoad;
                     for (int i = 0; i < k; i++){
-                        if(loads[i] < lowestLoad){
-                            lowestLoad = loads[i];
+                        double currLoad = hotnessMap.get(res.get(i)); 
+                        if(currLoad < lowestLoad){
                             lowestPos = i;
+                            lowestLoad = currLoad; 
                         }
                     }
                 }
             }
         }
+
+        // sort determines an _ascending_ order
+        // Comparator should return "a negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater than the second"
+        // We want a _descending_ order, so we need to invert the comparator result
+        Collections.sort(res, new Comparator<String>(){
+            @Override
+            public int compare(String o1, String o2) {
+                if (hotnessMap.get(o1) < hotnessMap.get(o2)){
+                    return 1;
+                }
+                else if (hotnessMap.get(o1) > hotnessMap.get(o2)){
+                    return -1;
+                }
+                return 0;
+            }
+        });
+
         return res;
     }
+
+    /**
+     * Returns a list of lists of vertices - one list for every remote partition
+     * Each list includes up to k elements with the highest outside attraction to that partition
+     * The list is sorted by attraction in a descending order
+     * 
+     * @param this_partition
+     * @param k
+     * @return
+     */
+    private List<List<String>> getBorderVertices (int this_partition, int k){
+
+        k = Math.min(k, m_graph.m_partitionVertices.get(this_partition).size());
+
+        List<List<String>> res = new ArrayList<List<String>>(MAX_PARTITIONS);
+        for (int i = 0; i < MAX_PARTITIONS; i++){
+            res.add(new ArrayList<String> (k));
+        }
+        final Map<String, double[]> attractionMap = new HashMap <String, double[]> ();
+
+        int[] lowest_attraction_position = new int[MAX_PARTITIONS];
+        double[] lowest_attraction = new double[MAX_PARTITIONS];
+
+        for(String from_vertex : m_graph.m_partitionVertices.get(this_partition)){
+
+            // compute out attraction
+            double in_attraction = 0;
+            double[] out_attraction = new double[MAX_PARTITIONS];
+
+            Map<String,Double> adjacency = m_graph.m_edges.get(from_vertex);
+            if (adjacency != null){
+                
+                for (String toVertex : adjacency.keySet()){
     
+                    int other_partition = m_graph.m_vertexPartition.get(toVertex);
+                    double edge_weight = adjacency.get(toVertex);
+                    if(other_partition != this_partition){
+                        out_attraction[other_partition] += edge_weight;
+                    }
+                    else{
+                        in_attraction += edge_weight;
+                    }
+                } // END for (String toVertex : adjacency.keySet())
+
+                // rank for each partition
+                for(int otherPart = 1; otherPart < MAX_PARTITIONS; otherPart++){
+
+                    // consider deltas and ignore negative attraction
+                    out_attraction[otherPart] -= in_attraction;
+                    if (out_attraction[otherPart] <= 0){
+                        continue;
+                    }
+                    
+                    List<String> topk = res.get(otherPart);
+    
+                    if(topk.size() < k){
+    
+                        topk.add(from_vertex);
+    
+                        double[] attractions = attractionMap.get(from_vertex);
+                        if (attractions == null){
+                            attractions = new double[MAX_PARTITIONS];
+                            attractionMap.put(from_vertex, attractions);
+                        }
+                        attractions[otherPart] = out_attraction[otherPart];
+                        attractionMap.put(from_vertex, attractions);
+    
+                        if (out_attraction[otherPart] < lowest_attraction[otherPart]){
+                            lowest_attraction[otherPart] = out_attraction[otherPart];
+                            lowest_attraction_position[otherPart] = topk.size() - 1;
+                        }
+                    }
+                    else{
+                        if (out_attraction[otherPart] > lowest_attraction[otherPart]){
+    
+                            // cleanup attractionMap
+                            String lowestVertex = topk.get(lowest_attraction_position[otherPart]);
+                            double[] attractions = attractionMap.get(lowestVertex);
+                            int nonZeroPos = -1;
+                            for(int j = 0; j < attractions.length; j++){
+                                if (attractions[j] != 0){
+                                    nonZeroPos = j;
+                                    break;
+                                }
+                            }
+                            if (nonZeroPos == -1){
+                                attractionMap.remove(lowestVertex);
+                            }
+    
+                            topk.set(lowest_attraction_position[otherPart], from_vertex);
+    
+                            attractions = attractionMap.get(from_vertex);
+                            if (attractions == null){
+                                attractions = new double[MAX_PARTITIONS];
+                                attractionMap.put(from_vertex, attractions);
+                            }
+                            attractions[otherPart] = out_attraction[otherPart];
+                            attractionMap.put(from_vertex, attractions);
+    
+                            // recompute minimum
+                            lowest_attraction[otherPart] = out_attraction[otherPart];
+                            for (int posList = 0; posList < k; posList++){
+                                String vertex = topk.get(posList);
+                                double attraction = attractionMap.get(vertex)[otherPart];
+                                if(attraction < lowest_attraction[otherPart]){
+                                    lowest_attraction[otherPart] = attraction;
+                                    lowest_attraction_position[otherPart] = posList;
+                                }
+                            }
+                        }
+                    }
+                } // END for(int otherPart = 1; otherPart < MAX_PARTITIONS; otherPart++)
+            } // END if (adjacency != null)
+        } // END for(String from_vertex : m_graph.m_partitionVertices.get(this_partition))
+
+        // sorting
+        for(int otherPart = 1; otherPart < MAX_PARTITIONS; otherPart++){
+            List<String> topk = res.get(otherPart);
+
+            // sort determines an _ascending_ order
+            // Comparator should return "a negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater than the second"
+            // We want a _descending_ order, so we need to invert the comparator result
+
+            final int part = otherPart; // make Java happy
+
+            Collections.sort(topk, new Comparator<String>(){                
+                @Override
+                public int compare(String o1, String o2) {
+                    if (attractionMap.get(o1)[part] < attractionMap.get(o2)[part]){
+                        return 1;
+                    }
+                    else if (attractionMap.get(o1)[part] > attractionMap.get(o2)[part]){
+                        return -1;
+                    }
+                    return 0;
+                }                
+            });
+        }
+
+        return res;
+    }
+
     /*
      *     LOCAL delta a partition gets by REMOVING a SET of local vertices out
      *     it ASSUMES that the vertices are on the same partition
@@ -439,7 +733,7 @@ public class GraphPartitioner {
      *     
      *     if newPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
-    public double getDeltaGiveVertices(Set<String> movedVertices, int newPartition) {
+    private double getDeltaGiveVertices(Set<String> movedVertices, int newPartition) {
 
         if (movedVertices == null || movedVertices.isEmpty()){
             System.out.println("Trying to move an empty set of vertices");
@@ -447,9 +741,9 @@ public class GraphPartitioner {
         }
         double delta = 0;
         int fromPartition = m_graph.m_vertexPartition.get(movedVertices.iterator().next());
- 
+
         for(String vertex : movedVertices){ 
-//            System.out.println("REMOVE delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
+            //            System.out.println("REMOVE delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
             Double vertexWeight = m_graph.m_vertices.get(vertex);
             if (vertexWeight == null){
                 System.out.println("Cannot include external node for delta computation");
@@ -498,14 +792,14 @@ public class GraphPartitioner {
         }
         return delta;
     }
-    
+
     /*
      *     LOCAL delta a partition gets by ADDING a SET of remote vertices
      *     
      *     this is NOT like computing the load because local edges come as a cost in this case 
      *     it also considers a SET of vertices to be moved together
      */
-    public double getDeltaReceiveVertices(Set<String> movedVertices, int newPartition) {
+    private double getDeltaReceiveVertices(Set<String> movedVertices, int newPartition) {
 
         if (movedVertices == null || movedVertices.isEmpty()){
             System.out.println("Trying to move an empty set of vertices");
@@ -516,12 +810,12 @@ public class GraphPartitioner {
         for(String vertex : movedVertices){
             // get tuple weight from original site
             Double vertexWeight = m_graph.m_vertices.get(vertex);
-//            System.out.println("ADD delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
+            //            System.out.println("ADD delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
             if (vertexWeight == null){
                 System.out.println("Cannot include external node for delta computation");
                 throw new IllegalStateException("Cannot include external node for delta computation");
             }
-            
+
             // get adjacency list from original site
             Map<String,Double> adjacency = m_graph.m_edges.get(vertex);
             if(adjacency != null){
@@ -567,8 +861,8 @@ public class GraphPartitioner {
         }
         return delta;
     }
-    
-    public void writePlan(String oldPlanFile, String newPlanFile){
-        m_graph.m_plan_handler.toJSON(oldPlanFile, newPlanFile);
+
+    public void writePlan(String newPlanFile){
+        m_graph.planToJSON(newPlanFile);
     }
 }
