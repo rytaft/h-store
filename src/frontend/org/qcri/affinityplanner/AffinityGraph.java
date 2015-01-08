@@ -25,7 +25,8 @@ import org.voltdb.CatalogContext;
 import edu.brown.hstore.HStoreConstants;
 
 public class AffinityGraph {
-    private static final Logger LOG = Logger.getLogger(Controller.class);
+  
+    private static final Logger LOG = Logger.getLogger(AffinityGraph.class);
     
     // fromVertex -> adjacency list, where adjacency list is a toVertex -> edgeWeight map
     protected Map<String,Map<String,Double>> m_edges = new HashMap<String,Map<String,Double>> ();
@@ -34,12 +35,14 @@ public class AffinityGraph {
     // partition -> vertex and vertex -> partition mappings
     protected List<Set<String>> m_partitionVertices = new ArrayList<Set<String>> ();
     protected Map<String,Integer> m_vertexPartition = new HashMap<String,Integer> ();
-    protected PlanHandler m_plan_handler = null;
     
+    private PlanHandler m_plan_handler = null;
+
     // a folded graph has special edges for remote sites
     private boolean folded = false;
     
     public boolean loadFromFiles (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles, int noPartitions) {
+
         BufferedReader reader;
         for (int i = 0; i < noPartitions; i++){
             m_partitionVertices.add(new HashSet<String>());
@@ -343,9 +346,15 @@ public class AffinityGraph {
             m_partitionVertices.get(fromPartition).remove(movedVertex);
             m_partitionVertices.get(toPartition).add(movedVertex);
             m_vertexPartition.put(movedVertex, toPartition);
+
+            // update plan too
+            // format of vertices is <TABLE>,<PART-KEY>,<VALUE>
+            String [] fields = movedVertex.split(",");
+            m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[2]));
+            m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[2]), Long.parseLong(fields[2]));
         }
     }
-        
+    
     public void toFile(Path file){
         System.out.println("Writing graph. Size of edges: " + m_edges.size());
         BufferedWriter writer;
@@ -371,6 +380,10 @@ public class AffinityGraph {
             System.out.println("Error while opening file " + file.toString());
             return;
        }
+    }
+    
+    public void planToJSON(String newPlanFile){
+        m_plan_handler.toJSON(newPlanFile);
     }
 
     public void toFileDebug(Path file){
