@@ -197,7 +197,8 @@ public class Controller {
         if(EXEC_RECONF){
             ClientResponse cresponse = null;
             try {
-                cresponse = m_client.callProcedure("@ReconfigurationRemote", 0, PLAN_OUT, "livepull");
+                String outputPlan = FileUtil.readFile(PLAN_OUT);
+                cresponse = m_client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
                                 //cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
                                 System.out.println("Controller: received response: " + cresponse);
             } catch (NoConnectionsException e) {
