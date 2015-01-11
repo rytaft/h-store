@@ -43,8 +43,6 @@ public class Monitor {
     private long m_start_monitoring;
     private boolean m_is_monitoring;
     
-    final boolean VERBOSE = false;
-
     public Monitor(CatalogContext catalog_context, PartitionEstimator p_estimator, int partitionId){
         m_columnToTable = new ColumnToTableMap(catalog_context);
         m_catalog_context = catalog_context;
@@ -86,35 +84,6 @@ public class Monitor {
             closeLog();
             return false;
         }
-
-        // DEBUG begin
-        if(VERBOSE){
-            try {
-                m_writer.newLine();
-                m_writer.newLine();
-                s = "New transaction with id " + ts.getTransactionId();
-                m_writer.write(s, 0, s.length());
-               
-                m_writer.newLine();
-                s = ts.getProcedure().getName();
-                m_writer.write(s, 0, s.length());
-    
-//                s = "\nPARAMS";
-//                writer.write(s, 0, s.length());
-//                for (ParameterSet paramSet : parameterSets){
-//                    s = "\n"+paramSet.toString();
-//                    writer.write(s, 0, s.length());
-//                }
-                
-                m_writer.newLine();
-                s = "TUPLES";
-                m_writer.write(s, 0, s.length());
-            } catch (IOException e) {
-                e.printStackTrace();
-                LOG.warn("Failed while writing file " + m_logFile.toString());
-            }
-        }
-        // DEBUG end
         
         for (int i = 0; i < fragmentIds.length; i++) {
             List<Pair<List<CatalogType>, List<Integer>>> offsets = new ArrayList<>();
@@ -130,20 +99,21 @@ public class Monitor {
                         LOG.warn("Monitoring cannot determine the table accessed by a transaction");
                     }
                     else{
-                        if(VERBOSE){
-                            m_writer.newLine();
-                            s ="Table:" + table.getName() + " -- ";
-                            m_writer.write(s, 0, s.length());
-                        }
-                        Iterator<CatalogType> columnIter = offsetPair.getFirst().iterator(); // for debugging
+                        Iterator<CatalogType> columnIter = offsetPair.getFirst().iterator();
                         for(Integer offset : offsetPair.getSecond()) {
+                            String table_name = table.getName().toLowerCase();
+                            // TODO - fix these hacks!! -------
+                            LOG.warn("FIXME - I am using a very dirty hacks in the monitor to find parent tables");
+                            if (table_name.compareTo("supplies") == 0){
+                                table_name = "suppliers";
+                            }
+                            if (table_name.compareTo("uses") == 0){
+                                table_name = "products";
+                            }
+                            // TODO - fix these hacks!! -------
+                            
                             Column column = (Column) columnIter.next();
-                            if(VERBOSE){
-                                s = "Coulumn: " + column.getName() + " Val: " + parameterSet.toArray()[offset] + " -- ";
-                            }
-                            else{
-                                s = ts.getTransactionId().toString() + ";" + table.getName() + "," + column.getName() + "," + parameterSet.toArray()[offset];
-                            }
+                            s = ts.getTransactionId().toString() + ";" + table_name + "," + column.getName().toLowerCase() + "," + parameterSet.toArray()[offset];
                             m_writer.write(s, 0, s.length());
                             m_writer.newLine();
                         }
@@ -184,7 +154,6 @@ public class Monitor {
         } catch (IOException e) {
             m_writer = null;
             LOG.warn("Monitor failed while creating file " + m_logFile.toString());
-            System.out.println("Monitor failed while creating file " + m_logFile.toString());
             return;
        }       
         m_is_monitoring = true;
@@ -200,7 +169,6 @@ public class Monitor {
                 m_writer.close();
             } catch (IOException e) {
                 LOG.warn("Monitor failed while closing file " + m_logFile.toString() + "\nStack trace " + Controller.stackTraceToString(e));
-                System.out.println("Monitor failed while closing file " + m_logFile.toString() + "\nStack trace " + Controller.stackTraceToString(e));
             }
             try {
                 long interval = System.currentTimeMillis() - m_start_monitoring;
@@ -210,7 +178,6 @@ public class Monitor {
                 intervalFile.close();
             } catch (IOException e) {
                 LOG.warn("Monitor failed while writing time interval file " + m_intervalPath.toString() + ".\nStack trace " + Controller.stackTraceToString(e));
-                System.out.println("Monitor failed while writing time interval file " + m_intervalPath.toString() + "\nStack trace " + Controller.stackTraceToString(e));
             }
         }
         m_is_monitoring = false;

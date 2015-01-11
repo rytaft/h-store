@@ -42,8 +42,8 @@ public class Plan {
 
 	boolean isEqual(Plan other) {
 	    for(String table : this.tableToPartitionsToRanges.keySet()){
-	        Map<Integer, TreeMap<Long, Long>> thisPartitionToRanges = this.tableToPartitionsToRanges.get(table);
-            Map<Integer, TreeMap<Long, Long>> otherPartitionToRanges = other.tableToPartitionsToRanges.get(table);
+	        Map<Integer, TreeMap<Long, Long>> thisPartitionToRanges = this.tableToPartitionsToRanges.get(table.toLowerCase());
+            Map<Integer, TreeMap<Long, Long>> otherPartitionToRanges = other.tableToPartitionsToRanges.get(table.toLowerCase());
             if(otherPartitionToRanges == null){
                 return false;
             }
@@ -69,10 +69,10 @@ public class Plan {
 	}
 
 	public void addPartition(String table, Integer partitionId) {
-	    HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+	    HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
 	    if (partitionToRanges == null){
 	        partitionToRanges = new HashMap<Integer, TreeMap<Long, Long>> ();
-	        tableToPartitionsToRanges.put(table, partitionToRanges);
+	        tableToPartitionsToRanges.put(table.toLowerCase(), partitionToRanges);
 	    }
 		TreeMap<Long, Long> emptyRange = new TreeMap<Long,Long>();
 		partitionToRanges.put(partitionId, emptyRange);
@@ -80,7 +80,7 @@ public class Plan {
 	}
 	
 	public void removePartition(String table, Integer partitionId) {
-        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges != null){	    
             partitionToRanges.remove(partitionId);
         }
@@ -187,7 +187,7 @@ public class Plan {
 	 */
 	public boolean addRange(String table, Integer partition, Long from, Long to){
 
-        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges == null){
             return false;
         }
@@ -256,7 +256,7 @@ public class Plan {
 	 * @return
 	 */
 	public boolean removeRange(String table, Integer partition, Long from){
-        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges == null){
             return false;
         }
@@ -278,7 +278,7 @@ public class Plan {
      * @return
      */
 	public boolean removeTupleId(String table, Integer partition, Long tupleId) {
-        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges == null){
             return false;
         }
@@ -286,7 +286,7 @@ public class Plan {
         Map.Entry<Long,Long> precedingRange = partitionToRanges.get(partition).floorEntry(tupleId);
 		if(precedingRange == null) return false;
 		if(precedingRange.getValue() > tupleId && precedingRange.getKey() < tupleId){ // split into two ranges
-			//System.out.println("Splitting up range " + precedingRange.getKey() + "-" + precedingRange.getValue() + " at " + tupleId);
+//			System.out.println("Splitting up range " + precedingRange.getKey() + "-" + precedingRange.getValue() + " at " + tupleId);
 			Long upperBound = precedingRange.getValue();
 			Long lowerBound = precedingRange.getKey();
 			partitionToRanges.get(partition).remove(lowerBound);
@@ -308,13 +308,13 @@ public class Plan {
 			partitionToRanges.get(partition).remove(tupleId);
 			partitionToRanges.get(partition).put(tupleId + 1, upperBound);
 		}
-
+		
 		return true;
 	}
 
 
 	Integer getTuplePartition(String table, Long tupleId) {
-        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges == null){
             return -1;
         }
@@ -328,7 +328,7 @@ public class Plan {
 	}
 
 	public String printPartition(String table, Integer partition) {
-        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges == null){
             return null;
         }
@@ -404,7 +404,7 @@ public class Plan {
 	public void printPlan() {
 	    for(String table : tableToPartitionsToRanges.keySet()){
 	        System.out.println("Table " + table);
-            Map<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+            Map<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
 	        for(Integer partition : partitionToRanges.keySet()) {
 	            System.out.print("Partition " + partition + ": " + printPartition(table, partition));
 	            System.out.println("");
@@ -419,7 +419,7 @@ public class Plan {
 
 
 	public Range getRangeValue(String table, Integer partition, Long value){
-        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges == null){
             return null;
         }
@@ -453,7 +453,7 @@ public class Plan {
 	}
 
 	public List<Range> getAllRanges(String table, Integer partition){
-        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges == null){
             return null;
         }
@@ -475,7 +475,7 @@ public class Plan {
 
 	public Map<Integer, List<Range>> getAllRanges(String table){
 	    
-        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges == null){
             return null;
         }
@@ -489,7 +489,7 @@ public class Plan {
 
 	public Long getTupleCount(String table, Integer partition) {
 
-        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+        HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges == null){
             return null;
         }
@@ -537,7 +537,7 @@ public class Plan {
 	// into sets of equal size from pre-existing ranges
 	List<List<Range>> getRangeSlices(String table, Integer partition, Long sliceWidth) {
 
-	    HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+	    HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges == null){
             return null;
         }
@@ -629,7 +629,7 @@ public class Plan {
 	            tableNameObject.put(table_name, partitionDelimiter);
 	            partitionDelimiter.put("partitions", tableObject);
 
-	            Map<Integer, TreeMap<Long,Long>> partitionToRanges = tableToPartitionsToRanges.get(table_name); 
+	            Map<Integer, TreeMap<Long,Long>> partitionToRanges = tableToPartitionsToRanges.get(table_name.toLowerCase()); 
 	            for(Integer partition : partitionToRanges.keySet()) {
 	                tableObject.put(partition.toString(), printPartition(table_name, partition));
 	            }
@@ -651,6 +651,20 @@ public class Plan {
 			System.out.println("Failed to write partitioning plan to " + newPlanFile);
 			return;
 		}
+	}
+	
+	public String toString(){
+	    StringBuffer res = new StringBuffer();
+        for(String table_name : table_names) {
+            res.append("Table: " + table_name + "\n");
+
+            Map<Integer, TreeMap<Long,Long>> partitionToRanges = tableToPartitionsToRanges.get(table_name.toLowerCase()); 
+            for(Integer partition : partitionToRanges.keySet()) {
+                res.append("Partition " + partition + ": " + printPartition(table_name, partition) + "\n");
+            }
+        }
+        
+        return res.toString();
 	}
 
 	private JSONObject traverseLevel(JSONObject srcData, String key) {
@@ -698,7 +712,7 @@ public class Plan {
 		table_names = JSONObject.getNames(srcData);
 		for (String table : table_names){
 		    HashMap<Integer, TreeMap<Long,Long>> partitionToRanges = new HashMap<Integer, TreeMap<Long,Long>>();
-		    tableToPartitionsToRanges.put(table, partitionToRanges);
+		    tableToPartitionsToRanges.put(table.toLowerCase(), partitionToRanges);
 		    
 		    JSONObject partitions;
             try {
