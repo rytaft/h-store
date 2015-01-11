@@ -203,12 +203,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         if (previousPhase == null)
             return -1;
         PartitionPhase phase = this.partition_phase_map.get(previousPhase);
-        PartitionedTable table = phase.getTable(table_name);
+        PartitionedTable table = phase.getTable(table_name.toLowerCase());
         if (table == null) {
-            table = phase.getTable(table_name.toLowerCase());
-            if (table == null) {
-                throw new Exception("Unable to find table " + table_name + " in phase  " + previousPhase);
-            }
+            throw new Exception("Unable to find table " + table_name + " in phase  " + previousPhase);
         }
         assert table != null : "Table not found " + table_name;
         return table.findPartition(ids);
@@ -264,12 +261,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         if (previousPhase == null)
             return allPartitionIds;
         PartitionPhase phase = this.partition_phase_map.get(previousPhase);
-        PartitionedTable table = phase.getTable(table_name);
+        PartitionedTable table = phase.getTable(table_name.toLowerCase());
         if (table == null) {
-            table = phase.getTable(table_name.toLowerCase());
-            if (table == null) {
-                throw new Exception("Unable to find table " + table_name + " in phase  " + previousPhase);
-            }
+            throw new Exception("Unable to find table " + table_name + " in phase  " + previousPhase);
         }
         assert table != null : "Table not found " + table_name;
         return table.findAllPartitions(ids);
