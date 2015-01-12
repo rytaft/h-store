@@ -66,7 +66,11 @@ public class AffinityGraph {
                 intervalsInSecs[currInterval] = Long.parseLong(line) / 1000;
                 currInterval++;
             } catch (IOException e) {
-                LOG.warn("Error while reading file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                LOG.warn("Error while reading interval file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                return false;
+            }
+            catch (NumberFormatException e1){
+                LOG.warn("Error while converting interval from file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e1));
                 return false;
             }
         }

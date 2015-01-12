@@ -105,6 +105,12 @@ public class GraphPartitioner {
                 LOG.debug("Moving FROM partition " + from_part + " TO partition " + to_part);
 
                 List<String> borderVertices = allBorderVertices.get(to_part);
+                
+                LOG.debug("Border vertices:");
+                for(String vertex: borderVertices){
+                    LOG.debug(vertex);
+                }
+
                 final int actualMaxMovedVertices = borderVertices.size();
 
                 int numMovedVertices = 0;
@@ -610,6 +616,7 @@ public class GraphPartitioner {
         int[] lowest_attraction_position = new int[Controller.MAX_PARTITIONS];
         double[] lowest_attraction = new double[Controller.MAX_PARTITIONS];
 
+
         for(String from_vertex : m_graph.m_partitionVertices.get(this_partition)){
 
             // compute out attraction
@@ -620,7 +627,7 @@ public class GraphPartitioner {
             if (adjacency != null){
                 
                 for (String toVertex : adjacency.keySet()){
-    
+                    
                     int other_partition = m_graph.m_vertexPartition.get(toVertex);
                     double edge_weight = adjacency.get(toVertex);
                     if(other_partition != this_partition){
@@ -632,7 +639,7 @@ public class GraphPartitioner {
                 } // END for (String toVertex : adjacency.keySet())
 
                 // rank for each partition
-                for(int otherPart = 1; otherPart < Controller.MAX_PARTITIONS; otherPart++){
+                for(int otherPart = 0; otherPart < Controller.MAX_PARTITIONS; otherPart++){
 
                     // consider deltas and ignore negative attraction
                     out_attraction[otherPart] -= in_attraction;
@@ -643,7 +650,7 @@ public class GraphPartitioner {
                     List<String> topk = res.get(otherPart);
     
                     if(topk.size() < k){
-    
+                        
                         topk.add(from_vertex);
     
                         double[] attractions = attractionMap.get(from_vertex);
@@ -701,7 +708,7 @@ public class GraphPartitioner {
                 } // END for(int otherPart = 1; otherPart < MAX_PARTITIONS; otherPart++)
             } // END if (adjacency != null)
         } // END for(String from_vertex : m_graph.m_partitionVertices.get(this_partition))
-
+       
         // sorting
         for(int otherPart = 1; otherPart < Controller.MAX_PARTITIONS; otherPart++){
             List<String> topk = res.get(otherPart);

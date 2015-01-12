@@ -148,7 +148,9 @@ public class Controller {
         } // END if(RUN_MONITORING)
         
         if(UPDATE_PLAN){
-            // fetch remote monitoring outputs
+            
+            System.out.println("Fetching remote monitoring outputs");
+
             String hStoreDir = ShellTools.cmd("pwd");
             hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
             for(Site site: m_sites){
@@ -174,19 +176,32 @@ public class Controller {
                 intervalFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + "-interval.log");
             }
     
+            System.out.println("======================== LOADING GRAPH ========================");
+            
             AffinityGraph graph = new AffinityGraph();
-            graph.loadFromFiles(m_catalog_context, planFile, logFiles, intervalFiles, MAX_PARTITIONS);
+            boolean b = graph.loadFromFiles(m_catalog_context, planFile, logFiles, intervalFiles, MAX_PARTITIONS);
+            if (!b){
+                System.out.println("Problem while loading graph. Exiting");
+                return;
+            }
+
+            System.out.println("======================== PARTITIONING GRAPH ========================");
+            
             Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
             graph.toFileDebug(graphFile);
             
             GraphPartitioner partitioner = new GraphPartitioner(graph, planFile, m_catalog_context);
-            partitioner.repartition();
+            b = partitioner.repartition();
+            if (!b){
+                System.out.println("Problem while partitioning graph. Exiting");
+                return;
+            }
             partitioner.writePlan(PLAN_OUT);
  
             String outputPlan = FileUtil.readFile(PLAN_OUT);
             System.out.println("Output plan\n" + outputPlan);
 
-            System.out.println("Loads per partition");
+            System.out.println("Loads per partition after reconfiguration");
             for (int j = 0; j < graph.getPartitionsNo(); j++){
                 System.out.println(j + " " + partitioner.getLoadPerPartition(j));
             }
@@ -195,6 +210,9 @@ public class Controller {
         } // END if(UPDATE_PLAN)
 
         if(EXEC_RECONF){
+
+            System.out.println("======================== STARTING RECONFIGURATION ========================");
+
             ClientResponse cresponse = null;
             try {
                 String outputPlan = FileUtil.readFile(PLAN_OUT);
