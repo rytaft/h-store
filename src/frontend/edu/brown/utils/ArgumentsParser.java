@@ -1019,7 +1019,7 @@ public class ArgumentsParser {
         }
 
         if (this.params.containsKey(PARAM_ELASTIC_MAX_TUPLE_MOVE)){
-            GraphPartitioner.MIN_GAIN_MOVE = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_TUPLE_MOVE));
+            GraphPartitioner.MAX_MOVED_TUPLES_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_TUPLE_MOVE));
         }
         
         if (this.params.containsKey(PARAM_ELASTIC_MAX_PARTITIONS_ADDED)){
