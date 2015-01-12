@@ -333,9 +333,6 @@ public class AffinityGraph {
     }
     
     public void moveVertices(Set<String> movedVertices, int fromPartition, int toPartition) {
-//        m_cache_vertexLoad = null;
-//        m_cache_siteLoad[fromSite] += getDeltaGiveVertices(movedVertices);
-//        m_cache_siteLoad[toSite] += getDeltaReceiveVertices(movedVertices, toSite);
         for (String movedVertex : movedVertices){
             m_partitionVertices.get(fromPartition).remove(movedVertex);
             m_partitionVertices.get(toPartition).add(movedVertex);
@@ -344,23 +341,17 @@ public class AffinityGraph {
             // update plan too
             // format of vertices is <TABLE>,<PART-KEY>,<VALUE>
             String [] fields = movedVertex.split(",");
-            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
-            System.out.println("remove ID: " + fields[2]);
+//            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
+//            System.out.println("remove ID: " + fields[2]);
             m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[2]));
-            System.out.println("After removal");
-            System.out.println(m_plan_handler.toString() + "\n");
+//            System.out.println("After removal");
+//            System.out.println(m_plan_handler.toString() + "\n");
             m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[2]), Long.parseLong(fields[2]));
-            System.out.println("After adding");
-            System.out.println(m_plan_handler.toString() + "\n");
+//            System.out.println("After adding");
+//            System.out.println(m_plan_handler.toString() + "\n");
         }
         
-//        StringBuffer out = new StringBuffer();
-//        for (String vertex : movedVertices){
-//            out.append(vertex + " ");
-//        }
-//        System.out.println("Moved Vertices: " + out.toString());
-//        System.out.println("New plan");
-        System.out.println(m_plan_handler.toString() + "\n");
+//        System.out.println(m_plan_handler.toString() + "\n");
     }
     
     public void toFile(Path file){
