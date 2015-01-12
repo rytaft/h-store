@@ -103,7 +103,6 @@ public class Monitor {
                         for(Integer offset : offsetPair.getSecond()) {
                             String table_name = table.getName().toLowerCase();
                             // TODO - fix these hacks!! -------
-                            LOG.warn("FIXME - I am using a very dirty hacks in the monitor to find parent tables");
                             if (table_name.compareTo("supplies") == 0){
                                 table_name = "suppliers";
                             }
