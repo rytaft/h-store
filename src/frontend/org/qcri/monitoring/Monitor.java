@@ -24,6 +24,7 @@ import org.voltdb.catalog.Table;
 import org.voltdb.utils.Pair;
 
 import edu.brown.catalog.CatalogUtil;
+import edu.brown.hashing.ExplicitHasher;
 import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hstore.txns.LocalTransaction;
 import edu.brown.utils.PartitionEstimator;
@@ -92,25 +93,15 @@ public class Monitor {
             ParameterSet parameterSet = parameterSets[i];
             for (Pair<List<CatalogType>, List<Integer>> offsetPair : offsets) {
                 // considering a specific Table here
-                Table table = null;
                 try{
-                    table = m_columnToTable.getTable((Column) offsetPair.getFirst().get(0));
-                    if (table == null){
+                	String table_name = ((ExplicitHasher) this.m_p_estimator.getHasher()).getPartitions().getParentTableName((Column) offsetPair.getFirst().get(0));
+                	
+                    if (table_name == null){
                         LOG.warn("Monitoring cannot determine the table accessed by a transaction");
                     }
                     else{
                         Iterator<CatalogType> columnIter = offsetPair.getFirst().iterator();
                         for(Integer offset : offsetPair.getSecond()) {
-                            String table_name = table.getName().toLowerCase();
-                            // TODO - fix these hacks!! -------
-                            if (table_name.compareTo("supplies") == 0){
-                                table_name = "suppliers";
-                            }
-                            if (table_name.compareTo("uses") == 0){
-                                table_name = "products";
-                            }
-                            // TODO - fix these hacks!! -------
-                            
                             Column column = (Column) columnIter.next();
                             s = ts.getTransactionId().toString() + ";" + table_name + "," + column.getName().toLowerCase() + "," + parameterSet.toArray()[offset];
                             m_writer.write(s, 0, s.length());
