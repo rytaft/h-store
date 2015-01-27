@@ -78,6 +78,55 @@ def genPlanJSON(tables,phases,default_table, onebased=False, multi=False, fine=F
   return plan_json
 
 
+
+def getPlanString(args):
+  TABLE_MAP = {
+    "ycsb": "usertable",
+    "tpcc": "warehouse",
+    "affinity" : "suppliers"
+  }
+
+  aff_size = None 
+  if "affinity" in args and args["affinity"] and ":" in args["affinity"]:
+    _t = args["affinity"].split(":")
+    if len(_t) != 3:
+        raise Exception("affinity size needs 3 values [Suppliers]:[Products]:[Parts] : %s " % args["affinity"])
+    aff_size = {}
+    aff_size["suppliers"] = int(_t[0])
+    aff_size["products"] = int(_t[1])
+    aff_size["parts"] = int(_t[2])
+  elif args["type"] == "affinity":
+    raise Exception("Set to affinity, but no affinity sizes %s" % args["affinity"])
+
+  if "change_type" in args and args["change_type"] == "scale-down":
+    raise Exception("not implemented")
+  if "," in args["partitions"] or args["partitions"] != None:  
+    if args["type"] != "affinity":
+      tables = { TABLE_MAP[args.type]: args["size"] }
+    else:
+      tables =  aff_size
+    default_table = TABLE_MAP[args["type"]]
+    if "multi" in args and args["multi"]:
+        default_table="district"
+    phases = {  }
+    for x, parts in enumerate(args["partitions"].split(",")):
+      phases[x] = int(parts)
+  else:
+    raise Exception("not implemented yet")
+  onebased = False
+  if "type" in args and args["type"] == "tpcc":
+      onebased = True
+  multi = False
+  fine = False
+  if "multi" in args:
+      multi = args["multi"]
+  if "fine" in args:
+      fine = args["fine"]
+  
+  plan_json = genPlanJSON(tables, phases, default_table, onebased,multi,fine)
+  return str(plan_json)
+  
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("-t","--type",dest="type", choices=["ycsb","tpcc", "affinity"], required=True, help="Generate this type")
@@ -91,7 +140,7 @@ if __name__ == "__main__":
 
 
   args = parser.parse_args()
-  
+
   TABLE_MAP = {
     "ycsb": "usertable",
     "tpcc": "warehouse",

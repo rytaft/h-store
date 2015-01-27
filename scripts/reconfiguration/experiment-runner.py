@@ -47,7 +47,9 @@ import time
 import zipfile
 from pprint import pprint, pformat
 from types import *
-from reconfiguration_experiments import *
+#from reconfiguration_experiments import *
+from aff_experiments import *
+import plan_generator
 
 ## H-Store Third-Party Libraries
 realpath = os.path.realpath(__file__)
@@ -216,20 +218,6 @@ EXPERIMENT_SETTINGS = [
     "aborts-100-occ",
     
     # Reconfiguration Experiments
-    "reconfig-test",
-    "reconfig-perf",
-    "reconfig-perf2",
-    "reconfig-perf3",
-    "reconfig-perf4",
-    "reconfig-perf5",
-    "reconfig-perf6",
-    "reconfig-perf7",
-    "reconfig-perf8",
-    "reconfig-perf9",
-    "reconfig-perf10",
-    "reconfig-perf11",
-    "reconfig-perf12",
-    "reconfig-perf13",
     "reconfig-motivation",
     "reconfig-ycsb-zipf",
     "reconfig-ycsb-hotspot",
@@ -603,6 +591,9 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
     elif "stopcopy" in args['exp_type']:
         LOG.info("StopCopy Experiment")
         _reconfig = True
+    elif "affinity" in args['exp_type']:
+        LOG.info("Affinity Experiment")
+        _reconfig = True
     
     if _reconfig:
         LOG.info("Disabling command logging for reconfig experiments ******")
@@ -633,9 +624,34 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
                 LOG.info("Updating the num of records %s" % args["benchmark_size"])
                 fabric.env["benchmark.num_records"] = args["benchmark_size"]
                 plan_base = "%s-size%s" % (plan_base, args["benchmark_size"])
-		fabric.env['benchmark.loadthreads'] = partitions
+        
+        if benchmark == "affinity":
+            plan_dir_base = 'scripts/reconfiguration/plans/aff/a'
+            if "benchmark_size" in args and args["benchmark_size"]:
+                LOG.info("Updating the num of records %s" % args["benchmark_size"])
+                fabric.env["benchmark.num_records"] = args["benchmark_size"]
+                plan_base = "%s-size%s" % (plan_dir_base, args["benchmark_size"])
+                fabric.env['global.hasher_class'] = 'edu.brown.hashing.TwoTieredRangeHasher'
+		
+        fabric.env['benchmark.loadthreads'] = partitions
 
         plan_path = '%s-%s.json' % (plan_base, partitions)
+        if benchmark == 'affinity':
+            if not os.path.exists(plan_path):
+                LOG.error("plan does not exist %s" % plan_path)
+                if "benchmark_size" in args:
+                    LOG.info(AFF_SIZES[args["benchmark_size"]])
+                    _sz = AFF_SIZES[args["benchmark_size"]]
+                    a2 = {}
+                     
+                    a2['type'] = 'affinity'
+                    a2['partitions'] = str(partitions)
+                    a2['affinity'] = "%s:%s:%s" % (_sz['suppliers'],_sz['products'],_sz['parts'])
+                    plan_string = plan_generator.getPlanString(a2)
+                    LOG.info("CREATING NEW PLAN FILE. dirty hack to fix file path")
+                    with open(plan_path.replace("scripts/reconfiguration/",""),"w") as plan_w_file:
+                        plan_w_file.write("%s" % plan_string)
+
         LOG.info("Using plan: %s" % plan_path)
         fabric.env['global.hasher_plan'] = plan_path
 
@@ -664,101 +680,6 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         fabric.env["client.output_txn_profiling_combine"] = True
         fabric.env["client.output_txn_counters"] = "txncounters.csv"
         fabric.env["client.threads_per_host"] = partitions * 2  # max(1, int(partitions/2))
-    if args['exp_type'] == 'reconfig-perf':
-        fabric.env["client.blocking_concurrent"] = 4 # * int(partitions/8)
-        fabric.env["client.count"] = 4
-        fabric.env["client.blocking"] = True
-        fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
-    if args['exp_type'] == 'reconfig-perf2':
-        fabric.env["client.blocking_concurrent"] = 4 # * int(partitions/8)
-        fabric.env["client.count"] = 4
-        fabric.env["client.blocking"] = True
-        fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
-        fabric.env["site.txn_profiling_sample"] = 0.01
-
-
-    if args['exp_type'] == 'reconfig-perf3':
-        fabric.env["client.blocking_concurrent"] = 4 # * int(partitions/8)
-        fabric.env["client.count"] = 4
-        fabric.env["client.blocking"] = True
-        fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
-        fabric.env["site.specexec_enable"] = False
-    if args['exp_type'] == 'reconfig-perf4':
-        fabric.env["client.blocking_concurrent"] = 4 # * int(partitions/8)
-        fabric.env["client.count"] = 4
-        fabric.env["client.blocking"] = True
-        fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = partitions * 8  # max(1, int(partitions/2))
-    if args['exp_type'] == 'reconfig-perf5':
-        fabric.env["client.blocking_concurrent"] = 8 # * int(partitions/8)
-        fabric.env["client.count"] = 4
-        fabric.env["client.blocking"] = True
-        fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
-    if args['exp_type'] == 'reconfig-perf6':
-        fabric.env["client.blocking_concurrent"] = 4 # * int(partitions/8)
-        fabric.env["client.count"] = 6
-        fabric.env["client.blocking"] = True
-        fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = partitions * 6  # max(1, int(partitions/2))
-	
-
-
-    if args['exp_type'] == 'reconfig-perf7':
-        fabric.env["client.blocking_concurrent"] = 3  # * int(partitions/8)
-        fabric.env["client.count"] = 1
-        fabric.env["client.blocking"] = True
-        fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = 3  # max(1, int(partitions/2))
-    if args['exp_type'] == 'reconfig-perf8':
-        fabric.env["client.blocking_concurrent"] = 3  # * int(partitions/8)
-        fabric.env["client.count"] = 3
-        fabric.env["client.blocking"] = True
-        fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = 1  # max(1, int(partitions/2))
-    
-    if args['exp_type'] == 'reconfig-perf9':
-        fabric.env["client.blocking_concurrent"] = 4 # * int(partitions/8)
-        fabric.env["client.count"] = 4
-        fabric.env["client.blocking"] = True
-        fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
-        fabric.env["site.anticache_enable"] = False
-
-
-    if args['exp_type'] == 'reconfig-perf10':
-        fabric.env["client.blocking_concurrent"] = 4 # * int(partitions/8)
-        fabric.env["client.count"] = 4
-        fabric.env["client.blocking"] = True
-        fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
-        fabric.env["site.commandlog_enable"] = False
-
-    if args['exp_type'] == 'reconfig-perf11':
-        fabric.env["client.blocking_concurrent"] = 1 # * int(partitions/8)
-        fabric.env["client.count"] = 4
-        fabric.env["client.blocking"] = True
-        fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = partitions * 3  # max(1, int(partitions/2))
-        fabric.env["site.anticache_enable"] = False
-        fabric.env["site.commandlog_enable"] = False
-    
-    if args['exp_type'] == 'reconfig-perf12':
-        fabric.env["client.blocking_concurrent"] = 10 # * int(partitions/8)
-        fabric.env["client.count"] = 1
-        fabric.env["client.blocking"] = True
-        fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = 20  # max(1, int(partitions/2))
-
-    if args['exp_type'] == 'reconfig-perf13':
-        fabric.env["client.blocking_concurrent"] = 1 # * int(partitions/8)
-        fabric.env["client.count"] = 1
-        fabric.env["client.blocking"] = True
-        fabric.env["client.output_response_status"] = True
-        fabric.env["client.threads_per_host"] = 20  # max(1, int(partitions/2))
 
     if args['exp_type'] == 'reconfig-ycsb-zipf' or args['exp_type'] == 'stopcopy-ycsb-zipf':
         fabric.env["client.count"] = 4
@@ -1102,6 +1023,29 @@ def cleanHevent(inst, fabric):
      fabric.cleanup_file(inst, complete_filename)
 
 #Build a list of reconfiguration events.
+def extractAffinityEvents(rawReconfigs, warmUp):
+    res = []
+    for rawReconfig in rawReconfigs:
+        if ":" in rawReconfig:
+            vals = rawReconfig.split(":")
+            if len(vals) < 2:
+                LOG.error("Invalid reconfig param: %s. Have at least a delayTimeMS:planID")
+                raise Exception("Invalid reconfig param: %s. Have at least a delayTimeMS:planID")
+
+            delayTimeMS = float(vals[0])
+            reconfig = { "delayTimeMS": delayTimeMS, "planID": vals[1], "leaderID": 0, "reconfigType": reconfigType }
+            if len(vals) == 3:
+                reconfig["leaderID"] = vals[2]
+            res.append(reconfig)
+        else:
+            LOG.info("@@@ %s"% rawReconfig)
+            delayTimeMS = float(rawReconfig)
+            reconfig = { "delayTimeMS": delayTimeMS}
+            res.append(reconfig)
+    return res
+
+
+#Build a list of reconfiguration events.
 def extractReconfigEvents(rawReconfigs, expType, warmUp):
     res = []
     warmUpApplied = False
@@ -1165,8 +1109,9 @@ if __name__ == '__main__':
 
     #reconfig based
     agroup.add_argument("--reconfig", action="append", help="Configuration for an optional reconfig event [delayTimeMS]:[planId]:[optLeaderId]. Can accept multiple")
+    agroup.add_argument("--affinity", action="append", help="Configuration for an optional affinity event [delayTimeMS]. Can accept multiple")
     agroup.add_argument("--sweep-reconfiguration", action='store_true',default=False, help='Collect hevent.log from servers')
-    agroup.add_argument("--benchmark-size", type=int, help="The size of a benchmark (usertable size, warehouses, etc)")
+    agroup.add_argument("--benchmark-size",  help="The size of a benchmark (usertable size, warehouses, etc)")
     agroup.add_argument("--splitplan", type=int,  help="Number of plan splits")
     agroup.add_argument("--plandelay", type=int,  help="Amount of time between plans")
     agroup.add_argument("--asyncdelay", type=int,  help="Amount of time between async pull")
@@ -1424,9 +1369,14 @@ if __name__ == '__main__':
                                 totalAttempts
                     )
                     reconfigs = []
+                    affinities = []
                     if args["reconfig"]:
                       reconfigs = extractReconfigEvents(args["reconfig"], args["exp_type"], args["client.warmup"])
                       LOG.info("Reconfiguration Events = %s" % reconfigs)
+                    if args["affinity"]:
+                      affinities = extractAffinityEvents(args["affinity"],  args["client.warmup"])
+                      LOG.info("Reconfiguration Events = %s" % affinities)
+                         
                       
                     try:
                         if args["sweep_reconfiguration"]:
@@ -1443,7 +1393,8 @@ if __name__ == '__main__':
                                                 updateRepo=needUpdate, \
                                                 resetLog4j=needResetLog4j, \
                                                 extraParams=controllerParams, \
-                                                reconfigEvents=reconfigs)
+                                                reconfigEvents=reconfigs, \
+                                                affinityEvents=affinities)
                                                 
                         # Process JSON Output
                         if args['no_json'] == False:

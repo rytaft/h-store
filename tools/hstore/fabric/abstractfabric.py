@@ -231,7 +231,7 @@ class AbstractFabric(object):
     def exec_benchmark(self, inst, project, \
                              removals=[ ], json=False, build=True, trace=False, \
                              updateJar=True, updateConf=True, updateRepo=False, resetLog4j=False, \
-                             extraParams={ }, reconfigEvents = [] ):
+                             extraParams={ }, reconfigEvents = [], affinityEvents= [] ):
         ## Make sure we have enough instances
         if (self.hostCount + self.clientCount) > len(self.running_instances):
             raise Exception("Needed %d host + %d client instances but only %d are currently running" % (\
@@ -342,13 +342,18 @@ class AbstractFabric(object):
                     
                 LOG.info("Running benchmark on %s", inst)
                 reconfig_cmd = ''
+                affinity_cmd = ''
                 if reconfigEvents:
                     if len(reconfigEvents) > 1:
                       raise NotImplementedError()
                     reconfig = reconfigEvents[0]
                     reconfig_cmd = "-Dproc=@ReconfigurationStatic -Dproc_start_time=%d -Dparam0=%s -Dparam1=%s -Dparam2=%s" % (reconfig['delayTimeMS'], reconfig['leaderID'], reconfig['planID'], reconfig['reconfigType'])
-           
-                cmd = "ant %s hstore-benchmark %s %s" % (prefix, hstore_opts_cmd, reconfig_cmd)
+                if affinityEvents:
+                    if len(affinityEvents) > 1:
+                      raise NotImplementedError()
+                    affinity = affinityEvents[0]
+                    affinity_cmd = "-Dproc=@Affinity -Dproc_start_time=%d" % (affinity['delayTimeMS'])
+                cmd = "ant %s hstore-benchmark %s %s %s" % (prefix, hstore_opts_cmd, reconfig_cmd, affinity_cmd)
                 output = run(cmd)
                 
                 ## If they wanted a trace file, then we have to ship it back to ourselves
