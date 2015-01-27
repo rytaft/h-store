@@ -45,7 +45,7 @@ public class Controller {
     public static boolean RUN_MONITORING = true;
     public static boolean UPDATE_PLAN = true;
     public static boolean EXEC_RECONF = true;
-    public static String PLAN_IN = "plan.json";
+    public static String PLAN_IN = "plan_affinity.json";
     public static String PLAN_OUT = "plan_out.json";
     
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
