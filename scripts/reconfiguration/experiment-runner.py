@@ -637,13 +637,18 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
 
         plan_path = '%s-%s.json' % (plan_base, partitions)
         if benchmark == 'affinity':
+            if "benchmark_size" in args and args["benchmark_size"] in AFF_SIZES:
+                LOG.info(AFF_SIZES[args["benchmark_size"]])
+                _sz = AFF_SIZES[args["benchmark_size"]]
+                fabric.env['benchmark.num_suppliers'] = _sz['suppliers']
+                fabric.env['benchmark.num_products'] = _sz['products']
+                fabric.env['benchmark.num_parts'] = _sz['parts']
+            else:
+                _sz = None
             if not os.path.exists(plan_path):
                 LOG.error("plan does not exist %s" % plan_path)
-                if "benchmark_size" in args:
-                    LOG.info(AFF_SIZES[args["benchmark_size"]])
-                    _sz = AFF_SIZES[args["benchmark_size"]]
+                if _sz:
                     a2 = {}
-                     
                     a2['type'] = 'affinity'
                     a2['partitions'] = str(partitions)
                     a2['affinity'] = "%s:%s:%s" % (_sz['suppliers'],_sz['products'],_sz['parts'])

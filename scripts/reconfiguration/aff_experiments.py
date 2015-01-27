@@ -13,8 +13,37 @@ AFF_SIZES = {
     "suppliers": 1000,
     "products": 10000,
     "parts" : 100000
-  }
-
+  },
+  "m": {
+    "suppliers": 10000,
+    "products": 100000,
+    "parts" : 1000000
+  },
+  "l": {
+    "suppliers": 100000,
+    "products": 1000000,
+    "parts" : 10000000
+  },
+  "xs2": {
+    "suppliers": 1000,
+    "products": 100,
+    "parts" : 10000
+  },
+  "s2": {
+    "suppliers": 10000,
+    "products": 1000,
+    "parts" : 100000
+  },
+  "m2": {
+    "suppliers": 100000,
+    "products": 10000,
+    "parts" : 1000000
+  },
+  "l2": {
+    "suppliers": 1000000,
+    "products": 100000,
+    "parts" : 10000000
+  },
 }
 
 RECONFIG_CLIENT_COUNT = 1
