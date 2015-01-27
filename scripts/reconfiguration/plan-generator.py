@@ -80,10 +80,11 @@ def genPlanJSON(tables,phases,default_table, onebased=False, multi=False, fine=F
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("-t","--type",dest="type", choices=["ycsb","tpcc"], required=True, help="Generate this type")
+  parser.add_argument("-t","--type",dest="type", choices=["ycsb","tpcc", "affinity"], required=True, help="Generate this type")
   parser.add_argument("-c","--change-type", dest="change_type", choices=["scale-down", "scale-up"], help="How to  evolve")
   parser.add_argument("-n","--num-phases",dest="phases", type=int, default=4, help="How many phases")
   parser.add_argument("-s","--size",dest="size", type=int, required=True, help="Partition key size")
+  parser.add_argument("-a","--affinity", dest="affinity", default=None, help="Affinity Sizes [Suppliers]:[Products]:[Parts]")
   parser.add_argument("-p","--partitions",dest="partitions", type=str, required=True, help="Partitions size append, comma delimited" )
   parser.add_argument("-m","--multi",dest="multi",  action="store_true", help="Gen multi col" )
   parser.add_argument("-f","--fine",dest="fine",  action="store_true", help="Gen fine multi col" )
@@ -93,12 +94,29 @@ if __name__ == "__main__":
   
   TABLE_MAP = {
     "ycsb": "usertable",
-    "tpcc": "warehouse"
+    "tpcc": "warehouse",
+    "affinity" : "suppliers"
   }
+
+  aff_size = None 
+  if args.affinity and ":" in args.affinity:
+    _t = args.affinity.split(":")
+    if len(_t) != 3:
+        raise Exception("affinity size needs 3 values [Suppliers]:[Products]:[Parts] : %s " % args.affinity)
+    aff_size = {}
+    aff_size["suppliers"] = int(_t[0])
+    aff_size["products"] = int(_t[1])
+    aff_size["parts"] = int(_t[2])
+  elif args.type == "affinity":
+    raise Exception("Set to affinity, but no affinity sizes %s" % args.affinity)
+
   if args.change_type == "scale-down":
     raise Exception("not implemented")
   if "," in args.partitions or args.partitions != None:  
-    tables = { TABLE_MAP[args.type]: args.size }
+    if args.type != "affinity":
+      tables = { TABLE_MAP[args.type]: args.size }
+    else:
+      tables =  aff_size
     default_table = TABLE_MAP[args.type]
     if args.multi:
         default_table="district"
