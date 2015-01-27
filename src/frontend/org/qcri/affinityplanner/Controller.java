@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.TreeSet;
 
+import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.Catalog;
 import org.voltdb.catalog.Partition;
@@ -22,6 +23,7 @@ import org.voltdb.client.ProcCallException;
 import org.voltdb.processtools.ShellTools;
 
 import edu.brown.catalog.CatalogUtil;
+import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.hstore.conf.HStoreConf;
@@ -35,6 +37,8 @@ public class Controller {
     private CatalogContext m_catalog_context;
     private String m_connectedHost;
     
+    private static final Logger LOG = Logger.getLogger(Controller.class);
+
 //    private Path planFile;
 //    private Path outputPlanFile;
     
@@ -49,6 +53,7 @@ public class Controller {
     public static String PLAN_OUT = "plan_out.json";
     
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
+        
         m_client = ClientFactory.createClient();
         m_client.configureBlocking(false);
         m_sites = CatalogUtil.getAllSites(catalog);
@@ -75,6 +80,11 @@ public class Controller {
             }
         }
         MAX_PARTITIONS++;
+        
+        if (hstore_conf.global.hasher_plan != null) {
+            PLAN_IN = hstore_conf.global.hasher_plan;
+            LOG.info("Updating plan_in to be " + PLAN_IN);
+        }
         
         // verify that all partition ids are contiguous
         Iterator<Integer> partIdsIt = partitionIds.iterator();
