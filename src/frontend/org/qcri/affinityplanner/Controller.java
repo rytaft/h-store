@@ -31,7 +31,7 @@ import edu.brown.utils.ArgumentsParser;
 import edu.brown.utils.CollectionUtil;
 import edu.brown.utils.FileUtil;
 
-public class Controller {
+public class Controller extends Thread {
     private org.voltdb.client.Client m_client;
     private Collection<Site> m_sites;
     private CatalogContext m_catalog_context;
