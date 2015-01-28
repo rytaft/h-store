@@ -61,6 +61,8 @@ public class Affinity extends VoltSystemProcedure {
     case SysProcFragmentId.PF_affinityDistribute: {
       try {
           LOG.info("Run affinity");
+          Controller c = new Controller(this.catalogContext.catalog, hstore_conf, this.catalogContext);
+          c.run();
       } catch (Exception ex) {
         throw new ServerFaultException(ex.getMessage(), txn_id);
       }
@@ -74,10 +76,7 @@ public class Affinity extends VoltSystemProcedure {
     }
     case SysProcFragmentId.PF_affinityAggregate: {
       try {
-          LOG.info("Combining results");
-          Controller c = new Controller(this.catalogContext.catalog, hstore_conf, this.catalogContext);
-          c.run();
-              
+          LOG.info("Combining results");              
       } catch (Exception ex) {
           throw new ServerFaultException(ex.getMessage(), txn_id);
         }
