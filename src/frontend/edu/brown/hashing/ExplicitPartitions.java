@@ -268,6 +268,14 @@ public abstract class ExplicitPartitions {
         return this.catalog_to_table_map.get(catalog.get(0));
     }
 
+    public String getParentTableName(CatalogType catalog) {
+	String table_name = this.catalog_to_table_map.get(catalog).getName().toLowerCase();
+	if(partitionedTablesByFK.containsKey(table_name)) {
+	    table_name = partitionedTablesByFK.get(table_name);
+	}
+	return table_name;
+    }
+
     /**
      * Get the previous partition id for a given table and partition id/key
      * 

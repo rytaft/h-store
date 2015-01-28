@@ -213,4 +213,8 @@ public class SysProcFragmentId {
     // @ReconfigurationStatic
     public static final int PF_reconfigurationStaticDistribute = 408;
     public static final int PF_reconfigurationStaticAggregate = 409;
+    
+    // @Affinity
+    public static final int PF_affinityDistribute = 410;
+    public static final int PF_affinityAggregate = 411;
 }

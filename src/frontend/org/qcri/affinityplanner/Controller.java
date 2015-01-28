@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.TreeSet;
 
+import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.Catalog;
 import org.voltdb.catalog.Partition;
@@ -22,6 +23,7 @@ import org.voltdb.client.ProcCallException;
 import org.voltdb.processtools.ShellTools;
 
 import edu.brown.catalog.CatalogUtil;
+import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.hstore.conf.HStoreConf;
@@ -35,6 +37,8 @@ public class Controller {
     private CatalogContext m_catalog_context;
     private String m_connectedHost;
     
+    private static final Logger LOG = Logger.getLogger(Controller.class);
+
 //    private Path planFile;
 //    private Path outputPlanFile;
     
@@ -45,10 +49,11 @@ public class Controller {
     public static boolean RUN_MONITORING = true;
     public static boolean UPDATE_PLAN = true;
     public static boolean EXEC_RECONF = true;
-    public static String PLAN_IN = "plan.json";
+    public static String PLAN_IN = "plan_affinity.json";
     public static String PLAN_OUT = "plan_out.json";
     
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
+        
         m_client = ClientFactory.createClient();
         m_client.configureBlocking(false);
         m_sites = CatalogUtil.getAllSites(catalog);
@@ -70,11 +75,16 @@ public class Controller {
                 PARTITIONS_PER_SITE = site.getPartitions().size();
             }
             else if (PARTITIONS_PER_SITE != site.getPartitions().size()){
-                System.out.println("Not all sites have the same number of partitions. Exiting");
+                record("Not all sites have the same number of partitions. Exiting");
                 System.exit(1);
             }
         }
         MAX_PARTITIONS++;
+        
+        if (hstore_conf.global.hasher_plan != null) {
+            PLAN_IN = hstore_conf.global.hasher_plan;
+            LOG.info("Updating plan_in to be " + PLAN_IN);
+        }
         
         // verify that all partition ids are contiguous
         Iterator<Integer> partIdsIt = partitionIds.iterator();
@@ -85,7 +95,7 @@ public class Controller {
                 lastPart = currPart;
             }
             else{
-                System.out.println("Gap in partition ids. Exiting");
+                record("Gap in partition ids. Exiting");
                 System.exit(1);
             }
         }
@@ -113,6 +123,11 @@ public class Controller {
         //TODO select planners here
     }
     
+    public static void record(String s){
+        System.out.println(s);
+        FileUtil.appendEventToFile(s);        
+    }
+    
     public void run (){
         // turn monitoring on and off
         if(RUN_MONITORING || EXEC_RECONF){
@@ -127,29 +142,29 @@ public class Controller {
             try {
                 cresponse = m_client.callProcedure("@SetConfiguration", confNames, confValues);
             } catch (IOException | ProcCallException e) {
-                System.out.println("Problem while turning on monitoring");
-                System.out.println(stackTraceToString(e));
+                record("Problem while turning on monitoring");
+                record(stackTraceToString(e));
                 System.exit(1);
             }
             try {
                 Thread.sleep(MONITORING_TIME);
             } catch (InterruptedException e) {
-                System.out.println("sleeping interrupted while monitoring");
+                record("sleeping interrupted while monitoring");
                 System.exit(1);
             }
             confValues[0] = "false";
             try {
                 cresponse = m_client.callProcedure("@SetConfiguration", confNames, confValues);
             } catch (IOException | ProcCallException e) {
-                System.out.println("Problem while turning off");
-                System.out.println(stackTraceToString(e));
+                record("Problem while turning off");
+                record(stackTraceToString(e));
                 System.exit(1);
             }
         } // END if(RUN_MONITORING)
         
         if(UPDATE_PLAN){
             
-            System.out.println("Fetching remote monitoring outputs");
+            record("Fetching remote monitoring outputs");
 
             String hStoreDir = ShellTools.cmd("pwd");
             hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
@@ -176,16 +191,16 @@ public class Controller {
                 intervalFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + "-interval.log");
             }
     
-            System.out.println("======================== LOADING GRAPH ========================");
+            record("======================== LOADING GRAPH ========================");
             
             AffinityGraph graph = new AffinityGraph();
             boolean b = graph.loadFromFiles(m_catalog_context, planFile, logFiles, intervalFiles, MAX_PARTITIONS);
             if (!b){
-                System.out.println("Problem while loading graph. Exiting");
+                record("Problem while loading graph. Exiting");
                 return;
             }
 
-            System.out.println("======================== PARTITIONING GRAPH ========================");
+            record("======================== PARTITIONING GRAPH ========================");
             
             Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
             graph.toFileDebug(graphFile);
@@ -193,17 +208,17 @@ public class Controller {
             GraphPartitioner partitioner = new GraphPartitioner(graph, planFile, m_catalog_context);
             b = partitioner.repartition();
             if (!b){
-                System.out.println("Problem while partitioning graph. Exiting");
+                record("Problem while partitioning graph. Exiting");
                 return;
             }
             partitioner.writePlan(PLAN_OUT);
  
             String outputPlan = FileUtil.readFile(PLAN_OUT);
-            System.out.println("Output plan\n" + outputPlan);
+            record("Output plan\n" + outputPlan);
 
-            System.out.println("Loads per partition after reconfiguration");
+            record("Loads per partition after reconfiguration");
             for (int j = 0; j < graph.getPartitionsNo(); j++){
-                System.out.println(j + " " + partitioner.getLoadPerPartition(j));
+                record(j + " " + partitioner.getLoadPerPartition(j));
             }
             
             
@@ -211,20 +226,20 @@ public class Controller {
 
         if(EXEC_RECONF){
 
-            System.out.println("======================== STARTING RECONFIGURATION ========================");
+            record("======================== STARTING RECONFIGURATION ========================");
 
             ClientResponse cresponse = null;
             try {
                 String outputPlan = FileUtil.readFile(PLAN_OUT);
                 cresponse = m_client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
                                 //cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
-                                System.out.println("Controller: received response: " + cresponse);
+                                record("Controller: received response: " + cresponse);
             } catch (NoConnectionsException e) {
-                System.out.println("Controller: lost connection");
+                record("Controller: lost connection");
                 e.printStackTrace();
                 System.exit(1);
             } catch (IOException e) {
-                System.out.println("Controller: IO Exception while connecting to host");
+                record("Controller: IO Exception while connecting to host");
                 e.printStackTrace();
                 System.exit(1);
             } catch (ProcCallException e) {
@@ -234,7 +249,7 @@ public class Controller {
             }
 
             if(cresponse.getStatus() != Status.OK){
-                System.out.println("@Reconfiguration transaction aborted");
+                record("@Reconfiguration transaction aborted");
                 System.exit(1);
             }
         } // END if(EXEC_RECONF)
@@ -249,15 +264,15 @@ public class Controller {
         try {
             m_client.createConnection(null, m_connectedHost, HStoreConstants.DEFAULT_PORT, "user", "password");
         } catch (UnknownHostException e) {
-            System.out.println("Controller: tried to connect to unknown host");
+            record("Controller: tried to connect to unknown host");
             e.printStackTrace();
             System.exit(1);
         } catch (IOException e) {
-            System.out.println("Controller: IO Exception while connecting to host");
+            record("Controller: IO Exception while connecting to host");
             e.printStackTrace();
             System.exit(1);
         }
-        System.out.println("Connected to host " + m_connectedHost);
+        record("Connected to host " + m_connectedHost);
     }
     
     /**
@@ -266,7 +281,7 @@ public class Controller {
     public static void main(String[] vargs){
         
         if(vargs.length == 0){
-            System.out.println("Must specify server hostname");
+            record("Must specify server hostname");
             return;
         }       
 
@@ -274,24 +289,24 @@ public class Controller {
         try {
             args = ArgumentsParser.load(vargs,ArgumentsParser.PARAM_CATALOG);
         } catch (Exception e) {
-            System.out.println("Problem while parsing Controller arguments");
-            System.out.println(stackTraceToString(e));
+            record("Problem while parsing Controller arguments");
+            record(stackTraceToString(e));
             return;
         }
         
         HStoreConf hstore_conf = HStoreConf.initArgumentsParser(args);
 
         //System.out.println("Params: bench"+params[0] +" no. part " +vargs[1] + " twin "+vargs[2]+" plannerID "+vargs[3]);
-        System.out.println("args:: "+args.toString());
+        record("args:: "+args.toString());
 
-        System.out.println("vargs.length: "+vargs.length);
+        record("vargs.length: "+vargs.length);
 
         Controller c = new Controller(args.catalog, hstore_conf, args.catalogContext);
         try {
             c.run();
         } catch (Exception e) {
             e.printStackTrace();
-            System.out.println("Not good");
+            record("Not good");
             return;
         }
     }

@@ -83,6 +83,7 @@ import org.voltdb.compiler.projectfile.UsersType;
 import org.voltdb.compiler.projectfile.VerticalpartitionsType.Verticalpartition;
 import org.voltdb.planner.VerticalPartitionPlanner;
 import org.voltdb.sysprocs.AdHoc;
+import org.voltdb.sysprocs.Affinity;
 import org.voltdb.sysprocs.ChangePartitionPlan;
 import org.voltdb.sysprocs.DatabaseDump;
 import org.voltdb.sysprocs.EvictHistory;
@@ -1299,6 +1300,7 @@ public class VoltCompiler {
             {StopCopy.class,                        false,      true},
             {ReconfigurationRemote.class,           false,      true},
             {ReconfigurationStatic.class,           false,      true},
+            {Affinity.class,                        false,      true},
          
 //         {"org.voltdb.sysprocs.StartSampler",                 false,    false},
 //         {"org.voltdb.sysprocs.SystemInformation",            true,     false},
