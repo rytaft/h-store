@@ -161,11 +161,12 @@ public class Controller extends Thread {
                 System.exit(1);
             }
         } // END if(RUN_MONITORING)
-        
+        long t1;
+        long t2;
         if(UPDATE_PLAN){
             
-            record("Fetching remote monitoring outputs");
-
+            record("==================Fetching remote monitoring outputs======================");
+            t1 = System.currentTimeMillis();
             String hStoreDir = ShellTools.cmd("pwd");
             hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
             for(Site site: m_sites){
@@ -190,9 +191,10 @@ public class Controller extends Thread {
                 logFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + ".log");
                 intervalFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + "-interval.log");
             }
-    
+            t2 = System.currentTimeMillis();
+            record("Time taken:" + (t2-t1));
             record("======================== LOADING GRAPH ========================");
-            
+            t1 = System.currentTimeMillis();
             AffinityGraph graph = new AffinityGraph();
             boolean b = graph.loadFromFiles(m_catalog_context, planFile, logFiles, intervalFiles, MAX_PARTITIONS);
             if (!b){
@@ -200,8 +202,10 @@ public class Controller extends Thread {
                 return;
             }
 
+            t2 = System.currentTimeMillis();
+            record("Time taken:" + (t2-t1));
             record("======================== PARTITIONING GRAPH ========================");
-            
+            t1 = System.currentTimeMillis();
             Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
             graph.toFileDebug(graphFile);
             
@@ -220,14 +224,15 @@ public class Controller extends Thread {
             for (int j = 0; j < graph.getPartitionsNo(); j++){
                 record(j + " " + partitioner.getLoadPerPartition(j));
             }
-            
+
+            t2 = System.currentTimeMillis();
+            record("Time taken:" + (t2-t1));
             
         } // END if(UPDATE_PLAN)
 
         if(EXEC_RECONF){
 
             record("======================== STARTING RECONFIGURATION ========================");
-
             ClientResponse cresponse = null;
             try {
                 String outputPlan = FileUtil.readFile(PLAN_OUT);
