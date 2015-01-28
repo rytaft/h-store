@@ -62,7 +62,7 @@ public class Affinity extends VoltSystemProcedure {
       try {
           LOG.info("Run affinity");
           Controller c = new Controller(this.catalogContext.catalog, hstore_conf, this.catalogContext);
-          c.run();
+          c.start();
       } catch (Exception ex) {
         throw new ServerFaultException(ex.getMessage(), txn_id);
       }
