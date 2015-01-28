@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
+import org.qcri.affinityplanner.Controller;
 import org.voltdb.DependencySet;
 import org.voltdb.ParameterSet;
 import org.voltdb.ProcInfo;
@@ -18,8 +19,6 @@ import org.voltdb.exceptions.ServerFaultException;
 import org.voltdb.utils.VoltTableUtil;
 
 import edu.brown.hstore.PartitionExecutor.SystemProcedureExecutionContext;
-import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
-import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator.ReconfigurationState;
 import edu.brown.utils.FileUtil;
 
 /**
@@ -57,11 +56,6 @@ public class Affinity extends VoltSystemProcedure {
   public DependencySet executePlanFragment(Long txn_id, Map<Integer, List<VoltTable>> dependencies, int fragmentId, ParameterSet params,
       SystemProcedureExecutionContext context) {
     DependencySet result = null;
-//    int coordinator = (int) params.toArray()[0];
-//    String partition_plan = (String) params.toArray()[1];
-//   String reconfiguration_protocol_string = (String) params.toArray()[2];        
-//    ReconfigurationProtocols reconfig_protocol = ReconfigurationProtocols.valueOf(reconfiguration_protocol_string.toUpperCase());
-//    int currentPartitionId = context.getPartitionExecutor().getPartitionId();
     switch (fragmentId) {
 
     case SysProcFragmentId.PF_affinityDistribute: {
@@ -81,6 +75,8 @@ public class Affinity extends VoltSystemProcedure {
     case SysProcFragmentId.PF_affinityAggregate: {
       try {
           LOG.info("Combining results");
+          Controller c = new Controller(this.catalogContext.catalog, hstore_conf, this.catalogContext);
+          c.run();
               
       } catch (Exception ex) {
           throw new ServerFaultException(ex.getMessage(), txn_id);
