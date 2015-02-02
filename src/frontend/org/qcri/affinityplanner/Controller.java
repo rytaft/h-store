@@ -193,24 +193,12 @@ public class Controller extends Thread {
             }
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
-            record("======================== LOADING GRAPH ========================");
-            t1 = System.currentTimeMillis();
-            AffinityGraph graph = new AffinityGraph();
-            boolean b = graph.loadFromFiles(m_catalog_context, planFile, logFiles, intervalFiles, MAX_PARTITIONS);
-            if (!b){
-                record("Problem while loading graph. Exiting");
-                return;
-            }
 
-            t2 = System.currentTimeMillis();
-            record("Time taken:" + (t2-t1));
             record("======================== PARTITIONING GRAPH ========================");
             t1 = System.currentTimeMillis();
-            Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
-            graph.toFileDebug(graphFile);
             
-            GraphPartitioner partitioner = new GraphPartitioner(graph, planFile, m_catalog_context);
-            b = partitioner.repartition();
+            GraphPartitioner partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles, Controller.MAX_PARTITIONS);
+            boolean b = partitioner.repartition();
             if (!b){
                 record("Problem while partitioning graph. Exiting");
                 return;
@@ -221,7 +209,7 @@ public class Controller extends Thread {
             record("Output plan\n" + outputPlan);
 
             record("Loads per partition after reconfiguration");
-            for (int j = 0; j < graph.getPartitionsNo(); j++){
+            for (int j = 0; j < Controller.MAX_PARTITIONS; j++){
                 record(j + " " + partitioner.getLoadPerPartition(j));
             }
 

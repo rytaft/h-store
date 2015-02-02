@@ -1,9 +1,8 @@
 package org.qcri.affinityplanner;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -19,7 +18,7 @@ import java.util.TreeSet;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 
-public class GraphPartitioner {
+public class GraphPartitioner implements Partitioner {
 
     private static final Logger LOG = Logger.getLogger(GraphPartitioner.class);
 
@@ -33,8 +32,21 @@ public class GraphPartitioner {
 
     private AffinityGraph m_graph;
 
-    public GraphPartitioner (AffinityGraph graph, File planFile, CatalogContext catalogContext){
-        m_graph = graph;
+    public GraphPartitioner (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles, int noPartitions){
+        Controller.record("======================== LOADING GRAPH ========================");
+        long t1 = System.currentTimeMillis();
+        AffinityGraph graph = new AffinityGraph();
+        boolean b = graph.loadFromFiles(catalogContext, planFile, logFiles, intervalFiles, Controller.MAX_PARTITIONS);
+        if (!b){
+            Controller.record("Problem while loading graph. Exiting");
+            return;
+        }
+
+        Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
+        graph.toFileDebug(graphFile);
+
+        long t2 = System.currentTimeMillis();
+        Controller.record("Time taken:" + (t2-t1));
     }
 
     /**
