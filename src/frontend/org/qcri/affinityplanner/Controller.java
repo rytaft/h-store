@@ -50,6 +50,7 @@ public class Controller extends Thread {
     public static boolean EXEC_RECONF = true;
     public static String PLAN_IN = "plan_affinity.json";
     public static String PLAN_OUT = "plan_out.json";
+    public static String ALGO = "graph";
     
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
         
@@ -196,7 +197,15 @@ public class Controller extends Thread {
             record("======================== PARTITIONING GRAPH ========================");
             t1 = System.currentTimeMillis();
             
-            GraphPartitioner partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+            Partitioner partitioner = null;
+            
+            if(ALGO.equals("simple")){
+                partitioner = new SimplePartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+            }
+            else{
+                partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+            }
+            
             boolean b = partitioner.repartition();
             if (!b){
                 record("Problem while partitioning graph. Exiting");

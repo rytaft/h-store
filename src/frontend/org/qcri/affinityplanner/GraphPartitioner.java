@@ -492,16 +492,6 @@ public class GraphPartitioner extends Partitioner {
         return getLoadInCurrPartition(m_graph.m_partitionVertices.get(partition));
     }
 
-
-    public Double getLoadPerSite(int site){
-        Collection<Integer> partitions = PlanHandler.getPartitionsSite(site);
-        double load = 0;
-        for (Integer partition : partitions){
-            load += getLoadPerPartition(partition);
-        }
-        return load;
-    }
-
     /**
      * Returns sorted (descending order) list of top-k vertices from site
      * 

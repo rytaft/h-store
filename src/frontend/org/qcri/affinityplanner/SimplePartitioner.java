@@ -51,15 +51,31 @@ public class SimplePartitioner extends Partitioner {
     }
 
     @Override
-    public Double getLoadPerPartition(int partition) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public Double getLoadPerSite(int site) {
-        // TODO Auto-generated method stub
-        return null;
+    public Double getLoadPerPartition(int fromPartition) {
+        
+        Set<String> vertices = m_graph.m_partitionVertices.get(fromPartition);
+        double load = 0;
+        for(String vertex : vertices){
+            // local accesses
+            load += m_graph.m_vertices.get(vertex);
+            // remote accesses
+            int fromPartitionSite = PlanHandler.getSitePartition(fromPartition);
+            Map<String,Double> adjacencyList = m_graph.m_edges.get(vertex);
+            if(adjacencyList != null){
+                for(Map.Entry<String, Double> edge : adjacencyList.entrySet()){
+                    String toPartition = edge.getKey();
+                    int toPartitionInt = Integer.parseInt(toPartition);
+                    int toPartitionSite = PlanHandler.getSitePartition(toPartitionInt);
+                    if(toPartitionSite != fromPartitionSite){
+                        load += edge.getValue() * DTXN_COST;
+                    }
+                    else if(toPartitionInt != fromPartition){
+                        load += edge.getValue() * LMPT_COST;
+                    }
+                }
+            }
+        }
+        return load;
     }
 
     @Override
