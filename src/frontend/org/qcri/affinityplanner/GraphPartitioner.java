@@ -26,7 +26,6 @@ public class GraphPartitioner extends Partitioner {
     
     public GraphPartitioner (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles){
                 
-        Controller.record("======================== LOADING GRAPH ========================");
         long t1 = System.currentTimeMillis();
         try{
             m_graph = new AffinityGraph(true, catalogContext, planFile, logFiles, intervalFiles, Controller.MAX_PARTITIONS);
