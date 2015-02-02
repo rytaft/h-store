@@ -196,7 +196,7 @@ public class Controller extends Thread {
             record("======================== PARTITIONING GRAPH ========================");
             t1 = System.currentTimeMillis();
             
-            GraphPartitioner partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles, Controller.MAX_PARTITIONS);
+            GraphPartitioner partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
             boolean b = partitioner.repartition();
             if (!b){
                 record("Problem while partitioning graph. Exiting");

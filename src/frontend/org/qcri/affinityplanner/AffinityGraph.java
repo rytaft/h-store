@@ -42,11 +42,8 @@ public class AffinityGraph {
     
     private PlanHandler m_plan_handler = null;
     
-    public AffinityGraph(boolean tupleGranularity){
+    public AffinityGraph(boolean tupleGranularity, CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles, int noPartitions) throws Exception {
         m_tupleGranularity = tupleGranularity;
-    }
-    
-    public boolean loadFromFiles (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles, int noPartitions) {
 
         BufferedReader reader;
         for (int i = 0; i < noPartitions; i++){
@@ -57,7 +54,7 @@ public class AffinityGraph {
             m_plan_handler = new PlanHandler(planFile, catalogContext);
         } catch (Exception e) {
             LOG.warn("Could not create plan handler " + Controller.stackTraceToString(e));
-            return false;
+            throw e;
         }
         
         // read monitoring intervals for all sites - in seconds
@@ -72,11 +69,11 @@ public class AffinityGraph {
                 currInterval++;
             } catch (IOException e) {
                 LOG.warn("Error while reading interval file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                return false;
+                throw e;
             }
             catch (NumberFormatException e1){
                 LOG.warn("Error while converting interval from file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e1));
-                return false;
+                throw e1;
             }
         }
         
@@ -90,7 +87,7 @@ public class AffinityGraph {
                 reader = Files.newBufferedReader(logFile, Charset.forName("US-ASCII"));
             } catch (IOException e) {
                 LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                return false;
+                throw e;
             }
             String line;
             HashMap<String, Set<String>> transactions = new HashMap<String,Set<String>>();
@@ -100,12 +97,13 @@ public class AffinityGraph {
                 line = reader.readLine();
             } catch (IOException e) {
                 LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                return false;
+                throw e;
             }
             if (line == null){
                 LOG.warn("File " + logFile.toString() + " is empty");
-                return false;
+                throw new Exception();
             }
+            
 //            System.out.println("Tran ID = " + currTransactionId);
             // PROCESS LINE
             while(line != null){
@@ -138,7 +136,7 @@ public class AffinityGraph {
                             if (partition == HStoreConstants.NULL_PARTITION_ID){
                                 LOG.info("Exiting graph loading. Could not find partition for key " + from);
                                 System.out.println("Exiting graph loading. Could not find partition for key " + from);
-                                return false;                            
+                                throw new Exception();                            
                             }
                             m_partitionVertices.get(partition).add(from);
                             m_vertexPartition.put(from, partition);
@@ -209,14 +207,11 @@ public class AffinityGraph {
                 } catch (IOException e) {
                     LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
                     System.out.println("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                    return false;
+                    throw e;
                 }
             }// END  while(line != null)
         } // END for (Path logFile : logFiles)
         
-        // normalize all weights using the monitoring intervals
-        
-        return true;
     }
     
     public void moveVertices(Set<String> movedVertices, int fromPartition, int toPartition) {
@@ -239,6 +234,10 @@ public class AffinityGraph {
         }
         
 //        System.out.println(m_plan_handler.toString() + "\n");
+    }
+    
+    public int getPartition(String vertex){
+        return m_plan_handler.getPartition(vertex);
     }
     
     public void planToJSON(String newPlanFile){
