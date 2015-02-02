@@ -164,9 +164,6 @@ public class Controller extends Thread {
                 System.exit(1);
             }
 
-        } // END if(RUN_MONITORING)
-        if(UPDATE_PLAN){
-            
             record("================== FETCHING MONITORING FILES ======================");
             t1 = System.currentTimeMillis();
             String hStoreDir = ShellTools.cmd("pwd");
@@ -197,12 +194,15 @@ public class Controller extends Thread {
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
 
+        } // END if(RUN_MONITORING)
+        if(UPDATE_PLAN){
+            
             record("======================== LOADING GRAPH ========================");
             t1 = System.currentTimeMillis();
             
             File planFile = new File (PLAN_IN);
-//            Path[] logFiles = new Path[MAX_PARTITIONS];
-//            Path[] intervalFiles = new Path[MAX_PARTITIONS];
+            Path[] logFiles = new Path[MAX_PARTITIONS];
+            Path[] intervalFiles = new Path[MAX_PARTITIONS];
 
             Partitioner partitioner = null;
             
@@ -212,8 +212,11 @@ public class Controller extends Thread {
             else{
                 partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
             }
+            t2 = System.currentTimeMillis();
+            record("Time taken:" + (t2-t1));
             
             record("======================== PARTITIONING GRAPH ========================");
+            t1 = System.currentTimeMillis();
 
             boolean b = partitioner.repartition();
             if (!b){
