@@ -65,8 +65,10 @@ public abstract class Partitioner {
                 && getLoadPerPartition(toPartition) + deltaToPartition < MAX_LOAD_PER_PART){   // if gainToSite is negative, the load of the receiving site grows
             //            LOG.debug("Moving to partition " + toPartition);
             //            LOG.debug("Weights before moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
+
             m_graph.moveVertices(movingVertices, fromPartition, toPartition);
             //            LOG.debug("Weights after moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
+
             numMovedVertices = movingVertices.size();
         }
         return numMovedVertices;

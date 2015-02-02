@@ -137,6 +137,14 @@ public class Controller extends Thread {
         long t1;
         long t2;
 
+        File planFile = new File (PLAN_IN);
+        Path[] logFiles = new Path[MAX_PARTITIONS];
+        Path[] intervalFiles = new Path[MAX_PARTITIONS];
+        for (int i = 0; i < MAX_PARTITIONS; i++){
+            logFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + ".log");
+            intervalFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + "-interval.log");
+        }
+
         if(RUN_MONITORING){
             String[] confNames = {"site.access_tracking"};
             String[] confValues = {"true"};
@@ -170,7 +178,7 @@ public class Controller extends Thread {
             hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
             for(Site site: m_sites){
                 String ip = site.getHost().getIpaddr();
-                System.out.println("IP: " + ip);
+//                System.out.println("IP: " + ip);
                 for (int i = 0; i < MAX_PARTITIONS; i++){
                     String command = "scp " + ip + ":" + hStoreDir + "/transactions-partition-" + i + ".log .";
     //                System.out.println("Executing command:\n" + command);
@@ -182,15 +190,9 @@ public class Controller extends Thread {
                     results = ShellTools.cmd(command);
     //                System.out.println("Result:\n" + results);
                 }
-                System.out.println("Fetched");
+//                System.out.println("Fetched");
             }
     
-            Path[] logFiles = new Path[MAX_PARTITIONS];
-            Path[] intervalFiles = new Path[MAX_PARTITIONS];
-            for (int i = 0; i < MAX_PARTITIONS; i++){
-                logFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + ".log");
-                intervalFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + "-interval.log");
-            }
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
 
@@ -200,10 +202,6 @@ public class Controller extends Thread {
             record("======================== LOADING GRAPH ========================");
             t1 = System.currentTimeMillis();
             
-            File planFile = new File (PLAN_IN);
-            Path[] logFiles = new Path[MAX_PARTITIONS];
-            Path[] intervalFiles = new Path[MAX_PARTITIONS];
-
             Partitioner partitioner = null;
             
             if(ALGO.equals("simple")){

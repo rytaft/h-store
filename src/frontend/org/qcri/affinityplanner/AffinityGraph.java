@@ -49,18 +49,22 @@ public class AffinityGraph {
         for (int i = 0; i < noPartitions; i++){
             m_partitionVertices.add(new HashSet<String>());
         }
-        
+
         try {
             m_plan_handler = new PlanHandler(planFile, catalogContext);
         } catch (Exception e) {
             Controller.record("Could not create plan handler " + Controller.stackTraceToString(e));
             throw e;
         }
-        
+
         // read monitoring intervals for all sites - in seconds
         long[] intervalsInSecs = new long[intervalFiles.length];
         int currInterval = 0;
         for (Path intervalFile : intervalFiles){
+            if (intervalFile == null){
+                Controller.record("interval file name is null");
+                throw new Exception();
+            }
             try {
                 reader = Files.newBufferedReader(intervalFile, Charset.forName("US-ASCII"));
                 String line = reader.readLine();
@@ -69,10 +73,12 @@ public class AffinityGraph {
                 currInterval++;
             } catch (IOException e) {
                 Controller.record("Error while reading interval file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                Thread.sleep(1000);
                 throw e;
             }
             catch (NumberFormatException e1){
                 Controller.record("Error while converting interval from file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e1));
+                Thread.sleep(1000);
                 throw e1;
             }
         }
@@ -80,6 +86,9 @@ public class AffinityGraph {
         // scan files for all partitions
         int currLogFile = 0;
         for (Path logFile : logFiles){
+            
+            System.out.println("Loading from file " + logFile);
+
             // SETUP
             double normalizedIncrement = 1.0/intervalsInSecs[currLogFile];
             currLogFile ++;

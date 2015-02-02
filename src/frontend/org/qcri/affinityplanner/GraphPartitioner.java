@@ -22,8 +22,6 @@ public class GraphPartitioner extends Partitioner {
 
     private static final Logger LOG = Logger.getLogger(GraphPartitioner.class);
 
-    private AffinityGraph m_graph;
-    
     public GraphPartitioner (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles){
                 
         long t1 = System.currentTimeMillis();
