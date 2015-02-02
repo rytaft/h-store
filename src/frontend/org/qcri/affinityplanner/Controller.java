@@ -23,7 +23,6 @@ import org.voltdb.client.ProcCallException;
 import org.voltdb.processtools.ShellTools;
 
 import edu.brown.catalog.CatalogUtil;
-import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.hstore.conf.HStoreConf;
@@ -165,7 +164,7 @@ public class Controller extends Thread {
         long t2;
         if(UPDATE_PLAN){
             
-            record("==================Fetching remote monitoring outputs======================");
+            record("================== FETCHING MONITORING FILES ======================");
             t1 = System.currentTimeMillis();
             String hStoreDir = ShellTools.cmd("pwd");
             hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");

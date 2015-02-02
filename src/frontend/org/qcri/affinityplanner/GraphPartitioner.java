@@ -35,15 +35,15 @@ public class GraphPartitioner implements Partitioner {
     public GraphPartitioner (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles, int noPartitions){
         Controller.record("======================== LOADING GRAPH ========================");
         long t1 = System.currentTimeMillis();
-        AffinityGraph graph = new AffinityGraph();
-        boolean b = graph.loadFromFiles(catalogContext, planFile, logFiles, intervalFiles, Controller.MAX_PARTITIONS);
+        m_graph = new AffinityGraph(true);
+        boolean b = m_graph.loadFromFiles(catalogContext, planFile, logFiles, intervalFiles, Controller.MAX_PARTITIONS);
         if (!b){
             Controller.record("Problem while loading graph. Exiting");
             return;
         }
 
         Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
-        graph.toFileDebug(graphFile);
+        m_graph.toFileDebug(graphFile);
 
         long t2 = System.currentTimeMillis();
         Controller.record("Time taken:" + (t2-t1));
@@ -116,6 +116,8 @@ public class GraphPartitioner implements Partitioner {
 
                 LOG.debug("Moving FROM partition " + from_part + " TO partition " + to_part);
 
+                // 1) get list of tuples that have the highest external pull to a single other partition
+
                 List<String> borderVertices = allBorderVertices.get(to_part);
                 
                 LOG.debug("Border vertices:");
@@ -132,6 +134,9 @@ public class GraphPartitioner implements Partitioner {
                 int retryCount = 1;
 
                 while(numMovedVertices + movingVertices.size() < actualMaxMovedVertices && nextPosToMove < borderVertices.size()){
+
+                    // 2) expand the tuple with the most affine tuples such that adding these tuples reduces the cost after movement
+
                     nextPosToMove = expandMovingVertices (movingVertices, borderVertices, nextPosToMove, from_part);
 
                     if (nextPosToMove == -1){
@@ -141,6 +146,9 @@ public class GraphPartitioner implements Partitioner {
                         retryCount++;
                     }
                     else{
+
+                        // 3) assess if we can move the tuple
+
                         int movedVertices = tryMoveVertices(movingVertices, from_part, to_part);
                         if(movedVertices > 0){
                             LOG.debug("Moving!");
@@ -163,9 +171,6 @@ public class GraphPartitioner implements Partitioner {
             } // END for (int other_part = 0; other_part < MAX_PARTITIONS; other_part++)
         } // END for (int part = 0; part < MAX_PARTITIONS; part++)
 
-        // 1) get list of tuples that have the highest external pull to a single other partition
-        // 2) expand the tuple with the most affine tuples such that adding these tuples reduces the cost after movement
-        // 3) assess if we can move the tuple
     }
 
     private boolean offloadHottestTuples(Set<Integer> overloadedPartitions, Set<Integer> activePartitions){
