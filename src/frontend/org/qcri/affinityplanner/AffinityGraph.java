@@ -53,7 +53,7 @@ public class AffinityGraph {
         try {
             m_plan_handler = new PlanHandler(planFile, catalogContext);
         } catch (Exception e) {
-            LOG.warn("Could not create plan handler " + Controller.stackTraceToString(e));
+            Controller.record("Could not create plan handler " + Controller.stackTraceToString(e));
             throw e;
         }
         
@@ -68,11 +68,11 @@ public class AffinityGraph {
                 intervalsInSecs[currInterval] = Long.parseLong(line) / 1000;
                 currInterval++;
             } catch (IOException e) {
-                LOG.warn("Error while reading interval file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                Controller.record("Error while reading interval file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
                 throw e;
             }
             catch (NumberFormatException e1){
-                LOG.warn("Error while converting interval from file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e1));
+                Controller.record("Error while converting interval from file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e1));
                 throw e1;
             }
         }
@@ -86,7 +86,7 @@ public class AffinityGraph {
             try {
                 reader = Files.newBufferedReader(logFile, Charset.forName("US-ASCII"));
             } catch (IOException e) {
-                LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                Controller.record("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
                 throw e;
             }
             String line;
@@ -96,11 +96,11 @@ public class AffinityGraph {
             try {
                 line = reader.readLine();
             } catch (IOException e) {
-                LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                Controller.record("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
                 throw e;
             }
             if (line == null){
-                LOG.warn("File " + logFile.toString() + " is empty");
+                Controller.record("File " + logFile.toString() + " is empty");
                 throw new Exception();
             }
             
@@ -205,7 +205,7 @@ public class AffinityGraph {
                 try {
                     line = reader.readLine();
                 } catch (IOException e) {
-                    LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                    Controller.record("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
                     System.out.println("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
                     throw e;
                 }
@@ -273,7 +273,7 @@ public class AffinityGraph {
             writer.close();
         } catch (IOException e) {
             e.printStackTrace();
-            LOG.warn("Error while opening file " + file.toString());
+            Controller.record("Error while opening file " + file.toString());
             System.out.println("Error while opening file " + file.toString());
             return;
        }
