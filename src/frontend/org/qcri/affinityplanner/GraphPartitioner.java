@@ -1,9 +1,8 @@
 package org.qcri.affinityplanner;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -19,22 +18,29 @@ import java.util.TreeSet;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 
-public class GraphPartitioner {
+public class GraphPartitioner extends Partitioner {
 
     private static final Logger LOG = Logger.getLogger(GraphPartitioner.class);
 
-    public static int MIN_LOAD_PER_PART = Integer.MIN_VALUE;
-    public static int MAX_LOAD_PER_PART = Integer.MAX_VALUE;
-    public static double LMPT_COST = 1.1;
-    public static double DTXN_COST = 5.0;
-    public static int MAX_MOVED_TUPLES_PER_PART = 100;
-    public static int MIN_GAIN_MOVE = 0;
-    public static int MAX_PARTITIONS_ADDED = 6;
-
     private AffinityGraph m_graph;
+    
+    public GraphPartitioner (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles){
+                
+        Controller.record("======================== LOADING GRAPH ========================");
+        long t1 = System.currentTimeMillis();
+        try{
+            m_graph = new AffinityGraph(true, catalogContext, planFile, logFiles, intervalFiles, Controller.MAX_PARTITIONS);
+        }
+        catch (Exception e){
+            Controller.record("Problem while loading graph. Exiting");
+            return;
+        }
 
-    public GraphPartitioner (AffinityGraph graph, File planFile, CatalogContext catalogContext){
-        m_graph = graph;
+        Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
+        m_graph.toFileDebug(graphFile);
+
+        long t2 = System.currentTimeMillis();
+        Controller.record("Time taken:" + (t2-t1));
     }
 
     /**
@@ -104,6 +110,8 @@ public class GraphPartitioner {
 
                 LOG.debug("Moving FROM partition " + from_part + " TO partition " + to_part);
 
+                // 1) get list of tuples that have the highest external pull to a single other partition
+
                 List<String> borderVertices = allBorderVertices.get(to_part);
                 
                 LOG.debug("Border vertices:");
@@ -120,6 +128,9 @@ public class GraphPartitioner {
                 int retryCount = 1;
 
                 while(numMovedVertices + movingVertices.size() < actualMaxMovedVertices && nextPosToMove < borderVertices.size()){
+
+                    // 2) expand the tuple with the most affine tuples such that adding these tuples reduces the cost after movement
+
                     nextPosToMove = expandMovingVertices (movingVertices, borderVertices, nextPosToMove, from_part);
 
                     if (nextPosToMove == -1){
@@ -129,6 +140,9 @@ public class GraphPartitioner {
                         retryCount++;
                     }
                     else{
+
+                        // 3) assess if we can move the tuple
+
                         int movedVertices = tryMoveVertices(movingVertices, from_part, to_part);
                         if(movedVertices > 0){
                             LOG.debug("Moving!");
@@ -151,9 +165,6 @@ public class GraphPartitioner {
             } // END for (int other_part = 0; other_part < MAX_PARTITIONS; other_part++)
         } // END for (int part = 0; part < MAX_PARTITIONS; part++)
 
-        // 1) get list of tuples that have the highest external pull to a single other partition
-        // 2) expand the tuple with the most affine tuples such that adding these tuples reduces the cost after movement
-        // 3) assess if we can move the tuple
     }
 
     private boolean offloadHottestTuples(Set<Integer> overloadedPartitions, Set<Integer> activePartitions){
@@ -366,7 +377,7 @@ public class GraphPartitioner {
             String nextEdgeExtension = getMostAffineExtension(movingVertices);
             if(nextEdgeExtension != null){
                 movingVertices.add(nextEdgeExtension);
-                deltaEdgeExtension = getDeltaGiveVertices(movingVertices, -1);
+                deltaEdgeExtension = getDeltaVertices(movingVertices, -1, true);
                 movingVertices.remove(nextEdgeExtension);
             }
 
@@ -386,7 +397,7 @@ public class GraphPartitioner {
                 if (! movingVertices.contains(nextVertexToMove)){
                     assert(nextVertexToMove != null);
                     movingVertices.add(nextVertexToMove);
-                    deltaHotTuple = getDeltaGiveVertices(movingVertices, -1);
+                    deltaHotTuple = getDeltaVertices(movingVertices, -1, true);
                     movingVertices.remove(nextVertexToMove);
                 }
             }
@@ -447,39 +458,6 @@ public class GraphPartitioner {
         return res;
     }
 
-    /**
-     * Tries to move movingVertices from overloadedPartition to toPartition. 
-     * 
-     * Fails if the move does not result in a minimal gain threshold for the fromPartition OR
-     *      if the toPartition becomes overloaded as an effect of the transfer.
-     * 
-     * If the move is allowed, it updates the graph and the plan
-     * 
-     * @param movingVertices
-     * @param fromPartition
-     * @param toPartition
-     * @return number of partitions actually moved
-     */
-    private int tryMoveVertices(Set<String> movingVertices, Integer fromPartition, Integer toPartition) {
-
-        int numMovedVertices = 0;
-        double deltaFromPartition = getDeltaGiveVertices(movingVertices, toPartition);
-        double deltaToPartition = getDeltaReceiveVertices(movingVertices, toPartition);
-
-        //      LOG.debug("Deltas from " + deltaFromPartition + " - to " + deltaToPartition);
-
-        // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
-        if(deltaFromPartition <= MIN_GAIN_MOVE * -1
-                && getLoadPerPartition(toPartition) + deltaToPartition < MAX_LOAD_PER_PART){   // if gainToSite is negative, the load of the receiving site grows
-            //            LOG.debug("Moving to partition " + toPartition);
-            //            LOG.debug("Weights before moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
-            m_graph.moveVertices(movingVertices, fromPartition, toPartition);
-            //            LOG.debug("Weights after moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
-            numMovedVertices = movingVertices.size();
-        }
-        return numMovedVertices;
-    }
-
     /*
      * computes load of a set of vertices in the current partition. this is different from the weight of a vertex because it considers
      * both direct accesses of the vertex and the cost of remote accesses
@@ -512,16 +490,6 @@ public class GraphPartitioner {
 
     public Double getLoadPerPartition(int partition){
         return getLoadInCurrPartition(m_graph.m_partitionVertices.get(partition));
-    }
-
-
-    public Double getLoadPerSite(int site){
-        Collection<Integer> partitions = PlanHandler.getPartitionsSite(site);
-        double load = 0;
-        for (Integer partition : partitions){
-            load += getLoadPerPartition(partition);
-        }
-        return load;
     }
 
     /**
@@ -736,16 +704,7 @@ public class GraphPartitioner {
         return res;
     }
 
-    /*
-     *     LOCAL delta a partition gets by REMOVING a SET of local vertices out
-     *     it ASSUMES that the vertices are on the same partition
-     *     
-     *     this is NOT like computing the load because local edges come as a cost in this case 
-     *     it also considers a SET of vertices to be moved together
-     *     
-     *     if newPartition = -1 we evaluate moving to an unknown REMOTE partition
-     */
-    private double getDeltaGiveVertices(Set<String> movedVertices, int newPartition) {
+    protected double getDeltaVertices(Set<String> movedVertices, int newPartition, boolean forSender) {
 
         if (movedVertices == null || movedVertices.isEmpty()){
             LOG.debug("Trying to move an empty set of vertices");
@@ -797,84 +756,19 @@ public class GraphPartitioner {
                 }
 
                 // update delta
-                delta -= vertexWeight + outPull * outMultiplier;
-                delta += inPull * outMultiplier;
+                if(forSender){
+                    delta -= vertexWeight;
+                    delta -= outPull * outMultiplier;
+                    delta += inPull * outMultiplier;
+                }
+                else{                    
+                    delta += vertexWeight;
+                    delta -= outPull * outMultiplier;
+                    delta += inPull * outMultiplier;
+                }
                 //          LOG.debug(String.format("inpull %d outpull %d addition to delta %d total delta %d", inPull, outPull, vertexWeight + (outPull - inPull) * Controller.DTXN_MULTIPLIER, delta));
             }
         }
         return delta;
-    }
-
-    /*
-     *     LOCAL delta a partition gets by ADDING a SET of remote vertices
-     *     
-     *     this is NOT like computing the load because local edges come as a cost in this case 
-     *     it also considers a SET of vertices to be moved together
-     */
-    private double getDeltaReceiveVertices(Set<String> movedVertices, int newPartition) {
-
-        if (movedVertices == null || movedVertices.isEmpty()){
-            LOG.debug("Trying to move an empty set of vertices");
-            return 0;
-        }
-
-        double delta = 0;
-        for(String vertex : movedVertices){
-            // get tuple weight from original site
-            Double vertexWeight = m_graph.m_vertices.get(vertex);
-            //            LOG.debug("ADD delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
-            if (vertexWeight == null){
-                LOG.debug("Cannot include external node for delta computation");
-                throw new IllegalStateException("Cannot include external node for delta computation");
-            }
-
-            // get adjacency list from original site
-            Map<String,Double> adjacency = m_graph.m_edges.get(vertex);
-            if(adjacency != null){
-                double outPull = 0;
-                double inPull = 0;
-                for (Map.Entry<String, Double> edge : adjacency.entrySet()){
-                    //                LOG.debug("Considering edge to vertex " + edge.getKey() + " with weight " + edge.getValue());
-                    String toVertex = edge.getKey();
-                    Double edgeWeight = edge.getValue();
-
-                    // edges to vertices that are moved together do not contribute to in- or out-pull
-                    if(!movedVertices.contains(toVertex)){
-                        int toPartition = m_graph.m_vertexPartition.get(toVertex); 
-
-                        if(toPartition == newPartition){
-                            // edge to local vertex or to vertex that will be moved in
-                            //                        LOG.debug("Add weight to inpull");
-                            inPull += edgeWeight;
-                        }
-                        else{
-                            // edge to remote vertex that will not be moved in
-                            //                        LOG.debug("Add weight to outpull");
-                            outPull += edgeWeight;
-                        }
-                    }
-                }
-
-                // determine multiplier
-                double outMultiplier;
-                int fromPartition = m_graph.m_vertexPartition.get(movedVertices.iterator().next());
-                if (PlanHandler.getSitePartition(newPartition) != PlanHandler.getSitePartition(fromPartition)){
-                    outMultiplier = DTXN_COST;
-                }
-                else{
-                    outMultiplier = LMPT_COST;
-                }
-
-                // determine delta
-                delta += vertexWeight + outPull * outMultiplier;
-                delta -= inPull * outMultiplier;
-                //            LOG.debug(String.format("inpull %d outpull %d addition to delta %d total delta %d", inPull, outPull, (inPull - outPull)  * Controller.DTXN_MULTIPLIER - vertexWeight, delta));
-            }
-        }
-        return delta;
-    }
-
-    public void writePlan(String newPlanFile){
-        m_graph.planToJSON(newPlanFile);
     }
 }

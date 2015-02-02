@@ -23,7 +23,6 @@ import org.voltdb.client.ProcCallException;
 import org.voltdb.processtools.ShellTools;
 
 import edu.brown.catalog.CatalogUtil;
-import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.Hstoreservice.Status;
 import edu.brown.hstore.conf.HStoreConf;
@@ -51,6 +50,7 @@ public class Controller extends Thread {
     public static boolean EXEC_RECONF = true;
     public static String PLAN_IN = "plan_affinity.json";
     public static String PLAN_OUT = "plan_out.json";
+    public static String ALGO = "graph";
     
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
         
@@ -161,11 +161,12 @@ public class Controller extends Thread {
                 System.exit(1);
             }
         } // END if(RUN_MONITORING)
-        
+        long t1;
+        long t2;
         if(UPDATE_PLAN){
             
-            record("Fetching remote monitoring outputs");
-
+            record("================== FETCHING MONITORING FILES ======================");
+            t1 = System.currentTimeMillis();
             String hStoreDir = ShellTools.cmd("pwd");
             hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
             for(Site site: m_sites){
@@ -190,23 +191,22 @@ public class Controller extends Thread {
                 logFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + ".log");
                 intervalFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + "-interval.log");
             }
-    
-            record("======================== LOADING GRAPH ========================");
-            
-            AffinityGraph graph = new AffinityGraph();
-            boolean b = graph.loadFromFiles(m_catalog_context, planFile, logFiles, intervalFiles, MAX_PARTITIONS);
-            if (!b){
-                record("Problem while loading graph. Exiting");
-                return;
-            }
+            t2 = System.currentTimeMillis();
+            record("Time taken:" + (t2-t1));
 
             record("======================== PARTITIONING GRAPH ========================");
+            t1 = System.currentTimeMillis();
             
-            Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
-            graph.toFileDebug(graphFile);
+            Partitioner partitioner = null;
             
-            GraphPartitioner partitioner = new GraphPartitioner(graph, planFile, m_catalog_context);
-            b = partitioner.repartition();
+            if(ALGO.equals("simple")){
+                partitioner = new SimplePartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+            }
+            else{
+                partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+            }
+            
+            boolean b = partitioner.repartition();
             if (!b){
                 record("Problem while partitioning graph. Exiting");
                 return;
@@ -217,17 +217,18 @@ public class Controller extends Thread {
             record("Output plan\n" + outputPlan);
 
             record("Loads per partition after reconfiguration");
-            for (int j = 0; j < graph.getPartitionsNo(); j++){
+            for (int j = 0; j < Controller.MAX_PARTITIONS; j++){
                 record(j + " " + partitioner.getLoadPerPartition(j));
             }
-            
+
+            t2 = System.currentTimeMillis();
+            record("Time taken:" + (t2-t1));
             
         } // END if(UPDATE_PLAN)
 
         if(EXEC_RECONF){
 
             record("======================== STARTING RECONFIGURATION ========================");
-
             ClientResponse cresponse = null;
             try {
                 String outputPlan = FileUtil.readFile(PLAN_OUT);

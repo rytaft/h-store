@@ -631,7 +631,10 @@ public class Plan {
 
 	            Map<Integer, TreeMap<Long,Long>> partitionToRanges = tableToPartitionsToRanges.get(table_name.toLowerCase()); 
 	            for(Integer partition : partitionToRanges.keySet()) {
-	                tableObject.put(partition.toString(), printPartition(table_name, partition));
+	                TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
+	                if (ranges != null && !ranges.isEmpty()){
+	                    tableObject.put(partition.toString(), printPartition(table_name, partition));
+	                }
 	            }
 
 	        }

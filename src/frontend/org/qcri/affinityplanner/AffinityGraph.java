@@ -27,21 +27,23 @@ import edu.brown.hstore.HStoreConstants;
 public class AffinityGraph {
   
     private static final Logger LOG = Logger.getLogger(AffinityGraph.class);
+
+    // determines granularity of edges, either vertex - vertex of vertex - partition 
+    private final boolean m_tupleGranularity;
     
-    // fromVertex -> adjacency list, where adjacency list is a toVertex -> edgeWeight map
+    // fromVertex -> adjacency list, where adjacency list is a toVertex -> edgeWeight map or toPartition -> edgeWeight map, depending on granularity
     protected Map<String,Map<String,Double>> m_edges = new HashMap<String,Map<String,Double>> ();
+
     // vertex -> weight map
-    protected Map<String,Double> m_vertices = new HashMap<String,Double> ();
+    final Map<String,Double> m_vertices = new HashMap<String,Double> ();
     // partition -> vertex and vertex -> partition mappings
-    protected List<Set<String>> m_partitionVertices = new ArrayList<Set<String>> ();
-    protected Map<String,Integer> m_vertexPartition = new HashMap<String,Integer> ();
+    final List<Set<String>> m_partitionVertices = new ArrayList<Set<String>> ();
+    final Map<String,Integer> m_vertexPartition = new HashMap<String,Integer> ();
     
     private PlanHandler m_plan_handler = null;
-
-    // a folded graph has special edges for remote sites
-    private boolean folded = false;
     
-    public boolean loadFromFiles (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles, int noPartitions) {
+    public AffinityGraph(boolean tupleGranularity, CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles, int noPartitions) throws Exception {
+        m_tupleGranularity = tupleGranularity;
 
         BufferedReader reader;
         for (int i = 0; i < noPartitions; i++){
@@ -52,7 +54,7 @@ public class AffinityGraph {
             m_plan_handler = new PlanHandler(planFile, catalogContext);
         } catch (Exception e) {
             LOG.warn("Could not create plan handler " + Controller.stackTraceToString(e));
-            return false;
+            throw e;
         }
         
         // read monitoring intervals for all sites - in seconds
@@ -67,11 +69,11 @@ public class AffinityGraph {
                 currInterval++;
             } catch (IOException e) {
                 LOG.warn("Error while reading interval file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                return false;
+                throw e;
             }
             catch (NumberFormatException e1){
                 LOG.warn("Error while converting interval from file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e1));
-                return false;
+                throw e1;
             }
         }
         
@@ -85,7 +87,7 @@ public class AffinityGraph {
                 reader = Files.newBufferedReader(logFile, Charset.forName("US-ASCII"));
             } catch (IOException e) {
                 LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                return false;
+                throw e;
             }
             String line;
             HashMap<String, Set<String>> transactions = new HashMap<String,Set<String>>();
@@ -95,23 +97,29 @@ public class AffinityGraph {
                 line = reader.readLine();
             } catch (IOException e) {
                 LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                return false;
+                throw e;
             }
             if (line == null){
                 LOG.warn("File " + logFile.toString() + " is empty");
-                return false;
+                throw new Exception();
             }
+            
 //            System.out.println("Tran ID = " + currTransactionId);
             // PROCESS LINE
             while(line != null){
+
 //                System.out.println("Reading next line");
                 String[] fields = line.split(";");
                 // if finished with one transaction, update graph and clear before moving on
+
                 if (fields[0].equals("END")){
+
                     String transaction_id = fields[1];
                     Set<String> curr_transaction = transactions.get(transaction_id);
+
                     if(curr_transaction != null){
     //                    System.out.println("Size of transaction:" + transaction.size());
+
                         for(String from : curr_transaction){
                             // update FROM vertex in graph
                             Double currentVertexWeight = m_vertices.get(from);
@@ -123,20 +131,16 @@ public class AffinityGraph {
                             }
                             // store site mappings for FROM vertex
                             int partition = 0;
-                            try {
-                                partition = m_plan_handler.getPartition(from);
-                            } catch (Exception e) {
-                                LOG.warn("Could not get partition from plan handler " + Controller.stackTraceToString(e));
-                                System.out.println("Could not get partition from plan handler " + Controller.stackTraceToString(e));
-                                return false;                            
-                            }
+                            partition = m_plan_handler.getPartition(from);
+
                             if (partition == HStoreConstants.NULL_PARTITION_ID){
                                 LOG.info("Exiting graph loading. Could not find partition for key " + from);
                                 System.out.println("Exiting graph loading. Could not find partition for key " + from);
-                                return false;                            
+                                throw new Exception();                            
                             }
                             m_partitionVertices.get(partition).add(from);
                             m_vertexPartition.put(from, partition);
+                            
                             // update FROM -> TO edges
                             Set<String> visitedVertices = new HashSet<String>();    // removes duplicate vertex entries in the monitoring output
                             for(String to : curr_transaction){
@@ -147,6 +151,13 @@ public class AffinityGraph {
                                         adjacency = new HashMap<String,Double>();
                                         m_edges.put(from, adjacency);
                                     }
+                                    
+                                    // if lower granularity, edges link vertices to partitions, not other vertices
+                                    if(!m_tupleGranularity){
+                                        int toPartition = m_plan_handler.getPartition(to);
+                                        to = Integer.toString(toPartition);
+                                    }
+                                    
                                     Double currentEdgeWeight = adjacency.get(to);
                                     if (currentEdgeWeight == null){
                                         adjacency.put(to, normalizedIncrement);
@@ -155,24 +166,31 @@ public class AffinityGraph {
                                         adjacency.put(to, currentEdgeWeight + normalizedIncrement);
                                     }
                                 }
-                            } // END for(Map.Entry<String, Double> to : transaction.entrySet())
-                        } // END for(Map.Entry<String,Double> from : transaction.entrySet())
+                            } // END for(String to : curr_transaction)
+                            
+                        } // END for(String from : curr_transaction)
+                        
                         transactions.remove(transaction_id);
+                        
     //                    System.out.println("Tran ID = " + currTransactionId);
-                    } // END if(transactions.get(transaction_id) != null)
+                    } // END if(curr_transaction != null)
                 } // END if (fields[0].equals("END"))
+                
                 else{
+                
                     // update the current transaction
                     String transaction_id = fields[0];
                     Set<String> curr_transaction = transactions.get(transaction_id);
+                    
                     if(curr_transaction == null){
                         curr_transaction = new HashSet<String>();
                         transactions.put(transaction_id, curr_transaction);
                     }
+                    
                     curr_transaction.add(fields[1]);
                 }
                 
-                /* this is what one would to count different accesses within the same transaction. 
+                /* this is what one would do to count different accesses within the same transaction. 
                  * For the moment I count only the number of transactions accessing a tuple
                 Double weight = transaction.get(vertex[1]);
                 if (weight == null){
@@ -189,151 +207,11 @@ public class AffinityGraph {
                 } catch (IOException e) {
                     LOG.warn("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
                     System.out.println("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                    return false;
+                    throw e;
                 }
             }// END  while(line != null)
         } // END for (Path logFile : logFiles)
         
-        // normalize all weights using the monitoring intervals
-        
-        return true;
-    }
-    
-//    public AffinityGraph[] fold () throws Exception{
-//        // test inputs
-//        if (m_partitionVertices == null){
-//            System.out.println("Graph has no mapping of sites to vertices");
-//            throw new Exception ();
-//        }
-//        if (m_vertexPartition== null){
-//            System.out.println("Graph has no mapping of vertices to sites");
-//            throw new Exception ();
-//        }
-//        if (m_edges == null){
-//            System.out.println("Graph has no edges");
-//            throw new Exception ();
-//        }
-//        if (m_vertices == null){
-//            System.out.println("Graph has no vertices");
-//            throw new Exception ();
-//        }
-//        if (this.folded){
-//            System.out.println("Graph has been folded already");
-//            throw new Exception ();            
-//        }
-//
-//        // DEBUG
-//        int i = 0;
-//        for (Set<String> vertexSet : m_siteVertices){
-//            System.out.println("Site " + i++);
-//            for(String vertex : vertexSet){
-//                System.out.println(vertex);
-//            }
-//            System.out.println("");
-//        }
-//        
-//        // folding
-//        System.out.println("Folding");
-//        int sitesNo = m_siteVertices.size(); 
-//        AffinityGraph[] res = new AffinityGraph[sitesNo];
-//        for(int site = 0; site < sitesNo; site++){
-//            AffinityGraph currGraph = res[site] = new AffinityGraph();
-//            currGraph.folded = true;
-//            // add all local vertices and edges
-//            Set<String> localVertices = m_siteVertices.get(site);
-//            if (localVertices == null) continue; // site has no vertices
-//            for(String localVertex : localVertices){
-//                // add local vertex
-//                Integer vertexWeight = m_vertices.get(localVertex);
-//                currGraph.putVertex(localVertex, vertexWeight);
-//                // scan edges from local files
-//                Map<String,Integer> adjacencyFromLocalVertex = m_edges.get(localVertex);
-//                for(Map.Entry<String, Integer> fromLocalEdge : adjacencyFromLocalVertex.entrySet()){
-//                    String toVertex = fromLocalEdge.getKey();
-//                    Integer edgeWeight =  fromLocalEdge.getValue();
-//                    if(localVertices.contains(toVertex)){
-//                        currGraph.putEdgeAddWeight(localVertex, toVertex, edgeWeight);
-//                    }
-//                    else{
-//                        // if other end remote, fold
-//                        String siteName = "Site " + m_vertexSite.get(toVertex);
-//                        // the weight of a remote site is the sum of the weights of the edges
-//                        currGraph.putVertexAddWeight(siteName, edgeWeight);
-//                        currGraph.putEdgeAddWeight(localVertex, siteName, edgeWeight);
-//                    }
-//                }               
-//            }
-//        }
-//        return res;
-//    }
-    
-    public Map<String, Map<String, Double>> getEdges() {
-        return m_edges;
-    }
-
-    public Map<String, Double> getVertices() {
-        return m_vertices;
-    }
-    
-    public Double getVertexWeight(String vertex){
-        return m_vertices.get(vertex);
-    }
-    
-    public int getPartitionsNo(){
-        if(m_partitionVertices.size() <= 0){
-            return -1;
-        }
-        return m_partitionVertices.size();
-    }
-        
-//    public List<Set<String>> getPartitionVertices() {
-//        return m_siteVertices;
-//    }
-    
-//    public Map<String,Integer> getVertexSite(){
-//        return m_vertexSite;
-//    }
-    
-    public void putVertex(String vertex, Double weight){
-        m_vertices.put(vertex, weight);
-    }
-
-    public void putVertexAddWeight(String vertex, Double weight){
-        Double currWeight = m_vertices.get(vertex);
-        if(currWeight == null){
-            m_vertices.put(vertex, weight);
-        }
-        else{
-            m_vertices.put(vertex, weight + currWeight);
-        }
-    }
-
-    public void putEdge(String fromVertex, String toVertex, double weight){
-        Map<String,Double> adjacency = m_edges.get(fromVertex);
-        if(adjacency == null){
-            adjacency = new HashMap<String,Double>();
-            m_edges.put(fromVertex, adjacency);
-        }
-        adjacency.put(toVertex, weight);
-    }
-
-    public void putEdgeAddWeight(String fromVertex, String toVertex, double weight){
-        Map<String,Double> adjacency = m_edges.get(fromVertex);
-        if(adjacency == null){
-            adjacency = new HashMap<String,Double>();
-            m_edges.put(fromVertex, adjacency);
-        }
-        Double currWeight = adjacency.get(toVertex);
-        if (currWeight == null){
-            adjacency.put(toVertex, weight);
-        }
-        else{
-            adjacency.put(toVertex, weight + currWeight);
-        }
-    }
-    
-    public boolean isFolded(){
-        return folded;
     }
     
     public void moveVertices(Set<String> movedVertices, int fromPartition, int toPartition) {
@@ -358,31 +236,8 @@ public class AffinityGraph {
 //        System.out.println(m_plan_handler.toString() + "\n");
     }
     
-    public void toFile(Path file){
-        System.out.println("Writing graph. Size of edges: " + m_edges.size());
-        BufferedWriter writer;
-        String s;
-        try {
-            writer = Files.newBufferedWriter(file, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            for(String vertex : m_vertices.keySet()){
-                s = vertex + "," + m_vertices.get(vertex) + ";";
-                writer.write(s, 0, s.length());
-                Map<String,Double> adjacency = m_edges.get(vertex);
-                if(adjacency != null){
-                    for (Map.Entry<String, Double> edge : adjacency.entrySet()){
-                        s = ";" + edge.getKey() + "," + edge.getValue();
-                        writer.write(s, 0, s.length());
-                    }
-                }
-                writer.newLine();
-            }
-            writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            LOG.warn("Error while opening file " + file.toString());
-            System.out.println("Error while opening file " + file.toString());
-            return;
-       }
+    public int getPartition(String vertex){
+        return m_plan_handler.getPartition(vertex);
     }
     
     public void planToJSON(String newPlanFile){
