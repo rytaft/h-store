@@ -34,39 +34,42 @@ public class SimplePartitioner extends Partitioner {
 
         // move border vertices        
         for (int fromPart = 0; fromPart < Controller.MAX_PARTITIONS; fromPart ++){
+            
+            List<List<String>> borderVertices = getBorderVertices(fromPart, MAX_MOVED_TUPLES_PER_PART);
 
-            Set<String> vertices = m_graph.m_partitionVertices.get(fromPart);
-
-            for (String vertex : vertices){
-
-                Map<String, Double> adjacency = m_graph.m_edges.get(vertex);
-
-                for(String toPart : adjacency.keySet()){
-
-                    int toPartInt = Integer.parseInt(toPart);
-
-                    if (fromPart != toPartInt){
-                        tryMoveVertices(Collections.singleton(vertex), fromPart, toPartInt);
+            for(int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
+                
+                for (String vertex : borderVertices.get(toPart)){
+                
+                    if (fromPart != toPart){
+                        tryMoveVertices(Collections.singleton(vertex), fromPart, toPart);
                     }
                 }
             }
         }
         
-        for(Integer fromPart : overloadedPartitions){
-            
-            List<String> hotVertices = getHottestVertices(fromPart, MAX_MOVED_TUPLES_PER_PART);
-            
-            for (String vertex : hotVertices){
+        if (! overloadedPartitions.isEmpty()){
+            // move hot vertices
+            for(Integer fromPart : overloadedPartitions){
 
-                for (int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
-                    tryMoveVertices(Collections.singleton(vertex), fromPart, toPart);
+                List<String> hotVertices = getHottestVertices(fromPart, MAX_MOVED_TUPLES_PER_PART);
+
+                for (String vertex : hotVertices){
+
+                    for (int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
+
+                        if (fromPart != toPart){
+                            tryMoveVertices(Collections.singleton(vertex), fromPart, toPart);
+                        }                    
+                    }
+
                 }
-                
             }
         }
-        
-        scaleIn(overloadedPartitions, activePartitions);
-        
+        else{
+            // try to scale in
+            scaleIn(activePartitions);
+        }
         return true;
     }
 
@@ -159,5 +162,15 @@ public class SimplePartitioner extends Partitioner {
             }
         }
         return load;
+    }
+    
+    @Override
+    protected void updateAttractions (Map<String,Double> adjacency, double[] attractions){
+        for (String toVertex : adjacency.keySet()){
+            
+            int other_partition = Integer.parseInt(toVertex);
+            double edge_weight = adjacency.get(toVertex);
+            attractions[other_partition] += edge_weight;
+        } // END for (String toVertex : adjacency.keySet())
     }
 }

@@ -3,11 +3,7 @@ package org.qcri.affinityplanner;
 import java.io.File;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -75,7 +71,7 @@ public class GraphPartitioner extends Partitioner {
              *  SCALE IN
              */
 
-            scaleIn(overloadedPartitions, activePartitions);
+            scaleIn(activePartitions);
         }
         return true;
     }
@@ -428,148 +424,6 @@ public class GraphPartitioner extends Partitioner {
         return getLoadInCurrPartition(m_graph.m_partitionVertices.get(partition));
     }
 
-    /**
-     * Returns a list of lists of vertices - one list for every remote partition
-     * Each list includes up to k elements with the highest outside attraction to that partition
-     * The list is sorted by attraction in a descending order
-     * 
-     * @param this_partition
-     * @param k
-     * @return
-     */
-    private List<List<String>> getBorderVertices (int this_partition, int k){
-
-        k = Math.min(k, m_graph.m_partitionVertices.get(this_partition).size());
-
-        List<List<String>> res = new ArrayList<List<String>>(Controller.MAX_PARTITIONS);
-        for (int i = 0; i < Controller.MAX_PARTITIONS; i++){
-            res.add(new ArrayList<String> (k));
-        }
-        final Map<String, double[]> attractionMap = new HashMap <String, double[]> ();
-
-        int[] lowest_attraction_position = new int[Controller.MAX_PARTITIONS];
-        double[] lowest_attraction = new double[Controller.MAX_PARTITIONS];
-
-
-        for(String from_vertex : m_graph.m_partitionVertices.get(this_partition)){
-
-            // compute out attraction
-            double in_attraction = 0;
-            double[] out_attraction = new double[Controller.MAX_PARTITIONS];
-
-            Map<String,Double> adjacency = m_graph.m_edges.get(from_vertex);
-            if (adjacency != null){
-                
-                for (String toVertex : adjacency.keySet()){
-                    
-                    int other_partition = m_graph.m_vertexPartition.get(toVertex);
-                    double edge_weight = adjacency.get(toVertex);
-                    if(other_partition != this_partition){
-                        out_attraction[other_partition] += edge_weight;
-                    }
-                    else{
-                        in_attraction += edge_weight;
-                    }
-                } // END for (String toVertex : adjacency.keySet())
-
-                // rank for each partition
-                for(int otherPart = 0; otherPart < Controller.MAX_PARTITIONS; otherPart++){
-
-                    // consider deltas and ignore negative attraction
-                    out_attraction[otherPart] -= in_attraction;
-                    if (out_attraction[otherPart] <= 0){
-                        continue;
-                    }
-                    
-                    List<String> topk = res.get(otherPart);
-    
-                    if(topk.size() < k){
-                        
-                        topk.add(from_vertex);
-    
-                        double[] attractions = attractionMap.get(from_vertex);
-                        if (attractions == null){
-                            attractions = new double[Controller.MAX_PARTITIONS];
-                            attractionMap.put(from_vertex, attractions);
-                        }
-                        attractions[otherPart] = out_attraction[otherPart];
-                        attractionMap.put(from_vertex, attractions);
-    
-                        if (out_attraction[otherPart] < lowest_attraction[otherPart]){
-                            lowest_attraction[otherPart] = out_attraction[otherPart];
-                            lowest_attraction_position[otherPart] = topk.size() - 1;
-                        }
-                    }
-                    else{
-                        if (out_attraction[otherPart] > lowest_attraction[otherPart]){
-    
-                            // cleanup attractionMap
-                            String lowestVertex = topk.get(lowest_attraction_position[otherPart]);
-                            double[] attractions = attractionMap.get(lowestVertex);
-                            int nonZeroPos = -1;
-                            for(int j = 0; j < attractions.length; j++){
-                                if (attractions[j] != 0){
-                                    nonZeroPos = j;
-                                    break;
-                                }
-                            }
-                            if (nonZeroPos == -1){
-                                attractionMap.remove(lowestVertex);
-                            }
-    
-                            topk.set(lowest_attraction_position[otherPart], from_vertex);
-    
-                            attractions = attractionMap.get(from_vertex);
-                            if (attractions == null){
-                                attractions = new double[Controller.MAX_PARTITIONS];
-                                attractionMap.put(from_vertex, attractions);
-                            }
-                            attractions[otherPart] = out_attraction[otherPart];
-                            attractionMap.put(from_vertex, attractions);
-    
-                            // recompute minimum
-                            lowest_attraction[otherPart] = out_attraction[otherPart];
-                            for (int posList = 0; posList < k; posList++){
-                                String vertex = topk.get(posList);
-                                double attraction = attractionMap.get(vertex)[otherPart];
-                                if(attraction < lowest_attraction[otherPart]){
-                                    lowest_attraction[otherPart] = attraction;
-                                    lowest_attraction_position[otherPart] = posList;
-                                }
-                            }
-                        }
-                    }
-                } // END for(int otherPart = 1; otherPart < MAX_PARTITIONS; otherPart++)
-            } // END if (adjacency != null)
-        } // END for(String from_vertex : m_graph.m_partitionVertices.get(this_partition))
-       
-        // sorting
-        for(int otherPart = 1; otherPart < Controller.MAX_PARTITIONS; otherPart++){
-            List<String> topk = res.get(otherPart);
-
-            // sort determines an _ascending_ order
-            // Comparator should return "a negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater than the second"
-            // We want a _descending_ order, so we need to invert the comparator result
-
-            final int part = otherPart; // make Java happy
-
-            Collections.sort(topk, new Comparator<String>(){                
-                @Override
-                public int compare(String o1, String o2) {
-                    if (attractionMap.get(o1)[part] < attractionMap.get(o2)[part]){
-                        return 1;
-                    }
-                    else if (attractionMap.get(o1)[part] > attractionMap.get(o2)[part]){
-                        return -1;
-                    }
-                    return 0;
-                }                
-            });
-        }
-
-        return res;
-    }
-
     protected double getDeltaVertices(Set<String> movedVertices, int newPartition, boolean forSender) {
 
         if (movedVertices == null || movedVertices.isEmpty()){
@@ -636,5 +490,15 @@ public class GraphPartitioner extends Partitioner {
             }
         }
         return delta;
+    }
+    
+    @Override
+    protected void updateAttractions (Map<String,Double> adjacency, double[] attractions){
+        for (String toVertex : adjacency.keySet()){
+            
+            int other_partition = m_graph.m_vertexPartition.get(toVertex);
+            double edge_weight = adjacency.get(toVertex);
+            attractions[other_partition] += edge_weight;
+        } // END for (String toVertex : adjacency.keySet())
     }
 }
