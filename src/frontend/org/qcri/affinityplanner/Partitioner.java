@@ -14,6 +14,20 @@ import java.util.TreeSet;
 
 import org.apache.log4j.Logger;
 
+/**
+ * 
+ * Generic partitioner. The only abstract methods are relative to the semantic of the affinity graph.
+ * It has two children classes implementing these methods:
+ * 
+ * GraphPartitioner considers affinity graphs where edges (and weights) are tuple - tuple.
+ * It also has specific methods for moving more than one tuple together based on tuple - tuple affinity.
+ * 
+ * SimplePartitioner considers affinity graphs where edges (and weights) are tuple - partition.
+ * It only moves one tuple at a time
+ * 
+ * @author mserafini
+ *
+ */
 public abstract class Partitioner {
     
     private static final Logger LOG = Logger.getLogger(Partitioner.class);
@@ -36,7 +50,7 @@ public abstract class Partitioner {
      * @param activePartitions
      * @param overloadedPartitions
      */
-    protected void measureLoad(Set<Integer> activePartitions, Set<Integer> overloadedPartitions){
+    protected void scanPartitions(Set<Integer> activePartitions, Set<Integer> overloadedPartitions){
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
             if(!m_graph.m_partitionVertices.get(i).isEmpty()){
                 activePartitions.add(i);

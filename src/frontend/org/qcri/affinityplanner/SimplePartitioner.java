@@ -30,7 +30,7 @@ public class SimplePartitioner extends Partitioner {
         Set<Integer> activePartitions = new HashSet<Integer>();
         Set<Integer> overloadedPartitions = new HashSet<Integer>();
         
-        measureLoad(activePartitions, overloadedPartitions);
+        scanPartitions(activePartitions, overloadedPartitions);
 
         // move border vertices        
         for (int fromPart = 0; fromPart < Controller.MAX_PARTITIONS; fromPart ++){

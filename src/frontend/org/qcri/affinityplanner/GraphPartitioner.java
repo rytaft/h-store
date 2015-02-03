@@ -39,6 +39,7 @@ public class GraphPartitioner extends Partitioner {
      * 
      * @return true if could find feasible partitioning, false otherwise
      */   
+    @Override
     public boolean repartition () {
         if (Controller.PARTITIONS_PER_SITE == -1 || Controller.MAX_PARTITIONS == -1){
             System.out.println("GraphPartitioner: Must initialize PART_PER_SITE and MAX_PARTITIONS");
@@ -50,7 +51,7 @@ public class GraphPartitioner extends Partitioner {
         // detect overloaded and active partitions
         Set<Integer> activePartitions = new HashSet<Integer>();
         Set<Integer> overloadedPartitions = new HashSet<Integer>();
-        measureLoad(activePartitions, overloadedPartitions);
+        scanPartitions(activePartitions, overloadedPartitions);
 
         /*
          * MOVE BORDER TUPLES
@@ -424,6 +425,7 @@ public class GraphPartitioner extends Partitioner {
         return getLoadInCurrPartition(m_graph.m_partitionVertices.get(partition));
     }
 
+    @Override
     protected double getDeltaVertices(Set<String> movedVertices, int newPartition, boolean forSender) {
 
         if (movedVertices == null || movedVertices.isEmpty()){
