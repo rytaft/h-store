@@ -70,7 +70,7 @@ import java.util.Random;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
-import org.qcri.monitoring.Monitor;
+import org.qcri.affinityplanner.Monitor;
 import org.voltdb.BackendTarget;
 import org.voltdb.CatalogContext;
 import org.voltdb.ClientResponseImpl;

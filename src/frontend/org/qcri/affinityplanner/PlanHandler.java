@@ -56,15 +56,21 @@ public class PlanHandler extends Plan {
      * - Sites get partition IDs in order, ie., site 0 takes 0,..,N-1, site 1 takes N,...,2N-1 etc.
      * - Does not handle multi-column partitioning attributes. This will depend on the output of monitoring for that case
      */
-    public int getPartition(String vertex) throws Exception{
-        String[] vertexData = vertex.split(",");
-        String table = vertexData[0];
-        @SuppressWarnings("unused")
-        String attribute = vertexData[1];
-        Long value = Long.parseLong(vertexData[2]);
-        int partitionId = m_partitioner.getPartitionId(table, new Long[] {value});
-//        System.out.println("Vertex " + from.getKey() + " belongs to partition " + partitionId);
-        return partitionId;
+    public int getPartition(String vertex) {
+        try{
+            String[] vertexData = vertex.split(",");
+            String table = vertexData[0];
+            @SuppressWarnings("unused")
+            String attribute = vertexData[1];
+            Long value = Long.parseLong(vertexData[2]);
+            int partitionId = m_partitioner.getPartitionId(table, new Long[] {value});
+    //        System.out.println("Vertex " + from.getKey() + " belongs to partition " + partitionId);
+            return partitionId;
+        } catch (Exception e) {
+            System.out.println("Could not get partition from plan handler " + Controller.stackTraceToString(e));
+            System.exit(-1);                      
+            return -1;
+        }
     }
     
     public static int getSitePartition(int partitionId){
