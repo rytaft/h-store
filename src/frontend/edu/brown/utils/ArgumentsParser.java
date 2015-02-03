@@ -202,7 +202,8 @@ public class ArgumentsParser {
     public static final String PARAM_ELASTIC_EXEC_RECONF = PARAM_ELASTIC + ".exec_reconf";
     public static final String PARAM_ELASTIC_PLAN_IN = PARAM_ELASTIC + ".plan_in";
     public static final String PARAM_ELASTIC_PLAN_OUT = PARAM_ELASTIC + ".plan_out";
-
+    public static final String PARAM_ELASTIC_ALGO = PARAM_ELASTIC + ".algo";
+    
     public static final List<String> PARAMS = new ArrayList<String>();
     static {
         for (Field field : ArgumentsParser.class.getDeclaredFields()) {
@@ -1045,7 +1046,11 @@ public class ArgumentsParser {
         if (this.params.containsKey(PARAM_ELASTIC_PLAN_OUT)){
             Controller.PLAN_OUT = this.params.get(PARAM_ELASTIC_PLAN_OUT);
         }        
-        
+
+        if (this.params.containsKey(PARAM_ELASTIC_ALGO)){
+            Controller.ALGO= this.params.get(PARAM_ELASTIC_ALGO);
+        }        
+
         // -------------------------------------------------------
         // SAMPLE WORKLOAD TRACE
         // -------------------------------------------------------

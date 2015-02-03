@@ -2,7 +2,7 @@
  * @author Marco
  */
 
-package org.qcri.monitoring;
+package org.qcri.affinityplanner;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -15,12 +15,10 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.log4j.Logger;
-import org.qcri.affinityplanner.Controller;
 import org.voltdb.CatalogContext;
 import org.voltdb.ParameterSet;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Column;
-import org.voltdb.catalog.Table;
 import org.voltdb.utils.Pair;
 
 import edu.brown.catalog.CatalogUtil;
@@ -32,7 +30,6 @@ import edu.brown.utils.PartitionEstimator;
 public class Monitor {
     private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
 
-    private final ColumnToTableMap m_columnToTable;
     private final CatalogContext m_catalog_context;
     private final PartitionEstimator m_p_estimator;
     private int max_entries;
@@ -45,7 +42,6 @@ public class Monitor {
     private boolean m_is_monitoring;
     
     public Monitor(CatalogContext catalog_context, PartitionEstimator p_estimator, int partitionId){
-        m_columnToTable = new ColumnToTableMap(catalog_context);
         m_catalog_context = catalog_context;
         m_p_estimator = p_estimator;
         max_entries = Integer.MAX_VALUE;
@@ -68,11 +64,11 @@ public class Monitor {
      *  
      *  A pattern like this is a batch. There can be multiple batches in a transaction.
      *  
-     *  If VERBOSE = false, it output a CSV of the form
+     *  If VERBOSE = false, it outputs a CSV of the form
      * 
      *  TRANSACTION_ID, TABLE_NAME, COLUMN_NAME, VAL
      *  
-     *  With one entry per SQL statement. There can be multiple equal entries if a tuple is accessed multiple times
+     *  with one entry per SQL statement. There can be multiple equal entries if a tuple is accessed multiple times
      *  
      *  Returns true if it has not already logged a max number of entries, false otherwise
      */
