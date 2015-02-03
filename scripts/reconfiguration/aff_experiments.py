@@ -12,7 +12,7 @@ AFF_SIZES = {
   "ss": {
     "suppliers": 300,
     "products": 3000,
-    "parts" : 10000
+    "parts" : 30000
   },
   "s": {
     "suppliers": 1000,
