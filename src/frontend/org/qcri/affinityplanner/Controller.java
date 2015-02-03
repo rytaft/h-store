@@ -233,6 +233,7 @@ public class Controller extends Thread {
 
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
+            record("Partitioner tuples to move: " + Partitioner.MAX_MOVED_TUPLES_PER_PART);
             
         } // END if(UPDATE_PLAN)
 
