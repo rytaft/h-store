@@ -9,11 +9,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -56,15 +54,7 @@ public class GraphPartitioner extends Partitioner {
         // detect overloaded and active partitions
         Set<Integer> activePartitions = new HashSet<Integer>();
         Set<Integer> overloadedPartitions = new HashSet<Integer>();
-        for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
-            if(!m_graph.m_partitionVertices.get(i).isEmpty()){
-                activePartitions.add(i);
-                System.out.println(getLoadPerPartition(i));
-                if (getLoadPerPartition(i) > MAX_LOAD_PER_PART){
-                    overloadedPartitions.add(i);
-                }
-            }
-        }
+        measureLoad(activePartitions, overloadedPartitions);
 
         /*
          * MOVE BORDER TUPLES
@@ -289,56 +279,6 @@ public class GraphPartitioner extends Partitioner {
         return true;
     }
 
-    private void scaleIn(Set<Integer> overloadedPartitions, Set<Integer> activePartitions){
-        /*
-         *  SCALE IN
-         *  
-         *  very simple policy: if a partition is underloaded, try to move its whole content to another partition
-         */
-
-        // detect underloaded partitions
-        TreeSet<Integer> underloadedPartitions = new TreeSet<Integer>();
-        for(Integer part : activePartitions){
-            if (getLoadPerPartition(part) < MIN_LOAD_PER_PART){
-                underloadedPartitions.add(part);
-            }
-        }
-
-        if (!underloadedPartitions.isEmpty()){
-            System.out.println("SCALING IN");
-        }
-
-
-        // offload from partitions with higher id to partitions with lower id. this helps emptying up the latest servers.
-        Iterator<Integer> descending = underloadedPartitions.descendingIterator();
-        HashSet<Integer> removedPartitions = new HashSet<Integer>();
-
-        while(descending.hasNext()){
-
-            Integer underloadedPartition = descending.next();
-            System.out.println("Offloading partition " + underloadedPartition);
-            Set<String> movingVertices = new HashSet<String>();
-            movingVertices.addAll(m_graph.m_partitionVertices.get(underloadedPartition));
-
-            // try to offload to remote partitions
-            Collection<Integer> localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(underloadedPartition));
-            for(Integer toPartition : activePartitions){
-
-                if(!localPartitions.contains(toPartition) && !removedPartitions.contains(toPartition)){
-
-                    LOG.debug("Trying with partition " + toPartition);
-                    int movedVertices = tryMoveVertices(movingVertices, underloadedPartition, toPartition);
-
-                    if(movedVertices > 0){
-                        removedPartitions.add(underloadedPartition);
-                        break;                            
-                    }
-                }
-            }
-        }
-        activePartitions.removeAll(removedPartitions);
-    }
-
     /**
      * updates the set movingVertices with one more vertex, either the most affine to the current movingVertices 
      * or the next vertex in the verticesToMove list, depending on which one is more convenient to move out.
@@ -455,11 +395,9 @@ public class GraphPartitioner extends Partitioner {
         return res;
     }
 
-    /*
-     * computes load of a set of vertices in the current partition. this is different from the weight of a vertex because it considers
-     * both direct accesses of the vertex and the cost of remote accesses
-     */
-    private Double getLoadInCurrPartition(Set<String> vertices){
+
+    @Override
+    protected Double getLoadInCurrPartition(Set<String> vertices){
         double load = 0;
         for(String vertex : vertices){
             // local accesses
@@ -485,78 +423,9 @@ public class GraphPartitioner extends Partitioner {
         return load;
     }
 
+    @Override
     public Double getLoadPerPartition(int partition){
         return getLoadInCurrPartition(m_graph.m_partitionVertices.get(partition));
-    }
-
-    /**
-     * Returns sorted (descending order) list of top-k vertices from site
-     * 
-     * @param partition
-     * @param k
-     * @return
-     */
-    private List<String> getHottestVertices(int partition, int k){
-
-        List<String> res = new ArrayList<String>(k);
-        final Map<String, Double> hotnessMap = new HashMap<String,Double>(k);
-
-        k = Math.min(k, m_graph.m_partitionVertices.get(partition).size());
-        int lowestPos = 0;
-        double lowestLoad = Double.MAX_VALUE;
-
-        for(String vertex : m_graph.m_partitionVertices.get(partition)){
-
-            double vertexLoad = getLoadInCurrPartition(Collections.singleton(vertex));
-
-            if (res.size() < k){
-
-                res.add(vertex);
-                hotnessMap.put(vertex, vertexLoad);
-                if (lowestLoad > vertexLoad){
-                    lowestPos = res.size() - 1;
-                    lowestLoad = vertexLoad;
-                }
-            }
-
-            else{
-                if(vertexLoad > lowestLoad){
-
-                    hotnessMap.remove(res.get(lowestPos));
-
-                    res.set(lowestPos, vertex);
-                    hotnessMap.put(vertex, vertexLoad);
-
-                    // find new lowest load
-                    lowestLoad = vertexLoad;
-                    for (int i = 0; i < k; i++){
-                        double currLoad = hotnessMap.get(res.get(i)); 
-                        if(currLoad < lowestLoad){
-                            lowestPos = i;
-                            lowestLoad = currLoad; 
-                        }
-                    }
-                }
-            }
-        }
-
-        // sort determines an _ascending_ order
-        // Comparator should return "a negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater than the second"
-        // We want a _descending_ order, so we need to invert the comparator result
-        Collections.sort(res, new Comparator<String>(){
-            @Override
-            public int compare(String o1, String o2) {
-                if (hotnessMap.get(o1) < hotnessMap.get(o2)){
-                    return 1;
-                }
-                else if (hotnessMap.get(o1) > hotnessMap.get(o2)){
-                    return -1;
-                }
-                return 0;
-            }
-        });
-
-        return res;
     }
 
     /**

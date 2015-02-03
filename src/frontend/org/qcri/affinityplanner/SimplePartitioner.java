@@ -3,6 +3,8 @@ package org.qcri.affinityplanner;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -24,6 +26,13 @@ public class SimplePartitioner extends Partitioner {
     @Override
     public boolean repartition() {
 
+        // detect overloaded and active partitions
+        Set<Integer> activePartitions = new HashSet<Integer>();
+        Set<Integer> overloadedPartitions = new HashSet<Integer>();
+        
+        measureLoad(activePartitions, overloadedPartitions);
+
+        // move border vertices        
         for (int fromPart = 0; fromPart < Controller.MAX_PARTITIONS; fromPart ++){
 
             Set<String> vertices = m_graph.m_partitionVertices.get(fromPart);
@@ -31,27 +40,39 @@ public class SimplePartitioner extends Partitioner {
             for (String vertex : vertices){
 
                 Map<String, Double> adjacency = m_graph.m_edges.get(vertex);
-                double inPull = adjacency.get(Integer.toString(fromPart));
 
                 for(String toPart : adjacency.keySet()){
 
                     int toPartInt = Integer.parseInt(toPart);
 
                     if (fromPart != toPartInt){
-                        double outPull = adjacency.get(toPart);
-                        if (inPull < outPull){
-                            m_graph.moveVertices(Collections.singleton(vertex), fromPart, toPartInt);
-                        }
+                        tryMoveVertices(Collections.singleton(vertex), fromPart, toPartInt);
                     }
                 }
             }
         }
         
+        for(Integer fromPart : overloadedPartitions){
+            
+            List<String> hotVertices = getHottestVertices(fromPart, MAX_MOVED_TUPLES_PER_PART);
+            
+            for (String vertex : hotVertices){
+
+                for (int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
+                    tryMoveVertices(Collections.singleton(vertex), fromPart, toPart);
+                }
+                
+            }
+        }
+        
+        scaleIn(overloadedPartitions, activePartitions);
+        
         return true;
     }
 
+    
     @Override
-    public Double getLoadPerPartition(int fromPartition) {
+    protected Double getLoadPerPartition(int fromPartition) {
         
         Set<String> vertices = m_graph.m_partitionVertices.get(fromPartition);
         double load = 0;
@@ -111,5 +132,32 @@ public class SimplePartitioner extends Partitioner {
             }
         }
         return delta;
+    }
+
+    @Override
+    protected Double getLoadInCurrPartition(Set<String> vertices) {
+        double load = 0;
+        for(String vertex : vertices){
+            // local accesses
+            load += m_graph.m_vertices.get(vertex);
+            // remote accesses
+            int fromVertexPartition = m_graph.m_vertexPartition.get(vertex);
+            int fromVertexSite = PlanHandler.getSitePartition(fromVertexPartition);
+            Map<String,Double> adjacencyList = m_graph.m_edges.get(vertex);
+            if(adjacencyList != null){
+                for(Map.Entry<String, Double> edge : adjacencyList.entrySet()){
+                    String toPartition = edge.getKey();
+                    int toPartitionInt = Integer.parseInt(toPartition);
+                    int toVertexSite = PlanHandler.getSitePartition(toPartitionInt);
+                    if(toVertexSite != fromVertexSite){
+                        load += edge.getValue() * DTXN_COST;
+                    }
+                    else if(toPartitionInt != fromVertexPartition){
+                        load += edge.getValue() * LMPT_COST;
+                    }
+                }
+            }
+        }
+        return load;
     }
 }
