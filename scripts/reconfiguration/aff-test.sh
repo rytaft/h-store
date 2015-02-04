@@ -15,7 +15,16 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-    "affinity-dyn --partitions=12 --benchmark-size=ss --exp-suffix=ss" \
+    "affinity-dyn-b1000-t10000 --partitions=12 --benchmark-size=ss --exp-suffix=ss" \
+    "affinity-dyn-b1000-t1000 --partitions=12 --benchmark-size=ss --exp-suffix=ss" \
+    "affinity-dyn-b1000 --partitions=12 --benchmark-size=ss --exp-suffix=ss" \
+    "affinity-dyn-b500-t10000 --partitions=12 --benchmark-size=ss --exp-suffix=ss" \
+    "affinity-dyn-b500-t1000 --partitions=12 --benchmark-size=ss --exp-suffix=ss" \
+    "affinity-dyn-b500 --partitions=12 --benchmark-size=ss --exp-suffix=ss" \
+    "affinity-dyn-b10-t10000 --partitions=12 --benchmark-size=ss --exp-suffix=ss" \
+    "affinity-dyn-b10-t1000 --partitions=12 --benchmark-size=ss --exp-suffix=ss" \
+    "affinity-dyn-b10 --partitions=12 --benchmark-size=ss --exp-suffix=ss" \
+
 #    "affinity-dyn --partitions=12 --benchmark-size=xs --exp-suffix=xs" \
 #    "affinity-dyn --partitions=12 --benchmark-size=s --exp-suffix=s" \
 #    "affinity-dyn --partitions=12 --benchmark-size=m --exp-suffix=m" \

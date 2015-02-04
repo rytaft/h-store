@@ -38,6 +38,8 @@ if len(sys.argv) > 1:
     if os.path.isdir(sys.argv[1]):
         print "Setting dir to :", sys.argv[1]
         workdir = sys.argv[1]
+else:
+    print "using default direct"
     
 
 files = [x for x in os.listdir(workdir) if '.zip' in x]
