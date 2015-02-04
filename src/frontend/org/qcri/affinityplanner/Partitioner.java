@@ -36,7 +36,7 @@ public abstract class Partitioner {
     public static int MAX_LOAD_PER_PART = Integer.MAX_VALUE;
     public static double LMPT_COST = 1.1;
     public static double DTXN_COST = 5.0;
-    public static int MAX_MOVED_TUPLES_PER_PART = 100;
+    public static int MAX_MOVED_TUPLES_PER_PART = 10000;
     public static int MIN_GAIN_MOVE = 0;
     public static int MAX_PARTITIONS_ADDED = 6;
 
