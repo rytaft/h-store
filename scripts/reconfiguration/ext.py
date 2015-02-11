@@ -20,8 +20,10 @@ def plotResults(result_dir):
     
     base = "python plotter.py --tsd %s -d %s -s %s -t line --no-display -v %s %s"
     csv_base = "%s-results.csv" % exp_type
-    csv = "--csv %s" % os.path.join(result_dir,csv_base)
-    for show_type in ["tps", "lat50","lat","lat95"]:
+    #csv = "--csv %s" % os.path.join(result_dir,csv_base)
+    csv = ""
+    #for show_type in ["tps", "lat50","lat","lat95"]:
+    for show_type in ["both"]:    
         _file_base = exp_type
         _file_name = "%s-%s" % (_file_base, show_type)
         _file = os.path.join(result_dir, _file_name )

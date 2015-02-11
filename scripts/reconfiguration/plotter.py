@@ -27,6 +27,11 @@ INTERVAL_TYPE_MAP = {
   "lat99": "LATENCY_99",
 }
 
+INTERVAL_BOTH_TYPE_MAP = {
+  "tps": "THROUGHPUT",
+  "lat": "LATENCY",
+}
+
 RESULTS_TYPE_MAP = {
   "tps": "TXNTOTALPERSECOND",
   "lat": "TOTALAVGLATENCY",
@@ -59,7 +64,7 @@ def getParser():
     parser.add_argument("--reconfig", dest="reconfig", action="store_true", help="Plot reconfig bars") 
     parser.add_argument("--subplots", dest="subplots", action="store_true", help="Plot subplots") 
      
-    parser.add_argument("-s","--show", dest="show", choices=["tps","lat","lat50","lat95","lat99","latall"], required=True, help="Show this data type")            
+    parser.add_argument("-s","--show", dest="show", choices=["tps","both","lat","lat50","lat95","lat99","latall"], required=True, help="Show this data type")            
     
     group = parser.add_mutually_exclusive_group() 
     group.add_argument("-d","--dir", dest="dir", help="The directory to load files from")            
@@ -257,11 +262,13 @@ def exploreDir(d, keepfilter=None):
         getDirStat(os.path.join(r,d),reconfigs,stops,"mean",keepfilter)
         print "-- --  " * 15
   return {"reconfigs": reconfigs, "stops": stops}      
+  
+  
 def plotGraph(args):
 
     if args.ylabel != None:
         plot.ylabel(args.ylabel)
-    else:
+    elif args.show != "both":
         if args.type == "aborts":
             plot.ylabel("Aborts")
         elif "lat" in args.show:
@@ -284,7 +291,8 @@ def plotGraph(args):
         #via http://stackoverflow.com/questions/2657693/insert-a-newline-character-every-64-characters-using-python
         title = re.sub("(.{128})", "\\1\n", str(args), 0, re.DOTALL) 
         plot.title(title, fontsize=12)
-    plot.legend(loc="best",prop={'size':12})
+    if args.show != "both":
+        plot.legend(loc="best",prop={'size':12})
 
     if args.save:
         plot.savefig("%s.png" % args.save)
@@ -435,6 +443,11 @@ def plotTSD(args, files, ax):
         if args.subplots:
             ax = axarr[i]
             ax.set_title(name)
+        ax2 = None
+        if args.show == "both":
+            ax2 = ax.twinx()
+        _lns = []
+        _labels = []
         for show_var in args.show_vars:
             if args.subplots:
               color = "black"
@@ -476,24 +489,37 @@ def plotTSD(args, files, ax):
             #print ""
             if args.csv:
                 df.to_csv(args.csv)
-                gr = df.groupby('IN_RECONFIG')
-                meanCols = ['THROUGHPUT','LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','DOWNTIME','RECONFIG_TIME']
-                sumCols = ['ASYNC_PULLS','LIVE_PULLS']
-                m = gr.mean()[meanCols]
-                s = gr.sum()[sumCols]
-                s = s.join(m).sort_index()
-                s.to_csv(args.csv.replace('-results.','-aggregate.'))
-                per_cng = s.pct_change().ix[1]
-                LOG.info("Percent change\n%s" % per_cng)
+                try:
+                    gr = df.groupby('IN_RECONFIG')
+                    meanCols = ['THROUGHPUT','LATENCY','LATENCY_50','LATENCY_95','LATENCY_99','DOWNTIME','RECONFIG_TIME']
+                    sumCols = ['ASYNC_PULLS','LIVE_PULLS']
+                    m = gr.mean()[meanCols]
+                    s = gr.sum()[sumCols]
+                    s = s.join(m).sort_index()
+                    s.to_csv(args.csv.replace('-results.','-aggregate.'))
+                    per_cng = s.pct_change().ix[1]
+                    LOG.info("Percent change\n%s" % per_cng)
+                except:
+                    LOG.error("Unable to group by reconfig for aggregate results csv file")
+                
             if args.type == "line":
                 #plot the line with the same color 
-                ax.plot(df.index, data[name], color=color,label=name,ls=linestyle, lw=2.0)
+                if ax2 and "lat" in show_var.lower():
+                    l = ax2.plot(df.index, data[name], color=color,label=name,ls=linestyle, lw=2.0)
+                else:
+                    l = ax.plot(df.index, data[name], color=color,label=name,ls=linestyle, lw=2.0)
+                _lns.append(l)
+                _labels.append(name)    
                 if args.reconfig and reconfig_events:
                     plotReconfigs(args, df, ax)
             x+=1 # FOR
     plotFrame = pandas.DataFrame(data=data)
     if args.type == "line":
-        pass
+        if args.show == "both":
+            ax.set_ylabel("TPS")
+            ax2.set_ylabel("LAT (ms)")
+            ax2.legend(loc=2,prop={'size':12})
+            ax.legend(loc=1,prop={'size':12})
         #plotFrame.plot(ax=ax )
     elif args.type == "boxplot":
         plotFrame.boxplot(ax=ax)
@@ -520,6 +546,12 @@ def plotter(args, files):
             keymap = RESULTS_TYPE_MAP
 
         args.show_vars = [x for x in keymap if "lat" in x] 
+    elif args.show == "both":
+        if args.tsd:
+            keymap = INTERVAL_BOTH_TYPE_MAP
+            args.show_vars = [x for x in keymap] 
+        else:
+            raise Exception("Not implemented")
     else:
         args.show_vars = [args.show]
     if args.tsd:
