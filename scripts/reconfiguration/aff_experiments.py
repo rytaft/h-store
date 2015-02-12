@@ -80,11 +80,11 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["benchmark.max_parts_per_product"] = 10
         fabric.env["client.output_response_status"] = True
         fabric.env["output_response_status"] = True
-        fabric.env["client.threads_per_host"] = 10  # * partitions # min(50, int(partitions * 4))
+        fabric.env["client.threads_per_host"] = 1  # * partitions # min(50, int(partitions * 4))
         fabric.env["hstore.partitions_per_site"] = 6 #args['exp_type'].rsplit("-",1)[1] 
         fabric.env["site.commandlog_enable"] = False
         fabric.env["client.txnrate"] = 1000
-        fabric.env["client.blocking_concurrent"] = 100 # * int(partitions/8)
+        fabric.env["client.blocking_concurrent"] = 1 # * int(partitions/8)
 
     if 'affinity-ms12' in args['exp_type']:
         fabric.env["hstore.partitions_per_site"] = 12 #args['exp_type'].rsplit("-",1)[1] 

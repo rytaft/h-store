@@ -15,7 +15,7 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-    "affinity-dyn --partitions=4 --benchmark-size=xs --exp-suffix=xs" \
+    "affinity-ms --partitions=1 --benchmark-size=s --exp-suffix=s" \
 )
 
 for b in affinity; do
@@ -28,12 +28,12 @@ for b in affinity; do
         --exp-attempts=1 \        
         --no-json \
         --plot \
-	    --client.interval=1000 \
+	    --client.interval=10000 \
         --client.output_interval=true \
         --client.duration=120000 \
         --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv \
-        --affinity=10000 \
+        --affinity=30000 \
         --sweep-reconfiguration 
     )
         #--global.hasher_plan=plan_affinity.json \
