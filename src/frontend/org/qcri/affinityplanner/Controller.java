@@ -176,22 +176,12 @@ public class Controller extends Thread {
             t1 = System.currentTimeMillis();
             String hStoreDir = ShellTools.cmd("pwd");
             hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
+            String command = "python scripts/partitioning/fetch_monitor.py " + hStoreDir;
             for(Site site: m_sites){
+                command = command + " " + site.getHost().getIpaddr();
                 String ip = site.getHost().getIpaddr();
-//                System.out.println("IP: " + ip);
-                for (int i = 0; i < MAX_PARTITIONS; i++){
-                    String command = "scp " + ip + ":" + hStoreDir + "/transactions-partition-" + i + ".log .";
-    //                System.out.println("Executing command:\n" + command);
-                    @SuppressWarnings("unused")
-                    String results = ShellTools.cmd(command);
-    //                System.out.println("Result:\n" + results);
-                    command = "scp " + ip + ":" + hStoreDir + "/transactions-partition-" + i + "-interval.log .";
-    //                System.out.println("Executing command:\n" + command);
-                    results = ShellTools.cmd(command);
-    //                System.out.println("Result:\n" + results);
-                }
-//                System.out.println("Fetched");
             }
+            String results = ShellTools.cmd(command);
     
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
