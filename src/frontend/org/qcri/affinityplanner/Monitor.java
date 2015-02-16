@@ -99,7 +99,7 @@ public class Monitor {
                         Iterator<CatalogType> columnIter = offsetPair.getFirst().iterator();
                         for(Integer offset : offsetPair.getSecond()) {
                             Column column = (Column) columnIter.next();
-                            s = ts.getTransactionId().toString() + ";" + table_name + "," + column.getName().toLowerCase() + "," + parameterSet.toArray()[offset];
+                            s = table_name + "," + column.getName().toLowerCase() + "," + parameterSet.toArray()[offset];
                             m_writer.write(s, 0, s.length());
                             m_writer.newLine();
                         }
@@ -117,7 +117,7 @@ public class Monitor {
     }
     
     public void logFinishTransaction(Long trans_id){
-        String s = "END;" + trans_id.toString();
+        String s = "END";
         try {
             m_writer.write(s, 0, s.length());
             m_writer.newLine();

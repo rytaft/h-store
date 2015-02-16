@@ -99,7 +99,6 @@ public class AffinityGraph {
                 throw e;
             }
             String line;
-            HashMap<String, Set<String>> transactions = new HashMap<String,Set<String>>();
             // vertices with number of SQL statements they are involved in
             // READ FIRST LINE
             try {
@@ -114,91 +113,75 @@ public class AffinityGraph {
             }
             
 //            System.out.println("Tran ID = " + currTransactionId);
+            Set<String> curr_transaction = new HashSet<String> ();
             // PROCESS LINE
             while(line != null){
 
-//                System.out.println("Reading next line");
-                String[] fields = line.split(";");
                 // if finished with one transaction, update graph and clear before moving on
 
-                if (fields[0].equals("END")){
+                if (line.equals("END")){
 
-                    String transaction_id = fields[1];
-                    Set<String> curr_transaction = transactions.get(transaction_id);
+                    //                    System.out.println("Size of transaction:" + transaction.size());
 
-                    if(curr_transaction != null){
-    //                    System.out.println("Size of transaction:" + transaction.size());
+                    for(String from : curr_transaction){
+                        // update FROM vertex in graph
+                        Double currentVertexWeight = m_vertices.get(from);
+                        if (currentVertexWeight == null){
+                            m_vertices.put(from, normalizedIncrement);
+                        }
+                        else{
+                            m_vertices.put(from, currentVertexWeight + normalizedIncrement);                         
+                        }
+                        // store site mappings for FROM vertex
+                        int partition = 0;
+                        partition = m_plan_handler.getPartition(from);
 
-                        for(String from : curr_transaction){
-                            // update FROM vertex in graph
-                            Double currentVertexWeight = m_vertices.get(from);
-                            if (currentVertexWeight == null){
-                                m_vertices.put(from, normalizedIncrement);
-                            }
-                            else{
-                                m_vertices.put(from, currentVertexWeight + normalizedIncrement);                         
-                            }
-                            // store site mappings for FROM vertex
-                            int partition = 0;
-                            partition = m_plan_handler.getPartition(from);
+                        if (partition == HStoreConstants.NULL_PARTITION_ID){
+                            LOG.info("Exiting graph loading. Could not find partition for key " + from);
+                            System.out.println("Exiting graph loading. Could not find partition for key " + from);
+                            throw new Exception();                            
+                        }
+                        m_partitionVertices.get(partition).add(from);
+                        m_vertexPartition.put(from, partition);
 
-                            if (partition == HStoreConstants.NULL_PARTITION_ID){
-                                LOG.info("Exiting graph loading. Could not find partition for key " + from);
-                                System.out.println("Exiting graph loading. Could not find partition for key " + from);
-                                throw new Exception();                            
-                            }
-                            m_partitionVertices.get(partition).add(from);
-                            m_vertexPartition.put(from, partition);
-                            
-                            // update FROM -> TO edges
-                            Set<String> visitedVertices = new HashSet<String>();    // removes duplicate vertex entries in the monitoring output
-                            for(String to : curr_transaction){
-                                if (! from.equals(to) && ! visitedVertices.contains(to)){
-                                    visitedVertices.add(to);
-                                    Map<String,Double> adjacency = m_edges.get(from);
-                                    if(adjacency == null){
-                                        adjacency = new HashMap<String,Double>();
-                                        m_edges.put(from, adjacency);
-                                    }
-                                    
-                                    // if lower granularity, edges link vertices to partitions, not other vertices
-                                    if(!m_tupleGranularity){
-                                        int toPartition = m_plan_handler.getPartition(to);
-                                        to = Integer.toString(toPartition);
-                                    }
-                                    
-                                    Double currentEdgeWeight = adjacency.get(to);
-                                    if (currentEdgeWeight == null){
-                                        adjacency.put(to, normalizedIncrement);
-                                    }
-                                    else{
-                                        adjacency.put(to, currentEdgeWeight + normalizedIncrement);
-                                    }
+                        // update FROM -> TO edges
+                        Set<String> visitedVertices = new HashSet<String>();    // removes duplicate vertex entries in the monitoring output
+                        for(String to : curr_transaction){
+                            if (! from.equals(to) && ! visitedVertices.contains(to)){
+                                visitedVertices.add(to);
+                                Map<String,Double> adjacency = m_edges.get(from);
+                                if(adjacency == null){
+                                    adjacency = new HashMap<String,Double>();
+                                    m_edges.put(from, adjacency);
                                 }
-                            } // END for(String to : curr_transaction)
-                            
-                        } // END for(String from : curr_transaction)
-                        
-                        transactions.remove(transaction_id);
-                        
-    //                    System.out.println("Tran ID = " + currTransactionId);
-                    } // END if(curr_transaction != null)
-                } // END if (fields[0].equals("END"))
-                
+
+                                // if lower granularity, edges link vertices to partitions, not other vertices
+                                if(!m_tupleGranularity){
+                                    int toPartition = m_plan_handler.getPartition(to);
+                                    to = Integer.toString(toPartition);
+                                }
+
+                                Double currentEdgeWeight = adjacency.get(to);
+                                if (currentEdgeWeight == null){
+                                    adjacency.put(to, normalizedIncrement);
+                                }
+                                else{
+                                    adjacency.put(to, currentEdgeWeight + normalizedIncrement);
+                                }
+                            }
+                        } // END for(String to : curr_transaction)
+
+                    } // END for(String from : curr_transaction)
+
+                    curr_transaction.clear();
+
+                    //                    System.out.println("Tran ID = " + currTransactionId);
+                } // END if (line.equals("END"))
+
                 else{
-                
-                    // update the current transaction
-                    String transaction_id = fields[0];
-                    Set<String> curr_transaction = transactions.get(transaction_id);
-                    
-                    if(curr_transaction == null){
-                        curr_transaction = new HashSet<String>();
-                        transactions.put(transaction_id, curr_transaction);
-                    }
-                    
-                    curr_transaction.add(fields[1]);
+                    curr_transaction.add(line);
                 }
-                
+
                 /* this is what one would do to count different accesses within the same transaction. 
                  * For the moment I count only the number of transactions accessing a tuple
                 Double weight = transaction.get(vertex[1]);
