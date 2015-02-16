@@ -144,17 +144,16 @@ public class AffinityGraph {
                         m_partitionVertices.get(partition).add(from);
                         m_vertexPartition.put(from, partition);
 
-                        // update FROM -> TO edges
-                        Set<String> visitedVertices = new HashSet<String>();    // removes duplicate vertex entries in the monitoring output
-                        for(String to : curr_transaction){
-                            if (! from.equals(to) && ! visitedVertices.contains(to)){
-                                visitedVertices.add(to);
-                                Map<String,Double> adjacency = m_edges.get(from);
-                                if(adjacency == null){
-                                    adjacency = new HashMap<String,Double>();
-                                    m_edges.put(from, adjacency);
-                                }
+                        Map<String,Double> adjacency = m_edges.get(from);
+                        if(adjacency == null){
+                            adjacency = new HashMap<String,Double>();
+                            m_edges.put(from, adjacency);
+                        }
 
+                        // update FROM -> TO edges
+                        for(String to : curr_transaction){
+                            if (! from.equals(to) ){
+                                
                                 // if lower granularity, edges link vertices to partitions, not other vertices
                                 if(!m_tupleGranularity){
                                     int toPartition = m_plan_handler.getPartition(to);
