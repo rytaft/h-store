@@ -10,6 +10,10 @@ RECONFIG_EXPERIMENTS = [
     "affinity-dyn-b10-t1000",
     "affinity-dyn-b10",
     "affinity-ms",
+    "affinity-ms-sk2",
+    "affinity-ms-sk3",
+    "affinity-ms-sk4",
+    "affinity-ms-sk5",
     "affinity-ms12",
 
 ]
@@ -41,6 +45,11 @@ AFF_SIZES = {
     "products": 1000000,
     "parts" : 10000000
   },
+  "z": {
+    "suppliers": 10000000,
+    "products" : 10000,
+    "parts" :    10000000
+  },
   "xs2": {
     "suppliers": 1000,
     "products": 100,
@@ -69,7 +78,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
 
     if 'affinity-ms' in args['exp_type']:
-        fabric.env["client.count"] = 1
+        fabric.env["client.count"] = 4
         fabric.env["client.blocking"] = True
         fabric.env["benchmark.supplier_to_parts_offset"] = 0.0
         fabric.env["benchmark.uses.is_random"] = False
@@ -80,11 +89,21 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["benchmark.max_parts_per_product"] = 10
         fabric.env["client.output_response_status"] = True
         fabric.env["output_response_status"] = True
-        fabric.env["client.threads_per_host"] = 1  # * partitions # min(50, int(partitions * 4))
-        fabric.env["hstore.partitions_per_site"] = 6 #args['exp_type'].rsplit("-",1)[1] 
+        fabric.env["client.threads_per_host"] = 40  # * partitions # min(50, int(partitions * 4))
+        fabric.env["hstore.partitions_per_site"] = 8 #args['exp_type'].rsplit("-",1)[1] 
         fabric.env["site.commandlog_enable"] = False
-        fabric.env["client.txnrate"] = 1000
-        fabric.env["client.blocking_concurrent"] = 1 # * int(partitions/8)
+        #fabric.env["client.txnrate"] = 1000
+        fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
+
+    if 'sk2' in args['exp_type']:
+        fabric.env["benchmark.supplier_to_parts_offset"] = 0.2
+    if 'sk3' in args['exp_type']:
+        fabric.env["benchmark.supplier_to_parts_offset"] = 0.3
+    if 'sk4' in args['exp_type']:
+        fabric.env["benchmark.supplier_to_parts_offset"] = 0.4
+    if 'sk5' in args['exp_type']:
+        fabric.env["benchmark.supplier_to_parts_offset"] = 0.5
+
 
     if 'affinity-ms12' in args['exp_type']:
         fabric.env["hstore.partitions_per_site"] = 12 #args['exp_type'].rsplit("-",1)[1] 
