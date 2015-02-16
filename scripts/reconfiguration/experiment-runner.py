@@ -940,7 +940,7 @@ def plotResults(args):
     base = "python plotter.py --tsd %s -d %s -s %s -t line --no-display -v %s %s"
     csv_base = "%s-results.csv" % args['exp_type']
     csv = "--csv %s" % os.path.join(resultsDir,csv_base)
-    for show_type in ["tps", "lat50","lat","lat95"]:
+    for show_type in ["both"]: #["tps", "lat50","lat","lat95"]:
         _file_base = args['exp_type']
         if 'exp-suffix' in args:
             _file_base = '%s-%s' % (_file_base, args['exp-suffix'])
