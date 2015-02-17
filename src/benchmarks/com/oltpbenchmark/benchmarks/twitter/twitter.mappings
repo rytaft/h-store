@@ -1,0 +1,61 @@
+{"MAPPINGS": [
+ {
+  "STATEMENT": "{'GetFollowers':'getFollowers'}",
+  "STATEMENT_INDEX": 0,
+  "STATEMENT_PARAMETER": "{'GetFollowers.getFollowers':'0'}",
+  "STATEMENT_COLUMN": "{'FOLLOWERS':'F1'}",
+  "PROCEDURE_PARAMETER": "{'GetFollowers':'0'}",
+  "PROCEDURE_PARAMETER_INDEX": 0,
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetFollowers':'getFollowerName'}",
+  "STATEMENT_INDEX": 1,
+  "STATEMENT_PARAMETER": "{'GetFollowers.getFollowerName':'0'}",
+  "STATEMENT_COLUMN": "{'USER_PROFILES':'UID'}",
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetTweet':'getTweet'}",
+  "STATEMENT_INDEX": 0,
+  "STATEMENT_PARAMETER": "{'GetTweet.getTweet':'0'}",
+  "STATEMENT_COLUMN": "{'TWEETS':'ID'}",
+  "PROCEDURE_PARAMETER": "{'GetTweet':'0'}",
+  "PROCEDURE_PARAMETER_INDEX": 0,
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetTweetsFromFollowing':'getFollowing'}",
+  "STATEMENT_INDEX": 0,
+  "STATEMENT_PARAMETER": "{'GetTweetsFromFollowing.getFollowing':'0'}",
+  "STATEMENT_COLUMN": "{'FOLLOWS':'F1'}",
+  "PROCEDURE_PARAMETER": "{'GetTweetsFromFollowing':'0'}",
+  "PROCEDURE_PARAMETER_INDEX": 0,
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetTweetsFromFollowing':'getTweets'}",
+  "STATEMENT_INDEX": 1,
+  "STATEMENT_PARAMETER": "{'GetTweetsFromFollowing.getTweets':'0'}",
+  "STATEMENT_COLUMN": "{'TWEETS':'UID'}",
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetUserTweets':'getTweets'}",
+  "STATEMENT_INDEX": 0,
+  "STATEMENT_PARAMETER": "{'GetUserTweets.getTweets':'0'}",
+  "STATEMENT_COLUMN": "{'TWEETS':'UID'}",
+  "PROCEDURE_PARAMETER": "{'GetUserTweets':'0'}",
+  "PROCEDURE_PARAMETER_INDEX": 0,
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'InsertTweet':'insertTweet'}",
+  "STATEMENT_INDEX": 0,
+  "STATEMENT_PARAMETER": "{'InsertTweet.insertTweet':'0'}",
+  "STATEMENT_COLUMN": "{'ADDED_TWEETS':'UID'}",
+  "PROCEDURE_PARAMETER": "{'InsertTweet':'0'}",
+  "PROCEDURE_PARAMETER_INDEX": 0,
+  "COEFFICIENT": 1.0
+ }
+]}
