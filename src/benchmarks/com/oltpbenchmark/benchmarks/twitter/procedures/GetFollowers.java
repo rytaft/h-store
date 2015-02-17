@@ -3,11 +3,15 @@ package com.oltpbenchmark.benchmarks.twitter.procedures;
 
 import com.oltpbenchmark.benchmarks.twitter.TwitterConstants;
 
+import org.voltdb.ProcInfo;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
-
+@ProcInfo(
+		partitionInfo = "FOLLOWERS.F1: 0",
+        singlePartition = true
+)
 public class GetFollowers extends VoltProcedure {
 	
     public final SQLStmt getFollowers = new SQLStmt(

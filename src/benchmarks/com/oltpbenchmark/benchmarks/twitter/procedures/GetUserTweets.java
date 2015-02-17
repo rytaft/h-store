@@ -2,10 +2,15 @@ package com.oltpbenchmark.benchmarks.twitter.procedures;
 
 import com.oltpbenchmark.benchmarks.twitter.TwitterConstants;
 
+import org.voltdb.ProcInfo;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
+@ProcInfo(
+		partitionInfo = "TWEETS.UID: 0",
+        singlePartition = true
+)
 public class GetUserTweets extends VoltProcedure {
 
     public final SQLStmt getTweets = new SQLStmt(

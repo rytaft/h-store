@@ -51,6 +51,7 @@ public enum ProjectType {
     SMALLBANK("SmallBank", "edu.brown.benchmark.smallbank"),
     EXAMPLE("Example", "edu.brown.benchmark.example"),
     AFFINITY("Affinity", "edu.mit.benchmark.affinity"),
+    TWITTER("Twitter", "com.oltpbenchmark.benchmarks.twitter"),
     TEST("Test", null),
     ;
 
