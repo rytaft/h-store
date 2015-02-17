@@ -19,6 +19,7 @@ import edu.brown.rand.RandomDistribution.FlatHistogram;
 
 import org.voltdb.CatalogContext;
 import org.voltdb.VoltTable;
+import org.voltdb.VoltType;
 import org.voltdb.catalog.Database;
 import org.voltdb.catalog.Table;
 
@@ -72,9 +73,9 @@ public class TwitterLoader extends Loader {
             row[param++] = i; // ID
             row[param++] = name; // NAME
             row[param++] = name + "@tweeter.com"; // EMAIL
-            row[param++] = "";
-            row[param++] = "";
-            row[param++] = "";
+            row[param++] = VoltType.NULL_INTEGER;
+            row[param++] = VoltType.NULL_TINYINT;
+            row[param++] = VoltType.NULL_INTEGER;
             vt.addRow(row);
             
             batchSize++;
@@ -123,7 +124,7 @@ public class TwitterLoader extends Loader {
             row[param++] = i;
             row[param++] = uid;
             row[param++] = TextGenerator.randomStr(rng, tweet_len_rng.nextValue());
-            row[param++] = "";
+            row[param++] = VoltType.NULL_TIMESTAMP;
             vt.addRow(row);
             
             batchSize++;
