@@ -1,43 +1,43 @@
 -- MySQL ddl from Twitter dump
 
 CREATE TABLE user_profiles (
-  uid int NOT NULL,
-  name varchar(255) DEFAULT NULL,
-  email varchar(255) DEFAULT NULL,
-  partitionid int DEFAULT NULL,
-  partitionid2 tinyint DEFAULT NULL,
-  followers int DEFAULT NULL,
+  uid INTEGER DEFAULT '0' NOT NULL,
+  name VARCHAR(255) DEFAULT NULL,
+  email VARCHAR(255) DEFAULT NULL,
+  partitionid INTEGER DEFAULT NULL,
+  partitionid2 TINYINT DEFAULT NULL,
+  followers INTEGER DEFAULT NULL,
   PRIMARY KEY (uid)
 );
 CREATE INDEX IDX_USER_FOLLOWERS ON user_profiles (followers);
 CREATE INDEX IDX_USER_PARTITION ON user_profiles (partitionid);
 
 CREATE TABLE followers (
-  f1 int NOT NULL,
-  f2 int NOT NULL,
+  f1 INTEGER DEFAULT '0' NOT NULL,
+  f2 INTEGER DEFAULT '0' NOT NULL,
   PRIMARY KEY (f1,f2)
 );
 
 CREATE TABLE follows (
-  f1 int NOT NULL,
-  f2 int NOT NULL,
+  f1 INTEGER DEFAULT '0' NOT NULL,
+  f2 INTEGER DEFAULT '0' NOT NULL,
   PRIMARY KEY (f1,f2)
 );
 
 CREATE TABLE tweets (
-  id bigint NOT NULL,
-  uid int NOT NULL REFERENCES user_profiles (uid),
-  text char(140) NOT NULL,
-  createdate timestamp DEFAULT NULL,
+  id BIGINT DEFAULT '0' NOT NULL,
+  uid INTEGER DEFAULT '0' NOT NULL REFERENCES user_profiles (uid),
+  text CHAR(140) DEFAULT '' NOT NULL,
+  createdate TIMESTAMP DEFAULT NULL,
   PRIMARY KEY (id)
 );
 CREATE INDEX IDX_TWEETS_UID ON tweets (uid);
 
 CREATE TABLE added_tweets (
-  id bigint NOT NULL,
-  uid int NOT NULL REFERENCES user_profiles (uid),
-  text char(140) NOT NULL,
-  createdate timestamp DEFAULT NULL,
+  id BIGINT DEFAULT '0' NOT NULL,
+  uid INTEGER DEFAULT '0' NOT NULL REFERENCES user_profiles (uid),
+  text CHAR(140) DEFAULT '' NOT NULL,
+  createdate TIMESTAMP DEFAULT NULL,
   PRIMARY KEY (id)
 );
 CREATE INDEX IDX_ADDED_TWEETS_UID ON added_tweets (uid);
