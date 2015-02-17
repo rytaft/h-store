@@ -1,6 +1,5 @@
 -- MySQL ddl from Twitter dump
 
-DROP TABLE IF EXISTS user_profiles;
 CREATE TABLE user_profiles (
   uid int NOT NULL,
   name varchar(255) DEFAULT NULL,
@@ -13,22 +12,18 @@ CREATE TABLE user_profiles (
 CREATE INDEX IDX_USER_FOLLOWERS ON user_profiles (followers);
 CREATE INDEX IDX_USER_PARTITION ON user_profiles (partitionid);
 
-DROP TABLE IF EXISTS followers;
 CREATE TABLE followers (
   f1 int NOT NULL,
   f2 int NOT NULL,
   PRIMARY KEY (f1,f2)
 );
 
-DROP TABLE IF EXISTS follows;
 CREATE TABLE follows (
   f1 int NOT NULL,
   f2 int NOT NULL,
   PRIMARY KEY (f1,f2)
 );
 
--- TODO: id AUTO_INCREMENT
-DROP TABLE IF EXISTS tweets;
 CREATE TABLE tweets (
   id bigint NOT NULL,
   uid int NOT NULL REFERENCES user_profiles (uid),
@@ -38,8 +33,6 @@ CREATE TABLE tweets (
 );
 CREATE INDEX IDX_TWEETS_UID ON tweets (uid);
 
--- TODO: id auto_increment
-DROP TABLE IF EXISTS added_tweets;
 CREATE TABLE added_tweets (
   id bigint NOT NULL,
   uid int NOT NULL REFERENCES user_profiles (uid),
