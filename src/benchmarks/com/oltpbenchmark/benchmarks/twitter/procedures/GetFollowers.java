@@ -20,9 +20,9 @@ public class GetFollowers extends VoltProcedure {
     );
     
     /** NOTE: The ?? is substituted into a string of repeated ?'s */
-    public final SQLStmt getFollowerNames = new SQLStmt(
+    public final SQLStmt getFollowerName = new SQLStmt(
         "SELECT uid, name FROM " + TwitterConstants.TABLENAME_USER + 
-        " WHERE uid IN (??)", TwitterConstants.LIMIT_FOLLOWERS
+        " WHERE uid = ?"
     );
     
     public VoltTable[] run(long uid) {
@@ -30,17 +30,12 @@ public class GetFollowers extends VoltProcedure {
     	VoltTable result[] = voltExecuteSQL();
         
         int num_params = Math.min(result[1].getRowCount(), TwitterConstants.LIMIT_FOLLOWERS);
-        Object params[] = new Object[num_params];
         for(int i = 0; i < num_params; ++i) {
-        	params[i] = result[1].fetchRow(i).getLong(0);
+        	voltQueueSQL(getFollowerName, result[1].fetchRow(i).getLong(0));
         }
         
         if (num_params > 0) {
-            for(int i = num_params; i < TwitterConstants.LIMIT_FOLLOWERS; ++i) {
-                params[i] = params[num_params-1];
-            } // WHILE
-            voltQueueSQL(getFollowerNames, params);
-            return voltExecuteSQL(true);
+        	return voltExecuteSQL(true);
         }
         
         return null;

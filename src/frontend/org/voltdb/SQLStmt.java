@@ -17,9 +17,6 @@
 
 package org.voltdb;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.voltdb.catalog.CatalogMap;
 import org.voltdb.catalog.PlanFragment;
 import org.voltdb.catalog.Procedure;
@@ -43,8 +40,6 @@ public class SQLStmt {
     int numFragGUIDs;
     Statement catStmt;
 
-    private static final Pattern SUBSTITUTION_PATTERN = Pattern.compile("\\?\\?"); 
-    
     /**
      * Construct a SQLStmt instance from a SQL statement.
      *
@@ -54,31 +49,6 @@ public class SQLStmt {
     public SQLStmt(String sqlText) {
         this.sqlText = sqlText;
         this.computeHashCode();
-    }
-    
-    public SQLStmt(String sqlText, int...substitutions) {
-    	this(getSqlText(sqlText, substitutions));
-    }
-    
-    /**
-     * Magic SQL setter!
-     * Each occurrence of the pattern "??" will be replaced by a string
-     * of repeated ?'s
-     * @param sql
-     * @param substitutions
-     */
-    public static String getSqlText(String sql, int...substitutions) {
-        for (int ctr : substitutions) {
-            assert(ctr > 0);
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < ctr; i++) {
-                sb.append((i > 0 ? ", " : "") + "?");
-            } // FOR
-            Matcher m = SUBSTITUTION_PATTERN.matcher(sql);
-            String replace = sb.toString();
-            sql = m.replaceFirst(replace);
-        } // FOR
-        return sql;
     }
     
     public SQLStmt(Statement catalog_stmt) {
