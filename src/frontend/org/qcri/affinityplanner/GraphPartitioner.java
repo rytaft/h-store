@@ -1,7 +1,6 @@
 package org.qcri.affinityplanner;
 
 import java.io.File;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashSet;
@@ -26,9 +25,6 @@ public class GraphPartitioner extends Partitioner {
             Controller.record("Problem while loading graph. Exiting");
             return;
         }
-
-//        Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
-//        m_graph.toFileDebug(graphFile);
 
         long t2 = System.currentTimeMillis();
         Controller.record("Time taken:" + (t2-t1));

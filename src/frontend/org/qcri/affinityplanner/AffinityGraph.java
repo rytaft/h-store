@@ -244,7 +244,7 @@ public class AffinityGraph {
         m_plan_handler.toJSON(newPlanFile);
     }
 
-    public void toFileDebug(Path file){
+    public void toFile(Path file){
         System.out.println("Writing graph. Number of vertices: " + m_edges.size());
         BufferedWriter writer;
         String s;

@@ -203,6 +203,9 @@ public class Controller extends Thread {
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
             
+//          Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
+//          partitioner.toFileDebug(graphFile);
+            
             record("======================== PARTITIONING GRAPH ========================");
             t1 = System.currentTimeMillis();
 

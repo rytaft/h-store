@@ -1,5 +1,6 @@
 package org.qcri.affinityplanner;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -391,6 +392,10 @@ public abstract class Partitioner {
 
     public void writePlan(String newPlanFile){
         m_graph.planToJSON(newPlanFile);
+    }
+    
+    public void graphToFile (Path file){
+        m_graph.toFile(file);
     }
 
     protected abstract void updateAttractions(Map<Integer, Double> adjacency, double[] attractions);
