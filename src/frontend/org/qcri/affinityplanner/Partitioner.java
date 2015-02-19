@@ -66,7 +66,7 @@ public abstract class Partitioner {
      * computes load of a set of vertices in the current partition. this is different from the weight of a vertex because it considers
      * both direct accesses of the vertex and the cost of remote accesses
      */
-    protected abstract Double getLoadInCurrPartition(Set<String> vertices);
+    protected abstract Double getLoadInCurrPartition(Set<Integer> vertices);
     
     /**
      * Returns sorted (descending order) list of top-k vertices from site
@@ -75,16 +75,16 @@ public abstract class Partitioner {
      * @param k
      * @return
      */
-    protected List<String> getHottestVertices(int partition, int k){
+    protected List<Integer> getHottestVertices(int partition, int k){
 
-        List<String> res = new ArrayList<String>(k);
-        final Map<String, Double> hotnessMap = new HashMap<String,Double>(k);
+        List<Integer> res = new ArrayList<Integer>(k);
+        final Map<Integer, Double> hotnessMap = new HashMap<Integer,Double>(k);
 
         k = Math.min(k, m_graph.m_partitionVertices.get(partition).size());
         int lowestPos = 0;
         double lowestLoad = Double.MAX_VALUE;
 
-        for(String vertex : m_graph.m_partitionVertices.get(partition)){
+        for(Integer vertex : m_graph.m_partitionVertices.get(partition)){
 
             double vertexLoad = getLoadInCurrPartition(Collections.singleton(vertex));
 
@@ -122,9 +122,9 @@ public abstract class Partitioner {
         // sort determines an _ascending_ order
         // Comparator should return "a negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater than the second"
         // We want a _descending_ order, so we need to invert the comparator result
-        Collections.sort(res, new Comparator<String>(){
+        Collections.sort(res, new Comparator<Integer>(){
             @Override
-            public int compare(String o1, String o2) {
+            public int compare(Integer o1, Integer o2) {
                 if (hotnessMap.get(o1) < hotnessMap.get(o2)){
                     return 1;
                 }
@@ -147,7 +147,7 @@ public abstract class Partitioner {
      *     
      *     if newPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
-    protected abstract double getDeltaVertices(Set<String> movingVertices, int toPartition, boolean forSender);
+    protected abstract double getDeltaVertices(Set<Integer> movingVertices, int toPartition, boolean forSender);
 
     protected abstract Double getLoadPerPartition(int partition);
     
@@ -173,7 +173,7 @@ public abstract class Partitioner {
      * @param toPartition
      * @return number of partitions actually moved
      */
-    protected int tryMoveVertices(Set<String> movingVertices, Integer fromPartition, Integer toPartition) {
+    protected int tryMoveVertices(Set<Integer> movingVertices, Integer fromPartition, Integer toPartition) {
 
         int numMovedVertices = 0;
         double deltaFromPartition = getDeltaVertices(movingVertices, toPartition, true);
@@ -204,29 +204,29 @@ public abstract class Partitioner {
      * @param k
      * @return
      */
-    protected List<List<String>> getBorderVertices (int this_partition, int k){
+    protected List<List<Integer>> getBorderVertices (int this_partition, int k){
 
         k = Math.min(k, m_graph.m_partitionVertices.get(this_partition).size());
 
-        List<List<String>> res = new ArrayList<List<String>>(Controller.MAX_PARTITIONS);
+        List<List<Integer>> res = new ArrayList<List<Integer>>(Controller.MAX_PARTITIONS);
 
         for (int i = 0; i < Controller.MAX_PARTITIONS; i++){
-            res.add(new ArrayList<String> (k));
+            res.add(new ArrayList<Integer> (k));
         }
 
         // maps vertices in any top k for any partition to its array of attractions
-        final Map<String, double[]> topk_attractions = new HashMap <String, double[]> ();
+        final Map<Integer, double[]> topk_attractions = new HashMap <Integer, double[]> ();
 
         int[] lowest_attraction_position = new int[Controller.MAX_PARTITIONS];
         double[] lowest_attraction = new double[Controller.MAX_PARTITIONS];
 
 
-        for(String from_vertex : m_graph.m_partitionVertices.get(this_partition)){
+        for(Integer from_vertex : m_graph.m_partitionVertices.get(this_partition)){
 
             // compute attractions
             double[] curr_attractions = new double[Controller.MAX_PARTITIONS];
 
-            Map<String,Double> adjacency = m_graph.m_edges.get(from_vertex);
+            Map<Integer,Double> adjacency = m_graph.m_edges.get(from_vertex);
             if (adjacency != null){
                 
                 updateAttractions(adjacency, curr_attractions);
@@ -244,7 +244,7 @@ public abstract class Partitioner {
                         continue;
                     }
                     
-                    List<String> topk = res.get(otherPart);
+                    List<Integer> topk = res.get(otherPart);
     
                     if(topk.size() < k){
                         
@@ -270,7 +270,7 @@ public abstract class Partitioner {
                         if (curr_attractions[otherPart] > lowest_attraction[otherPart]){
     
                             // remove lowest vertex from attractionMap
-                            String lowestVertex = topk.get(lowest_attraction_position[otherPart]);
+                            Integer lowestVertex = topk.get(lowest_attraction_position[otherPart]);
                             double[] topk_attraction = topk_attractions.get(lowestVertex);
                             int nonZeroPos = -1;
                             for(int j = 0; j < topk_attraction.length; j++){
@@ -298,7 +298,7 @@ public abstract class Partitioner {
                             // recompute minimum
                             lowest_attraction[otherPart] = curr_attractions[otherPart];
                             for (int posList = 0; posList < k; posList++){
-                                String vertex = topk.get(posList);
+                                Integer vertex = topk.get(posList);
                                 double attraction = topk_attractions.get(vertex)[otherPart];
                                 if(attraction < lowest_attraction[otherPart]){
                                     lowest_attraction[otherPart] = attraction;
@@ -313,7 +313,7 @@ public abstract class Partitioner {
        
         // sorting
         for(int otherPart = 1; otherPart < Controller.MAX_PARTITIONS; otherPart++){
-            List<String> topk = res.get(otherPart);
+            List<Integer> topk = res.get(otherPart);
 
             // sort determines an _ascending_ order
             // Comparator should return "a negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater than the second"
@@ -321,9 +321,9 @@ public abstract class Partitioner {
 
             final int part = otherPart; // make Java happy
 
-            Collections.sort(topk, new Comparator<String>(){                
+            Collections.sort(topk, new Comparator<Integer>(){                
                 @Override
-                public int compare(String o1, String o2) {
+                public int compare(Integer o1, Integer o2) {
                     if (topk_attractions.get(o1)[part] < topk_attractions.get(o2)[part]){
                         return 1;
                     }
@@ -367,7 +367,7 @@ public abstract class Partitioner {
 
             Integer underloadedPartition = descending.next();
             System.out.println("Offloading partition " + underloadedPartition);
-            Set<String> movingVertices = new HashSet<String>();
+            Set<Integer> movingVertices = new HashSet<Integer>();
             movingVertices.addAll(m_graph.m_partitionVertices.get(underloadedPartition));
 
             // try to offload to remote partitions
@@ -393,6 +393,6 @@ public abstract class Partitioner {
         m_graph.planToJSON(newPlanFile);
     }
 
-    protected abstract void updateAttractions(Map<String, Double> adjacency, double[] attractions);
+    protected abstract void updateAttractions(Map<Integer, Double> adjacency, double[] attractions);
 
 }

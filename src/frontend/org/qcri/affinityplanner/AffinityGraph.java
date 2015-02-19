@@ -32,13 +32,16 @@ public class AffinityGraph {
     private final boolean m_tupleGranularity;
     
     // fromVertex -> adjacency list, where adjacency list is a toVertex -> edgeWeight map or toPartition -> edgeWeight map, depending on granularity
-    protected Map<String,Map<String,Double>> m_edges = new HashMap<String,Map<String,Double>> ();
+    protected Map<Integer,Map<Integer,Double>> m_edges = new HashMap<Integer,Map<Integer,Double>> ();
+    
+    // vertex -> full name
+    protected Map<Integer,String> m_vertex_to_name = new HashMap<Integer,String> ();
 
     // vertex -> weight map
-    final Map<String,Double> m_vertices = new HashMap<String,Double> ();
+    final Map<Integer,Double> m_vertices = new HashMap<Integer,Double> ();
     // partition -> vertex and vertex -> partition mappings
-    final List<Set<String>> m_partitionVertices = new ArrayList<Set<String>> ();
-    final Map<String,Integer> m_vertexPartition = new HashMap<String,Integer> ();
+    final List<Set<Integer>> m_partitionVertices = new ArrayList<Set<Integer>> ();
+    final Map<Integer,Integer> m_vertexPartition = new HashMap<Integer,Integer> ();
     
     private PlanHandler m_plan_handler = null;
     
@@ -47,7 +50,7 @@ public class AffinityGraph {
 
         BufferedReader reader;
         for (int i = 0; i < noPartitions; i++){
-            m_partitionVertices.add(new HashSet<String>());
+            m_partitionVertices.add(new HashSet<Integer>());
         }
 
         try {
@@ -113,7 +116,7 @@ public class AffinityGraph {
             }
             
 //            System.out.println("Tran ID = " + currTransactionId);
-            Set<String> curr_transaction = new HashSet<String> ();
+            Set<Integer> curr_transaction = new HashSet<Integer> ();
             // PROCESS LINE
             while(line != null){
 
@@ -123,7 +126,7 @@ public class AffinityGraph {
 
                     //                    System.out.println("Size of transaction:" + transaction.size());
 
-                    for(String from : curr_transaction){
+                    for(Integer from : curr_transaction){
                         // update FROM vertex in graph
                         Double currentVertexWeight = m_vertices.get(from);
                         if (currentVertexWeight == null){
@@ -134,7 +137,8 @@ public class AffinityGraph {
                         }
                         // store site mappings for FROM vertex
                         int partition = 0;
-                        partition = m_plan_handler.getPartition(from);
+                        String fromName = m_vertex_to_name.get(from);
+                        partition = m_plan_handler.getPartition(fromName);
 
                         if (partition == HStoreConstants.NULL_PARTITION_ID){
                             LOG.info("Exiting graph loading. Could not find partition for key " + from);
@@ -144,20 +148,20 @@ public class AffinityGraph {
                         m_partitionVertices.get(partition).add(from);
                         m_vertexPartition.put(from, partition);
 
-                        Map<String,Double> adjacency = m_edges.get(from);
+                        Map<Integer,Double> adjacency = m_edges.get(from);
                         if(adjacency == null){
-                            adjacency = new HashMap<String,Double>();
+                            adjacency = new HashMap<Integer,Double>();
                             m_edges.put(from, adjacency);
                         }
 
                         // update FROM -> TO edges
-                        for(String to : curr_transaction){
+                        for(Integer to : curr_transaction){
                             if (! from.equals(to) ){
                                 
                                 // if lower granularity, edges link vertices to partitions, not other vertices
                                 if(!m_tupleGranularity){
-                                    int toPartition = m_plan_handler.getPartition(to);
-                                    to = Integer.toString(toPartition);
+                                    String toName = m_vertex_to_name.get(to);
+                                    to = m_plan_handler.getPartition(toName);
                                 }
 
                                 Double currentEdgeWeight = adjacency.get(to);
@@ -178,7 +182,10 @@ public class AffinityGraph {
                 } // END if (line.equals("END"))
 
                 else{
-                    curr_transaction.add(line);
+                    curr_transaction.add(line.hashCode());
+                    if (!m_vertex_to_name.containsKey(line.hashCode())){
+                        m_vertex_to_name.put(line.hashCode(), line);
+                    }
                 }
 
                 /* this is what one would do to count different accesses within the same transaction. 
@@ -205,15 +212,16 @@ public class AffinityGraph {
         
     }
     
-    public void moveVertices(Set<String> movedVertices, int fromPartition, int toPartition) {
-        for (String movedVertex : movedVertices){
+    public void moveVertices(Set<Integer> movedVertices, int fromPartition, int toPartition) {
+        for (Integer movedVertex : movedVertices){
             m_partitionVertices.get(fromPartition).remove(movedVertex);
             m_partitionVertices.get(toPartition).add(movedVertex);
             m_vertexPartition.put(movedVertex, toPartition);
 
             // update plan too
             // format of vertices is <TABLE>,<PART-KEY>,<VALUE>
-            String [] fields = movedVertex.split(",");
+            String movedVertexName = m_vertex_to_name.get(movedVertex);
+            String [] fields = movedVertexName.split(",");
 //            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
 //            System.out.println("remove ID: " + fields[2]);
             m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[2]));
@@ -227,8 +235,9 @@ public class AffinityGraph {
 //        System.out.println(m_plan_handler.toString() + "\n");
     }
     
-    public int getPartition(String vertex){
-        return m_plan_handler.getPartition(vertex);
+    public int getPartition(Integer vertex){
+        String vertexName = m_vertex_to_name.get(vertex);
+        return m_plan_handler.getPartition(vertexName);
     }
     
     public void planToJSON(String newPlanFile){
@@ -242,18 +251,18 @@ public class AffinityGraph {
         double totalWeight = 0;
         try {
             writer = Files.newBufferedWriter(file, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            for(String vertex : m_vertices.keySet()){
-                s = "Vertex " + vertex + " - weight " + m_vertices.get(vertex);
+            for(Integer vertex : m_vertices.keySet()){
+                s = "Vertex " + m_vertex_to_name.get(vertex) + " - weight " + m_vertices.get(vertex);
                 totalWeight += m_vertices.get(vertex);
                 writer.write(s, 0, s.length());
                 writer.newLine();
-                Map<String,Double> adjacency = m_edges.get(vertex);
+                Map<Integer,Double> adjacency = m_edges.get(vertex);
                 if(adjacency == null){
                     writer.newLine();
                     continue;
                 }
-                for (Map.Entry<String, Double> edge : adjacency.entrySet()){
-                    s = edge.getKey() + " - weight " + edge.getValue();
+                for (Map.Entry<Integer, Double> edge : adjacency.entrySet()){
+                    s = m_vertex_to_name.get(edge.getKey()) + " - weight " + edge.getValue();
                     writer.write(s, 0, s.length());
                     writer.newLine();
                 }

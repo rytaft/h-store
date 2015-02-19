@@ -35,11 +35,11 @@ public class SimplePartitioner extends Partitioner {
         // move border vertices        
         for (int fromPart = 0; fromPart < Controller.MAX_PARTITIONS; fromPart ++){
             
-            List<List<String>> borderVertices = getBorderVertices(fromPart, MAX_MOVED_TUPLES_PER_PART);
+            List<List<Integer>> borderVertices = getBorderVertices(fromPart, MAX_MOVED_TUPLES_PER_PART);
 
             for(int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
                 
-                for (String vertex : borderVertices.get(toPart)){
+                for (Integer vertex : borderVertices.get(toPart)){
                 
                     if (fromPart != toPart){
                         tryMoveVertices(Collections.singleton(vertex), fromPart, toPart);
@@ -52,9 +52,9 @@ public class SimplePartitioner extends Partitioner {
             // move hot vertices
             for(Integer fromPart : overloadedPartitions){
 
-                List<String> hotVertices = getHottestVertices(fromPart, MAX_MOVED_TUPLES_PER_PART);
+                List<Integer> hotVertices = getHottestVertices(fromPart, MAX_MOVED_TUPLES_PER_PART);
 
-                for (String vertex : hotVertices){
+                for (Integer vertex : hotVertices){
 
                     for (int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
 
@@ -77,23 +77,22 @@ public class SimplePartitioner extends Partitioner {
     @Override
     protected Double getLoadPerPartition(int fromPartition) {
         
-        Set<String> vertices = m_graph.m_partitionVertices.get(fromPartition);
+        Set<Integer> vertices = m_graph.m_partitionVertices.get(fromPartition);
         double load = 0;
-        for(String vertex : vertices){
+        for(Integer vertex : vertices){
             // local accesses
             load += m_graph.m_vertices.get(vertex);
             // remote accesses
             int fromPartitionSite = PlanHandler.getSitePartition(fromPartition);
-            Map<String,Double> adjacencyList = m_graph.m_edges.get(vertex);
+            Map<Integer,Double> adjacencyList = m_graph.m_edges.get(vertex);
             if(adjacencyList != null){
-                for(Map.Entry<String, Double> edge : adjacencyList.entrySet()){
-                    String toPartition = edge.getKey();
-                    int toPartitionInt = Integer.parseInt(toPartition);
-                    int toPartitionSite = PlanHandler.getSitePartition(toPartitionInt);
+                for(Map.Entry<Integer, Double> edge : adjacencyList.entrySet()){
+                    Integer toPartition = edge.getKey();
+                    int toPartitionSite = PlanHandler.getSitePartition(toPartition);
                     if(toPartitionSite != fromPartitionSite){
                         load += edge.getValue() * DTXN_COST;
                     }
-                    else if(toPartitionInt != fromPartition){
+                    else if(toPartition != fromPartition){
                         load += edge.getValue() * LMPT_COST;
                     }
                 }
@@ -103,10 +102,10 @@ public class SimplePartitioner extends Partitioner {
     }
 
     @Override
-    protected double getDeltaVertices(Set<String> movingVertices, int toPartition, boolean forSender) {
+    protected double getDeltaVertices(Set<Integer> movingVertices, int toPartition, boolean forSender) {
         assert(movingVertices.size() == 1);
         double delta = 0;
-        for(String vertex : movingVertices){
+        for(Integer vertex : movingVertices){
 
             double vertexWeight = m_graph.m_vertices.get(vertex);
 
@@ -138,24 +137,23 @@ public class SimplePartitioner extends Partitioner {
     }
 
     @Override
-    protected Double getLoadInCurrPartition(Set<String> vertices) {
+    protected Double getLoadInCurrPartition(Set<Integer> vertices) {
         double load = 0;
-        for(String vertex : vertices){
+        for(Integer vertex : vertices){
             // local accesses
             load += m_graph.m_vertices.get(vertex);
             // remote accesses
             int fromVertexPartition = m_graph.m_vertexPartition.get(vertex);
             int fromVertexSite = PlanHandler.getSitePartition(fromVertexPartition);
-            Map<String,Double> adjacencyList = m_graph.m_edges.get(vertex);
+            Map<Integer,Double> adjacencyList = m_graph.m_edges.get(vertex);
             if(adjacencyList != null){
-                for(Map.Entry<String, Double> edge : adjacencyList.entrySet()){
-                    String toPartition = edge.getKey();
-                    int toPartitionInt = Integer.parseInt(toPartition);
-                    int toVertexSite = PlanHandler.getSitePartition(toPartitionInt);
+                for(Map.Entry<Integer, Double> edge : adjacencyList.entrySet()){
+                    Integer toPartition = edge.getKey();
+                    int toVertexSite = PlanHandler.getSitePartition(toPartition);
                     if(toVertexSite != fromVertexSite){
                         load += edge.getValue() * DTXN_COST;
                     }
-                    else if(toPartitionInt != fromVertexPartition){
+                    else if(toPartition != fromVertexPartition){
                         load += edge.getValue() * LMPT_COST;
                     }
                 }
@@ -165,12 +163,11 @@ public class SimplePartitioner extends Partitioner {
     }
     
     @Override
-    protected void updateAttractions (Map<String,Double> adjacency, double[] attractions){
-        for (String toVertex : adjacency.keySet()){
+    protected void updateAttractions (Map<Integer,Double> adjacency, double[] attractions){
+        for (Integer toVertex : adjacency.keySet()){
             
-            int other_partition = Integer.parseInt(toVertex);
             double edge_weight = adjacency.get(toVertex);
-            attractions[other_partition] += edge_weight;
+            attractions[toVertex] += edge_weight;
         } // END for (String toVertex : adjacency.keySet())
     }
 }
