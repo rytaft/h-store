@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.util.Calendar;
-import java.util.Iterator;
+//import java.util.Iterator;
 
 import junit.framework.Test;
 
@@ -38,25 +38,25 @@ import org.voltdb.BackendTarget;
 import org.voltdb.CatalogContext;
 import org.voltdb.DefaultSnapshotDataTarget;
 import org.voltdb.VoltTable;
-import org.voltdb.catalog.CatalogMap;
-import org.voltdb.catalog.Procedure;
-import org.voltdb.catalog.Site;
+//import org.voltdb.catalog.CatalogMap;
+//import org.voltdb.catalog.Procedure;
+//import org.voltdb.catalog.Site;
 import org.voltdb.client.Client;
 import org.voltdb.client.ClientResponse;
-import org.voltdb.client.NoConnectionsException;
+//import org.voltdb.client.NoConnectionsException;
 import org.voltdb.client.ProcCallException;
 import org.voltdb.utils.SnapshotVerifier;
 
 import edu.brown.benchmark.ycsb.YCSBClient;
-import edu.brown.benchmark.ycsb.YCSBConstants;
+//import edu.brown.benchmark.ycsb.YCSBConstants;
 import edu.brown.benchmark.ycsb.YCSBLoader;
 import edu.brown.benchmark.ycsb.YCSBProjectBuilder;
 import edu.brown.benchmark.ycsb.procedures.ReadRecord;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.Hstoreservice.Status;
-import edu.brown.hstore.cmdlog.CommandLogReader;
-import edu.brown.hstore.cmdlog.CommandLogWriter;
-import edu.brown.hstore.cmdlog.LogEntry;
+//import edu.brown.hstore.cmdlog.CommandLogReader;
+//import edu.brown.hstore.cmdlog.CommandLogWriter;
+//import edu.brown.hstore.cmdlog.LogEntry;
 
 /**
  * Test logical recovery
@@ -64,7 +64,7 @@ import edu.brown.hstore.cmdlog.LogEntry;
 public class TestYCSBLogicalRecovery extends RegressionSuite {
 
     private static final String TMPDIR = "./obj/snapshot";
-    private static final String CMDLOGDIR = "./obj/cmdlog";
+//    private static final String CMDLOGDIR = "./obj/cmdlog";
 
     private static final String TESTNONCE = "testnonce";
     private static final int ALLOWEXPORT = 0;
@@ -85,7 +85,7 @@ public class TestYCSBLogicalRecovery extends RegressionSuite {
     @Override
     public void setUp() {
         deleteTestFiles();
-        deleteCommandLogDir();
+//        deleteCommandLogDir();
         super.setUp();
         DefaultSnapshotDataTarget.m_simulateFullDiskWritingChunk = false;
         DefaultSnapshotDataTarget.m_simulateFullDiskWritingHeader = false;
@@ -96,7 +96,7 @@ public class TestYCSBLogicalRecovery extends RegressionSuite {
     public void tearDown() {
         try {
             deleteTestFiles();
-            deleteCommandLogDir();
+//            deleteCommandLogDir();
             super.tearDown();
         } catch (final Exception e) {
             e.printStackTrace();
@@ -118,20 +118,20 @@ public class TestYCSBLogicalRecovery extends RegressionSuite {
 
     }
     
-    private static synchronized void deleteCommandLogDir() {
-        try {
-            File cmdlogDir = new File(CMDLOGDIR);
-
-            if (cmdlogDir.exists()) {
-                File[] log_files = cmdlogDir.listFiles();
-                for (File log_file : log_files) {
-                    log_file.delete();
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+//    private static synchronized void deleteCommandLogDir() {
+//        try {
+//            File cmdlogDir = new File(CMDLOGDIR);
+//
+//            if (cmdlogDir.exists()) {
+//                File[] log_files = cmdlogDir.listFiles();
+//                for (File log_file : log_files) {
+//                    log_file.delete();
+//                }
+//            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//    }
 
     private static synchronized void setUpSnapshotDir() {
         try {
@@ -297,6 +297,7 @@ public class TestYCSBLogicalRecovery extends RegressionSuite {
         results = client.callProcedure("@Statistics", "table", 0).getResults();
         System.out.println(results[0]);
                 
+/*
         File logDir = new File("./obj" + File.separator + "cmdlog");                               
         
         // Parse WAL logs for all sites
@@ -309,125 +310,125 @@ public class TestYCSBLogicalRecovery extends RegressionSuite {
             
             parseAndApplyCommandLog(logDir, siteName);            
         }
-
+*/
         calendar = Calendar.getInstance();                    
         t2 = calendar.getTimeInMillis();
 
         System.err.println("Recovery Latency :" + (t2-t1)+ " ms"); 
         
-        // checkYCSBTable(client, NUM_TUPLES);
+        checkYCSBTable(client, 10000);
     }
     
     // COMMAND LOG        
-    File scanForLatestLogFile(File logDir, String prefix){
-        System.err.println("Scanning logDir :" + logDir.getAbsolutePath());           
-
-        final String logPrefix = prefix;
-        FilenameFilter cleaner = new FilenameFilter() {
-            public boolean accept(File dir, String file) {
-                return  file.startsWith(logPrefix) && file.endsWith(CommandLogWriter.LOG_OUTPUT_EXT);
-            }
-        };
-
-        File[] logFiles = logDir.listFiles(cleaner);
-        File latestFile = null, prevFile = null;        
-        long maxTimeStamp = Long.MIN_VALUE;
-        
-        for (File logFile : logFiles) {
-            String name = logFile.getName();
-            String delims = "_|\\.";
-            String[] tokens = name.split(delims);
-
-            //System.err.println("Tokens :"+Arrays.toString(tokens));
-
-            if(tokens.length <= 1)
-                continue;
-            
-            long fileTimestamp = Long.parseLong(tokens[1]) ;
-            if(fileTimestamp > maxTimeStamp){
-                maxTimeStamp = fileTimestamp;
-                prevFile = latestFile;
-                latestFile = logFile;         
-            }
-        }       
-
-        if(prevFile != null){
-            System.err.println("Using logfile :" + prevFile.getAbsolutePath());           
-        }
-
-        if(latestFile != null){
-            System.err.println("Found latest logfile :" + latestFile.getAbsolutePath());           
-        }
-        
-        return prevFile;
-    }
-    
-    void parseAndApplyCommandLog(File logDir, String hostPrefix) throws NoConnectionsException, IOException, ProcCallException {
-
-        if(logDir == null){
-            System.err.println("logDir null ");           
-            return;
-        }
-
-        File latestFile = scanForLatestLogFile(logDir, hostPrefix);
-        
-        if(latestFile == null){
-            System.err.println("Command log not found :" + logDir.getAbsolutePath());           
-            return;
-        }
-        
-        System.out.println("parseCommandLog :" + latestFile.getAbsolutePath());
-
-        // Now read in the file back in and check to see that we have two
-        // entries that have our expected information
-        CommandLogReader reader = null;
-
-        try {
-            reader = new CommandLogReader(latestFile.getAbsolutePath());
-        } catch (Exception e) {
-            System.err.println("Command log not found :" + latestFile.getAbsolutePath());
-            return;
-        }
-
-        int ctr = 0;
-        Iterator<LogEntry> log_itr = reader.iterator();
-        ClientResponse cresponse = null;
-        Client client = this.getClient();
-        CatalogContext cc = this.getCatalogContext();
-        VoltTable results[] = null;
-
-        while (log_itr.hasNext()) {
-            LogEntry entry = log_itr.next();
-
-            if(entry != null){
-                //System.err.println("REDO :: TXN ID :" + entry.getTransactionId().longValue());
-                //System.err.println("REDO :: PROC ID :" + entry.getProcedureId());
-
-                Object[] entryParams = entry.getProcedureParams().toArray();
-        
-                String procName = cc.getProcedureById(entry.getProcedureId()).fullName();
-                Procedure catalog_proc = cc.procedures.getIgnoreCase(procName);
-
-                if(catalog_proc.getReadonly() == false){
-                    // System.out.println("Invoking procedure ::" + procName);
-
-                    cresponse = client.callProcedure(procName, entryParams);
-                    if(cresponse != null && cresponse.getStatus() == Status.OK){
-                        results = cresponse.getResults();
-                        assertEquals(results.length, 1);
-                    }
-                }
-            }
-
-            ctr++;
-        }
-
-        System.out.println("################################# WAL LOG entries :" + ctr);
-    }
+//    File scanForLatestLogFile(File logDir, String prefix){
+//        System.err.println("Scanning logDir :" + logDir.getAbsolutePath());           
+//
+//        final String logPrefix = prefix;
+//        FilenameFilter cleaner = new FilenameFilter() {
+//            public boolean accept(File dir, String file) {
+//                return  file.startsWith(logPrefix) && file.endsWith(CommandLogWriter.LOG_OUTPUT_EXT);
+//            }
+//        };
+//
+//        File[] logFiles = logDir.listFiles(cleaner);
+//        File latestFile = null, prevFile = null;        
+//        long maxTimeStamp = Long.MIN_VALUE;
+//        
+//        for (File logFile : logFiles) {
+//            String name = logFile.getName();
+//            String delims = "_|\\.";
+//            String[] tokens = name.split(delims);
+//
+//            //System.err.println("Tokens :"+Arrays.toString(tokens));
+//
+//            if(tokens.length <= 1)
+//                continue;
+//            
+//            long fileTimestamp = Long.parseLong(tokens[1]) ;
+//            if(fileTimestamp > maxTimeStamp){
+//                maxTimeStamp = fileTimestamp;
+//                prevFile = latestFile;
+//                latestFile = logFile;         
+//            }
+//        }       
+//
+//        if(prevFile != null){
+//            System.err.println("Using logfile :" + prevFile.getAbsolutePath());           
+//        }
+//
+//        if(latestFile != null){
+//            System.err.println("Found latest logfile :" + latestFile.getAbsolutePath());           
+//        }
+//        
+//        return prevFile;
+//    }
+//    
+//    void parseAndApplyCommandLog(File logDir, String hostPrefix) throws NoConnectionsException, IOException, ProcCallException {
+//
+//        if(logDir == null){
+//            System.err.println("logDir null ");           
+//            return;
+//        }
+//
+//        File latestFile = scanForLatestLogFile(logDir, hostPrefix);
+//        
+//        if(latestFile == null){
+//            System.err.println("Command log not found :" + logDir.getAbsolutePath());           
+//            return;
+//        }
+//        
+//        System.out.println("parseCommandLog :" + latestFile.getAbsolutePath());
+//
+//        // Now read in the file back in and check to see that we have two
+//        // entries that have our expected information
+//        CommandLogReader reader = null;
+//
+//        try {
+//            reader = new CommandLogReader(latestFile.getAbsolutePath());
+//        } catch (Exception e) {
+//            System.err.println("Command log not found :" + latestFile.getAbsolutePath());
+//            return;
+//        }
+//
+//        int ctr = 0;
+//        Iterator<LogEntry> log_itr = reader.iterator();
+//        ClientResponse cresponse = null;
+//        Client client = this.getClient();
+//        CatalogContext cc = this.getCatalogContext();
+//        VoltTable results[] = null;
+//
+//        while (log_itr.hasNext()) {
+//            LogEntry entry = log_itr.next();
+//
+//            if(entry != null){
+//                //System.err.println("REDO :: TXN ID :" + entry.getTransactionId().longValue());
+//                //System.err.println("REDO :: PROC ID :" + entry.getProcedureId());
+//
+//                Object[] entryParams = entry.getProcedureParams().toArray();
+//        
+//                String procName = cc.getProcedureById(entry.getProcedureId()).fullName();
+//                Procedure catalog_proc = cc.procedures.getIgnoreCase(procName);
+//
+//                if(catalog_proc.getReadonly() == false){
+//                    // System.out.println("Invoking procedure ::" + procName);
+//
+//                    cresponse = client.callProcedure(procName, entryParams);
+//                    if(cresponse != null && cresponse.getStatus() == Status.OK){
+//                        results = cresponse.getResults();
+//                        assertEquals(results.length, 1);
+//                    }
+//                }
+//            }
+//
+//            ctr++;
+//        }
+//
+//        System.out.println("################################# WAL LOG entries :" + ctr);
+//    }
 
 
     private void checkYCSBTable(Client client, int numTuples) {
-        long key_itr, key;
+        long key_itr;
         String procName;
         ClientResponse cresponse = null;
         VoltTable vt = null;
@@ -474,7 +475,7 @@ public class TestYCSBLogicalRecovery extends RegressionSuite {
         builder.setGlobalConfParameter("site.commandlog_timeout", 10);
         builder.setGlobalConfParameter("site.anticache_enable", false);     
 
-        builder.setGlobalConfParameter("site.snapshot", true);
+//        builder.setGlobalConfParameter("site.snapshot", true);
 
         YCSBProjectBuilder project = new YCSBProjectBuilder();
 
