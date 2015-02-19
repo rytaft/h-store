@@ -7,6 +7,7 @@ import org.json.JSONObject;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
@@ -179,6 +180,10 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
 
     public synchronized ExplicitPartitions getPartitions() {
         return (ExplicitPartitions)partitions;
+    }
+    
+    public Map<Integer, List<Integer>> getPartitionReplicas(){
+        return partitions.getPartitionReplicas();
     }
 
     public void setReconfigCoord(ReconfigurationCoordinator reconfigCoord) {

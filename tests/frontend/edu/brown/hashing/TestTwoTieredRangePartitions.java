@@ -48,6 +48,7 @@ public class TestTwoTieredRangePartitions extends BaseTestCase {
 
     public String test_json2 = "{"
         + "       \"default_table\":\"usertable\","
+        + "       \"default_replication\" : {  1 : \"5,6\" , \"3\" : \"7\", 4: \"8,9,10\" }, "            
         + "       \"partition_plan\":{"
         + "          \"tables\":{"
         + "            \"usertable\":{"
@@ -93,6 +94,20 @@ public class TestTwoTieredRangePartitions extends BaseTestCase {
         assertTrue(tbls.contains("usertable"));
     }
 
+    public void testReplicas() throws Exception {
+
+        JSONObject test_json = new JSONObject(test_json2);
+        ExplicitPartitions p = new TwoTieredRangePartitions(catalogContext, test_json);
+        Map<Integer, List<Integer>> replicas = p.getPartitionReplicas();
+        assertNotNull(replicas);
+        assertEquals(2, replicas.get(1).size());
+        assertEquals(null, replicas.get(2));
+        assertEquals(1, replicas.get(3).size());
+        assertEquals(new Integer(7), replicas.get(3).get(0));
+        assertEquals(3, replicas.get(4).size());
+        
+    }
+    
     public void testBuildTablePartitions() throws Exception {
         JSONObject test_json = new JSONObject(test_json1);
         ExplicitPartitions p = new TwoTieredRangePartitions(catalogContext, test_json);

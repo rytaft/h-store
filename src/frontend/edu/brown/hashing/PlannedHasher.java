@@ -5,6 +5,7 @@ package edu.brown.hashing;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import org.json.JSONObject;
 import org.voltdb.CatalogContext;
@@ -213,6 +214,11 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
         this.reconfigCoord = reconfigCoord;
     }
 
+
+    public Map<Integer, List<Integer>> getPartitionReplicas(){
+        return planned_partitions.getPartitionReplicas();
+    }
+    
     @Override
     public ReconfigurationPlan changePartitionPlan(String partition_json_file) throws Exception {
         throw new NotImplementedException("TODO");

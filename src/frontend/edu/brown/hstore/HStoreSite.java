@@ -652,12 +652,16 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         if(hstore_conf.global.reconfiguration_enable){
             LOG.info("Initializing Reconfiguration Coordinator");
             this.reconfiguration_coordinator = this.initReconfigCoordinator();
+            Map<Integer, List<Integer>> partitionReplicas = null;
             if(this.hasher instanceof PlannedHasher){
                 ((PlannedHasher)this.hasher).setReconfigCoord(this.reconfiguration_coordinator);
+                partitionReplicas = ((PlannedHasher)this.hasher).getPartitionReplicas();
             }
             else if(this.hasher instanceof TwoTieredRangeHasher){
                 ((TwoTieredRangeHasher)this.hasher).setReconfigCoord(this.reconfiguration_coordinator);
-            }
+                partitionReplicas = ((TwoTieredRangeHasher)this.hasher).getPartitionReplicas();
+            }   
+            LOG.info(String.format("Replicas: %s", partitionReplicas));
         }
         
         // First we need to tell the HStoreCoordinator to start-up and initialize its connections

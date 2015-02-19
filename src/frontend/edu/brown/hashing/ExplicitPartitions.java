@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.jfree.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
@@ -49,6 +50,7 @@ public abstract class ExplicitPartitions {
 	protected ReconfigurationPlan reconfigurationPlan;
 	protected PartitionPhase incrementalPlan;
 	protected PartitionPhase previousIncrementalPlan;
+    private Map<Integer, List<Integer>> replicas;
 	
 	private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
@@ -56,6 +58,7 @@ public abstract class ExplicitPartitions {
     public static final String TABLES = "tables";
     public static final String PARTITIONS = "partitions";
     protected static final String DEFAULT_TABLE = "default_table";
+    public static final String DEFAULT_REPLICATION = "default_replication";
     
     static {
         LoggerUtil.attachObserver(LOG, debug, trace);
@@ -68,12 +71,16 @@ public abstract class ExplicitPartitions {
         this.plan_tables = null;
         this.relatedTablesMap = new HashMap<>();
         this.reconfigurationPlan = null;
+        this.replicas = null;
         Set<String> partitionedTables = getExplicitPartitionedTables(partition_json);
         // TODO find catalogContext.getParameter mapping to find
         // statement_column
         // from project mapping (ae)
         assert partition_json.has(DEFAULT_TABLE) : "default_table missing from planned partition json";
         this.default_table = partition_json.getString(DEFAULT_TABLE);
+        if (partition_json.has(DEFAULT_REPLICATION)){
+            populateReplicas(partition_json.getJSONObject(DEFAULT_REPLICATION));
+        }
         for (Table table : catalog_context.getDataTables()) {
             if (table.getIsreplicated()) continue;
         	
@@ -225,6 +232,35 @@ public abstract class ExplicitPartitions {
                 relatedTablesMap.get(parentTblName).add(tableName);
             }
         }
+	}
+	
+	private void populateReplicas(JSONObject replica) throws JSONException {
+        Iterator<String> primaryPartitions = replica.keys();
+        if (primaryPartitions.hasNext()){
+            this.replicas = new HashMap<>();
+        }
+        try{
+            while (primaryPartitions.hasNext()) {
+                String primary = primaryPartitions.next();
+                Integer primaryInt = Integer.parseInt(primary);
+                List<Integer> secondaries = new ArrayList<>();
+                String secondary = replica.getString(primary);
+                for (String secs : secondary.split(",")){
+                    try{
+                        secondaries.add(Integer.parseInt(secs));
+                    } catch(NumberFormatException ex) {
+                        Log.error("Exception converting to integer for secondary partition id : " + secondary);
+                    }
+                }
+                this.replicas.put(primaryInt, secondaries);
+            }
+        } catch(NumberFormatException ex) {
+            Log.error("Exception converting to integer for primary partition id ", ex);
+        }
+    }
+
+    public Map<Integer, List<Integer>> getPartitionReplicas(){
+	    return replicas;
 	}
 	
     /**
