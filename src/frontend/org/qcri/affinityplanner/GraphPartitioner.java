@@ -27,8 +27,8 @@ public class GraphPartitioner extends Partitioner {
             return;
         }
 
-        Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
-        m_graph.toFileDebug(graphFile);
+//        Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
+//        m_graph.toFileDebug(graphFile);
 
         long t2 = System.currentTimeMillis();
         Controller.record("Time taken:" + (t2-t1));
