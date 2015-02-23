@@ -36,16 +36,16 @@ public class AffinityGraph {
     private final boolean m_tupleGranularity;
     
     // fromVertex -> adjacency list, where adjacency list is a toVertex -> edgeWeight map or toPartition -> edgeWeight map, depending on granularity
-    protected Map<Integer,Map<Integer,Double>> m_edges = new Int2ObjectOpenHashMap <Map<Integer,Double>> ();
+    protected Int2ObjectOpenHashMap<Int2DoubleOpenHashMap> m_edges = new Int2ObjectOpenHashMap <Int2DoubleOpenHashMap> ();
     
     // vertex -> full name
-    protected Map<Integer,String> m_vertex_to_name = new Int2ObjectOpenHashMap <String> ();
+    protected Int2ObjectOpenHashMap<String> m_vertex_to_name = new Int2ObjectOpenHashMap <String> ();
 
     // vertex -> weight map
-    final Map<Integer,Double> m_vertices = new Int2DoubleOpenHashMap ();
+    final Int2DoubleOpenHashMap m_vertices = new Int2DoubleOpenHashMap (1000);
     // partition -> vertex and vertex -> partition mappings
-    final List<Set<Integer>> m_partitionVertices = new ArrayList<Set<Integer>> ();
-    final Map<Integer,Integer> m_vertexPartition = new Int2IntOpenHashMap ();
+    final List<IntOpenHashSet> m_partitionVertices = new ArrayList<IntOpenHashSet> ();
+    final Int2IntOpenHashMap m_vertexPartition = new Int2IntOpenHashMap ();
     
     private PlanHandler m_plan_handler = null;
     
@@ -54,7 +54,7 @@ public class AffinityGraph {
 
         BufferedReader reader;
         for (int i = 0; i < noPartitions; i++){
-            m_partitionVertices.add(new HashSet<Integer>());
+            m_partitionVertices.add(new IntOpenHashSet());
         }
 
         try {
@@ -120,7 +120,7 @@ public class AffinityGraph {
             }
             
 //            System.out.println("Tran ID = " + currTransactionId);
-            Set<Integer> curr_transaction = new IntOpenHashSet ();
+            IntOpenHashSet curr_transaction = new IntOpenHashSet ();
             // PROCESS LINE
             while(line != null){
 
@@ -128,10 +128,9 @@ public class AffinityGraph {
 
                 if (line.equals("END")){
 
-                    //                    System.out.println("Size of transaction:" + transaction.size());
-
                     for(int from : curr_transaction){
                         // update FROM vertex in graph
+                        System.out.println("From -- " + from);
                         double currentVertexWeight = m_vertices.get(from);
                         if (currentVertexWeight == 0){
                             m_vertices.put(from, normalizedIncrement);
@@ -143,7 +142,7 @@ public class AffinityGraph {
                         int partition = 0;
                         String fromName = m_vertex_to_name.get(from);
                         partition = m_plan_handler.getPartition(fromName);
-
+                        
                         if (partition == HStoreConstants.NULL_PARTITION_ID){
                             LOG.info("Exiting graph loading. Could not find partition for key " + from);
                             System.out.println("Exiting graph loading. Could not find partition for key " + from);
@@ -152,7 +151,7 @@ public class AffinityGraph {
                         m_partitionVertices.get(partition).add(from);
                         m_vertexPartition.put(from, partition);
 
-                        Map<Integer,Double> adjacency = m_edges.get(from);
+                        Int2DoubleOpenHashMap adjacency = m_edges.get(from);
                         if(adjacency == null){
                             adjacency = new Int2DoubleOpenHashMap ();
                             m_edges.put(from, adjacency);
@@ -161,7 +160,6 @@ public class AffinityGraph {
                         // update FROM -> TO edges
                         for(int to : curr_transaction){
                             if (from != to){
-                                
                                 // if lower granularity, edges link vertices to partitions, not other vertices
                                 if(!m_tupleGranularity){
                                     String toName = m_vertex_to_name.get(to);
@@ -217,7 +215,7 @@ public class AffinityGraph {
     }
     
     public void moveVertices(Set<Integer> movedVertices, int fromPartition, int toPartition) {
-        for (Integer movedVertex : movedVertices){
+        for (int movedVertex : movedVertices){
             m_partitionVertices.get(fromPartition).remove(movedVertex);
             m_partitionVertices.get(toPartition).add(movedVertex);
             m_vertexPartition.put(movedVertex, toPartition);
