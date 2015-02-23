@@ -13,11 +13,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -32,16 +36,16 @@ public class AffinityGraph {
     private final boolean m_tupleGranularity;
     
     // fromVertex -> adjacency list, where adjacency list is a toVertex -> edgeWeight map or toPartition -> edgeWeight map, depending on granularity
-    protected Map<Integer,Map<Integer,Double>> m_edges = new HashMap<Integer,Map<Integer,Double>> ();
+    protected Map<Integer,Map<Integer,Double>> m_edges = new Int2ObjectOpenHashMap <Map<Integer,Double>> ();
     
     // vertex -> full name
-    protected Map<Integer,String> m_vertex_to_name = new HashMap<Integer,String> ();
+    protected Map<Integer,String> m_vertex_to_name = new Int2ObjectOpenHashMap <String> ();
 
     // vertex -> weight map
-    final Map<Integer,Double> m_vertices = new HashMap<Integer,Double> ();
+    final Map<Integer,Double> m_vertices = new Int2DoubleOpenHashMap ();
     // partition -> vertex and vertex -> partition mappings
     final List<Set<Integer>> m_partitionVertices = new ArrayList<Set<Integer>> ();
-    final Map<Integer,Integer> m_vertexPartition = new HashMap<Integer,Integer> ();
+    final Map<Integer,Integer> m_vertexPartition = new Int2IntOpenHashMap ();
     
     private PlanHandler m_plan_handler = null;
     
@@ -116,7 +120,7 @@ public class AffinityGraph {
             }
             
 //            System.out.println("Tran ID = " + currTransactionId);
-            Set<Integer> curr_transaction = new HashSet<Integer> ();
+            Set<Integer> curr_transaction = new IntOpenHashSet ();
             // PROCESS LINE
             while(line != null){
 
@@ -126,10 +130,10 @@ public class AffinityGraph {
 
                     //                    System.out.println("Size of transaction:" + transaction.size());
 
-                    for(Integer from : curr_transaction){
+                    for(int from : curr_transaction){
                         // update FROM vertex in graph
-                        Double currentVertexWeight = m_vertices.get(from);
-                        if (currentVertexWeight == null){
+                        double currentVertexWeight = m_vertices.get(from);
+                        if (currentVertexWeight == 0){
                             m_vertices.put(from, normalizedIncrement);
                         }
                         else{
@@ -150,13 +154,13 @@ public class AffinityGraph {
 
                         Map<Integer,Double> adjacency = m_edges.get(from);
                         if(adjacency == null){
-                            adjacency = new HashMap<Integer,Double>();
+                            adjacency = new Int2DoubleOpenHashMap ();
                             m_edges.put(from, adjacency);
                         }
 
                         // update FROM -> TO edges
-                        for(Integer to : curr_transaction){
-                            if (! from.equals(to) ){
+                        for(int to : curr_transaction){
+                            if (from != to){
                                 
                                 // if lower granularity, edges link vertices to partitions, not other vertices
                                 if(!m_tupleGranularity){
@@ -164,8 +168,8 @@ public class AffinityGraph {
                                     to = m_plan_handler.getPartition(toName);
                                 }
 
-                                Double currentEdgeWeight = adjacency.get(to);
-                                if (currentEdgeWeight == null){
+                                double currentEdgeWeight = adjacency.get(to);
+                                if (currentEdgeWeight == 0){
                                     adjacency.put(to, normalizedIncrement);
                                 }
                                 else{

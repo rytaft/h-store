@@ -48,6 +48,7 @@
 	<classpathentry kind="lib" path="third_party/java/jars/velocity-1.6.3.jar"/>
 	<classpathentry kind="lib" path="third_party/java/jars/weka-3.6.3.jar"/>
 	<classpathentry kind="lib" path="third_party/java/jars/jsr305.jar"/>
+	<classpathentry kind="lib" path="third_party/java/jars/fastutil-6.6.2.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="third_party/java/jars/mysql-connector-java-5.1.18-bin.jar"/>
 	<classpathentry kind="lib" path="third_party/java/jars/mail.jar"/>
