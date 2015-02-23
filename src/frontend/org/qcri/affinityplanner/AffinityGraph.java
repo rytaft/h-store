@@ -130,7 +130,6 @@ public class AffinityGraph {
 
                     for(int from : curr_transaction){
                         // update FROM vertex in graph
-                        System.out.println("From -- " + from);
                         double currentVertexWeight = m_vertices.get(from);
                         if (currentVertexWeight == 0){
                             m_vertices.put(from, normalizedIncrement);
