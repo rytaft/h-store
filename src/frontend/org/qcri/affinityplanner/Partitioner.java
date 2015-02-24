@@ -1,5 +1,6 @@
 package org.qcri.affinityplanner;
 
+import it.unimi.dsi.fastutil.ints.AbstractIntComparator;
 import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -136,9 +137,9 @@ public abstract class Partitioner {
         // sort determines an _ascending_ order
         // Comparator should return "a negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater than the second"
         // We want a _descending_ order, so we need to invert the comparator result
-        Collections.sort(res, new Comparator<Integer>(){
+        Collections.sort(res, new AbstractIntComparator (){
             @Override
-            public int compare(Integer o1, Integer o2) {
+            public int compare(int o1, int o2) {
                 if (hotnessMap.get(o1) < hotnessMap.get(o2)){
                     return 1;
                 }
@@ -335,9 +336,9 @@ public abstract class Partitioner {
 
             final int part = otherPart; // make Java happy
 
-            Collections.sort(topk, new Comparator<Integer>(){                
+            Collections.sort(topk, new AbstractIntComparator(){                
                 @Override
-                public int compare(Integer o1, Integer o2) {
+                public int compare(int o1, int o2) {
                     if (topk_attractions.get(o1)[part] < topk_attractions.get(o2)[part]){
                         return 1;
                     }
