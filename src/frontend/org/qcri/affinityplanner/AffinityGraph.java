@@ -84,6 +84,7 @@ public class AffinityGraph {
             // init local data structures to be merged later
             Int2ObjectOpenHashMap<String> vertex_to_name = new Int2ObjectOpenHashMap <String> ();
             Int2IntOpenHashMap vertexPartition = new Int2IntOpenHashMap();
+            Int2DoubleOpenHashMap vertices = new Int2DoubleOpenHashMap (1000);
             List<IntOpenHashSet> partitionVertices = new ArrayList<IntOpenHashSet> ();
             for (int i = 0; i < m_partitionVertices.size(); i++){
                 partitionVertices.add(new IntOpenHashSet());
@@ -125,14 +126,12 @@ public class AffinityGraph {
 
                     for(int from : curr_transaction){
                         // update FROM vertex in graph
-                        synchronized(m_vertices){
-                            double currentVertexWeight = m_vertices.get(from);
-                            if (currentVertexWeight == m_vertices.defaultReturnValue()){
-                                m_vertices.put(from, normalizedIncrement);
-                            }
-                            else{
-                                m_vertices.put(from, currentVertexWeight + normalizedIncrement);                         
-                            }
+                        double currentVertexWeight = vertices.get(from);
+                        if (currentVertexWeight == vertices.defaultReturnValue()){
+                            vertices.put(from, normalizedIncrement);
+                        }
+                        else{
+                            vertices.put(from, currentVertexWeight + normalizedIncrement);                         
                         }
                         
                         // store site mappings for FROM vertex
@@ -226,6 +225,9 @@ public class AffinityGraph {
                     IntSet localVertices = partitionVertices.get(i);
                     m_partitionVertices.get(i).addAll(localVertices);
                 }
+            }
+            synchronized(m_vertices){
+                m_vertices.putAll(vertices);
             }
         }
     }
