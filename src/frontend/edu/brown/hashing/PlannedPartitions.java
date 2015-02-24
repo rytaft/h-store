@@ -408,11 +408,11 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             try {
             	// check the cache first
-                synchronized(this){
-                	if(this.find_partition_cache.containsKey(ids)) {
-                		return (Integer) this.find_partition_cache.get(ids);
-                	}
-                }
+//                synchronized(this){
+//                	if(this.find_partition_cache.containsKey(ids)) {
+//                		return (Integer) this.find_partition_cache.get(ids);
+//                	}
+//                }
             	
             	Object[] keys = ids.toArray();
                 for (PartitionRange p : this.partitions) {
@@ -422,9 +422,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
                     if (p.inRange(keys)) {
-                        synchronized (this) {
-                            this.find_partition_cache.put(ids, p.partition);
-                        }
+//                        synchronized (this) {
+//                            this.find_partition_cache.put(ids, p.partition);
+//                        }
                     	return p.partition;
                     }
                 }
@@ -434,9 +434,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             if (debug.val)
                 LOG.debug("Partition not found. ids: " + ids.toString() + ", partitions: " + this.partitions.toString());
-            synchronized(this){
-                this.find_partition_cache.put(ids, HStoreConstants.NULL_PARTITION_ID);
-            }
+//            synchronized(this){
+//                this.find_partition_cache.put(ids, HStoreConstants.NULL_PARTITION_ID);
+//            }
             
             return HStoreConstants.NULL_PARTITION_ID;
         }

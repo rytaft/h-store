@@ -13,11 +13,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -29,25 +33,213 @@ public class AffinityGraph {
     private static final Logger LOG = Logger.getLogger(AffinityGraph.class);
 
     // determines granularity of edges, either vertex - vertex of vertex - partition 
-    private final boolean m_tupleGranularity;
+    private static boolean m_tupleGranularity = false;
     
     // fromVertex -> adjacency list, where adjacency list is a toVertex -> edgeWeight map or toPartition -> edgeWeight map, depending on granularity
-    protected Map<String,Map<String,Double>> m_edges = new HashMap<String,Map<String,Double>> ();
+    protected static Int2ObjectOpenHashMap<Int2DoubleOpenHashMap> m_edges = new Int2ObjectOpenHashMap <Int2DoubleOpenHashMap> ();
+    
+    // vertex -> full name
+    protected static Int2ObjectOpenHashMap<String> m_vertex_to_name = new Int2ObjectOpenHashMap <String> ();
 
     // vertex -> weight map
-    final Map<String,Double> m_vertices = new HashMap<String,Double> ();
+    protected static final Int2DoubleOpenHashMap m_vertices = new Int2DoubleOpenHashMap (1000);
     // partition -> vertex and vertex -> partition mappings
-    final List<Set<String>> m_partitionVertices = new ArrayList<Set<String>> ();
-    final Map<String,Integer> m_vertexPartition = new HashMap<String,Integer> ();
+    protected static final List<IntOpenHashSet> m_partitionVertices = new ArrayList<IntOpenHashSet> ();
+    protected static final Int2IntOpenHashMap m_vertexPartition = new Int2IntOpenHashMap ();
     
-    private PlanHandler m_plan_handler = null;
+    private static PlanHandler m_plan_handler = null;
     
-    public AffinityGraph(boolean tupleGranularity, CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles, int noPartitions) throws Exception {
+    private static class LoaderThread implements Runnable {
+        private Path[] logFiles;
+        private long[] intervals;
+        private AtomicInteger nextLogFileCounter;
+        
+        public LoaderThread(Path[] logFiles, long[] intervals, AtomicInteger nextLogFileCounter){
+            this.logFiles = logFiles;
+            this.intervals = intervals;
+            this.nextLogFileCounter = nextLogFileCounter;
+        }
+
+        @Override
+        public void run() {
+            try {
+                int nextLogFile = nextLogFileCounter.getAndIncrement();
+                
+                while (nextLogFile < logFiles.length){
+                    
+                    double increment = 1.0/intervals[nextLogFile];
+                    
+                    loadLogFile(logFiles[nextLogFile], increment);
+                    
+                    nextLogFile = nextLogFileCounter.getAndIncrement();                    
+                }
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        
+        private void loadLogFile(Path logFile, double normalizedIncrement) throws Exception{
+            
+            // init local data structures to be merged later
+            Int2ObjectOpenHashMap<String> vertex_to_name = new Int2ObjectOpenHashMap <String> ();
+            Int2IntOpenHashMap vertexPartition = new Int2IntOpenHashMap();
+            Int2DoubleOpenHashMap vertices = new Int2DoubleOpenHashMap (1000);
+            List<IntOpenHashSet> partitionVertices = new ArrayList<IntOpenHashSet> ();
+            for (int i = 0; i < m_partitionVertices.size(); i++){
+                partitionVertices.add(new IntOpenHashSet());
+            }
+
+            
+            System.out.println("Loading from file " + logFile);
+
+            // SETUP
+            BufferedReader reader;
+            try {
+                reader = Files.newBufferedReader(logFile, Charset.forName("US-ASCII"));
+            } catch (IOException e) {
+                Controller.record("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                throw e;
+            }
+            String line;
+            // vertices with number of SQL statements they are involved in
+            // READ FIRST LINE
+            try {
+                line = reader.readLine();
+            } catch (IOException e) {
+                Controller.record("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                throw e;
+            }
+            if (line == null){
+                Controller.record("File " + logFile.toString() + " is empty");
+                throw new Exception();
+            }
+
+//            System.out.println("Tran ID = " + currTransactionId);
+            IntOpenHashSet curr_transaction = new IntOpenHashSet ();
+            // PROCESS LINE
+            while(line != null){
+
+                // if finished with one transaction, update graph and clear before moving on
+
+                if (line.equals("END")){
+
+                    for(int from : curr_transaction){
+                        // update FROM vertex in graph
+                        double currentVertexWeight = vertices.get(from);
+                        if (currentVertexWeight == vertices.defaultReturnValue()){
+                            vertices.put(from, normalizedIncrement);
+                        }
+                        else{
+                            vertices.put(from, currentVertexWeight + normalizedIncrement);                         
+                        }
+                        
+                        // store site mappings for FROM vertex
+                        int partition = 0;
+                        String fromName = vertex_to_name.get(from);
+                        partition = m_plan_handler.getPartition(fromName);
+                        
+                        if (partition == HStoreConstants.NULL_PARTITION_ID){
+                            LOG.info("Exiting graph loading. Could not find partition for key " + from);
+                            System.out.println("Exiting graph loading. Could not find partition for key " + from);
+                            throw new Exception();                            
+                        }
+                        partitionVertices.get(partition).add(from);
+                        vertexPartition.put(from, partition);
+                        
+                        Int2DoubleOpenHashMap adjacency = null;
+
+                        synchronized(m_edges){
+                            adjacency = m_edges.get(from);
+                            if(adjacency == null){
+                                adjacency = new Int2DoubleOpenHashMap ();
+                                m_edges.put(from, adjacency);
+                            }
+                        }
+
+                        // update FROM -> TO edges
+                        for(int to : curr_transaction){
+                            if (from != to){
+                                // if lower granularity, edges link vertices to partitions, not other vertices
+                                if(!m_tupleGranularity){
+                                    String toName = vertex_to_name.get(to);
+                                    to = m_plan_handler.getPartition(toName);
+                                }
+                                
+                                synchronized(adjacency){
+                                    double currentEdgeWeight = adjacency.get(to);
+                                    if (currentEdgeWeight == 0){
+                                        adjacency.put(to, normalizedIncrement);
+                                    }
+                                    else{
+                                        adjacency.put(to, currentEdgeWeight + normalizedIncrement);
+                                    }
+                                }
+                            }
+                        } // END for(String to : curr_transaction)
+
+                    } // END for(String from : curr_transaction)
+
+                    curr_transaction.clear();
+
+                    //                    System.out.println("Tran ID = " + currTransactionId);
+                } // END if (line.equals("END"))
+
+                else{
+                    curr_transaction.add(line.hashCode());
+                    if (!vertex_to_name.containsKey(line.hashCode())){
+                        vertex_to_name.put(line.hashCode(), line);
+                    }
+                }
+
+                /* this is what one would do to count different accesses within the same transaction. 
+                 * For the moment I count only the number of transactions accessing a tuple
+                Double weight = transaction.get(vertex[1]);
+                if (weight == null){
+                    transaction.put(vertex[1], 1.0/intervalsInSecs[currLogFile]);
+                }
+                else{
+                    transaction.put(vertex[1], (weight+1.0)/intervalsInSecs[currLogFile]);
+                } 
+                */
+                
+                // READ NEXT LINE
+                try {
+                    line = reader.readLine();
+                } catch (IOException e) {
+                    Controller.record("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                    System.out.println("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                    throw e;
+                }
+            }// END  while(line != null)
+            
+            // merge local data structures
+            synchronized(m_vertex_to_name){
+                m_vertex_to_name.putAll(vertex_to_name);
+            }
+            synchronized(m_vertexPartition){
+                m_vertexPartition.putAll(vertexPartition);
+            }
+            synchronized(m_partitionVertices){
+                for (int i = 0; i < m_partitionVertices.size(); i++){
+                    IntSet localVertices = partitionVertices.get(i);
+                    m_partitionVertices.get(i).addAll(localVertices);
+                }
+            }
+            synchronized(m_vertices){
+                m_vertices.putAll(vertices);
+            }
+        }
+    }
+    
+    public AffinityGraph(boolean tupleGranularity, CatalogContext catalogContext, File planFile, 
+            Path[] logFiles, Path[] intervalFiles, int noPartitions) throws Exception {
         m_tupleGranularity = tupleGranularity;
 
         BufferedReader reader;
+
         for (int i = 0; i < noPartitions; i++){
-            m_partitionVertices.add(new HashSet<String>());
+            m_partitionVertices.add(new IntOpenHashSet());
         }
 
         try {
@@ -84,154 +276,32 @@ public class AffinityGraph {
         }
         
         // scan files for all partitions
-        int currLogFile = 0;
-        for (Path logFile : logFiles){
-            
-            System.out.println("Loading from file " + logFile);
-
-            // SETUP
-            double normalizedIncrement = 1.0/intervalsInSecs[currLogFile];
-            currLogFile ++;
-            try {
-                reader = Files.newBufferedReader(logFile, Charset.forName("US-ASCII"));
-            } catch (IOException e) {
-                Controller.record("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                throw e;
-            }
-            String line;
-            HashMap<String, Set<String>> transactions = new HashMap<String,Set<String>>();
-            // vertices with number of SQL statements they are involved in
-            // READ FIRST LINE
-            try {
-                line = reader.readLine();
-            } catch (IOException e) {
-                Controller.record("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                throw e;
-            }
-            if (line == null){
-                Controller.record("File " + logFile.toString() + " is empty");
-                throw new Exception();
-            }
-            
-//            System.out.println("Tran ID = " + currTransactionId);
-            // PROCESS LINE
-            while(line != null){
-
-//                System.out.println("Reading next line");
-                String[] fields = line.split(";");
-                // if finished with one transaction, update graph and clear before moving on
-
-                if (fields[0].equals("END")){
-
-                    String transaction_id = fields[1];
-                    Set<String> curr_transaction = transactions.get(transaction_id);
-
-                    if(curr_transaction != null){
-    //                    System.out.println("Size of transaction:" + transaction.size());
-
-                        for(String from : curr_transaction){
-                            // update FROM vertex in graph
-                            Double currentVertexWeight = m_vertices.get(from);
-                            if (currentVertexWeight == null){
-                                m_vertices.put(from, normalizedIncrement);
-                            }
-                            else{
-                                m_vertices.put(from, currentVertexWeight + normalizedIncrement);                         
-                            }
-                            // store site mappings for FROM vertex
-                            int partition = 0;
-                            partition = m_plan_handler.getPartition(from);
-
-                            if (partition == HStoreConstants.NULL_PARTITION_ID){
-                                LOG.info("Exiting graph loading. Could not find partition for key " + from);
-                                System.out.println("Exiting graph loading. Could not find partition for key " + from);
-                                throw new Exception();                            
-                            }
-                            m_partitionVertices.get(partition).add(from);
-                            m_vertexPartition.put(from, partition);
-                            
-                            // update FROM -> TO edges
-                            Set<String> visitedVertices = new HashSet<String>();    // removes duplicate vertex entries in the monitoring output
-                            for(String to : curr_transaction){
-                                if (! from.equals(to) && ! visitedVertices.contains(to)){
-                                    visitedVertices.add(to);
-                                    Map<String,Double> adjacency = m_edges.get(from);
-                                    if(adjacency == null){
-                                        adjacency = new HashMap<String,Double>();
-                                        m_edges.put(from, adjacency);
-                                    }
-                                    
-                                    // if lower granularity, edges link vertices to partitions, not other vertices
-                                    if(!m_tupleGranularity){
-                                        int toPartition = m_plan_handler.getPartition(to);
-                                        to = Integer.toString(toPartition);
-                                    }
-                                    
-                                    Double currentEdgeWeight = adjacency.get(to);
-                                    if (currentEdgeWeight == null){
-                                        adjacency.put(to, normalizedIncrement);
-                                    }
-                                    else{
-                                        adjacency.put(to, currentEdgeWeight + normalizedIncrement);
-                                    }
-                                }
-                            } // END for(String to : curr_transaction)
-                            
-                        } // END for(String from : curr_transaction)
-                        
-                        transactions.remove(transaction_id);
-                        
-    //                    System.out.println("Tran ID = " + currTransactionId);
-                    } // END if(curr_transaction != null)
-                } // END if (fields[0].equals("END"))
-                
-                else{
-                
-                    // update the current transaction
-                    String transaction_id = fields[0];
-                    Set<String> curr_transaction = transactions.get(transaction_id);
-                    
-                    if(curr_transaction == null){
-                        curr_transaction = new HashSet<String>();
-                        transactions.put(transaction_id, curr_transaction);
-                    }
-                    
-                    curr_transaction.add(fields[1]);
-                }
-                
-                /* this is what one would do to count different accesses within the same transaction. 
-                 * For the moment I count only the number of transactions accessing a tuple
-                Double weight = transaction.get(vertex[1]);
-                if (weight == null){
-                    transaction.put(vertex[1], 1.0/intervalsInSecs[currLogFile]);
-                }
-                else{
-                    transaction.put(vertex[1], (weight+1.0)/intervalsInSecs[currLogFile]);
-                } 
-                */
-                
-                // READ NEXT LINE
-                try {
-                    line = reader.readLine();
-                } catch (IOException e) {
-                    Controller.record("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                    System.out.println("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
-                    throw e;
-                }
-            }// END  while(line != null)
-        } // END for (Path logFile : logFiles)
+        Thread[] loadingThreads = new Thread[Controller.LOAD_THREADS];
+        AtomicInteger nextLogFileCounter = new AtomicInteger(0);
         
+        for (int currLogFile = 0; currLogFile < Controller.LOAD_THREADS; currLogFile++){
+            
+            Thread loader = new Thread (new LoaderThread (logFiles, intervalsInSecs, nextLogFileCounter));
+            loadingThreads[currLogFile] = loader;
+            loader.start();
+        }
+        
+        // wait for all loader threads to finish
+        for (Thread loader : loadingThreads){
+            loader.join();
+        }
     }
     
-    public void moveVertices(Set<String> movedVertices, int fromPartition, int toPartition) {
-        for (String movedVertex : movedVertices){
+    public void moveVertices(IntSet movedVertices, int fromPartition, int toPartition) {
+        for (int movedVertex : movedVertices){
             m_partitionVertices.get(fromPartition).remove(movedVertex);
             m_partitionVertices.get(toPartition).add(movedVertex);
             m_vertexPartition.put(movedVertex, toPartition);
 
             // update plan too
             // format of vertices is <TABLE>,<PART-KEY>,<VALUE>
-            String [] fields = movedVertex.split(",");
+            String movedVertexName = m_vertex_to_name.get(movedVertex);
+            String [] fields = movedVertexName.split(",");
 //            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
 //            System.out.println("remove ID: " + fields[2]);
             m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[2]));
@@ -245,33 +315,34 @@ public class AffinityGraph {
 //        System.out.println(m_plan_handler.toString() + "\n");
     }
     
-    public int getPartition(String vertex){
-        return m_plan_handler.getPartition(vertex);
+    public int getPartition(int vertex){
+        String vertexName = m_vertex_to_name.get(vertex);
+        return m_plan_handler.getPartition(vertexName);
     }
     
     public void planToJSON(String newPlanFile){
         m_plan_handler.toJSON(newPlanFile);
     }
 
-    public void toFileDebug(Path file){
+    public void toFile(Path file){
         System.out.println("Writing graph. Number of vertices: " + m_edges.size());
         BufferedWriter writer;
         String s;
         double totalWeight = 0;
         try {
             writer = Files.newBufferedWriter(file, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            for(String vertex : m_vertices.keySet()){
-                s = "Vertex " + vertex + " - weight " + m_vertices.get(vertex);
+            for(int vertex : m_vertices.keySet()){
+                s = "Vertex " + m_vertex_to_name.get(vertex) + " - weight " + m_vertices.get(vertex);
                 totalWeight += m_vertices.get(vertex);
                 writer.write(s, 0, s.length());
                 writer.newLine();
-                Map<String,Double> adjacency = m_edges.get(vertex);
+                Int2DoubleMap adjacency = m_edges.get(vertex);
                 if(adjacency == null){
                     writer.newLine();
                     continue;
                 }
-                for (Map.Entry<String, Double> edge : adjacency.entrySet()){
-                    s = edge.getKey() + " - weight " + edge.getValue();
+                for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
+                    s = m_vertex_to_name.get(edge.getIntKey()) + " - weight " + edge.getDoubleValue();
                     writer.write(s, 0, s.length());
                     writer.newLine();
                 }

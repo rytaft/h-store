@@ -1,8 +1,9 @@
 package org.qcri.affinityplanner;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
+
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -89,8 +90,8 @@ public class PlanHandler extends Plan {
         return getSitePartition(getPartition(vertex));
     }
     
-    public static Collection<Integer> getPartitionsSite(int site){
-        ArrayList<Integer> res = new ArrayList<Integer> (Controller.PARTITIONS_PER_SITE);
+    public static IntList getPartitionsSite(int site){
+        IntList res = new IntArrayList (Controller.PARTITIONS_PER_SITE);
         for (int i = site * Controller.PARTITIONS_PER_SITE; i < (site + 1) * Controller.PARTITIONS_PER_SITE; i++){
             res.add(i);
         }
