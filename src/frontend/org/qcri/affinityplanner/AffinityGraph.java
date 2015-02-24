@@ -13,15 +13,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
+import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -131,7 +130,7 @@ public class AffinityGraph {
                     for(int from : curr_transaction){
                         // update FROM vertex in graph
                         double currentVertexWeight = m_vertices.get(from);
-                        if (currentVertexWeight == 0){
+                        if (currentVertexWeight == m_vertices.defaultReturnValue()){
                             m_vertices.put(from, normalizedIncrement);
                         }
                         else{
@@ -213,7 +212,7 @@ public class AffinityGraph {
         
     }
     
-    public void moveVertices(Set<Integer> movedVertices, int fromPartition, int toPartition) {
+    public void moveVertices(IntSet movedVertices, int fromPartition, int toPartition) {
         for (int movedVertex : movedVertices){
             m_partitionVertices.get(fromPartition).remove(movedVertex);
             m_partitionVertices.get(toPartition).add(movedVertex);
@@ -236,7 +235,7 @@ public class AffinityGraph {
 //        System.out.println(m_plan_handler.toString() + "\n");
     }
     
-    public int getPartition(Integer vertex){
+    public int getPartition(int vertex){
         String vertexName = m_vertex_to_name.get(vertex);
         return m_plan_handler.getPartition(vertexName);
     }
@@ -252,18 +251,18 @@ public class AffinityGraph {
         double totalWeight = 0;
         try {
             writer = Files.newBufferedWriter(file, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            for(Integer vertex : m_vertices.keySet()){
+            for(int vertex : m_vertices.keySet()){
                 s = "Vertex " + m_vertex_to_name.get(vertex) + " - weight " + m_vertices.get(vertex);
                 totalWeight += m_vertices.get(vertex);
                 writer.write(s, 0, s.length());
                 writer.newLine();
-                Map<Integer,Double> adjacency = m_edges.get(vertex);
+                Int2DoubleMap adjacency = m_edges.get(vertex);
                 if(adjacency == null){
                     writer.newLine();
                     continue;
                 }
-                for (Map.Entry<Integer, Double> edge : adjacency.entrySet()){
-                    s = m_vertex_to_name.get(edge.getKey()) + " - weight " + edge.getValue();
+                for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
+                    s = m_vertex_to_name.get(edge.getIntKey()) + " - weight " + edge.getDoubleValue();
                     writer.write(s, 0, s.length());
                     writer.newLine();
                 }

@@ -1,5 +1,14 @@
 package org.qcri.affinityplanner;
 
+import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -51,7 +60,7 @@ public abstract class Partitioner {
      * @param activePartitions
      * @param overloadedPartitions
      */
-    protected void scanPartitions(Set<Integer> activePartitions, Set<Integer> overloadedPartitions){
+    protected void scanPartitions(IntSet activePartitions, IntSet overloadedPartitions){
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
             if(!m_graph.m_partitionVertices.get(i).isEmpty()){
                 activePartitions.add(i);
@@ -67,7 +76,7 @@ public abstract class Partitioner {
      * computes load of a set of vertices in the current partition. this is different from the weight of a vertex because it considers
      * both direct accesses of the vertex and the cost of remote accesses
      */
-    protected abstract Double getLoadInCurrPartition(Set<Integer> vertices);
+    protected abstract double getLoadInCurrPartition(IntSet vertices);
     
     /**
      * Returns sorted (descending order) list of top-k vertices from site
@@ -76,18 +85,22 @@ public abstract class Partitioner {
      * @param k
      * @return
      */
-    protected List<Integer> getHottestVertices(int partition, int k){
+    protected IntList getHottestVertices(int partition, int k){
 
-        List<Integer> res = new ArrayList<Integer>(k);
-        final Map<Integer, Double> hotnessMap = new HashMap<Integer,Double>(k);
+        IntList res = new IntArrayList (k);
+        final Int2DoubleMap hotnessMap = new Int2DoubleOpenHashMap (k);
 
         k = Math.min(k, m_graph.m_partitionVertices.get(partition).size());
         int lowestPos = 0;
         double lowestLoad = Double.MAX_VALUE;
+        
+        IntSet singleton = new IntOpenHashSet(1);
 
-        for(Integer vertex : m_graph.m_partitionVertices.get(partition)){
+        for(int vertex : m_graph.m_partitionVertices.get(partition)){
 
-            double vertexLoad = getLoadInCurrPartition(Collections.singleton(vertex));
+            singleton.clear();
+            singleton.add(vertex);
+            double vertexLoad = getLoadInCurrPartition(singleton);
 
             if (res.size() < k){
 
@@ -148,14 +161,14 @@ public abstract class Partitioner {
      *     
      *     if newPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
-    protected abstract double getDeltaVertices(Set<Integer> movingVertices, int toPartition, boolean forSender);
+    protected abstract double getDeltaVertices(IntSet movingVertices, int toPartition, boolean forSender);
 
-    protected abstract Double getLoadPerPartition(int partition);
+    protected abstract double getLoadPerPartition(int partition);
     
-    public Double getLoadPerSite(int site){
-        Collection<Integer> partitions = PlanHandler.getPartitionsSite(site);
+    public double getLoadPerSite(int site){
+        IntList partitions = PlanHandler.getPartitionsSite(site);
         double load = 0;
-        for (Integer partition : partitions){
+        for (int partition : partitions){
             load += getLoadPerPartition(partition);
         }
         return load;
@@ -174,7 +187,7 @@ public abstract class Partitioner {
      * @param toPartition
      * @return number of partitions actually moved
      */
-    protected int tryMoveVertices(Set<Integer> movingVertices, Integer fromPartition, Integer toPartition) {
+    protected int tryMoveVertices(IntSet movingVertices, int fromPartition, int toPartition) {
 
         int numMovedVertices = 0;
         double deltaFromPartition = getDeltaVertices(movingVertices, toPartition, true);
@@ -205,29 +218,29 @@ public abstract class Partitioner {
      * @param k
      * @return
      */
-    protected List<List<Integer>> getBorderVertices (int this_partition, int k){
+    protected List<IntList> getBorderVertices (int this_partition, int k){
 
         k = Math.min(k, m_graph.m_partitionVertices.get(this_partition).size());
 
-        List<List<Integer>> res = new ArrayList<List<Integer>>(Controller.MAX_PARTITIONS);
+        List<IntList> res = new ArrayList<IntList>(Controller.MAX_PARTITIONS);
 
         for (int i = 0; i < Controller.MAX_PARTITIONS; i++){
-            res.add(new ArrayList<Integer> (k));
+            res.add(new IntArrayList (k));
         }
 
         // maps vertices in any top k for any partition to its array of attractions
-        final Map<Integer, double[]> topk_attractions = new HashMap <Integer, double[]> ();
+        final Int2ObjectMap<double[]> topk_attractions = new Int2ObjectOpenHashMap<double[]> ();
 
         int[] lowest_attraction_position = new int[Controller.MAX_PARTITIONS];
         double[] lowest_attraction = new double[Controller.MAX_PARTITIONS];
 
 
-        for(Integer from_vertex : m_graph.m_partitionVertices.get(this_partition)){
+        for(int from_vertex : m_graph.m_partitionVertices.get(this_partition)){
 
             // compute attractions
             double[] curr_attractions = new double[Controller.MAX_PARTITIONS];
 
-            Map<Integer,Double> adjacency = m_graph.m_edges.get(from_vertex);
+            Int2DoubleMap adjacency = m_graph.m_edges.get(from_vertex);
             if (adjacency != null){
                 
                 updateAttractions(adjacency, curr_attractions);
@@ -245,7 +258,7 @@ public abstract class Partitioner {
                         continue;
                     }
                     
-                    List<Integer> topk = res.get(otherPart);
+                    IntList topk = res.get(otherPart);
     
                     if(topk.size() < k){
                         
@@ -271,7 +284,7 @@ public abstract class Partitioner {
                         if (curr_attractions[otherPart] > lowest_attraction[otherPart]){
     
                             // remove lowest vertex from attractionMap
-                            Integer lowestVertex = topk.get(lowest_attraction_position[otherPart]);
+                            int lowestVertex = topk.get(lowest_attraction_position[otherPart]);
                             double[] topk_attraction = topk_attractions.get(lowestVertex);
                             int nonZeroPos = -1;
                             for(int j = 0; j < topk_attraction.length; j++){
@@ -299,7 +312,7 @@ public abstract class Partitioner {
                             // recompute minimum
                             lowest_attraction[otherPart] = curr_attractions[otherPart];
                             for (int posList = 0; posList < k; posList++){
-                                Integer vertex = topk.get(posList);
+                                int vertex = topk.get(posList);
                                 double attraction = topk_attractions.get(vertex)[otherPart];
                                 if(attraction < lowest_attraction[otherPart]){
                                     lowest_attraction[otherPart] = attraction;
@@ -314,7 +327,7 @@ public abstract class Partitioner {
        
         // sorting
         for(int otherPart = 1; otherPart < Controller.MAX_PARTITIONS; otherPart++){
-            List<Integer> topk = res.get(otherPart);
+            IntList topk = res.get(otherPart);
 
             // sort determines an _ascending_ order
             // Comparator should return "a negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater than the second"
@@ -345,11 +358,11 @@ public abstract class Partitioner {
      *  
      *  very simple policy: if a partition is underloaded, try to move its whole content to another partition
      */
-    protected void scaleIn(Set<Integer> activePartitions){
+    protected void scaleIn(IntSet activePartitions){
 
         // detect underloaded partitions
         TreeSet<Integer> underloadedPartitions = new TreeSet<Integer>();
-        for(Integer part : activePartitions){
+        for(int part : activePartitions){
             if (getLoadPerPartition(part) < MIN_LOAD_PER_PART){
                 underloadedPartitions.add(part);
             }
@@ -362,18 +375,18 @@ public abstract class Partitioner {
 
         // offload from partitions with higher id to partitions with lower id. this helps emptying up the latest servers.
         Iterator<Integer> descending = underloadedPartitions.descendingIterator();
-        HashSet<Integer> removedPartitions = new HashSet<Integer>();
+        IntSet removedPartitions = new IntOpenHashSet();
 
         while(descending.hasNext()){
 
-            Integer underloadedPartition = descending.next();
+            int underloadedPartition = descending.next();
             System.out.println("Offloading partition " + underloadedPartition);
-            Set<Integer> movingVertices = new HashSet<Integer>();
+            IntOpenHashSet movingVertices = new IntOpenHashSet();
             movingVertices.addAll(m_graph.m_partitionVertices.get(underloadedPartition));
 
             // try to offload to remote partitions
-            Collection<Integer> localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(underloadedPartition));
-            for(Integer toPartition : activePartitions){
+            IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(underloadedPartition));
+            for(int toPartition : activePartitions){
 
                 if(!localPartitions.contains(toPartition) && !removedPartitions.contains(toPartition)){
 
@@ -398,6 +411,6 @@ public abstract class Partitioner {
         m_graph.toFile(file);
     }
 
-    protected abstract void updateAttractions(Map<Integer, Double> adjacency, double[] attractions);
+    protected abstract void updateAttractions(Int2DoubleMap adjacency, double[] attractions);
 
 }

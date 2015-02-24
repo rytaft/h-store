@@ -1,12 +1,14 @@
 package org.qcri.affinityplanner;
 
+import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
+
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -45,8 +47,8 @@ public class GraphPartitioner extends Partitioner {
         System.out.println("Loads per partition before reconfiguration");
 
         // detect overloaded and active partitions
-        Set<Integer> activePartitions = new HashSet<Integer>();
-        Set<Integer> overloadedPartitions = new HashSet<Integer>();
+        IntSet activePartitions = new IntOpenHashSet();
+        IntSet overloadedPartitions = new IntOpenHashSet();
         scanPartitions(activePartitions, overloadedPartitions);
 
         /*
@@ -73,36 +75,36 @@ public class GraphPartitioner extends Partitioner {
         return true;
     }
 
-    private void offloadBorderTuples(Set<Integer> activePartitions){
+    private void offloadBorderTuples(IntSet activePartitions){
 
         LOG.debug("Moving border vertices");
 
 //        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 
-        for (Integer from_part : activePartitions){
+        for (int from_part : activePartitions){
             
-            List<List<Integer>> allBorderVertices = getBorderVertices(from_part, MAX_MOVED_TUPLES_PER_PART);
+            List<IntList> allBorderVertices = getBorderVertices(from_part, MAX_MOVED_TUPLES_PER_PART);
 
             // vertices that will have to be removed from other lists
-            Set<Integer> movedVerticesSet = new HashSet<Integer>();
+            IntSet movedVerticesSet = new IntOpenHashSet ();
 
-            for (Integer to_part : activePartitions){
+            for (int to_part : activePartitions){
 
                 LOG.debug("Moving FROM partition " + from_part + " TO partition " + to_part);
 
                 // 1) get list of tuples that have the highest external pull to a single other partition
 
-                List<Integer> borderVertices = allBorderVertices.get(to_part);
+                IntList borderVertices = allBorderVertices.get(to_part);
                 
                 LOG.debug("Border vertices:");
-                for(Integer vertex: borderVertices){
+                for(int vertex: borderVertices){
                     LOG.debug(vertex);
                 }
 
                 final int actualMaxMovedVertices = borderVertices.size();
 
                 int numMovedVertices = 0;
-                Set<Integer> movingVertices = new HashSet<Integer>();
+                IntOpenHashSet movingVertices = new IntOpenHashSet();
                 int nextPosToMove = 0;
                 int lastHotVertexMoved = -1;
                 int retryCount = 1;
@@ -147,19 +149,19 @@ public class GraphPartitioner extends Partitioner {
 
     }
 
-    private boolean offloadHottestTuples(Set<Integer> overloadedPartitions, Set<Integer> activePartitions){
+    private boolean offloadHottestTuples(IntSet overloadedPartitions, IntSet activePartitions){
         int addedPartitions = 0;
         // offload each overloaded partition
         System.out.println("SCALING OUT");
         System.out.println("#######################");
 
-        for(Integer overloadedPartition : overloadedPartitions){
+        for(int overloadedPartition : overloadedPartitions){
 
             // DEBUG
             System.out.println("offloading site " + overloadedPartition);
 
             // get hottest vertices. the actual length of the array is min(Controller.MAX_MOVED_VERTICES, #tuples held site);
-            List<Integer> hotVerticesList = getHottestVertices(overloadedPartition, MAX_MOVED_TUPLES_PER_PART);
+            IntList hotVerticesList = getHottestVertices(overloadedPartition, MAX_MOVED_TUPLES_PER_PART);
             final int actualMaxMovedVertices = hotVerticesList.size();
 
             // DEBUG
@@ -169,7 +171,7 @@ public class GraphPartitioner extends Partitioner {
             //            }
 
             int numMovedVertices = 0;
-            Set<Integer> movingVertices = new HashSet<Integer>();
+            IntOpenHashSet movingVertices = new IntOpenHashSet();
 
             int nextPosToMove = 0;
             int lastHotVertexMoved = -1;
@@ -233,9 +235,9 @@ public class GraphPartitioner extends Partitioner {
 
                 // first try to offload to local partitions
                 boolean moved = false;
-                Collection<Integer> localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(overloadedPartition));
+                IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(overloadedPartition));
 
-                for(Integer toPartition : localPartitions){
+                for(int toPartition : localPartitions){
 
                     LOG.debug("Trying with partition " + toPartition);
                     int movedVertices = tryMoveVertices(movingVertices, overloadedPartition, toPartition);
@@ -252,7 +254,7 @@ public class GraphPartitioner extends Partitioner {
                 // then try to offload to remote partitions
                 if (!moved){
 
-                    for(Integer toPartition : activePartitions){
+                    for(int toPartition : activePartitions){
 
                         if(!localPartitions.contains(toPartition)){
                             LOG.debug("Trying with partition " + toPartition);
@@ -268,7 +270,7 @@ public class GraphPartitioner extends Partitioner {
                     }
                 }
             } // END while(getLoadPerSite(overloadedPartition) <= maxLoadPerSite)
-        }// END for(Integer overloadedPartition : overloadedPartitions)
+        }// END for(int overloadedPartition : overloadedPartitions)
         return true;
     }
 
@@ -282,17 +284,17 @@ public class GraphPartitioner extends Partitioner {
      * @param nextPosToMove
      * @return the new nextVertexToMove such that all previous elements of verticesToMove have been added already
      */
-    private int expandMovingVertices (Set<Integer> movingVertices, List<Integer> verticesToMove, int nextPosToMove, int partition){
+    private int expandMovingVertices (IntSet movingVertices, IntList verticesToMove, int nextPosToMove, int partition){
 
         if (movingVertices.isEmpty()){
             // if empty, add a new hot vertex
             assert (nextPosToMove < verticesToMove.size()); // If all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here 
-            Integer nextHotVertex = null;
+            int nextHotVertex = 0;
             do{
                 nextHotVertex = verticesToMove.get(nextPosToMove);
                 nextPosToMove++;
             } while (m_graph.m_vertexPartition.get(nextHotVertex) != partition);
-            assert (nextHotVertex != null); // If all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
+            assert (nextHotVertex != 0); // If all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
             LOG.debug("Adding hot vertex " + nextHotVertex);
             movingVertices.add(nextHotVertex);
         } // END if(movedVertices.isEmpty())
@@ -304,8 +306,8 @@ public class GraphPartitioner extends Partitioner {
             // assess gain with extension
             double deltaEdgeExtension = Double.MIN_VALUE;                        
 
-            Integer nextEdgeExtension = getMostAffineExtension(movingVertices);
-            if(nextEdgeExtension != null){
+            int nextEdgeExtension = getMostAffineExtension(movingVertices);
+            if(nextEdgeExtension != 0){
                 movingVertices.add(nextEdgeExtension);
                 deltaEdgeExtension = getDeltaVertices(movingVertices, -1, true);
                 movingVertices.remove(nextEdgeExtension);
@@ -314,7 +316,7 @@ public class GraphPartitioner extends Partitioner {
             // assess gain with next hot tuple. may need to skip a few hot tuples that are already included in hottestVerticesToMove. 
             double deltaHotTuple = Double.MIN_VALUE;
 
-            Integer nextVertexToMove = null;
+            int nextVertexToMove = 0;
             int skip = 0;
 
             if(nextPosToMove < verticesToMove.size()){
@@ -325,7 +327,7 @@ public class GraphPartitioner extends Partitioner {
                 } while (movingVertices.contains(nextVertexToMove) && nextPosToMove + skip < verticesToMove.size()); // I could also check (currHotVertex + jump < hottestVerticesToMove.size()) but if all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
 
                 if (! movingVertices.contains(nextVertexToMove)){
-                    assert(nextVertexToMove != null);
+                    assert(nextVertexToMove != 0);
                     movingVertices.add(nextVertexToMove);
                     deltaHotTuple = getDeltaVertices(movingVertices, -1, true);
                     movingVertices.remove(nextVertexToMove);
@@ -353,7 +355,7 @@ public class GraphPartitioner extends Partitioner {
 
         // DEBUG
         LOG.debug("Moving vertices: ");
-        for (Integer vertex : movingVertices){
+        for (int vertex : movingVertices){
             LOG.debug(vertex);
         }       
         return nextPosToMove;
@@ -365,22 +367,22 @@ public class GraphPartitioner extends Partitioner {
      * 
      * ASSUMES that all vertices are on the same partition
      */
-    private Integer getMostAffineExtension(Set<Integer> vertices){
+    private int getMostAffineExtension(IntSet vertices){
 
         double maxAdjacency = -1;
-        Integer res = null;
+        int res = 0;
         int partition = m_graph.m_vertexPartition.get(vertices.iterator().next());
  
-        for(Integer vertex : vertices){
-            Map<Integer,Double> adjacency = m_graph.m_edges.get(vertex);
+        for(int vertex : vertices){
+            Int2DoubleMap adjacency = m_graph.m_edges.get(vertex);
             if(adjacency != null){
 
-                for(Map.Entry<Integer, Double> edge : adjacency.entrySet()){
-                    if (edge.getValue() > maxAdjacency
-                            && m_graph.m_vertexPartition.get(edge.getKey()) == partition
-                            && !vertices.contains(edge.getKey())){
-                        maxAdjacency = edge.getValue();
-                        res = edge.getKey();
+                for(Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
+                    if (edge.getDoubleValue() > maxAdjacency
+                            && m_graph.m_vertexPartition.get(edge.getIntKey()) == partition
+                            && !vertices.contains(edge.getIntKey())) {
+                        maxAdjacency = edge.getDoubleValue();
+                        res = edge.getIntKey();
                     }
                 }
             }
@@ -390,25 +392,25 @@ public class GraphPartitioner extends Partitioner {
 
 
     @Override
-    protected Double getLoadInCurrPartition(Set<Integer> vertices){
+    protected double getLoadInCurrPartition(IntSet vertices){
         double load = 0;
-        for(Integer vertex : vertices){
+        for(int vertex : vertices){
             // local accesses
             load += m_graph.m_vertices.get(vertex);
             // remote accesses
             int fromVertexPartition = m_graph.m_vertexPartition.get(vertex);
             int fromVertexSite = PlanHandler.getSitePartition(fromVertexPartition);
-            Map<Integer,Double> adjacencyList = m_graph.m_edges.get(vertex);
+            Int2DoubleMap adjacencyList = m_graph.m_edges.get(vertex);
             if(adjacencyList != null){
-                for(Map.Entry<Integer, Double> edge : adjacencyList.entrySet()){
-                    Integer toVertex = edge.getKey();
+                for(Int2DoubleMap.Entry edge : adjacencyList.int2DoubleEntrySet()){
+                    int toVertex = edge.getIntKey();
                     int toVertexPartition = m_graph.m_vertexPartition.get(toVertex);
                     int toVertexSite = PlanHandler.getSitePartition(toVertexPartition);
                     if(toVertexSite != fromVertexSite){
-                        load += edge.getValue() * DTXN_COST;
+                        load += edge.getDoubleValue() * DTXN_COST;
                     }
                     else if(toVertexPartition != fromVertexPartition){
-                        load += edge.getValue() * LMPT_COST;
+                        load += edge.getDoubleValue() * LMPT_COST;
                     }
                 }
             }
@@ -417,12 +419,12 @@ public class GraphPartitioner extends Partitioner {
     }
 
     @Override
-    public Double getLoadPerPartition(int partition){
+    public double getLoadPerPartition(int partition){
         return getLoadInCurrPartition(m_graph.m_partitionVertices.get(partition));
     }
 
     @Override
-    protected double getDeltaVertices(Set<Integer> movedVertices, int newPartition, boolean forSender) {
+    protected double getDeltaVertices(IntSet movedVertices, int newPartition, boolean forSender) {
 
         if (movedVertices == null || movedVertices.isEmpty()){
             LOG.debug("Trying to move an empty set of vertices");
@@ -431,22 +433,22 @@ public class GraphPartitioner extends Partitioner {
         double delta = 0;
         int fromPartition = m_graph.m_vertexPartition.get(movedVertices.iterator().next());
 
-        for(Integer vertex : movedVertices){ 
+        for(int vertex : movedVertices){ 
             //            LOG.debug("REMOVE delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
-            Double vertexWeight = m_graph.m_vertices.get(vertex);
-            if (vertexWeight == null){
+            double vertexWeight = m_graph.m_vertices.get(vertex);
+            if (vertexWeight == m_graph.m_vertices.defaultReturnValue()){
                 LOG.debug("Cannot include external node for delta computation");
                 throw new IllegalStateException("Cannot include external node for delta computation");
             }
 
-            Map<Integer,Double> adjacency = m_graph.m_edges.get(vertex);
+            Int2DoubleOpenHashMap adjacency = m_graph.m_edges.get(vertex);
             if(adjacency != null){
                 double outPull = 0;
                 double inPull = 0;
-                for (Map.Entry<Integer, Double> edge : adjacency.entrySet()){
+                for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
                     //                LOG.debug("Considering edge to vertex " + edge.getKey() + " with weight " + edge.getValue());
-                    Integer toVertex = edge.getKey();
-                    Double edgeWeight = edge.getValue();
+                    int toVertex = edge.getIntKey();
+                    double edgeWeight = edge.getDoubleValue();
 
                     // edges to vertices that are moved together do not contribute to in- or out-pull
                     if(!movedVertices.contains(toVertex)){
@@ -491,8 +493,8 @@ public class GraphPartitioner extends Partitioner {
     }
     
     @Override
-    protected void updateAttractions (Map<Integer,Double> adjacency, double[] attractions){
-        for (Integer toVertex : adjacency.keySet()){
+    protected void updateAttractions (Int2DoubleMap adjacency, double[] attractions){
+        for (int toVertex : adjacency.keySet()){
             
             int other_partition = m_graph.m_vertexPartition.get(toVertex);
             double edge_weight = adjacency.get(toVertex);
