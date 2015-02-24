@@ -147,16 +147,14 @@ public class AffinityGraph {
                         }
                         partitionVertices.get(partition).add(from);
                         vertexPartition.put(from, partition);
+                        
+                        Int2DoubleOpenHashMap adjacency = null;
 
-                        Int2DoubleOpenHashMap adjacency = m_edges.get(from);
-                        if(adjacency == null){
-                            synchronized(m_edges){
-                                // make sure someone did not add the element in the meanwhile
-                                adjacency = m_edges.get(from);
-                                if(adjacency == null){
-                                    adjacency = new Int2DoubleOpenHashMap ();
-                                    m_edges.put(from, adjacency);
-                                }
+                        synchronized(m_edges){
+                            adjacency = m_edges.get(from);
+                            if(adjacency == null){
+                                adjacency = new Int2DoubleOpenHashMap ();
+                                m_edges.put(from, adjacency);
                             }
                         }
 
