@@ -127,7 +127,11 @@ public class TwitterClient extends BenchmarkComponent {
         for (int i = 0; i < num_txns; i++) {
             this.callbacks[i] = new TwitterCallback(i);
         } // FOR
-        
+
+        TweetHistogram tweet_h = new TweetHistogram();
+        this.tweet_len_rng = new FlatHistogram<Integer>(this.rng, tweet_h);
+        this.clock = new Clock.RealTime();
+
         for (String key : m_extraParams.keySet()) {
             String value = m_extraParams.get(key);
 
@@ -153,9 +157,6 @@ public class TwitterClient extends BenchmarkComponent {
             throw new RuntimeException(ex);
         }
         
-        TweetHistogram tweet_h = new TweetHistogram();
-        this.tweet_len_rng = new FlatHistogram<Integer>(this.rng, tweet_h);
-        this.clock = new Clock.RealTime();
     }
     
     public static void main(String args[]) {
