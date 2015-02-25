@@ -1,7 +1,9 @@
 package com.oltpbenchmark.benchmarks.twitter;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 
@@ -9,6 +11,8 @@ import org.apache.log4j.Logger;
 
 import com.oltpbenchmark.benchmarks.twitter.util.NameHistogram;
 import com.oltpbenchmark.benchmarks.twitter.util.TweetHistogram;
+import com.oltpbenchmark.benchmarks.twitter.util.TwitterGraphEdge;
+import com.oltpbenchmark.benchmarks.twitter.util.TwitterGraphLoader;
 import com.oltpbenchmark.distributions.ScrambledZipfianGenerator;
 import com.oltpbenchmark.distributions.ZipfianGenerator;
 import com.oltpbenchmark.util.TextGenerator;
@@ -31,11 +35,32 @@ public class TwitterLoader extends Loader {
     private final int num_users;
     private final long num_tweets;
     private final int num_follows;
+    private HashSet<Integer> users;
     
     private final Random rng = new Random();
 
+    private TwitterGraphLoader graph_loader;
+    private boolean use_network_file;
+    
     public TwitterLoader(String args[]) {
         super(args);
+        
+        for (String key : m_extraParams.keySet()) {
+            String value = m_extraParams.get(key);
+
+            if  (key.equalsIgnoreCase("network_file")) {
+            	String filename = String.valueOf(value);
+            	use_network_file = true;
+            	try {
+            		graph_loader = new TwitterGraphLoader(filename);
+            	}
+            	catch(FileNotFoundException e) {
+            		throw new RuntimeException(e);
+            	}
+            }
+        }
+        
+        this.users = new HashSet<>();
         this.num_users = (int)Math.round(TwitterConstants.NUM_USERS * this.getScaleFactor());
         this.num_tweets = (int)Math.round(TwitterConstants.NUM_TWEETS * this.getScaleFactor());
         this.num_follows = (int)Math.round(TwitterConstants.MAX_FOLLOW_PER_USER * this.getScaleFactor());
@@ -52,6 +77,15 @@ public class TwitterLoader extends Loader {
      * @throws IOException
      */
     protected void loadUsers(Database catalog_db) throws IOException {
+    	if(this.use_network_file) {
+    		loadUsersGraph(catalog_db);
+    	}
+    	else {
+    		loadUsersDefault(catalog_db);
+    	}
+    }
+    
+    protected void loadUsersDefault(Database catalog_db) throws IOException {
         Table catalog_tbl = catalog_db.getTables().getIgnoreCase(TwitterConstants.TABLENAME_USER);
         assert(catalog_tbl != null);
         VoltTable vt = CatalogUtil.getVoltTable(catalog_tbl);
@@ -95,6 +129,56 @@ public class TwitterLoader extends Loader {
         
         if (LOG.isDebugEnabled()) LOG.debug(String.format("Users Loaded [%d]", total));
     }
+
+    protected void loadUsersGraph(Database catalog_db) throws IOException {
+    	if(users.size() == 0) {
+    		throw new RuntimeException("No users provided to loadUsersGraph()");
+    	}
+    	
+    	Table catalog_tbl = catalog_db.getTables().getIgnoreCase(TwitterConstants.TABLENAME_USER);
+        assert(catalog_tbl != null);
+        VoltTable vt = CatalogUtil.getVoltTable(catalog_tbl);
+        int num_cols = catalog_tbl.getColumns().size();
+            
+        NameHistogram name_h = new NameHistogram();
+        FlatHistogram<Integer> name_len_rng = new FlatHistogram<Integer>(this.rng, name_h);
+        
+        int total = 0;
+        int batchSize = 0;
+        
+        for (Integer user : this.users) {
+        	// Generate a random username for this user
+        	int name_length = name_len_rng.nextValue().intValue();
+            String name = TextGenerator.randomStr(rng, name_length);
+            
+            Object row[] = new Object[num_cols];
+            int param = 0;
+            row[param++] = user.intValue(); // ID
+            row[param++] = name; // NAME
+            row[param++] = name + "@tweeter.com"; // EMAIL
+            row[param++] = VoltType.NULL_INTEGER;
+            row[param++] = VoltType.NULL_TINYINT;
+            row[param++] = VoltType.NULL_INTEGER;
+            vt.addRow(row);
+            
+            batchSize++;
+            total++;
+            if ((batchSize % configCommitCount) == 0) {
+                this.loadVoltTable(catalog_tbl.getName(), vt);
+                vt.clearRowData();
+                batchSize = 0;
+                if (LOG.isDebugEnabled())
+                    LOG.debug(String.format("Users %d / %d", total, num_users));
+            }
+        } // FOR
+        if (batchSize > 0) {
+        	this.loadVoltTable(catalog_tbl.getName(), vt);
+            vt.clearRowData();
+        }
+        
+        if (LOG.isDebugEnabled()) LOG.debug(String.format("Users Loaded [%d]", total));
+    }
+
     
     /**
      * @author Djellel
@@ -159,6 +243,16 @@ public class TwitterLoader extends Loader {
      * @throws IOException
      */
     protected void loadFollowData(Database catalog_db) throws IOException {
+    	if(this.use_network_file) {
+    		loadFollowDataGraph(catalog_db);
+    	}
+    	else {
+    		loadFollowDataDefault(catalog_db);
+    	}
+    }
+
+
+    protected void loadFollowDataDefault(Database catalog_db) throws IOException {
         Table catalog_tbl_follows = catalog_db.getTables().getIgnoreCase(TwitterConstants.TABLENAME_FOLLOWS);
         assert(catalog_tbl_follows != null);
         VoltTable vt_follows = CatalogUtil.getVoltTable(catalog_tbl_follows);
@@ -222,11 +316,67 @@ public class TwitterLoader extends Loader {
         if (LOG.isDebugEnabled()) LOG.debug("[Follows Loaded] "+total);
     }
 
+    protected void loadFollowDataGraph(Database catalog_db) throws IOException {
+        Table catalog_tbl_follows = catalog_db.getTables().getIgnoreCase(TwitterConstants.TABLENAME_FOLLOWS);
+        assert(catalog_tbl_follows != null);
+        VoltTable vt_follows = CatalogUtil.getVoltTable(catalog_tbl_follows);
+        int num_cols_follows = catalog_tbl_follows.getColumns().size();
+        
+        Table catalog_tbl_followers = catalog_db.getTables().getIgnoreCase(TwitterConstants.TABLENAME_FOLLOWERS);
+        assert(catalog_tbl_followers != null);
+        VoltTable vt_followers = CatalogUtil.getVoltTable(catalog_tbl_followers);
+        int num_cols_followers = catalog_tbl_followers.getColumns().size();
+        
+        int total = 1;
+        int batchSize = 0;
+        
+        while(this.graph_loader.hasNext()) {
+        	TwitterGraphEdge e = this.graph_loader.readNextEdge();
+        	Object row_follows[] = new Object[num_cols_follows];
+        	int param = 0;
+        	row_follows[param++] = e.follower;
+        	row_follows[param++] = e.followee;
+        	vt_follows.addRow(row_follows);
+
+        	Object row_followers[] = new Object[num_cols_followers];
+        	param = 0;
+        	row_followers[param++] = e.followee;
+        	row_followers[param++] = e.follower;
+        	vt_followers.addRow(row_followers);
+        	
+        	users.add(e.followee);
+        	users.add(e.follower);
+
+        	total++;
+        	batchSize++;
+
+        	if ((batchSize % configCommitCount) == 0) {
+        		this.loadVoltTable(catalog_tbl_follows.getName(), vt_follows);
+        		this.loadVoltTable(catalog_tbl_followers.getName(), vt_followers);
+        		vt_follows.clearRowData();
+        		vt_followers.clearRowData();
+        		batchSize = 0;
+        		if (LOG.isDebugEnabled()) 
+        			LOG.debug("Follows  % " + (int)(((double)e.follower/(double)this.num_users)*100));
+        	}
+        }
+
+        if (batchSize > 0) {
+        	this.loadVoltTable(catalog_tbl_follows.getName(), vt_follows);
+        	this.loadVoltTable(catalog_tbl_followers.getName(), vt_followers);
+            vt_follows.clearRowData();
+            vt_followers.clearRowData();    
+        }
+        
+        if (LOG.isDebugEnabled()) LOG.debug("[Follows Loaded] "+total);
+    }
+
+    
     @Override
     public void load() throws IOException {
     	final CatalogContext catalogContext = this.getCatalogContext();
+        this.loadFollowData(catalogContext.database);
         this.loadUsers(catalogContext.database);
         this.loadTweets(catalogContext.database);
-        this.loadFollowData(catalogContext.database);
     }
 }
