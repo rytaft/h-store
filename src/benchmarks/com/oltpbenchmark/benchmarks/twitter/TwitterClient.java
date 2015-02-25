@@ -104,6 +104,7 @@ public class TwitterClient extends BenchmarkComponent {
     private final int num_users;
     private String tweets_file;
     private String users_file;
+    private long next_tweet_id;
     
     private Random rng = new Random();
     
@@ -131,6 +132,7 @@ public class TwitterClient extends BenchmarkComponent {
         TweetHistogram tweet_h = new TweetHistogram();
         this.tweet_len_rng = new FlatHistogram<Integer>(this.rng, tweet_h);
         this.clock = new Clock.RealTime();
+        this.next_tweet_id = this.getClientId() * 10000000l;
 
         for (String key : m_extraParams.keySet()) {
             String value = m_extraParams.get(key);
@@ -247,6 +249,7 @@ public class TwitterClient extends BenchmarkComponent {
             String text = TextGenerator.randomStr(this.rng, len);
             TimestampType time = clock.getDateTime();
         	params = new Object[]{
+        			this.next_tweet_id++,
         			t.uid,
         			text,
         			time
