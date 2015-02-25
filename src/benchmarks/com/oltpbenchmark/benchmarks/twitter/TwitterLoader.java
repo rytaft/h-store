@@ -32,7 +32,7 @@ public class TwitterLoader extends Loader {
 
     public final static int configCommitCount = 1000;
 
-    private final int num_users;
+    private int num_users;
     private final long num_tweets;
     private final int num_follows;
     private HashSet<Integer> users;
@@ -46,6 +46,10 @@ public class TwitterLoader extends Loader {
     public TwitterLoader(String args[]) {
         super(args);
         
+        this.num_users = (int)Math.round(TwitterConstants.NUM_USERS * this.getScaleFactor());
+        this.num_tweets = (int)Math.round(TwitterConstants.NUM_TWEETS * this.getScaleFactor());
+        this.num_follows = (int)Math.round(TwitterConstants.MAX_FOLLOW_PER_USER * this.getScaleFactor());
+
         for (String key : m_extraParams.keySet()) {
             String value = m_extraParams.get(key);
 
@@ -66,17 +70,17 @@ public class TwitterLoader extends Loader {
         
         if(use_network_file && max_user_id != -1) {
         	graph_loader.setMaxUserId(max_user_id);
+        	this.num_users = max_user_id;
         }
         
         this.users = new HashSet<>();
-        this.num_users = (int)Math.round(TwitterConstants.NUM_USERS * this.getScaleFactor());
-        this.num_tweets = (int)Math.round(TwitterConstants.NUM_TWEETS * this.getScaleFactor());
-        this.num_follows = (int)Math.round(TwitterConstants.MAX_FOLLOW_PER_USER * this.getScaleFactor());
+        
         if (LOG.isDebugEnabled()) {
             LOG.debug("# of USERS:  " + this.num_users);
             LOG.debug("# of TWEETS: " + this.num_tweets);
             LOG.debug("# of FOLLOWS: " + this.num_follows);
         }
+
     }
     
     /**

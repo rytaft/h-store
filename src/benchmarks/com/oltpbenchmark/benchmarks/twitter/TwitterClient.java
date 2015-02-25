@@ -101,9 +101,11 @@ public class TwitterClient extends BenchmarkComponent {
     private TransactionGenerator<TwitterOperation> generator;
 
     private final FlatHistogram<Integer> tweet_len_rng;
-    private final int num_users;
+    private int num_users;
+    private final long num_tweets;
     private String tweets_file;
     private String users_file;
+    private boolean use_trace_files;
     private long next_tweet_id;
     
     private Random rng = new Random();
@@ -133,6 +135,9 @@ public class TwitterClient extends BenchmarkComponent {
         this.tweet_len_rng = new FlatHistogram<Integer>(this.rng, tweet_h);
         this.clock = new Clock.RealTime();
         this.next_tweet_id = this.getClientId() * 10000000l;
+        this.num_users = (int)Math.round(TwitterConstants.NUM_USERS * this.getScaleFactor());
+        this.num_tweets = (int)Math.round(TwitterConstants.NUM_TWEETS * this.getScaleFactor());
+
 
         for (String key : m_extraParams.keySet()) {
             String value = m_extraParams.get(key);
@@ -143,20 +148,29 @@ public class TwitterClient extends BenchmarkComponent {
             else if  (key.equalsIgnoreCase("users_file")) {
                 users_file = String.valueOf(value);
             }
+            else if  (key.equalsIgnoreCase("max_user_id")) {
+            	this.num_users = Integer.valueOf(value);
+            }
         }
         
-        try {
-        	TransactionSelector transSel = new TransactionSelector(
-        		tweets_file, 
-        		users_file);
-        	List<TwitterOperation> trace = Collections.unmodifiableList(transSel.readAll());
-        	transSel.close();
+        if(!tweets_file.isEmpty() && !users_file.isEmpty()) {
+        	use_trace_files = true;
+        }
+        
+        if(use_trace_files) {
+        	try {
+        		TransactionSelector transSel = new TransactionSelector(
+        				tweets_file, 
+        				users_file);
+        		List<TwitterOperation> trace = Collections.unmodifiableList(transSel.readAll());
+        		transSel.close();
 
-        	this.generator = new TraceTransactionGenerator(trace);
-        	this.num_users = (int)Math.round(TwitterConstants.NUM_USERS * this.getScaleFactor());
-    	}
-        catch(Exception ex) {
-            throw new RuntimeException(ex);
+        		this.generator = new TraceTransactionGenerator(trace);
+
+        	}
+        	catch(Exception ex) {
+        		throw new RuntimeException(ex);
+        	}
         }
         
     }
@@ -219,29 +233,34 @@ public class TwitterClient extends BenchmarkComponent {
     }
 
     protected Object[] generateParams(Transaction txn) {
-    	TwitterOperation t = generator.nextTransaction();
-        t.uid = this.rng.nextInt(this.num_users); // HACK
+    	int uid = this.rng.nextInt(this.num_users);
+		long tweetid = this.rng.nextLong() % this.num_tweets;
+    	if(use_trace_files) {
+    		TwitterOperation t = generator.nextTransaction();
+    		//uid = t.uid;
+    		tweetid = t.tweetid;
+    	}
         
         Object params[] = null;
         switch (txn) {
         case GET_TWEET:
         	params = new Object[]{
-        			t.tweetid
+        			tweetid
         	};
         	break;
         case GET_TWEETS_FROM_FOLLOWING:
         	params = new Object[]{
-        			t.uid
+        			uid
             };
             break;
         case GET_FOLLOWERS:
         	params = new Object[]{
-        			t.uid
+        			uid
             };
             break;
         case GET_USER_TWEETS:
         	params = new Object[]{
-        			t.uid
+        			uid
             };
             break;
         case INSERT_TWEET:
@@ -250,7 +269,7 @@ public class TwitterClient extends BenchmarkComponent {
             TimestampType time = clock.getDateTime();
         	params = new Object[]{
         			this.next_tweet_id++,
-        			t.uid,
+        			uid,
         			text,
         			time
             };
