@@ -36,6 +36,8 @@ public class TwitterGraphLoader {
 	Random r = null;
 	static final double READ_WRITE_RATIO = 11.8; // from
 													// http://www.globule.org/publi/WWADH_comnet2009.html
+	int max_user_id = Integer.MAX_VALUE;
+	int last_followee = -1;
 
 	public TwitterGraphLoader(String filename) throws FileNotFoundException {
 		r = new Random();
@@ -56,18 +58,26 @@ public class TwitterGraphLoader {
 	
 	}
 
-	public synchronized TwitterGraphEdge nextEdge() throws IOException {
-		if (dis.available() == 0)
-			dis.reset();
-
-		return readNextEdge();
+	public void setMaxUserId(int max_user_id) {
+		this.max_user_id = max_user_id;
 	}
-
+	
+	// Important: assumes that file is sorted by followee, follower
 	public TwitterGraphEdge readNextEdge() throws IOException {
-		String line = dis.readLine();
-		String[] sa = line.split("\\s+");
-		int followee = Integer.parseInt(sa[0]);
-		int follower = Integer.parseInt(sa[1]);
+		int followee = Integer.MAX_VALUE;
+		int follower = Integer.MAX_VALUE;
+
+		while(follower > max_user_id) {
+			String line = dis.readLine();
+			String[] sa = line.split("\\s+");
+			followee = Integer.parseInt(sa[0]);
+			follower = Integer.parseInt(sa[1]);
+		}
+		
+		this.last_followee = followee;
+		if(followee > max_user_id) {
+			return null;
+		}
 		
 		return new TwitterGraphEdge(follower,followee);
 	}
@@ -83,7 +93,7 @@ public class TwitterGraphLoader {
 	}
 	
 	public boolean hasNext() throws IOException {
-		return dis.available() > 0;
+		return dis.available() > 0 && last_followee <= max_user_id;
 	}
 
 	public void close() throws IOException {

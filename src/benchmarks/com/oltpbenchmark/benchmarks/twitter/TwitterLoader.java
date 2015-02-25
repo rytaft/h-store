@@ -41,6 +41,7 @@ public class TwitterLoader extends Loader {
 
     private TwitterGraphLoader graph_loader;
     private boolean use_network_file;
+    private int max_user_id = -1;
     
     public TwitterLoader(String args[]) {
         super(args);
@@ -58,6 +59,13 @@ public class TwitterLoader extends Loader {
             		throw new RuntimeException(e);
             	}
             }
+            else if  (key.equalsIgnoreCase("max_user_id")) {
+            	max_user_id = Integer.valueOf(value);
+            }
+        }
+        
+        if(use_network_file && max_user_id != -1) {
+        	graph_loader.setMaxUserId(max_user_id);
         }
         
         this.users = new HashSet<>();
@@ -332,6 +340,7 @@ public class TwitterLoader extends Loader {
         
         while(this.graph_loader.hasNext()) {
         	TwitterGraphEdge e = this.graph_loader.readNextEdge();
+        	if(e == null) break;
         	Object row_follows[] = new Object[num_cols_follows];
         	int param = 0;
         	row_follows[param++] = e.follower;
