@@ -63,7 +63,7 @@ public class TwitterLoader extends Loader {
         int total = 0;
         int batchSize = 0;
         
-        for (int i = 0; i <= this.num_users; i++) {
+        for (int i = 0; i < this.num_users; i++) {
         	// Generate a random username for this user
         	int name_length = name_len_rng.nextValue().intValue();
             String name = TextGenerator.randomStr(rng, name_length);
