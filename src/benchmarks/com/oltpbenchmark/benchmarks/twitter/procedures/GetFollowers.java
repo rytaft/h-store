@@ -29,9 +29,9 @@ public class GetFollowers extends VoltProcedure {
     	voltQueueSQL(getFollowers, uid);
     	VoltTable result[] = voltExecuteSQL();
         
-        int num_params = Math.min(result[1].getRowCount(), TwitterConstants.LIMIT_FOLLOWERS);
+        int num_params = Math.min(result[0].getRowCount(), TwitterConstants.LIMIT_FOLLOWERS);
         for(int i = 0; i < num_params; ++i) {
-        	voltQueueSQL(getFollowerName, result[1].fetchRow(i).getLong(0));
+        	voltQueueSQL(getFollowerName, result[0].fetchRow(i).getLong(0));
         }
         
         if (num_params > 0) {
