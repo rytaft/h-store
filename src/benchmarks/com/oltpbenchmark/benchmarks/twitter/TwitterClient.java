@@ -153,7 +153,7 @@ public class TwitterClient extends BenchmarkComponent {
             }
         }
         
-        if(!tweets_file.isEmpty() && !users_file.isEmpty()) {
+        if(tweets_file != null && users_file != null && !tweets_file.isEmpty() && !users_file.isEmpty()) {
         	use_trace_files = true;
         }
         
