@@ -1,0 +1,25 @@
+{
+  "partition_plan": {
+    "tables": {
+      "user_profiles": {
+        "partitions": {
+          "0": "0-250", 
+          "1": "250-500"
+        }
+      },
+      "followers": {
+        "partitions": {
+          "0": "0-250", 
+          "1": "250-500"
+        }
+      },
+      "follows": {
+        "partitions": {
+          "0": "0-250", 
+          "1": "250-500"
+        }
+      }
+    }
+  }, 
+  "default_table": "user_profiles"
+}

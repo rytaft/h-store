@@ -352,7 +352,7 @@ class AbstractFabric(object):
                     if len(affinityEvents) > 1:
                       raise NotImplementedError()
                     affinity = affinityEvents[0]
-                    affinity_cmd = "-Dproc=@Affinity -Dproc_start_time=%d" % (affinity['delayTimeMS'])
+                    affinity_cmd = "-Dproc=@Affinity -Dproc_start_time=%d -Delastic.run_monitoring=true -Delastic.update_plan=true -Delastic.exec_reconf=true -Delastic.max_tuples_move=10000" % (affinity['delayTimeMS'])
                 cmd = "ant %s hstore-benchmark %s %s %s" % (prefix, hstore_opts_cmd, reconfig_cmd, affinity_cmd)
                 output = run(cmd)
                 
