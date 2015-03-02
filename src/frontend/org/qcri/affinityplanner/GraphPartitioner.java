@@ -289,14 +289,18 @@ public class GraphPartitioner extends Partitioner {
         if (movingVertices.isEmpty()){
             // if empty, add a new hot vertex
             assert (nextPosToMove < verticesToMove.size()); // If all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here 
-            int nextHotVertex = 0;
+            int nextVertexToMove = -1;
             do{
-                nextHotVertex = verticesToMove.get(nextPosToMove);
+                nextVertexToMove = verticesToMove.get(nextPosToMove);
                 nextPosToMove++;
-            } while (m_graph.m_vertexPartition.get(nextHotVertex) != partition);
-            assert (nextHotVertex != 0); // If all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
-            LOG.debug("Adding hot vertex " + nextHotVertex);
-            movingVertices.add(nextHotVertex);
+            } while (nextPosToMove < verticesToMove.size() && AffinityGraph.m_vertexPartition.get(nextVertexToMove) != partition);
+            // the second condition is for the case where the vertex has been moved already 
+//            assert (nextHotVertex != 0); // If all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
+            if (nextPosToMove == verticesToMove.size()){
+                return -1;
+            }
+            LOG.debug("Adding hot vertex " + nextVertexToMove);
+            movingVertices.add(nextVertexToMove);
         } // END if(movedVertices.isEmpty())
 
         else{
@@ -371,15 +375,15 @@ public class GraphPartitioner extends Partitioner {
 
         double maxAdjacency = -1;
         int res = 0;
-        int partition = m_graph.m_vertexPartition.get(vertices.iterator().next());
+        int partition = AffinityGraph.m_vertexPartition.get(vertices.iterator().next());
  
         for(int vertex : vertices){
-            Int2DoubleMap adjacency = m_graph.m_edges.get(vertex);
+            Int2DoubleMap adjacency = AffinityGraph.m_edges.get(vertex);
             if(adjacency != null){
 
                 for(Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
                     if (edge.getDoubleValue() > maxAdjacency
-                            && m_graph.m_vertexPartition.get(edge.getIntKey()) == partition
+                            && AffinityGraph.m_vertexPartition.get(edge.getIntKey()) == partition
                             && !vertices.contains(edge.getIntKey())) {
                         maxAdjacency = edge.getDoubleValue();
                         res = edge.getIntKey();
@@ -396,15 +400,15 @@ public class GraphPartitioner extends Partitioner {
         double load = 0;
         for(int vertex : vertices){
             // local accesses
-            load += m_graph.m_vertices.get(vertex);
+            load += AffinityGraph.m_vertices.get(vertex);
             // remote accesses
-            int fromVertexPartition = m_graph.m_vertexPartition.get(vertex);
+            int fromVertexPartition = AffinityGraph.m_vertexPartition.get(vertex);
             int fromVertexSite = PlanHandler.getSitePartition(fromVertexPartition);
-            Int2DoubleMap adjacencyList = m_graph.m_edges.get(vertex);
+            Int2DoubleMap adjacencyList = AffinityGraph.m_edges.get(vertex);
             if(adjacencyList != null){
                 for(Int2DoubleMap.Entry edge : adjacencyList.int2DoubleEntrySet()){
                     int toVertex = edge.getIntKey();
-                    int toVertexPartition = m_graph.m_vertexPartition.get(toVertex);
+                    int toVertexPartition = AffinityGraph.m_vertexPartition.get(toVertex);
                     int toVertexSite = PlanHandler.getSitePartition(toVertexPartition);
                     if(toVertexSite != fromVertexSite){
                         load += edge.getDoubleValue() * DTXN_COST;
@@ -420,7 +424,7 @@ public class GraphPartitioner extends Partitioner {
 
     @Override
     public double getLoadPerPartition(int partition){
-        return getLoadInCurrPartition(m_graph.m_partitionVertices.get(partition));
+        return getLoadInCurrPartition(AffinityGraph.m_partitionVertices.get(partition));
     }
 
     @Override
@@ -431,17 +435,17 @@ public class GraphPartitioner extends Partitioner {
             return 0;
         }
         double delta = 0;
-        int fromPartition = m_graph.m_vertexPartition.get(movedVertices.iterator().next());
+        int fromPartition = AffinityGraph.m_vertexPartition.get(movedVertices.iterator().next());
 
         for(int vertex : movedVertices){ 
             //            LOG.debug("REMOVE delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
-            double vertexWeight = m_graph.m_vertices.get(vertex);
-            if (vertexWeight == m_graph.m_vertices.defaultReturnValue()){
+            double vertexWeight = AffinityGraph.m_vertices.get(vertex);
+            if (vertexWeight == AffinityGraph.m_vertices.defaultReturnValue()){
                 LOG.debug("Cannot include external node for delta computation");
                 throw new IllegalStateException("Cannot include external node for delta computation");
             }
 
-            Int2DoubleOpenHashMap adjacency = m_graph.m_edges.get(vertex);
+            Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(vertex);
             if(adjacency != null){
                 double outPull = 0;
                 double inPull = 0;
@@ -452,7 +456,7 @@ public class GraphPartitioner extends Partitioner {
 
                     // edges to vertices that are moved together do not contribute to in- or out-pull
                     if(!movedVertices.contains(toVertex)){
-                        int toPartition = m_graph.m_vertexPartition.get(toVertex); 
+                        int toPartition = AffinityGraph.m_vertexPartition.get(toVertex); 
                         if(toPartition == fromPartition){
                             // edge to local vertex which will not be moved out
                             //                        LOG.debug("Add weight to inpull: edge to local vertex which will not be moved out");
@@ -496,7 +500,7 @@ public class GraphPartitioner extends Partitioner {
     protected void updateAttractions (Int2DoubleMap adjacency, double[] attractions){
         for (int toVertex : adjacency.keySet()){
             
-            int other_partition = m_graph.m_vertexPartition.get(toVertex);
+            int other_partition = AffinityGraph.m_vertexPartition.get(toVertex);
             double edge_weight = adjacency.get(toVertex);
             attractions[other_partition] += edge_weight;
         } // END for (String toVertex : adjacency.keySet())
