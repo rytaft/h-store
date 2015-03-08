@@ -64,7 +64,7 @@ public class GraphTransactionGenerator {
 
 			ObjectHistogram<Long> followersCounts = new ObjectHistogram<Long>(); 
 			for(int i = 0; i < result[0].getRowCount(); ++i) {
-				long weight = (long) Math.ceil(Math.log10(result[0].fetchRow(i).getLong(1)));
+				long weight = (long) Math.ceil(Math.log(result[0].fetchRow(i).getLong(1))) + 1;
 				followersCounts.put(result[0].fetchRow(i).getLong(0), weight);
 			}
 
@@ -77,7 +77,7 @@ public class GraphTransactionGenerator {
 			
 			ObjectHistogram<Long> followingCounts = new ObjectHistogram<Long>(); 
 			for(int i = 0; i < result[0].getRowCount(); ++i) {
-				long weight = (long) Math.ceil(Math.log10(result[0].fetchRow(i).getLong(1)));
+				long weight = (long) Math.ceil(Math.log(result[0].fetchRow(i).getLong(1))) + 1;
 				followingCounts.put(result[0].fetchRow(i).getLong(0), weight);
 			}
 
