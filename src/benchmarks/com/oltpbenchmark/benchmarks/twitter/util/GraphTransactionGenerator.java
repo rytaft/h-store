@@ -25,6 +25,8 @@ import java.util.Random;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
+import org.voltdb.client.Client;
+import org.voltdb.client.ClientResponse;
 import org.voltdb.types.TimestampType;
 
 import com.oltpbenchmark.api.TransactionGenerator;
@@ -36,59 +38,54 @@ import com.oltpbenchmark.util.TextGenerator;
 import edu.brown.rand.RandomDistribution.FlatHistogram;
 import edu.brown.statistics.ObjectHistogram;
 
-public class GraphTransactionGenerator extends VoltProcedure {
+public class GraphTransactionGenerator {
 	private final FlatHistogram<Long> followersWeights;
 	private final FlatHistogram<Long> followingWeights;
 	private Random rng = new Random();
 	private final long num_users;
     private final long num_tweets;
-    
-	
-    public final SQLStmt getFollowersCount = new SQLStmt(
-            "SELECT f1, count(*) FROM " + TwitterConstants.TABLENAME_FOLLOWERS +
-    		" GROUP BY f1"
-        );
-    
-    public final SQLStmt getFollowingCount = new SQLStmt(
-            "SELECT f1, count(*) FROM " + TwitterConstants.TABLENAME_FOLLOWS +
-            " GROUP BY f1"
-        );
+    private Client client;
+
 	
 	/**
 	 * @param transactions
 	 *            a list of transactions shared between threads.
 	 */
-	public GraphTransactionGenerator(long num_users, long num_tweets) {
+	public GraphTransactionGenerator(long num_users, long num_tweets, Client client) {
 		this.num_users = num_users;
 		this.num_tweets = num_tweets;
+		this.client = client;
 		
-		///////////////
-		// Followers //
-		///////////////
-		voltQueueSQL(getFollowersCount);
-    	VoltTable result[] = voltExecuteSQL();
-    	
-    	ObjectHistogram<Long> followersCounts = new ObjectHistogram<Long>(); 
-    	for(int i = 0; i < result[0].getRowCount(); ++i) {
-    		long weight = (long) Math.ceil(Math.log10(result[0].fetchRow(i).getLong(1)));
-    		followersCounts.put(result[0].fetchRow(i).getLong(0), weight);
-        }
-    	
-    	this.followersWeights = new FlatHistogram<Long>(this.rng, followersCounts);
-    	
-    	///////////////
-    	// Following //
-    	///////////////
-    	voltQueueSQL(getFollowingCount);
-    	result = voltExecuteSQL();
-    	
-    	ObjectHistogram<Long> followingCounts = new ObjectHistogram<Long>(); 
-    	for(int i = 0; i < result[0].getRowCount(); ++i) {
-    		long weight = (long) Math.ceil(Math.log10(result[0].fetchRow(i).getLong(1)));
-    		followingCounts.put(result[0].fetchRow(i).getLong(0), weight);
-        }
-    	
-    	this.followingWeights = new FlatHistogram<Long>(this.rng, followingCounts);
+		try {
+			///////////////
+			// Followers //
+			///////////////
+			VoltTable[] result = this.client.callProcedure("GetFollowersCount").getResults();
+
+			ObjectHistogram<Long> followersCounts = new ObjectHistogram<Long>(); 
+			for(int i = 0; i < result[0].getRowCount(); ++i) {
+				long weight = (long) Math.ceil(Math.log10(result[0].fetchRow(i).getLong(1)));
+				followersCounts.put(result[0].fetchRow(i).getLong(0), weight);
+			}
+
+			this.followersWeights = new FlatHistogram<Long>(this.rng, followersCounts);
+
+			///////////////
+			// Following //
+			///////////////
+			result = this.client.callProcedure("GetFollowingCount").getResults();
+			
+			ObjectHistogram<Long> followingCounts = new ObjectHistogram<Long>(); 
+			for(int i = 0; i < result[0].getRowCount(); ++i) {
+				long weight = (long) Math.ceil(Math.log10(result[0].fetchRow(i).getLong(1)));
+				followingCounts.put(result[0].fetchRow(i).getLong(0), weight);
+			}
+
+			this.followingWeights = new FlatHistogram<Long>(this.rng, followingCounts);
+		}
+		catch(Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	public TwitterOperation nextTransaction(Transaction txn) {

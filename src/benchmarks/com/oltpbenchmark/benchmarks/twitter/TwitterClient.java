@@ -180,7 +180,8 @@ public class TwitterClient extends BenchmarkComponent {
         	}
         }
         else {
-        	this.graph_txn_gen = new GraphTransactionGenerator(this.num_users, this.num_tweets);
+        	this.graph_txn_gen = new GraphTransactionGenerator(this.num_users, this.num_tweets,
+        			this.getClientHandle());
         }
         
     }
