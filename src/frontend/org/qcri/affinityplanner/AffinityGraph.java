@@ -140,8 +140,8 @@ public class AffinityGraph {
                         partition = m_plan_handler.getPartition(fromName);
                         
                         if (partition == HStoreConstants.NULL_PARTITION_ID){
-                            LOG.info("Exiting graph loading. Could not find partition for key " + from);
-                            System.out.println("Exiting graph loading. Could not find partition for key " + from);
+                            LOG.info("Exiting graph loading. Could not find partition for key " + m_vertex_to_name.get(from));
+                            System.out.println("Exiting graph loading. Could not find partition for key " + m_vertex_to_name.get(from));
                             throw new Exception();                            
                         }
                         partitionVertices.get(partition).add(from);
