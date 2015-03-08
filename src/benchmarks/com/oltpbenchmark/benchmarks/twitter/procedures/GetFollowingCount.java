@@ -18,7 +18,7 @@ public class GetFollowingCount extends VoltProcedure {
             " GROUP BY f1"
         );
     
-    public VoltTable[] run(long uid) {
+    public VoltTable[] run() {
     	voltQueueSQL(getFollowingCount);
     	return voltExecuteSQL(true);
     }
