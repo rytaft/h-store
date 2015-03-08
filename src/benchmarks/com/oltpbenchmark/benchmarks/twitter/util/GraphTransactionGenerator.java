@@ -19,21 +19,11 @@
  ******************************************************************************/
 package com.oltpbenchmark.benchmarks.twitter.util;
 
-import java.util.List;
 import java.util.Random;
 
-import org.voltdb.SQLStmt;
-import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.client.Client;
-import org.voltdb.client.ClientResponse;
-import org.voltdb.types.TimestampType;
-
-import com.oltpbenchmark.api.TransactionGenerator;
-import com.oltpbenchmark.benchmarks.twitter.TwitterConstants;
 import com.oltpbenchmark.benchmarks.twitter.TwitterClient.Transaction;
-import com.oltpbenchmark.distributions.CounterGenerator;
-import com.oltpbenchmark.util.TextGenerator;
 
 import edu.brown.rand.RandomDistribution.FlatHistogram;
 import edu.brown.statistics.ObjectHistogram;
