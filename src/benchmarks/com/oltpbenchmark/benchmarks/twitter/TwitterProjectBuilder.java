@@ -23,7 +23,10 @@ import org.voltdb.VoltProcedure;
 
 import edu.brown.benchmark.AbstractProjectBuilder;
 import edu.brown.api.BenchmarkComponent;
+
 import com.oltpbenchmark.benchmarks.twitter.procedures.GetFollowers;
+import com.oltpbenchmark.benchmarks.twitter.procedures.GetFollowersCount;
+import com.oltpbenchmark.benchmarks.twitter.procedures.GetFollowingCount;
 import com.oltpbenchmark.benchmarks.twitter.procedures.GetTweet;
 import com.oltpbenchmark.benchmarks.twitter.procedures.GetTweetsFromFollowing;
 import com.oltpbenchmark.benchmarks.twitter.procedures.GetUserTweets;
@@ -41,6 +44,8 @@ public class TwitterProjectBuilder extends AbstractProjectBuilder {
     @SuppressWarnings("unchecked")
     public static final Class<? extends VoltProcedure> PROCEDURES[] = (Class<? extends VoltProcedure>[])new Class<?>[] {
         GetFollowers.class,
+        GetFollowersCount.class,
+        GetFollowingCount.class,
         GetTweet.class,
         GetTweetsFromFollowing.class,
         GetUserTweets.class,
