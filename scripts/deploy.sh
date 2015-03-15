@@ -19,6 +19,13 @@ do
 			echo "$?"
 			exit 1
 		fi
+		scp properties/benchmarks/* $s:/localdisk/mserafini/h-store/properties/benchmarks > /dev/null
+		if [[ $? -ne 0 ]]
+		then
+			echo "Failed copying property files $s"
+			echo "$?"
+			exit 1
+		fi
 		if [[ "$1" != "config" ]]  
 		then
 			rm -rf $s:/localdisk/mserafini/h-store/obj/release/* > /dev/null
