@@ -48,25 +48,7 @@ public abstract class Partitioner {
     protected AffinityGraph m_graph;
 
     public abstract boolean repartition ();
-    
-    /**
-     * Adds active partitions (i.e., non-empty) and overloaded partitions to the input sets
-     * 
-     * @param activePartitions
-     * @param overloadedPartitions
-     */
-    protected void scanPartitions(IntSet activePartitions, IntSet overloadedPartitions){
-        for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
-            if(!m_graph.m_partitionVertices.get(i).isEmpty()){
-                activePartitions.add(i);
-                System.out.println(getLoadPerPartition(i));
-                if (getLoadPerPartition(i) > MAX_LOAD_PER_PART){
-                    overloadedPartitions.add(i);
-                }
-            }
-        }
-    }
-    
+        
     /**
      * computes load of a set of vertices in the current partition. this is different from the weight of a vertex because it considers
      * both direct accesses of the vertex and the cost of remote accesses
@@ -85,13 +67,13 @@ public abstract class Partitioner {
         IntList res = new IntArrayList (k);
         final Int2DoubleMap hotnessMap = new Int2DoubleOpenHashMap (k);
 
-        k = Math.min(k, m_graph.m_partitionVertices.get(partition).size());
+        k = Math.min(k, AffinityGraph.m_partitionVertices.get(partition).size());
         int lowestPos = 0;
         double lowestLoad = Double.MAX_VALUE;
         
         IntSet singleton = new IntOpenHashSet(1);
 
-        for(int vertex : m_graph.m_partitionVertices.get(partition)){
+        for(int vertex : AffinityGraph.m_partitionVertices.get(partition)){
 
             singleton.clear();
             singleton.add(vertex);
@@ -192,7 +174,8 @@ public abstract class Partitioner {
 
         // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
         if(deltaFromPartition <= MIN_GAIN_MOVE * -1
-                && getLoadPerPartition(toPartition) + deltaToPartition < MAX_LOAD_PER_PART){   // if gainToSite is negative, the load of the receiving site grows
+                && (deltaToPartition < 0
+                        || getLoadPerPartition(toPartition) + deltaToPartition < MAX_LOAD_PER_PART)){   // if gainToSite is negative, the load of the receiving site grows
             //            LOG.debug("Moving to partition " + toPartition);
             //            LOG.debug("Weights before moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
 
@@ -200,6 +183,7 @@ public abstract class Partitioner {
             //            LOG.debug("Weights after moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
 
             numMovedVertices = movingVertices.size();
+            System.out.println("Moving " + numMovedVertices + " vertices from partition " + fromPartition + " to partition " + toPartition + " for a from-gain of " + deltaFromPartition + " and a to-gain " + deltaToPartition);
         }
         return numMovedVertices;
     }
@@ -215,7 +199,7 @@ public abstract class Partitioner {
      */
     protected List<IntList> getBorderVertices (int this_partition, int k){
 
-        k = Math.min(k, m_graph.m_partitionVertices.get(this_partition).size());
+        k = Math.min(k, AffinityGraph.m_partitionVertices.get(this_partition).size());
 
         List<IntList> res = new ArrayList<IntList>(Controller.MAX_PARTITIONS);
 
@@ -230,12 +214,12 @@ public abstract class Partitioner {
         double[] lowest_attraction = new double[Controller.MAX_PARTITIONS];
 
 
-        for(int from_vertex : m_graph.m_partitionVertices.get(this_partition)){
+        for(int from_vertex : AffinityGraph.m_partitionVertices.get(this_partition)){
 
             // compute attractions
             double[] curr_attractions = new double[Controller.MAX_PARTITIONS];
 
-            Int2DoubleMap adjacency = m_graph.m_edges.get(from_vertex);
+            Int2DoubleMap adjacency = AffinityGraph.m_edges.get(from_vertex);
             if (adjacency != null){
                 
                 updateAttractions(adjacency, curr_attractions);
@@ -377,11 +361,15 @@ public abstract class Partitioner {
             int underloadedPartition = descending.next();
             System.out.println("Offloading partition " + underloadedPartition);
             IntOpenHashSet movingVertices = new IntOpenHashSet();
-            movingVertices.addAll(m_graph.m_partitionVertices.get(underloadedPartition));
+            movingVertices.addAll(AffinityGraph.m_partitionVertices.get(underloadedPartition));
 
             // try to offload to remote partitions
             IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(underloadedPartition));
             for(int toPartition : activePartitions){
+                
+                if(underloadedPartition == toPartition){
+                    continue;
+                }
 
                 if(!localPartitions.contains(toPartition) && !removedPartitions.contains(toPartition)){
 

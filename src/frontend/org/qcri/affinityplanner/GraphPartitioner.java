@@ -44,24 +44,47 @@ public class GraphPartitioner extends Partitioner {
             return false;
         }
 
-        System.out.println("Loads per partition before reconfiguration");
-
         // detect overloaded and active partitions
         IntSet activePartitions = new IntOpenHashSet();
-        IntSet overloadedPartitions = new IntOpenHashSet();
-        scanPartitions(activePartitions, overloadedPartitions);
+
+        System.out.println("Load per partition before reconfiguration");
+        for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+            if(!AffinityGraph.m_partitionVertices.get(i).isEmpty()){
+                activePartitions.add(i);
+                System.out.println(getLoadPerPartition(i));
+            }
+        }
 
         /*
          * MOVE BORDER TUPLES
          */
+        
+        System.out.println("Move border tuples");
 
         offloadBorderTuples(activePartitions);
+
+        // find overloaded partitions
+        
+        IntSet overloadedPartitions = new IntOpenHashSet();
+        
+        System.out.println("Load per partition after moving border tuples");
+        for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+            if(activePartitions.contains(i)){
+                double load =  getLoadPerPartition(i);
+                System.out.println(load);
+                if (load > MAX_LOAD_PER_PART){
+                    overloadedPartitions.add(i);
+                }
+            }
+        }
 
         if (! overloadedPartitions.isEmpty()){
 
             /*
              *  SCALE OUT
              */
+
+            System.out.println("Move overloaded tuples");
 
             return offloadHottestTuples(overloadedPartitions, activePartitions);
         }
@@ -89,6 +112,10 @@ public class GraphPartitioner extends Partitioner {
             IntSet movedVerticesSet = new IntOpenHashSet ();
 
             for (int to_part : activePartitions){
+                
+                if (from_part == to_part){
+                    continue;
+                }
 
                 LOG.debug("Moving FROM partition " + from_part + " TO partition " + to_part);
 
@@ -109,7 +136,8 @@ public class GraphPartitioner extends Partitioner {
                 int lastHotVertexMoved = -1;
                 int retryCount = 1;
 
-                while(numMovedVertices + movingVertices.size() < actualMaxMovedVertices && nextPosToMove < borderVertices.size()){
+                while(numMovedVertices + movingVertices.size() < actualMaxMovedVertices 
+                        && nextPosToMove < borderVertices.size()){
 
                     // 2) expand the tuple with the most affine tuples such that adding these tuples reduces the cost after movement
 
@@ -238,6 +266,10 @@ public class GraphPartitioner extends Partitioner {
                 IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(overloadedPartition));
 
                 for(int toPartition : localPartitions){
+                    
+                    if(overloadedPartition == toPartition){
+                        continue;
+                    }
 
                     LOG.debug("Trying with partition " + toPartition);
                     int movedVertices = tryMoveVertices(movingVertices, overloadedPartition, toPartition);

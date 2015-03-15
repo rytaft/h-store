@@ -27,11 +27,13 @@ public class SimplePartitioner extends Partitioner {
     @Override
     public boolean repartition() {
 
-        // detect overloaded and active partitions
         IntSet activePartitions = new IntOpenHashSet();
-        IntSet overloadedPartitions = new IntOpenHashSet();
-        
-        scanPartitions(activePartitions, overloadedPartitions);
+
+        for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+            if(!AffinityGraph.m_partitionVertices.get(i).isEmpty()){
+                activePartitions.add(i);
+            }
+        }
         
         IntSet singleton = new IntOpenHashSet(1);
 
@@ -49,6 +51,19 @@ public class SimplePartitioner extends Partitioner {
                         singleton.add(vertex);
                         tryMoveVertices(singleton, fromPart, toPart);
                     }
+                }
+            }
+        }
+        
+        // offload overloaded partitions
+        
+        IntSet overloadedPartitions = new IntOpenHashSet();
+        
+        for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+            if(activePartitions.contains(i)){
+                System.out.println(getLoadPerPartition(i));
+                if (getLoadPerPartition(i) > MAX_LOAD_PER_PART){
+                    overloadedPartitions.add(i);
                 }
             }
         }
