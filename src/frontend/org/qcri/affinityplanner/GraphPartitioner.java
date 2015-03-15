@@ -301,6 +301,9 @@ public class GraphPartitioner extends Partitioner {
             }
             LOG.debug("Adding hot vertex " + nextVertexToMove);
             movingVertices.add(nextVertexToMove);
+            if(nextVertexToMove == 0){
+                throw new Error();
+            }
         } // END if(movedVertices.isEmpty())
 
         else{
@@ -308,7 +311,7 @@ public class GraphPartitioner extends Partitioner {
             // extend current moved set
 
             // assess gain with extension
-            double deltaEdgeExtension = Double.MIN_VALUE;                        
+            double deltaEdgeExtension = Double.MAX_VALUE;                        
 
             int nextEdgeExtension = getMostAffineExtension(movingVertices);
             if(nextEdgeExtension != 0){
@@ -318,7 +321,7 @@ public class GraphPartitioner extends Partitioner {
             }
 
             // assess gain with next hot tuple. may need to skip a few hot tuples that are already included in hottestVerticesToMove. 
-            double deltaHotTuple = Double.MIN_VALUE;
+            double deltaHotTuple = Double.MAX_VALUE;
 
             int nextVertexToMove = 0;
             int skip = 0;
@@ -339,7 +342,7 @@ public class GraphPartitioner extends Partitioner {
             }
 
             // pick best available choice
-            if(deltaEdgeExtension == Double.MIN_VALUE && deltaHotTuple == Double.MIN_VALUE){
+            if(deltaEdgeExtension == Double.MAX_VALUE && deltaHotTuple == Double.MAX_VALUE){
                 // no choice available
                 return -1;
             }
@@ -352,6 +355,9 @@ public class GraphPartitioner extends Partitioner {
                     movingVertices.add(nextVertexToMove);
                     LOG.debug("Adding vertex from list: " + nextVertexToMove);
                     nextPosToMove += skip;
+                    if(nextVertexToMove == 0){
+                        throw new Error();
+                    }
                 }
             }
 
