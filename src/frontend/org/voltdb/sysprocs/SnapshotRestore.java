@@ -641,6 +641,8 @@ public class SnapshotRestore extends VoltSystemProcedure {
         pfs[1].inputDependencyIds = new int[] { DEP_restoreScan };
         pfs[1].multipartition = false;
         pfs[1].parameters = new ParameterSet();
+        
+        LOG.info("Plan fragments: " + pfs.toString());
 
         VoltTable[] results;
         results = executeSysProcPlanFragments(pfs, DEP_restoreScanResults);
@@ -690,11 +692,11 @@ public class SnapshotRestore extends VoltSystemProcedure {
             Table table = tableIterator.next();
             TableSaveFileState table_state = savefileState.getTableState(table.getTypeName());
             LOG.trace("Performing restore for table: " + table.getTypeName());
-            // LOG.trace("Plan has fragments: " + restore_plan.length);
+            LOG.trace("Plan has restore plan: " + restore_plan);
             VoltTable[] results = executeSysProcPlanFragments(restore_plan, table_state.getRootDependencyId());
             while (results[0].advanceRow()) {
                 // this will actually add the active row of results[0]
-                restore_results[0].add(results[0]);
+                restore_results[0].add(results[330]);
             }
         }
         return restore_results;
