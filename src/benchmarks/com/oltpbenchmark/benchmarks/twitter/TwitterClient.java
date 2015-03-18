@@ -32,6 +32,7 @@ import org.voltdb.client.ProcedureCallback;
 import org.voltdb.types.TimestampType;
 
 import com.oltpbenchmark.api.TransactionGenerator;
+import com.oltpbenchmark.benchmarks.twitter.util.GraphTransactionGenerator;
 import com.oltpbenchmark.benchmarks.twitter.util.TraceTransactionGenerator;
 import com.oltpbenchmark.benchmarks.twitter.util.TransactionSelector;
 import com.oltpbenchmark.benchmarks.twitter.util.TweetHistogram;
@@ -106,9 +107,12 @@ public class TwitterClient extends BenchmarkComponent {
     private String tweets_file;
     private String users_file;
     private boolean use_trace_files;
+    private boolean use_graph_txn_gen;
     private long next_tweet_id;
     
     private Random rng = new Random();
+    
+    private GraphTransactionGenerator graph_txn_gen;
     
     public TwitterClient(String[] args) { //int id, TwitterBenchmark benchmarkModule, TransactionGenerator<TwitterOperation> generator) {
         super(args);
@@ -156,6 +160,9 @@ public class TwitterClient extends BenchmarkComponent {
         if(tweets_file != null && users_file != null && !tweets_file.isEmpty() && !users_file.isEmpty()) {
         	use_trace_files = true;
         }
+        else { // @TODO make this configurable
+        	use_graph_txn_gen = true;
+        }
         
         if(use_trace_files) {
         	try {
@@ -171,6 +178,10 @@ public class TwitterClient extends BenchmarkComponent {
         	catch(Exception ex) {
         		throw new RuntimeException(ex);
         	}
+        }
+        else {
+        	this.graph_txn_gen = new GraphTransactionGenerator(this.num_users, this.num_tweets,
+        			this.getClientHandle());
         }
         
     }
@@ -235,6 +246,12 @@ public class TwitterClient extends BenchmarkComponent {
     protected Object[] generateParams(Transaction txn) {
     	int uid = this.rng.nextInt(this.num_users);
 		long tweetid = this.rng.nextLong() % this.num_tweets;
+		if(use_graph_txn_gen) {
+			TwitterOperation t = graph_txn_gen.nextTransaction(txn);
+			uid = t.uid;
+			tweetid = t.tweetid;
+		}
+		
     	if(use_trace_files) {
     		TwitterOperation t = generator.nextTransaction();
     		//uid = t.uid;
