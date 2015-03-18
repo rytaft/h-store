@@ -683,7 +683,8 @@ public class SnapshotRestore extends VoltSystemProcedure {
             }
             restorePlans.add(restore_plan);
         }
-
+        
+        LOG.trace(this.executor.getPartitionId());
         Iterator<Table> tableIterator = tables_to_restore.iterator();
         for (SynthesizedPlanFragment[] restore_plan : restorePlans) {
             Table table = tableIterator.next();
