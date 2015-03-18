@@ -642,7 +642,13 @@ public class SnapshotRestore extends VoltSystemProcedure {
         pfs[1].multipartition = false;
         pfs[1].parameters = new ParameterSet();
         
-        LOG.info("Plan fragments: 1-" + pfs[0].toString() + " 2-" + pfs[1].toString());
+        for (SynthesizedPlanFragment plan : pfs){
+        	LOG.info("Plan has fragment: " + plan.fragmentId + " " 
+            		+ plan.outputDependencyIds + " "  
+            		+ plan.inputDependencyIds + " " 
+            		+ plan.multipartition + " " 
+            		+ plan.parameters);
+        }
 
         VoltTable[] results;
         results = executeSysProcPlanFragments(pfs, DEP_restoreScanResults);
@@ -684,7 +690,13 @@ public class SnapshotRestore extends VoltSystemProcedure {
                 throw new VoltAbortException("Unable to generate restore plan for " + t.getTypeName() + " table not restored");
             }
             restorePlans.add(restore_plan);
-            LOG.trace("Plan has restore plan: " + t.getTypeName() + " " + restore_plan);
+            for (SynthesizedPlanFragment plan : restore_plan){
+            	LOG.info("Plan has restore plan: " + t.getTypeName() + " " + plan.fragmentId + " " 
+                		+ plan.outputDependencyIds + " "  
+                		+ plan.inputDependencyIds + " " 
+                		+ plan.multipartition + " " 
+                		+ plan.parameters);
+            }
         }
         
         LOG.trace(this.executor.getPartitionId());
