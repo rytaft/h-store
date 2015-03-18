@@ -644,10 +644,10 @@ public class SnapshotRestore extends VoltSystemProcedure {
         
         for (SynthesizedPlanFragment plan : pfs){
         	LOG.info("Plan has fragment: " + plan.fragmentId + " " 
-            		+ plan.outputDependencyIds + " "  
-            		+ plan.inputDependencyIds + " " 
+            		+ plan.outputDependencyIds.toString() + " "  
+            		+ plan.inputDependencyIds.toString() + " " 
             		+ plan.multipartition + " " 
-            		+ plan.parameters);
+            		+ plan.parameters.toString());
         }
 
         VoltTable[] results;
@@ -692,10 +692,10 @@ public class SnapshotRestore extends VoltSystemProcedure {
             restorePlans.add(restore_plan);
             for (SynthesizedPlanFragment plan : restore_plan){
             	LOG.info("Plan has restore plan: " + t.getTypeName() + " " + plan.fragmentId + " " 
-                		+ plan.outputDependencyIds + " "  
-                		+ plan.inputDependencyIds + " " 
+                		+ plan.outputDependencyIds.toString() + " "  
+                		+ plan.inputDependencyIds.toString() + " " 
                 		+ plan.multipartition + " " 
-                		+ plan.parameters);
+                		+ plan.parameters.toString());
             }
         }
         
