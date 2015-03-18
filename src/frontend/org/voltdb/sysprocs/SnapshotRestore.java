@@ -486,7 +486,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
         VoltTable[] savefile_data;
         savefile_data = performRestoreScanWork(path, nonce);
         
-        //LOG.trace("Restore Scan Results "+savefile_data[0]);
+        LOG.trace("Restore Scan Results "+savefile_data[0]);
 
         ClusterSaveFileState savefile_state = null;
         try {
@@ -520,6 +520,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
                     result_columns[ii++] = new ColumnInfo("ERR_MSG", VoltType.STRING);
                     results = new VoltTable[] { new VoltTable(result_columns) };
                 }
+                LOG.trace("FAILURE Save data contains no information for table " + tableName);
                 results[0].addRow("FAILURE", "Save data contains no information for table " + tableName);
             }
 
@@ -532,6 +533,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
                     result_columns[ii++] = new ColumnInfo("ERR_MSG", VoltType.STRING);
                     results = new VoltTable[] { new VoltTable(result_columns) };
                 }
+                LOG.trace("FAILURE Save data for " + tableName + " is inconsistent " + "(potentially missing partitions) or corrupted");
                 results[0].addRow("FAILURE", "Save data for " + tableName + " is inconsistent " + "(potentially missing partitions) or corrupted");
             }
         }
