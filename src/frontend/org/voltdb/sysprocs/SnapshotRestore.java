@@ -642,7 +642,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
         pfs[1].multipartition = false;
         pfs[1].parameters = new ParameterSet();
         
-        LOG.info("Plan fragments: " + pfs.toString());
+        LOG.info("Plan fragments: 1-" + pfs[0].toString() + " 2-" + pfs[1].toString());
 
         VoltTable[] results;
         results = executeSysProcPlanFragments(pfs, DEP_restoreScanResults);
@@ -684,6 +684,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
                 throw new VoltAbortException("Unable to generate restore plan for " + t.getTypeName() + " table not restored");
             }
             restorePlans.add(restore_plan);
+            LOG.trace("Plan has restore plan: " + t.getTypeName() + " " + restore_plan);
         }
         
         LOG.trace(this.executor.getPartitionId());
@@ -692,7 +693,6 @@ public class SnapshotRestore extends VoltSystemProcedure {
             Table table = tableIterator.next();
             TableSaveFileState table_state = savefileState.getTableState(table.getTypeName());
             LOG.trace("Performing restore for table: " + table.getTypeName());
-            LOG.trace("Plan has restore plan: " + restore_plan);
             VoltTable[] results = executeSysProcPlanFragments(restore_plan, table_state.getRootDependencyId());
             while (results[0].advanceRow()) {
                 // this will actually add the active row of results[0]
