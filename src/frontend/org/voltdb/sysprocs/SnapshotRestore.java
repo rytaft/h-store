@@ -696,7 +696,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
             VoltTable[] results = executeSysProcPlanFragments(restore_plan, table_state.getRootDependencyId());
             while (results[0].advanceRow()) {
                 // this will actually add the active row of results[0]
-                restore_results[0].add(results[330]);
+                restore_results[0].add(results[0]);
             }
         }
         return restore_results;
