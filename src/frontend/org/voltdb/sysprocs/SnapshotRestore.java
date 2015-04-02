@@ -239,7 +239,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
                         e.printStackTrace();
                     }
                 }
-                LOG.trace("Finished retrieving files");
+                
             } else {
                 // Initialize on other sites
                 m_filePath = (String) params.toArray()[0];
@@ -700,13 +700,14 @@ public class SnapshotRestore extends VoltSystemProcedure {
             }
         }
         
-        LOG.trace(this.executor.getPartitionId());
+        LOG.trace("Partition id: " + this.executor.getPartitionId());
         Iterator<Table> tableIterator = tables_to_restore.iterator();
         for (SynthesizedPlanFragment[] restore_plan : restorePlans) {
             Table table = tableIterator.next();
             TableSaveFileState table_state = savefileState.getTableState(table.getTypeName());
             LOG.trace("Performing restore for table: " + table.getTypeName());
             VoltTable[] results = executeSysProcPlanFragments(restore_plan, table_state.getRootDependencyId());
+            LOG.trace("Restore results for table " + table.getTypeName() + ": " + results[0].toString());
             while (results[0].advanceRow()) {
                 // this will actually add the active row of results[0]
                 restore_results[0].add(results[0]);
