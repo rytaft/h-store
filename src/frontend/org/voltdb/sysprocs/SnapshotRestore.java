@@ -244,7 +244,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
                 m_filePath = (String) params.toArray()[0];
                 m_fileNonce = (String) params.toArray()[1];
             }
-
+            LOG.trace("Restore Result: " + result.toString());
             return new DependencySet(DEP_restoreScan, result);
         } else if (fragmentId == SysProcFragmentId.PF_restoreScanResults) {
             LOG.trace("Aggregating saved table state");
