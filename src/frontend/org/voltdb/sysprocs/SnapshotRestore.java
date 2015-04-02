@@ -847,6 +847,9 @@ public class SnapshotRestore extends VoltSystemProcedure {
         /**
          * For partitioned tables
          */
+        LOG.trace(String.format("%s %s %s %s ---", catalog_host.getId(),
+                    catalog_site.getId(), 
+                    catalog_partition.getId(), catalog_host.fullName()));
         try {
             savefile = getTableSaveFile(getSaveFileForPartitionedTable(m_filePath, m_fileNonce, tableName, 
                     catalog_host.getId(),
