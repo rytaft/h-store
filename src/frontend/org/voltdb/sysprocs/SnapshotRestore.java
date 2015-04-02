@@ -239,6 +239,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
                         e.printStackTrace();
                     }
                 }
+                LOG.trace("Finished retrieving files");
             } else {
                 // Initialize on other sites
                 m_filePath = (String) params.toArray()[0];
