@@ -847,7 +847,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
         /**
          * For partitioned tables
          */
-        LOG.trace(String.format("%s %s %s %s ---", catalog_host.getId(),
+        LOG.trace(String.format("%s %s %s %s ---", catalog_host.getName(),
                     catalog_site.getId(), 
                     catalog_partition.getId(), catalog_host.fullName()));
         try {
