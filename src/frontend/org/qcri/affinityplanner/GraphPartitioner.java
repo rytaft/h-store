@@ -348,7 +348,7 @@ public class GraphPartitioner extends Partitioner {
             int nextEdgeExtension = getMostAffineExtension(movingVertices);
             if(nextEdgeExtension != 0){
                 movingVertices.add(nextEdgeExtension);
-                deltaEdgeExtension = getDeltaVertices(movingVertices, -1, true);
+                deltaEdgeExtension = getGlobalDelta(movingVertices, -1);
                 movingVertices.remove(nextEdgeExtension);
             }
 
@@ -368,7 +368,7 @@ public class GraphPartitioner extends Partitioner {
                 if (! movingVertices.contains(nextVertexToMove)){
                     assert(nextVertexToMove != 0);
                     movingVertices.add(nextVertexToMove);
-                    deltaHotTuple = getDeltaVertices(movingVertices, -1, true);
+                    deltaHotTuple = getGlobalDelta(movingVertices, -1);
                     movingVertices.remove(nextVertexToMove);
                 }
             }
@@ -434,25 +434,38 @@ public class GraphPartitioner extends Partitioner {
 
 
     @Override
-    protected double getLoadInCurrPartition(IntSet vertices){
+    protected double getLoadVertices(IntSet vertices){
+        
         double load = 0;
+        
         for(int vertex : vertices){
+            
             // local accesses
             load += AffinityGraph.m_vertices.get(vertex);
+            
             // remote accesses
             int fromVertexPartition = AffinityGraph.m_vertexPartition.get(vertex);
             int fromVertexSite = PlanHandler.getSitePartition(fromVertexPartition);
+            
             Int2DoubleMap adjacencyList = AffinityGraph.m_edges.get(vertex);
             if(adjacencyList != null){
+                
                 for(Int2DoubleMap.Entry edge : adjacencyList.int2DoubleEntrySet()){
+                    
                     int toVertex = edge.getIntKey();
                     int toVertexPartition = AffinityGraph.m_vertexPartition.get(toVertex);
-                    int toVertexSite = PlanHandler.getSitePartition(toVertexPartition);
-                    if(toVertexSite != fromVertexSite){
-                        load += edge.getDoubleValue() * DTXN_COST;
-                    }
-                    else if(toVertexPartition != fromVertexPartition){
-                        load += edge.getDoubleValue() * LMPT_COST;
+                    
+                    if (toVertexPartition != fromVertexPartition){
+                        
+                        int toVertexSite = PlanHandler.getSitePartition(toVertexPartition);
+                        
+                        if(toVertexSite != fromVertexSite){
+                            load += edge.getDoubleValue() * DTXN_COST;
+                        }
+                        
+                        else if(toVertexPartition != fromVertexPartition){
+                            load += edge.getDoubleValue() * LMPT_COST;
+                        }
                     }
                 }
             }
@@ -462,77 +475,185 @@ public class GraphPartitioner extends Partitioner {
 
     @Override
     public double getLoadPerPartition(int partition){
-        return getLoadInCurrPartition(AffinityGraph.m_partitionVertices.get(partition));
+        return getLoadVertices(AffinityGraph.m_partitionVertices.get(partition));
     }
-
+    
     @Override
-    protected double getDeltaVertices(IntSet movedVertices, int newPartition, boolean forSender) {
+    protected double getGlobalDelta(IntSet movingVertices, int toPartition){
 
-        if (movedVertices == null || movedVertices.isEmpty()){
+        if (movingVertices == null || movingVertices.isEmpty()){
             LOG.debug("Trying to move an empty set of vertices");
             return 0;
         }
-        double delta = 0;
-        int fromPartition = AffinityGraph.m_vertexPartition.get(movedVertices.iterator().next());
 
-        for(int vertex : movedVertices){ 
-            //            LOG.debug("REMOVE delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
+        double delta = 0;
+        int fromPartition = AffinityGraph.m_vertexPartition.get(movingVertices.iterator().next());
+        int fromSite = PlanHandler.getSitePartition(fromPartition);
+        int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
+        
+        double k = (fromSite == toSite) ? LMPT_COST : DTXN_COST;
+
+        for(int vertex : movingVertices){ 
+            
+            Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(vertex);
+            if(adjacency != null){
+
+                for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
+
+                    int otherVertex = edge.getIntKey();
+                    double edgeWeight = edge.getDoubleValue();
+
+                    if(!movingVertices.contains(otherVertex)){
+                        int otherPartition = AffinityGraph.m_vertexPartition.get(otherVertex);
+                        
+                        if (otherPartition == fromPartition){
+                            delta += edgeWeight * k;
+                        }
+                        else if (otherPartition == toPartition){
+                            delta -= edgeWeight * k;
+                        }
+                        else{
+                            int otherSite = PlanHandler.getSitePartition(otherPartition);
+                            double h = 0;
+                            if (otherSite == fromSite && otherSite != toSite){
+                                h = DTXN_COST - LMPT_COST;
+                            }
+                            else if (otherSite != fromSite && otherSite == toSite){
+                                h = LMPT_COST - DTXN_COST;
+                            }
+                            delta += edgeWeight * h;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return delta;
+    }
+    
+    @Override
+    protected double getReceiverDelta(IntSet movingVertices, int toPartition){
+        
+        if (movingVertices == null || movingVertices.isEmpty()){
+            LOG.debug("Trying to move an empty set of vertices");
+            return 0;
+        }
+
+        double delta = 0;
+        int fromPartition = AffinityGraph.m_vertexPartition.get(movingVertices.iterator().next());
+        int fromSite = PlanHandler.getSitePartition(fromPartition);
+        int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
+        
+        double k = (fromSite == toSite) ? LMPT_COST : DTXN_COST;
+
+        for(int vertex : movingVertices){ 
+            
             double vertexWeight = AffinityGraph.m_vertices.get(vertex);
             if (vertexWeight == AffinityGraph.m_vertices.defaultReturnValue()){
                 LOG.debug("Cannot include external node for delta computation");
                 throw new IllegalStateException("Cannot include external node for delta computation");
             }
 
+            delta += vertexWeight;
+
             Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(vertex);
             if(adjacency != null){
-                double outPull = 0;
-                double inPull = 0;
-                for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
-                    //                LOG.debug("Considering edge to vertex " + edge.getKey() + " with weight " + edge.getValue());
-                    int toVertex = edge.getIntKey();
-                    double edgeWeight = edge.getDoubleValue();
 
-                    // edges to vertices that are moved together do not contribute to in- or out-pull
-                    if(!movedVertices.contains(toVertex)){
-                        int toPartition = AffinityGraph.m_vertexPartition.get(toVertex); 
-                        if(toPartition == fromPartition){
-                            // edge to local vertex which will not be moved out
-                            //                        LOG.debug("Add weight to inpull: edge to local vertex which will not be moved out");
-                            inPull += edgeWeight;
+                for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
+                    
+                    int otherVertex = edge.getIntKey();
+                    double edgeWeight = edge.getDoubleValue();
+                    
+                    if(!movingVertices.contains(otherVertex)){
+                        int otherPartition = AffinityGraph.m_vertexPartition.get(otherVertex);
+                        
+                        if (otherPartition == toPartition){
+                            delta -= edgeWeight * k;
                         }
-                        else {
-                            // edge to remote vertex or vertex that will be moved out
-                            //                        LOG.debug("Add weight to outpull: edge to remote vertex which will be moved out");
-                            outPull += edgeWeight;
+                        else if (otherPartition == fromPartition) {
+                            delta += edgeWeight * k;
+                        }
+                        else{
+                            int otherSite = PlanHandler.getSitePartition(otherPartition);
+                            double h = (toSite == otherSite) ? LMPT_COST : DTXN_COST;
+                            delta += edgeWeight * h;
                         }
                     }
                 }
-
-                // decides multiplier depending on whether the newPartition is local or not
-                double outMultiplier;
-                if (newPartition == -1 || PlanHandler.getSitePartition(newPartition) != PlanHandler.getSitePartition(fromPartition)){
-                    outMultiplier = DTXN_COST;
-                }
-                else{
-                    outMultiplier = LMPT_COST;
-                }
-
-                // update delta
-                if(forSender){
-                    delta -= vertexWeight;
-                    delta -= outPull * outMultiplier;
-                    delta += inPull * outMultiplier;
-                }
-                else{                    
-                    delta += vertexWeight;
-                    delta -= outPull * outMultiplier;
-                    delta += inPull * outMultiplier;
-                }
-                //          LOG.debug(String.format("inpull %d outpull %d addition to delta %d total delta %d", inPull, outPull, vertexWeight + (outPull - inPull) * Controller.DTXN_MULTIPLIER, delta));
             }
         }
+        
         return delta;
     }
+
+//    @Override
+//    protected double getDeltaVertices(IntSet movedVertices, int newPartition, boolean forSender) {
+//
+//        if (movedVertices == null || movedVertices.isEmpty()){
+//            LOG.debug("Trying to move an empty set of vertices");
+//            return 0;
+//        }
+//        double delta = 0;
+//        int fromPartition = AffinityGraph.m_vertexPartition.get(movedVertices.iterator().next());
+//
+//        for(int vertex : movedVertices){ 
+//            //            LOG.debug("REMOVE delta: vertex " + vertex + " with weight " + m_vertices.get(vertex));
+//            double vertexWeight = AffinityGraph.m_vertices.get(vertex);
+//            if (vertexWeight == AffinityGraph.m_vertices.defaultReturnValue()){
+//                LOG.debug("Cannot include external node for delta computation");
+//                throw new IllegalStateException("Cannot include external node for delta computation");
+//            }
+//
+//            Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(vertex);
+//            if(adjacency != null){
+//                double outPull = 0;
+//                double inPull = 0;
+//                for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
+//                    //                LOG.debug("Considering edge to vertex " + edge.getKey() + " with weight " + edge.getValue());
+//                    int toVertex = edge.getIntKey();
+//                    double edgeWeight = edge.getDoubleValue();
+//
+//                    // edges to vertices that are moved together do not contribute to in- or out-pull
+//                    if(!movedVertices.contains(toVertex)){
+//                        int toPartition = AffinityGraph.m_vertexPartition.get(toVertex); 
+//                        if(toPartition == fromPartition){
+//                            // edge to local vertex which will not be moved out
+//                            //                        LOG.debug("Add weight to inpull: edge to local vertex which will not be moved out");
+//                            inPull += edgeWeight;
+//                        }
+//                        else {
+//                            // edge to remote vertex or vertex that will be moved out
+//                            //                        LOG.debug("Add weight to outpull: edge to remote vertex which will be moved out");
+//                            outPull += edgeWeight;
+//                        }
+//                    }
+//                }
+//
+//                // decides multiplier depending on whether the newPartition is local or not
+//                double outMultiplier;
+//                if (newPartition == -1 || PlanHandler.getSitePartition(newPartition) != PlanHandler.getSitePartition(fromPartition)){
+//                    outMultiplier = DTXN_COST;
+//                }
+//                else{
+//                    outMultiplier = LMPT_COST;
+//                }
+//
+//                // update delta
+//                if(forSender){
+//                    delta -= vertexWeight;
+//                    delta -= outPull * outMultiplier;
+//                    delta += inPull * outMultiplier;
+//                }
+//                else{                    
+//                    delta += vertexWeight;
+//                    delta -= outPull * outMultiplier;
+//                    delta += inPull * outMultiplier;
+//                }
+//                //          LOG.debug(String.format("inpull %d outpull %d addition to delta %d total delta %d", inPull, outPull, vertexWeight + (outPull - inPull) * Controller.DTXN_MULTIPLIER, delta));
+//            }
+//        }
+//        return delta;
+//    }
     
     @Override
     protected void updateAttractions (Int2DoubleMap adjacency, double[] attractions){

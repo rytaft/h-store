@@ -53,7 +53,7 @@ public abstract class Partitioner {
      * computes load of a set of vertices in the current partition. this is different from the weight of a vertex because it considers
      * both direct accesses of the vertex and the cost of remote accesses
      */
-    protected abstract double getLoadInCurrPartition(IntSet vertices);
+    protected abstract double getLoadVertices(IntSet vertices);
     
     /**
      * Returns sorted (descending order) list of top-k vertices from site
@@ -77,7 +77,7 @@ public abstract class Partitioner {
 
             singleton.clear();
             singleton.add(vertex);
-            double vertexLoad = getLoadInCurrPartition(singleton);
+            double vertexLoad = getLoadVertices(singleton);
 
             if (res.size() < k){
 
@@ -138,8 +138,12 @@ public abstract class Partitioner {
      *     
      *     if newPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
-    protected abstract double getDeltaVertices(IntSet movingVertices, int toPartition, boolean forSender);
-
+//    protected abstract double getDeltaVertices(IntSet movingVertices, int toPartition, boolean forSender);
+    
+    protected abstract double getGlobalDelta(IntSet movingVertices, int toPartition);
+    
+    protected abstract double getReceiverDelta(IntSet movingVertices, int toPartition);
+    
     protected abstract double getLoadPerPartition(int partition);
     
     public double getLoadPerSite(int site){
@@ -167,15 +171,15 @@ public abstract class Partitioner {
     protected int tryMoveVertices(IntSet movingVertices, int fromPartition, int toPartition) {
 
         int numMovedVertices = 0;
-        double deltaFromPartition = getDeltaVertices(movingVertices, toPartition, true);
-        double deltaToPartition = getDeltaVertices(movingVertices, toPartition, false);
+        double globalDelta = getGlobalDelta(movingVertices, toPartition);
+        double receiverDelta = getReceiverDelta(movingVertices, toPartition);
 
         //      LOG.debug("Deltas from " + deltaFromPartition + " - to " + deltaToPartition);
 
         // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
-        if(deltaFromPartition <= MIN_GAIN_MOVE * -1
-                && (deltaToPartition < 0
-                        || getLoadPerPartition(toPartition) + deltaToPartition < MAX_LOAD_PER_PART)){   // if gainToSite is negative, the load of the receiving site grows
+        if(globalDelta <= MIN_GAIN_MOVE * -1
+                && (receiverDelta < 0
+                        || getLoadPerPartition(toPartition) + receiverDelta < MAX_LOAD_PER_PART)){   // if gainToSite is negative, the load of the receiving site grows
             //            LOG.debug("Moving to partition " + toPartition);
             //            LOG.debug("Weights before moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
 
@@ -183,7 +187,7 @@ public abstract class Partitioner {
             //            LOG.debug("Weights after moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
 
             numMovedVertices = movingVertices.size();
-            System.out.println("Moving " + numMovedVertices + " vertices from partition " + fromPartition + " to partition " + toPartition + " for a from-gain of " + deltaFromPartition + " and a to-gain " + deltaToPartition);
+            System.out.println("Moving " + numMovedVertices + " vertices from partition " + fromPartition + " to partition " + toPartition + " for a global gain of " + globalDelta + " and a receiver gain of " + receiverDelta);
         }
         return numMovedVertices;
     }
