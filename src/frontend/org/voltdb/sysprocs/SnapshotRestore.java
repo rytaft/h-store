@@ -27,22 +27,19 @@ import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Collection;
-import java.nio.BufferOverflowException;
-import java.io.ByteArrayOutputStream;
 
 import org.apache.log4j.Logger;
 import org.voltdb.DependencySet;
 import org.voltdb.ParameterSet;
 import org.voltdb.PrivateVoltTableFactory;
 import org.voltdb.ProcInfo;
-import org.voltdb.TheHashinator;
 import org.voltdb.VoltSystemProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTable.ColumnInfo;
@@ -50,26 +47,20 @@ import org.voltdb.VoltType;
 import org.voltdb.VoltTypeException;
 import org.voltdb.catalog.CatalogMap;
 import org.voltdb.catalog.Host;
+import org.voltdb.catalog.Partition;
 import org.voltdb.catalog.Site;
 import org.voltdb.catalog.Table;
-import org.voltdb.catalog.Partition;
 import org.voltdb.client.ConnectionUtil;
 import org.voltdb.sysprocs.saverestore.ClusterSaveFileState;
 import org.voltdb.sysprocs.saverestore.SavedTableConverter;
 import org.voltdb.sysprocs.saverestore.SnapshotUtil;
 import org.voltdb.sysprocs.saverestore.TableSaveFile;
 import org.voltdb.sysprocs.saverestore.TableSaveFileState;
-import org.voltdb.utils.DBBPool.BBContainer;
-import org.voltdb.utils.DBBPool;
-import org.voltdb.client.Client;
-import org.voltdb.client.ClientFactory;
-import org.voltdb.client.ClientResponse;
 
-import edu.brown.hstore.HStore;
+import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.HStoreConstants;
 import edu.brown.hstore.PartitionExecutor.SystemProcedureExecutionContext;
 import edu.brown.hstore.txns.AbstractTransaction;
-import edu.brown.catalog.CatalogUtil;
 import edu.brown.utils.CollectionUtil;
 
 @ProcInfo(singlePartition = false)
@@ -109,38 +100,6 @@ public class SnapshotRestore extends VoltSystemProcedure {
             m_saveFiles.offer(getTableSaveFile(f, catalog_sites.size() * 4, relevantPartitionIds));
             assert (m_saveFiles.peekLast().getCompleted());
         }
-    }
-
-    private static synchronized boolean hasMoreChunks() throws IOException {
-        boolean hasMoreChunks = false;
-        while (!hasMoreChunks && m_saveFiles.peek() != null) {
-            TableSaveFile f = m_saveFiles.peek();
-            hasMoreChunks = f.hasMoreChunks();
-            if (!hasMoreChunks) {
-                try {
-                    f.close();
-                } catch (IOException e) {
-                }
-                m_saveFiles.poll();
-            }
-        }
-        return hasMoreChunks;
-    }
-
-    private static synchronized BBContainer getNextChunk() throws IOException {
-        BBContainer c = null;
-        while (c == null && m_saveFiles.peek() != null) {
-            TableSaveFile f = m_saveFiles.peek();
-            LOG.trace("File Channel Size :" + f.getFileChannel().size());
-            LOG.trace("File Channel Position :" + f.getFileChannel().position());
-            c = f.getNextChunk();
-            if (c == null) {
-                LOG.trace("getNextChunk null");
-                f.close();
-                m_saveFiles.poll();
-            }
-        }
-        return c;
     }
 
     @Override
@@ -329,8 +288,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
             try {
                 savefile.close();
             } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                LOG.error(e);
             }
             return new DependencySet(dependency_id, result);
         } else if (fragmentId == SysProcFragmentId.PF_restoreDistributeReplicatedTable) {
@@ -637,6 +595,12 @@ public class SnapshotRestore extends VoltSystemProcedure {
         FileInputStream savefile_input = new FileInputStream(saveFile);
         TableSaveFile savefile = new TableSaveFile(savefile_input.getChannel(), readAheadChunks, relevantPartitionIds);
         savefile.setFilePath(saveFile.getAbsolutePath());
+        try{
+            savefile_input.close();
+        } 
+        catch(Exception ex){
+            LOG.error(ex);
+        }
         return savefile;
     }
 
@@ -925,167 +889,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
         return result;
     }
 
-    private VoltTable performDistributePartitionedTable(String tableName, int originalHostIds[], int relevantPartitionIds[], SystemProcedureExecutionContext context, int allowExport) {
-        String hostname = ConnectionUtil.getHostnameOrAddress();
-        // XXX This is all very similar to the splitting code in
-        // LoadMultipartitionTable. Consider ways to consolidate later
-        Map<Integer, Integer> sites_to_partitions = new HashMap<Integer, Integer>();
-
-        // CHANGE : Up Sites
-        Host catalog_host = context.getHost();
-        Collection<Site> catalog_sites = CatalogUtil.getSitesForHost(catalog_host);
-        // Collection<Site> catalog_sites =
-        // CatalogUtil.getAllSites(HStore.instance().getCatalog());
-
-        LOG.trace("Table :" + tableName);
-
-        for (Site site : catalog_sites) {
-            for (Partition partition : site.getPartitions()) {
-                sites_to_partitions.put(site.getId(), partition.getId());
-            }
-        }
-
-        try {
-            initializeTableSaveFiles(m_filePath, m_fileNonce, tableName, originalHostIds, relevantPartitionIds, context);
-        } catch (IOException e) {
-            VoltTable result = constructResultsTable();
-            // e.printStackTrace();
-            result.addRow(m_hostId, hostname, m_siteId, tableName, relevantPartitionIds[0], "FAILURE", "Unable to load table: " + tableName + " error: " + e.getMessage());
-            return result;
-        }
-
-        LOG.trace("Starting performDistributePartitionedTable " + tableName);
-
-        VoltTable[] results = new VoltTable[] { constructResultsTable() };
-        results[0].addRow(m_hostId, hostname, m_siteId, tableName, 0, "NO DATA TO DISTRIBUTE", "");
-        final Table new_catalog_table = getCatalogTable(tableName);
-        Boolean needsConversion = null;
-        BBContainer c = null;
-
-        int c_size = 1024 * 1024;
-        ByteBuffer c_aggregate = ByteBuffer.allocateDirect(c_size);
-
-        try {
-            VoltTable table = null;
-            c = null;
-
-            while (hasMoreChunks()) {
-                c = getNextChunk();
-                if (c == null) {
-                    continue; // Should be equivalent to break
-                }
-
-                c_aggregate.put(c.b);
-            }
-
-            LOG.trace("c_aggregate position :" + c_aggregate.position());
-            LOG.trace("c_aggregate capacity :" + c_aggregate.capacity());
-
-            if (needsConversion == null) {
-                VoltTable old_table = PrivateVoltTableFactory.createVoltTableFromBuffer(c_aggregate.duplicate(), true);
-                needsConversion = SavedTableConverter.needsConversion(old_table, new_catalog_table);
-            }
-
-            final VoltTable old_table = PrivateVoltTableFactory.createVoltTableFromBuffer(c_aggregate, true);
-            if (needsConversion) {
-                table = SavedTableConverter.convertTable(old_table, new_catalog_table);
-            } else {
-                table = old_table;
-            }
-
-            LOG.trace("createPartitionedTables :" + tableName);
-
-            VoltTable[] partitioned_tables = createPartitionedTables(tableName, table);
-            if (c != null) {
-                c.discard();
-            }
-
-            // LoadMultipartitionTable -- send data to all ..
-
-            int[] dependencyIds = new int[sites_to_partitions.size()];
-
-            SynthesizedPlanFragment[] pfs = new SynthesizedPlanFragment[sites_to_partitions.size() + 1];
-            int pfs_index = 0;
-            for (int site_id : sites_to_partitions.keySet()) {
-                int partition_id = sites_to_partitions.get(site_id);
-                LOG.trace("Site id :" + site_id + " Partition id :" + partition_id);
-
-                dependencyIds[pfs_index] = TableSaveFileState.getNextDependencyId();
-                pfs[pfs_index] = new SynthesizedPlanFragment();
-                pfs[pfs_index].fragmentId = SysProcFragmentId.PF_restoreSendPartitionedTable;
-                // XXX pfs[pfs_index].siteId = site_id;
-                pfs[pfs_index].destPartitionId = site_id;
-                pfs[pfs_index].multipartition = true;
-                pfs[pfs_index].outputDependencyIds = new int[] { dependencyIds[pfs_index] };
-                pfs[pfs_index].inputDependencyIds = new int[] {};
-                ParameterSet params = new ParameterSet();
-                params.setParameters(tableName, partition_id, dependencyIds[pfs_index], partitioned_tables[partition_id], allowExport);
-                pfs[pfs_index].parameters = params;
-                ++pfs_index;
-            }
-
-            int result_dependency_id = TableSaveFileState.getNextDependencyId();
-            pfs[sites_to_partitions.size()] = new SynthesizedPlanFragment();
-            pfs[sites_to_partitions.size()].fragmentId = SysProcFragmentId.PF_restoreSendPartitionedTableResults;
-            pfs[sites_to_partitions.size()].multipartition = false;
-            pfs[sites_to_partitions.size()].outputDependencyIds = new int[] { result_dependency_id };
-            pfs[sites_to_partitions.size()].inputDependencyIds = dependencyIds;
-            ParameterSet params = new ParameterSet();
-            params.setParameters(result_dependency_id);
-            pfs[sites_to_partitions.size()].parameters = params;
-            results = executeSysProcPlanFragments(pfs, result_dependency_id);
-
-        } catch (IOException e) {
-            VoltTable result = PrivateVoltTableFactory.createUninitializedVoltTable();
-            result = constructResultsTable();
-            result.addRow(m_hostId, hostname, m_siteId, tableName, relevantPartitionIds[0], "FAILURE", "Unable to load table: " + tableName + " error: " + e.getMessage());
-            return result;
-        } catch (BufferOverflowException e) {
-            LOG.trace("BufferOverflowException " + e.getMessage());
-            VoltTable result = PrivateVoltTableFactory.createUninitializedVoltTable();
-            result = constructResultsTable();
-            result.addRow(m_hostId, hostname, m_siteId, tableName, relevantPartitionIds[0], "FAILURE", "Unable to load table: " + tableName + " error: " + e.getMessage());
-            return result;
-        } catch (VoltTypeException e) {
-            VoltTable result = PrivateVoltTableFactory.createUninitializedVoltTable();
-            result = constructResultsTable();
-            result.addRow(m_hostId, hostname, m_siteId, tableName, relevantPartitionIds[0], "FAILURE", "Unable to load table: " + tableName + " error: " + e.getMessage());
-            return result;
-        }
-
-        return results[0];
-    }
-
-    private VoltTable[] createPartitionedTables(String tableName, VoltTable loadedTable) {
-        int number_of_partitions = this.catalogContext.numberOfPartitions;
-        Table catalog_table = catalogContext.database.getTables().getIgnoreCase(tableName);
-        assert (!catalog_table.getIsreplicated());
-        // XXX blatantly stolen from LoadMultipartitionTable
-        // find the index and type of the partitioning attribute
-        int partition_col = catalog_table.getPartitioncolumn().getIndex();
-        VoltType partition_type = VoltType.get((byte) catalog_table.getPartitioncolumn().getType());
-
-        // create a table for each partition
-        VoltTable[] partitioned_tables = new VoltTable[number_of_partitions];
-        for (int i = 0; i < partitioned_tables.length; i++) {
-            partitioned_tables[i] = loadedTable.clone(loadedTable.getUnderlyingBufferSize() / number_of_partitions);
-        }
-
-        // split the input table into per-partition units
-        while (loadedTable.advanceRow()) {
-            int partition = 0;
-            try {
-                partition = TheHashinator.hashToPartition(loadedTable.get(partition_col, partition_type));
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new RuntimeException(e.getMessage());
-            }
-            // this adds the active row of loadedTable
-            partitioned_tables[partition].add(loadedTable);
-        }
-
-        return partitioned_tables;
-    }
+  
 
     private Table getCatalogTable(String tableName) {
         return this.catalogContext.database.getTables().get(tableName);
