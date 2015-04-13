@@ -1076,6 +1076,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
             int partition = 0;
             try {
                 partition = TheHashinator.hashToPartition(loadedTable.get(partition_col, partition_type));
+                LOG.info("HASHING &&&&&&&&&&&&&&");
             } catch (Exception e) {
                 e.printStackTrace();
                 throw new RuntimeException(e.getMessage());
