@@ -1036,7 +1036,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
             // If the callback is null, it shows that the request is from a
             // partition in
             // the local site itself.
-            LOG.info("TODO verify passing callback locally works"); //TODO
             queueAsyncDataPullRequest(asyncPullRequest, asyncPullRequestCallback);
             return;
         }

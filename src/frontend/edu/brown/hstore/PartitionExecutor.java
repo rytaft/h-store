@@ -6467,7 +6467,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (!scheduleAsyncPullQueue.isEmpty()){
             LOG.warn("Schedule async pull queue was not empty... " + StringUtil.join(",",scheduleAsyncPullQueue));
         }
-        if (this.catalogContext.jarPath.getName().contains("ycsb")){
+        if (this.catalogContext.jarPath.getName().contains("tpcc")==false){
             LOG.info("Pulling ranges instead of keys ************");
             ReconfigurationTracking.PULL_SINGLE_KEY = false;
         } else {
