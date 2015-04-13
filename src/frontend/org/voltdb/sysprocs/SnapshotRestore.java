@@ -504,7 +504,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
         VoltTable[] savefile_data;
         savefile_data = performRestoreScanWork(path, nonce);
         
-        LOG.trace("Restore Scan Results "+savefile_data[0]);
+        LOG.info(" =============\n Restore Scan Results "+savefile_data[0] + "\n============");
 
         ClusterSaveFileState savefile_state = null;
         try {
@@ -792,7 +792,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
                 pfs[0].destPartitionId = siteId;
                 pfs[0].outputDependencyIds = new int[] { result_dependency_id };
                 pfs[0].inputDependencyIds = new int[] {};
-                pfs[0].multipartition = false;
+                pfs[0].multipartition = true;
                 ParameterSet params = new ParameterSet();
                 params.setParameters(tableName, result_dependency_id, table, allowExport);
                 pfs[0].parameters = params;
@@ -1015,7 +1015,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
                 pfs[pfs_index].fragmentId = SysProcFragmentId.PF_restoreSendPartitionedTable;
                 // XXX pfs[pfs_index].siteId = site_id;
                 pfs[pfs_index].destPartitionId = site_id;
-                pfs[pfs_index].multipartition = false;
+                pfs[pfs_index].multipartition = true;
                 pfs[pfs_index].outputDependencyIds = new int[] { dependencyIds[pfs_index] };
                 pfs[pfs_index].inputDependencyIds = new int[] {};
                 ParameterSet params = new ParameterSet();
