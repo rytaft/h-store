@@ -416,13 +416,16 @@ public class GraphPartitioner extends Partitioner {
         int partition = AffinityGraph.m_vertexPartition.get(vertices.iterator().next());
  
         for(int vertex : vertices){
+            
             Int2DoubleMap adjacency = AffinityGraph.m_edges.get(vertex);
             if(adjacency != null){
 
                 for(Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
+                    
                     if (edge.getDoubleValue() > maxAdjacency
                             && AffinityGraph.m_vertexPartition.get(edge.getIntKey()) == partition
                             && !vertices.contains(edge.getIntKey())) {
+                        
                         maxAdjacency = edge.getDoubleValue();
                         res = edge.getIntKey();
                     }

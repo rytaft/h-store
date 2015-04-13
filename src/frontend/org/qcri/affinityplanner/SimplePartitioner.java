@@ -225,39 +225,39 @@ public class SimplePartitioner extends Partitioner {
 
     
 
-    protected double getDeltaVertices(IntSet movingVertices, int toPartition, boolean forSender) {
-        assert(movingVertices.size() == 1);
-        double delta = 0;
-        for(int vertex : movingVertices){
-
-            double vertexWeight = AffinityGraph.m_vertices.get(vertex);
-
-            int fromPartition = m_graph.getPartition(vertex);
-
-            double outPull= AffinityGraph.m_edges.get(vertex).get(Integer.toString(toPartition));
-            double inPull= AffinityGraph.m_edges.get(vertex).get(Integer.toString(fromPartition)); 
-
-            double outMultiplier;
-            if (toPartition == -1 || PlanHandler.getSitePartition(toPartition) != PlanHandler.getSitePartition(fromPartition)){
-                outMultiplier = DTXN_COST;
-            }
-            else{
-                outMultiplier = LMPT_COST;
-            }
-
-            if(forSender){
-                delta += vertexWeight;
-                delta -= outPull * outMultiplier;
-                delta += inPull * outMultiplier;
-            }
-            else{
-                delta -= vertexWeight;
-                delta -= outPull * outMultiplier;
-                delta += inPull * outMultiplier;
-            }
-        }
-        return delta;
-    }
+//    protected double getDeltaVertices(IntSet movingVertices, int toPartition, boolean forSender) {
+//        assert(movingVertices.size() == 1);
+//        double delta = 0;
+//        for(int vertex : movingVertices){
+//
+//            double vertexWeight = AffinityGraph.m_vertices.get(vertex);
+//
+//            int fromPartition = m_graph.getPartition(vertex);
+//
+//            double outPull= AffinityGraph.m_edges.get(vertex).get(Integer.toString(toPartition));
+//            double inPull= AffinityGraph.m_edges.get(vertex).get(Integer.toString(fromPartition)); 
+//
+//            double outMultiplier;
+//            if (toPartition == -1 || PlanHandler.getSitePartition(toPartition) != PlanHandler.getSitePartition(fromPartition)){
+//                outMultiplier = DTXN_COST;
+//            }
+//            else{
+//                outMultiplier = LMPT_COST;
+//            }
+//
+//            if(forSender){
+//                delta += vertexWeight;
+//                delta -= outPull * outMultiplier;
+//                delta += inPull * outMultiplier;
+//            }
+//            else{
+//                delta -= vertexWeight;
+//                delta -= outPull * outMultiplier;
+//                delta += inPull * outMultiplier;
+//            }
+//        }
+//        return delta;
+//    }
 
     @Override
     protected double getLoadVertices(IntSet vertices) {

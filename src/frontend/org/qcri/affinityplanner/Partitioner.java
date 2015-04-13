@@ -130,18 +130,21 @@ public abstract class Partitioner {
     }
 
     /**
-     *     LOCAL delta a partition gets by REMOVING (if forSender = true) or ADDING (else) a SET of local vertices out
-     *     it ASSUMES that the vertices are on the same partition
-     *     
-     *     this is NOT like computing the load because local edges come as a cost in this case 
-     *     it also considers a SET of vertices to be moved together
+     *     Global delta by moving a set of vertices
+     *     This value is used to decide whether to make a move or not
+     *     It ASSUMES that the moved vertices are on the same partition
      *     
      *     if newPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
-//    protected abstract double getDeltaVertices(IntSet movingVertices, int toPartition, boolean forSender);
-    
     protected abstract double getGlobalDelta(IntSet movingVertices, int toPartition);
     
+    /**
+     *     Local delta for a receiver by moving a set of vertices
+     *     This value is used to determine if the receiver of the vertices will be overloaded 
+     *     It ASSUMES that the moved vertices are on the same partition
+     *     
+     *     if newPartition = -1 we evaluate moving to an unknown REMOTE partition
+     */
     protected abstract double getReceiverDelta(IntSet movingVertices, int toPartition);
     
     protected abstract double getLoadPerPartition(int partition);
