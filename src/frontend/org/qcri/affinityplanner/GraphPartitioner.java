@@ -443,7 +443,7 @@ public class GraphPartitioner extends Partitioner {
         
         for(int vertex : vertices){
             
-            // local accesses
+            // local accesses - vertex weight
             load += AffinityGraph.m_vertices.get(vertex);
             
             // remote accesses
@@ -466,7 +466,7 @@ public class GraphPartitioner extends Partitioner {
                             load += edge.getDoubleValue() * DTXN_COST;
                         }
                         
-                        else if(toVertexPartition != fromVertexPartition){
+                        else {
                             load += edge.getDoubleValue() * LMPT_COST;
                         }
                     }

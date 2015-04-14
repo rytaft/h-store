@@ -190,7 +190,16 @@ public abstract class Partitioner {
             //            LOG.debug("Weights after moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
 
             numMovedVertices = movingVertices.size();
-            System.out.println("Moving " + numMovedVertices + " vertices from partition " + fromPartition + " to partition " + toPartition + " for a global gain of " + globalDelta + " and a receiver gain of " + receiverDelta);
+
+            // DEBUG
+            System.out.println("Moved " + numMovedVertices + " vertices from partition " + fromPartition + " to partition " + toPartition + " for a global gain of " + globalDelta + " and a receiver gain of " + receiverDelta);
+//            Controller.record("Loads per partition after reconfiguration");
+//            double sum = 0;
+//            for (int j = 0; j < Controller.MAX_PARTITIONS; j++){
+//                Controller.record(j + " " + getLoadPerPartition(j));
+//                sum += getLoadPerPartition(j);
+//            }
+//            Controller.record("Total load: " + sum);
         }
         return numMovedVertices;
     }
