@@ -1612,8 +1612,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     asyncRequestPullQueue.add(pullMsg);
                     //this.work_queue.offer(pullMsg);
                 }
-                
-                LOG.info(String.format("CompletedExtract, Async2, PullId=%s, Chunks=%s, MoreData=%s, Time=%s, QueueGrowth=%s, Records=%s, Table=%s ",
+                if (records == 0){
+                    LOG.error(String.format("CompletedExtract, Async2, NO_RECORDS, PullId=%s, Chunks=%s, MoreData=%s, Time=%s, QueueGrowth=%s, Records=%s, Table=%s ",
+                        pull.getAsyncPullIdentifier(), chunkId, moreDataNeeded, timeTaken, queueGrowth, records, tableName)); 
+                }
+                else
+                    LOG.info(String.format("CompletedExtract, Async2, PullId=%s, Chunks=%s, MoreData=%s, Time=%s, QueueGrowth=%s, Records=%s, Table=%s ",
                         pull.getAsyncPullIdentifier(), chunkId, moreDataNeeded, timeTaken, queueGrowth, records, tableName)); 
             } catch (Exception e) {
                 LOG.error("Exception when processing async data pull response", e);
@@ -1636,7 +1640,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         pullReply.getPullIdentifier(), pullReply.getChunkId(), pullReply.getIsAsync(), pullReply.getMoreDataNeeded()));
 
                 //TODO : Process async pull using chunk id
-                LOG.info("TODO verify chunk id order");
                 
                 receiveTuples(pullReply.getTransactionID(), pullReply.getOldPartition(), pullReply.getNewPartition(), pullReply.getVoltTableName(), 
                     		minIncl, maxExcl, vt, pullReply.getMoreDataNeeded(), 
@@ -6686,6 +6689,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      */
     public Pair<VoltTable, Boolean> extractTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable min_inclusive, VoltTable max_exclusive, int pullId, int chunkId, boolean isLive) {
         LOG.info(String.format("(%s) sendTuples keys %s->%s for %s, chunkId:%s (partIds %s->%s)", partitionId, min_inclusive, max_exclusive, table_name, chunkId, oldPartitionId, newPartitionId));
+        //LOG.info(String.format("(%s) sendTuples from  %s, chunkId:%s (partIds %s->%s)", partitionId,  table_name, chunkId, oldPartitionId, newPartitionId));
+        
         VoltTable vt = null;
         // FIXME make generic
         Table catalog_tbl = this.catalogContext.getTableByName(table_name);
