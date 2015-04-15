@@ -1252,6 +1252,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.shutdown_latch.release();
         }
     }
+    
+    public String getReconfigDebug(){
+        return new StringBuilder().append(this.partitionId).append(",outStandingAysnc:").append(this.asyncOutstanding.get()).append(",nextAsync:").append((this.nextAsyncPullTimeMS-System.currentTimeMillis())).
+                append(",idleClicks:").append(idle_click_count>MAX_PULL_ASYNC_EVERY_CLICKS).
+                append(",aysncPullQ:").append(this.asyncRequestPullQueue.size()).append(",scheduleAsncPullQ:").append(scheduleAsyncPullQueue.size()).append(",workQueue:").append(this.work_queue.size()).toString();
+    }
 
     /**
      * Special function that allows us to do some utility work while we are
@@ -6675,7 +6681,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             reconfiguration_stats.addMessage(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s, ",timeTaken, pullId,table_name, minInclusiveList.toString().replace("\n", " | "), maxExclusiveList));
         }
         if(receivedAllTuples){
-            this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+            LOG.error("skipping");
+           // this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+        }
+        if (!moreDataComing){
+            if (asyncOutstanding.get() == false && this.scheduleAsyncPullQueue.isEmpty() && this.asyncRequestPullQueue.isEmpty()) {
+                LOG.error("DIRTY HACK FOR CHECKING IF DONE FIX RANGE TRACKING");
+                this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+
+            }
         }
     }
 

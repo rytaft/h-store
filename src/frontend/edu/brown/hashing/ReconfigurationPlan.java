@@ -137,7 +137,7 @@ public class ReconfigurationPlan {
     		}
           
         } catch (Exception e) {
-            LOG.error("Error looking up reconfiguration range", e);
+            LOG.error(String.format("Error looking up reconfiguration range. Table:%s Ids:%s",table_name,ids), e);
         }
 
         return null;
@@ -329,7 +329,7 @@ public class ReconfigurationPlan {
             	for(Map.Entry<String, ReconfigurationRange> rangeEntry : rangeMap.entrySet()) {
             		int num_ranges = rangeEntry.getValue().getMaxExcl().size();
                 	if(num_ranges > 1) {
-                		LOG.info(String.format("Merging %s ranges. Table:%s",num_ranges,table_name));
+                		LOG.debug(String.format("Merging %s ranges. Table:%s",num_ranges,table_name));
                 	}
                 	
                     res.add(rangeEntry.getValue());
