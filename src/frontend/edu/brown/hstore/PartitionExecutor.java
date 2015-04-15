@@ -6546,7 +6546,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             haltProcessing();
         }
         
-        LOG.info("Clearing up reconfiguration state for p_id " + this.partitionId);
+        LOG.info("Clearing up reconfiguration state for p_id " + this.getReconfigDebug());
         this.reconfig_plan = null;
     	this.reconfig_state = ReconfigurationState.END;
         this.outgoing_ranges = null;
@@ -6702,8 +6702,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @return
      */
     public Pair<VoltTable, Boolean> extractTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable min_inclusive, VoltTable max_exclusive, int pullId, int chunkId, boolean isLive) {
-        LOG.info(String.format("(%s) sendTuples keys %s->%s for %s, chunkId:%s (partIds %s->%s)", partitionId, min_inclusive, max_exclusive, table_name, chunkId, oldPartitionId, newPartitionId));
-        //LOG.info(String.format("(%s) sendTuples from  %s, chunkId:%s (partIds %s->%s)", partitionId,  table_name, chunkId, oldPartitionId, newPartitionId));
+        //LOG.info(String.format("(%s) sendTuples keys %s->%s for %s, chunkId:%s (partIds %s->%s)", partitionId, min_inclusive, max_exclusive, table_name, chunkId, oldPartitionId, newPartitionId));
+        LOG.info(String.format("(%s) sendTuples from  %s, chunkId:%s (partIds %s->%s)", partitionId,  table_name, chunkId, oldPartitionId, newPartitionId));
         
         VoltTable vt = null;
         // FIXME make generic
