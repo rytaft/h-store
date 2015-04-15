@@ -35,6 +35,21 @@ import org.apache.log4j.Logger;
  */
 public abstract class Partitioner {
     
+    public class Pair<A, B> {
+        public A fst;
+        public B snd;
+        
+        public Pair (){
+            this.fst = null;
+            this.snd = null;            
+        }
+
+        public Pair(A fst, B snd) {
+            this.fst = fst;
+            this.snd = snd;
+        }
+    }
+    
     private static final Logger LOG = Logger.getLogger(Partitioner.class);
 
     public static int MIN_LOAD_PER_PART = Integer.MIN_VALUE;
@@ -131,22 +146,31 @@ public abstract class Partitioner {
 
     /**
      *     Global delta by moving a set of vertices
-     *     This value is used to decide whether to make a move or not
+     *     This value is used to decide whether it is globally good to make a move or not
      *     It ASSUMES that the moved vertices are on the same partition
      *     
-     *     if newPartition = -1 we evaluate moving to an unknown REMOTE partition
+     *     if toPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
-    protected abstract double getGlobalDelta(IntSet movingVertices, int toPartition);
+    protected abstract double getGlobalDelta(IntSet movingVertices, int fromPartition, int toPartition);
     
     /**
      *     Local delta for a receiver by moving a set of vertices
      *     This value is used to determine if the receiver of the vertices will be overloaded 
      *     It ASSUMES that the moved vertices are on the same partition
      *     
-     *     if newPartition = -1 we evaluate moving to an unknown REMOTE partition
+     *     if toPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
-    protected abstract double getReceiverDelta(IntSet movingVertices, int toPartition);
+    protected abstract double getReceiverDelta(IntSet movingVertices, int fromPartition, int toPartition);
     
+    /**
+     *     Local delta for a sender by moving a set of vertices
+     *     This value is used to determine the best tuple to send for a sender 
+     *     It ASSUMES that the moved vertices are on the same partition
+     *     
+     *     if toPartition = -1 we evaluate moving to an unknown REMOTE partition
+     */
+    protected abstract double getSenderDelta(IntSet movingVertices, int fromPartition, int toPartition);
+
     protected abstract double getLoadPerPartition(int partition);
     
     public double getLoadPerSite(int site){
@@ -174,34 +198,104 @@ public abstract class Partitioner {
     protected int tryMoveVertices(IntSet movingVertices, int fromPartition, int toPartition) {
 
         int numMovedVertices = 0;
-        double globalDelta = getGlobalDelta(movingVertices, toPartition);
-        double receiverDelta = getReceiverDelta(movingVertices, toPartition);
-
-        //      LOG.debug("Deltas from " + deltaFromPartition + " - to " + deltaToPartition);
+        double senderDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
+        double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
 
         // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
-        if(globalDelta <= MIN_GAIN_MOVE * -1
-                && (receiverDelta < 0
-                        || getLoadPerPartition(toPartition) + receiverDelta < MAX_LOAD_PER_PART)){   // if gainToSite is negative, the load of the receiving site grows
-            //            LOG.debug("Moving to partition " + toPartition);
-            //            LOG.debug("Weights before moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
+        if(senderDelta <= MIN_GAIN_MOVE * -1
+                && (receiverDelta < 0 
+                        || getLoadPerPartition(toPartition) + receiverDelta < MAX_LOAD_PER_PART)){
 
             m_graph.moveVertices(movingVertices, fromPartition, toPartition);
-            //            LOG.debug("Weights after moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
 
             numMovedVertices = movingVertices.size();
 
             // DEBUG
-            System.out.println("Moved " + numMovedVertices + " vertices from partition " + fromPartition + " to partition " + toPartition + " for a global gain of " + globalDelta + " and a receiver gain of " + receiverDelta);
-//            Controller.record("Loads per partition after reconfiguration");
-//            double sum = 0;
-//            for (int j = 0; j < Controller.MAX_PARTITIONS; j++){
-//                Controller.record(j + " " + getLoadPerPartition(j));
-//                sum += getLoadPerPartition(j);
-//            }
-//            Controller.record("Total load: " + sum);
+            System.out.println("Moved " + numMovedVertices + " vertices from partition " 
+                    + fromPartition + " to partition " + toPartition + " for a global gain of " 
+                    + getGlobalDelta(movingVertices, fromPartition, toPartition) + ", a sender gain of " 
+                    + senderDelta + " and a receiver gain of " + receiverDelta);
         }
         return numMovedVertices;
+    }
+    
+    /**
+     * Finds the best partition where the movingVertices can be moved
+     * Output:
+     * - toPartitionDelta contains the partition where the move should be done and the delta of the move; partition -1 indicates that a new partition should be added
+     * 
+     * @param movingVertices
+     * @param fromPartition
+     * @param activePartitions
+     * @param toPartitionDelta
+     */
+    protected void findBestPartition(IntSet movingVertices, int fromPartition, IntSet activePartitions, Pair<Integer, Double> toPartitionDelta){
+        
+        System.out.println("Finding best partition for set " + movingVertices);
+        
+        double currentDelta = 0;
+        int currentPartition = -1;
+        
+        IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(fromPartition));
+
+        for(int toPartition : localPartitions){
+            
+            if(fromPartition == toPartition){
+                continue;
+            }
+
+            double delta = getDeltaMove(movingVertices, fromPartition, toPartition);
+
+            if (delta < currentDelta){
+                currentDelta = delta;
+                currentPartition = toPartition;
+            }
+        }
+
+        if (currentPartition != -1){
+            toPartitionDelta.fst = currentPartition;
+            toPartitionDelta.snd = currentDelta;
+            return;
+        }
+
+        // then try to offload to remote partitions
+        for(int toPartition : activePartitions){
+
+            if(!localPartitions.contains(toPartition)){
+
+                double delta = getDeltaMove(movingVertices, fromPartition, toPartition);
+
+                if (delta < currentDelta){
+                    currentDelta = delta;
+                    currentPartition = toPartition;
+                }
+            }
+        }
+        
+        if (currentPartition != -1){
+            toPartitionDelta.fst = currentPartition;
+            toPartitionDelta.snd = currentDelta;
+            return;
+        }
+        
+        System.out.println("Did not find anything good, sorry");
+        
+        toPartitionDelta.fst = -1;
+        toPartitionDelta.snd = 0.0;
+    }
+    
+    protected double getDeltaMove(IntSet movingVertices, int fromPartition, int toPartition) {
+
+        double senderDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
+        double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
+
+        if(senderDelta <= MIN_GAIN_MOVE * -1
+                && (receiverDelta < 0
+                        || getLoadPerPartition(toPartition) + receiverDelta < MAX_LOAD_PER_PART)){   // if gainToSite is negative, the load of the receiving site grows
+            return senderDelta;
+        }
+        
+        return 1;
     }
     
     /**

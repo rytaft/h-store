@@ -129,12 +129,11 @@ public class SimplePartitioner extends Partitioner {
     
     
     @Override
-    protected double getGlobalDelta(IntSet movingVertices, int toPartition) {
+    protected double getGlobalDelta(IntSet movingVertices, int fromPartition, int toPartition) {
         assert(movingVertices.size() == 1);
 
         double delta = 0;
 
-        int fromPartition = AffinityGraph.m_vertexPartition.get(movingVertices.iterator().next());
         int fromSite = PlanHandler.getSitePartition(fromPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
@@ -174,14 +173,13 @@ public class SimplePartitioner extends Partitioner {
     }
 
     @Override
-    protected double getReceiverDelta(IntSet movingVertices, int toPartition) {
+    protected double getReceiverDelta(IntSet movingVertices, int fromPartition, int toPartition) {
         if (movingVertices == null || movingVertices.isEmpty()){
             LOG.debug("Trying to move an empty set of vertices");
             return 0;
         }
 
         double delta = 0;
-        int fromPartition = AffinityGraph.m_vertexPartition.get(movingVertices.iterator().next());
         int fromSite = PlanHandler.getSitePartition(fromPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
@@ -223,7 +221,54 @@ public class SimplePartitioner extends Partitioner {
         return delta;
     }
 
-    
+    @Override
+    protected double getSenderDelta(IntSet movingVertices, int fromPartition, int toPartition) {
+        if (movingVertices == null || movingVertices.isEmpty()){
+            LOG.debug("Trying to move an empty set of vertices");
+            return 0;
+        }
+
+        double delta = 0;
+        int fromSite = PlanHandler.getSitePartition(fromPartition);
+        int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
+        
+        double k = (fromSite == toSite) ? LMPT_COST : DTXN_COST;
+
+        for(int vertex : movingVertices){ 
+            
+            double vertexWeight = AffinityGraph.m_vertices.get(vertex);
+            if (vertexWeight == AffinityGraph.m_vertices.defaultReturnValue()){
+                LOG.debug("Cannot include external node for delta computation");
+                throw new IllegalStateException("Cannot include external node for delta computation");
+            }
+
+            delta -= vertexWeight;
+
+            Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(vertex);
+            if(adjacency != null){
+
+                for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
+                    
+                    int otherPartition = edge.getIntKey();
+                    double edgeWeight = edge.getDoubleValue();
+                    
+                    if (otherPartition == toPartition){
+                        delta -= edgeWeight * k;
+                    }
+                    else if (otherPartition == fromPartition) {
+                        delta += edgeWeight * k;
+                    }
+                    else{
+                        int otherSite = PlanHandler.getSitePartition(otherPartition);
+                        double h = (fromSite == otherSite) ? LMPT_COST : DTXN_COST;
+                        delta -= edgeWeight * h;
+                    }
+                }
+            }
+        }
+        
+        return delta;
+    }    
 
 //    protected double getDeltaVertices(IntSet movingVertices, int toPartition, boolean forSender) {
 //        assert(movingVertices.size() == 1);
