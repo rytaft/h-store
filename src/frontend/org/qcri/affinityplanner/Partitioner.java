@@ -58,7 +58,7 @@ public abstract class Partitioner {
     public static double DTXN_COST = 5.0;
     public static int MAX_MOVED_TUPLES_PER_PART = 10000;
     public static int MIN_GAIN_MOVE = 0;
-    public static int MAX_PARTITIONS_ADDED = 6;
+    public static int MAX_PARTITIONS_ADDED = 1;
 
     protected AffinityGraph m_graph;
 
@@ -222,7 +222,7 @@ public abstract class Partitioner {
     /**
      * Finds the best partition where the movingVertices can be moved
      * Output:
-     * - toPartitionDelta contains the partition where the move should be done and the delta of the move; partition -1 indicates that a new partition should be added
+     * - toPartitionDelta contains the partition where the move should be done and the delta of the move
      * 
      * @param movingVertices
      * @param fromPartition
@@ -231,10 +231,8 @@ public abstract class Partitioner {
      */
     protected void findBestPartition(IntSet movingVertices, int fromPartition, IntSet activePartitions, Pair<Integer, Double> toPartitionDelta){
         
-        System.out.println("Finding best partition for set " + movingVertices);
-        
-        double currentDelta = 0;
-        int currentPartition = -1;
+        toPartitionDelta.fst = -1;
+        toPartitionDelta.snd = Double.MAX_VALUE;
         
         IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(fromPartition));
 
@@ -246,15 +244,13 @@ public abstract class Partitioner {
 
             double delta = getDeltaMove(movingVertices, fromPartition, toPartition);
 
-            if (delta < currentDelta){
-                currentDelta = delta;
-                currentPartition = toPartition;
+            if (delta < toPartitionDelta.snd){
+                toPartitionDelta.fst = toPartition;
+                toPartitionDelta.snd = delta;
             }
         }
 
-        if (currentPartition != -1){
-            toPartitionDelta.fst = currentPartition;
-            toPartitionDelta.snd = currentDelta;
+        if (toPartitionDelta.fst != -1){
             return;
         }
 
@@ -265,23 +261,13 @@ public abstract class Partitioner {
 
                 double delta = getDeltaMove(movingVertices, fromPartition, toPartition);
 
-                if (delta < currentDelta){
-                    currentDelta = delta;
-                    currentPartition = toPartition;
+                if (delta < toPartitionDelta.snd){
+                    toPartitionDelta.fst = toPartition;
+                    toPartitionDelta.snd = delta;
                 }
             }
         }
         
-        if (currentPartition != -1){
-            toPartitionDelta.fst = currentPartition;
-            toPartitionDelta.snd = currentDelta;
-            return;
-        }
-        
-        System.out.println("Did not find anything good, sorry");
-        
-        toPartitionDelta.fst = -1;
-        toPartitionDelta.snd = 0.0;
     }
     
     protected double getDeltaMove(IntSet movingVertices, int fromPartition, int toPartition) {
@@ -289,13 +275,12 @@ public abstract class Partitioner {
         double senderDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
         double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
 
-        if(senderDelta <= MIN_GAIN_MOVE * -1
-                && (receiverDelta < 0
-                        || getLoadPerPartition(toPartition) + receiverDelta < MAX_LOAD_PER_PART)){   // if gainToSite is negative, the load of the receiving site grows
+        if(receiverDelta < 0 
+                || getLoadPerPartition(toPartition) + receiverDelta < MAX_LOAD_PER_PART){   // if gainToSite is negative, the load of the receiving site grows
             return senderDelta;
         }
         
-        return 1;
+        return Double.MAX_VALUE;
     }
     
     /**
