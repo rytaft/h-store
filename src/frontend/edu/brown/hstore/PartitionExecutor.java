@@ -1252,6 +1252,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             this.shutdown_latch.release();
         }
     }
+    
+    public String getReconfigDebug(){
+        return new StringBuilder().append(this.partitionId).append(",outStandingAysnc:").append(this.asyncOutstanding.get()).append(",nextAsync:").append((this.nextAsyncPullTimeMS-System.currentTimeMillis())).
+                append(",idleClicks:").append(idle_click_count>MAX_PULL_ASYNC_EVERY_CLICKS).
+                append(",aysncPullQ:").append(this.asyncRequestPullQueue.size()).append(",scheduleAsncPullQ:").append(scheduleAsyncPullQueue.size()).append(",workQueue:").append(this.work_queue.size()).toString();
+    }
 
     /**
      * Special function that allows us to do some utility work while we are
@@ -1612,8 +1618,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     asyncRequestPullQueue.add(pullMsg);
                     //this.work_queue.offer(pullMsg);
                 }
-                
-                LOG.info(String.format("CompletedExtract, Async2, PullId=%s, Chunks=%s, MoreData=%s, Time=%s, QueueGrowth=%s, Records=%s, Table=%s ",
+                if (records == 0){
+                    LOG.error(String.format("CompletedExtract, Async2, NO_RECORDS, PullId=%s, Chunks=%s, MoreData=%s, Time=%s, QueueGrowth=%s, Records=%s, Table=%s ",
+                        pull.getAsyncPullIdentifier(), chunkId, moreDataNeeded, timeTaken, queueGrowth, records, tableName)); 
+                }
+                else
+                    LOG.info(String.format("CompletedExtract, Async2, PullId=%s, Chunks=%s, MoreData=%s, Time=%s, QueueGrowth=%s, Records=%s, Table=%s ",
                         pull.getAsyncPullIdentifier(), chunkId, moreDataNeeded, timeTaken, queueGrowth, records, tableName)); 
             } catch (Exception e) {
                 LOG.error("Exception when processing async data pull response", e);
@@ -1636,7 +1646,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         pullReply.getPullIdentifier(), pullReply.getChunkId(), pullReply.getIsAsync(), pullReply.getMoreDataNeeded()));
 
                 //TODO : Process async pull using chunk id
-                LOG.info("TODO verify chunk id order");
                 
                 receiveTuples(pullReply.getTransactionID(), pullReply.getOldPartition(), pullReply.getNewPartition(), pullReply.getVoltTableName(), 
                     		minIncl, maxExcl, vt, pullReply.getMoreDataNeeded(), 
@@ -6467,7 +6476,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (!scheduleAsyncPullQueue.isEmpty()){
             LOG.warn("Schedule async pull queue was not empty... " + StringUtil.join(",",scheduleAsyncPullQueue));
         }
-        if (this.catalogContext.jarPath.getName().contains("ycsb")){
+        if (this.catalogContext.jarPath.getName().contains("tpcc")==false){
             LOG.info("Pulling ranges instead of keys ************");
             ReconfigurationTracking.PULL_SINGLE_KEY = false;
         } else {
@@ -6537,7 +6546,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             haltProcessing();
         }
         
-        LOG.info("Clearing up reconfiguration state for p_id " + this.partitionId);
+        LOG.info("Clearing up reconfiguration state for p_id " + this.getReconfigDebug());
         this.reconfig_plan = null;
     	this.reconfig_state = ReconfigurationState.END;
         this.outgoing_ranges = null;
@@ -6672,7 +6681,15 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             reconfiguration_stats.addMessage(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s, ",timeTaken, pullId,table_name, minInclusiveList.toString().replace("\n", " | "), maxExclusiveList));
         }
         if(receivedAllTuples){
-            this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+            LOG.error("skipping");
+           // this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+        }
+        if (!moreDataComing){
+            if (asyncOutstanding.get() == false && this.scheduleAsyncPullQueue.isEmpty() && this.asyncRequestPullQueue.isEmpty()) {
+                LOG.error("DIRTY HACK FOR CHECKING IF DONE FIX RANGE TRACKING");
+                this.reconfiguration_coordinator.notifyAllRanges(this.partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+
+            }
         }
     }
 
@@ -6685,7 +6702,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @return
      */
     public Pair<VoltTable, Boolean> extractTuples(Long txnId, int oldPartitionId, int newPartitionId, String table_name, VoltTable min_inclusive, VoltTable max_exclusive, int pullId, int chunkId, boolean isLive) {
-        LOG.info(String.format("(%s) sendTuples keys %s->%s for %s, chunkId:%s (partIds %s->%s)", partitionId, min_inclusive, max_exclusive, table_name, chunkId, oldPartitionId, newPartitionId));
+        //LOG.info(String.format("(%s) sendTuples keys %s->%s for %s, chunkId:%s (partIds %s->%s)", partitionId, min_inclusive, max_exclusive, table_name, chunkId, oldPartitionId, newPartitionId));
+        LOG.info(String.format("(%s) sendTuples from  %s, chunkId:%s (partIds %s->%s)", partitionId,  table_name, chunkId, oldPartitionId, newPartitionId));
+        
         VoltTable vt = null;
         // FIXME make generic
         Table catalog_tbl = this.catalogContext.getTableByName(table_name);

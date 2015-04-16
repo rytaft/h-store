@@ -137,7 +137,10 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
     public boolean markRangeAsReceived(ReconfigurationRange range ){
         boolean added =  this.dataMigratedIn.add(range);
         if(added){
-            rangesMigratedInCount++;if(rangesMigratedInCount==incomingRangesCount){
+            rangesMigratedInCount++;
+            //FIXME this is not tracking properly
+            LOG.info("marked, ranges to go:" + (incomingRangesCount-rangesMigratedInCount) );
+            if(rangesMigratedInCount==incomingRangesCount){
                 throw new ReconfigurationException(ExceptionTypes.ALL_RANGES_MIGRATED_IN);
             }
         }

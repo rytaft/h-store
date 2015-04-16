@@ -918,6 +918,25 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
             }
         }, hstore_conf.site.network_heartbeats_interval,
            hstore_conf.site.network_heartbeats_interval, TimeUnit.MILLISECONDS);
+ 
+        
+        // Reconfig Status
+        this.threadManager.schedulePeriodicWork(new ExceptionHandlingRunnable() {
+            @Override
+            public void runImpl() {
+                try {
+                    if (HStoreSite.this.reconfiguration_coordinator!= null &&  HStoreSite.this.reconfiguration_coordinator.reconfigurationInProgress.get()) {
+                        for (PartitionExecutor e: HStoreSite.this.executors){
+                            LOG.info(e.getReconfigDebug());
+                        }
+                    }
+                } catch (Throwable ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }, 0,
+           2000, TimeUnit.MILLISECONDS);
+ 
         
         // HStoreStatus
         if (hstore_conf.site.status_enable) {
