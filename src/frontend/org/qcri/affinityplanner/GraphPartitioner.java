@@ -237,6 +237,10 @@ public class GraphPartitioner extends Partitioner {
                         || nextPosToMove >= hotVerticesList.size()
                         || (toPartitionDelta.fst != null && toPartitionDelta.fst == -1)){
                     
+                    System.out.println(numMovedVertices + movingVertices.size() >= MAX_MOVED_TUPLES_PER_PART );
+                    System.out.println(nextPosToMove >= hotVerticesList.size());
+                    System.out.println(toPartitionDelta.fst != null && toPartitionDelta.fst == -1);
+                    
                     System.out.println("Cannot expand - Adding a new partition");
 
                     if(activePartitions.size() < Controller.MAX_PARTITIONS 
@@ -270,10 +274,11 @@ public class GraphPartitioner extends Partitioner {
 
                 nextPosToMove = expandMovingVertices (movingVertices, toPartitionDelta, hotVerticesList, nextPosToMove, activePartitions, overloadedPartition);
                 
+                System.out.println("Moving " + movingVertices);
+                
                 // Step 3) move the vertices
 
                 if(!movingVertices.isEmpty() && toPartitionDelta.snd <= MIN_GAIN_MOVE * -1){
-                    System.out.println("Moving " + movingVertices);
                     System.out.println("Moving to " + toPartitionDelta.fst);
                     
                     m_graph.moveVertices(movingVertices, overloadedPartition, toPartitionDelta.fst);

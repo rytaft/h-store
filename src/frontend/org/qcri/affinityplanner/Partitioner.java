@@ -243,8 +243,11 @@ public abstract class Partitioner {
             }
 
             double delta = getDeltaMove(movingVertices, fromPartition, toPartition);
+            
+            System.out.println("Delta to partition " + toPartition + " is " + delta);
 
             if (delta < toPartitionDelta.snd){
+                System.out.println("AAA");
                 toPartitionDelta.fst = toPartition;
                 toPartitionDelta.snd = delta;
             }
@@ -261,7 +264,10 @@ public abstract class Partitioner {
 
                 double delta = getDeltaMove(movingVertices, fromPartition, toPartition);
 
+                System.out.println("Delta to partition " + toPartition + " is " + delta);
+
                 if (delta < toPartitionDelta.snd){
+                    System.out.println("BBB");
                     toPartitionDelta.fst = toPartition;
                     toPartitionDelta.snd = delta;
                 }
@@ -274,6 +280,9 @@ public abstract class Partitioner {
 
         double senderDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
         double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
+        
+        System.out.println("ReceiverDelta " + receiverDelta);
+        System.out.println("Load at receiver " + getLoadPerPartition(toPartition));
 
         if(receiverDelta < 0 
                 || getLoadPerPartition(toPartition) + receiverDelta < MAX_LOAD_PER_PART){   // if gainToSite is negative, the load of the receiving site grows
