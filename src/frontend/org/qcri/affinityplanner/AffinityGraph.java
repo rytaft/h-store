@@ -49,14 +49,14 @@ public class AffinityGraph {
     
     private static PlanHandler m_plan_handler = null;
     
+    static long[] m_intervalsInSecs;
+    
     private static class LoaderThread implements Runnable {
         private Path[] logFiles;
-        private long[] intervals;
         private AtomicInteger nextLogFileCounter;
         
-        public LoaderThread(Path[] logFiles, long[] intervals, AtomicInteger nextLogFileCounter){
+        public LoaderThread(Path[] logFiles, AtomicInteger nextLogFileCounter){
             this.logFiles = logFiles;
-            this.intervals = intervals;
             this.nextLogFileCounter = nextLogFileCounter;
         }
 
@@ -67,7 +67,7 @@ public class AffinityGraph {
                 
                 while (nextLogFile < logFiles.length){
                     
-                    double increment = 1.0/intervals[nextLogFile];
+                    double increment = 1.0/m_intervalsInSecs[nextLogFile];
                     
                     loadLogFile(logFiles[nextLogFile], increment);
                     
@@ -186,9 +186,10 @@ public class AffinityGraph {
                 } // END if (line.equals("END"))
 
                 else{
-                    curr_transaction.add(line.hashCode());
-                    if (!vertex_to_name.containsKey(line.hashCode())){
-                        vertex_to_name.put(line.hashCode(), line);
+                    int hash = line.hashCode();
+                    curr_transaction.add(hash);
+                    if (!vertex_to_name.containsKey(hash)){
+                        vertex_to_name.put(hash, line);
                     }
                 }
 
@@ -250,7 +251,7 @@ public class AffinityGraph {
         }
 
         // read monitoring intervals for all sites - in seconds
-        long[] intervalsInSecs = new long[intervalFiles.length];
+        m_intervalsInSecs = new long[intervalFiles.length];
         int currInterval = 0;
         for (Path intervalFile : intervalFiles){
             if (intervalFile == null){
@@ -261,7 +262,7 @@ public class AffinityGraph {
                 reader = Files.newBufferedReader(intervalFile, Charset.forName("US-ASCII"));
                 String line = reader.readLine();
                 reader.close();
-                intervalsInSecs[currInterval] = Long.parseLong(line) / 1000;
+                m_intervalsInSecs[currInterval] = Long.parseLong(line) / 1000;
                 currInterval++;
             } catch (IOException e) {
                 Controller.record("Error while reading interval file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
@@ -281,7 +282,7 @@ public class AffinityGraph {
         
         for (int currLogFile = 0; currLogFile < Controller.LOAD_THREADS; currLogFile++){
             
-            Thread loader = new Thread (new LoaderThread (logFiles, intervalsInSecs, nextLogFileCounter));
+            Thread loader = new Thread (new LoaderThread (logFiles, nextLogFileCounter));
             loadingThreads[currLogFile] = loader;
             loader.start();
         }
