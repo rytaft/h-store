@@ -224,7 +224,12 @@ public class FastIntHistogram implements Histogram<Integer> {
     // ----------------------------------------------------------------------------
     
     public long put(int value) {
-        return this.put(value, 1);
+        if (value>=0)
+            return this.put(value, 1);
+        else {
+            return -1;
+        }
+            
     }
     public long put(int value, long delta) {
         if (value >= this.histogram.length) {
