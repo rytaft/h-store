@@ -1,0 +1,22 @@
+{
+  "partition_plan": {
+    "tables": {
+      "suppliers": {
+        "partitions": {
+          "0": "0-1001"
+        }
+      }, 
+      "parts": {
+        "partitions": {
+          "0": "0-100001"
+        }
+      }, 
+      "products": {
+        "partitions": {
+          "0": "0-10001"
+        }
+      }
+    }
+  }, 
+  "default_table": "suppliers"
+}

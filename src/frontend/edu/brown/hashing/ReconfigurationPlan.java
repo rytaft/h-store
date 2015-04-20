@@ -137,7 +137,7 @@ public class ReconfigurationPlan {
     		}
           
         } catch (Exception e) {
-            LOG.error("Error looking up reconfiguration range", e);
+            LOG.error(String.format("Error looking up reconfiguration range. Table:%s Ids:%s",table_name,ids), e);
         }
 
         return null;
@@ -261,6 +261,8 @@ public class ReconfigurationPlan {
           if(!this.catalogContext.jarPath.getName().contains("tpcc")) { 
         	  setReconfigurations(
                   mergeReconfigurations(splitReconfigurations(getReconfigurations(),new_table.getCatalog_table()), new_table.getCatalog_table()));
+          } else {
+              LOG.info("skipping merging");
           }
              
         
@@ -268,7 +270,7 @@ public class ReconfigurationPlan {
         
         private List<ReconfigurationRange> mergeReconfigurations(List<ReconfigurationRange> reconfiguration_range, Table catalog_table) {
             if(catalog_table==null){
-                LOG.debug("Catalog table is null. Not merging reconfigurations");
+                LOG.info("Catalog table is null. Not merging reconfigurations");
                 return reconfiguration_range;
             }
             List<ReconfigurationRange> res = new ArrayList<>();
@@ -278,7 +280,7 @@ public class ReconfigurationPlan {
                 return reconfiguration_range;
             long currentMin = conf.site.reconfig_min_transfer_bytes;
             if (currentMin <= 1){
-                LOG.debug(String.format("Not merging reconfiguration plan. Min transfer bytes: %s", conf.site.reconfig_min_transfer_bytes));
+                LOG.info(String.format("Not merging reconfiguration plan. Min transfer bytes: %s", conf.site.reconfig_min_transfer_bytes));
                 return reconfiguration_range;   
             }
             
@@ -286,7 +288,7 @@ public class ReconfigurationPlan {
                 
                 long tupleBytes = MemoryEstimator.estimateTupleSize(catalog_table);
                 long minRows = currentMin/tupleBytes;
-                LOG.debug(String.format("Trying to merge on table:%s  TupleBytes:%s  CurrentMin:%s  MinRows:%s MinTransferBytes:%s", catalog_table.fullName(),tupleBytes,currentMin,minRows, currentMin));
+                LOG.info(String.format("Trying to merge on table:%s  TupleBytes:%s  CurrentMin:%s  MinRows:%s MinTransferBytes:%s", catalog_table.fullName(),tupleBytes,currentMin,minRows, currentMin));
                 
                 HashMap<String, ReconfigurationRange> rangeMap = new HashMap<>();
             	for(ReconfigurationRange range : reconfiguration_range){
@@ -313,7 +315,7 @@ public class ReconfigurationPlan {
                     if(max_potential_keys >= minRows) {
                     	int num_ranges = partialRange.getMaxExcl().size();
                     	if(num_ranges > 1) {
-                    		LOG.debug(String.format("Merging %s ranges. Table:%s",num_ranges,table_name));
+                    		LOG.info(String.format("Merging %s ranges. Table:%s",num_ranges,table_name));
                     	}
                     	
                         res.add(partialRange);

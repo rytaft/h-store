@@ -1708,7 +1708,7 @@ public final class HStoreConf {
                         "that has that partition. Note that the HStoreSite will not use the PartitionEstimator to " +
                         "determine whether the client is correct, but the transaction can be restarted and re-executed " +
                         "if ${site.exec_db2_redirects} is enabled.",
-            defaultBoolean=true,
+            defaultBoolean=false,
             experimental=false
         )
         public boolean txn_hints;

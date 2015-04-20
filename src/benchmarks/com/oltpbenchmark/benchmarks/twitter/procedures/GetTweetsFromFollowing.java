@@ -40,7 +40,7 @@ public class GetTweetsFromFollowing extends VoltProcedure {
     /** NOTE: The ?? is substituted into a string of repeated ?'s */
     public final SQLStmt getTweets = new SQLStmt(
         "SELECT * FROM " + TwitterConstants.TABLENAME_TWEETS +
-        " WHERE uid = ?"
+        " WHERE uid = ? LIMIT " + TwitterConstants.LIMIT_TWEETS_FOR_UID
     );
     
     public VoltTable[] run(int uid) {
