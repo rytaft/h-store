@@ -52,8 +52,7 @@ public class Controller extends Thread {
     public static String PLAN_OUT = "plan_out.json";
     public static String ALGO = "graph";
     
-//    public static int LOAD_THREADS = 6;
-    public static int LOAD_THREADS = 1;
+    public static int LOAD_THREADS = 6;
     
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
         
