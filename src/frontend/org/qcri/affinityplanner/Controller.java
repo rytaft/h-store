@@ -52,7 +52,8 @@ public class Controller extends Thread {
     public static String PLAN_OUT = "plan_out.json";
     public static String ALGO = "graph";
     
-    public static int LOAD_THREADS = 6;
+//    public static int LOAD_THREADS = 6;
+    public static int LOAD_THREADS = 1;
     
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
         
@@ -220,7 +221,7 @@ public class Controller extends Thread {
  
             String outputPlan = FileUtil.readFile(PLAN_OUT);
             record("Output plan\n" + outputPlan);
-
+            
             record("Loads per partition after reconfiguration");
             for (int j = 0; j < Controller.MAX_PARTITIONS; j++){
                 record(j + " " + partitioner.getLoadPerPartition(j));

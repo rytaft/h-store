@@ -220,7 +220,8 @@ public abstract class Partitioner {
     }
     
     /**
-     * Finds the best partition where the movingVertices can be moved
+     * Finds the partition where the movingVertices can be moved while maximizing sender gain
+     * 
      * Output:
      * - toPartitionDelta contains the partition where the move should be done and the delta of the move
      * 
@@ -242,12 +243,11 @@ public abstract class Partitioner {
                 continue;
             }
 
-            double delta = getDeltaMove(movingVertices, fromPartition, toPartition);
+            double delta = getSenderDelta(movingVertices, fromPartition, toPartition);
             
-            System.out.println("Delta to partition " + toPartition + " is " + delta);
+//            System.out.println("Sender delta to partition " + toPartition + " is " + delta);
 
             if (delta < toPartitionDelta.snd){
-                System.out.println("AAA");
                 toPartitionDelta.fst = toPartition;
                 toPartitionDelta.snd = delta;
             }
@@ -262,12 +262,11 @@ public abstract class Partitioner {
 
             if(!localPartitions.contains(toPartition)){
 
-                double delta = getDeltaMove(movingVertices, fromPartition, toPartition);
+                double delta = getSenderDelta(movingVertices, fromPartition, toPartition);
 
-                System.out.println("Delta to partition " + toPartition + " is " + delta);
+//                System.out.println("Sender delta to partition " + toPartition + " is " + delta);
 
                 if (delta < toPartitionDelta.snd){
-                    System.out.println("BBB");
                     toPartitionDelta.fst = toPartition;
                     toPartitionDelta.snd = delta;
                 }
@@ -276,21 +275,21 @@ public abstract class Partitioner {
         
     }
     
-    protected double getDeltaMove(IntSet movingVertices, int fromPartition, int toPartition) {
-
-        double senderDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
-        double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
-        
-        System.out.println("ReceiverDelta " + receiverDelta);
-        System.out.println("Load at receiver " + getLoadPerPartition(toPartition));
-
-        if(receiverDelta < 0 
-                || getLoadPerPartition(toPartition) + receiverDelta < MAX_LOAD_PER_PART){   // if gainToSite is negative, the load of the receiving site grows
-            return senderDelta;
-        }
-        
-        return Double.MAX_VALUE;
-    }
+//    protected double getDeltaMove(IntSet movingVertices, int fromPartition, int toPartition) {
+//
+//        double senderDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
+//        double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
+//        
+//        System.out.println("ReceiverDelta " + receiverDelta);
+//        System.out.println("Load at receiver " + getLoadPerPartition(toPartition));
+//
+//        if(receiverDelta < 0 
+//                || getLoadPerPartition(toPartition) + receiverDelta < MAX_LOAD_PER_PART){   // if gainToSite is negative, the load of the receiving site grows
+//            return senderDelta;
+//        }
+//        
+//        return Double.MAX_VALUE;
+//    }
     
     /**
      * Returns a list of lists of vertices - one list for every remote partition
