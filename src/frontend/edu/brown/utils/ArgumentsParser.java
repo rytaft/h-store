@@ -1000,31 +1000,31 @@ public class ArgumentsParser {
         }
 
         if (this.params.containsKey(PARAM_ELASTIC_MIN_LOAD)){
-            GraphPartitioner.MIN_LOAD_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_LOAD));
+            Controller.MIN_LOAD_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_LOAD));
         }
         
         if (this.params.containsKey(PARAM_ELASTIC_MAX_LOAD)){
-            GraphPartitioner.MAX_LOAD_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_LOAD));
+            Controller.MAX_LOAD_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_LOAD));
         }
         
         if (this.params.containsKey(PARAM_ELASTIC_DTXN_COST)){
-            GraphPartitioner.DTXN_COST = Double.parseDouble(this.params.get(PARAM_ELASTIC_DTXN_COST));
+            Controller.DTXN_COST = Double.parseDouble(this.params.get(PARAM_ELASTIC_DTXN_COST));
         }
 
         if (this.params.containsKey(PARAM_ELASTIC_LMPT_COST)){
-            GraphPartitioner.LMPT_COST = Double.parseDouble(this.params.get(PARAM_ELASTIC_LMPT_COST));
+            Controller.LMPT_COST = Double.parseDouble(this.params.get(PARAM_ELASTIC_LMPT_COST));
         }
         
         if (this.params.containsKey(PARAM_ELASTIC_MIN_GAIN_MOVE)){
-            GraphPartitioner.MIN_GAIN_MOVE = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_GAIN_MOVE));
+            Controller.MIN_GAIN_MOVE = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_GAIN_MOVE));
         }
 
         if (this.params.containsKey(PARAM_ELASTIC_MAX_TUPLE_MOVE)){
-            GraphPartitioner.MAX_MOVED_TUPLES_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_TUPLE_MOVE));
+            Controller.MAX_MOVED_TUPLES_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_TUPLE_MOVE));
         }
         
         if (this.params.containsKey(PARAM_ELASTIC_MAX_PARTITIONS_ADDED)){
-            GraphPartitioner.MAX_PARTITIONS_ADDED = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_PARTITIONS_ADDED));
+            Controller.MAX_PARTITIONS_ADDED = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_PARTITIONS_ADDED));
         }        
 
         if (this.params.containsKey(PARAM_ELASTIC_RUN_MONITORING)){

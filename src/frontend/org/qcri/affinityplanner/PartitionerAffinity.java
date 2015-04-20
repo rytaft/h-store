@@ -33,7 +33,7 @@ import org.apache.log4j.Logger;
  * @author mserafini
  *
  */
-public abstract class Partitioner {
+public abstract class PartitionerAffinity {
     
     public class Pair<A, B> {
         public A fst;
@@ -50,15 +50,7 @@ public abstract class Partitioner {
         }
     }
     
-    private static final Logger LOG = Logger.getLogger(Partitioner.class);
-
-    public static int MIN_LOAD_PER_PART = Integer.MIN_VALUE;
-    public static int MAX_LOAD_PER_PART = Integer.MAX_VALUE;
-    public static double LMPT_COST = 1.1;
-    public static double DTXN_COST = 5.0;
-    public static int MAX_MOVED_TUPLES_PER_PART = 10000;
-    public static int MIN_GAIN_MOVE = 0;
-    public static int MAX_PARTITIONS_ADDED = 1;
+    private static final Logger LOG = Logger.getLogger(PartitionerAffinity.class);
 
     protected AffinityGraph m_graph;
 
@@ -202,9 +194,9 @@ public abstract class Partitioner {
         double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
 
         // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
-        if(senderDelta <= MIN_GAIN_MOVE * -1
+        if(senderDelta <= Controller.MIN_GAIN_MOVE * -1
                 && (receiverDelta < 0 
-                        || getLoadPerPartition(toPartition) + receiverDelta < MAX_LOAD_PER_PART)){
+                        || getLoadPerPartition(toPartition) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
 
             m_graph.moveVertices(movingVertices, fromPartition, toPartition);
 
@@ -445,7 +437,7 @@ public abstract class Partitioner {
         // detect underloaded partitions
         TreeSet<Integer> underloadedPartitions = new TreeSet<Integer>();
         for(int part : activePartitions){
-            if (getLoadPerPartition(part) < MIN_LOAD_PER_PART){
+            if (getLoadPerPartition(part) < Controller.MIN_LOAD_PER_PART){
                 underloadedPartitions.add(part);
             }
         }

@@ -14,7 +14,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 
-public class GraphPartitioner extends Partitioner {
+public class GraphPartitioner extends PartitionerAffinity {
 
     private static final Logger LOG = Logger.getLogger(GraphPartitioner.class);
     
@@ -86,7 +86,7 @@ public class GraphPartitioner extends Partitioner {
             if(activePartitions.contains(i)){
                 double load =  getLoadPerPartition(i);
                 System.out.println(load);
-                if (load > MAX_LOAD_PER_PART){
+                if (load > Controller.MAX_LOAD_PER_PART){
                     overloadedPartitions.add(i);
                 }
             }
@@ -120,7 +120,7 @@ public class GraphPartitioner extends Partitioner {
 
         for (int from_part : activePartitions){
             
-            List<IntList> allBorderVertices = getBorderVertices(from_part, MAX_MOVED_TUPLES_PER_PART);
+            List<IntList> allBorderVertices = getBorderVertices(from_part, Controller.MAX_MOVED_TUPLES_PER_PART);
 
             // vertices that will have to be removed from other lists
             IntSet movedVerticesSet = new IntOpenHashSet ();
@@ -150,7 +150,7 @@ public class GraphPartitioner extends Partitioner {
 
                 Pair<Integer,Double> toPartitionDelta = new Pair<Integer,Double> (to_part, 1.0);
 
-                while(numMovedVertices + movingVertices.size() < MAX_MOVED_TUPLES_PER_PART 
+                while(numMovedVertices + movingVertices.size() < Controller.MAX_MOVED_TUPLES_PER_PART 
                         && nextPosToMove < borderVertices.size()
                         && nextPosToMove != -1){
 
@@ -182,7 +182,7 @@ public class GraphPartitioner extends Partitioner {
 //                        System.out.println("Is it in? " + AffinityGraph.m_vertexPartition.get(-1549464086));
 //                  }
                     
-                        if(toPartitionDelta.snd <= MIN_GAIN_MOVE * -1){
+                        if(toPartitionDelta.snd <= Controller.MIN_GAIN_MOVE * -1){
                             
 //                            if (movingVertices.contains(-1549464086)){
 //                                System.out.println("moving it!");
@@ -252,7 +252,7 @@ public class GraphPartitioner extends Partitioner {
             System.out.println("offloading site " + overloadedPartition);
 
             // get hottest vertices. the actual length of the array is min(Controller.MAX_MOVED_VERTICES, #tuples held site);
-            IntList hotVerticesList = getHottestVertices(overloadedPartition, MAX_MOVED_TUPLES_PER_PART);
+            IntList hotVerticesList = getHottestVertices(overloadedPartition, Controller.MAX_MOVED_TUPLES_PER_PART);
             
 //            if(overloadedPartition == 0 && hotVerticesList.contains(-1549464086)){
 //                System.out.println("It is a hot vertex");
@@ -280,7 +280,7 @@ public class GraphPartitioner extends Partitioner {
 
             Pair<Integer, Double> toPartitionDelta = new Pair<Integer, Double> ();
     
-            while(getLoadPerPartition(overloadedPartition) > MAX_LOAD_PER_PART){
+            while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
             
                 // DEBUG
                 //                LOG.debug("Press ENTER to continue");
@@ -296,18 +296,18 @@ public class GraphPartitioner extends Partitioner {
 
                 // Step 1) add partition and reset if I have over-expanded movingVertices, or if I cannot expand it anymore
 
-                if (numMovedVertices + movingVertices.size() >= MAX_MOVED_TUPLES_PER_PART 
+                if (numMovedVertices + movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART 
                         || nextPosToMove >= hotVerticesList.size()
                         || (toPartitionDelta.fst != null && toPartitionDelta.fst == -1)){
                     
-                    System.out.println(numMovedVertices + movingVertices.size() >= MAX_MOVED_TUPLES_PER_PART );
+                    System.out.println(numMovedVertices + movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART );
                     System.out.println(nextPosToMove >= hotVerticesList.size());
                     System.out.println(toPartitionDelta.fst != null && toPartitionDelta.fst == -1);
                     
                     System.out.println("Cannot expand - Adding a new partition");
 
                     if(activePartitions.size() < Controller.MAX_PARTITIONS 
-                                && addedPartitions < MAX_PARTITIONS_ADDED){
+                                && addedPartitions < Controller.MAX_PARTITIONS_ADDED){
 
                         // We fill up low-order partitions first to minimize the number of servers
                         addedPartitions++;
@@ -359,9 +359,9 @@ public class GraphPartitioner extends Partitioner {
                 
                 if(!movingVertices.isEmpty() 
                         && toPartitionDelta.fst != -1
-                        && toPartitionDelta.snd <= MIN_GAIN_MOVE * -1
+                        && toPartitionDelta.snd <= Controller.MIN_GAIN_MOVE * -1
                         && (receiverDelta < 0 
-                                || getLoadPerPartition(toPartitionDelta.fst) + receiverDelta < MAX_LOAD_PER_PART)){
+                                || getLoadPerPartition(toPartitionDelta.fst) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
                     
                     System.out.println("Actually moving to " + toPartitionDelta.fst);
                     
@@ -630,7 +630,7 @@ public class GraphPartitioner extends Partitioner {
 //                        }
 
                         int otherSite = PlanHandler.getSitePartition(otherPartition);
-                        double h = (fromSite == otherSite) ? LMPT_COST : DTXN_COST;
+                        double h = (fromSite == otherSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
                         load += edgeWeight * h;
                         
 //                        if (vertices.size() == 1925 && DEB){
@@ -660,7 +660,7 @@ public class GraphPartitioner extends Partitioner {
         int fromSite = PlanHandler.getSitePartition(fromPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
-        double k = (fromSite == toSite) ? LMPT_COST : DTXN_COST;
+        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
 
         for(int vertex : movingVertices){ 
             
@@ -685,10 +685,10 @@ public class GraphPartitioner extends Partitioner {
                             int otherSite = PlanHandler.getSitePartition(otherPartition);
                             double h = 0;
                             if (otherSite == fromSite && otherSite != toSite){
-                                h = DTXN_COST - LMPT_COST;
+                                h = Controller.DTXN_COST - Controller.LMPT_COST;
                             }
                             else if (otherSite != fromSite && otherSite == toSite){
-                                h = LMPT_COST - DTXN_COST;
+                                h = Controller.LMPT_COST - Controller.DTXN_COST;
                             }
                             delta += edgeWeight * h;
                         }
@@ -712,7 +712,7 @@ public class GraphPartitioner extends Partitioner {
         int fromSite = PlanHandler.getSitePartition(fromPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
-        double k = (fromSite == toSite) ? LMPT_COST : DTXN_COST;
+        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
 
         for(int vertex : movingVertices){ 
             
@@ -743,7 +743,7 @@ public class GraphPartitioner extends Partitioner {
                         }
                         else{
                             int otherSite = PlanHandler.getSitePartition(otherPartition);
-                            double h = (toSite == otherSite) ? LMPT_COST : DTXN_COST;
+                            double h = (toSite == otherSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
                             delta += edgeWeight * h;
                         }
                     }
@@ -766,7 +766,7 @@ public class GraphPartitioner extends Partitioner {
         int fromSite = PlanHandler.getSitePartition(fromPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
-        double k = (fromSite == toSite) ? LMPT_COST : DTXN_COST;
+        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
 
 //        if (movingVertices.size() == 1925 && DEB){
 //            System.out.println("Operands in senderDelta not Load");
@@ -830,7 +830,7 @@ public class GraphPartitioner extends Partitioner {
                         }
                         else{
                             int otherSite = PlanHandler.getSitePartition(otherPartition);
-                            double h = (fromSite == otherSite) ? LMPT_COST : DTXN_COST;
+                            double h = (fromSite == otherSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
                             delta -= edgeWeight * h;
 //                            if(movingVertices.size() == 1925 && DEB){
 //                                if(!DEBUG.contains("Edge (" + vertex + "," + otherVertex + ") " + edgeWeight * k)){

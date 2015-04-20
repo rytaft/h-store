@@ -53,7 +53,16 @@ public class Controller extends Thread {
     public static String ALGO = "graph";
     
     public static int LOAD_THREADS = 6;
-    
+ 
+    public static int MIN_LOAD_PER_PART = Integer.MIN_VALUE;
+    public static int MAX_LOAD_PER_PART = Integer.MAX_VALUE;
+    public static double LMPT_COST = 1.1;
+    public static double DTXN_COST = 5.0;
+    public static int MAX_MOVED_TUPLES_PER_PART = 10000;
+    public static int MIN_GAIN_MOVE = 0;
+    public static int MAX_PARTITIONS_ADDED = 1;
+
+
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
         
         m_client = ClientFactory.createClient();
@@ -194,7 +203,7 @@ public class Controller extends Thread {
             record("======================== LOADING GRAPH ========================");
             t1 = System.currentTimeMillis();
             
-            Partitioner partitioner = null;
+            PartitionerAffinity partitioner = null;
             
             if(ALGO.equals("simple")){
                 partitioner = new SimplePartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
@@ -228,7 +237,7 @@ public class Controller extends Thread {
 
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
-            record("Partitioner tuples to move: " + Partitioner.MAX_MOVED_TUPLES_PER_PART);
+            record("Partitioner tuples to move: " + Controller.MAX_MOVED_TUPLES_PER_PART);
             
         } // END if(UPDATE_PLAN)
 

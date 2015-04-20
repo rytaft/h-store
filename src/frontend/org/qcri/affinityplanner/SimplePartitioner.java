@@ -13,7 +13,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 
-public class SimplePartitioner extends Partitioner {
+public class SimplePartitioner extends PartitionerAffinity {
 
     private static final Logger LOG = Logger.getLogger(SimplePartitioner.class);
 
@@ -44,7 +44,7 @@ public class SimplePartitioner extends Partitioner {
         // move border vertices        
         for (int fromPart = 0; fromPart < Controller.MAX_PARTITIONS; fromPart ++){
             
-            List<IntList> borderVertices = getBorderVertices(fromPart, MAX_MOVED_TUPLES_PER_PART);
+            List<IntList> borderVertices = getBorderVertices(fromPart, Controller.MAX_MOVED_TUPLES_PER_PART);
 
             for(int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
                 
@@ -66,7 +66,7 @@ public class SimplePartitioner extends Partitioner {
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
             if(activePartitions.contains(i)){
                 System.out.println(getLoadPerPartition(i));
-                if (getLoadPerPartition(i) > MAX_LOAD_PER_PART){
+                if (getLoadPerPartition(i) > Controller.MAX_LOAD_PER_PART){
                     overloadedPartitions.add(i);
                 }
             }
@@ -76,7 +76,7 @@ public class SimplePartitioner extends Partitioner {
             // move hot vertices
             for(int fromPart : overloadedPartitions){
 
-                IntList hotVertices = getHottestVertices(fromPart, MAX_MOVED_TUPLES_PER_PART);
+                IntList hotVertices = getHottestVertices(fromPart, Controller.MAX_MOVED_TUPLES_PER_PART);
 
                 for (int vertex : hotVertices){
 
@@ -116,10 +116,10 @@ public class SimplePartitioner extends Partitioner {
                     int toPartition = edge.getIntKey();
                     int toPartitionSite = PlanHandler.getSitePartition(toPartition);
                     if(toPartitionSite != fromPartitionSite){
-                        load += edge.getDoubleValue() * DTXN_COST;
+                        load += edge.getDoubleValue() * Controller.DTXN_COST;
                     }
                     else if(toPartition != fromPartition){
-                        load += edge.getDoubleValue() * LMPT_COST;
+                        load += edge.getDoubleValue() * Controller.LMPT_COST;
                     }
                 }
             }
@@ -137,7 +137,7 @@ public class SimplePartitioner extends Partitioner {
         int fromSite = PlanHandler.getSitePartition(fromPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
-        double k = (fromSite == toSite) ? LMPT_COST : DTXN_COST;
+        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
 
         for(int vertex : movingVertices){
             
@@ -158,10 +158,10 @@ public class SimplePartitioner extends Partitioner {
                         int otherSite = PlanHandler.getSitePartition(otherPartition);
                         double h = 0;
                         if (otherSite == fromSite && otherSite != toSite){
-                            h = DTXN_COST - LMPT_COST;
+                            h = Controller.DTXN_COST - Controller.LMPT_COST;
                         }
                         else if (otherSite != fromSite && otherSite == toSite){
-                            h = LMPT_COST - DTXN_COST;
+                            h = Controller.LMPT_COST - Controller.DTXN_COST;
                         }
                         delta += edgeWeight * h;
                     }
@@ -183,7 +183,7 @@ public class SimplePartitioner extends Partitioner {
         int fromSite = PlanHandler.getSitePartition(fromPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
-        double k = (fromSite == toSite) ? LMPT_COST : DTXN_COST;
+        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
 
         for(int vertex : movingVertices){ 
             
@@ -211,7 +211,7 @@ public class SimplePartitioner extends Partitioner {
                     }
                     else{
                         int otherSite = PlanHandler.getSitePartition(otherPartition);
-                        double h = (toSite == otherSite) ? LMPT_COST : DTXN_COST;
+                        double h = (toSite == otherSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
                         delta += edgeWeight * h;
                     }
                 }
@@ -232,7 +232,7 @@ public class SimplePartitioner extends Partitioner {
         int fromSite = PlanHandler.getSitePartition(fromPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
-        double k = (fromSite == toSite) ? LMPT_COST : DTXN_COST;
+        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
 
         for(int vertex : movingVertices){ 
             
@@ -260,7 +260,7 @@ public class SimplePartitioner extends Partitioner {
                     }
                     else{
                         int otherSite = PlanHandler.getSitePartition(otherPartition);
-                        double h = (fromSite == otherSite) ? LMPT_COST : DTXN_COST;
+                        double h = (fromSite == otherSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
                         delta -= edgeWeight * h;
                     }
                 }
@@ -319,10 +319,10 @@ public class SimplePartitioner extends Partitioner {
                     int toPartition = edge.getIntKey();
                     int toVertexSite = PlanHandler.getSitePartition(toPartition);
                     if(toVertexSite != fromVertexSite){
-                        load += edge.getDoubleValue() * DTXN_COST;
+                        load += edge.getDoubleValue() * Controller.DTXN_COST;
                     }
                     else if(toPartition != fromVertexPartition){
-                        load += edge.getDoubleValue() * LMPT_COST;
+                        load += edge.getDoubleValue() * Controller.LMPT_COST;
                     }
                 }
             }
