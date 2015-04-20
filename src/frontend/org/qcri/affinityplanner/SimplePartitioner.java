@@ -34,7 +34,7 @@ public class SimplePartitioner extends PartitionerAffinity {
         IntSet activePartitions = new IntOpenHashSet();
 
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
-            if(!AffinityGraph.m_partitionVertices.get(i).isEmpty()){
+            if(AffinityGraph.isActive(i)){
                 activePartitions.add(i);
             }
         }

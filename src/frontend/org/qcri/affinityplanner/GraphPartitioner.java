@@ -63,7 +63,7 @@ public class GraphPartitioner extends PartitionerAffinity {
 
         System.out.println("Load per partition before reconfiguration");
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
-            if(!AffinityGraph.m_partitionVertices.get(i).isEmpty()){
+            if(AffinityGraph.isActive(i)){
                 activePartitions.add(i);
                 System.out.println(getLoadPerPartition(i));
             }

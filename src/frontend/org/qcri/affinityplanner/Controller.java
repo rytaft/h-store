@@ -41,6 +41,8 @@ public class Controller extends Thread {
 //    private Path planFile;
 //    private Path outputPlanFile;
     
+
+    // Controller
     public static int MAX_PARTITIONS;
     public static int PARTITIONS_PER_SITE;
 
@@ -52,8 +54,10 @@ public class Controller extends Thread {
     public static String PLAN_OUT = "plan_out.json";
     public static String ALGO = "graph";
     
+    // Loader
     public static int LOAD_THREADS = 6;
  
+    // Repartitioning
     public static int MIN_LOAD_PER_PART = Integer.MIN_VALUE;
     public static int MAX_LOAD_PER_PART = Integer.MAX_VALUE;
     public static double LMPT_COST = 1.1;
@@ -61,6 +65,9 @@ public class Controller extends Thread {
     public static int MAX_MOVED_TUPLES_PER_PART = 10000;
     public static int MIN_GAIN_MOVE = 0;
     public static int MAX_PARTITIONS_ADDED = 1;
+    
+    public static int COLD_CHUNK_SIZE = 100;
+    public static double COLD_TUPLE_FRACTION_ACCESSES = 100;
 
 
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {

@@ -4,9 +4,11 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 
 import java.io.File;
+import java.util.List;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.qcri.affinityplanner.Plan.Range;
 import org.voltdb.CatalogContext;
 
 import edu.brown.hashing.ExplicitPartitions;
@@ -96,5 +98,15 @@ public class PlanHandler extends Plan {
             res.add(i);
         }
         return res;
+    }
+    
+    public boolean isActive(int partition){
+        for(String table: table_names){
+            List<Range> ranges = getAllRanges(table, partition);
+            if (ranges != null && !ranges.isEmpty()){
+                return true;
+            }
+        }
+        return false;
     }
 }

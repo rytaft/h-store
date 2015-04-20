@@ -25,7 +25,7 @@ public class Plan {
     public static final String PLANNED_PARTITIONS = "partition_plan";
 	// the TreeMap is a range. The key is the beginning of interval, the value is the end.
 	private Map<String, HashMap<Integer, TreeMap<Long, Long>>> tableToPartitionsToRanges = new HashMap<String, HashMap<Integer, TreeMap<Long, Long>>>();
-	private String[] table_names;
+	protected String[] table_names;
 	public class Range{
 		Long from;
 		Long to;
@@ -486,7 +486,7 @@ public class Plan {
 		}
 		return res;
 	}
-
+	
 	public Long getTupleCount(String table, Integer partition) {
 
         HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());

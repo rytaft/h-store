@@ -49,7 +49,7 @@ public class AffinityGraph {
     
     private static PlanHandler m_plan_handler = null;
     
-    static long[] m_intervalsInSecs;
+    private static long[] m_intervalsInSecs;
     
     private static class LoaderThread implements Runnable {
         private Path[] logFiles;
@@ -319,6 +319,10 @@ public class AffinityGraph {
     public int getPartition(int vertex){
         String vertexName = m_vertex_to_name.get(vertex);
         return m_plan_handler.getPartition(vertexName);
+    }
+    
+    public static boolean isActive(int partition){
+        return m_plan_handler.isActive(partition);
     }
     
     public void planToJSON(String newPlanFile){
