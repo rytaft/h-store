@@ -96,11 +96,11 @@ public class AffinityConfig {
             }
         } // FOR
             
-        supplier_gen = getGenerator(AffinityConstants.SUP_PRE, num_suppliers, m_extraParams);
-        product_gen = getGenerator(AffinityConstants.PROD_PRE, num_products, m_extraParams);
-        part_gen = getGenerator(AffinityConstants.PARTS_PRE, num_parts, m_extraParams);
-        uses_gen = getAffinityGenerator(AffinityConstants.USES_PRE, num_parts, m_extraParams);
-        supplies_gen = getAffinityGenerator(AffinityConstants.SUPPLIES_PRE, num_parts, m_extraParams);
+        supplier_gen = getGenerator(AffinityConstants.SUP_PRE, num_suppliers-1, m_extraParams);
+        product_gen = getGenerator(AffinityConstants.PROD_PRE, num_products-1, m_extraParams);
+        part_gen = getGenerator(AffinityConstants.PARTS_PRE, num_parts-1, m_extraParams);
+        uses_gen = getAffinityGenerator(AffinityConstants.USES_PRE, num_parts-1, m_extraParams);
+        supplies_gen = getAffinityGenerator(AffinityConstants.SUPPLIES_PRE, num_parts-1, m_extraParams);
     }
 
     
