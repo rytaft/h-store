@@ -690,14 +690,15 @@ public class SnapshotRestore extends VoltSystemProcedure {
                 LOG.error("Unable to generate restore plan for " + t.getTypeName() + " table not restored");
                 throw new VoltAbortException("Unable to generate restore plan for " + t.getTypeName() + " table not restored");
             }
-            restorePlans.add(restore_plan);
             for (SynthesizedPlanFragment plan : restore_plan){
+            	plan.multipartition = true;
             	LOG.info("Plan has restore plan: " + t.getTypeName() + " " + plan.fragmentId + " " 
                 		+ plan.outputDependencyIds.toString() + " "  
                 		+ plan.inputDependencyIds.toString() + " " 
                 		+ plan.multipartition + " " 
                 		+ plan.parameters.toString());
             }
+            restorePlans.add(restore_plan);
         }
         
         LOG.trace("Partition id: " + this.executor.getPartitionId());
