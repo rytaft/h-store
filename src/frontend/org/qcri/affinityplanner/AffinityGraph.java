@@ -364,7 +364,7 @@ public class AffinityGraph {
                 //TODO check on format of weights
                 int vert_hash = vert_ids[incrID];
                 double vert_weight = m_vertices.get(vert_hash);
-                StringBuilder sb = new StringBuilder(String.format("%0.2f", vert_weight));
+                StringBuilder sb = new StringBuilder(String.format("%d", (int)(vert_weight)));//TODO casting to int
                 for (Entry<Integer, Double> edge: m_edges.get(vert_hash).entrySet()){
                     sb.append(String.format(" %d %d", vert_to_increment.get(edge.getKey()),edge.getValue().intValue() ));//TODO casting to int
                 }
