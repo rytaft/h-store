@@ -333,9 +333,8 @@ public class AffinityGraph {
     
     
     public void toMetisFile(Path file){
-        System.out.println("Writing graph for . Number of vertices: " + m_edges.size());
+        LOG.info("Writing graph for " + file.toString() +" . Number of vertices: " + m_vertices.size());
         BufferedWriter writer;
-        String s;
         try {
             writer = Files.newBufferedWriter(file, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             String graphInfo = "011"; //ABC A:VertexSize B:VertexWeight C:EdgeWeight
@@ -344,7 +343,7 @@ public class AffinityGraph {
                 if (m_edges.get(v_id)!=null)
                     edgeCount+=m_edges.get(v_id).size();
             }
-            String header = String.format("%s, %s, %s",m_vertices, edgeCount, graphInfo);
+            String header = String.format("%s, %s, %s",m_vertices.size(), edgeCount, graphInfo);
             writer.write(header);
             writer.newLine();
             
