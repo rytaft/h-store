@@ -408,14 +408,12 @@ public class SnapshotRestore extends VoltSystemProcedure {
             int allowExport = (Integer) paramsA[4];
 
             // Using Localized Version
-            VoltTable result = performLoadPartitionedTable(table_name, originalHosts, relevantPartitions, context, allowExport, ts);
+            //VoltTable result = performLoadPartitionedTable(table_name, originalHosts, relevantPartitions, context, allowExport, ts);
 
             // Distributed Version - Invokes another round of plan fragments
             // which does not work
-            // VoltTable result =
-            // performDistributePartitionedTable(table_name, originalHosts,
-            // relevantPartitions, context, allowExport);
-            return new DependencySet(dependency_id, result);
+             VoltTable result2 = performDistributePartitionedTable(table_name, originalHosts,relevantPartitions, context, allowExport);
+            return new DependencySet(dependency_id, result2);
         } else if (fragmentId == SysProcFragmentId.PF_restoreDistributePartitionedTableResults) {
             LOG.trace("Aggregating partitioned table restore results");
             assert (params.toArray()[0] != null);
@@ -691,7 +689,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
                 throw new VoltAbortException("Unable to generate restore plan for " + t.getTypeName() + " table not restored");
             }
             for (SynthesizedPlanFragment plan : restore_plan){
-            	plan.multipartition = true;
+            	//plan.multipartition = false;
             	LOG.info("Plan has restore plan: " + t.getTypeName() + " " + plan.fragmentId + " " 
                 		+ plan.outputDependencyIds.toString() + " "  
                 		+ plan.inputDependencyIds.toString() + " " 
@@ -909,7 +907,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
         String hostname = ConnectionUtil.getHostnameOrAddress();
         // XXX This is all very similar to the splitting code in
         // LoadMultipartitionTable. Consider ways to consolidate later
-        Map<Integer, Integer> sites_to_partitions = new HashMap<Integer, Integer>();
+        Map<Integer, Integer> partitions_to_sites = new HashMap<Integer, Integer>();
 
         // CHANGE : Up Sites
         Host catalog_host = context.getHost();
@@ -918,10 +916,10 @@ public class SnapshotRestore extends VoltSystemProcedure {
         // CatalogUtil.getAllSites(HStore.instance().getCatalog());
 
         LOG.trace("Table :" + tableName);
-
+        LOG.error("Are we overwriting partitions by assuming one partition per site?");
         for (Site site : catalog_sites) {
             for (Partition partition : site.getPartitions()) {
-                sites_to_partitions.put(site.getId(), partition.getId());
+                partitions_to_sites.put(partition.getId(), site.getId());
             }
         }
 
@@ -982,12 +980,13 @@ public class SnapshotRestore extends VoltSystemProcedure {
 
             // LoadMultipartitionTable -- send data to all ..
 
-            int[] dependencyIds = new int[sites_to_partitions.size()];
+            int[] dependencyIds = new int[partitions_to_sites.size()];
 
-            SynthesizedPlanFragment[] pfs = new SynthesizedPlanFragment[sites_to_partitions.size() + 1];
+            SynthesizedPlanFragment[] pfs = new SynthesizedPlanFragment[partitions_to_sites.size() + 1];
             int pfs_index = 0;
-            for (int site_id : sites_to_partitions.keySet()) {
-                int partition_id = sites_to_partitions.get(site_id);
+            for (int partition_id : partitions_to_sites.keySet()) {
+                
+                int site_id = partitions_to_sites.get(partition_id);
                 LOG.trace("Site id :" + site_id + " Partition id :" + partition_id);
 
                 dependencyIds[pfs_index] = TableSaveFileState.getNextDependencyId();
@@ -1005,14 +1004,14 @@ public class SnapshotRestore extends VoltSystemProcedure {
             }
 
             int result_dependency_id = TableSaveFileState.getNextDependencyId();
-            pfs[sites_to_partitions.size()] = new SynthesizedPlanFragment();
-            pfs[sites_to_partitions.size()].fragmentId = SysProcFragmentId.PF_restoreSendPartitionedTableResults;
-            pfs[sites_to_partitions.size()].multipartition = false;
-            pfs[sites_to_partitions.size()].outputDependencyIds = new int[] { result_dependency_id };
-            pfs[sites_to_partitions.size()].inputDependencyIds = dependencyIds;
+            pfs[partitions_to_sites.size()] = new SynthesizedPlanFragment();
+            pfs[partitions_to_sites.size()].fragmentId = SysProcFragmentId.PF_restoreSendPartitionedTableResults;
+            pfs[partitions_to_sites.size()].multipartition = false;
+            pfs[partitions_to_sites.size()].outputDependencyIds = new int[] { result_dependency_id };
+            pfs[partitions_to_sites.size()].inputDependencyIds = dependencyIds;
             ParameterSet params = new ParameterSet();
             params.setParameters(result_dependency_id);
-            pfs[sites_to_partitions.size()].parameters = params;
+            pfs[partitions_to_sites.size()].parameters = params;
             results = executeSysProcPlanFragments(pfs, result_dependency_id);
 
         } catch (IOException e) {
