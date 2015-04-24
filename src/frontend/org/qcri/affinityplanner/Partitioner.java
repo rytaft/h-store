@@ -401,6 +401,10 @@ public abstract class Partitioner {
         m_graph.toFile(file);
     }
 
+    public void graphToMetisFile(Path file){
+        m_graph.toMetisFile(file);
+    }
+    
     protected abstract void updateAttractions(Int2DoubleMap adjacency, double[] attractions);
 
 }

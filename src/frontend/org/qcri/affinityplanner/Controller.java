@@ -50,6 +50,7 @@ public class Controller extends Thread {
     public static boolean EXEC_RECONF = true;
     public static String PLAN_IN = "plan_affinity.json";
     public static String PLAN_OUT = "plan_out.json";
+    public static String METIS_OUT = "metis.txt";
     public static String ALGO = "graph";
     
     public static int LOAD_THREADS = 6;
@@ -205,6 +206,8 @@ public class Controller extends Thread {
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
             
+            partitioner.graphToMetisFile(FileSystems.getDefault().getPath(".", METIS_OUT));
+            
 //          Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
 //          partitioner.toFileDebug(graphFile);
             
@@ -229,6 +232,7 @@ public class Controller extends Thread {
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
             record("Partitioner tuples to move: " + Partitioner.MAX_MOVED_TUPLES_PER_PART);
+            
             
         } // END if(UPDATE_PLAN)
 

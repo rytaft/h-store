@@ -330,6 +330,8 @@ public class AffinityGraph {
         m_plan_handler.toJSON(newPlanFile);
     }
     
+    
+    
     public void toMetisFile(Path file){
         System.out.println("Writing graph for . Number of vertices: " + m_edges.size());
         BufferedWriter writer;
@@ -342,7 +344,7 @@ public class AffinityGraph {
                 if (m_edges.get(v_id)!=null)
                     edgeCount+=m_edges.get(v_id).size();
             }
-            String header = String.format("%s,%s,%s",m_vertices, edgeCount, graphInfo);
+            String header = String.format("%s, %s, %s",m_vertices, edgeCount, graphInfo);
             writer.write(header);
             writer.newLine();
             
@@ -364,7 +366,7 @@ public class AffinityGraph {
                 double vert_weight = m_vertices.get(vert_hash);
                 StringBuilder sb = new StringBuilder(String.format("%0.2f", vert_weight));
                 for (Entry<Integer, Double> edge: m_edges.get(vert_hash).entrySet()){
-                    sb.append(String.format(" %d %0.2f", vert_to_increment.get(edge.getKey()),edge.getValue() ));
+                    sb.append(String.format(" %d %d", vert_to_increment.get(edge.getKey()),edge.getValue().intValue() ));//TODO casting to int
                 }
                 writer.write(sb.toString());
                 writer.newLine();
