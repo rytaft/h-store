@@ -6,10 +6,8 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import org.qcri.affinityplanner.Plan;
 import org.voltdb.CatalogContext;
@@ -21,7 +19,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 
-public class GreedyExtendedPartitioner {
+public class GreedyExtendedPartitioner implements Partitioner {
 
     // tuple -> weight
     protected static final Int2DoubleOpenHashMap m_hotTuples = new Int2DoubleOpenHashMap ();
@@ -35,7 +33,7 @@ public class GreedyExtendedPartitioner {
     private static long[] m_intervalsInSecs;
     private static PlanHandler m_plan_handler = null;
 
-    public GreedyExtendedPartitioner (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles, double normalizedIncrement) {
+    public GreedyExtendedPartitioner (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles) {
 
         try {
             m_plan_handler = new PlanHandler(planFile, catalogContext);
@@ -45,7 +43,7 @@ public class GreedyExtendedPartitioner {
         }
 
         try {
-            loadLogFile(logFiles, intervalFiles, normalizedIncrement);
+            loadLogFile(logFiles, intervalFiles);
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -53,7 +51,7 @@ public class GreedyExtendedPartitioner {
 
     }
 
-    private void loadLogFile(Path[] logFiles, Path[] intervalFiles, double normalizedIncrement) throws Exception{
+    private void loadLogFile(Path[] logFiles, Path[] intervalFiles) throws Exception{
 
         // read monitoring intervals for all sites - in seconds
         m_intervalsInSecs = new long[intervalFiles.length];
@@ -302,5 +300,10 @@ public class GreedyExtendedPartitioner {
             //            System.out.println(m_plan_handler.toString() + "\n");
             m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[2]), Long.parseLong(fields[2]));
         }
+    }
+
+    @Override
+    public void writePlan(String plan_out) {
+        m_plan_handler.toJSON(plan_out);
     }
 }

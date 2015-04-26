@@ -164,6 +164,8 @@ public class Controller extends Thread {
         }
 
         if(RUN_MONITORING){
+            record("================== RUNNING MONITORING ======================");
+
             String[] confNames = {"site.access_tracking"};
             String[] confValues = {"true"};
             @SuppressWarnings("unused")
@@ -210,14 +212,23 @@ public class Controller extends Thread {
             record("======================== LOADING GRAPH ========================");
             t1 = System.currentTimeMillis();
             
-            PartitionerAffinity partitioner = null;
+            Partitioner partitioner = null;
             
-            if(ALGO.equals("simple")){
-                partitioner = new SimplePartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+            // checks parameter -D
+            switch(ALGO){
+                case "simple":
+                    partitioner = new SimplePartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+                    break;
+                case "graph":
+                    partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+                    break;
+                case "grext":
+                    partitioner = new GreedyExtendedPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+                    break;
+                default:
+                    partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
             }
-            else{
-                partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
-            }
+
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
             

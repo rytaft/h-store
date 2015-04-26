@@ -33,7 +33,7 @@ import org.apache.log4j.Logger;
  * @author mserafini
  *
  */
-public abstract class PartitionerAffinity {
+public abstract class PartitionerAffinity implements Partitioner {
     
     public class Pair<A, B> {
         public A fst;
@@ -163,7 +163,7 @@ public abstract class PartitionerAffinity {
      */
     protected abstract double getSenderDelta(IntSet movingVertices, int fromPartition, int toPartition);
 
-    protected abstract double getLoadPerPartition(int partition);
+    public abstract double getLoadPerPartition(int partition);
     
     public double getLoadPerSite(int site){
         IntList partitions = PlanHandler.getPartitionsSite(site);

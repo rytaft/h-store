@@ -550,7 +550,7 @@ public class GraphPartitioner extends PartitionerAffinity {
      * 
      * ASSUMES that all vertices are on the same partition
      */
-    private int getMostAffineExtension(IntSet vertices){
+    protected int getMostAffineExtension(IntSet vertices){
 
         double maxAffinity = -1;
         int res = 0;
