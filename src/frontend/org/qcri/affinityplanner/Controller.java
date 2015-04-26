@@ -222,7 +222,7 @@ public class Controller extends Thread {
                 case "graph":
                     partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
-                case "grext":
+                case "greedyext":
                     partitioner = new GreedyExtendedPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
                 default:

@@ -101,7 +101,7 @@ public class SimplePartitioner extends PartitionerAffinity {
 
     
     @Override
-    protected double getLoadPerPartition(int fromPartition) {
+    public double getLoadPerPartition(int fromPartition) {
         
         IntSet vertices = AffinityGraph.m_partitionVertices.get(fromPartition);
         double load = 0;

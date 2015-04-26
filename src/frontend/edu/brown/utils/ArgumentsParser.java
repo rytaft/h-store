@@ -36,7 +36,6 @@ import java.util.regex.Pattern;
 import org.apache.commons.collections15.map.ListOrderedMap;
 import org.apache.log4j.Logger;
 import org.qcri.affinityplanner.Controller;
-import org.qcri.affinityplanner.GraphPartitioner;
 import org.voltdb.CatalogContext;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.*;
