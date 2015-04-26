@@ -214,7 +214,7 @@ public class Controller extends Thread {
             
             Partitioner partitioner = null;
             
-            System.out.println(ALGO);
+            System.out.println("Algorithm " + ALGO);
             
             // checks parameter -D
             switch(ALGO){
