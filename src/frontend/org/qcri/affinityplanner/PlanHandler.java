@@ -5,10 +5,10 @@ import it.unimi.dsi.fastutil.ints.IntList;
 
 import java.io.File;
 import java.util.List;
+import java.util.Map;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.qcri.affinityplanner.Plan.Range;
 import org.voltdb.CatalogContext;
 
 import edu.brown.hashing.ExplicitPartitions;
@@ -23,9 +23,16 @@ import edu.brown.utils.FileUtil;
 public class PlanHandler extends Plan {
     
     private ExplicitPartitions m_partitioner;
+    
+    private File m_planFile;
+    private CatalogContext m_catalogContext;
 
     public PlanHandler(File planFile, CatalogContext catalogContext) {
         super(planFile.toString());
+        
+        m_planFile = planFile;
+        m_catalogContext = catalogContext;
+        
         // get mapping of keys to partitions
         JSONObject json = null;
         try {
@@ -108,5 +115,66 @@ public class PlanHandler extends Plan {
             }
         }
         return false;
+    }
+    
+    // adapted from Becca's GreedyExtendedPlacement
+    public PlanHandler clone(){
+        PlanHandler cloned = new PlanHandler(m_planFile, m_catalogContext);
+        
+        cloned.m_partitioner = m_partitioner;
+        cloned.m_planFile = m_planFile;
+        cloned.m_catalogContext = m_catalogContext;
+        
+        for(String table : table_names){
+            
+            for (int i = 0; i < Controller.MAX_PARTITIONS; i++){
+                cloned.addPartition(table, i);
+            }
+            
+            Map<Integer, List<Plan.Range>> ranges = getAllRanges(table);
+            for(Integer i : ranges.keySet()) {
+                List<Plan.Range> partitionRanges = ranges.get(i);
+                for(Plan.Range range : partitionRanges) {
+                    cloned.addRange(table, i, range.from, range.to);
+                }
+            }
+        }
+        return cloned;
+    }
+    
+    String[] getTables(){
+        return table_names;
+    }
+    
+    public boolean verifyPlan (Map<String,Integer> tableSizes){
+
+        for(String table : table_names){
+            Integer maxTuple  = tableSizes.get(table);
+            if (maxTuple == null){
+                System.out.println("Size of table " + table + " not specified for verification");
+                return false;
+            }
+            for(int t = 0; t < maxTuple; t++){
+                int foundInPart = -1;
+                Map<Integer, List<Plan.Range>> ranges = getAllRanges(table);
+                for(Integer part : ranges.keySet()) {
+                    List<Plan.Range> partitionRanges = ranges.get(part);
+                    for(Plan.Range range : partitionRanges) {
+                        if (t >= range.from && t <= range.to){
+                            if (foundInPart >= 0){
+                                System.out.println("Tuple " + t + " of table " + table + " was found in partitions " + foundInPart + " and " + part);
+                                return false;
+                            }
+                            foundInPart = -1;
+                        }
+                    }
+                }
+                if (foundInPart == -1){
+                    System.out.println("Tuple " + t + " of table " + table + " was not found");
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }
