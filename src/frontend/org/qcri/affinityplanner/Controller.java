@@ -214,6 +214,8 @@ public class Controller extends Thread {
             
             Partitioner partitioner = null;
             
+            System.out.println(ALGO);
+            
             // checks parameter -D
             switch(ALGO){
                 case "simple":
@@ -222,7 +224,7 @@ public class Controller extends Thread {
                 case "graph":
                     partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
-                case "greedyext":
+                case "greedy-ext":
                     partitioner = new GreedyExtendedPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
                 default:
