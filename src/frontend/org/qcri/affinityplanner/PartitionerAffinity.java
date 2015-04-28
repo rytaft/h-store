@@ -229,6 +229,20 @@ public abstract class PartitionerAffinity implements Partitioner {
         
         IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(fromPartition));
 
+        Collections.sort(localPartitions, new AbstractIntComparator (){
+            @Override
+            public int compare(int o1, int o2) {
+                if (getLoadPerPartition(o1) < getLoadPerPartition(o2)){
+                    return -1;
+                }
+                else if (getLoadPerPartition(o1) > getLoadPerPartition(o2)){
+                    return 1;
+                }
+                return 0;
+            }
+        });
+
+        
         for(int toPartition : localPartitions){
             
             if(fromPartition == toPartition){

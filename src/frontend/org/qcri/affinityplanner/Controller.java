@@ -223,13 +223,13 @@ public class Controller extends Thread {
                     partitioner = new SimplePartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
                 case "graph":
-                    partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+                    partitioner = new GraphGreedy(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
                 case "greedy-ext":
-                    partitioner = new GreedyExtendedPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+                    partitioner = new GreedyExtended(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
                 default:
-                    partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+                    partitioner = new GraphGreedy(m_catalog_context, planFile, logFiles, intervalFiles);
             }
 
             t2 = System.currentTimeMillis();

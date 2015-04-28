@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
-import org.qcri.affinityplanner.Plan;
 import org.voltdb.CatalogContext;
 
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
@@ -21,7 +20,7 @@ import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
 
-public class GreedyExtendedPartitioner implements Partitioner {
+public class GreedyExtended implements Partitioner {
 
     // tuple -> weight
     protected static final Int2DoubleOpenHashMap m_hotTuples = new Int2DoubleOpenHashMap ();
@@ -35,7 +34,7 @@ public class GreedyExtendedPartitioner implements Partitioner {
     private static long[] m_intervalsInSecs;
     private static PlanHandler m_plan_handler = null;
 
-    public GreedyExtendedPartitioner (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles) {
+    public GreedyExtended (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles) {
 
         try {
             m_plan_handler = new PlanHandler(planFile, catalogContext);

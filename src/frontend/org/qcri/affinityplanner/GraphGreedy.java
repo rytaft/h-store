@@ -14,14 +14,14 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 
-public class GraphPartitioner extends PartitionerAffinity {
+public class GraphGreedy extends PartitionerAffinity {
 
-    private static final Logger LOG = Logger.getLogger(GraphPartitioner.class);
+    private static final Logger LOG = Logger.getLogger(GraphGreedy.class);
     
 //    HashSet<String> DEBUG = new HashSet<String>();
 //    boolean DEB = false;
 
-    public GraphPartitioner (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles){
+    public GraphGreedy (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles){
                 
         long t1 = System.currentTimeMillis();
         try{
