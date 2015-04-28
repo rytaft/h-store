@@ -535,7 +535,7 @@ public class Plan {
 	
 	// for algos such as the first fit, bin packer, subdivide cold tuples
 	// into sets of equal size from pre-existing ranges
-	List<List<Range>> getRangeSlices(String table, Integer partition, Long sliceWidth) {
+	List<List<Range>> getRangeChunks(String table, Integer partition, Long sliceWidth) {
 
 	    HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges == null){
@@ -695,7 +695,7 @@ public class Plan {
 		JSONObject srcData;
 		String inputData = FileUtil.readFile(filename);
 
-		System.out.println("Working from " + inputData);
+//		System.out.println("Working from " + inputData);
 		try {
 			srcData = new JSONObject(inputData);	
 		} catch(JSONException e) {

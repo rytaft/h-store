@@ -2634,6 +2634,7 @@ UTILITIES
 	<arg value="elastic.plan_in=${elastic.plan_in}" />
 	<arg value="elastic.plan_out=${elastic.plan_out}" />
         <arg value="elastic.algo=${elastic.algo}" />
+        <arg value="elastic.topk=${elastic.topk}" />
 	&common;
         <classpath refid='project.classpath' />
     <assertions><enable/></assertions>
@@ -2664,6 +2665,7 @@ UTILITIES
 	<arg value="elastic.plan_in=${elastic.plan_in}" />
 	<arg value="elastic.plan_out=${elastic.plan_out}" />
         <arg value="elastic.algo=${elastic.algo}" />
+        <arg value="elastic.topk=${elastic.topk}" />
 	&common;
         <classpath refid='project.classpath' />
     <assertions><enable/></assertions>

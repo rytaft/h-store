@@ -58,8 +58,8 @@ public class Controller extends Thread {
     public static int LOAD_THREADS = 6;
  
     // Repartitioning
-    public static int MIN_LOAD_PER_PART = Integer.MIN_VALUE;
-    public static int MAX_LOAD_PER_PART = Integer.MAX_VALUE;
+    public static double MIN_LOAD_PER_PART = Double.MIN_VALUE;
+    public static double MAX_LOAD_PER_PART = Double.MAX_VALUE;
     public static double LMPT_COST = 1.1;
     public static double DTXN_COST = 5.0;
     public static int MAX_MOVED_TUPLES_PER_PART = 10000;
@@ -68,6 +68,7 @@ public class Controller extends Thread {
     
     public static int COLD_CHUNK_SIZE = 100;
     public static double COLD_TUPLE_FRACTION_ACCESSES = 100;
+    public static int TOPK = Integer.MAX_VALUE;
 
 
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {

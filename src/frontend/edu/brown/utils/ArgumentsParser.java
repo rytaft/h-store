@@ -202,6 +202,7 @@ public class ArgumentsParser {
     public static final String PARAM_ELASTIC_PLAN_IN = PARAM_ELASTIC + ".plan_in";
     public static final String PARAM_ELASTIC_PLAN_OUT = PARAM_ELASTIC + ".plan_out";
     public static final String PARAM_ELASTIC_ALGO = PARAM_ELASTIC + ".algo";
+    public static final String PARAM_ELASTIC_TOPK = PARAM_ELASTIC + ".topk";
     
     public static final List<String> PARAMS = new ArrayList<String>();
     static {
@@ -999,11 +1000,11 @@ public class ArgumentsParser {
         }
 
         if (this.params.containsKey(PARAM_ELASTIC_MIN_LOAD)){
-            Controller.MIN_LOAD_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_LOAD));
+            Controller.MIN_LOAD_PER_PART = Double.parseDouble(this.params.get(PARAM_ELASTIC_MIN_LOAD));
         }
         
         if (this.params.containsKey(PARAM_ELASTIC_MAX_LOAD)){
-            Controller.MAX_LOAD_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_LOAD));
+            Controller.MAX_LOAD_PER_PART = Double.parseDouble(this.params.get(PARAM_ELASTIC_MAX_LOAD));
         }
         
         if (this.params.containsKey(PARAM_ELASTIC_DTXN_COST)){
@@ -1048,6 +1049,10 @@ public class ArgumentsParser {
 
         if (this.params.containsKey(PARAM_ELASTIC_ALGO)){
             Controller.ALGO= this.params.get(PARAM_ELASTIC_ALGO);
+        }        
+
+        if (this.params.containsKey(PARAM_ELASTIC_TOPK)){
+            Controller.TOPK= Integer.parseInt(this.params.get(PARAM_ELASTIC_TOPK));
         }        
 
         // -------------------------------------------------------
