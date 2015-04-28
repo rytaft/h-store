@@ -152,6 +152,8 @@ public class GreedyExtendedPartitioner implements Partitioner {
 
     public boolean repartition(){
 
+        int addedPartitions = 0;
+
         IntArrayList activePartitions = new IntArrayList();
         IntArrayList overloadedPartitions = new IntArrayList();
 
@@ -170,82 +172,107 @@ public class GreedyExtendedPartitioner implements Partitioner {
         for (int overloadedPartition : overloadedPartitions){
 
             System.out.println("Offloading partition " + overloadedPartition);
-
-            // DEBUG
-            IntList fromHotTuples = m_partitionToHotTuples[overloadedPartition];
-
-            System.out.println("Got hot tuples ");
-
-            // sort determines an _ascending_ order
-            // must offload starting from end
-            Collections.sort(fromHotTuples, new AbstractIntComparator (){
-                @Override
-                public int compare(int o1, int o2) {
-                    if (m_hotTuples.get(o1) < m_hotTuples.get(o2)){
-                        return -1;
-                    }
-                    else if (m_hotTuples.get(o1) > m_hotTuples.get(o2)){
-                        return 1;
-                    }
-                    return 0;
-                }
-            });
-
-            System.out.println("Move hot tuples");
-
-            // MOVE HOT TUPLES
-
-            int topK = Controller.TOPK;
-          
-            while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART 
-                    && !fromHotTuples.isEmpty() && topK > 0){
-
-                --topK;
-
-                int toPartition = getLeastLoadedPartition(activePartitions);                
-                IntList toHotTuples = m_partitionToHotTuples[toPartition];
-
-                int currHotTuple = fromHotTuples.getInt(fromHotTuples.size() - 1);
-
-                System.out.println("\nTuple name " + m_tupleToName.get(currHotTuple) + ", id " + currHotTuple + ", and weight " + m_hotTuples.get(currHotTuple));
-
-                toHotTuples.add(currHotTuple);
-
-                System.out.println("Load " + getLoadPerPartition(overloadedPartition));
-
-                if (getLoadPerPartition(toPartition) > Controller.MAX_LOAD_PER_PART){
-
-                    toHotTuples.remove(toHotTuples.size()-1);
-
-                }
-                else{
-                    // actually move tuple in plan
-
-                    System.out.println("Tuple moved");
-
-                    String movedVertexName = m_tupleToName.get(currHotTuple);
-
-                    fromHotTuples.removeInt(fromHotTuples.size() - 1);
-
-                    String [] fields = movedVertexName.split(",");
-                    //            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
-                    //            System.out.println("remove ID: " + fields[2]);
-                    m_plan_handler.removeTupleId(fields[0], overloadedPartition, Long.parseLong(fields[2]));
-                    //            System.out.println("After removal");
-                    //            System.out.println(m_plan_handler.toString() + "\n");
-                    m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[2]), Long.parseLong(fields[2]));
-                }
-                
-            }
             
-            System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
-            System.out.println("Current plan\n " + m_plan_handler);
+            // loops over multiple added partitions
+            while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
 
-            // MOVE COLD CHUNKS
-            System.out.println("\nMove cold chunks\n");
-
-            moveColdChunks(overloadedPartition, activePartitions);
-        }
+                IntList fromHotTuples = m_partitionToHotTuples[overloadedPartition];
+    
+                System.out.println("Got hot tuples ");
+    
+                // sort determines an _ascending_ order
+                // then offload starting from end of the list in order to facilitate removal
+                Collections.sort(fromHotTuples, new AbstractIntComparator (){
+                    @Override
+                    public int compare(int o1, int o2) {
+                        if (m_hotTuples.get(o1) < m_hotTuples.get(o2)){
+                            return -1;
+                        }
+                        else if (m_hotTuples.get(o1) > m_hotTuples.get(o2)){
+                            return 1;
+                        }
+                        return 0;
+                    }
+                });
+    
+                System.out.println("Move hot tuples");
+    
+                // MOVE HOT TUPLES
+    
+                int topK = Controller.TOPK;
+    
+                // loops over multiple hot tuples
+                while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART 
+                        && !fromHotTuples.isEmpty() && topK > 0){
+    
+                    --topK;
+    
+                    int toPartition = getLeastLoadedPartition(activePartitions);                
+                    IntList toHotTuples = m_partitionToHotTuples[toPartition];
+    
+                    int currHotTuple = fromHotTuples.getInt(fromHotTuples.size() - 1);
+    
+                    System.out.println("\nTuple name " + m_tupleToName.get(currHotTuple) + ", id " + currHotTuple + ", and weight " + m_hotTuples.get(currHotTuple));
+    
+                    toHotTuples.add(currHotTuple);
+    
+                    System.out.println("Load " + getLoadPerPartition(overloadedPartition));
+    
+                    if (getLoadPerPartition(toPartition) > Controller.MAX_LOAD_PER_PART){
+    
+                        toHotTuples.remove(toHotTuples.size()-1);
+    
+                    }
+                    else{
+                        // actually move tuple in plan
+    
+                        System.out.println("Tuple moved");
+    
+                        String movedVertexName = m_tupleToName.get(currHotTuple);
+    
+                        fromHotTuples.removeInt(fromHotTuples.size() - 1);
+    
+                        String [] fields = movedVertexName.split(",");
+                        //            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
+                        //            System.out.println("remove ID: " + fields[2]);
+                        m_plan_handler.removeTupleId(fields[0], overloadedPartition, Long.parseLong(fields[2]));
+                        //            System.out.println("After removal");
+                        //            System.out.println(m_plan_handler.toString() + "\n");
+                        m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[2]), Long.parseLong(fields[2]));
+                    }
+    
+                } // while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART && !fromHotTuples.isEmpty() && topK > 0)
+    
+                System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
+                System.out.println("Current plan\n " + m_plan_handler);
+    
+                // MOVE COLD CHUNKS
+                System.out.println("\nMove cold chunks\n");
+    
+                boolean finished = moveColdChunks(overloadedPartition, activePartitions); 
+    
+                // ADD NEW PARTITIONS if needed
+                if (! finished){
+                    if(activePartitions.size() < Controller.MAX_PARTITIONS 
+                            && addedPartitions < Controller.MAX_PARTITIONS_ADDED){
+    
+                        // We fill up low-order partitions first to minimize the number of servers
+                        addedPartitions++;
+                        for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+                            if(!activePartitions.contains(i)){
+                                activePartitions.add(i);
+                                break;
+                            }
+                        }
+                    }
+                    else{
+                        System.out.println("Cannot add new partition to offload " + overloadedPartitions);
+                        return false;
+                    }
+    
+                }
+            } // while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART)
+        } // for (int overloadedPartition : overloadedPartitions)
 
         return true;
     }
@@ -262,9 +289,9 @@ public class GreedyExtendedPartitioner implements Partitioner {
 
             List<List<Plan.Range>> partitionSlices = m_plan_handler.getRangeChunks(table, partition,  (long) Controller.COLD_CHUNK_SIZE);
             if(partitionSlices.size() > 0) {
-            
+
                 for(List<Plan.Range> slice : partitionSlices) {
-                
+
                     for(Plan.Range r : slice) { 
                         countColdTuples += r.to - r.from + 1;
                     }
@@ -295,11 +322,13 @@ public class GreedyExtendedPartitioner implements Partitioner {
     public void writePlan(String plan_out) {
         m_plan_handler.toJSON(plan_out);
     }
-    
+
+    // made a procedure so it is easier to stop when we are done
     private boolean moveColdChunks(int overloadedPartition, IntList activePartitions){
-        // clone to avoid modifications while iterating
+
+        // clone plan to allow modifications while iterating on the clone
         PlanHandler oldPlan = m_plan_handler.clone();
-        
+
         System.out.println("Cloned plan\n" + oldPlan);
 
         double coldIncrement = 1.0 / m_intervalsInSecs[overloadedPartition] / Controller.COLD_TUPLE_FRACTION_ACCESSES;
@@ -356,7 +385,7 @@ public class GreedyExtendedPartitioner implements Partitioner {
                                         m_plan_handler.addRange(table, overloadedPartition, r.to + 1, oldRange.to);
                                     }
                                 }
-                                
+
                                 System.out.println("Load after " + getLoadPerPartition(overloadedPartition));
                                 System.out.println("New plan\n" + m_plan_handler);
 
