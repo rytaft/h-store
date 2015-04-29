@@ -41,6 +41,8 @@ public class Controller extends Thread {
 //    private Path planFile;
 //    private Path outputPlanFile;
     
+
+    // Controller
     public static int MAX_PARTITIONS;
     public static int PARTITIONS_PER_SITE;
 
@@ -52,8 +54,23 @@ public class Controller extends Thread {
     public static String PLAN_OUT = "plan_out.json";
     public static String ALGO = "graph";
     
+    // Loader
     public static int LOAD_THREADS = 6;
+ 
+    // Repartitioning
+    public static double MIN_LOAD_PER_PART = Double.MIN_VALUE;
+    public static double MAX_LOAD_PER_PART = Double.MAX_VALUE;
+    public static double LMPT_COST = 1.1;
+    public static double DTXN_COST = 5.0;
+    public static int MAX_MOVED_TUPLES_PER_PART = 10000;
+    public static int MIN_GAIN_MOVE = 0;
+    public static int MAX_PARTITIONS_ADDED = 1;
     
+    public static int COLD_CHUNK_SIZE = 100;
+    public static double COLD_TUPLE_FRACTION_ACCESSES = 100;
+    public static int TOPK = Integer.MAX_VALUE;
+
+
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
         
         m_client = ClientFactory.createClient();
@@ -148,6 +165,8 @@ public class Controller extends Thread {
         }
 
         if(RUN_MONITORING){
+            record("================== RUNNING MONITORING ======================");
+
             String[] confNames = {"site.access_tracking"};
             String[] confValues = {"true"};
             @SuppressWarnings("unused")
@@ -196,12 +215,23 @@ public class Controller extends Thread {
             
             Partitioner partitioner = null;
             
-            if(ALGO.equals("simple")){
-                partitioner = new SimplePartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+            System.out.println("Algorithm " + ALGO);
+            
+            // checks parameter -D
+            switch(ALGO){
+                case "simple":
+                    partitioner = new SimplePartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+                    break;
+                case "graph":
+                    partitioner = new GraphGreedy(m_catalog_context, planFile, logFiles, intervalFiles);
+                    break;
+                case "greedy-ext":
+                    partitioner = new GreedyExtended(m_catalog_context, planFile, logFiles, intervalFiles);
+                    break;
+                default:
+                    partitioner = new GraphGreedy(m_catalog_context, planFile, logFiles, intervalFiles);
             }
-            else{
-                partitioner = new GraphPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
-            }
+
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
             
@@ -220,7 +250,7 @@ public class Controller extends Thread {
  
             String outputPlan = FileUtil.readFile(PLAN_OUT);
             record("Output plan\n" + outputPlan);
-
+            
             record("Loads per partition after reconfiguration");
             for (int j = 0; j < Controller.MAX_PARTITIONS; j++){
                 record(j + " " + partitioner.getLoadPerPartition(j));
@@ -228,7 +258,7 @@ public class Controller extends Thread {
 
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
-            record("Partitioner tuples to move: " + Partitioner.MAX_MOVED_TUPLES_PER_PART);
+            record("Partitioner tuples to move: " + Controller.MAX_MOVED_TUPLES_PER_PART);
             
         } // END if(UPDATE_PLAN)
 

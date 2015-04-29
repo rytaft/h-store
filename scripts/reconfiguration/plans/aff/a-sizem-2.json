@@ -1,0 +1,25 @@
+{
+  "partition_plan": {
+    "tables": {
+      "suppliers": {
+        "partitions": {
+          "0": "0-5000", 
+          "1": "5000-10001"
+        }
+      }, 
+      "parts": {
+        "partitions": {
+          "0": "0-500000", 
+          "1": "500000-1000001"
+        }
+      }, 
+      "products": {
+        "partitions": {
+          "0": "0-50000", 
+          "1": "50000-100001"
+        }
+      }
+    }
+  }, 
+  "default_table": "suppliers"
+}

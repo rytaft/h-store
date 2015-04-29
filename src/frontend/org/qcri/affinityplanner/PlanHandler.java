@@ -4,6 +4,8 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 
 import java.io.File;
+import java.util.List;
+import java.util.Map;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -21,9 +23,16 @@ import edu.brown.utils.FileUtil;
 public class PlanHandler extends Plan {
     
     private ExplicitPartitions m_partitioner;
+    
+    private File m_planFile;
+    private CatalogContext m_catalogContext;
 
     public PlanHandler(File planFile, CatalogContext catalogContext) {
         super(planFile.toString());
+        
+        m_planFile = planFile;
+        m_catalogContext = catalogContext;
+        
         // get mapping of keys to partitions
         JSONObject json = null;
         try {
@@ -96,5 +105,40 @@ public class PlanHandler extends Plan {
             res.add(i);
         }
         return res;
+    }
+    
+    public boolean isActive(int partition){
+        for(String table: table_names){
+            List<Range> ranges = getAllRanges(table, partition);
+            if (ranges != null && !ranges.isEmpty()){
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    // adapted from Becca's GreedyExtendedPlacement
+    public PlanHandler clone(){
+        PlanHandler cloned = new PlanHandler(m_planFile, m_catalogContext);
+        
+        cloned.m_partitioner = m_partitioner;
+        cloned.m_planFile = m_planFile;
+        cloned.m_catalogContext = m_catalogContext;
+        
+        for(String table : table_names){
+            
+            for (int i = 0; i < Controller.MAX_PARTITIONS; i++){
+                cloned.addPartition(table, i);
+            }
+            
+            Map<Integer, List<Plan.Range>> ranges = getAllRanges(table);
+            for(Integer i : ranges.keySet()) {
+                List<Plan.Range> partitionRanges = ranges.get(i);
+                for(Plan.Range range : partitionRanges) {
+                    cloned.addRange(table, i, range.from, range.to);
+                }
+            }
+        }
+        return cloned;
     }
 }

@@ -2,6 +2,7 @@ package org.qcri.affinityplanner;
 
 import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
@@ -13,7 +14,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 
-public class SimplePartitioner extends Partitioner {
+public class SimplePartitioner extends PartitionerAffinity {
 
     private static final Logger LOG = Logger.getLogger(SimplePartitioner.class);
 
@@ -31,10 +32,12 @@ public class SimplePartitioner extends Partitioner {
     @Override
     public boolean repartition() {
 
-        IntSet activePartitions = new IntOpenHashSet();
+        int addedPartitions = 0;
+
+        IntList activePartitions = new IntArrayList(Controller.MAX_PARTITIONS);
 
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
-            if(!AffinityGraph.m_partitionVertices.get(i).isEmpty()){
+            if(AffinityGraph.isActive(i)){
                 activePartitions.add(i);
             }
         }
@@ -44,7 +47,7 @@ public class SimplePartitioner extends Partitioner {
         // move border vertices        
         for (int fromPart = 0; fromPart < Controller.MAX_PARTITIONS; fromPart ++){
             
-            List<IntList> borderVertices = getBorderVertices(fromPart, MAX_MOVED_TUPLES_PER_PART);
+            List<IntList> borderVertices = getBorderVertices(fromPart, Controller.MAX_MOVED_TUPLES_PER_PART);
 
             for(int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
                 
@@ -61,34 +64,66 @@ public class SimplePartitioner extends Partitioner {
         
         // offload overloaded partitions
         
-        IntSet overloadedPartitions = new IntOpenHashSet();
+        IntList overloadedPartitions = new IntArrayList(Controller.MAX_PARTITIONS);
         
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
             if(activePartitions.contains(i)){
                 System.out.println(getLoadPerPartition(i));
-                if (getLoadPerPartition(i) > MAX_LOAD_PER_PART){
+                if (getLoadPerPartition(i) > Controller.MAX_LOAD_PER_PART){
                     overloadedPartitions.add(i);
                 }
             }
         }
         
         if (! overloadedPartitions.isEmpty()){
+            
             // move hot vertices
             for(int fromPart : overloadedPartitions){
+                
+                int numMovedVertices = 0;
+                
+                // loop over multiple added partitions
+                while(getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
 
-                IntList hotVertices = getHottestVertices(fromPart, MAX_MOVED_TUPLES_PER_PART);
-
-                for (int vertex : hotVertices){
-
-                    for (int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
-
-                        if (fromPart != toPart){
-                            singleton.clear();
-                            singleton.add(vertex);
-                            tryMoveVertices(singleton, fromPart, toPart);
-                        }                    
+                    IntList hotVertices = getHottestVertices(fromPart, Controller.MAX_MOVED_TUPLES_PER_PART);
+    
+                    for (int vertex : hotVertices){
+    
+                        for (int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
+    
+                            if (fromPart != toPart){
+                                singleton.clear();
+                                singleton.add(vertex);
+                                numMovedVertices += tryMoveVertices(singleton, fromPart, toPart);
+                            }                    
+                        }
+    
                     }
-
+                    
+                    if (getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
+                        numMovedVertices += moveColdChunks(fromPart, activePartitions, numMovedVertices);
+                    }
+                    
+                    if (getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
+                        
+                        if(activePartitions.size() < Controller.MAX_PARTITIONS 
+                                && addedPartitions < Controller.MAX_PARTITIONS_ADDED){
+        
+                            // We fill up low-order partitions first to minimize the number of servers
+                            addedPartitions++;
+                            for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+                                if(!activePartitions.contains(i)){
+                                    activePartitions.add(i);
+                                    break;
+                                }
+                            }
+                        }
+                        else{
+                            System.out.println("Cannot add new partition to offload " + overloadedPartitions);
+                            return false;
+                        }
+        
+                    }
                 }
             }
         }
@@ -101,7 +136,7 @@ public class SimplePartitioner extends Partitioner {
 
     
     @Override
-    protected double getLoadPerPartition(int fromPartition) {
+    public double getLoadPerPartition(int fromPartition) {
         
         IntSet vertices = AffinityGraph.m_partitionVertices.get(fromPartition);
         double load = 0;
@@ -116,10 +151,10 @@ public class SimplePartitioner extends Partitioner {
                     int toPartition = edge.getIntKey();
                     int toPartitionSite = PlanHandler.getSitePartition(toPartition);
                     if(toPartitionSite != fromPartitionSite){
-                        load += edge.getDoubleValue() * DTXN_COST;
+                        load += edge.getDoubleValue() * Controller.DTXN_COST;
                     }
                     else if(toPartition != fromPartition){
-                        load += edge.getDoubleValue() * LMPT_COST;
+                        load += edge.getDoubleValue() * Controller.LMPT_COST;
                     }
                 }
             }
@@ -137,7 +172,7 @@ public class SimplePartitioner extends Partitioner {
         int fromSite = PlanHandler.getSitePartition(fromPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
-        double k = (fromSite == toSite) ? LMPT_COST : DTXN_COST;
+        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
 
         for(int vertex : movingVertices){
             
@@ -158,10 +193,10 @@ public class SimplePartitioner extends Partitioner {
                         int otherSite = PlanHandler.getSitePartition(otherPartition);
                         double h = 0;
                         if (otherSite == fromSite && otherSite != toSite){
-                            h = DTXN_COST - LMPT_COST;
+                            h = Controller.DTXN_COST - Controller.LMPT_COST;
                         }
                         else if (otherSite != fromSite && otherSite == toSite){
-                            h = LMPT_COST - DTXN_COST;
+                            h = Controller.LMPT_COST - Controller.DTXN_COST;
                         }
                         delta += edgeWeight * h;
                     }
@@ -183,7 +218,7 @@ public class SimplePartitioner extends Partitioner {
         int fromSite = PlanHandler.getSitePartition(fromPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
-        double k = (fromSite == toSite) ? LMPT_COST : DTXN_COST;
+        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
 
         for(int vertex : movingVertices){ 
             
@@ -211,7 +246,7 @@ public class SimplePartitioner extends Partitioner {
                     }
                     else{
                         int otherSite = PlanHandler.getSitePartition(otherPartition);
-                        double h = (toSite == otherSite) ? LMPT_COST : DTXN_COST;
+                        double h = (toSite == otherSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
                         delta += edgeWeight * h;
                     }
                 }
@@ -232,7 +267,7 @@ public class SimplePartitioner extends Partitioner {
         int fromSite = PlanHandler.getSitePartition(fromPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
-        double k = (fromSite == toSite) ? LMPT_COST : DTXN_COST;
+        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
 
         for(int vertex : movingVertices){ 
             
@@ -260,7 +295,7 @@ public class SimplePartitioner extends Partitioner {
                     }
                     else{
                         int otherSite = PlanHandler.getSitePartition(otherPartition);
-                        double h = (fromSite == otherSite) ? LMPT_COST : DTXN_COST;
+                        double h = (fromSite == otherSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
                         delta -= edgeWeight * h;
                     }
                 }
@@ -319,10 +354,10 @@ public class SimplePartitioner extends Partitioner {
                     int toPartition = edge.getIntKey();
                     int toVertexSite = PlanHandler.getSitePartition(toPartition);
                     if(toVertexSite != fromVertexSite){
-                        load += edge.getDoubleValue() * DTXN_COST;
+                        load += edge.getDoubleValue() * Controller.DTXN_COST;
                     }
                     else if(toPartition != fromVertexPartition){
-                        load += edge.getDoubleValue() * LMPT_COST;
+                        load += edge.getDoubleValue() * Controller.LMPT_COST;
                     }
                 }
             }
@@ -338,5 +373,4 @@ public class SimplePartitioner extends Partitioner {
             attractions[toVertex] += edge_weight;
         } // END for (String toVertex : adjacency.keySet())
     }
-
 }

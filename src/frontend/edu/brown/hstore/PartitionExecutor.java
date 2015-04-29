@@ -1254,7 +1254,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
     
     public String getReconfigDebug(){
-        return new StringBuilder().append(this.partitionId).append(",outStandingAysnc:").append(this.asyncOutstanding.get()).append(",nextAsync:").append((this.nextAsyncPullTimeMS-System.currentTimeMillis())).
+        return new StringBuilder().append(this.partitionId).append(",outStandingAysnc:").append(this.asyncOutstanding.get()).append(",nextAsyncMS:").append((this.nextAsyncPullTimeMS-System.currentTimeMillis())).
                 append(",idleClicks:").append(idle_click_count>MAX_PULL_ASYNC_EVERY_CLICKS).
                 append(",aysncPullQ:").append(this.asyncRequestPullQueue.size()).append(",scheduleAsncPullQ:").append(scheduleAsyncPullQueue.size()).append(",workQueue:").append(this.work_queue.size()).toString();
     }
@@ -1283,6 +1283,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     					   asyncRequestPullQueue.size(),idle_click_count));
                     }
                     this.idle_click_count = 0;
+                    LOG.info("Adding asyncPullQ msg and increasing time");
                     nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                     this.work_queue.offer(asyncRequestPullQueue.remove());
                 } else if (this.scheduleAsyncPullQueue.isEmpty() == false && asyncOutstanding.get() == false
@@ -1297,6 +1298,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         LOG.warn("Offering async request to the work queue when there is already an async request in progress");
                     }
                     this.idle_click_count = 0;
+
+                    LOG.info("Adding scheduleAsyncPullQueue msg and increasing time");
             		nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                     ScheduleAsyncPullRequestMessage pullMsg = scheduleAsyncPullQueue.poll();                    
                     if (pullMsg != null){
@@ -6620,7 +6623,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     // We have received a single key
                     if(moreDataComing == false) {
                         if(isAsyncRequest){
-                            LOG.trace("Last chunk received for async request, unsetting async in progress");
+                            LOG.info("Last chunk received for async request, unsetting async in progress");
                             asyncOutstanding.set(false);
                             nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                         }
@@ -6637,10 +6640,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     	if (moreDataComing) {
                             this.reconfiguration_tracker.markRangeAsPartiallyReceived(
                             		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
+                            LOG.info("receiveTuples on range, more data coming " + catalog_tbl);
                             nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                         } else {
                             if(isAsyncRequest){
-                                LOG.trace("Last chunk received for async request, unsetting async in progress");
+                                LOG.info("Last chunk received for async request, unsetting async in progress");
                                 asyncOutstanding.set(false);
                                 nextAsyncPullTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_async_delay_ms + rand.nextInt(RAND_MS_BETWEEN_ASYNC_PULLS);
                             }

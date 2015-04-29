@@ -49,14 +49,14 @@ public class AffinityGraph {
     
     private static PlanHandler m_plan_handler = null;
     
+    private static long[] m_intervalsInSecs;
+    
     private static class LoaderThread implements Runnable {
         private Path[] logFiles;
-        private long[] intervals;
         private AtomicInteger nextLogFileCounter;
         
-        public LoaderThread(Path[] logFiles, long[] intervals, AtomicInteger nextLogFileCounter){
+        public LoaderThread(Path[] logFiles, AtomicInteger nextLogFileCounter){
             this.logFiles = logFiles;
-            this.intervals = intervals;
             this.nextLogFileCounter = nextLogFileCounter;
         }
 
@@ -67,7 +67,7 @@ public class AffinityGraph {
                 
                 while (nextLogFile < logFiles.length){
                     
-                    double increment = 1.0/intervals[nextLogFile];
+                    double increment = 1.0/m_intervalsInSecs[nextLogFile];
                     
                     loadLogFile(logFiles[nextLogFile], increment);
                     
@@ -186,9 +186,10 @@ public class AffinityGraph {
                 } // END if (line.equals("END"))
 
                 else{
-                    curr_transaction.add(line.hashCode());
-                    if (!vertex_to_name.containsKey(line.hashCode())){
-                        vertex_to_name.put(line.hashCode(), line);
+                    int hash = line.hashCode();
+                    curr_transaction.add(hash);
+                    if (!vertex_to_name.containsKey(hash)){
+                        vertex_to_name.put(hash, line);
                     }
                 }
 
@@ -250,7 +251,7 @@ public class AffinityGraph {
         }
 
         // read monitoring intervals for all sites - in seconds
-        long[] intervalsInSecs = new long[intervalFiles.length];
+        m_intervalsInSecs = new long[intervalFiles.length];
         int currInterval = 0;
         for (Path intervalFile : intervalFiles){
             if (intervalFile == null){
@@ -261,7 +262,7 @@ public class AffinityGraph {
                 reader = Files.newBufferedReader(intervalFile, Charset.forName("US-ASCII"));
                 String line = reader.readLine();
                 reader.close();
-                intervalsInSecs[currInterval] = Long.parseLong(line) / 1000;
+                m_intervalsInSecs[currInterval] = Long.parseLong(line) / 1000;
                 currInterval++;
             } catch (IOException e) {
                 Controller.record("Error while reading interval file " + intervalFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
@@ -281,7 +282,7 @@ public class AffinityGraph {
         
         for (int currLogFile = 0; currLogFile < Controller.LOAD_THREADS; currLogFile++){
             
-            Thread loader = new Thread (new LoaderThread (logFiles, intervalsInSecs, nextLogFileCounter));
+            Thread loader = new Thread (new LoaderThread (logFiles, nextLogFileCounter));
             loadingThreads[currLogFile] = loader;
             loader.start();
         }
@@ -292,7 +293,7 @@ public class AffinityGraph {
         }
     }
     
-    public void moveVertices(IntSet movedVertices, int fromPartition, int toPartition) {
+    public void moveHotVertices(IntSet movedVertices, int fromPartition, int toPartition) {
         for (int movedVertex : movedVertices){
             m_partitionVertices.get(fromPartition).remove(movedVertex);
             m_partitionVertices.get(toPartition).add(movedVertex);
@@ -315,15 +316,53 @@ public class AffinityGraph {
 //        System.out.println(m_plan_handler.toString() + "\n");
     }
     
+    public void moveColdRange(String table, Plan.Range movedRange, int fromPart, int toPart){
+        
+        m_plan_handler.moveColdRange(table, movedRange, fromPart, toPart);
+
+    }
+    
     public int getPartition(int vertex){
         String vertexName = m_vertex_to_name.get(vertex);
         return m_plan_handler.getPartition(vertexName);
     }
     
+    public static boolean isActive(int partition){
+        return m_plan_handler.isActive(partition);
+    }
+    
     public void planToJSON(String newPlanFile){
         m_plan_handler.toJSON(newPlanFile);
     }
-
+    
+    public String planToString(){
+        return m_plan_handler.toString();
+    }
+    
+    public String[] getTableNames(){
+        return m_plan_handler.table_names;
+    }
+    
+    public List<Plan.Range> getAllRanges (String table, int partition){
+        return m_plan_handler.getAllRanges(table, partition);
+    }
+    
+    public double getColdTupleWeight (int partition){
+        return 1.0 / m_intervalsInSecs[partition] / Controller.COLD_TUPLE_FRACTION_ACCESSES;
+    }
+    
+    public int getHotVertexCount(int partition){
+        return m_partitionVertices.get(partition).size();
+    }
+    
+    public PlanHandler clonePlan(){
+        return m_plan_handler.clone();
+    }
+    
+    public List<Plan.Range> getRangeValues(String table, int partition, long from, long to){
+        return m_plan_handler.getRangeValues(table, partition, from, to);
+    }
+    
     public void toFile(Path file){
         System.out.println("Writing graph. Number of vertices: " + m_edges.size());
         BufferedWriter writer;
