@@ -354,8 +354,8 @@ public class GreedyExtended implements Partitioner {
                             double rangeWeight = Plan.getRangeWidth(r) * coldIncrement;
                             int toPartition = getLeastLoadedPartition(activePartitions);     
 
-                            System.out.println(Plan.getRangeWidth(r));
-                            System.out.println(coldIncrement);
+                            System.out.println("Weight " + coldIncrement);
+                            System.out.println("To partition " + toPartition);
 
                             if (rangeWeight + getLoadPerPartition(toPartition) < Controller.MAX_LOAD_PER_PART
                                    && numMovedVertices + Plan.getRangeWidth(r) < Controller.MAX_MOVED_TUPLES_PER_PART){
