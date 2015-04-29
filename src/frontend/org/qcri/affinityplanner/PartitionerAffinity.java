@@ -505,4 +505,81 @@ public abstract class PartitionerAffinity implements Partitioner {
 
     protected abstract void updateAttractions(Int2DoubleMap adjacency, double[] attractions);
 
+    // made a procedure so it is easier to stop when we are done
+    protected int moveColdChunks(int overloadedPartition, IntList activePartitions, int numMovedVertices){
+
+        // clone plan to allow modifications while iterating on the clone
+        PlanHandler oldPlan = m_graph.clonePlan();
+
+        System.out.println("Cloned plan\n" + oldPlan);
+
+        double coldIncrement = m_graph.getColdTupleWeight(overloadedPartition);
+
+        while (getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
+
+            for(String table : m_graph.getTableNames()){
+
+                System.out.println("Table " + table);
+
+                List<List<Plan.Range>> partitionChunks = oldPlan.getRangeChunks(table, overloadedPartition,  (long) Controller.COLD_CHUNK_SIZE);
+                if(partitionChunks.size() > 0) {
+
+                    for(List<Plan.Range> chunk : partitionChunks) {  // a chunk can consist of multiple ranges if hot tuples are taken away
+
+                        System.out.println("\nnew chunk");
+
+                        for(Plan.Range r : chunk) { 
+
+                            System.out.println("Range " + r.from + " " + r.to);
+
+                            double rangeWeight = Plan.getRangeWidth(r) * coldIncrement;
+                            int toPartition = getLeastLoadedPartition(activePartitions);     
+
+                            System.out.println(rangeWeight);
+                            System.out.println(toPartition);
+
+                            if (rangeWeight + getLoadPerPartition(toPartition) < Controller.MAX_LOAD_PER_PART 
+                                    && numMovedVertices + Plan.getRangeWidth(r) < Controller.MAX_MOVED_TUPLES_PER_PART){
+
+                                // do the move
+
+                                numMovedVertices += Plan.getRangeWidth(r);
+
+                                System.out.println("Moving!");
+                                System.out.println("Load before " + getLoadPerPartition(overloadedPartition));
+                                
+                                m_graph.moveColdRange(table, r, overloadedPartition, toPartition);
+
+                                System.out.println("Load after " + getLoadPerPartition(overloadedPartition));
+                                System.out.println("New plan\n" + m_graph.planToString());
+
+                                // after every move, see if I can stop
+                                if(getLoadPerPartition(overloadedPartition) <= Controller.MAX_LOAD_PER_PART){
+                                    return numMovedVertices;
+                                }
+                            }
+                            else{
+                                System.out.println("Cannot offload partition " + overloadedPartition);
+                                return numMovedVertices;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return numMovedVertices;
+    }
+    
+    public int getLeastLoadedPartition(IntList activePartitions){
+        double minLoad = Double.MAX_VALUE;
+        int res = 0;
+        for (int part : activePartitions){
+            double newLoad = getLoadPerPartition(part);
+            if (newLoad < minLoad){
+                res = part;
+                minLoad = newLoad; 
+            }
+        }
+        return res;
+    }
 }

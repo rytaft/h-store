@@ -32,6 +32,8 @@ public class SimplePartitioner extends PartitionerAffinity {
     @Override
     public boolean repartition() {
 
+        int addedPartitions = 0;
+
         IntList activePartitions = new IntArrayList(Controller.MAX_PARTITIONS);
 
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
@@ -74,22 +76,54 @@ public class SimplePartitioner extends PartitionerAffinity {
         }
         
         if (! overloadedPartitions.isEmpty()){
+            
             // move hot vertices
             for(int fromPart : overloadedPartitions){
+                
+                int numMovedVertices = 0;
+                
+                // loop over multiple added partitions
+                while(getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
 
-                IntList hotVertices = getHottestVertices(fromPart, Controller.MAX_MOVED_TUPLES_PER_PART);
-
-                for (int vertex : hotVertices){
-
-                    for (int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
-
-                        if (fromPart != toPart){
-                            singleton.clear();
-                            singleton.add(vertex);
-                            tryMoveVertices(singleton, fromPart, toPart);
-                        }                    
+                    IntList hotVertices = getHottestVertices(fromPart, Controller.MAX_MOVED_TUPLES_PER_PART);
+    
+                    for (int vertex : hotVertices){
+    
+                        for (int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
+    
+                            if (fromPart != toPart){
+                                singleton.clear();
+                                singleton.add(vertex);
+                                numMovedVertices += tryMoveVertices(singleton, fromPart, toPart);
+                            }                    
+                        }
+    
                     }
-
+                    
+                    if (getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
+                        numMovedVertices += moveColdChunks(fromPart, activePartitions, numMovedVertices);
+                    }
+                    
+                    if (getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
+                        
+                        if(activePartitions.size() < Controller.MAX_PARTITIONS 
+                                && addedPartitions < Controller.MAX_PARTITIONS_ADDED){
+        
+                            // We fill up low-order partitions first to minimize the number of servers
+                            addedPartitions++;
+                            for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+                                if(!activePartitions.contains(i)){
+                                    activePartitions.add(i);
+                                    break;
+                                }
+                            }
+                        }
+                        else{
+                            System.out.println("Cannot add new partition to offload " + overloadedPartitions);
+                            return false;
+                        }
+        
+                    }
                 }
             }
         }
@@ -339,5 +373,4 @@ public class SimplePartitioner extends PartitionerAffinity {
             attractions[toVertex] += edge_weight;
         } // END for (String toVertex : adjacency.keySet())
     }
-
 }

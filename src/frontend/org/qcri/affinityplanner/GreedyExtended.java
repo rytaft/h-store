@@ -156,8 +156,6 @@ public class GreedyExtended implements Partitioner {
         IntArrayList activePartitions = new IntArrayList();
         IntArrayList overloadedPartitions = new IntArrayList();
         
-        int numMovedVertices = 0;
-
         System.out.println("Load per partition before reconfiguration");
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
             if(m_plan_handler.isActive(i)){
@@ -171,6 +169,8 @@ public class GreedyExtended implements Partitioner {
         }
 
         for (int overloadedPartition : overloadedPartitions){
+
+            int numMovedVertices = 0;
 
             System.out.println("Offloading partition " + overloadedPartition);
             
