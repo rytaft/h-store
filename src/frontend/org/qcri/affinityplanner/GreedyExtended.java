@@ -155,6 +155,8 @@ public class GreedyExtended implements Partitioner {
 
         IntArrayList activePartitions = new IntArrayList();
         IntArrayList overloadedPartitions = new IntArrayList();
+        
+        int numMovedVertices = 0;
 
         System.out.println("Load per partition before reconfiguration");
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
@@ -225,8 +227,10 @@ public class GreedyExtended implements Partitioner {
                     else{
                         // actually move tuple in plan
     
+                        ++numMovedVertices;
+                        
                         System.out.println("Tuple moved");
-    
+                        
                         String movedVertexName = m_tupleToName.get(currHotTuple);
     
                         fromHotTuples.removeInt(fromHotTuples.size() - 1);
@@ -248,10 +252,11 @@ public class GreedyExtended implements Partitioner {
                 // MOVE COLD CHUNKS
                 System.out.println("\nMove cold chunks\n");
     
-                boolean finished = moveColdChunks(overloadedPartition, activePartitions); 
+                numMovedVertices = moveColdChunks(overloadedPartition, activePartitions, numMovedVertices); 
     
                 // ADD NEW PARTITIONS if needed
-                if (! finished){
+                if (getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
+                    
                     if(activePartitions.size() < Controller.MAX_PARTITIONS 
                             && addedPartitions < Controller.MAX_PARTITIONS_ADDED){
     
@@ -320,7 +325,7 @@ public class GreedyExtended implements Partitioner {
     }
 
     // made a procedure so it is easier to stop when we are done
-    private boolean moveColdChunks(int overloadedPartition, IntList activePartitions){
+    private int moveColdChunks(int overloadedPartition, IntList activePartitions, int numMovedVertices){
 
         // clone plan to allow modifications while iterating on the clone
         PlanHandler oldPlan = m_plan_handler.clone();
@@ -340,7 +345,7 @@ public class GreedyExtended implements Partitioner {
 
                     for(List<Plan.Range> chunk : partitionChunks) {  // a chunk can consist of multiple ranges if hot tuples are taken away
 
-                        System.out.println("\nnew chunk");
+                        System.out.println("\nNew chunk");
 
                         for(Plan.Range r : chunk) { 
 
@@ -349,12 +354,15 @@ public class GreedyExtended implements Partitioner {
                             double rangeWeight = Plan.getRangeWidth(r) * coldIncrement;
                             int toPartition = getLeastLoadedPartition(activePartitions);     
 
-                            System.out.println(rangeWeight);
-                            System.out.println(toPartition);
+                            System.out.println(Plan.getRangeWidth(r));
+                            System.out.println(coldIncrement);
 
-                            if (rangeWeight + getLoadPerPartition(toPartition) < Controller.MAX_LOAD_PER_PART){
+                            if (rangeWeight + getLoadPerPartition(toPartition) < Controller.MAX_LOAD_PER_PART
+                                   && numMovedVertices + Plan.getRangeWidth(r) < Controller.MAX_MOVED_TUPLES_PER_PART){
 
                                 // do the move
+                                
+                                numMovedVertices += Plan.getRangeWidth(r);
 
                                 System.out.println("Moving!");
                                 System.out.println("Load before " + getLoadPerPartition(overloadedPartition));
@@ -366,18 +374,18 @@ public class GreedyExtended implements Partitioner {
 
                                 // after every move, see if I can stop
                                 if(getLoadPerPartition(overloadedPartition) <= Controller.MAX_LOAD_PER_PART){
-                                    return true;
+                                    return numMovedVertices;
                                 }
                             }
                             else{
                                 System.out.println("Cannot offload partition " + overloadedPartition);
-                                return false;
+                                return numMovedVertices;
                             }
                         }
                     }
                 }
             }
         }
-        return false;
+        return numMovedVertices;
     }
 }

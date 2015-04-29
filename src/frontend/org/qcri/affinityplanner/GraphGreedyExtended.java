@@ -309,9 +309,9 @@ public class GraphGreedyExtended extends PartitionerAffinity {
                     
                     System.out.println("Move cold tuples");
                     
-                    boolean success = moveColdChunks(overloadedPartition, activePartitions);
+                    numMovedVertices = moveColdChunks(overloadedPartition, activePartitions, numMovedVertices);
                     
-                    if (!success){
+                    if (getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
                     
                         System.out.println("Cannot expand - Adding a new partition");
     
@@ -900,7 +900,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
     }
 
     // made a procedure so it is easier to stop when we are done
-    private boolean moveColdChunks(int overloadedPartition, IntList activePartitions){
+    private int moveColdChunks(int overloadedPartition, IntList activePartitions, int numMovedVertices){
 
         // clone plan to allow modifications while iterating on the clone
         PlanHandler oldPlan = m_graph.clonePlan();
@@ -932,9 +932,12 @@ public class GraphGreedyExtended extends PartitionerAffinity {
                             System.out.println(rangeWeight);
                             System.out.println(toPartition);
 
-                            if (rangeWeight + getLoadPerPartition(toPartition) < Controller.MAX_LOAD_PER_PART){
+                            if (rangeWeight + getLoadPerPartition(toPartition) < Controller.MAX_LOAD_PER_PART 
+                                    && numMovedVertices + Plan.getRangeWidth(r) < Controller.MAX_MOVED_TUPLES_PER_PART){
 
                                 // do the move
+
+                                numMovedVertices += Plan.getRangeWidth(r);
 
                                 System.out.println("Moving!");
                                 System.out.println("Load before " + getLoadPerPartition(overloadedPartition));
@@ -946,19 +949,19 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
                                 // after every move, see if I can stop
                                 if(getLoadPerPartition(overloadedPartition) <= Controller.MAX_LOAD_PER_PART){
-                                    return true;
+                                    return numMovedVertices;
                                 }
                             }
                             else{
                                 System.out.println("Cannot offload partition " + overloadedPartition);
-                                return false;
+                                return numMovedVertices;
                             }
                         }
                     }
                 }
             }
         }
-        return false;
+        return numMovedVertices;
     }
     
     public int getLeastLoadedPartition(IntList activePartitions){

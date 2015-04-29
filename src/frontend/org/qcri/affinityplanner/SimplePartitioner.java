@@ -2,6 +2,7 @@ package org.qcri.affinityplanner;
 
 import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
@@ -31,7 +32,7 @@ public class SimplePartitioner extends PartitionerAffinity {
     @Override
     public boolean repartition() {
 
-        IntSet activePartitions = new IntOpenHashSet();
+        IntList activePartitions = new IntArrayList(Controller.MAX_PARTITIONS);
 
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
             if(AffinityGraph.isActive(i)){
@@ -61,7 +62,7 @@ public class SimplePartitioner extends PartitionerAffinity {
         
         // offload overloaded partitions
         
-        IntSet overloadedPartitions = new IntOpenHashSet();
+        IntList overloadedPartitions = new IntArrayList(Controller.MAX_PARTITIONS);
         
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
             if(activePartitions.contains(i)){
