@@ -286,14 +286,11 @@ public class GreedyExtended implements Partitioner {
         long countColdTuples = 0;
         for(String table : m_plan_handler.table_names){
 
-            List<List<Plan.Range>> partitionSlices = m_plan_handler.getRangeChunks(table, partition,  (long) Controller.COLD_CHUNK_SIZE);
-            if(partitionSlices.size() > 0) {
+            List<Plan.Range> partitionRanges = m_plan_handler.getAllRanges(table, partition);
+            if(partitionRanges.size() > 0) {
 
-                for(List<Plan.Range> slice : partitionSlices) {
-
-                    for(Plan.Range r : slice) { 
-                        countColdTuples += r.to - r.from + 1;
-                    }
+                for(Plan.Range r : partitionRanges) {
+                    countColdTuples += r.to - r.from + 1;
                 }
             }
         }
@@ -362,28 +359,7 @@ public class GreedyExtended implements Partitioner {
                                 System.out.println("Moving!");
                                 System.out.println("Load before " + getLoadPerPartition(overloadedPartition));
 
-                                List<Plan.Range> oldRanges = m_plan_handler.getRangeValues(table, overloadedPartition, r.from, r.to);
-
-                                for(Plan.Range oldRange : oldRanges) {
-
-                                    // remove chunk from overloaded partition
-                                    m_plan_handler.removeRange(table, overloadedPartition, oldRange.from);
-
-                                    if(!m_plan_handler.hasPartition(toPartition)) {
-                                        m_plan_handler.addPartition(table, toPartition);
-                                    }
-
-                                    // add chunk to destination partition 
-                                    m_plan_handler.addRange(table, toPartition, Math.max(oldRange.from, r.from), Math.min(oldRange.to, r.to));
-
-                                    // add back range minus chunk to overloaded partition
-                                    if(oldRange.from < r.from) {
-                                        m_plan_handler.addRange(table, overloadedPartition, oldRange.from, r.from - 1);
-                                    }
-                                    if(r.to < oldRange.to) {
-                                        m_plan_handler.addRange(table, overloadedPartition, r.to + 1, oldRange.to);
-                                    }
-                                }
+                                m_plan_handler.moveColdRange(table, r, overloadedPartition, toPartition);
 
                                 System.out.println("Load after " + getLoadPerPartition(overloadedPartition));
                                 System.out.println("New plan\n" + m_plan_handler);

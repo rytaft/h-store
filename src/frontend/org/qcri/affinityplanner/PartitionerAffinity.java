@@ -198,7 +198,7 @@ public abstract class PartitionerAffinity implements Partitioner {
                 && (receiverDelta < 0 
                         || getLoadPerPartition(toPartition) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
 
-            m_graph.moveVertices(movingVertices, fromPartition, toPartition);
+            m_graph.moveHotVertices(movingVertices, fromPartition, toPartition);
 
             numMovedVertices = movingVertices.size();
 
@@ -222,7 +222,7 @@ public abstract class PartitionerAffinity implements Partitioner {
      * @param activePartitions
      * @param toPartitionDelta
      */
-    protected void findBestPartition(IntSet movingVertices, int fromPartition, IntSet activePartitions, Pair<Integer, Double> toPartitionDelta){
+    protected void findBestPartition(IntSet movingVertices, int fromPartition, IntList activePartitions, Pair<Integer, Double> toPartitionDelta){
         
         toPartitionDelta.fst = -1;
         toPartitionDelta.snd = Double.MAX_VALUE;
@@ -446,7 +446,7 @@ public abstract class PartitionerAffinity implements Partitioner {
      *  
      *  very simple policy: if a partition is underloaded, try to move its whole content to another partition
      */
-    protected void scaleIn(IntSet activePartitions){
+    protected void scaleIn(IntList activePartitions){
 
         // detect underloaded partitions
         TreeSet<Integer> underloadedPartitions = new TreeSet<Integer>();

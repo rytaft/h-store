@@ -293,7 +293,7 @@ public class AffinityGraph {
         }
     }
     
-    public void moveVertices(IntSet movedVertices, int fromPartition, int toPartition) {
+    public void moveHotVertices(IntSet movedVertices, int fromPartition, int toPartition) {
         for (int movedVertex : movedVertices){
             m_partitionVertices.get(fromPartition).remove(movedVertex);
             m_partitionVertices.get(toPartition).add(movedVertex);
@@ -316,6 +316,12 @@ public class AffinityGraph {
 //        System.out.println(m_plan_handler.toString() + "\n");
     }
     
+    public void moveColdRange(String table, Plan.Range movedRange, int fromPart, int toPart){
+        
+        m_plan_handler.moveColdRange(table, movedRange, fromPart, toPart);
+
+    }
+    
     public int getPartition(int vertex){
         String vertexName = m_vertex_to_name.get(vertex);
         return m_plan_handler.getPartition(vertexName);
@@ -328,7 +334,35 @@ public class AffinityGraph {
     public void planToJSON(String newPlanFile){
         m_plan_handler.toJSON(newPlanFile);
     }
-
+    
+    public String planToString(){
+        return m_plan_handler.toString();
+    }
+    
+    public String[] getTableNames(){
+        return m_plan_handler.table_names;
+    }
+    
+    public List<Plan.Range> getAllRanges (String table, int partition){
+        return m_plan_handler.getAllRanges(table, partition);
+    }
+    
+    public double getColdTupleWeight (int partition){
+        return 1.0 / m_intervalsInSecs[partition] / Controller.COLD_TUPLE_FRACTION_ACCESSES;
+    }
+    
+    public int getHotVertexCount(int partition){
+        return m_partitionVertices.get(partition).size();
+    }
+    
+    public PlanHandler clonePlan(){
+        return m_plan_handler.clone();
+    }
+    
+    public List<Plan.Range> getRangeValues(String table, int partition, long from, long to){
+        return m_plan_handler.getRangeValues(table, partition, from, to);
+    }
+    
     public void toFile(Path file){
         System.out.println("Writing graph. Number of vertices: " + m_edges.size());
         BufferedWriter writer;

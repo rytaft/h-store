@@ -15,14 +15,14 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
 
-public class GraphGreedy extends PartitionerAffinity {
+public class GraphGreedyExtended extends PartitionerAffinity {
 
     private static final Logger LOG = Logger.getLogger(GraphGreedy.class);
     
 //    HashSet<String> DEBUG = new HashSet<String>();
 //    boolean DEB = false;
 
-    public GraphGreedy (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles){
+    public GraphGreedyExtended (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles){
                 
         long t1 = System.currentTimeMillis();
         try{
@@ -80,7 +80,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
         // find overloaded partitions
         
-        IntList overloadedPartitions = new IntArrayList();
+        IntList overloadedPartitions = new IntArrayList(Controller.MAX_PARTITIONS);
         
         System.out.println("Load per partition after moving border tuples");
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
@@ -304,6 +304,10 @@ public class GraphGreedy extends PartitionerAffinity {
                     System.out.println(numMovedVertices + movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART );
                     System.out.println(nextPosToMove >= hotVerticesList.size());
                     System.out.println(toPartitionDelta.fst != null && toPartitionDelta.fst == -1);
+                    
+                    System.out.println("Move cold tuples");
+                    
+                    boolean success = moveColdChunks(overloadedPartition, activePartitions);
                     
                     System.out.println("Cannot expand - Adding a new partition");
 
@@ -585,6 +589,8 @@ public class GraphGreedy extends PartitionerAffinity {
         
         double load = 0;
         
+        int fromPartition = -1;
+        
         for(int vertex : vertices){
             
             // local accesses - vertex weight
@@ -602,7 +608,7 @@ public class GraphGreedy extends PartitionerAffinity {
 //            }
             
             // remote accesses
-            int fromPartition = AffinityGraph.m_vertexPartition.get(vertex);
+            fromPartition = AffinityGraph.m_vertexPartition.get(vertex);
             int fromSite = PlanHandler.getSitePartition(fromPartition);
             
             Int2DoubleMap adjacencyList = AffinityGraph.m_edges.get(vertex);
@@ -641,6 +647,25 @@ public class GraphGreedy extends PartitionerAffinity {
                 }
             }
         }
+        
+        
+        long countColdTuples = 0;
+        for(String table : m_graph.getTableNames()){
+
+            List<Plan.Range> partitionRanges = m_graph.getAllRanges(table, fromPartition);
+            
+            if(partitionRanges.size() > 0) {
+
+                for(Plan.Range r: partitionRanges) {
+                    countColdTuples += r.to - r.from + 1;
+                    countColdTuples -= m_graph.getHotVertexCount(fromPartition);
+                }
+            }
+        }
+
+        double coldIncrement = m_graph.getColdTupleWeight(fromPartition);
+        load += countColdTuples * coldIncrement;
+
         return load;
     }
 
@@ -869,4 +894,78 @@ public class GraphGreedy extends PartitionerAffinity {
         } // END for (String toVertex : adjacency.keySet())
     }
 
+    // made a procedure so it is easier to stop when we are done
+    private boolean moveColdChunks(int overloadedPartition, IntList activePartitions){
+
+        // clone plan to allow modifications while iterating on the clone
+        PlanHandler oldPlan = m_graph.clonePlan();
+
+        System.out.println("Cloned plan\n" + oldPlan);
+
+        double coldIncrement = m_graph.getColdTupleWeight(overloadedPartition);
+
+        while (getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
+
+            for(String table : m_graph.getTableNames()){
+
+                System.out.println("Table " + table);
+
+                List<List<Plan.Range>> partitionChunks = oldPlan.getRangeChunks(table, overloadedPartition,  (long) Controller.COLD_CHUNK_SIZE);
+                if(partitionChunks.size() > 0) {
+
+                    for(List<Plan.Range> chunk : partitionChunks) {  // a chunk can consist of multiple ranges if hot tuples are taken away
+
+                        System.out.println("\nnew chunk");
+
+                        for(Plan.Range r : chunk) { 
+
+                            System.out.println("Range " + r.from + " " + r.to);
+
+                            double rangeWeight = Plan.getRangeWidth(r) * coldIncrement;
+                            int toPartition = getLeastLoadedPartition(activePartitions);     
+
+                            System.out.println(rangeWeight);
+                            System.out.println(toPartition);
+
+                            if (rangeWeight + getLoadPerPartition(toPartition) < Controller.MAX_LOAD_PER_PART){
+
+                                // do the move
+
+                                System.out.println("Moving!");
+                                System.out.println("Load before " + getLoadPerPartition(overloadedPartition));
+                                
+                                m_graph.moveColdRange(table, r, overloadedPartition, toPartition);
+
+                                System.out.println("Load after " + getLoadPerPartition(overloadedPartition));
+                                System.out.println("New plan\n" + m_graph.planToString());
+
+                                // after every move, see if I can stop
+                                if(getLoadPerPartition(overloadedPartition) <= Controller.MAX_LOAD_PER_PART){
+                                    return true;
+                                }
+                            }
+                            else{
+                                System.out.println("Cannot offload partition " + overloadedPartition);
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    
+    public int getLeastLoadedPartition(IntList activePartitions){
+        double minLoad = Double.MAX_VALUE;
+        int res = 0;
+        for (int part : activePartitions){
+            double newLoad = getLoadPerPartition(part);
+            if (newLoad < minLoad){
+                res = part;
+                minLoad = newLoad; 
+            }
+        }
+        return res;
+    }
 }
