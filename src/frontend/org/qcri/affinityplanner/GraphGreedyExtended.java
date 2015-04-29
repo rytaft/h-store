@@ -295,7 +295,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 //                System.out.println("Size of moving vertices: " + movingVertices.size());
 //                System.out.println("Size of this partition " + AffinityGraph.m_partitionVertices.get(overloadedPartition).size());
 
-                // Step 1) add partition and reset if I have over-expanded movingVertices, or if I cannot expand it anymore
+                // Step 1) first move cold tuples, then add partition and reset if I have over-expanded movingVertices, or if I cannot expand it anymore
 
                 if (numMovedVertices + movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART 
                         || nextPosToMove >= hotVerticesList.size()
@@ -305,33 +305,38 @@ public class GraphGreedyExtended extends PartitionerAffinity {
                     System.out.println(nextPosToMove >= hotVerticesList.size());
                     System.out.println(toPartitionDelta.fst != null && toPartitionDelta.fst == -1);
                     
+                    // MOVE COLD TUPLES
+                    
                     System.out.println("Move cold tuples");
                     
                     boolean success = moveColdChunks(overloadedPartition, activePartitions);
                     
-                    System.out.println("Cannot expand - Adding a new partition");
-
-                    if(activePartitions.size() < Controller.MAX_PARTITIONS 
-                                && addedPartitions < Controller.MAX_PARTITIONS_ADDED){
-
-                        // We fill up low-order partitions first to minimize the number of servers
-                        addedPartitions++;
-                        for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
-                            if(!activePartitions.contains(i)){
-                                activePartitions.add(i);
-                                break;
+                    if (!success){
+                    
+                        System.out.println("Cannot expand - Adding a new partition");
+    
+                        if(activePartitions.size() < Controller.MAX_PARTITIONS 
+                                    && addedPartitions < Controller.MAX_PARTITIONS_ADDED){
+    
+                            // We fill up low-order partitions first to minimize the number of servers
+                            addedPartitions++;
+                            for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+                                if(!activePartitions.contains(i)){
+                                    activePartitions.add(i);
+                                    break;
+                                }
                             }
+    
+                            nextPosToMove = lastHotVertexMoved + 1;
+    //                        retryCount = 1;
+                            movingVertices.clear();
+                            System.out.println(nextPosToMove);
+                            System.out.println(hotVerticesList.size());
                         }
-
-                        nextPosToMove = lastHotVertexMoved + 1;
-//                        retryCount = 1;
-                        movingVertices.clear();
-                        System.out.println(nextPosToMove);
-                        System.out.println(hotVerticesList.size());
-                    }
-                    else{
-                        System.out.println("Cannot add new partition to offload " + overloadedPartitions);
-                        return false;
+                        else{
+                            System.out.println("Cannot add new partition to offload " + overloadedPartitions);
+                            return false;
+                        }
                     }
                 }
                 
