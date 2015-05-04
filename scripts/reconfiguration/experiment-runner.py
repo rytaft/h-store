@@ -631,6 +631,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
         if benchmark == "twitter":
             plan_base = 'plans/twitter/t'
             if "benchmark_size" in args and args["benchmark_size"]:
+                fabric.env['global.hasher_class'] = 'edu.brown.hashing.TwoTieredRangeHasher'
                 fabric.env["benchmark.max_user_id"] = int(args["benchmark_size"]) * 1000
                 LOG.info("Updating the num of records %s" % fabric.env["benchmark.max_user_id"])
                 fabric.env["benchmark.network_file"] = None
