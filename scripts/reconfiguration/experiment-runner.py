@@ -625,6 +625,13 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
                 fabric.env["benchmark.num_records"] = args["benchmark_size"]
                 plan_base = "%s-size%s" % (plan_base, args["benchmark_size"])
         
+        if benchmark == "twitter":
+            plan_base = 'plans/twitter/t'
+            if "benchmark_size" in args and args["benchmark_size"]:
+                LOG.info("Updating the num of records %s" % args["benchmark_size"])
+                fabric.env["benchmark.num_records"] = args["benchmark_size"]
+                plan_base = "%s-%sk" % (plan_base, args["benchmark_size"])
+        
         if benchmark == "affinity":
             plan_dir_base = 'scripts/reconfiguration/plans/aff/a'
             if "benchmark_size" in args and args["benchmark_size"]:
