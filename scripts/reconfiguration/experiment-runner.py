@@ -634,7 +634,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
                 fabric.env['global.hasher_class'] = 'edu.brown.hashing.TwoTieredRangeHasher'
                 fabric.env["benchmark.max_user_id"] = int(args["benchmark_size"]) * 1000
                 LOG.info("Updating the num of records %s" % fabric.env["benchmark.max_user_id"])
-                fabric.env["benchmark.network_file"] = None
+                #fabric.env["benchmark.network_file"] = None
                 plan_base = "%s-size%sk" % (plan_base, args["benchmark_size"])
         
         if benchmark == "affinity":

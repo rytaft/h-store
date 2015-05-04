@@ -16,6 +16,9 @@ FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
     "twitter-aff --partitions=24 --benchmark-size=300 --exp-suffix=24" \
+    "twitter-aff-t1 --partitions=24 --benchmark-size=300 --exp-suffix=24" \
+    "twitter-aff-t2 --partitions=24 --benchmark-size=300 --exp-suffix=24" \
+    "twitter-aff-t3 --partitions=24 --benchmark-size=300 --exp-suffix=24" \
 )
 
 for b in twitter; do
