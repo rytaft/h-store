@@ -629,7 +629,8 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
             plan_base = 'plans/twitter/t'
             if "benchmark_size" in args and args["benchmark_size"]:
                 LOG.info("Updating the num of records %s" % args["benchmark_size"])
-                fabric.env["benchmark.num_records"] = args["benchmark_size"]
+                fabric.env["benchmark.max_user_id"] = args["benchmark_size"]
+                fabric.env["benchmark.network_file"] = None
                 plan_base = "%s-%sk" % (plan_base, args["benchmark_size"])
         
         if benchmark == "affinity":
