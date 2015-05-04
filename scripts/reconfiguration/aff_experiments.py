@@ -10,7 +10,7 @@ RECONFIG_EXPERIMENTS = [
     "affinity-dyn-b10-t1000",
     "affinity-dyn-b10",
     "affinity-ms",
-    "twitter",
+    "twitter-aff",
     "affinity-ms-sk2",
     "affinity-ms-sk3",
     "affinity-ms-sk4",

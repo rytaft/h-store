@@ -594,6 +594,9 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
     elif "affinity" in args['exp_type']:
         LOG.info("Affinity Experiment")
         _reconfig = True
+    elif "aff" in args['exp_type']:
+        LOG.info("Affinity Experiment")
+        _reconfig = True
     
     if _reconfig:
         LOG.info("Disabling command logging for reconfig experiments ******")
