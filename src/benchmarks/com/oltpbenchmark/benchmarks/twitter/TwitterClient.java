@@ -161,7 +161,7 @@ public class TwitterClient extends BenchmarkComponent {
         	use_trace_files = true;
         }
         else { // @TODO make this configurable
-        	use_graph_txn_gen = true;
+        	use_graph_txn_gen = false;
         }
         
         if(use_trace_files) {
