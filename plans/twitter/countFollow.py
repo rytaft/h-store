@@ -15,7 +15,7 @@ following = Counter()
 followers = Counter()
     
 cnt = 0    
-for line in open('small_twitter.net'):
+for line in open('twitter_rv.net'):
     usr, followr = line.strip().split('\t')
     following[followr] +=1
     followers[usr] +=1
