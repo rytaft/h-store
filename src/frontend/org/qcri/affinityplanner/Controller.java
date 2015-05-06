@@ -236,7 +236,8 @@ public class Controller extends Thread {
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
             
-            partitioner.graphToMetisFile(FileSystems.getDefault().getPath(".", METIS_OUT));
+            LOG.fatal("TODO RE-ENABLE METIS");
+            //partitioner.graphToMetisFile(FileSystems.getDefault().getPath(".", METIS_OUT));
             
 //          Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
 //          partitioner.toFileDebug(graphFile);
