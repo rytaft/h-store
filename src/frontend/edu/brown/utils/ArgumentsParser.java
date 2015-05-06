@@ -36,7 +36,6 @@ import java.util.regex.Pattern;
 import org.apache.commons.collections15.map.ListOrderedMap;
 import org.apache.log4j.Logger;
 import org.qcri.affinityplanner.Controller;
-import org.qcri.affinityplanner.GraphPartitioner;
 import org.voltdb.CatalogContext;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.*;
@@ -203,6 +202,7 @@ public class ArgumentsParser {
     public static final String PARAM_ELASTIC_PLAN_IN = PARAM_ELASTIC + ".plan_in";
     public static final String PARAM_ELASTIC_PLAN_OUT = PARAM_ELASTIC + ".plan_out";
     public static final String PARAM_ELASTIC_ALGO = PARAM_ELASTIC + ".algo";
+    public static final String PARAM_ELASTIC_TOPK = PARAM_ELASTIC + ".topk";
     
     public static final List<String> PARAMS = new ArrayList<String>();
     static {
@@ -1000,31 +1000,31 @@ public class ArgumentsParser {
         }
 
         if (this.params.containsKey(PARAM_ELASTIC_MIN_LOAD)){
-            GraphPartitioner.MIN_LOAD_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_LOAD));
+            Controller.MIN_LOAD_PER_PART = Double.parseDouble(this.params.get(PARAM_ELASTIC_MIN_LOAD));
         }
         
         if (this.params.containsKey(PARAM_ELASTIC_MAX_LOAD)){
-            GraphPartitioner.MAX_LOAD_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_LOAD));
+            Controller.MAX_LOAD_PER_PART = Double.parseDouble(this.params.get(PARAM_ELASTIC_MAX_LOAD));
         }
         
         if (this.params.containsKey(PARAM_ELASTIC_DTXN_COST)){
-            GraphPartitioner.DTXN_COST = Double.parseDouble(this.params.get(PARAM_ELASTIC_DTXN_COST));
+            Controller.DTXN_COST = Double.parseDouble(this.params.get(PARAM_ELASTIC_DTXN_COST));
         }
 
         if (this.params.containsKey(PARAM_ELASTIC_LMPT_COST)){
-            GraphPartitioner.LMPT_COST = Double.parseDouble(this.params.get(PARAM_ELASTIC_LMPT_COST));
+            Controller.LMPT_COST = Double.parseDouble(this.params.get(PARAM_ELASTIC_LMPT_COST));
         }
         
         if (this.params.containsKey(PARAM_ELASTIC_MIN_GAIN_MOVE)){
-            GraphPartitioner.MIN_GAIN_MOVE = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_GAIN_MOVE));
+            Controller.MIN_GAIN_MOVE = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_GAIN_MOVE));
         }
 
         if (this.params.containsKey(PARAM_ELASTIC_MAX_TUPLE_MOVE)){
-            GraphPartitioner.MAX_MOVED_TUPLES_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_TUPLE_MOVE));
+            Controller.MAX_MOVED_TUPLES_PER_PART = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_TUPLE_MOVE));
         }
         
         if (this.params.containsKey(PARAM_ELASTIC_MAX_PARTITIONS_ADDED)){
-            GraphPartitioner.MAX_PARTITIONS_ADDED = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_PARTITIONS_ADDED));
+            Controller.MAX_PARTITIONS_ADDED = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_PARTITIONS_ADDED));
         }        
 
         if (this.params.containsKey(PARAM_ELASTIC_RUN_MONITORING)){
@@ -1049,6 +1049,10 @@ public class ArgumentsParser {
 
         if (this.params.containsKey(PARAM_ELASTIC_ALGO)){
             Controller.ALGO= this.params.get(PARAM_ELASTIC_ALGO);
+        }        
+
+        if (this.params.containsKey(PARAM_ELASTIC_TOPK)){
+            Controller.TOPK= Integer.parseInt(this.params.get(PARAM_ELASTIC_TOPK));
         }        
 
         // -------------------------------------------------------

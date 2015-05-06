@@ -21,7 +21,8 @@ public class GreedyExtendedPlacement extends Placement {
 	
 	// hotTuples: tupleId --> access count
 	// siteLoads: partitionId --> total access count
-	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, String planFilename, int partitionCount, int timeLimit, CatalogContext catalogContext){
+	public Plan computePlan(ArrayList<Map<Long, Long>> hotTuplesList, Map<Integer, Long> partitionTotals, 
+	        String planFilename, int partitionCount, int timeLimit, CatalogContext catalogContext){
 		
 		Integer dstPartition = -1;
 		Long totalAccesses = 0L;
