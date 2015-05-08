@@ -1973,8 +1973,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     private void updateMemoryStats(long time) {
-        if (trace.val)
-            LOG.trace("Updating memory stats for partition " + this.partitionId);
+        //if (trace.val)
+          //  LOG.trace("Updating memory stats for partition " + this.partitionId);
         Collection<Table> tables = this.catalogContext.database.getTables();
         int[] tableIds = new int[tables.size()];
         int i = 0;

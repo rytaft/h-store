@@ -77,7 +77,7 @@ class ControlWorker extends Thread {
     private void rateControlledRunLoop() throws InterruptedException {
         final Client client = cmp.getClientHandle();
         m_lastRequestTime = System.currentTimeMillis();
-        
+        final boolean doSingle = cmp.getHStoreConf().client.runOnce;
         boolean hadErrors = false;
         boolean bp = false;
         while (true) {
@@ -124,7 +124,12 @@ class ControlWorker extends Thread {
                         if (bp || cmp.m_controlState != ControlState.RUNNING) {
                             break;
                         }
+                        if (doSingle) break;
                     } // FOR
+                    if (doSingle) {
+                        LOG.warn("Stopping client due to a run once setting");
+                        break;
+                    }
                 } catch (final IOException e) {
                     if (hadErrors) return;
                     hadErrors = true;
