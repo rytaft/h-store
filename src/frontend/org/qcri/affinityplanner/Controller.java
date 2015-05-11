@@ -12,6 +12,7 @@ import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.TreeSet;
@@ -250,16 +251,24 @@ public class Controller extends Thread {
                 LOG.info(String.format("Writing metis graph out to %s ",FileSystems.getDefault().getPath(".", METIS_OUT)));
                 Path metisFile = FileSystems.getDefault().getPath(".", METIS_OUT);
                 Path metisMapFile = FileSystems.getDefault().getPath(".", METIS_MAP_OUT);
+                long start = System.currentTimeMillis();
                 partitioner.graphToMetisFile(metisFile,metisMapFile);
+                long time = System.currentTimeMillis() - start;
                 Path metisOut= FileSystems.getDefault().getPath(".",METIS_OUT + ".part." + this.m_catalog_context.numberOfPartitions); 
-                String metisExe = String.format("gpmetis %s %s", metisFile, m_catalog_context.numberOfPartitions);
+                String metisExe = String.format("gpmetis %s %s", METIS_OUT, m_catalog_context.numberOfPartitions);
+                Int2IntOpenHashMap metisGeneratedPartitioning;
                 try {
-                    Process metisProc = new ProcessBuilder(metisExe).start();
+                    Path currentRelativePath = Paths.get("");
+                    String s = currentRelativePath.toAbsolutePath().toString();
+                    LOG.info("Current relative path is: " + s);
+                    LOG.info("Calling metis " + metisExe);
+                    Process metisProc = new ProcessBuilder("gpmetis",METIS_OUT, ""+m_catalog_context.numberOfPartitions).start();
+                   // LOG.info("metis proc: " + metisProc.toString());
                     int result = metisProc.exitValue();
                     if (result == 0){
                         LOG.info(String.format("Metis ran successfully"));
-                        Int2IntOpenHashMap metisMap = getMetisMapping(metisOut, metisMapFile);
-                        LOG.info("Results in metis map files: " + metisMap.keySet().size());
+                        metisGeneratedPartitioning = getMetisMapping(metisOut, metisMapFile);
+                        LOG.info("Results in metis map files: " + metisGeneratedPartitioning.keySet().size());
                     } else {
                         LOG.info(String.format("Metis ran unsuccessfully (%s) : %s", result, metisExe));
                     }
