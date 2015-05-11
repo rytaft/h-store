@@ -53,6 +53,9 @@ public class Controller extends Thread {
     public static String PLAN_IN = "plan_affinity.json";
     public static String PLAN_OUT = "plan_out.json";
     public static String METIS_OUT = "metis.txt";
+    public static String METIS_MAP_OUT = "metismap.txt";
+    
+    
     public static String ALGO = "graph";
     
     // Loader
@@ -236,8 +239,16 @@ public class Controller extends Thread {
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
             
-            LOG.fatal("TODO RE-ENABLE METIS");
-            //partitioner.graphToMetisFile(FileSystems.getDefault().getPath(".", METIS_OUT));
+            if(partitioner instanceof GreedyExtended){
+                LOG.info("Skipping metis out for greedy extended");
+            } else {
+                LOG.info(String.format("Writing metis graph out to %s ",FileSystems.getDefault().getPath(".", METIS_OUT)));
+                Path metisFile = FileSystems.getDefault().getPath(".", METIS_OUT);
+                Path metisMapFile = FileSystems.getDefault().getPath(".", METIS_MAP_OUT);
+                partitioner.graphToMetisFile(metisFile,metisMapFile);
+                String metisOut= METIS_OUT + ".part." + this.m_catalog_context.numberOfPartitions; 
+                
+            }
             
 //          Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
 //          partitioner.toFileDebug(graphFile);

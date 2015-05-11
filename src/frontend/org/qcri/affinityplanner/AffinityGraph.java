@@ -342,9 +342,9 @@ public class AffinityGraph {
     
     
     
-    public void toMetisFile(Path file){
+    public void toMetisFile(Path file, Path mapOut){
         LOG.info("Writing graph for " + file.toString() +" . Number of vertices: " + m_vertices.size());
-        BufferedWriter writer;
+        BufferedWriter writer, mapWriter = null;
         try {
             writer = Files.newBufferedWriter(file, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             String graphInfo = "011"; //ABC A:VertexSize B:VertexWeight C:EdgeWeight
@@ -353,7 +353,7 @@ public class AffinityGraph {
                 if (m_edges.get(v_id)!=null)
                     edgeCount+=m_edges.get(v_id).size();
             }
-            String header = String.format("%s, %s, %s",m_vertices.size(), edgeCount, graphInfo);
+            String header = String.format("%s %s %s",m_vertices.size(), (int)(edgeCount/2), graphInfo);
             writer.write(header);
             writer.newLine();
             
@@ -365,6 +365,13 @@ public class AffinityGraph {
                 vert_ids[count] = vert_hash;
                 vert_to_increment.put(vert_hash, count);
                 count++;
+            }
+            if (mapOut != null){
+                mapWriter = Files.newBufferedWriter(mapOut, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                for (int i = 1; i < vert_ids.length; i++ ){
+                    mapWriter.write(String.format("%s", vert_ids[i]));
+                    mapWriter.newLine();
+                }
             }
 
             //Each line is [vert size] [edge to vertex id 1] [edge 1 weight] [edge to vertex id 2] [edge 2 weight] ...
@@ -384,6 +391,7 @@ public class AffinityGraph {
                 writer.newLine();
             }
             writer.close();
+            if (mapWriter!=null) mapWriter.close();
         } catch (IOException e) {
             e.printStackTrace();
             Controller.record("Error while opening file " + file.toString());
