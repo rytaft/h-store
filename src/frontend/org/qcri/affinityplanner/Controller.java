@@ -254,25 +254,29 @@ public class Controller extends Thread {
                 long start = System.currentTimeMillis();
                 partitioner.graphToMetisFile(metisFile,metisMapFile);
                 long time = System.currentTimeMillis() - start;
+                LOG.info("generating metis out file took : " + time);
                 Path metisOut= FileSystems.getDefault().getPath(".",METIS_OUT + ".part." + this.m_catalog_context.numberOfPartitions); 
                 String metisExe = String.format("gpmetis %s %s", METIS_OUT, m_catalog_context.numberOfPartitions);
+                
+                //RESULTS map of hashID -> new partition ID
                 Int2IntOpenHashMap metisGeneratedPartitioning;
                 try {
                     Path currentRelativePath = Paths.get("");
                     String s = currentRelativePath.toAbsolutePath().toString();
-                    LOG.info("Current relative path is: " + s);
                     LOG.info("Calling metis " + metisExe);
+                     start = System.currentTimeMillis();
                     Process metisProc = new ProcessBuilder("gpmetis",METIS_OUT, ""+m_catalog_context.numberOfPartitions).start();
                    // LOG.info("metis proc: " + metisProc.toString());
-                    int result = metisProc.exitValue();
+                    int result = metisProc.waitFor();
+                    time = System.currentTimeMillis() - start;
                     if (result == 0){
-                        LOG.info(String.format("Metis ran successfully"));
+                        LOG.info(String.format("Metis ran successfully. took : " + time));
                         metisGeneratedPartitioning = getMetisMapping(metisOut, metisMapFile);
                         LOG.info("Results in metis map files: " + metisGeneratedPartitioning.keySet().size());
                     } else {
                         LOG.info(String.format("Metis ran unsuccessfully (%s) : %s", result, metisExe));
                     }
-                } catch (IOException e) {
+                } catch (Exception e) {
                     LOG.error("Exception running metis", e);
                 }
             }
