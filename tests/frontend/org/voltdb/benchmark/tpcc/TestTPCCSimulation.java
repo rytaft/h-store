@@ -23,20 +23,20 @@ public class TestTPCCSimulation extends BaseTestCase {
     /**
      * testGeneratePairedWarehouse
      */
-    public void testGeneratePairedWarehouse() throws Exception {
-        for (int w_id = scaleParams.starting_warehouse; w_id <= scaleParams.last_warehouse; w_id++) {
-            Histogram<Integer> h = new ObjectHistogram<Integer>();
-            for (int i = 0; i < 1000; i++) {
-                int id = TPCCSimulation.generatePairedWarehouse(w_id,
-                                                                scaleParams.starting_warehouse,
-                                                                scaleParams.last_warehouse);
-                h.put(id);
-            } // FOR
-            System.err.println("W_ID=" + w_id + "\n" + h.toString());
-            System.err.println();
-            assertFalse(h.isEmpty());
-            assertEquals(h.toString(), 1, h.getValueCount());
-        } // FOR
-    }
+//    public void testGeneratePairedWarehouse() throws Exception {
+//        for (int w_id = scaleParams.starting_warehouse; w_id <= scaleParams.last_warehouse; w_id++) {
+//            Histogram<Integer> h = new ObjectHistogram<Integer>();
+//            for (int i = 0; i < 1000; i++) {
+//                int id = TPCCSimulation.generatePairedWarehouse(w_id,
+//                                                                scaleParams.starting_warehouse,
+//                                                                scaleParams.last_warehouse);
+//                h.put(id);
+//            } // FOR
+//            System.err.println("W_ID=" + w_id + "\n" + h.toString());
+//            System.err.println();
+//            assertFalse(h.isEmpty());
+//            assertEquals(h.toString(), 1, h.getValueCount());
+//        } // FOR
+//    }
     
 }

@@ -245,6 +245,8 @@ public class Controller extends Thread {
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
             
+            // METIS loading
+            
             if(partitioner instanceof GreedyExtended){
                 LOG.info("Skipping metis out for greedy extended");
             } else {
