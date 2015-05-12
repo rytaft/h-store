@@ -83,7 +83,8 @@ def getPlanString(args):
   TABLE_MAP = {
     "ycsb": "usertable",
     "tpcc": "warehouse",
-    "affinity" : "suppliers"
+    "affinity" : "suppliers",
+    "twitter" : "user_profiles"
   }
 
   aff_size = None 
@@ -129,11 +130,12 @@ def getPlanString(args):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("-t","--type",dest="type", choices=["ycsb","tpcc", "affinity"], required=True, help="Generate this type")
+  parser.add_argument("-t","--type",dest="type", choices=["ycsb","tpcc", "affinity","twitter"], required=True, help="Generate this type")
   parser.add_argument("-c","--change-type", dest="change_type", choices=["scale-down", "scale-up"], help="How to  evolve")
   parser.add_argument("-n","--num-phases",dest="phases", type=int, default=4, help="How many phases")
   parser.add_argument("-s","--size",dest="size", type=int, required=True, help="Partition key size")
   parser.add_argument("-a","--affinity", dest="affinity", default=None, help="Affinity Sizes [Suppliers]:[Products]:[Parts]")
+  parser.add_argument("--twitter", dest="twitter", default=None, help="Twitter Sizes [Suppliers]:[Products]:[Parts]")
   parser.add_argument("-p","--partitions",dest="partitions", type=str, required=True, help="Partitions size append, comma delimited" )
   parser.add_argument("-m","--multi",dest="multi",  action="store_true", help="Gen multi col" )
   parser.add_argument("-f","--fine",dest="fine",  action="store_true", help="Gen fine multi col" )
@@ -144,6 +146,7 @@ if __name__ == "__main__":
   TABLE_MAP = {
     "ycsb": "usertable",
     "tpcc": "warehouse",
+    "twitter" : "user_profiles",
     "affinity" : "suppliers"
   }
 
@@ -159,13 +162,30 @@ if __name__ == "__main__":
   elif args.type == "affinity":
     raise Exception("Set to affinity, but no affinity sizes %s" % args.affinity)
 
+  
+  twt_size = None 
+  if args.twitter and ":" in args.twitter:
+    _t = args.twitter.split(":")
+    if len(_t) != 3:
+        raise Exception("twitte size needs 3 values [user_profiles]:[followers]:[follows] : %s " % args.twitter)
+    twt_size = {}
+    twt_size["user_profiles"] = int(_t[0])
+    twt_size["followers"] = int(_t[1])
+    twt_size["follows"] = int(_t[2])
+  elif args.type == "affinity":
+    raise Exception("Set to affinity, but no affinity sizes %s" % args.affinity)
+  
+  
   if args.change_type == "scale-down":
     raise Exception("not implemented")
   if "," in args.partitions or args.partitions != None:  
-    if args.type != "affinity":
-      tables = { TABLE_MAP[args.type]: args.size }
-    else:
+    
+    if args.type == "affinity":
       tables =  aff_size
+    elif args.type == "twitter":
+      tables = twt_size 
+    else:
+      tables = { TABLE_MAP[args.type]: args.size }
     default_table = TABLE_MAP[args.type]
     if args.multi:
         default_table="district"

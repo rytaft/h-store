@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.voltdb.CatalogContext;
 
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
@@ -387,5 +388,10 @@ public class GreedyExtended implements Partitioner {
             }
         }
         return numMovedVertices;
+    }
+    
+    @Override
+    public void graphToMetisFile(Path out, Path map) {
+        throw new NotImplementedException();
     }
 }

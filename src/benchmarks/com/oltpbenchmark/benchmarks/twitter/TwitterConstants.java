@@ -36,13 +36,15 @@ public abstract class TwitterConstants {
     // TODO: make the next parameters of WorkLoadConfiguration
     public static int LIMIT_TWEETS = 100;
     public static int LIMIT_TWEETS_FOR_UID = 10;
-    public static int LIMIT_FOLLOWERS = 20; 
+    public static int LIMIT_FOLLOWERS = 50; 
     
     public static final int FREQ_GET_TWEET = 0; // HACK - was 1
     public static final int FREQ_GET_TWEETS_FROM_FOLLOWING = 1;
     public static final int FREQ_GET_FOLLOWERS = 8;
     public static final int FREQ_GET_USER_TWEETS = 90; // HACK - was 89
     public static final int FREQ_INSERT_TWEET = 1;
+    public static final String USE_GRAPH_TXN_GEN = "USE_GRAPH_TXN_GEN";
+    public static final boolean USE_GRAPH_TXN_GEN_DEFAULT = false;
 
 	
 }

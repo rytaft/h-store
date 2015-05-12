@@ -14,14 +14,17 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
+import it.unimi.dsi.fastutil.ints.Int2IntMaps;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -35,14 +38,16 @@ public class AffinityGraph {
     // determines granularity of edges, either vertex - vertex of vertex - partition 
     private static boolean m_tupleGranularity = false;
     
-    // fromVertex -> adjacency list, where adjacency list is a toVertex -> edgeWeight map or toPartition -> edgeWeight map, depending on granularity
+    // fromVertex -> adjacency list, where adjacency list is a toVertex -> edgeWeight map or toPartition -> edgeWeight map, depending on granularity 
+    // (weight of edge is # of txns touching both partitions per second)
     protected static Int2ObjectOpenHashMap<Int2DoubleOpenHashMap> m_edges = new Int2ObjectOpenHashMap <Int2DoubleOpenHashMap> ();
     
     // vertex -> full name
     protected static Int2ObjectOpenHashMap<String> m_vertex_to_name = new Int2ObjectOpenHashMap <String> ();
 
-    // vertex -> weight map
+    // vertex -> weight map (number of txns accesses the vertext per second)
     protected static final Int2DoubleOpenHashMap m_vertices = new Int2DoubleOpenHashMap (1000);
+    
     // partition -> vertex and vertex -> partition mappings
     protected static final List<IntOpenHashSet> m_partitionVertices = new ArrayList<IntOpenHashSet> ();
     protected static final Int2IntOpenHashMap m_vertexPartition = new Int2IntOpenHashMap ();
@@ -335,6 +340,68 @@ public class AffinityGraph {
         m_plan_handler.toJSON(newPlanFile);
     }
     
+    
+    
+    public void toMetisFile(Path file, Path mapOut){
+        LOG.info("Writing graph for " + file.toString() +" . Number of vertices: " + m_vertices.size());
+        BufferedWriter writer, mapWriter = null;
+        try {
+            writer = Files.newBufferedWriter(file, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            String graphInfo = "011"; //ABC A:VertexSize B:VertexWeight C:EdgeWeight
+            int edgeCount=0;
+            for(int v_id : m_vertices.keySet()){                
+                if (m_edges.get(v_id)!=null)
+                    edgeCount+=m_edges.get(v_id).size();
+            }
+            String header = String.format("%s %s %s",m_vertices.size(), (int)(edgeCount/2), graphInfo);
+            writer.write(header);
+            writer.newLine();
+            
+            //Need an ordered list of vertexes 1 .. N
+            Int2IntOpenHashMap vert_to_increment = new Int2IntOpenHashMap(m_vertices.size());
+            int[] vert_ids = new int[m_vertices.size()+1];
+            int count = 1;
+            for (int vert_hash: m_vertices.keySet()){
+                vert_ids[count] = vert_hash;
+                vert_to_increment.put(vert_hash, count);
+                count++;
+            }
+            if (mapOut != null){
+                mapWriter = Files.newBufferedWriter(mapOut, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                for (int i = 1; i < vert_ids.length; i++ ){
+                    mapWriter.write(String.format("%s", vert_ids[i]));
+                    mapWriter.newLine();
+                }
+            }
+
+            //Each line is [vert size] [edge to vertex id 1] [edge 1 weight] [edge to vertex id 2] [edge 2 weight] ...
+            //vertex ID is implicitly line number (starting at 1)
+            for(int incrID = 1; incrID < vert_ids.length; incrID++){
+                //TODO check on format of weights
+                int vert_hash = vert_ids[incrID];
+                double vert_weight = m_vertices.get(vert_hash);
+                //StringBuilder sb = new StringBuilder(String.format("%s %d", m_vertex_to_name.get(vert_hash), (int)(vert_weight*100)));//TODO casting to int
+                StringBuilder sb = new StringBuilder(String.format("%d", (int)(vert_weight*100)));//TODO casting to int
+                
+                for (Entry<Integer, Double> edge: m_edges.get(vert_hash).entrySet()){
+                    int weight = (int) (edge.getValue()*100);
+                    sb.append(String.format(" %d %d", vert_to_increment.get(edge.getKey()),weight ));//TODO casting to int
+                }
+                writer.write(sb.toString());
+                writer.newLine();
+            }
+            writer.close();
+            if (mapWriter!=null) mapWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Controller.record("Error while opening file " + file.toString());
+            System.out.println("Error while opening file " + file.toString());
+            return;
+       }        
+        
+    }
+
+    
     public String planToString(){
         return m_plan_handler.toString();
     }
@@ -397,4 +464,6 @@ public class AffinityGraph {
             return;
        }
     }
+    
+
 }

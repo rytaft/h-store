@@ -118,12 +118,13 @@ public class TwitterClient extends BenchmarkComponent {
         super(args);
         
         // Initialize the sampling table
-        ObjectHistogram<Transaction> txns = new ObjectHistogram<Transaction>(); 
+        ObjectHistogram<Transaction> txns =  new ObjectHistogram<Transaction>();
         for (Transaction t : Transaction.values()) {
             Integer weight = this.getTransactionWeight(t.callName);
             if (weight == null) weight = t.weight;
             txns.put(t, weight);
         } // FOR
+        
         assert(txns.getSampleCount() == 100) : txns;
         this.txnWeights = new FlatHistogram<Transaction>(this.rng, txns);
         if (debug.val) LOG.debug("Transaction Workload Distribution:\n" + txns);
@@ -141,7 +142,7 @@ public class TwitterClient extends BenchmarkComponent {
         this.next_tweet_id = this.getClientId() * 10000000l;
         this.num_users = (int)Math.round(TwitterConstants.NUM_USERS * this.getScaleFactor());
         this.num_tweets = (int)Math.round(TwitterConstants.NUM_TWEETS * this.getScaleFactor());
-
+        this.use_graph_txn_gen = TwitterConstants.USE_GRAPH_TXN_GEN_DEFAULT;
 
         for (String key : m_extraParams.keySet()) {
             String value = m_extraParams.get(key);
@@ -154,15 +155,21 @@ public class TwitterClient extends BenchmarkComponent {
             }
             else if  (key.equalsIgnoreCase("max_user_id")) {
             	this.num_users = Integer.valueOf(value);
+            } else if (key.equalsIgnoreCase(TwitterConstants.USE_GRAPH_TXN_GEN)) {
+                try{
+                    use_graph_txn_gen = Boolean.parseBoolean(m_extraParams.get(TwitterConstants.USE_GRAPH_TXN_GEN));
+                    LOG.info("Using graph for txn generation : " + use_graph_txn_gen);
+                } catch(Exception ex){
+                    LOG.error(ex);
+                    use_graph_txn_gen = TwitterConstants.USE_GRAPH_TXN_GEN_DEFAULT;                    
+                }
             }
         }
         
         if(tweets_file != null && users_file != null && !tweets_file.isEmpty() && !users_file.isEmpty()) {
         	use_trace_files = true;
         }
-        else { // @TODO make this configurable
-        	use_graph_txn_gen = true;
-        }
+        
         
         if(use_trace_files) {
         	try {
@@ -244,12 +251,15 @@ public class TwitterClient extends BenchmarkComponent {
     }
 
     protected Object[] generateParams(Transaction txn) {
-    	int uid = this.rng.nextInt(this.num_users);
-		long tweetid = this.rng.nextLong() % this.num_tweets;
+    	int uid;
+		long tweetid;
 		if(use_graph_txn_gen) {
 			TwitterOperation t = graph_txn_gen.nextTransaction(txn);
 			uid = t.uid;
 			tweetid = t.tweetid;
+		} else{
+	        uid =  this.rng.nextInt(this.num_users);
+	        tweetid = this.rng.nextLong() % this.num_tweets;
 		}
 		
     	if(use_trace_files) {

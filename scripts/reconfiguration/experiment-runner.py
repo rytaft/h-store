@@ -594,6 +594,9 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
     elif "affinity" in args['exp_type']:
         LOG.info("Affinity Experiment")
         _reconfig = True
+    elif "aff" in args['exp_type']:
+        LOG.info("Affinity Experiment")
+        _reconfig = True
     
     if _reconfig:
         LOG.info("Disabling command logging for reconfig experiments ******")
@@ -624,6 +627,15 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
                 LOG.info("Updating the num of records %s" % args["benchmark_size"])
                 fabric.env["benchmark.num_records"] = args["benchmark_size"]
                 plan_base = "%s-size%s" % (plan_base, args["benchmark_size"])
+        
+        if benchmark == "twitter":
+            plan_base = 'plans/twitter/t'
+            if "benchmark_size" in args and args["benchmark_size"]:
+                fabric.env['global.hasher_class'] = 'edu.brown.hashing.TwoTieredRangeHasher'
+                fabric.env["benchmark.max_user_id"] = int(args["benchmark_size"]) * 1000
+                LOG.info("Updating the num of records %s" % fabric.env["benchmark.max_user_id"])
+                #fabric.env["benchmark.network_file"] = None
+                plan_base = "%s-size%sk" % (plan_base, args["benchmark_size"])
         
         if benchmark == "affinity":
             plan_dir_base = 'scripts/reconfiguration/plans/aff/a'

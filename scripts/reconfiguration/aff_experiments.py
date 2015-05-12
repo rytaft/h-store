@@ -10,6 +10,11 @@ RECONFIG_EXPERIMENTS = [
     "affinity-dyn-b10-t1000",
     "affinity-dyn-b10",
     "affinity-ms",
+    "twitter-aff",
+    "twitter-aff-t1",
+    "twitter-aff-t2",
+    "twitter-aff-t3",
+    "twitter-aff-t4",
     "affinity-ms-sk2",
     "affinity-ms-sk3",
     "affinity-ms-sk4",
@@ -77,8 +82,29 @@ RECONFIG_CLIENT_COUNT = 3
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
 
+    if 'twitter' in args['exp_type']:
+        fabric.env["client.count"] = 1
+        fabric.env["client.blocking"] = True
+        fabric.env["client.output_response_status"] = True
+        fabric.env["output_response_status"] = True
+        fabric.env["client.threads_per_host"] = 40  # * partitions # min(50, int(partitions * 4))
+        fabric.env["hstore.partitions_per_site"] =  12  #args['exp_type'].rsplit("-",1)[1] 
+        fabric.env["site.commandlog_enable"] = False
+        #fabric.env["client.txnrate"] = 1000
+        fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
+        
+    if 't1' in  in args['exp_type']:
+        fabric.env["client.threads_per_host"] = 80  # * partitions # min(50, int(partitions * 4))
+   
+    if 't2' in  in args['exp_type']:
+        fabric.env["client.threads_per_host"] = 160  # * partitions # min(50, int(partitions * 4))
+   
+    if 't3' in  in args['exp_type']:
+        fabric.env["client.threads_per_host"] = 40  # * partitions # min(50, int(partitions * 4))
+        fabric.env["client.blocking_concurrent"] = 20 # * int(partitions/8)
+
     if 'affinity-ms' in args['exp_type']:
-        fabric.env["client.count"] = 4
+        fabric.env["client.count"] = 1
         fabric.env["client.blocking"] = True
         fabric.env["benchmark.supplier_to_parts_offset"] = 0.0
         fabric.env["benchmark.uses.is_random"] = False

@@ -1518,6 +1518,14 @@ public final class HStoreConf {
         public int txnrate;
         
         @ConfigProperty(
+                description="Debug, run one txn per client and stop", // TODO
+                defaultBoolean=false,
+                experimental=false
+            )
+            public boolean runOnce;
+        
+        
+        @ConfigProperty(
             description="", // TODO
             defaultNull=true,
             experimental=false
