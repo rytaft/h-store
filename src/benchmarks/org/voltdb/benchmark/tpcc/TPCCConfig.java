@@ -22,6 +22,7 @@ public final class TPCCConfig {
     public boolean warehouse_affinity = false;
     public boolean warehouse_debug = false;
     public boolean warehouse_pairing = false;
+    public int warehouse_pairing_percent = 100;
     public boolean reset_on_clear = false;
     
     public int num_loadthreads = 1;
@@ -97,6 +98,15 @@ public final class TPCCConfig {
             // WAREHOUSE PAIRING
             else if (key.equalsIgnoreCase("warehouse_pairing") && !val.isEmpty()) {
                 warehouse_pairing = Boolean.parseBoolean(val);
+            }
+            else if (key.equalsIgnoreCase("warehouse_pairing_percent") && !val.isEmpty()) {
+                warehouse_pairing_percent = Integer.parseInt(val);
+                if (warehouse_pairing_percent > 100){
+                    warehouse_pairing_percent = 100;
+                }
+                else if (warehouse_pairing_percent < 1){
+                    warehouse_pairing_percent = 1;
+                } 
             }
             // ENABLE WAREHOUSE DEBUGGING
             else if (key.equalsIgnoreCase("warehouse_debug") && !val.isEmpty()) {
