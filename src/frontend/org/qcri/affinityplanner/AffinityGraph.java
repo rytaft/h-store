@@ -468,9 +468,6 @@ public class AffinityGraph {
     
     public void setPartitionMaps (Int2IntOpenHashMap newVertexPartition){
         
-        // copy new partitioning
-        m_vertexPartition = newVertexPartition;
-        
         // reset the mapping from partition to vertices
         int partitionsNo = m_partitionVertices.size();
         for (int i = 0; i < partitionsNo; i++){
@@ -480,11 +477,25 @@ public class AffinityGraph {
         for (Int2IntMap.Entry entry: newVertexPartition.int2IntEntrySet()){
             
             int vertex = entry.getIntKey();
-            int partition = entry.getIntValue();
+            int toPartition = entry.getIntValue();
             
-            IntOpenHashSet vertices = m_partitionVertices.get(partition);
+            // update plan
+            String movedVertexName = m_vertex_to_name.get(vertex);
+
+            String [] fields = movedVertexName.split(",");
+            int fromPartition = m_vertexPartition.get(vertex);
+
+            m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[2]));
+            m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[2]), Long.parseLong(fields[2]));
+
+            // update data structures
+            IntOpenHashSet vertices = m_partitionVertices.get(toPartition);
             vertices.add(vertex);
         }
+        
+        // copy new partitioning
+        m_vertexPartition = newVertexPartition;
+        
     }
 
 }
