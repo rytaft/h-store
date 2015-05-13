@@ -869,9 +869,4 @@ public class GraphGreedy extends PartitionerAffinity {
         } // END for (String toVertex : adjacency.keySet())
     }
     
-    @Override
-    public void graphToMetisFile(Path out, Path mapOut) {
-        if (m_graph != null)
-            m_graph.toMetisFile(out, mapOut);
-    }
 }

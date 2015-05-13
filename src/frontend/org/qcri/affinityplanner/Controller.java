@@ -238,50 +238,15 @@ public class Controller extends Thread {
                 case "greedy-ext":
                     partitioner = new GreedyExtended(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
+                case "metis":
+                    partitioner = new MetisPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+                    break;
                 default:
                     partitioner = new GraphGreedy(m_catalog_context, planFile, logFiles, intervalFiles);
             }
 
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
-            
-            // METIS loading
-            
-            if(partitioner instanceof GreedyExtended){
-                LOG.info("Skipping metis out for greedy extended");
-            } else {
-                LOG.info(String.format("Writing metis graph out to %s ",FileSystems.getDefault().getPath(".", METIS_OUT)));
-                Path metisFile = FileSystems.getDefault().getPath(".", METIS_OUT);
-                Path metisMapFile = FileSystems.getDefault().getPath(".", METIS_MAP_OUT);
-                long start = System.currentTimeMillis();
-                partitioner.graphToMetisFile(metisFile,metisMapFile);
-                long time = System.currentTimeMillis() - start;
-                LOG.info("generating metis out file took : " + time);
-                Path metisOut= FileSystems.getDefault().getPath(".",METIS_OUT + ".part." + this.m_catalog_context.numberOfPartitions); 
-                String metisExe = String.format("gpmetis %s %s", METIS_OUT, m_catalog_context.numberOfPartitions);
-                
-                //RESULTS map of hashID -> new partition ID
-                Int2IntOpenHashMap metisGeneratedPartitioning;
-                try {
-                    Path currentRelativePath = Paths.get("");
-                    String s = currentRelativePath.toAbsolutePath().toString();
-                    LOG.info("Calling metis " + metisExe);
-                     start = System.currentTimeMillis();
-                    Process metisProc = new ProcessBuilder("gpmetis",METIS_OUT, ""+m_catalog_context.numberOfPartitions).start();
-                   // LOG.info("metis proc: " + metisProc.toString());
-                    int result = metisProc.waitFor();
-                    time = System.currentTimeMillis() - start;
-                    if (result == 0){
-                        LOG.info(String.format("Metis ran successfully. took : " + time));
-                        metisGeneratedPartitioning = getMetisMapping(metisOut, metisMapFile);
-                        LOG.info("Results in metis map files: " + metisGeneratedPartitioning.keySet().size());
-                    } else {
-                        LOG.info(String.format("Metis ran unsuccessfully (%s) : %s", result, metisExe));
-                    }
-                } catch (Exception e) {
-                    LOG.error("Exception running metis", e);
-                }
-            }
             
 //          Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
 //          partitioner.toFileDebug(graphFile);
@@ -297,7 +262,7 @@ public class Controller extends Thread {
             partitioner.writePlan(PLAN_OUT);
  
             String outputPlan = FileUtil.readFile(PLAN_OUT);
-            record("Output plan\n" + outputPlan);
+//            record("Output plan\n" + outputPlan);
             
             record("Loads per partition after reconfiguration");
             for (int j = 0; j < Controller.MAX_PARTITIONS; j++){
@@ -343,36 +308,6 @@ public class Controller extends Thread {
         
     }
     
-    private Int2IntOpenHashMap getMetisMapping(Path metisOut, Path metisMapFile) {
-        LOG.info(String.format("Getting metis out and mapping to hashes for %s and %s", metisOut, metisMapFile));
-        Int2IntOpenHashMap res = new Int2IntOpenHashMap();
-        BufferedReader outReader, metisMapReader;
-        String outPart, hashId;
-        try {
-            outReader = Files.newBufferedReader(metisOut, Charset.forName("US-ASCII"));
-            metisMapReader = Files.newBufferedReader(metisMapFile, Charset.forName("US-ASCII"));
-            while(true){
-                outPart = outReader.readLine();
-                hashId = metisMapReader.readLine();
-                if (outPart == null && hashId == null){
-                    break;
-                } else if (outPart == null && hashId != null){
-                    LOG.error("Ran out of hashes before partition maps...");
-                    break;
-                } else if (outPart == null && hashId == null){
-                    LOG.error("Ran out of partition maps before hashes...");
-                    break;
-                }
-                res.put(Integer.parseInt(hashId), Integer.parseInt(outPart));
-            }
-
-            
-        } catch (IOException e) {
-            Controller.record("Error while reading out files \n Stack trace:\n" + Controller.stackTraceToString(e));
-        }
-        return res;
-    }
-
     public void connectToHost(){
         Site catalog_site = CollectionUtil.random(m_sites);
         m_connectedHost= catalog_site.getHost().getIpaddr();

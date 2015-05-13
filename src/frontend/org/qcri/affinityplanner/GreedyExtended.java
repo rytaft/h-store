@@ -390,8 +390,4 @@ public class GreedyExtended implements Partitioner {
         return numMovedVertices;
     }
     
-    @Override
-    public void graphToMetisFile(Path out, Path map) {
-        throw new NotImplementedException();
-    }
 }

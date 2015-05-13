@@ -18,6 +18,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntMaps;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
@@ -49,8 +50,8 @@ public class AffinityGraph {
     protected static final Int2DoubleOpenHashMap m_vertices = new Int2DoubleOpenHashMap (1000);
     
     // partition -> vertex and vertex -> partition mappings
-    protected static final List<IntOpenHashSet> m_partitionVertices = new ArrayList<IntOpenHashSet> ();
-    protected static final Int2IntOpenHashMap m_vertexPartition = new Int2IntOpenHashMap ();
+    protected static List<IntOpenHashSet> m_partitionVertices = new ArrayList<IntOpenHashSet> ();
+    protected static Int2IntOpenHashMap m_vertexPartition = new Int2IntOpenHashMap ();
     
     private static PlanHandler m_plan_handler = null;
     
@@ -465,5 +466,25 @@ public class AffinityGraph {
        }
     }
     
+    public void setPartitionMaps (Int2IntOpenHashMap newVertexPartition){
+        
+        // copy new partitioning
+        m_vertexPartition = newVertexPartition;
+        
+        // reset the mapping from partition to vertices
+        int partitionsNo = m_partitionVertices.size();
+        for (int i = 0; i < partitionsNo; i++){
+            m_partitionVertices.set(i, new IntOpenHashSet());
+        }
+        
+        for (Int2IntMap.Entry entry: newVertexPartition.int2IntEntrySet()){
+            
+            int vertex = entry.getIntKey();
+            int partition = entry.getIntValue();
+            
+            IntOpenHashSet vertices = m_partitionVertices.get(partition);
+            vertices.add(vertex);
+        }
+    }
 
 }

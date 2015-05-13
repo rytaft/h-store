@@ -17,7 +17,7 @@ import org.voltdb.CatalogContext;
 
 public class GraphGreedyExtended extends PartitionerAffinity {
 
-    private static final Logger LOG = Logger.getLogger(GraphGreedy.class);
+    private static final Logger LOG = Logger.getLogger(GraphGreedyExtended.class);
     
 //    HashSet<String> DEBUG = new HashSet<String>();
 //    boolean DEB = false;
@@ -899,9 +899,4 @@ public class GraphGreedyExtended extends PartitionerAffinity {
         } // END for (String toVertex : adjacency.keySet())
     }
     
-    @Override
-    public void graphToMetisFile(Path out, Path mapOut) {
-        if (m_graph != null)
-            m_graph.toMetisFile(out, mapOut);
-    }
 }
