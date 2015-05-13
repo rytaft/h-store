@@ -235,6 +235,9 @@ public class Controller extends Thread {
                 case "graph":
                     partitioner = new GraphGreedy(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
+                case "graph-ext":
+                    partitioner = new GraphGreedyExtended(m_catalog_context, planFile, logFiles, intervalFiles);
+                    break;
                 case "greedy-ext":
                     partitioner = new GreedyExtended(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
@@ -264,7 +267,7 @@ public class Controller extends Thread {
             String outputPlan = FileUtil.readFile(PLAN_OUT);
 //            record("Output plan\n" + outputPlan);
             
-            record("Loads per partition after reconfiguration");
+            record("Load per partition after reconfiguration");
             for (int j = 0; j < Controller.MAX_PARTITIONS; j++){
                 record(j + " " + partitioner.getLoadPerPartition(j));
             }
