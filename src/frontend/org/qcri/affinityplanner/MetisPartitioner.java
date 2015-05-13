@@ -30,6 +30,14 @@ public class MetisPartitioner extends GraphGreedyExtended {
 
     @Override
     public boolean repartition() {
+        
+        System.out.println("Load per partition before reconfiguration");
+        for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+            if(AffinityGraph.isActive(i)){
+                System.out.println(getLoadPerPartition(i));
+            }
+        }
+
         LOG.info(String.format("Writing metis graph out to %s ",FileSystems.getDefault().getPath(".", Controller.METIS_OUT)));
 
         Path metisFile = FileSystems.getDefault().getPath(".", Controller.METIS_OUT);
