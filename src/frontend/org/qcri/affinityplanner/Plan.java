@@ -641,7 +641,6 @@ public class Plan {
 
             }
             dstData.put(PLANNED_PARTITIONS, jsonPlan);
-//            dstData.put("default_table", table_names[0]);
             dstData.put("default_table", m_defaultTable);
 
         } catch(JSONException f) {
