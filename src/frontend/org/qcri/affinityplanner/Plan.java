@@ -623,7 +623,6 @@ public class Plan {
 
             jsonPlan.put("tables", tableNameObject);
             for(String table_name : table_names) {
-                System.out.println("Table: " + table_name);
                 JSONObject tableObject = new JSONObject();
                 JSONObject partitionDelimiter = new JSONObject();
 
@@ -632,10 +631,8 @@ public class Plan {
 
                 Map<Integer, TreeMap<Long,Long>> partitionToRanges = tableToPartitionsToRanges.get(table_name.toLowerCase()); 
                 for(Integer partition : partitionToRanges.keySet()) {
-                    System.out.println("Partition: " + partition);
                     TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
                     if (ranges != null && !ranges.isEmpty()){
-                        System.out.println("Range " + ranges.toString());
                         tableObject.put(partition.toString(), printPartition(table_name, partition));
                     }
                 }
