@@ -13,8 +13,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
@@ -122,13 +124,21 @@ public class AffinityGraph {
             }
 
 //            System.out.println("Tran ID = " + currTransactionId);
-            IntOpenHashSet curr_transaction = new IntOpenHashSet ();
+            
+            HashMap<String, IntOpenHashSet> transactions = new HashMap<String,IntOpenHashSet>(); // new
+//            IntOpenHashSet curr_transaction = new IntOpenHashSet (); new
+
             // PROCESS LINE
             while(line != null){
+                
+                String[] fields = line.split(";"); // new
 
                 // if finished with one transaction, update graph and clear before moving on
 
-                if (line.equals("END")){
+                if (fields[0].equals("END")){ // new
+                    
+                    String transaction_id = fields[1]; // new 
+                    IntOpenHashSet curr_transaction = transactions.get(transaction_id); // new
 
                     for(int from : curr_transaction){
                         // update FROM vertex in graph
@@ -164,8 +174,12 @@ public class AffinityGraph {
                         }
 
                         // update FROM -> TO edges
+                        IntOpenHashSet visitedVertices = new IntOpenHashSet();
                         for(int to : curr_transaction){
-                            if (from != to){
+                            
+                            if (from != to && !visitedVertices.contains(to)){
+                                visitedVertices.add(to);
+                                
                                 // if lower granularity, edges link vertices to partitions, not other vertices
                                 if(!m_tupleGranularity){
                                     String toName = vertex_to_name.get(to);
@@ -174,7 +188,7 @@ public class AffinityGraph {
                                 
                                 synchronized(adjacency){
                                     double currentEdgeWeight = adjacency.get(to);
-                                    if (currentEdgeWeight == 0){
+                                    if (currentEdgeWeight == 0){ // TODO use adjacency.defaultReturnValue() instead of 0
                                         adjacency.put(to, normalizedIncrement);
                                     }
                                     else{
@@ -186,14 +200,24 @@ public class AffinityGraph {
 
                     } // END for(String from : curr_transaction)
 
-                    curr_transaction.clear();
+//                    curr_transaction.clear(); // new
+                    transactions.remove(transaction_id); // new
 
                     //                    System.out.println("Tran ID = " + currTransactionId);
                 } // END if (line.equals("END"))
 
                 else{
-                    int hash = line.hashCode();
+                    // update the current transaction
+                    String transaction_id = fields[0];
+                    int hash = fields[1].hashCode();
+
+                    IntOpenHashSet curr_transaction = transactions.get(transaction_id);
+                    if (curr_transaction == null){
+                        curr_transaction = new IntOpenHashSet ();
+                        transactions.put(transaction_id, curr_transaction);
+                    }
                     curr_transaction.add(hash);
+                    
                     if (!vertex_to_name.containsKey(hash)){
                         vertex_to_name.put(hash, line);
                     }
