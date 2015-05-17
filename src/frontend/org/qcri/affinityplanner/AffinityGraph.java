@@ -139,70 +139,73 @@ public class AffinityGraph {
                     
                     String transaction_id = fields[1]; // new 
                     IntOpenHashSet curr_transaction = transactions.get(transaction_id); // new
+                    
+                    if(curr_transaction != null){
 
-                    for(int from : curr_transaction){
-                        // update FROM vertex in graph
-                        double currentVertexWeight = vertices.get(from);
-                        if (currentVertexWeight == vertices.defaultReturnValue()){
-                            vertices.put(from, normalizedIncrement);
-                        }
-                        else{
-                            vertices.put(from, currentVertexWeight + normalizedIncrement);                         
-                        }
-                        
-                        // store site mappings for FROM vertex
-                        int partition = 0;
-                        String fromName = vertex_to_name.get(from);
-                        partition = m_plan_handler.getPartition(fromName);
-                        
-                        if (partition == HStoreConstants.NULL_PARTITION_ID){
-                            LOG.info("Exiting graph loading. Could not find partition for key " + fromName);
-                            System.out.println("Exiting graph loading. Could not find partition for key " + fromName);
-                            throw new Exception();                            
-                        }
-                        partitionVertices.get(partition).add(from);
-                        vertexPartition.put(from, partition);
-                        
-                        Int2DoubleOpenHashMap adjacency = null;
-
-                        synchronized(m_edges){
-                            adjacency = m_edges.get(from);
-                            if(adjacency == null){
-                                adjacency = new Int2DoubleOpenHashMap ();
-                                m_edges.put(from, adjacency);
+                        for(int from : curr_transaction){
+                            // update FROM vertex in graph
+                            double currentVertexWeight = vertices.get(from);
+                            if (currentVertexWeight == vertices.defaultReturnValue()){
+                                vertices.put(from, normalizedIncrement);
                             }
-                        }
-
-                        // update FROM -> TO edges
-                        IntOpenHashSet visitedVertices = new IntOpenHashSet();
-                        for(int to : curr_transaction){
+                            else{
+                                vertices.put(from, currentVertexWeight + normalizedIncrement);                         
+                            }
                             
-                            if (from != to && !visitedVertices.contains(to)){
-                                visitedVertices.add(to);
-                                
-                                // if lower granularity, edges link vertices to partitions, not other vertices
-                                if(!m_tupleGranularity){
-                                    String toName = vertex_to_name.get(to);
-                                    to = m_plan_handler.getPartition(toName);
-                                }
-                                
-                                synchronized(adjacency){
-                                    double currentEdgeWeight = adjacency.get(to);
-                                    if (currentEdgeWeight == 0){ // TODO use adjacency.defaultReturnValue() instead of 0
-                                        adjacency.put(to, normalizedIncrement);
-                                    }
-                                    else{
-                                        adjacency.put(to, currentEdgeWeight + normalizedIncrement);
-                                    }
+                            // store site mappings for FROM vertex
+                            int partition = 0;
+                            String fromName = vertex_to_name.get(from);
+                            partition = m_plan_handler.getPartition(fromName);
+                            
+                            if (partition == HStoreConstants.NULL_PARTITION_ID){
+                                LOG.info("Exiting graph loading. Could not find partition for key " + fromName);
+                                System.out.println("Exiting graph loading. Could not find partition for key " + fromName);
+                                throw new Exception();                            
+                            }
+                            partitionVertices.get(partition).add(from);
+                            vertexPartition.put(from, partition);
+                            
+                            Int2DoubleOpenHashMap adjacency = null;
+    
+                            synchronized(m_edges){
+                                adjacency = m_edges.get(from);
+                                if(adjacency == null){
+                                    adjacency = new Int2DoubleOpenHashMap ();
+                                    m_edges.put(from, adjacency);
                                 }
                             }
-                        } // END for(String to : curr_transaction)
-
-                    } // END for(String from : curr_transaction)
-
-//                    curr_transaction.clear(); // new
-                    transactions.remove(transaction_id); // new
-
+    
+                            // update FROM -> TO edges
+                            IntOpenHashSet visitedVertices = new IntOpenHashSet();
+                            for(int to : curr_transaction){
+                                
+                                if (from != to && !visitedVertices.contains(to)){
+                                    visitedVertices.add(to);
+                                    
+                                    // if lower granularity, edges link vertices to partitions, not other vertices
+                                    if(!m_tupleGranularity){
+                                        String toName = vertex_to_name.get(to);
+                                        to = m_plan_handler.getPartition(toName);
+                                    }
+                                    
+                                    synchronized(adjacency){
+                                        double currentEdgeWeight = adjacency.get(to);
+                                        if (currentEdgeWeight == 0){ // TODO use adjacency.defaultReturnValue() instead of 0
+                                            adjacency.put(to, normalizedIncrement);
+                                        }
+                                        else{
+                                            adjacency.put(to, currentEdgeWeight + normalizedIncrement);
+                                        }
+                                    }
+                                }
+                            } // END for(String to : curr_transaction)
+    
+                        } // END for(String from : curr_transaction)
+    
+    //                    curr_transaction.clear(); // new
+                        transactions.remove(transaction_id);
+                    } // END if (curr_transaction != null)
+                    
                     //                    System.out.println("Tran ID = " + currTransactionId);
                 } // END if (line.equals("END"))
 
