@@ -222,7 +222,7 @@ public class AffinityGraph {
                     curr_transaction.add(hash);
                     
                     if (!vertex_to_name.containsKey(hash)){
-                        vertex_to_name.put(hash, line);
+                        vertex_to_name.put(hash, fields[1]);
                     }
                 }
 
