@@ -35,6 +35,10 @@ public class GraphGreedy extends PartitionerAffinity {
 
         long t2 = System.currentTimeMillis();
         Controller.record("Time taken:" + (t2-t1));
+        
+        
+        // DEBUG
+        m_graph.toFile(new File("Graph.txt").toPath());
     }
 
     /**
@@ -344,14 +348,17 @@ public class GraphGreedy extends PartitionerAffinity {
                 System.out.println("Current sender delta " + getSenderDelta(movingVertices, overloadedPartition, 1));
                 
                 nextPosToMove = expandMovingVertices (movingVertices, toPartitionDelta, hotVerticesList, nextPosToMove, activePartitions, overloadedPartition);
-                                
+
+                System.out.println("Moving:\n" + m_graph.verticesToString(movingVertices));
+                System.out.println("to " + toPartitionDelta.fst);
+                
                 // Step 3) move the vertices
 //                System.out.println("Considering moving to " + toPartitionDelta.fst);
 //
 //                System.out.println("Sender delta " + toPartitionDelta.snd);
                 
                 double receiverDelta = getReceiverDelta(movingVertices, overloadedPartition, toPartitionDelta.fst);
-//                System.out.println("Receiver delta " + receiverDelta);
+                System.out.println("Receiver delta " + receiverDelta);
                 
 //                System.out.println(!movingVertices.isEmpty());
 //                System.out.println(toPartitionDelta.snd <= MIN_GAIN_MOVE * -1);
@@ -512,9 +519,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 LOG.debug("Adding edge extension: " + affineVertex);
                 
-//                if(affineVertex == -1549464086){
-//                    System.out.println("It was an affine vertex");
-//                }
+                System.out.println("It was an affine vertex");
             }
             else{
 
@@ -524,9 +529,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 LOG.debug("Adding vertex from list: " + nextVertexList);
 
-//                if(affineVertex == -1549464086){
-//                    System.out.println("It was a hot vertex");
-//                }
+                System.out.println("It was a hot vertex");
 
                 nextPosToMove += skip;
                 if(nextVertexList == 0){
@@ -862,11 +865,10 @@ public class GraphGreedy extends PartitionerAffinity {
     @Override
     protected void updateAttractions (Int2DoubleMap adjacency, double[] attractions){
         for (int toVertex : adjacency.keySet()){
-            
             int other_partition = AffinityGraph.m_vertexPartition.get(toVertex);
             double edge_weight = adjacency.get(toVertex);
             attractions[other_partition] += edge_weight;
         } // END for (String toVertex : adjacency.keySet())
     }
-    
+        
 }

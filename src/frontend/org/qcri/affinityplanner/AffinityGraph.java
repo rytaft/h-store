@@ -498,4 +498,11 @@ public class AffinityGraph {
         
     }
 
+    public String verticesToString(IntSet set){
+        StringBuilder res = new StringBuilder();
+        for (int val : set){
+            res.append(m_vertex_to_name.get(val) + "\n");
+        }
+        return res.toString();
+    }
 }
