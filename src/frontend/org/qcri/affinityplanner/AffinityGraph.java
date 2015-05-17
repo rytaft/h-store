@@ -267,6 +267,9 @@ public class AffinityGraph {
                     if(curr_weight != vertices.defaultReturnValue()){
                         curr_weight += vertex.getDoubleValue();
                     }
+                    else{
+                        curr_weight = vertex.getDoubleValue();
+                    }
                     m_vertices.put(vertex.getIntKey(), curr_weight);
                 }
             }
