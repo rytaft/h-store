@@ -254,14 +254,21 @@ public class AffinityGraph {
             synchronized(m_vertexPartition){
                 m_vertexPartition.putAll(vertexPartition);
             }
-            synchronized(m_partitionVertices){
-                for (int i = 0; i < m_partitionVertices.size(); i++){
-                    IntSet localVertices = partitionVertices.get(i);
+            for (int i = 0; i < partitionVertices.size(); i++){
+                IntSet localVertices = partitionVertices.get(i);
+                synchronized(m_partitionVertices){
                     m_partitionVertices.get(i).addAll(localVertices);
                 }
             }
-            synchronized(m_vertices){
-                m_vertices.putAll(vertices);
+            for (Int2DoubleMap.Entry vertex : vertices.int2DoubleEntrySet()){
+                double curr_weight = 0;
+                synchronized(m_vertices){
+                    curr_weight = m_vertices.get(vertex.getIntKey());
+                    if(curr_weight != vertices.defaultReturnValue()){
+                        curr_weight += vertex.getDoubleValue();
+                    }
+                    m_vertices.put(vertex.getIntKey(), curr_weight);
+                }
             }
         }
     }
