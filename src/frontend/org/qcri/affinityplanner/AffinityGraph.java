@@ -351,9 +351,13 @@ public class AffinityGraph {
             m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[2]));
 //            System.out.println("After removal");
 //            System.out.println(m_plan_handler.toString() + "\n");
-            m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[2]), Long.parseLong(fields[2]));
-//            System.out.println("After adding");
+//            m_plan_handler.addPartition(fields[0], toPartition);
+//            System.out.println("After adding partition");
 //            System.out.println(m_plan_handler.toString() + "\n");
+            m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[2]), Long.parseLong(fields[2]));
+//            System.out.println("After adding range");
+//            System.out.println(m_plan_handler.toString() + "\n");
+//            System.exit(0);
         }
         
 //        System.out.println(m_plan_handler.toString() + "\n");

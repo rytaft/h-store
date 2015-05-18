@@ -229,19 +229,7 @@ public abstract class PartitionerAffinity implements Partitioner {
         
         IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(fromPartition));
 
-        Collections.sort(localPartitions, new AbstractIntComparator (){
-            @Override
-            public int compare(int o1, int o2) {
-                if (getLoadPerPartition(o1) < getLoadPerPartition(o2)){
-                    return -1;
-                }
-                else if (getLoadPerPartition(o1) > getLoadPerPartition(o2)){
-                    return 1;
-                }
-                return 0;
-            }
-        });
-
+        double minDelta = Double.MAX_VALUE; 
         
         for(int toPartition : localPartitions){
             
@@ -249,18 +237,17 @@ public abstract class PartitionerAffinity implements Partitioner {
                 continue;
             }
 
-            double delta = getSenderDelta(movingVertices, fromPartition, toPartition);
+            // TODO make constant and put out of this loop
+            double sendDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
+
+            double globalDelta = getGlobalDelta(movingVertices, fromPartition, toPartition);
             
-//            System.out.println("Sender delta to partition " + toPartition + " is " + delta);
-
-            if (delta < toPartitionDelta.snd){
+            if (globalDelta < minDelta){
+                minDelta = globalDelta;
+                
                 toPartitionDelta.fst = toPartition;
-                toPartitionDelta.snd = delta;
+                toPartitionDelta.snd = sendDelta;
             }
-        }
-
-        if (toPartitionDelta.fst != -1){
-            return;
         }
 
         // then try to offload to remote partitions
@@ -268,17 +255,21 @@ public abstract class PartitionerAffinity implements Partitioner {
 
             if(!localPartitions.contains(toPartition)){
 
-                double delta = getSenderDelta(movingVertices, fromPartition, toPartition);
+                // TODO make constant and put out of this loop
+                double sendDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
 
 //                System.out.println("Sender delta to partition " + toPartition + " is " + delta);
 
-                if (delta < toPartitionDelta.snd){
+                double globalDelta = getGlobalDelta(movingVertices, fromPartition, toPartition);
+
+                if (globalDelta < (minDelta * (1 - Controller.PENALTY_REMOTE_MOVE))){
+                    minDelta = globalDelta;
+                    
                     toPartitionDelta.fst = toPartition;
-                    toPartitionDelta.snd = delta;
+                    toPartitionDelta.snd = sendDelta;
                 }
             }
         }
-        
     }
     
 //    protected double getDeltaMove(IntSet movingVertices, int fromPartition, int toPartition) {
