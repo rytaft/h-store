@@ -245,7 +245,7 @@ public abstract class PartitionerAffinity implements Partitioner {
         
         for(int toPartition : localPartitions){
             
-            if(fromPartition == toPartition){
+            if(fromPartition == toPartition || !activePartitions.contains(toPartition)){
                 continue;
             }
 

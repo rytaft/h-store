@@ -199,6 +199,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
             // DEBUG
             System.out.println("offloading site " + overloadedPartition);
+            System.out.println("Active partitions " + activePartitions.toString());
 
             // get hottest vertices. the actual length of the array is min(Controller.MAX_MOVED_VERTICES, #tuples held site);
             IntList hotVerticesList = getHottestVertices(overloadedPartition, Controller.MAX_MOVED_TUPLES_PER_PART);
@@ -216,7 +217,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
             while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
 
-                System.out.println("Iteration " + (count_iter++));
+                System.out.println("\nIteration " + (count_iter++));
 
                 // Step 1) add partition and reset if I have over-expanded movingVertices, or if I cannot expand it anymore
 
@@ -268,7 +269,7 @@ public class GraphGreedy extends PartitionerAffinity {
                 //                System.out.println("Sender delta " + toPartitionDelta.snd);
 
                 double receiverDelta = getReceiverDelta(movingVertices, overloadedPartition, toPartitionDelta.fst);
-                System.out.println("Receiver delta " + receiverDelta);
+                System.out.println("Receiver: " + toPartitionDelta.fst + ", delta " + receiverDelta);
 
                 if(!movingVertices.isEmpty() 
                         && toPartitionDelta.fst != -1
