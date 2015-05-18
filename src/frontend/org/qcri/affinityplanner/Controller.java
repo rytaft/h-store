@@ -1,6 +1,8 @@
 package org.qcri.affinityplanner;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -70,6 +72,7 @@ public class Controller extends Thread {
     // Repartitioning
     public static double MIN_LOAD_PER_PART = Double.MIN_VALUE;
     public static double MAX_LOAD_PER_PART = Double.MAX_VALUE;
+    public static double IMBALANCE_LOAD = 0;
     public static double LMPT_COST = 1.1;
     public static double DTXN_COST = 5.0;
     public static int MAX_MOVED_TUPLES_PER_PART = 10000;
@@ -256,6 +259,30 @@ public class Controller extends Thread {
             
             record("======================== PARTITIONING GRAPH ========================");
             t1 = System.currentTimeMillis();
+            
+            // detect overloaded and active partitions
+            IntList activePartitions = new IntArrayList(Controller.MAX_PARTITIONS);
+
+            System.out.println("Load per partition before reconfiguration");
+            double sum = 0;
+            for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+                if(AffinityGraph.isActive(i)){
+                    activePartitions.add(i);
+                    double load = partitioner.getLoadPerPartition(i);
+                    sum += load;
+                    System.out.println(i + ": " + load);
+                }
+            }
+            
+            if(Controller.IMBALANCE_LOAD != 0){
+                double avg = sum / activePartitions.size();
+                Controller.MAX_LOAD_PER_PART = avg * (1 + Controller.IMBALANCE_LOAD);
+                Controller.MIN_LOAD_PER_PART = Math.max(0.0, avg * (1 - Controller.IMBALANCE_LOAD));
+            }
+            
+            System.out.println("Max load: " + Controller.MAX_LOAD_PER_PART);
+            System.out.println("Min load: " + Controller.MIN_LOAD_PER_PART);
+
 
             boolean b = partitioner.repartition();
             if (!b){

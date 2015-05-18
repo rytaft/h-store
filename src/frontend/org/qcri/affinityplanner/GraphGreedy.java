@@ -66,13 +66,14 @@ public class GraphGreedy extends PartitionerAffinity {
         // detect overloaded and active partitions
         IntList activePartitions = new IntArrayList(Controller.MAX_PARTITIONS);
 
-        System.out.println("Load per partition before reconfiguration");
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
             if(AffinityGraph.isActive(i)){
                 activePartitions.add(i);
-                System.out.println(getLoadPerPartition(i));
             }
         }
+        
+        System.out.println("Max load: " + Controller.MAX_LOAD_PER_PART);
+        System.out.println("Min load: " + Controller.MIN_LOAD_PER_PART);
 
         /*
          * MOVE BORDER TUPLES
@@ -171,7 +172,7 @@ public class GraphGreedy extends PartitionerAffinity {
                             && toPartitionDelta.snd <= Controller.MIN_GAIN_MOVE * -1
                             && receiverDelta < 0){
 
-                        System.out.println("Actually moving to " + toPartitionDelta.fst);
+                        System.out.println("!!!!!! Actually moving to " + toPartitionDelta.fst);
 
                         m_graph.moveHotVertices(movingVertices, from_part, toPartitionDelta.fst);
                         //            LOG.debug("Weights after moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
