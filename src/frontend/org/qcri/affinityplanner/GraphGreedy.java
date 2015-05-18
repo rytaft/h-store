@@ -72,9 +72,6 @@ public class GraphGreedy extends PartitionerAffinity {
             }
         }
         
-        System.out.println("Max load: " + Controller.MAX_LOAD_PER_PART);
-        System.out.println("Min load: " + Controller.MIN_LOAD_PER_PART);
-
         /*
          * MOVE BORDER TUPLES
          */
