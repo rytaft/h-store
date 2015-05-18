@@ -191,6 +191,7 @@ public class ArgumentsParser {
     public static final String PARAM_ELASTIC_MONITORING_TIME = PARAM_ELASTIC + ".monitoring_time";
     public static final String PARAM_ELASTIC_MIN_LOAD = PARAM_ELASTIC + ".min_load";
     public static final String PARAM_ELASTIC_MAX_LOAD = PARAM_ELASTIC + ".max_load";
+    public static final String PARAM_ELASTIC_IMBALANCE_LOAD = PARAM_ELASTIC + ".imbalance_load";
     public static final String PARAM_ELASTIC_DTXN_COST = PARAM_ELASTIC + ".dtxn_cost";    
     public static final String PARAM_ELASTIC_LMPT_COST = PARAM_ELASTIC + ".lmpt_cost";    
     public static final String PARAM_ELASTIC_MAX_TUPLE_MOVE = PARAM_ELASTIC + ".max_tuples_move";
@@ -1007,6 +1008,10 @@ public class ArgumentsParser {
             Controller.MAX_LOAD_PER_PART = Double.parseDouble(this.params.get(PARAM_ELASTIC_MAX_LOAD));
         }
         
+        if (this.params.containsKey(PARAM_ELASTIC_IMBALANCE_LOAD)){
+            Controller.IMBALANCE_LOAD = Double.parseDouble(this.params.get(PARAM_ELASTIC_IMBALANCE_LOAD));
+        }
+
         if (this.params.containsKey(PARAM_ELASTIC_DTXN_COST)){
             Controller.DTXN_COST = Double.parseDouble(this.params.get(PARAM_ELASTIC_DTXN_COST));
         }
