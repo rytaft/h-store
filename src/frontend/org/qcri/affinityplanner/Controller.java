@@ -1,20 +1,15 @@
 package org.qcri.affinityplanner;
 
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.UnknownHostException;
-import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.TreeSet;
@@ -55,8 +50,8 @@ public class Controller extends Thread {
     public static int PARTITIONS_PER_SITE;
 
     public static int MONITORING_TIME = 20000;
-    public static boolean RUN_MONITORING = true;
-    public static boolean UPDATE_PLAN = true;
+    public static boolean EXEC_MONITORING = true;
+    public static boolean EXEC_UPDATE_PLAN = true;
     public static boolean EXEC_RECONF = true;
     public static String PLAN_IN = "plan_affinity.json";
     public static String PLAN_OUT = "plan_out.json";
@@ -83,8 +78,7 @@ public class Controller extends Thread {
     public static int COLD_CHUNK_SIZE = 100;
     public static double COLD_TUPLE_FRACTION_ACCESSES = 100;
     public static int TOPK = Integer.MAX_VALUE;
-
-
+   
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
         
         m_client = ClientFactory.createClient();
@@ -163,7 +157,7 @@ public class Controller extends Thread {
     
     public void run (){
         // turn monitoring on and off
-        if(RUN_MONITORING || EXEC_RECONF){
+        if(EXEC_MONITORING || EXEC_RECONF){
             connectToHost();
         }
         
@@ -178,7 +172,7 @@ public class Controller extends Thread {
             intervalFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + "-interval.log");
         }
 
-        if(RUN_MONITORING){
+        if(EXEC_MONITORING){
             record("================== RUNNING MONITORING ======================");
 
             String[] confNames = {"site.access_tracking"};
@@ -222,7 +216,7 @@ public class Controller extends Thread {
             record("Time taken:" + (t2-t1));
 
         } // END if(RUN_MONITORING)
-        if(UPDATE_PLAN){
+        if(EXEC_UPDATE_PLAN){
             
             record("======================== LOADING GRAPH ========================");
             t1 = System.currentTimeMillis();
