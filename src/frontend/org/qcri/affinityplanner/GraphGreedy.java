@@ -222,8 +222,8 @@ public class GraphGreedy extends PartitionerAffinity {
                 // Step 1) add partition and reset if I have over-expanded movingVertices, or if I cannot expand it anymore
 
                 if (numMovedVertices + movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART 
-                        || nextPosToMove >= hotVerticesList.size()){
-//                        || (toPartitionDelta.fst != null && toPartitionDelta.fst == -1)){
+                        || nextPosToMove >= hotVerticesList.size()
+                        || (toPartitionDelta.fst != null && toPartitionDelta.fst == -1)){
 
                     System.out.println("Cannot expand - Adding a new partition");
 
@@ -272,7 +272,7 @@ public class GraphGreedy extends PartitionerAffinity {
                 System.out.println("Receiver: " + toPartitionDelta.fst + ", delta " + receiverDelta);
 
                 if(!movingVertices.isEmpty() 
-//                        && toPartitionDelta.fst != -1
+                        && toPartitionDelta.fst != -1
                         && toPartitionDelta.snd <= Controller.MIN_GAIN_MOVE * -1
                         && (receiverDelta < 0 
                                 || getLoadPerPartition(toPartitionDelta.fst) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
