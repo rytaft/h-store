@@ -230,6 +230,7 @@ public abstract class PartitionerAffinity implements Partitioner {
         IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(fromPartition));
 
         double minDelta = Double.MAX_VALUE; 
+        double minLoad = Double.MAX_VALUE;
         
         for(int toPartition : localPartitions){
             
@@ -242,11 +243,22 @@ public abstract class PartitionerAffinity implements Partitioner {
 
             double globalDelta = getGlobalDelta(movingVertices, fromPartition, toPartition);
             
-            if (globalDelta < minDelta){
-                minDelta = globalDelta;
-                
-                toPartitionDelta.fst = toPartition;
-                toPartitionDelta.snd = sendDelta;
+            if (globalDelta <= minDelta){
+                if (globalDelta == minDelta){
+                    double load = getLoadPerPartition(toPartition);
+                    if (load < minLoad){
+                        minLoad = load;
+                        
+                        toPartitionDelta.fst = toPartition;
+                        toPartitionDelta.snd = sendDelta;
+                    }
+                }
+                else{
+                    minDelta = globalDelta;
+                    
+                    toPartitionDelta.fst = toPartition;
+                    toPartitionDelta.snd = sendDelta;
+                }
             }
         }
 
@@ -263,10 +275,21 @@ public abstract class PartitionerAffinity implements Partitioner {
                 double globalDelta = getGlobalDelta(movingVertices, fromPartition, toPartition);
 
                 if (globalDelta < (minDelta * (1 - Controller.PENALTY_REMOTE_MOVE))){
-                    minDelta = globalDelta;
-                    
-                    toPartitionDelta.fst = toPartition;
-                    toPartitionDelta.snd = sendDelta;
+                    if (globalDelta == minDelta){
+                        double load = getLoadPerPartition(toPartition);
+                        if (load < minLoad){
+                            minLoad = load;
+                            
+                            toPartitionDelta.fst = toPartition;
+                            toPartitionDelta.snd = sendDelta;
+                        }
+                    }
+                    else {
+                        minDelta = globalDelta;
+                        
+                        toPartitionDelta.fst = toPartition;
+                        toPartitionDelta.snd = sendDelta;
+                    }
                 }
             }
         }
