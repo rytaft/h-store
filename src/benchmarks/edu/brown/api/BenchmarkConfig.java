@@ -101,6 +101,9 @@ public class BenchmarkConfig {
     public boolean markovRecomputeAfterEnd;
     public boolean markovRecomputeAfterWarmup;
     
+    public boolean elastic_run;
+    public long elastic_delay;
+    
     public String evictable[];
     public String deferrable[];
     
@@ -226,6 +229,8 @@ public class BenchmarkConfig {
             Double thresholdsValue,
             boolean markovRecomputeAfterEnd,
             boolean markovRecomputeAfterWarmup,
+            boolean elastic_run,
+            long elastic_delay,
             String evictable[],
             String deferrable[],
             boolean dumpDatabase,
@@ -292,6 +297,9 @@ public class BenchmarkConfig {
         this.markov_thresholdsValue = thresholdsValue;
         this.markovRecomputeAfterEnd = markovRecomputeAfterEnd;
         this.markovRecomputeAfterWarmup = markovRecomputeAfterWarmup;
+        
+        this.elastic_run = elastic_run;
+        this.elastic_delay = elastic_delay;
         
         this.evictable = evictable;
         this.deferrable = deferrable;
