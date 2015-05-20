@@ -90,19 +90,21 @@ public class Monitor {
             for (Pair<List<CatalogType>, List<Integer>> offsetPair : offsets) {
                 // considering a specific Table here
                 try{
-                	String table_name = ((ExplicitHasher) this.m_p_estimator.getHasher()).getPartitions().getParentTableName((Column) offsetPair.getFirst().get(0));
+                    Column column = (Column) offsetPair.getFirst().get(0);
+                	String table_name = ((ExplicitHasher) this.m_p_estimator.getHasher()).getPartitions().getParentTableName(column);
                 	
                     if (table_name == null){
                         LOG.warn("Monitoring cannot determine the table accessed by a transaction");
                     }
                     else{
-                        Iterator<CatalogType> columnIter = offsetPair.getFirst().iterator();
-                        for(Integer offset : offsetPair.getSecond()) {
-                            Column column = (Column) columnIter.next();
+//                        Iterator<CatalogType> columnIter = offsetPair.getFirst().iterator();
+//                        for(Integer offset : offsetPair.getSecond()) {
+//                            Column column = (Column) columnIter.next();
+                            int offset = offsetPair.getSecond().get(0);
                             s = ts.getTransactionId().toString() + ";" + table_name + "," + column.getName().toLowerCase() + "," + parameterSet.toArray()[offset];
                             m_writer.write(s, 0, s.length());
                             m_writer.newLine();
-                        }
+//                        }
                     }
                 } catch (ClassCastException e) {
                     e.printStackTrace();
