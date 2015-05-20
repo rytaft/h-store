@@ -62,7 +62,7 @@ public class Controller extends Thread {
     public static String ALGO = "graph";
     
     // Loader
-    public static int LOAD_THREADS = 6;
+    public static int LOAD_THREADS = 50;
  
     // Repartitioning
     public static double MIN_LOAD_PER_PART = Double.MIN_VALUE;

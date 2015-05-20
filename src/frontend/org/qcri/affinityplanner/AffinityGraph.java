@@ -125,24 +125,29 @@ public class AffinityGraph {
 
 //            System.out.println("Tran ID = " + currTransactionId);
             
-            HashMap<String, IntOpenHashSet> transactions = new HashMap<String,IntOpenHashSet>(); // new
-//            IntOpenHashSet curr_transaction = new IntOpenHashSet (); new
+            HashMap<String, IntOpenHashSet> transactions = new HashMap<String,IntOpenHashSet>();
 
             // PROCESS LINE
             while(line != null){
                 
-                String[] fields = line.split(";"); // new
+                String[] fields = line.split(";");
 
                 // if finished with one transaction, update graph and clear before moving on
 
-                if (fields[0].equals("END")){ // new
+                if (fields[0].equals("END")){
                     
-                    String transaction_id = fields[1]; // new 
-                    IntOpenHashSet curr_transaction = transactions.get(transaction_id); // new
+                    String transaction_id = fields[1]; 
+                    IntOpenHashSet curr_transaction = transactions.get(transaction_id);
                     
                     if(curr_transaction != null){
 
                         for(int from : curr_transaction){
+                            // store partition mappings for FROM vertex
+                            String fromName = vertex_to_name.get(from);
+                            int partition = m_plan_handler.getPartition(fromName);
+                            partitionVertices.get(partition).add(from);
+                            vertexPartition.put(from, partition);
+                            
                             // update FROM vertex in graph
                             double currentVertexWeight = vertices.get(from);
                             if (currentVertexWeight == vertices.defaultReturnValue()){
@@ -152,19 +157,7 @@ public class AffinityGraph {
                                 vertices.put(from, currentVertexWeight + normalizedIncrement);                         
                             }
                             
-                            // store site mappings for FROM vertex
-                            int partition = 0;
-                            String fromName = vertex_to_name.get(from);
-                            partition = m_plan_handler.getPartition(fromName);
-                            
-                            if (partition == HStoreConstants.NULL_PARTITION_ID){
-                                LOG.info("Exiting graph loading. Could not find partition for key " + fromName);
-                                System.out.println("Exiting graph loading. Could not find partition for key " + fromName);
-                                throw new Exception();                            
-                            }
-                            partitionVertices.get(partition).add(from);
-                            vertexPartition.put(from, partition);
-                            
+                            // update FROM -> TO edges
                             Int2DoubleOpenHashMap adjacency = null;
     
                             synchronized(m_edges){
@@ -175,7 +168,6 @@ public class AffinityGraph {
                                 }
                             }
     
-                            // update FROM -> TO edges
                             IntOpenHashSet visitedVertices = new IntOpenHashSet();
                             for(int to : curr_transaction){
                                 
@@ -202,7 +194,6 @@ public class AffinityGraph {
     
                         } // END for(String from : curr_transaction)
     
-    //                    curr_transaction.clear(); // new
                         transactions.remove(transaction_id);
                     } // END if (curr_transaction != null)
                     
@@ -210,19 +201,27 @@ public class AffinityGraph {
                 } // END if (line.equals("END"))
 
                 else{
-                    // update the current transaction
-                    String transaction_id = fields[0];
-                    int hash = fields[1].hashCode();
-
-                    IntOpenHashSet curr_transaction = transactions.get(transaction_id);
-                    if (curr_transaction == null){
-                        curr_transaction = new IntOpenHashSet ();
-                        transactions.put(transaction_id, curr_transaction);
+                    // do not create edges to keys that are not used for partitioning
+                    int partition = m_plan_handler.getPartition(fields[1]);
+                    if (partition == HStoreConstants.NULL_PARTITION_ID){
+                        LOG.info("Could not find partition for key " + fields[1] + ", skipping");
+                        // System.out.println("Could not find partition for key " + fromName + ", skipping");
                     }
-                    curr_transaction.add(hash);
+                    else{        
+                        // add the vertex to the transaction
+                        String transaction_id = fields[0];
+                        int hash = fields[1].hashCode();
+
+                        IntOpenHashSet curr_transaction = transactions.get(transaction_id);
+                        if (curr_transaction == null){
+                            curr_transaction = new IntOpenHashSet ();
+                            transactions.put(transaction_id, curr_transaction);
+                        }
+                        curr_transaction.add(hash);
                     
-                    if (!vertex_to_name.containsKey(hash)){
-                        vertex_to_name.put(hash, fields[1]);
+                        if (!vertex_to_name.containsKey(hash)){
+                            vertex_to_name.put(hash, fields[1]);
+                        }
                     }
                 }
 
@@ -320,10 +319,11 @@ public class AffinityGraph {
         }
         
         // scan files for all partitions
-        Thread[] loadingThreads = new Thread[Controller.LOAD_THREADS];
+        int threads = Math.min(Controller.LOAD_THREADS, logFiles.length);
+        Thread[] loadingThreads = new Thread[threads];
         AtomicInteger nextLogFileCounter = new AtomicInteger(0);
         
-        for (int currLogFile = 0; currLogFile < Controller.LOAD_THREADS; currLogFile++){
+        for (int currLogFile = 0; currLogFile < threads; currLogFile++){
             
             Thread loader = new Thread (new LoaderThread (logFiles, nextLogFileCounter));
             loadingThreads[currLogFile] = loader;

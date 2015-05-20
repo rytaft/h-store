@@ -137,7 +137,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 IntList borderVertices = allBorderVertices.get(to_part);
 
-                System.out.println("The number of border vertices from " + from_part + " to " +to_part + " is " + borderVertices.size());
+//                System.out.println("The number of border vertices from " + from_part + " to " +to_part + " is " + borderVertices.size());
 
                 int numMovedVertices = 0;
                 IntOpenHashSet movingVertices = new IntOpenHashSet();

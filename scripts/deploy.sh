@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#for s in istc2 istc3 istc4 istc5 istc6 istc7 istc8 istc9 istc10 istc11 istc12 istc13
-for s in istc10 istc11 istc12
+#for s in istc10 istc11 istc12
+for s in istc2 istc4 istc5 istc6 istc7 istc8 istc9 istc10 istc11 istc12 
 do
 	echo "copying to $s"
         if [[ "$s" != "$HOSTNAME" ]]
