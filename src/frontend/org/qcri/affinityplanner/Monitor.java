@@ -97,6 +97,7 @@ public class Monitor {
                         LOG.warn("Monitoring cannot determine the table accessed by a transaction");
                     }
                     else{
+// EDITED - this would print all fields that accessed. we print only the first one assuming that it is the partitioning key
 //                        Iterator<CatalogType> columnIter = offsetPair.getFirst().iterator();
 //                        for(Integer offset : offsetPair.getSecond()) {
 //                            Column column = (Column) columnIter.next();
