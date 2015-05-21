@@ -49,15 +49,6 @@ public class GraphGreedy extends PartitionerAffinity {
     @Override
     public boolean repartition () {
 
-        //        System.out.println("Is it in 0? " + AffinityGraph.m_partitionVertices.get(0).contains(-1549464086));
-        //        System.out.println("Is it in 1? " + AffinityGraph.m_partitionVertices.get(1).contains(-1549464086));
-        //        System.out.println("Is it in 2? " + AffinityGraph.m_partitionVertices.get(2).contains(-1549464086));
-        //        System.out.println("Is it in 3? " + AffinityGraph.m_partitionVertices.get(3).contains(-1549464086));
-        //        System.out.println("Is it in 4? " + AffinityGraph.m_partitionVertices.get(4).contains(-1549464086));
-        //        System.out.println("Is it in 5? " + AffinityGraph.m_partitionVertices.get(5).contains(-1549464086));
-        //        System.out.println("Is it in? " + AffinityGraph.m_vertexPartition.get(-1549464086));
-
-
         if (Controller.PARTITIONS_PER_SITE == -1 || Controller.MAX_PARTITIONS == -1){
             System.out.println("GraphPartitioner: Must initialize PART_PER_SITE and MAX_PARTITIONS");
             return false;
@@ -411,6 +402,7 @@ public class GraphGreedy extends PartitionerAffinity {
                 LOG.debug("Adding edge extension: " + affineVertex);
 
                 System.out.println("It was an affine vertex");
+                
             }
             else{
 
