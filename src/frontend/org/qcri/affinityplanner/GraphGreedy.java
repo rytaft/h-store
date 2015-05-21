@@ -259,9 +259,7 @@ public class GraphGreedy extends PartitionerAffinity {
                     nextPosToMove = lastHotVertexMoved + 1;
                     //                        retryCount = 1;
                     movingVertices.clear();
-                    System.out.println(nextPosToMove);
-                    System.out.println(hotVerticesList.size());
-                }
+                } // END if (numMovedVertices + movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART || nextPosToMove >= hotVerticesList.size() || (toPart_sndDelta_glbDelta.fst != null && toPart_sndDelta_glbDelta.fst == -1))
 
                 // Step 2) add one vertex to movingVertices - either expand to vertex with highest affinity or with the next hot tuple
 
@@ -288,8 +286,7 @@ public class GraphGreedy extends PartitionerAffinity {
                 if(!movingVertices.isEmpty() 
                         && toPart_sndDelta_glbDelta.fst != -1
                         && toPart_sndDelta_glbDelta.snd <= Controller.MIN_GAIN_MOVE * -1
-                        && (receiverDelta < 0 
-                                || getLoadPerPartition(toPart_sndDelta_glbDelta.fst) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
+                        && (getLoadPerPartition(toPart_sndDelta_glbDelta.fst) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
                     
                     if(candidateMovingVertices == null || toPart_sndDelta_glbDelta.trd < candidateMove.trd){
 
