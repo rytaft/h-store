@@ -191,8 +191,8 @@ public class Controller extends Thread {
             String command = "python scripts/partitioning/fetch_monitor.py " + hStoreDir;
             for(Site site: m_sites){
                 command = command + " " + site.getHost().getIpaddr();
-                String ip = site.getHost().getIpaddr();
             }
+            @SuppressWarnings("unused")
             String results = ShellTools.cmd(command);
     
             t2 = System.currentTimeMillis();

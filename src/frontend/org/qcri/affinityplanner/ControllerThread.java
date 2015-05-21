@@ -4,7 +4,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import org.voltdb.CatalogContext;
-import org.voltdb.catalog.Catalog;
 
 import edu.brown.hstore.conf.HStoreConf;
 
