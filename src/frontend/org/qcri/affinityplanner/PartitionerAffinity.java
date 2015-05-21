@@ -238,17 +238,21 @@ public abstract class PartitionerAffinity implements Partitioner {
                 continue;
             }
 
+System.out.println("Examining moving to partition: " + toPartition);
             // TODO make constant and put out of this loop
             double sendDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
 
             double globalDelta = getGlobalDelta(movingVertices, fromPartition, toPartition);
             
+System.out.println("Global delta: " + globalDelta + " min delta " + minDelta);
             if (globalDelta <= minDelta){
                 if (globalDelta == minDelta){
                     double load = getLoadPerPartition(toPartition);
+System.out.println("Load: " + load + " min load " + minLoad);
                     if (load < minLoad){
                         minLoad = load;
                         
+System.out.println("Selected!");
                         toPartitionDelta.fst = toPartition;
                         toPartitionDelta.snd = sendDelta;
                     }
@@ -256,6 +260,7 @@ public abstract class PartitionerAffinity implements Partitioner {
                 else{
                     minDelta = globalDelta;
                     
+System.out.println("Selected!");
                     toPartitionDelta.fst = toPartition;
                     toPartitionDelta.snd = sendDelta;
                 }
@@ -267,6 +272,7 @@ public abstract class PartitionerAffinity implements Partitioner {
 
             if(!localPartitions.contains(toPartition)){
 
+System.out.println("Examining moving to partition: " + toPartition);
                 // TODO make constant and put out of this loop
                 double sendDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
 
@@ -274,12 +280,15 @@ public abstract class PartitionerAffinity implements Partitioner {
 
                 double globalDelta = getGlobalDelta(movingVertices, fromPartition, toPartition);
 
+System.out.println("Global delta: " + globalDelta + " min delta " + minDelta);
                 if (globalDelta < (minDelta * (1 - Controller.PENALTY_REMOTE_MOVE))){
                     if (globalDelta == minDelta){
                         double load = getLoadPerPartition(toPartition);
+System.out.println("Load: " + load + " min load " + minLoad);
                         if (load < minLoad){
                             minLoad = load;
                             
+System.out.println("Selected!");
                             toPartitionDelta.fst = toPartition;
                             toPartitionDelta.snd = sendDelta;
                         }
@@ -287,6 +296,7 @@ public abstract class PartitionerAffinity implements Partitioner {
                     else {
                         minDelta = globalDelta;
                         
+System.out.println("Selected!");
                         toPartitionDelta.fst = toPartition;
                         toPartitionDelta.snd = sendDelta;
                     }
