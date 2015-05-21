@@ -239,10 +239,12 @@ public abstract class PartitionerAffinity implements Partitioner {
         IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(fromPartition));
         
         for(int toPartition : localPartitions){
-            
+                        
             if(fromPartition == toPartition || !activePartitions.contains(toPartition)){
                 continue;
             }
+
+            System.out.println("Examining moving to partition: " + toPartition);
 
             double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
             if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
@@ -250,7 +252,6 @@ public abstract class PartitionerAffinity implements Partitioner {
                 continue;
             }
 
-            System.out.println("Examining moving to partition: " + toPartition);
             // TODO make constant and put out of this loop
             double sendDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
 
