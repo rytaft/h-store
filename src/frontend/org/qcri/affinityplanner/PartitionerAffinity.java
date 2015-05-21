@@ -244,22 +244,28 @@ public abstract class PartitionerAffinity implements Partitioner {
                 continue;
             }
 
-System.out.println("Examining moving to partition: " + toPartition);
+            double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
+            if(getLoadPerPartition(toPart_sndDelta_glbDelta.fst) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
+                System.out.println("Would become overloaded, skipping");
+                continue;
+            }
+
+            System.out.println("Examining moving to partition: " + toPartition);
             // TODO make constant and put out of this loop
             double sendDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
 
             double globalDelta = getGlobalDelta(movingVertices, fromPartition, toPartition);
             
-System.out.println("Global delta: " + globalDelta + " min delta " + toPart_sndDelta_glbDelta.trd);
+            System.out.println("Global delta: " + globalDelta + " min delta " + toPart_sndDelta_glbDelta.trd);
             if (globalDelta <= toPart_sndDelta_glbDelta.trd){
 
                 if (globalDelta == toPart_sndDelta_glbDelta.trd){
                     double load = getLoadPerPartition(toPartition);
-System.out.println("Load: " + load + " min load " + currLoad);
+                    System.out.println("Load: " + load + " min load " + currLoad);
                     if (load < currLoad){
                         currLoad = load;
                         
-System.out.println("Selected!");
+                        System.out.println("Selected!");
                         toPart_sndDelta_glbDelta.fst = toPartition;
                         toPart_sndDelta_glbDelta.snd = sendDelta;
                         toPart_sndDelta_glbDelta.trd = globalDelta;
@@ -269,7 +275,7 @@ System.out.println("Selected!");
                     double load = getLoadPerPartition(toPartition);
                     currLoad = load;
                     
-System.out.println("Selected!");
+                    System.out.println("Selected!");
                     toPart_sndDelta_glbDelta.fst = toPartition;
                     toPart_sndDelta_glbDelta.snd = sendDelta;
                     toPart_sndDelta_glbDelta.trd = globalDelta;
@@ -282,24 +288,28 @@ System.out.println("Selected!");
 
             if(!localPartitions.contains(toPartition)){
 
-System.out.println("Examining moving to partition: " + toPartition);
+                System.out.println("Examining moving to partition: " + toPartition);
                 // TODO make constant and put out of this loop
                 double sendDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
 
-//                System.out.println("Sender delta to partition " + toPartition + " is " + delta);
-
                 double globalDelta = getGlobalDelta(movingVertices, fromPartition, toPartition);
+                double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
+                
+                if(getLoadPerPartition(toPart_sndDelta_glbDelta.fst) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
+                    System.out.println("Would become overloaded, skipping");
+                    continue;
+                }
 
-System.out.println("Global delta: " + globalDelta + " min delta " + toPart_sndDelta_glbDelta.trd);
+                System.out.println("Global delta: " + globalDelta + " min delta " + toPart_sndDelta_glbDelta.trd);
                 if (globalDelta < (toPart_sndDelta_glbDelta.trd * (1 - Controller.PENALTY_REMOTE_MOVE))){
 
                     if (globalDelta == toPart_sndDelta_glbDelta.trd){
                         double load = getLoadPerPartition(toPartition);
-System.out.println("Load: " + load + " min load " + currLoad);
+                        System.out.println("Load: " + load + " min load " + currLoad);
                         if (load < currLoad){
                             currLoad = load;
                             
-System.out.println("Selected!");
+                            System.out.println("Selected!");
                             toPart_sndDelta_glbDelta.fst = toPartition;
                             toPart_sndDelta_glbDelta.snd = sendDelta;
                             toPart_sndDelta_glbDelta.trd = globalDelta;
@@ -309,7 +319,7 @@ System.out.println("Selected!");
                         double load = getLoadPerPartition(toPartition);
                         currLoad = load;
                         
-System.out.println("Selected!");
+                        System.out.println("Selected!");
                         toPart_sndDelta_glbDelta.fst = toPartition;
                         toPart_sndDelta_glbDelta.snd = sendDelta;
                         toPart_sndDelta_glbDelta.trd = globalDelta;
