@@ -3,8 +3,9 @@ import subprocess
 
 dir = sys.argv[1]
 
-+subprocess.call('rm ' + dir + '/transactions-partition*.log', shell=True)
-+subprocess.call('rm ' + dir + '/monitoring-*.tar.gz', shell=True)
+if not ('localhost' in sys.argv[2:]):
+    subprocess.call('rm ' + dir + '/transactions-partition*.log', shell=True)
+    subprocess.call('rm ' + dir + '/monitoring-*.tar.gz', shell=True)
 
 procs = []
 for ip in sys.argv[2:]:

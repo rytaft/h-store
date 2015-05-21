@@ -319,9 +319,7 @@ public class TPCCSimulation {
         
         if(generator.number(1, 100) <= warehouse_pairing_percent){
             // in TPC-C partitions are numbered from 1
-            remote_w_id = (w_id % 2 == 0 ? w_id-1 : w_id+1);
-            if (remote_w_id < starting_warehouse) remote_w_id = last_warehouse;
-            else if (remote_w_id > last_warehouse) remote_w_id = starting_warehouse;
+            remote_w_id = last_warehouse - w_id + 1;
         }
         else{
             remote_w_id = (short)generator.numberExcluding(starting_warehouse, last_warehouse, (int) w_id);
