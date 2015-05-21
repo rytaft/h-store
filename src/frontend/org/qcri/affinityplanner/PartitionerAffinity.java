@@ -229,11 +229,11 @@ public abstract class PartitionerAffinity implements Partitioner {
      * @param activePartitions
      * @param toPartition_senderDelta
      */
-    protected void findBestPartition(IntSet movingVertices, int fromPartition, IntList activePartitions, Triplet<Integer, Double, Double> toPart_sndDelta_glbDelta){
+    protected void findBestPartition(IntSet movingVertices, int fromPartition, IntList activePartitions, Triplet<Integer, Double, Double> toPart_sndDelta_rcvDelta){
         
-        toPart_sndDelta_glbDelta.fst = -1;
-        toPart_sndDelta_glbDelta.snd = Double.MAX_VALUE;
-        toPart_sndDelta_glbDelta.trd = Double.MAX_VALUE;
+        toPart_sndDelta_rcvDelta.fst = -1;
+        toPart_sndDelta_rcvDelta.snd = Double.MAX_VALUE;
+        toPart_sndDelta_rcvDelta.trd = Double.MAX_VALUE;
         double currLoad = Double.MAX_VALUE;
         
         IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(fromPartition));
@@ -245,7 +245,7 @@ public abstract class PartitionerAffinity implements Partitioner {
             }
 
             double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
-            if(getLoadPerPartition(toPart_sndDelta_glbDelta.fst) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
+            if(getLoadPerPartition(toPart_sndDelta_rcvDelta.fst) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
                 System.out.println("Would become overloaded, skipping");
                 continue;
             }
@@ -254,21 +254,19 @@ public abstract class PartitionerAffinity implements Partitioner {
             // TODO make constant and put out of this loop
             double sendDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
 
-            double globalDelta = getGlobalDelta(movingVertices, fromPartition, toPartition);
-            
-            System.out.println("Global delta: " + globalDelta + " min delta " + toPart_sndDelta_glbDelta.trd);
-            if (globalDelta <= toPart_sndDelta_glbDelta.trd){
+            System.out.println("Receiver delta: " + receiverDelta + " min delta " + toPart_sndDelta_rcvDelta.trd);
+            if (receiverDelta <= toPart_sndDelta_rcvDelta.trd){
 
-                if (globalDelta == toPart_sndDelta_glbDelta.trd){
+                if (receiverDelta == toPart_sndDelta_rcvDelta.trd){
                     double load = getLoadPerPartition(toPartition);
                     System.out.println("Load: " + load + " min load " + currLoad);
                     if (load < currLoad){
                         currLoad = load;
                         
                         System.out.println("Selected!");
-                        toPart_sndDelta_glbDelta.fst = toPartition;
-                        toPart_sndDelta_glbDelta.snd = sendDelta;
-                        toPart_sndDelta_glbDelta.trd = globalDelta;
+                        toPart_sndDelta_rcvDelta.fst = toPartition;
+                        toPart_sndDelta_rcvDelta.snd = sendDelta;
+                        toPart_sndDelta_rcvDelta.trd = receiverDelta;
                     }
                 }
                 else{
@@ -276,9 +274,9 @@ public abstract class PartitionerAffinity implements Partitioner {
                     currLoad = load;
                     
                     System.out.println("Selected!");
-                    toPart_sndDelta_glbDelta.fst = toPartition;
-                    toPart_sndDelta_glbDelta.snd = sendDelta;
-                    toPart_sndDelta_glbDelta.trd = globalDelta;
+                    toPart_sndDelta_rcvDelta.fst = toPartition;
+                    toPart_sndDelta_rcvDelta.snd = sendDelta;
+                    toPart_sndDelta_rcvDelta.trd = receiverDelta;
                 }
             }
         }
@@ -292,27 +290,26 @@ public abstract class PartitionerAffinity implements Partitioner {
                 // TODO make constant and put out of this loop
                 double sendDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
 
-                double globalDelta = getGlobalDelta(movingVertices, fromPartition, toPartition);
                 double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
                 
-                if(getLoadPerPartition(toPart_sndDelta_glbDelta.fst) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
+                if(getLoadPerPartition(toPart_sndDelta_rcvDelta.fst) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
                     System.out.println("Would become overloaded, skipping");
                     continue;
                 }
 
-                System.out.println("Global delta: " + globalDelta + " min delta " + toPart_sndDelta_glbDelta.trd);
-                if (globalDelta < (toPart_sndDelta_glbDelta.trd * (1 - Controller.PENALTY_REMOTE_MOVE))){
+                System.out.println("Global delta: " + receiverDelta + " min delta " + toPart_sndDelta_rcvDelta.trd);
+                if (receiverDelta < (toPart_sndDelta_rcvDelta.trd * (1 - Controller.PENALTY_REMOTE_MOVE))){
 
-                    if (globalDelta == toPart_sndDelta_glbDelta.trd){
+                    if (receiverDelta == toPart_sndDelta_rcvDelta.trd){
                         double load = getLoadPerPartition(toPartition);
                         System.out.println("Load: " + load + " min load " + currLoad);
                         if (load < currLoad){
                             currLoad = load;
                             
                             System.out.println("Selected!");
-                            toPart_sndDelta_glbDelta.fst = toPartition;
-                            toPart_sndDelta_glbDelta.snd = sendDelta;
-                            toPart_sndDelta_glbDelta.trd = globalDelta;
+                            toPart_sndDelta_rcvDelta.fst = toPartition;
+                            toPart_sndDelta_rcvDelta.snd = sendDelta;
+                            toPart_sndDelta_rcvDelta.trd = receiverDelta;
                         }
                     }
                     else {
@@ -320,9 +317,9 @@ public abstract class PartitionerAffinity implements Partitioner {
                         currLoad = load;
                         
                         System.out.println("Selected!");
-                        toPart_sndDelta_glbDelta.fst = toPartition;
-                        toPart_sndDelta_glbDelta.snd = sendDelta;
-                        toPart_sndDelta_glbDelta.trd = globalDelta;
+                        toPart_sndDelta_rcvDelta.fst = toPartition;
+                        toPart_sndDelta_rcvDelta.snd = sendDelta;
+                        toPart_sndDelta_rcvDelta.trd = receiverDelta;
                     }
                 }
             }

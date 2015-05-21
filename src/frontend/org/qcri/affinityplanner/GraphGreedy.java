@@ -281,13 +281,12 @@ public class GraphGreedy extends PartitionerAffinity {
                 //
                 //                System.out.println("Sender delta " + toPartitionDelta.snd);
 
-                double receiverDelta = getReceiverDelta(movingVertices, overloadedPartition, toPart_sndDelta_glbDelta.fst);
-                System.out.println("Receiver: " + toPart_sndDelta_glbDelta.fst + ", received delta " + receiverDelta + ", global delta " + toPart_sndDelta_glbDelta.trd);
+                System.out.println("Receiver: " + toPart_sndDelta_glbDelta.fst + ", receiver delta " + toPart_sndDelta_glbDelta.trd);
 
                 if(!movingVertices.isEmpty() 
                         && toPart_sndDelta_glbDelta.fst != -1
                         && toPart_sndDelta_glbDelta.snd <= Controller.MIN_GAIN_MOVE * -1
-                        && (getLoadPerPartition(toPart_sndDelta_glbDelta.fst) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
+                        && (getLoadPerPartition(toPart_sndDelta_glbDelta.fst) + toPart_sndDelta_glbDelta.trd < Controller.MAX_LOAD_PER_PART)){
                     
                     if(candidateMovingVertices == null || toPart_sndDelta_glbDelta.trd < candidateMove.trd){
 
@@ -311,7 +310,7 @@ public class GraphGreedy extends PartitionerAffinity {
                 
                 // move after making enough steps
                 if (greedyStepsAhead == 0){
-                    System.out.println("ACTUALLY moving to " + toPart_sndDelta_glbDelta.fst + "with sender delta " + toPart_sndDelta_glbDelta.snd + " and global delta " + toPart_sndDelta_glbDelta.trd);
+                    System.out.println("ACTUALLY moving to " + toPart_sndDelta_glbDelta.fst + "with sender delta " + toPart_sndDelta_glbDelta.snd + " and receiver delta " + toPart_sndDelta_glbDelta.trd);
                     System.out.println("Moving:\n" + m_graph.verticesToString(movingVertices));
 
                     m_graph.moveHotVertices(movingVertices, overloadedPartition, toPart_sndDelta_glbDelta.fst);
