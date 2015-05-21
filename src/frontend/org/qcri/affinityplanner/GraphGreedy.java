@@ -222,7 +222,9 @@ public class GraphGreedy extends PartitionerAffinity {
                     
                     if(candidateMovingVertices != null){
                         // before adding a partition, move current candidate if we have one
-                        System.out.println("ACTUALLY moving to " + toPart_sndDelta_glbDelta.fst);
+                        System.out.println("Was almost going to add a partition");
+                        System.out.println("ACTUALLY moving to " + candidateMove.fst + "with sender delta " + candidateMove.snd + " and receiver delta " + candidateMove.trd);
+                        System.out.println("Moving:\n" + m_graph.verticesToString(movingVertices));
 
                         m_graph.moveHotVertices(candidateMovingVertices, overloadedPartition, candidateMove.fst);
                         numMovedVertices += candidateMovingVertices.size();
