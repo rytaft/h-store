@@ -245,7 +245,7 @@ public abstract class PartitionerAffinity implements Partitioner {
             }
 
             double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
-            if(getLoadPerPartition(toPart_sndDelta_rcvDelta.fst) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
+            if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
                 System.out.println("Would become overloaded, skipping");
                 continue;
             }
@@ -292,7 +292,7 @@ public abstract class PartitionerAffinity implements Partitioner {
 
                 double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
                 
-                if(getLoadPerPartition(toPart_sndDelta_rcvDelta.fst) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
+                if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
                     System.out.println("Would become overloaded, skipping");
                     continue;
                 }
