@@ -231,7 +231,8 @@ public class GraphGreedy extends PartitionerAffinity {
                         
                         candidateMovingVertices = null;
                         candidateMove = null;
-                        
+                        greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
+                       
                         continue;
                     }
                     
@@ -319,6 +320,7 @@ public class GraphGreedy extends PartitionerAffinity {
                     
                     candidateMovingVertices = null;
                     candidateMove = null;
+                    greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
                 }
 
             } // END while(getLoadPerSite(overloadedPartition) <= maxLoadPerSite)
