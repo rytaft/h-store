@@ -71,7 +71,6 @@ public class PlanHandler extends Plan {
             String[] vertexData = vertex.split(",");
             String table = vertexData[0];
             @SuppressWarnings("unused")
-            //String attribute = vertexData[1];
             Long value = Long.parseLong(vertexData[1]);
             int partitionId = m_partitioner.getPartitionId(table, new Long[] {value});
     //        System.out.println("Vertex " + from.getKey() + " belongs to partition " + partitionId);

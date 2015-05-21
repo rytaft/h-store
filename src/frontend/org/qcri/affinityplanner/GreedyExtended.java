@@ -238,11 +238,11 @@ public class GreedyExtended implements Partitioner {
     
                         String [] fields = movedVertexName.split(",");
                         //            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
-                        //            System.out.println("remove ID: " + fields[2]);
-                        m_plan_handler.removeTupleId(fields[0], overloadedPartition, Long.parseLong(fields[2]));
+                        //            System.out.println("remove ID: " + fields[1]);
+                        m_plan_handler.removeTupleId(fields[0], overloadedPartition, Long.parseLong(fields[1]));
                         //            System.out.println("After removal");
                         //            System.out.println(m_plan_handler.toString() + "\n");
-                        m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[2]), Long.parseLong(fields[2]));
+                        m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
                     }
     
                 } // while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART && !fromHotTuples.isEmpty() && topK > 0)

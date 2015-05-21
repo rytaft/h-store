@@ -347,14 +347,14 @@ public class AffinityGraph {
             String movedVertexName = m_vertex_to_name.get(movedVertex);
             String [] fields = movedVertexName.split(",");
 //            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
-//            System.out.println("remove ID: " + fields[2]);
-            m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[2]));
+//            System.out.println("remove ID: " + fields[1]);
+            m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[1]));
 //            System.out.println("After removal");
 //            System.out.println(m_plan_handler.toString() + "\n");
 //            m_plan_handler.addPartition(fields[0], toPartition);
 //            System.out.println("After adding partition");
 //            System.out.println(m_plan_handler.toString() + "\n");
-            m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[2]), Long.parseLong(fields[2]));
+            m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
 //            System.out.println("After adding range");
 //            System.out.println(m_plan_handler.toString() + "\n");
 //            System.exit(0);
@@ -526,8 +526,8 @@ public class AffinityGraph {
             String [] fields = movedVertexName.split(",");
             int fromPartition = m_vertexPartition.get(vertex);
 
-            m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[2]));
-            m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[2]), Long.parseLong(fields[2]));
+            m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[1]));
+            m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
 
             // update data structures
             IntOpenHashSet vertices = m_partitionVertices.get(toPartition);
