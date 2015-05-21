@@ -71,7 +71,7 @@ public class Controller extends Thread {
     public static double LMPT_COST = 1.1;
     public static double DTXN_COST = 5.0;
     public static int MAX_MOVED_TUPLES_PER_PART = 10000;
-    public static int MIN_GAIN_MOVE = 0;
+    public static int MIN_SENDER_GAIN_MOVE = 0;
     public static int MAX_PARTITIONS_ADDED = 1;
     public static double PENALTY_REMOTE_MOVE = 0;
     public static int GREEDY_STEPS_AHEAD = 5;

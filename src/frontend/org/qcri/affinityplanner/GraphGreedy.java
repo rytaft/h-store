@@ -156,7 +156,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                     if(!movingVertices.isEmpty() 
                             && toPart_sndDelta_glbDelta.fst != -1
-                            && toPart_sndDelta_glbDelta.snd <= Controller.MIN_GAIN_MOVE * -1
+                            && toPart_sndDelta_glbDelta.snd <= Controller.MIN_SENDER_GAIN_MOVE * -1
                             && receiverDelta < 0){
 
                         System.out.println("!!!!!! Actually moving to " + toPart_sndDelta_glbDelta.fst);
@@ -288,7 +288,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 if(!movingVertices.isEmpty() 
                         && toPart_sndDelta_glbDelta.fst != -1
-                        && toPart_sndDelta_glbDelta.snd <= Controller.MIN_GAIN_MOVE * -1
+                        && toPart_sndDelta_glbDelta.snd <= Controller.MIN_SENDER_GAIN_MOVE * -1
                         && (getLoadPerPartition(toPart_sndDelta_glbDelta.fst) + toPart_sndDelta_glbDelta.trd < Controller.MAX_LOAD_PER_PART)){
                     
                     if(candidateMovingVertices == null || toPart_sndDelta_glbDelta.trd < candidateMove.trd){

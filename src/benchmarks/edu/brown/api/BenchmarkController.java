@@ -2110,7 +2110,7 @@ public class BenchmarkController {
             } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_LMPT_COST)){
                 Controller.LMPT_COST = Double.parseDouble(parts[1]);
             } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_MIN_GAIN_MOVE)){
-                Controller.MIN_GAIN_MOVE = Integer.parseInt(parts[1]);
+                Controller.MIN_SENDER_GAIN_MOVE = Integer.parseInt(parts[1]);
             } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_MAX_TUPLE_MOVE)){
                 Controller.MAX_MOVED_TUPLES_PER_PART = Integer.parseInt(parts[1]);
             } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_MAX_PARTITIONS_ADDED)){

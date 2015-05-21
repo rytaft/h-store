@@ -1021,7 +1021,7 @@ public class ArgumentsParser {
         }
         
         if (this.params.containsKey(PARAM_ELASTIC_MIN_GAIN_MOVE)){
-            Controller.MIN_GAIN_MOVE = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_GAIN_MOVE));
+            Controller.MIN_SENDER_GAIN_MOVE = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_GAIN_MOVE));
         }
 
         if (this.params.containsKey(PARAM_ELASTIC_MAX_TUPLE_MOVE)){

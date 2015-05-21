@@ -176,7 +176,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
                     if(!movingVertices.isEmpty() 
                             && toPartitionDelta.fst != -1
-                            && toPartitionDelta.snd <= Controller.MIN_GAIN_MOVE * -1
+                            && toPartitionDelta.snd <= Controller.MIN_SENDER_GAIN_MOVE * -1
                             && receiverDelta < 0){
 
                         LOG.debug("Moving " + movingVertices);
@@ -289,7 +289,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
                 if(!movingVertices.isEmpty() 
                         && toPart_sndDelta_glbDelta.fst != -1
-                        && toPart_sndDelta_glbDelta.snd <= Controller.MIN_GAIN_MOVE * -1
+                        && toPart_sndDelta_glbDelta.snd <= Controller.MIN_SENDER_GAIN_MOVE * -1
                         && (receiverDelta < 0 
                                 || getLoadPerPartition(toPart_sndDelta_glbDelta.fst) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
 

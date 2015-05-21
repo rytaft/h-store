@@ -201,7 +201,7 @@ public abstract class PartitionerAffinity implements Partitioner {
         double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
 
         // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
-        if(senderDelta <= Controller.MIN_GAIN_MOVE * -1
+        if(senderDelta <= Controller.MIN_SENDER_GAIN_MOVE * -1
                 && (receiverDelta < 0 
                         || getLoadPerPartition(toPartition) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
 
