@@ -148,7 +148,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
                 //                int lastHotVertexMoved = -1;
                 //                int retryCount = 1;
 
-                Pair<Integer,Double> toPartitionDelta = new Pair<Integer,Double> (to_part, 1.0);
+                Triplet<Integer,Double> toPartitionDelta = new Triplet<Integer,Double> (to_part, 1.0);
 
                 while(numMovedVertices + movingVertices.size() < Controller.MAX_MOVED_TUPLES_PER_PART 
                         && nextPosToMove < borderVertices.size()
@@ -221,7 +221,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
             int count_iter = 0;
 
-            Pair<Integer, Double> toPartitionDelta = new Pair<Integer, Double> ();
+            Triplet<Integer, Double> toPartitionDelta = new Triplet<Integer, Double> ();
 
             while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
 
@@ -320,7 +320,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
      * - modifies the argument toPartitionDelta to indicate where should the new vertex moved; (-1, inf) indicates that there is no move possible
      * 
      */
-    private int expandMovingVertices (IntSet movingVertices, Pair<Integer,Double> toPartitionDelta, 
+    private int expandMovingVertices (IntSet movingVertices, Triplet<Integer,Double> toPartitionDelta, 
             IntList verticesToMove, int nextPosToMove, IntList activePartitions, int fromPartition){
 
         if (movingVertices.isEmpty()){
@@ -359,7 +359,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
             // extend current moved set
 
             // assess gain with extension
-            Pair<Integer,Double> affineEdgeExtension = new Pair <Integer,Double>(-1, Double.MAX_VALUE);
+            Triplet<Integer,Double> affineEdgeExtension = new Triplet <Integer,Double>(-1, Double.MAX_VALUE);
 
             int affineVertex = getMostAffineExtension(movingVertices);
 
@@ -380,7 +380,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
             }
 
             // assess gain with next hot tuple. may need to skip a few hot tuples that are already included in hottestVerticesToMove. 
-            Pair<Integer,Double> nextVertexListExtension = new Pair <Integer,Double>(-1, Double.MAX_VALUE);
+            Triplet<Integer,Double> nextVertexListExtension = new Triplet <Integer,Double>(-1, Double.MAX_VALUE);
 
             int nextVertexList = 0;
             int skip = 0;

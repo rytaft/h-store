@@ -35,18 +35,25 @@ import org.apache.log4j.Logger;
  */
 public abstract class PartitionerAffinity implements Partitioner {
     
-    public class Pair<A, B> {
+    public class Triplet<A, B, C> {
         public A fst;
         public B snd;
+        public C trd;
         
-        public Pair (){
+        public Triplet (){
             this.fst = null;
-            this.snd = null;            
+            this.snd = null;
+            this.trd = null;
         }
 
-        public Pair(A fst, B snd) {
+        public Triplet(A fst, B snd, C trd) {
             this.fst = fst;
             this.snd = snd;
+            this.trd = trd;
+        }
+        
+        public Triplet<A, B, C> clone(){
+            return new Triplet<A, B, C> (this.fst, this.snd, this.trd);
         }
     }
     
@@ -220,17 +227,16 @@ public abstract class PartitionerAffinity implements Partitioner {
      * @param movingVertices
      * @param fromPartition
      * @param activePartitions
-     * @param toPartitionDelta
+     * @param toPartition_senderDelta
      */
-    protected void findBestPartition(IntSet movingVertices, int fromPartition, IntList activePartitions, Pair<Integer, Double> toPartitionDelta){
+    protected void findBestPartition(IntSet movingVertices, int fromPartition, IntList activePartitions, Triplet<Integer, Double, Double> toPart_sndDelta_glbDelta){
         
-        toPartitionDelta.fst = -1;
-        toPartitionDelta.snd = Double.MAX_VALUE;
+        toPart_sndDelta_glbDelta.fst = -1;
+        toPart_sndDelta_glbDelta.snd = Double.MAX_VALUE;
+        toPart_sndDelta_glbDelta.trd = Double.MAX_VALUE;
+        double currLoad = Double.MAX_VALUE;
         
         IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(fromPartition));
-
-        double minDelta = Double.MAX_VALUE; 
-        double minLoad = Double.MAX_VALUE;
         
         for(int toPartition : localPartitions){
             
@@ -244,25 +250,29 @@ System.out.println("Examining moving to partition: " + toPartition);
 
             double globalDelta = getGlobalDelta(movingVertices, fromPartition, toPartition);
             
-System.out.println("Global delta: " + globalDelta + " min delta " + minDelta);
-            if (globalDelta <= minDelta){
-                if (globalDelta == minDelta){
+System.out.println("Global delta: " + globalDelta + " min delta " + toPart_sndDelta_glbDelta.trd);
+            if (globalDelta <= toPart_sndDelta_glbDelta.trd){
+
+                if (globalDelta == toPart_sndDelta_glbDelta.trd){
                     double load = getLoadPerPartition(toPartition);
-System.out.println("Load: " + load + " min load " + minLoad);
-                    if (load < minLoad){
-                        minLoad = load;
+System.out.println("Load: " + load + " min load " + currLoad);
+                    if (load < currLoad){
+                        currLoad = load;
                         
 System.out.println("Selected!");
-                        toPartitionDelta.fst = toPartition;
-                        toPartitionDelta.snd = sendDelta;
+                        toPart_sndDelta_glbDelta.fst = toPartition;
+                        toPart_sndDelta_glbDelta.snd = sendDelta;
+                        toPart_sndDelta_glbDelta.trd = globalDelta;
                     }
                 }
                 else{
-                    minDelta = globalDelta;
+                    double load = getLoadPerPartition(toPartition);
+                    currLoad = load;
                     
 System.out.println("Selected!");
-                    toPartitionDelta.fst = toPartition;
-                    toPartitionDelta.snd = sendDelta;
+                    toPart_sndDelta_glbDelta.fst = toPartition;
+                    toPart_sndDelta_glbDelta.snd = sendDelta;
+                    toPart_sndDelta_glbDelta.trd = globalDelta;
                 }
             }
         }
@@ -280,25 +290,29 @@ System.out.println("Examining moving to partition: " + toPartition);
 
                 double globalDelta = getGlobalDelta(movingVertices, fromPartition, toPartition);
 
-System.out.println("Global delta: " + globalDelta + " min delta " + minDelta);
-                if (globalDelta < (minDelta * (1 - Controller.PENALTY_REMOTE_MOVE))){
-                    if (globalDelta == minDelta){
+System.out.println("Global delta: " + globalDelta + " min delta " + toPart_sndDelta_glbDelta.trd);
+                if (globalDelta < (toPart_sndDelta_glbDelta.trd * (1 - Controller.PENALTY_REMOTE_MOVE))){
+
+                    if (globalDelta == toPart_sndDelta_glbDelta.trd){
                         double load = getLoadPerPartition(toPartition);
-System.out.println("Load: " + load + " min load " + minLoad);
-                        if (load < minLoad){
-                            minLoad = load;
+System.out.println("Load: " + load + " min load " + currLoad);
+                        if (load < currLoad){
+                            currLoad = load;
                             
 System.out.println("Selected!");
-                            toPartitionDelta.fst = toPartition;
-                            toPartitionDelta.snd = sendDelta;
+                            toPart_sndDelta_glbDelta.fst = toPartition;
+                            toPart_sndDelta_glbDelta.snd = sendDelta;
+                            toPart_sndDelta_glbDelta.trd = globalDelta;
                         }
                     }
                     else {
-                        minDelta = globalDelta;
+                        double load = getLoadPerPartition(toPartition);
+                        currLoad = load;
                         
 System.out.println("Selected!");
-                        toPartitionDelta.fst = toPartition;
-                        toPartitionDelta.snd = sendDelta;
+                        toPart_sndDelta_glbDelta.fst = toPartition;
+                        toPart_sndDelta_glbDelta.snd = sendDelta;
+                        toPart_sndDelta_glbDelta.trd = globalDelta;
                     }
                 }
             }

@@ -74,6 +74,7 @@ public class Controller extends Thread {
     public static int MIN_GAIN_MOVE = 0;
     public static int MAX_PARTITIONS_ADDED = 1;
     public static double PENALTY_REMOTE_MOVE = 0;
+    public static int GREEDY_STEPS_AHEAD = 100;
     
     public static int COLD_CHUNK_SIZE = 100;
     public static double COLD_TUPLE_FRACTION_ACCESSES = 100;
@@ -112,6 +113,10 @@ public class Controller extends Thread {
             PLAN_IN = hstore_conf.global.hasher_plan;
             LOG.info("Updating plan_in to be " + PLAN_IN);
         }
+        else{
+            System.out.println("No plan specified. Exiting");
+            System.exit(1);
+        }
         
         // verify that all partition ids are contiguous
         Iterator<Integer> partIdsIt = partitionIds.iterator();
@@ -126,28 +131,6 @@ public class Controller extends Thread {
                 System.exit(1);
             }
         }
-
-//        if(hstore_conf.global.hasher_plan == null){
-//            System.out.println("Must set global.hasher_plan to specify plan file!");
-//            System.out.println("Using default (plan.json)");
-//            planFile = FileSystems.getDefault().getPath("plan.json");
-//
-//        }
-//        else{
-//            planFile = FileSystems.getDefault().getPath(hstore_conf.global.hasher_plan);
-//        }
-//
-//        outputPlanFile = FileSystems.getDefault().getPath("plan_out.json");
-//
-//        try {
-//            Files.copy(planFile, outputPlanFile, StandardCopyOption.REPLACE_EXISTING);              
-//        }
-//        catch(IOException e) {
-//            System.out.println("Controller: IO Exception while copying plan file to output plan file");
-//            e.printStackTrace();
-//        }
-
-        //TODO select planners here
     }
     
     public static void record(String s){
@@ -225,7 +208,7 @@ public class Controller extends Thread {
             
             System.out.println("Algorithm " + ALGO);
             
-            // checks parameter -D
+            // checks parameter -Delastic.algo
             switch(ALGO){
                 case "simple":
                     partitioner = new SimplePartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
@@ -248,10 +231,7 @@ public class Controller extends Thread {
 
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
-            
-//          Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
-//          partitioner.toFileDebug(graphFile);
-            
+                        
             record("======================== PARTITIONING GRAPH ========================");
             t1 = System.currentTimeMillis();
             
@@ -281,12 +261,11 @@ public class Controller extends Thread {
 
             boolean b = partitioner.repartition();
             if (!b){
-                record("Problem while partitioning graph. Exiting");
-                return;
+                record("Problem while partitioning graph. Writing incomplete plan out");
             }
             partitioner.writePlan(PLAN_OUT);
  
-            String outputPlan = FileUtil.readFile(PLAN_OUT);
+//            String outputPlan = FileUtil.readFile(PLAN_OUT);
 //            record("Output plan\n" + outputPlan);
             
             record("Load per partition after reconfiguration");
@@ -306,6 +285,7 @@ public class Controller extends Thread {
             record("======================== STARTING RECONFIGURATION ========================");
             ClientResponse cresponse = null;
             try {
+                // TODO should compare with PLAN_IN before reconfiguring
                 String outputPlan = FileUtil.readFile(PLAN_OUT);
                 cresponse = m_client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
                                 //cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
