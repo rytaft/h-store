@@ -102,7 +102,8 @@ public class Monitor {
 //                        for(Integer offset : offsetPair.getSecond()) {
 //                            Column column = (Column) columnIter.next();
                             int offset = offsetPair.getSecond().get(0);
-                            s = ts.getTransactionId().toString() + ";" + table_name + "," + column.getName().toLowerCase() + "," + parameterSet.toArray()[offset];
+                            s = ts.getTransactionId().toString() + ";" + table_name + "," + parameterSet.toArray()[offset];
+                            // s = ts.getTransactionId().toString() + ";" + table_name + "," + column.getName().toLowerCase() + "," + parameterSet.toArray()[offset];
                             m_writer.write(s, 0, s.length());
                             m_writer.newLine();
 //                        }
