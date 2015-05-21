@@ -234,6 +234,7 @@ public class GraphGreedy extends PartitionerAffinity {
                         candidateMovingVertices = null;
                         candidateMove = null;
                         greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
+                        toPart_sndDelta_glbDelta.fst = null;
                        
                         continue;
                     }
@@ -305,8 +306,8 @@ public class GraphGreedy extends PartitionerAffinity {
                     }
 
                 }
-                else{
-                    // this not a candidate
+                else if(candidateMovingVertices != null){
+                    // this not a candidate but I have found one
                     greedyStepsAhead--;
                 }
                 
@@ -323,6 +324,7 @@ public class GraphGreedy extends PartitionerAffinity {
                     candidateMovingVertices = null;
                     candidateMove = null;
                     greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
+
                 }
 
             } // END while(getLoadPerSite(overloadedPartition) <= maxLoadPerSite)
