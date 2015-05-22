@@ -203,7 +203,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
             int count_iter = 0;
 
-            Triplet<Integer, Double, Double> toPart_sndDelta_glbDelta = new Triplet<Integer, Double, Double> ();
+            Triplet<Integer, Double, Double> toPart_sndDelta_rcvDelta = new Triplet<Integer, Double, Double> ();
             
             IntSet candidateMovingVertices = null;
             Triplet<Integer, Double, Double> candidateMove = null;
@@ -218,7 +218,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 if (numMovedVertices + movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART 
                         || nextPosToMove >= hotVerticesList.size()
-                        || (toPart_sndDelta_glbDelta.fst != null && toPart_sndDelta_glbDelta.fst == -1)){
+                        || (toPart_sndDelta_rcvDelta.fst != null && toPart_sndDelta_rcvDelta.fst == -1)){
                     
                     if(candidateMovingVertices != null){
                         // before adding a partition, move current candidate if we have one
@@ -234,7 +234,7 @@ public class GraphGreedy extends PartitionerAffinity {
                         candidateMovingVertices = null;
                         candidateMove = null;
                         greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
-                        toPart_sndDelta_glbDelta.fst = null;
+                        toPart_sndDelta_rcvDelta.fst = null;
                        
                         continue;
                     }
@@ -267,14 +267,14 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 // Step 2) add one vertex to movingVertices - either expand to vertex with highest affinity or with the next hot tuple
 
-                toPart_sndDelta_glbDelta.fst = null;
-                toPart_sndDelta_glbDelta.snd = null;
-                toPart_sndDelta_glbDelta.trd = null;
+                toPart_sndDelta_rcvDelta.fst = null;
+                toPart_sndDelta_rcvDelta.snd = null;
+                toPart_sndDelta_rcvDelta.trd = null;
 
                 System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
                 System.out.println("Current sender delta " + getSenderDelta(movingVertices, overloadedPartition, 1));
 
-                nextPosToMove = expandMovingVertices (movingVertices, toPart_sndDelta_glbDelta, 
+                nextPosToMove = expandMovingVertices (movingVertices, toPart_sndDelta_rcvDelta, 
                         hotVerticesList, nextPosToMove, activePartitions, overloadedPartition);
 
                 System.out.println("Moving:\n" + m_graph.verticesToString(movingVertices));
@@ -284,20 +284,20 @@ public class GraphGreedy extends PartitionerAffinity {
                 //
                 //                System.out.println("Sender delta " + toPartitionDelta.snd);
 
-                System.out.println("Receiver: " + toPart_sndDelta_glbDelta.fst + ", receiver delta " + toPart_sndDelta_glbDelta.trd);
+                System.out.println("Receiver: " + toPart_sndDelta_rcvDelta.fst + ", receiver delta " + toPart_sndDelta_rcvDelta.trd);
 
                 if(!movingVertices.isEmpty() 
-                        && toPart_sndDelta_glbDelta.fst != -1
-                        && toPart_sndDelta_glbDelta.snd <= Controller.MIN_SENDER_GAIN_MOVE * -1
-                        && (getLoadPerPartition(toPart_sndDelta_glbDelta.fst) + toPart_sndDelta_glbDelta.trd < Controller.MAX_LOAD_PER_PART)){
+                        && toPart_sndDelta_rcvDelta.fst != -1
+                        && toPart_sndDelta_rcvDelta.snd <= Controller.MIN_SENDER_GAIN_MOVE * -1
+                        && (getLoadPerPartition(toPart_sndDelta_rcvDelta.fst) + toPart_sndDelta_rcvDelta.trd < Controller.MAX_LOAD_PER_PART)){
                     
-                    if(candidateMovingVertices == null || toPart_sndDelta_glbDelta.trd < candidateMove.trd){
+                    if(candidateMovingVertices == null || toPart_sndDelta_rcvDelta.trd < candidateMove.trd){
 
-                        System.out.println("CANDIDATE for moving to " + toPart_sndDelta_glbDelta.fst);
+                        System.out.println("CANDIDATE for moving to " + toPart_sndDelta_rcvDelta.fst);
                         
                         // record this move as a candidate
                         candidateMovingVertices = movingVertices.clone();
-                        candidateMove = toPart_sndDelta_glbDelta.clone();
+                        candidateMove = toPart_sndDelta_rcvDelta.clone();
                         greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
                     }
                     else{
@@ -316,7 +316,7 @@ public class GraphGreedy extends PartitionerAffinity {
                     System.out.println("ACTUALLY moving to " + candidateMove.fst + "with sender delta " + candidateMove.snd + " and receiver delta " + candidateMove.trd);
                     System.out.println("Moving:\n" + m_graph.verticesToString(candidateMovingVertices));
 
-                    m_graph.moveHotVertices(movingVertices, overloadedPartition, toPart_sndDelta_glbDelta.fst);
+                    m_graph.moveHotVertices(movingVertices, overloadedPartition, toPart_sndDelta_rcvDelta.fst);
                     numMovedVertices += movingVertices.size();
                     lastHotVertexMoved = nextPosToMove - 1;
                     movingVertices.clear();
@@ -345,7 +345,7 @@ public class GraphGreedy extends PartitionerAffinity {
      * - modifies the argument toPartitionDelta to indicate where should the new vertex moved; (-1, inf) indicates that there is no move possible
      * 
      */
-    private int expandMovingVertices (IntSet movingVertices, Triplet<Integer,Double,Double> toPart_sndDelta_glbDelta, 
+    private int expandMovingVertices (IntSet movingVertices, Triplet<Integer,Double,Double> toPart_sndDelta_rcvDelta, 
             IntList verticesToMove, int nextPosToMove, IntList activePartitions, int fromPartition){
 
         if (movingVertices.isEmpty()){
@@ -363,16 +363,16 @@ public class GraphGreedy extends PartitionerAffinity {
             // the second condition is for the case where the vertex has been moved already 
 
             if (nextPosToMove == verticesToMove.size()){
-                toPart_sndDelta_glbDelta.fst = -1;
-                toPart_sndDelta_glbDelta.snd = Double.MAX_VALUE;
-                toPart_sndDelta_glbDelta.trd = Double.MAX_VALUE;
+                toPart_sndDelta_rcvDelta.fst = -1;
+                toPart_sndDelta_rcvDelta.snd = Double.MAX_VALUE;
+                toPart_sndDelta_rcvDelta.trd = Double.MAX_VALUE;
                 return nextPosToMove;
             }
 
             movingVertices.add(nextVertexList);
 
-            if(toPart_sndDelta_glbDelta.fst == null){
-                findBestPartition(movingVertices, fromPartition, activePartitions, toPart_sndDelta_glbDelta);
+            if(toPart_sndDelta_rcvDelta.fst == null){
+                findBestPartition(movingVertices, fromPartition, activePartitions, toPart_sndDelta_rcvDelta);
             }
 
             if(nextVertexList == 0){
@@ -393,14 +393,14 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 movingVertices.add(affineVertex);
 
-                if(toPart_sndDelta_glbDelta.fst == null){
+                if(toPart_sndDelta_rcvDelta.fst == null){
 
                     findBestPartition(movingVertices, fromPartition, activePartitions, affineEdgeExtension);
                 }
                 else{
-                    affineEdgeExtension.fst = toPart_sndDelta_glbDelta.fst;
-                    affineEdgeExtension.snd = getSenderDelta(movingVertices, fromPartition, toPart_sndDelta_glbDelta.fst);
-                    affineEdgeExtension.trd = getGlobalDelta(movingVertices, fromPartition, toPart_sndDelta_glbDelta.fst);
+                    affineEdgeExtension.fst = toPart_sndDelta_rcvDelta.fst;
+                    affineEdgeExtension.snd = getSenderDelta(movingVertices, fromPartition, toPart_sndDelta_rcvDelta.fst);
+                    affineEdgeExtension.trd = getReceiverDelta(movingVertices, fromPartition, toPart_sndDelta_rcvDelta.fst);
                 }
 
                 movingVertices.remove(affineVertex);
@@ -433,13 +433,13 @@ public class GraphGreedy extends PartitionerAffinity {
 
                     movingVertices.add(nextVertexList);
 
-                    if(toPart_sndDelta_glbDelta.fst == null){
+                    if(toPart_sndDelta_rcvDelta.fst == null){
                         findBestPartition(movingVertices, fromPartition, activePartitions, nextVertexListExtension);
                     }
                     else{
-                        nextVertexListExtension.fst = toPart_sndDelta_glbDelta.fst;
-                        nextVertexListExtension.snd = getSenderDelta(movingVertices, fromPartition, toPart_sndDelta_glbDelta.fst);
-                        nextVertexListExtension.trd = getGlobalDelta(movingVertices, fromPartition, toPart_sndDelta_glbDelta.fst);
+                        nextVertexListExtension.fst = toPart_sndDelta_rcvDelta.fst;
+                        nextVertexListExtension.snd = getSenderDelta(movingVertices, fromPartition, toPart_sndDelta_rcvDelta.fst);
+                        nextVertexListExtension.trd = getReceiverDelta(movingVertices, fromPartition, toPart_sndDelta_rcvDelta.fst);
                     }
 
                     movingVertices.remove(nextVertexList);
@@ -450,9 +450,9 @@ public class GraphGreedy extends PartitionerAffinity {
             if (affineEdgeExtension.snd < nextVertexListExtension.snd){
 
                 movingVertices.add(affineVertex);
-                toPart_sndDelta_glbDelta.fst = affineEdgeExtension.fst;
-                toPart_sndDelta_glbDelta.snd = affineEdgeExtension.snd;
-                toPart_sndDelta_glbDelta.trd = affineEdgeExtension.trd;
+                toPart_sndDelta_rcvDelta.fst = affineEdgeExtension.fst;
+                toPart_sndDelta_rcvDelta.snd = affineEdgeExtension.snd;
+                toPart_sndDelta_rcvDelta.trd = affineEdgeExtension.trd;
 
                 LOG.debug("Adding edge extension: " + affineVertex);
 
@@ -462,9 +462,9 @@ public class GraphGreedy extends PartitionerAffinity {
             else{
 
                 movingVertices.add(nextVertexList);
-                toPart_sndDelta_glbDelta.fst = nextVertexListExtension.fst;
-                toPart_sndDelta_glbDelta.snd = nextVertexListExtension.snd;
-                toPart_sndDelta_glbDelta.trd = nextVertexListExtension.trd;
+                toPart_sndDelta_rcvDelta.fst = nextVertexListExtension.fst;
+                toPart_sndDelta_rcvDelta.snd = nextVertexListExtension.snd;
+                toPart_sndDelta_rcvDelta.trd = nextVertexListExtension.trd;
 
                 LOG.debug("Adding vertex from list: " + nextVertexList);
 
