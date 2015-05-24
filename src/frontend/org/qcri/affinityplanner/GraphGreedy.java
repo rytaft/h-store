@@ -316,11 +316,11 @@ public class GraphGreedy extends PartitionerAffinity {
                     System.out.println("ACTUALLY moving to " + candidateMove.fst + "with sender delta " + candidateMove.snd + " and receiver delta " + candidateMove.trd);
                     System.out.println("Moving:\n" + m_graph.verticesToString(candidateMovingVertices));
 
-                    m_graph.moveHotVertices(movingVertices, overloadedPartition, toPart_sndDelta_rcvDelta.fst);
-                    numMovedVertices += movingVertices.size();
+                    m_graph.moveHotVertices(candidateMovingVertices, overloadedPartition, toPart_sndDelta_rcvDelta.fst);
+                    numMovedVertices += candidateMovingVertices.size();
                     lastHotVertexMoved = nextPosToMove - 1;
+
                     movingVertices.clear();
-                    
                     candidateMovingVertices = null;
                     candidateMove = null;
                     greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
