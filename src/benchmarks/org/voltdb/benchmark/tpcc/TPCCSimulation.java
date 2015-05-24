@@ -146,18 +146,25 @@ public class TPCCSimulation {
             if(config.neworder_hotspot) {
             	numHotSpots = config.hotspot_size;
             	percentAccessHotSpots = config.hotspot_ops_percent / 100.0;
+
             }
             this.zipf_gen = new VaryingZipfianGenerator(parameters.last_warehouse + 1 - parameters.starting_warehouse, skewFactor);
-            zipf_gen.setNumHotSpots(numHotSpots);
             zipf_gen.setPercentAccessHotSpots(percentAccessHotSpots);
 
-
+            if(config.hot_spots != null){
+                zipf_gen.setHotSpots(config.hot_spots);
+            } else{
+                zipf_gen.setNumHotSpots(numHotSpots);
+            }
         }
         if (config.warehouse_debug) {
             LOG.info("Enabling WAREHOUSE debug mode");
         }
         if (config.neworder_hotspot) {
             LOG.info("Enabling hotspot");
+        }
+        if (config.hot_spots != null){
+            System.out.println("Hotspots: " + config.hot_spots.toString());
         }
 
         lastAssignedWarehouseId += 1;
@@ -265,19 +272,26 @@ public class TPCCSimulation {
             }
         }
         
-        // ZIPFIAN SKEWED WAREHOUSE ID
+        // ZIPFIAN SKEWED WAREHOUSE ID - POTENTIALLY WITH HOTSPOTS
         else if (config.neworder_skew_warehouse) {
             assert(this.zipf_gen != null);
             w_id = (short) (this.zipf_gen.nextInt() + parameters.starting_warehouse);
         }
         
-        // HOTSPOT SKEWED WAREHOUSE ID
+        // UNIFORM WAREHOUSE ID + HOTSPOTS
         else if (config.neworder_hotspot) {
             if (generator.number(1, 100) <= config.hotspot_ops_percent) {
                 //In the hotspot
-                //Hotspot op use 1 - hotspotsize
-                w_id = (short)generator.number(parameters.starting_warehouse, 
-                        Math.min(parameters.last_warehouse, (config.hotspot_size)));
+                if (config.hot_spots == null){
+                    //Hotspot op use 1 - hotspotsize
+                    w_id = (short)generator.number(parameters.starting_warehouse, 
+                            Math.min(parameters.last_warehouse, (config.hotspot_size)));
+                }
+                else{
+                    int pos = generator.number(0, config.hot_spots.size() - 1);
+                    long hotSpot = config.hot_spots.get(pos);
+                    w_id = (short) hotSpot;
+                }
             } else { 
                 //Use uniform random
                 w_id = (short)generator.number(parameters.starting_warehouse, parameters.last_warehouse);

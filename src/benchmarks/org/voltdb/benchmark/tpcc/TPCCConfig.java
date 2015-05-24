@@ -1,6 +1,7 @@
 package org.voltdb.benchmark.tpcc;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -64,6 +65,8 @@ public final class TPCCConfig {
     /** First N warehouses in the hotspot () **/
     public int hotspot_size = 1;
     
+    /** Set of hotspots **/
+    public ArrayList<Long> hot_spots = null;
     
     /**
      * Scale the number of items based on the client scalefactor.
@@ -180,6 +183,15 @@ public final class TPCCConfig {
                 hotspot_size = Integer.parseInt(val);
                 if (hotspot_size <1)
                     hotspot_size = 1;
+            }
+            
+            // HOTSPOT SET
+            else if (key.equalsIgnoreCase("hotspots") && !val.isEmpty()){
+                this.hot_spots = new ArrayList<Long>();
+                String[] hotSpots = val.split("-");
+                for (String hotSpot : hotSpots){
+                    this.hot_spots.add(Long.parseLong(hotSpot));
+                }
             }
             
             // ONLY PAYMENT
