@@ -82,7 +82,9 @@ public class Monitor {
             return false;
         }
         
-        for (int i = 0; i < fragmentIds.length; i++) {
+        int loop = Math.min(fragmentIds.length, parameterSets.length);
+        
+        for (int i = 0; i < loop; i++) {
             List<Pair<List<CatalogType>, List<Integer>>> offsets = new ArrayList<>();
             // the following is slow but we can just keep a map to speed it up if needed - similar to columnToTable
             m_p_estimator.getPlanFragmentEstimationParametersMultiCol(CatalogUtil.getPlanFragment(m_catalog_context.database, (int) fragmentIds[i]), offsets);
