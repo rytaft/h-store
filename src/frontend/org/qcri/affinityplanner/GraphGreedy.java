@@ -184,9 +184,15 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 // Step 2) add one vertex to movingVertices - either expand to vertex with highest affinity or with the next hot tuple
 
-                System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
-                System.out.println("Current sender delta " + getSenderDelta(currMove.movingVertices, overloadedPartition, 1));
-
+                if(currMove != null){
+                    System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
+                    System.out.println("Current sender delta " + getSenderDelta(currMove.movingVertices, overloadedPartition, 1));
+                }
+                    
+                if (currMove == null){
+                    currMove = new Move();
+                }
+                
                 nextHotTuplePos = expandMovingVertices (currMove, hotVerticesList, nextHotTuplePos, activePartitions, overloadedPartition);
 
                 System.out.println("Moving:\n" + m_graph.verticesToString(currMove.movingVertices));
@@ -257,10 +263,6 @@ public class GraphGreedy extends PartitionerAffinity {
      */
     private int expandMovingVertices (Move move, IntList hotVertices, int nextHotTuplePos, IntList activePartitions, int fromPartition){
         
-        if (move == null){
-            move = new Move();
-        }
-
         if (move.movingVertices.isEmpty()){
 
             // if empty, add a new hot vertex
