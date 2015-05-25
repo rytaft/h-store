@@ -200,9 +200,9 @@ public abstract class RegressionSuiteUtil {
 //        return (params);
 //    }
 
-    protected static Object[] generateNewOrder(int num_warehouses, boolean dtxn, short w_id) throws Exception {
-        int d_id = rng.number(1, TPCCConstants.DISTRICTS_PER_WAREHOUSE);
-        return generateNewOrder(num_warehouses, dtxn, w_id, d_id);
-    }
+//    protected static Object[] generateNewOrder(int num_warehouses, boolean dtxn, short w_id) throws Exception {
+//        int d_id = rng.number(1, TPCCConstants.DISTRICTS_PER_WAREHOUSE);
+//        return generateNewOrder(num_warehouses, dtxn, w_id, d_id);
+//    }
     
 }
