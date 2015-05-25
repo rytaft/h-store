@@ -64,7 +64,7 @@ public class Monitor {
      *  
      *  A pattern like this is a batch. There can be multiple batches in a transaction.
      *  
-     *  If VERBOSE = false, it outputs a CSV of the form
+     *  If VERBOSE = false, this method outputs a CSV of the form
      * 
      *  TRANSACTION_ID, TABLE_NAME, COLUMN_NAME, VAL
      *  
