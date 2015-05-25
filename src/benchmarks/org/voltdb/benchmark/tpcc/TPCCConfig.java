@@ -68,6 +68,9 @@ public final class TPCCConfig {
     /** Set of hotspots **/
     public ArrayList<Long> hot_spots = null;
     
+    /** Set of hotspots **/
+    public ArrayList<Integer> mirrored_pairings = null;
+
     /**
      * Scale the number of items based on the client scalefactor.
      * @see HStoreConf.ClientConf.scalefactor
@@ -191,6 +194,15 @@ public final class TPCCConfig {
                 String[] hotSpots = val.split("-");
                 for (String hotSpot : hotSpots){
                     this.hot_spots.add(Long.parseLong(hotSpot));
+                }
+            }
+            
+            // MIRRORED PAIRINGS
+            else if (key.equalsIgnoreCase("mirrored_pairings") && !val.isEmpty()){
+                this.mirrored_pairings = new ArrayList<Integer>();
+                String[] pairings = val.split("-");
+                for (String pairing : pairings){
+                    this.mirrored_pairings.add(Integer.parseInt(pairing));
                 }
             }
             
