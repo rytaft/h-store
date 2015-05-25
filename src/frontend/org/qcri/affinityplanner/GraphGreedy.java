@@ -156,7 +156,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                     if (currMove.movingVertices.size() == 0){
                         // it is not a matter of needing to expand more
-                        System.out.println("Moving vertices are empty yet I cannot expand");
+                        System.out.println("Moving vertices are empty yet I cannot expand ");
                         return false;
                     }
 
