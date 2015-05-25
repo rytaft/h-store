@@ -320,6 +320,30 @@ public class TPCCSimulation {
     // REMOTE WAREHOUSE SELECTION METHODS
     // ----------------------------------------------------------------------------
 
+    public static short generatePairedWarehouseTest(int w_id, int starting_warehouse, int last_warehouse, 
+            RandomGenerator generator, int warehouse_pairing_percent) {
+
+        /* Marco
+        int remote_w_id = (w_id % 2 == 0 ? w_id-1 : w_id+1);
+        if (remote_w_id < starting_warehouse) remote_w_id = last_warehouse;
+        else if (remote_w_id > last_warehouse) remote_w_id = starting_warehouse;
+        return (short)remote_w_id; */
+        
+        int remote_w_id = 0;
+        
+        if(generator.number(1, 100) <= warehouse_pairing_percent){
+            remote_w_id = (w_id % 2 == 0 ? w_id-1 : w_id+1);
+            if (remote_w_id < starting_warehouse) remote_w_id = last_warehouse;
+            else if (remote_w_id > last_warehouse) remote_w_id = starting_warehouse;
+        }
+        else{
+            remote_w_id = generator.numberExcluding(starting_warehouse, last_warehouse, (int) w_id);
+        }
+
+        return (short)remote_w_id;
+
+    }
+    
     public short generatePairedWarehouse(int w_id, int starting_warehouse, int last_warehouse, 
             RandomGenerator generator, int warehouse_pairing_percent) {
 
@@ -349,6 +373,7 @@ public class TPCCSimulation {
         
 
     }
+
     
     // ----------------------------------------------------------------------------
     // UTILITY METHODS
