@@ -345,7 +345,7 @@ public abstract class PartitionerAffinity implements Partitioner {
                 }
 
                 System.out.println("Receiver delta: " + receiverDelta + " min delta " + move.rcvDelta);
-                if (receiverDelta < (move.rcvDelta * (1 - Controller.PENALTY_REMOTE_MOVE))){
+                if (receiverDelta <= (move.rcvDelta * (1 - Controller.PENALTY_REMOTE_MOVE))){
 
                     if (receiverDelta == move.rcvDelta){
                         double load = getLoadPerPartition(toPartition);
