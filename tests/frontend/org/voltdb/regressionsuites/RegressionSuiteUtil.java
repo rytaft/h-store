@@ -165,40 +165,40 @@ public abstract class RegressionSuiteUtil {
         loader.load();
     }
     
-    protected static Object[] generateNewOrder(int num_warehouses, boolean dtxn, int w_id, int d_id) throws Exception {
-        short supply_w_id;
-        RandomGenerator generator = new MockRandomGenerator();
-        if (dtxn) {
-            int start = TPCCConstants.STARTING_WAREHOUSE;
-            int stop = TPCCConstants.STARTING_WAREHOUSE + num_warehouses;
-            supply_w_id = TPCCSimulation.generatePairedWarehouse(w_id, start, stop, generator, 100);
-            assert(supply_w_id != w_id);
-        } else {
-            supply_w_id = (short)w_id;
-        }
-        
-        // ORDER_LINE ITEMS
-        int num_items = rng.number(TPCCConstants.MIN_OL_CNT, TPCCConstants.MAX_OL_CNT);
-        int item_ids[] = new int[num_items];
-        short supwares[] = new short[num_items];
-        int quantities[] = new int[num_items];
-        for (int i = 0; i < num_items; i++) { 
-            item_ids[i] = rng.nextInt(100);
-            supwares[i] = (i == 1 && dtxn ? supply_w_id : (short)w_id);
-            quantities[i] = 1;
-        } // FOR
-        
-        Object params[] = {
-            (short)w_id,        // W_ID
-            (byte)d_id,         // D_ID
-            1,                  // C_ID
-            new TimestampType(),// TIMESTAMP
-            item_ids,           // ITEM_IDS
-            supwares,           // SUPPLY W_IDS
-            quantities          // QUANTITIES
-        };
-        return (params);
-    }
+//    protected static Object[] generateNewOrder(int num_warehouses, boolean dtxn, int w_id, int d_id) throws Exception {
+//        short supply_w_id;
+//        RandomGenerator generator = new MockRandomGenerator();
+//        if (dtxn) {
+//            int start = TPCCConstants.STARTING_WAREHOUSE;
+//            int stop = TPCCConstants.STARTING_WAREHOUSE + num_warehouses;
+//            supply_w_id = TPCCSimulation.generatePairedWarehouse(w_id, start, stop, generator, 100);
+//            assert(supply_w_id != w_id);
+//        } else {
+//            supply_w_id = (short)w_id;
+//        }
+//        
+//        // ORDER_LINE ITEMS
+//        int num_items = rng.number(TPCCConstants.MIN_OL_CNT, TPCCConstants.MAX_OL_CNT);
+//        int item_ids[] = new int[num_items];
+//        short supwares[] = new short[num_items];
+//        int quantities[] = new int[num_items];
+//        for (int i = 0; i < num_items; i++) { 
+//            item_ids[i] = rng.nextInt(100);
+//            supwares[i] = (i == 1 && dtxn ? supply_w_id : (short)w_id);
+//            quantities[i] = 1;
+//        } // FOR
+//        
+//        Object params[] = {
+//            (short)w_id,        // W_ID
+//            (byte)d_id,         // D_ID
+//            1,                  // C_ID
+//            new TimestampType(),// TIMESTAMP
+//            item_ids,           // ITEM_IDS
+//            supwares,           // SUPPLY W_IDS
+//            quantities          // QUANTITIES
+//        };
+//        return (params);
+//    }
 
     protected static Object[] generateNewOrder(int num_warehouses, boolean dtxn, short w_id) throws Exception {
         int d_id = rng.number(1, TPCCConstants.DISTRICTS_PER_WAREHOUSE);
