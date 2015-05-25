@@ -66,9 +66,9 @@ public class GraphGreedy extends PartitionerAffinity {
          * MOVE BORDER TUPLES
          */
 
-        System.out.println("Move border tuples");
-
-        offloadBorderTuples(activePartitions);
+//        System.out.println("Move border tuples");
+//
+//        offloadBorderTuples(activePartitions);
 
         // find overloaded partitions
 
@@ -411,43 +411,43 @@ public class GraphGreedy extends PartitionerAffinity {
             //            }
 
             // assess gain with next hot tuple. may need to skip a few hot tuples that are already included in hottestVerticesToMove. 
-            Triplet<Integer,Double,Double> nextVertexListExtension = new Triplet <Integer,Double,Double>(-1, Double.MAX_VALUE, Double.MAX_VALUE);
-
-            int nextVertexList = 0;
-            int skip = 0;
-
-            if(nextPosToMove < verticesToMove.size()){
-
-                // skip elements that are already in the set
-                do{
-                    nextVertexList = verticesToMove.get(nextPosToMove + skip);
-                    skip ++;
-                } while ((movingVertices.contains(nextVertexList)
-                        || AffinityGraph.m_vertexPartition.get(nextVertexList) != fromPartition)
-                        && nextPosToMove + skip < verticesToMove.size()); // I could also check (currHotVertex + jump < hottestVerticesToMove.size()) but if all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
-
-
-                // if I have not reached the end of the list
-                if (! movingVertices.contains(nextVertexList) && AffinityGraph.m_vertexPartition.get(nextVertexList) == fromPartition){
-                    assert(nextVertexList != 0);
-
-                    movingVertices.add(nextVertexList);
-
-                    if(toPart_sndDelta_rcvDelta.fst == null){
-                        findBestPartition(movingVertices, fromPartition, activePartitions, nextVertexListExtension);
-                    }
-                    else{
-                        nextVertexListExtension.fst = toPart_sndDelta_rcvDelta.fst;
-                        nextVertexListExtension.snd = getSenderDelta(movingVertices, fromPartition, toPart_sndDelta_rcvDelta.fst);
-                        nextVertexListExtension.trd = getReceiverDelta(movingVertices, fromPartition, toPart_sndDelta_rcvDelta.fst);
-                    }
-
-                    movingVertices.remove(nextVertexList);
-                }
-            }
+//            Triplet<Integer,Double,Double> nextVertexListExtension = new Triplet <Integer,Double,Double>(-1, Double.MAX_VALUE, Double.MAX_VALUE);
+//
+//            int nextVertexList = 0;
+//            int skip = 0;
+//
+//            if(nextPosToMove < verticesToMove.size()){
+//
+//                // skip elements that are already in the set
+//                do{
+//                    nextVertexList = verticesToMove.get(nextPosToMove + skip);
+//                    skip ++;
+//                } while ((movingVertices.contains(nextVertexList)
+//                        || AffinityGraph.m_vertexPartition.get(nextVertexList) != fromPartition)
+//                        && nextPosToMove + skip < verticesToMove.size()); // I could also check (currHotVertex + jump < hottestVerticesToMove.size()) but if all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
+//
+//
+//                // if I have not reached the end of the list
+//                if (! movingVertices.contains(nextVertexList) && AffinityGraph.m_vertexPartition.get(nextVertexList) == fromPartition){
+//                    assert(nextVertexList != 0);
+//
+//                    movingVertices.add(nextVertexList);
+//
+//                    if(toPart_sndDelta_rcvDelta.fst == null){
+//                        findBestPartition(movingVertices, fromPartition, activePartitions, nextVertexListExtension);
+//                    }
+//                    else{
+//                        nextVertexListExtension.fst = toPart_sndDelta_rcvDelta.fst;
+//                        nextVertexListExtension.snd = getSenderDelta(movingVertices, fromPartition, toPart_sndDelta_rcvDelta.fst);
+//                        nextVertexListExtension.trd = getReceiverDelta(movingVertices, fromPartition, toPart_sndDelta_rcvDelta.fst);
+//                    }
+//
+//                    movingVertices.remove(nextVertexList);
+//                }
+//            }
 
             // pick best available choice
-            if (affineEdgeExtension.snd < nextVertexListExtension.snd){
+//            if (affineEdgeExtension.snd < nextVertexListExtension.snd){
 
                 movingVertices.add(affineVertex);
                 toPart_sndDelta_rcvDelta.fst = affineEdgeExtension.fst;
@@ -458,23 +458,23 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 System.out.println("It was an affine vertex");
                 
-            }
-            else{
-
-                movingVertices.add(nextVertexList);
-                toPart_sndDelta_rcvDelta.fst = nextVertexListExtension.fst;
-                toPart_sndDelta_rcvDelta.snd = nextVertexListExtension.snd;
-                toPart_sndDelta_rcvDelta.trd = nextVertexListExtension.trd;
-
-                LOG.debug("Adding vertex from list: " + nextVertexList);
-
-                System.out.println("It was a hot vertex");
-
-                nextPosToMove += skip;
-                if(nextVertexList == 0){
-                    throw new Error();
-                }
-            }
+//            }
+//            else{
+//
+//                movingVertices.add(nextVertexList);
+//                toPart_sndDelta_rcvDelta.fst = nextVertexListExtension.fst;
+//                toPart_sndDelta_rcvDelta.snd = nextVertexListExtension.snd;
+//                toPart_sndDelta_rcvDelta.trd = nextVertexListExtension.trd;
+//
+//                LOG.debug("Adding vertex from list: " + nextVertexList);
+//
+//                System.out.println("It was a hot vertex");
+//
+//                nextPosToMove += skip;
+//                if(nextVertexList == 0){
+//                    throw new Error();
+//                }
+//            }
 
         } // END if(!movedVertices.isEmpty())
 
