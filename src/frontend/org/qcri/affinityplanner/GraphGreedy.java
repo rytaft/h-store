@@ -99,7 +99,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
         int addedPartitions = 0;
         // offload each overloaded partition
-        System.out.println("LOAD BALANCING");
+        System.out.println("\nLOAD BALANCING");
         System.out.println("#######################");
 
         for(int overloadedPartition : overloadedPartitions){
@@ -112,15 +112,12 @@ public class GraphGreedy extends PartitionerAffinity {
             IntList hotVerticesList = getHottestVertices(overloadedPartition, Controller.MAX_MOVED_TUPLES_PER_PART);
 
             int numMovedVertices = 0;
-
             int nextHotTuplePos = 0;
             int lastHotVertexMoved = -1;
-            //            int retryCount = 1;
 
             int count_iter = 0;
 
             Move currMove = null;
-
             Move candidateMove = null;
 
             int greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
@@ -136,7 +133,8 @@ public class GraphGreedy extends PartitionerAffinity {
                         || numMovedVertices + currMove.movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART 
                         || currMove.toPartition == -1)){
 
-                    if(candidateMove != null){
+                    if(candidateMove != null 
+                            && numMovedVertices + candidateMove.movingVertices.size() < Controller.MAX_MOVED_TUPLES_PER_PART){
                         // before adding a partition, move current candidate if we have one
                         System.out.println("Was almost going to add a partition");
                         System.out.println("ACTUALLY moving to " + candidateMove.toPartition 
@@ -178,8 +176,8 @@ public class GraphGreedy extends PartitionerAffinity {
                     }
 
                     nextHotTuplePos = lastHotVertexMoved + 1;
-                    //                        retryCount = 1;
-                    currMove.clear();
+                    currMove = null;
+                    
                 } // END if (numMovedVertices + movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART || nextPosToMove >= hotVerticesList.size() || (toPart_sndDelta_glbDelta.fst != null && toPart_sndDelta_glbDelta.fst == -1))
 
                 // Step 2) add one vertex to movingVertices - either expand to vertex with highest affinity or with the next hot tuple
@@ -198,9 +196,6 @@ public class GraphGreedy extends PartitionerAffinity {
                 System.out.println("Moving:\n" + m_graph.verticesToString(currMove.movingVertices));
 
                 // Step 3) move the vertices
-                //                System.out.println("Considering moving to " + toPartitionDelta.fst);
-                //
-                //                System.out.println("Sender delta " + toPartitionDelta.snd);
 
                 System.out.println("Receiver: " + currMove.toPartition + ", receiver delta " + currMove.rcvDelta);
 
@@ -307,7 +302,6 @@ public class GraphGreedy extends PartitionerAffinity {
                 findBestPartition(move, fromPartition, activePartitions);
 
                 LOG.debug("Adding edge extension: " + affineVertex);
-                System.out.println("It was an affine vertex");
             }
 
             else{

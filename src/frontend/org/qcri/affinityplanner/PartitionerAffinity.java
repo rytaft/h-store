@@ -247,8 +247,7 @@ public abstract class PartitionerAffinity implements Partitioner {
      * @param activePartitions
      * @param toPartition_senderDelta
      */
-    protected void findBestPartition(Move move, int fromPartition, 
-            IntList activePartitions){
+    protected void findBestPartition(Move move, int fromPartition, IntList activePartitions){
         
         move.toPartition = -1;
         move.sndDelta = Double.MAX_VALUE;
