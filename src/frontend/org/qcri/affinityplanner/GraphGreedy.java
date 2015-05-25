@@ -4,12 +4,10 @@ import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.List;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -61,14 +59,6 @@ public class GraphGreedy extends PartitionerAffinity {
                 activePartitions.add(i);
             }
         }
-        
-        /*
-         * MOVE BORDER TUPLES
-         */
-
-//        System.out.println("Move border tuples");
-//
-//        offloadBorderTuples(activePartitions);
 
         // find overloaded partitions
 
@@ -105,79 +95,6 @@ public class GraphGreedy extends PartitionerAffinity {
         return true;
     }
 
-    private void offloadBorderTuples(IntList activePartitions){
-
-        System.out.println("MOVING BORDER VERTICES");
-        System.out.println("#######################");
-
-        for (int from_part : activePartitions){
-
-            List<IntList> allBorderVertices = getBorderVertices(from_part, Controller.MAX_MOVED_TUPLES_PER_PART);
-            
-            // vertices that will have to be removed from other lists
-            IntSet movedVerticesSet = new IntOpenHashSet ();
-
-            for (int to_part : activePartitions){
-
-                if (from_part == to_part){
-                    continue;
-                }
-
-                // 1) get list of tuples that have the highest external pull to a single other partition
-
-                IntList borderVertices = allBorderVertices.get(to_part);
-
-//                System.out.println("The number of border vertices from " + from_part + " to " +to_part + " is " + borderVertices.size());
-
-                int numMovedVertices = 0;
-                IntOpenHashSet movingVertices = new IntOpenHashSet();
-                int nextPosToMove = 0;
-                //                int lastHotVertexMoved = -1;
-                //                int retryCount = 1;
-
-                Triplet<Integer,Double,Double> toPart_sndDelta_glbDelta = new Triplet<Integer,Double,Double> (to_part, 1.0, 1.0);
-
-                int count_iter = 0;
-
-                while(numMovedVertices + movingVertices.size() < Controller.MAX_MOVED_TUPLES_PER_PART 
-                        && nextPosToMove < borderVertices.size()
-                        && nextPosToMove != -1){
-
-                    System.out.println("Iteration " + (count_iter++));
-
-                    // 2) expand the tuple with the most affine tuples such that adding these tuples reduces the cost after movement
-
-                    nextPosToMove = expandMovingVertices (movingVertices, toPart_sndDelta_glbDelta, borderVertices, nextPosToMove, activePartitions, from_part);
-
-                    System.out.println("Moving:\n" + m_graph.verticesToString(movingVertices));
-
-                    double receiverDelta = getReceiverDelta(movingVertices, from_part, toPart_sndDelta_glbDelta.fst);
-                    System.out.println("Receiver delta " + receiverDelta);
-
-                    if(!movingVertices.isEmpty() 
-                            && toPart_sndDelta_glbDelta.fst != -1
-                            && toPart_sndDelta_glbDelta.snd <= Controller.MIN_SENDER_GAIN_MOVE * -1
-                            && receiverDelta < 0){
-
-                        System.out.println("!!!!!! Actually moving to " + toPart_sndDelta_glbDelta.fst);
-
-                        m_graph.moveHotVertices(movingVertices, from_part, toPart_sndDelta_glbDelta.fst);
-                        //            LOG.debug("Weights after moving " + getLoadPerPartition(fromPartition) + " " + getLoadPerPartition(toPartition));
-
-                        numMovedVertices += movingVertices.size();  
-                        //                            lastHotVertexMoved = nextPosToMove - 1;
-                        movedVerticesSet.addAll(movingVertices);
-
-                        movingVertices.clear();
-                    }
-
-                }
-
-            } // END for (int other_part = 0; other_part < MAX_PARTITIONS; other_part++)
-        } // END for (int part = 0; part < MAX_PARTITIONS; part++)
-
-    }
-
     private boolean offloadHottestTuples(IntList overloadedPartitions, IntList activePartitions){
 
         int addedPartitions = 0;
@@ -195,19 +112,17 @@ public class GraphGreedy extends PartitionerAffinity {
             IntList hotVerticesList = getHottestVertices(overloadedPartition, Controller.MAX_MOVED_TUPLES_PER_PART);
 
             int numMovedVertices = 0;
-            IntOpenHashSet movingVertices = new IntOpenHashSet();
 
-            int nextPosToMove = 0;
+            int nextHotTuplePos = 0;
             int lastHotVertexMoved = -1;
             //            int retryCount = 1;
 
             int count_iter = 0;
 
-            Triplet<Integer, Double, Double> toPart_sndDelta_rcvDelta = new Triplet<Integer, Double, Double> ();
-            
-            IntSet candidateMovingVertices = null;
-            Triplet<Integer, Double, Double> candidateMove = null;
-            
+            Move currMove = null;
+
+            Move candidateMove = null;
+
             int greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
 
             while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
@@ -216,30 +131,32 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 // Step 1) add partition and reset if I have over-expanded movingVertices, or if I cannot expand it anymore
 
-                if (numMovedVertices + movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART 
-                        || nextPosToMove >= hotVerticesList.size()
-                        || (toPart_sndDelta_rcvDelta.fst != null && toPart_sndDelta_rcvDelta.fst == -1)){
-                    
-                    if(candidateMovingVertices != null){
+                if (currMove != null && 
+                        (nextHotTuplePos >= hotVerticesList.size() 
+                        || numMovedVertices + currMove.movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART 
+                        || currMove.toPartition == -1)){
+
+                    if(candidateMove != null){
                         // before adding a partition, move current candidate if we have one
                         System.out.println("Was almost going to add a partition");
-                        System.out.println("ACTUALLY moving to " + candidateMove.fst + "with sender delta " + candidateMove.snd + " and receiver delta " + candidateMove.trd);
-                        System.out.println("Moving:\n" + m_graph.verticesToString(candidateMovingVertices));
+                        System.out.println("ACTUALLY moving to " + candidateMove.toPartition 
+                                + "with sender delta " + candidateMove.sndDelta + " and receiver delta " + candidateMove.rcvDelta);
+                        System.out.println("Moving:\n" + m_graph.verticesToString(candidateMove.movingVertices));
 
-                        m_graph.moveHotVertices(candidateMovingVertices, overloadedPartition, candidateMove.fst);
-                        numMovedVertices += candidateMovingVertices.size();
-                        lastHotVertexMoved = nextPosToMove - 1;
-                        movingVertices.clear();
-                        
-                        candidateMovingVertices = null;
+                        m_graph.moveHotVertices(candidateMove.movingVertices, overloadedPartition, candidateMove.toPartition);
+                        numMovedVertices += candidateMove.movingVertices.size();
+                        lastHotVertexMoved = nextHotTuplePos - 1;
+
+                        currMove = null;
                         candidateMove = null;
                         greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
-                        toPart_sndDelta_rcvDelta.fst = null;
-                       
+
                         continue;
                     }
-                    
-                    if (movingVertices.size() == 0){
+
+                    if (currMove.movingVertices.size() == 0){
+                        // it is not a matter of needing to expand more
+                        System.out.println("Moving vertices are empty yet I cannot expand ");
                         return false;
                     }
 
@@ -260,44 +177,38 @@ public class GraphGreedy extends PartitionerAffinity {
                         }
                     }
 
-                    nextPosToMove = lastHotVertexMoved + 1;
+                    nextHotTuplePos = lastHotVertexMoved + 1;
                     //                        retryCount = 1;
-                    movingVertices.clear();
+                    currMove.clear();
                 } // END if (numMovedVertices + movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART || nextPosToMove >= hotVerticesList.size() || (toPart_sndDelta_glbDelta.fst != null && toPart_sndDelta_glbDelta.fst == -1))
 
                 // Step 2) add one vertex to movingVertices - either expand to vertex with highest affinity or with the next hot tuple
 
-                toPart_sndDelta_rcvDelta.fst = null;
-                toPart_sndDelta_rcvDelta.snd = null;
-                toPart_sndDelta_rcvDelta.trd = null;
-
                 System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
-                System.out.println("Current sender delta " + getSenderDelta(movingVertices, overloadedPartition, 1));
+                System.out.println("Current sender delta " + getSenderDelta(currMove.movingVertices, overloadedPartition, 1));
 
-                nextPosToMove = expandMovingVertices (movingVertices, toPart_sndDelta_rcvDelta, 
-                        hotVerticesList, nextPosToMove, activePartitions, overloadedPartition);
+                nextHotTuplePos = expandMovingVertices (currMove, hotVerticesList, nextHotTuplePos, activePartitions, overloadedPartition);
 
-                System.out.println("Moving:\n" + m_graph.verticesToString(movingVertices));
+                System.out.println("Moving:\n" + m_graph.verticesToString(currMove.movingVertices));
 
                 // Step 3) move the vertices
                 //                System.out.println("Considering moving to " + toPartitionDelta.fst);
                 //
                 //                System.out.println("Sender delta " + toPartitionDelta.snd);
 
-                System.out.println("Receiver: " + toPart_sndDelta_rcvDelta.fst + ", receiver delta " + toPart_sndDelta_rcvDelta.trd);
+                System.out.println("Receiver: " + currMove.toPartition + ", receiver delta " + currMove.rcvDelta);
 
-                if(!movingVertices.isEmpty() 
-                        && toPart_sndDelta_rcvDelta.fst != -1
-                        && toPart_sndDelta_rcvDelta.snd <= Controller.MIN_SENDER_GAIN_MOVE * -1
-                        && (getLoadPerPartition(toPart_sndDelta_rcvDelta.fst) + toPart_sndDelta_rcvDelta.trd < Controller.MAX_LOAD_PER_PART)){
-                    
-                    if(candidateMovingVertices == null || toPart_sndDelta_rcvDelta.trd < candidateMove.trd){
+                if(!currMove.movingVertices.isEmpty() 
+                        && currMove.toPartition != -1
+                        && currMove.sndDelta <= Controller.MIN_SENDER_GAIN_MOVE * -1
+                        && (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta < Controller.MAX_LOAD_PER_PART)){
 
-                        System.out.println("CANDIDATE for moving to " + toPart_sndDelta_rcvDelta.fst);
-                        
+                    if(candidateMove == null || currMove.rcvDelta < candidateMove.rcvDelta){
+
+                        System.out.println("CANDIDATE for moving to " + currMove.toPartition);
+
                         // record this move as a candidate
-                        candidateMovingVertices = movingVertices.clone();
-                        candidateMove = toPart_sndDelta_rcvDelta.clone();
+                        candidateMove = currMove.clone();
                         greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
                     }
                     else{
@@ -306,25 +217,24 @@ public class GraphGreedy extends PartitionerAffinity {
                     }
 
                 }
-                else if(candidateMovingVertices != null){
+                else if(candidateMove != null){
                     // this not a candidate but I have found one
                     greedyStepsAhead--;
                 }
-                
+
                 // move after making enough steps
                 if (greedyStepsAhead == 0){
-                    System.out.println("ACTUALLY moving to " + candidateMove.fst + "with sender delta " + candidateMove.snd + " and receiver delta " + candidateMove.trd);
-                    System.out.println("Moving:\n" + m_graph.verticesToString(candidateMovingVertices));
+                    System.out.println("ACTUALLY moving to " + candidateMove.toPartition + "with sender delta " 
+                            + candidateMove.sndDelta + " and receiver delta " + candidateMove.rcvDelta);
+                    System.out.println("Moving:\n" + m_graph.verticesToString(candidateMove.movingVertices));
 
-                    m_graph.moveHotVertices(candidateMovingVertices, overloadedPartition, toPart_sndDelta_rcvDelta.fst);
-                    numMovedVertices += candidateMovingVertices.size();
-                    lastHotVertexMoved = nextPosToMove - 1;
+                    m_graph.moveHotVertices(candidateMove.movingVertices, overloadedPartition, currMove.toPartition);
+                    numMovedVertices += candidateMove.movingVertices.size();
+                    lastHotVertexMoved = nextHotTuplePos - 1;
 
-                    movingVertices.clear();
-                    candidateMovingVertices = null;
+                    currMove = null;
                     candidateMove = null;
                     greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
-
                 }
 
             } // END while(getLoadPerSite(overloadedPartition) <= maxLoadPerSite)
@@ -345,37 +255,36 @@ public class GraphGreedy extends PartitionerAffinity {
      * - modifies the argument toPartitionDelta to indicate where should the new vertex moved; (-1, inf) indicates that there is no move possible
      * 
      */
-    private int expandMovingVertices (IntSet movingVertices, Triplet<Integer,Double,Double> toPart_sndDelta_rcvDelta, 
-            IntList verticesToMove, int nextPosToMove, IntList activePartitions, int fromPartition){
+    private int expandMovingVertices (Move move, IntList hotVertices, int nextHotTuplePos, IntList activePartitions, int fromPartition){
+        
+        if (move == null){
+            move = new Move();
+        }
 
-        if (movingVertices.isEmpty()){
+        if (move.movingVertices.isEmpty()){
 
             // if empty, add a new hot vertex
-            assert (nextPosToMove < verticesToMove.size()); // If all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here 
+            assert (nextHotTuplePos < hotVertices.size()); // If all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here 
 
-            int nextVertexList = -1;
+            int nextHotVertex;
 
             do{
-                nextVertexList = verticesToMove.get(nextPosToMove);
-                nextPosToMove++;
-            } while (nextPosToMove < verticesToMove.size() 
-                    && AffinityGraph.m_vertexPartition.get(nextVertexList) != fromPartition);
+                nextHotVertex = hotVertices.get(nextHotTuplePos);
+                nextHotTuplePos++;
+            } while (nextHotTuplePos < hotVertices.size() 
+                    && AffinityGraph.m_vertexPartition.get(nextHotVertex) != fromPartition);
             // the second condition is for the case where the vertex has been moved already 
 
-            if (nextPosToMove == verticesToMove.size()){
-                toPart_sndDelta_rcvDelta.fst = -1;
-                toPart_sndDelta_rcvDelta.snd = Double.MAX_VALUE;
-                toPart_sndDelta_rcvDelta.trd = Double.MAX_VALUE;
-                return nextPosToMove;
+            if (nextHotTuplePos == hotVertices.size()){
+                move.clear();
+                return nextHotTuplePos;
             }
 
-            movingVertices.add(nextVertexList);
+            move.movingVertices.add(nextHotVertex);
 
-            if(toPart_sndDelta_rcvDelta.fst == null){
-                findBestPartition(movingVertices, fromPartition, activePartitions, toPart_sndDelta_rcvDelta);
-            }
+            findBestPartition(move, fromPartition, activePartitions);
 
-            if(nextVertexList == 0){
+            if(nextHotVertex == 0){
                 throw new Error();
             }
         } // END if(movedVertices.isEmpty())
@@ -383,108 +292,35 @@ public class GraphGreedy extends PartitionerAffinity {
         else{
 
             // extend current moved set
-
-            // assess gain with extension
-            Triplet<Integer,Double,Double> affineEdgeExtension = new Triplet <Integer,Double,Double>(-1, Double.MAX_VALUE, Double.MAX_VALUE);
-
-            int affineVertex = getMostAffineExtension(movingVertices);
+            
+            move.clearExceptMovingVertices();
+            
+            int affineVertex = getMostAffineExtension(move.movingVertices);
 
             if(affineVertex != 0){
 
-                movingVertices.add(affineVertex);
+                move.movingVertices.add(affineVertex);
 
-                if(toPart_sndDelta_rcvDelta.fst == null){
-
-                    findBestPartition(movingVertices, fromPartition, activePartitions, affineEdgeExtension);
-                }
-                else{
-                    affineEdgeExtension.fst = toPart_sndDelta_rcvDelta.fst;
-                    affineEdgeExtension.snd = getSenderDelta(movingVertices, fromPartition, toPart_sndDelta_rcvDelta.fst);
-                    affineEdgeExtension.trd = getReceiverDelta(movingVertices, fromPartition, toPart_sndDelta_rcvDelta.fst);
-                }
-
-                movingVertices.remove(affineVertex);
-            }
-
-            //            else{
-                //                System.out.println("No more affine edges");
-            //            }
-
-            // assess gain with next hot tuple. may need to skip a few hot tuples that are already included in hottestVerticesToMove. 
-//            Triplet<Integer,Double,Double> nextVertexListExtension = new Triplet <Integer,Double,Double>(-1, Double.MAX_VALUE, Double.MAX_VALUE);
-//
-//            int nextVertexList = 0;
-//            int skip = 0;
-//
-//            if(nextPosToMove < verticesToMove.size()){
-//
-//                // skip elements that are already in the set
-//                do{
-//                    nextVertexList = verticesToMove.get(nextPosToMove + skip);
-//                    skip ++;
-//                } while ((movingVertices.contains(nextVertexList)
-//                        || AffinityGraph.m_vertexPartition.get(nextVertexList) != fromPartition)
-//                        && nextPosToMove + skip < verticesToMove.size()); // I could also check (currHotVertex + jump < hottestVerticesToMove.size()) but if all hot vertices are elsewhere, I have already moved actualMaxMovedVertices so I should not be here
-//
-//
-//                // if I have not reached the end of the list
-//                if (! movingVertices.contains(nextVertexList) && AffinityGraph.m_vertexPartition.get(nextVertexList) == fromPartition){
-//                    assert(nextVertexList != 0);
-//
-//                    movingVertices.add(nextVertexList);
-//
-//                    if(toPart_sndDelta_rcvDelta.fst == null){
-//                        findBestPartition(movingVertices, fromPartition, activePartitions, nextVertexListExtension);
-//                    }
-//                    else{
-//                        nextVertexListExtension.fst = toPart_sndDelta_rcvDelta.fst;
-//                        nextVertexListExtension.snd = getSenderDelta(movingVertices, fromPartition, toPart_sndDelta_rcvDelta.fst);
-//                        nextVertexListExtension.trd = getReceiverDelta(movingVertices, fromPartition, toPart_sndDelta_rcvDelta.fst);
-//                    }
-//
-//                    movingVertices.remove(nextVertexList);
-//                }
-//            }
-
-            // pick best available choice
-//            if (affineEdgeExtension.snd < nextVertexListExtension.snd){
-
-                movingVertices.add(affineVertex);
-                toPart_sndDelta_rcvDelta.fst = affineEdgeExtension.fst;
-                toPart_sndDelta_rcvDelta.snd = affineEdgeExtension.snd;
-                toPart_sndDelta_rcvDelta.trd = affineEdgeExtension.trd;
+                // this will populate all the fields of move
+                findBestPartition(move, fromPartition, activePartitions);
 
                 LOG.debug("Adding edge extension: " + affineVertex);
-
                 System.out.println("It was an affine vertex");
-                
-//            }
-//            else{
-//
-//                movingVertices.add(nextVertexList);
-//                toPart_sndDelta_rcvDelta.fst = nextVertexListExtension.fst;
-//                toPart_sndDelta_rcvDelta.snd = nextVertexListExtension.snd;
-//                toPart_sndDelta_rcvDelta.trd = nextVertexListExtension.trd;
-//
-//                LOG.debug("Adding vertex from list: " + nextVertexList);
-//
-//                System.out.println("It was a hot vertex");
-//
-//                nextPosToMove += skip;
-//                if(nextVertexList == 0){
-//                    throw new Error();
-//                }
-//            }
+            }
 
+            else{
+                System.out.println("Could not expand");
+            }
+            
         } // END if(!movedVertices.isEmpty())
 
         // DEBUG
         LOG.debug("Moving vertices: ");
-        for (int vertex : movingVertices){
+        for (int vertex : move.movingVertices){
             LOG.debug(vertex);
         }       
 
-        return nextPosToMove;
+        return nextHotTuplePos;
 
     }
 

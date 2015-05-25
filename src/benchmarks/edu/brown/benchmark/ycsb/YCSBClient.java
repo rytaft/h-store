@@ -29,6 +29,8 @@
 package edu.brown.benchmark.ycsb;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 
 import org.apache.log4j.Logger;
@@ -87,7 +89,6 @@ public class YCSBClient extends BenchmarkComponent {
     private final long init_record_count;
     private final IntegerGenerator keyGenerator;
     
-    private final IntegerGenerator randScan;
     private final FlatHistogram<Transaction> txnWeights;
     private final Random rand_gen;
     private double skewFactor = YCSBConstants.ZIPFIAN_CONSTANT;
@@ -98,7 +99,13 @@ public class YCSBClient extends BenchmarkComponent {
     private int numHotSpots = 0;
     private double percentAccessHotSpots = 0.0;
     private boolean randomShift = false;
-    private boolean randomHotSpots = false;    
+    private boolean randomHotSpots = false;  
+    private ArrayList<Long> hotSpots = null;
+    
+    private final IntegerGenerator randScan;
+    private final Random scanRange = new Random();
+    private int minScanRange = 0;
+    private int maxScanRange = 0;
     
     int run_count = 0; 
     
@@ -166,6 +173,21 @@ public class YCSBClient extends BenchmarkComponent {
             else if (key.equalsIgnoreCase("random_hot_spots")) {
                 this.randomHotSpots = Boolean.valueOf(value);
             }
+            // Set hotspots
+            else if (key.equalsIgnoreCase("hotspots")) {
+                this.hotSpots = new ArrayList<Long>();
+                String[] hotSpots = value.split("-");
+                for (String hotSpot : hotSpots){
+                    this.hotSpots.add(Long.parseLong(hotSpot));
+                }
+            }            
+            // Min and max ranges for scans
+            else if (key.equalsIgnoreCase("min_scan_range")) {
+                this.minScanRange = Integer.parseInt(value);
+            }
+            else if (key.equalsIgnoreCase("max_scan_range")) {
+                this.maxScanRange = Integer.parseInt(value);
+            }
             else{
                 if(debug.val) LOG.debug("Unknown prop : "  + key);
             }
@@ -204,11 +226,16 @@ public class YCSBClient extends BenchmarkComponent {
             gen.setInterval(interval);
             gen.setMirrored(mirrored);
             gen.setRandomHotSpots(randomHotSpots);
-            gen.setNumHotSpots(numHotSpots);
             gen.setPercentAccessHotSpots(percentAccessHotSpots);
-	    gen.setRandomShift(randomShift);
+            gen.setRandomShift(randomShift);
             gen.setScrambled(scrambled);
             gen.setShift(shift);
+            if(hotSpots != null){
+                gen.setHotSpots(hotSpots);
+            }
+            else{
+                gen.setNumHotSpots(numHotSpots);
+            }
             this.keyGenerator = gen;
         }
         else{
@@ -270,7 +297,9 @@ public class YCSBClient extends BenchmarkComponent {
         switch (target) {
             case DELETE_RECORD:
             case READ_RECORD: {
-                params = new Object[]{ this.keyGenerator.nextInt() };
+                int param = this.keyGenerator.nextInt();
+//                System.out.println("Read " + param);
+                params = new Object[]{ param };
                 break;
             }
             case UPDATE_RECORD:
@@ -281,10 +310,22 @@ public class YCSBClient extends BenchmarkComponent {
                     fields[i] = YCSBUtil.astring(YCSBConstants.COLUMN_LENGTH, YCSBConstants.COLUMN_LENGTH);
                 } // FOR
                 params = new Object[]{ key, fields };
+//                System.out.println("Update " + key);
                 break;
             }
             case SCAN_RECORD:
-                params = new Object[]{ this.keyGenerator.nextInt(), this.randScan.nextInt() };
+                if (maxScanRange == 0){
+                    int key = this.keyGenerator.nextInt();
+                    int range = this.randScan.nextInt();
+                    params = new Object[]{ key, range };
+//                    System.out.println("Scan " + params + " key " + key + " range " + range);
+                }
+                else{
+                    int key = this.keyGenerator.nextInt();
+                    int range = minScanRange + scanRange.nextInt(maxScanRange - minScanRange +1);
+                    params = new Object[]{ key, range };
+//                    System.out.println("Scan " + params + " key " + key + " range " + range);
+                }
                 break;
             default:
                 throw new RuntimeException("Unexpected txn '" + target + "'");
