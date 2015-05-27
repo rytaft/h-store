@@ -136,15 +136,19 @@ public class SimplePartitioner extends PartitionerAffinity {
 
     
     @Override
-    public double getLoadPerPartition(int fromPartition) {
+    public double getLoadPerPartition(int partition) {
+
+        if (!AffinityGraph.isActive(partition)){
+            return 0;
+        }
         
-        IntSet vertices = AffinityGraph.m_partitionVertices.get(fromPartition);
+        IntSet vertices = AffinityGraph.m_partitionVertices.get(partition);
         double load = 0;
         for(int vertex : vertices){
             // local accesses
             load += AffinityGraph.m_vertices.get(vertex);
             // remote accesses
-            int fromPartitionSite = PlanHandler.getSitePartition(fromPartition);
+            int fromPartitionSite = PlanHandler.getSitePartition(partition);
             Int2DoubleMap adjacencyList = AffinityGraph.m_edges.get(vertex);
             if(adjacencyList != null){
                 for(Int2DoubleMap.Entry edge : adjacencyList.int2DoubleEntrySet()){
@@ -153,7 +157,7 @@ public class SimplePartitioner extends PartitionerAffinity {
                     if(toPartitionSite != fromPartitionSite){
                         load += edge.getDoubleValue() * Controller.DTXN_COST;
                     }
-                    else if(toPartition != fromPartition){
+                    else if(toPartition != partition){
                         load += edge.getDoubleValue() * Controller.LMPT_COST;
                     }
                 }

@@ -287,6 +287,11 @@ public class GreedyExtended implements Partitioner {
     }
 
     public double getLoadPerPartition(int partition){
+
+        if (!m_plan_handler.isActive(partition)){
+            return 0;
+        }
+        
         double load = 0;
 
         for (int tuple : m_partitionToHotTuples[partition]){
