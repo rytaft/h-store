@@ -59,7 +59,7 @@ public class Controller extends Thread {
     public static String METIS_MAP_OUT = "metismap.txt";
     
     
-    public static String ALGO = "graph";
+    public static String ALGO = "default";
     
     // Loader
     public static int LOAD_THREADS = 50;
@@ -213,6 +213,7 @@ public class Controller extends Thread {
                 case "simple":
                     partitioner = new SimplePartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
+                case "default":
                 case "graph":
                     partitioner = new GraphGreedy(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
@@ -226,7 +227,8 @@ public class Controller extends Thread {
                     partitioner = new MetisPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
                 default:
-                    partitioner = new GraphGreedy(m_catalog_context, planFile, logFiles, intervalFiles);
+                    System.out.println("The name of the specificed partitioner is incorrect. Exiting.");
+                    System.exit(1);
             }
 
             t2 = System.currentTimeMillis();
@@ -241,10 +243,10 @@ public class Controller extends Thread {
             System.out.println("Load per partition before reconfiguration");
             double sum = 0;
             for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
-                if(AffinityGraph.isActive(i)){
+                double load = partitioner.getLoadPerPartition(i);
+                sum += load;
+                if(load > 0){
                     activePartitions.add(i);
-                    double load = partitioner.getLoadPerPartition(i);
-                    sum += load;
                     System.out.println(i + ": " + load);
                 }
             }

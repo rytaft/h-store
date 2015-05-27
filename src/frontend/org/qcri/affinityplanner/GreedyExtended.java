@@ -116,8 +116,14 @@ public class GreedyExtended implements Partitioner {
 
             // PROCESS LINE
             while(line != null){
-                if (!line.equals("END")){
-                    int hash = line.hashCode();
+
+                String[] fields = line.split(";");
+
+                // if finished with one transaction, update graph and clear before moving on
+
+                if (!fields[0].equals("END")){
+                    
+                    int hash = fields[1].hashCode();
                     double currWeight = m_hotTuples.get(hash);
                     if(currWeight == m_hotTuples.defaultReturnValue()){
                         m_hotTuples.put(hash, increment);
@@ -281,6 +287,11 @@ public class GreedyExtended implements Partitioner {
     }
 
     public double getLoadPerPartition(int partition){
+
+        if (!m_plan_handler.isActive(partition)){
+            return 0;
+        }
+        
         double load = 0;
 
         for (int tuple : m_partitionToHotTuples[partition]){

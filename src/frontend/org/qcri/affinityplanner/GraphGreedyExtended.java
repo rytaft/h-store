@@ -427,6 +427,11 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
     @Override
     public double getLoadPerPartition(int partition){
+
+        if (!AffinityGraph.isActive(partition)){
+            return 0;
+        }
+
         return getLoadVertices(AffinityGraph.m_partitionVertices.get(partition));
     }
 

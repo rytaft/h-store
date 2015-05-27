@@ -198,29 +198,21 @@ public class AffinityGraph {
                 } // END if (line.equals("END"))
 
                 else{
-                    // do not create edges to keys that are not used for partitioning
-                    int partition = m_plan_handler.getPartition(fields[1]);
-                    if (partition == HStoreConstants.NULL_PARTITION_ID){
-                        LOG.info("Could not find partition for key " + fields[1] + ", skipping");
-                        // System.out.println("Could not find partition for key " + fromName + ", skipping");
-                    }
-                    else{        
-                        // add the vertex to the transaction
-                        String transaction_id = fields[0];
-                        int hash = fields[1].hashCode();
+                    // add the vertex to the transaction
+                    String transaction_id = fields[0];
+                    int hash = fields[1].hashCode();
 
-                        IntOpenHashSet curr_transaction = transactions.get(transaction_id);
-                        if (curr_transaction == null){
-                            curr_transaction = new IntOpenHashSet ();
-                            transactions.put(transaction_id, curr_transaction);
-                        }
-                        curr_transaction.add(hash);
-                    
-                        if (!vertex_to_name.containsKey(hash)){
-                            vertex_to_name.put(hash, fields[1]);
-                        }
+                    IntOpenHashSet curr_transaction = transactions.get(transaction_id);
+                    if (curr_transaction == null){
+                        curr_transaction = new IntOpenHashSet ();
+                        transactions.put(transaction_id, curr_transaction);
                     }
-                }
+                    curr_transaction.add(hash);
+
+                    if (!vertex_to_name.containsKey(hash)){
+                        vertex_to_name.put(hash, fields[1]);
+                    }
+                } // END if (!line.equals("END"))
 
                 /* this is what one would do to count different accesses within the same transaction. 
                  * For the moment I count only the number of transactions accessing a tuple
