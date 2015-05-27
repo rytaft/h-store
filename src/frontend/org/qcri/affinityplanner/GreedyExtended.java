@@ -123,8 +123,6 @@ public class GreedyExtended implements Partitioner {
 
                 String[] fields = line.split(";");
 
-                // if finished with one transaction, update graph and clear before moving on
-
                 if (!fields[0].equals("END")){
                     
                     int hash = fields[1].hashCode();
@@ -135,7 +133,7 @@ public class GreedyExtended implements Partitioner {
                     else{
                         m_hotTuples.put(hash, currWeight + increment);
                     }
-                    m_tupleToName.put(line.hashCode(), line);
+                    m_tupleToName.put(hash, fields[1]);
                     int partition = m_plan_handler.getPartition(line);
                     IntSet tuples = partitionToHotTuplesSet[partition];
                     if (tuples == null){
