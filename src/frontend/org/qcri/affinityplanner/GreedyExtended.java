@@ -54,7 +54,11 @@ public class GreedyExtended implements Partitioner {
     private void loadLogFile(Path[] logFiles, Path[] intervalFiles) throws Exception{
 
         IntSet[] partitionToHotTuplesSet = new IntSet[Controller.MAX_PARTITIONS];
-
+        
+        for (int part = 0; part < Controller.MAX_PARTITIONS; part ++){
+            partitionToHotTuplesSet[part] = new IntOpenHashSet();
+        }
+        
         // read monitoring intervals for all sites - in seconds
         m_intervalsInSecs = new long[intervalFiles.length];
         int currInterval = 0;
