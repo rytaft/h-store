@@ -356,7 +356,7 @@ public class TPCCSimulation {
         int remote_w_id = 0;
         
         if(generator.number(1, 100) <= warehouse_pairing_percent){
-            if (config.mirrored_pairings.contains(w_id) || config.mirrored_pairings.contains(last_warehouse - w_id + 1)){
+            if (config.mirrored_pairings != null && (config.mirrored_pairings.contains(w_id) || config.mirrored_pairings.contains(last_warehouse - w_id + 1))){
                 remote_w_id = last_warehouse - w_id + 1;
             }
             else{
