@@ -116,8 +116,14 @@ public class GreedyExtended implements Partitioner {
 
             // PROCESS LINE
             while(line != null){
-                if (!line.equals("END")){
-                    int hash = line.hashCode();
+
+                String[] fields = line.split(";");
+
+                // if finished with one transaction, update graph and clear before moving on
+
+                if (!fields[0].equals("END")){
+                    
+                    int hash = fields[1].hashCode();
                     double currWeight = m_hotTuples.get(hash);
                     if(currWeight == m_hotTuples.defaultReturnValue()){
                         m_hotTuples.put(hash, increment);
