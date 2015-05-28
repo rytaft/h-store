@@ -210,7 +210,7 @@ public class Controller extends Thread {
             hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
             if (ROOT_TABLE != null){
                 System.out.println("Got the root table " + ROOT_TABLE);
-                String command = "python scripts/partitioning/filter_root_table.py " + hStoreDir + " " + ROOT_TABLE;
+                String command = "python scripts/partitioning/filter_root_table.py " + ROOT_TABLE;
                 String results = ShellTools.cmd(command);
             }
     
