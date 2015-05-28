@@ -102,7 +102,7 @@ public class Monitor {
 // EDITED - this would print all fields that accessed. we print only the first one assuming that it is the partitioning key
 //                        Iterator<CatalogType> columnIter = offsetPair.getFirst().iterator();
 //                        for(Integer offset : offsetPair.getSecond()) {
-//                            Column column = (Column) columnIter.next();
+//                            column = (Column) columnIter.next();
                             int offset = offsetPair.getSecond().get(0);
                             s = ts.getTransactionId().toString() + ";" + table_name + "," + parameterSet.toArray()[offset];
                             // s = ts.getTransactionId().toString() + ";" + table_name + "," + column.getName().toLowerCase() + "," + parameterSet.toArray()[offset];
