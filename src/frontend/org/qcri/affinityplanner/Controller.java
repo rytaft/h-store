@@ -154,7 +154,7 @@ public class Controller extends Thread {
         Path[] intervalFiles = new Path[MAX_PARTITIONS];
         for (int i = 0; i < MAX_PARTITIONS; i++){
             logFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + ".log");
-            intervalFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + "-interval.log");
+            intervalFiles[i] = FileSystems.getDefault().getPath(".", "interval-partition-" + i + ".log");
         }
 
         if(EXEC_MONITORING){
@@ -190,24 +190,13 @@ public class Controller extends Thread {
             t1 = System.currentTimeMillis();
             String hStoreDir = ShellTools.cmd("pwd");
             hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
-            String command1 = "python scripts/partitioning/fetch_monitor.py " + hStoreDir;
+            String command = "python scripts/partitioning/fetch_monitor.py " + hStoreDir;
             for(Site site: m_sites){
-                command1 = command1 + " " + site.getHost().getIpaddr();
+                command = command + " " + site.getHost().getIpaddr();
             }
             @SuppressWarnings("unused")
-            String results = ShellTools.cmd(command1);
+            String results = ShellTools.cmd(command);
             
-            if (Controller.ROOT_TABLE != null){
-                for (int i = 0; i < MAX_PARTITIONS; i++){
-                    File f = new File(hStoreDir + "/transactions-partition-" + i + ".log");
-                    if(f.exists() && !f.isDirectory()){
-                        String command2 = "grep '" + Controller.ROOT_TABLE + "\\|END' transactions-partition-" + i + ".log > transactions-partition-" + i + ".log";
-                        @SuppressWarnings("unused")
-                        String results2 = ShellTools.cmd(command2);
-                    }
-                }
-            }
-    
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
 
@@ -217,8 +206,15 @@ public class Controller extends Thread {
             record("======================== LOADING GRAPH ========================");
             t1 = System.currentTimeMillis();
             
+            String hStoreDir = ShellTools.cmd("pwd");
+            hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
+            if (ROOT_TABLE != null){
+                System.out.println("Got the root table " + ROOT_TABLE);
+                String command = "python scripts/partitioning/filter_root_table.py " + hStoreDir + " " + ROOT_TABLE;
+                String results = ShellTools.cmd(command);
+            }
+    
             Partitioner partitioner = null;
-            
             System.out.println("Algorithm " + ALGO);
             
             // checks parameter -Delastic.algo

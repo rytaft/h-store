@@ -1047,7 +1047,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             
             // create new monitoring files
             Path logFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + ".log");
-            Path intervalFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + "-interval.log");
+            Path intervalFile = FileSystems.getDefault().getPath(".", "interval-partition-" + partitionId + ".log");
             this.m_access_monitor.openLog(logFile, intervalFile);
         }
         else if(this.m_access_monitor.isMonitoring()){
