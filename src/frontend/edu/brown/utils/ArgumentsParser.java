@@ -204,6 +204,7 @@ public class ArgumentsParser {
     public static final String PARAM_ELASTIC_PLAN_OUT = PARAM_ELASTIC + ".plan_out";
     public static final String PARAM_ELASTIC_ALGO = PARAM_ELASTIC + ".algo";
     public static final String PARAM_ELASTIC_TOPK = PARAM_ELASTIC + ".topk";
+    public static final String PARAM_ELASTIC_ROOT_TABLE = PARAM_ELASTIC + ".root_table";
     
     public static final List<String> PARAMS = new ArrayList<String>();
     static {
@@ -1058,6 +1059,10 @@ public class ArgumentsParser {
 
         if (this.params.containsKey(PARAM_ELASTIC_TOPK)){
             Controller.TOPK= Integer.parseInt(this.params.get(PARAM_ELASTIC_TOPK));
+        }        
+
+        if (this.params.containsKey(PARAM_ELASTIC_ROOT_TABLE)){
+            Controller.ROOT_TABLE= this.params.get(PARAM_ELASTIC_ROOT_TABLE);
         }        
 
         // -------------------------------------------------------

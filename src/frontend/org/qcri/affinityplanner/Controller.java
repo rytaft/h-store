@@ -79,6 +79,8 @@ public class Controller extends Thread {
     public static int COLD_CHUNK_SIZE = 100;
     public static double COLD_TUPLE_FRACTION_ACCESSES = 100;
     public static int TOPK = Integer.MAX_VALUE;
+    
+    public static String ROOT_TABLE = null;
    
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
         
@@ -188,12 +190,23 @@ public class Controller extends Thread {
             t1 = System.currentTimeMillis();
             String hStoreDir = ShellTools.cmd("pwd");
             hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
-            String command = "python scripts/partitioning/fetch_monitor.py " + hStoreDir;
+            String command1 = "python scripts/partitioning/fetch_monitor.py " + hStoreDir;
             for(Site site: m_sites){
-                command = command + " " + site.getHost().getIpaddr();
+                command1 = command1 + " " + site.getHost().getIpaddr();
             }
             @SuppressWarnings("unused")
-            String results = ShellTools.cmd(command);
+            String results = ShellTools.cmd(command1);
+            
+            if (Controller.ROOT_TABLE != null){
+                for (int i = 0; i < MAX_PARTITIONS; i++){
+                    File f = new File(hStoreDir + "/transactions-partition-" + i + ".log");
+                    if(f.exists() && !f.isDirectory()){
+                        String command2 = "grep '" + Controller.ROOT_TABLE + "\\|END' transactions-partition-" + i + ".log > transactions-partition-" + i + ".log";
+                        @SuppressWarnings("unused")
+                        String results2 = ShellTools.cmd(command2);
+                    }
+                }
+            }
     
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));

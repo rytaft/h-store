@@ -248,6 +248,14 @@ public class Plan {
         return true;
     }
 
+    public boolean addRangeAllTables(Integer partition, Long from, Long to){
+        boolean res = true;
+        for (String table : table_names){
+            res = res && addRange(table, partition, from, to);
+        }
+        return res;
+    }
+        
     /**
      * Returns true if the element was present
      * 
@@ -313,6 +321,13 @@ public class Plan {
         return true;
     }
 
+    public boolean removeTupleIdAllTables(Integer partition, Long tupleId) {
+        boolean res = true;
+        for (String table : table_names){
+            res = res && removeTupleId(table, partition, tupleId);
+        }
+        return res;
+    }
 
     Integer getTuplePartition(String table, Long tupleId) {
         HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
@@ -809,6 +824,13 @@ public class Plan {
             }
         }
     }
+    
+    public void moveColdRangeAllTables(Plan.Range movedRange, int fromPart, int toPart){
+        for (String table : table_names){
+            moveColdRange(table, movedRange, fromPart, toPart);
+        }
+    }
+
     
     String[] getTables(){
         return table_names;

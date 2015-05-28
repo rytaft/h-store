@@ -2134,7 +2134,8 @@ public class BenchmarkController {
                 Controller.ALGO = parts[1];
             } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_TOPK)){
                 Controller.TOPK = Integer.parseInt(parts[1]);
-                
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_ROOT_TABLE)){
+                Controller.ROOT_TABLE = parts[1];
             } else if (parts[0].equalsIgnoreCase("DUMPDATABASE")) {
                 dumpDatabase = Boolean.parseBoolean(parts[1]);                
             } else if (parts[0].equalsIgnoreCase("DUMPDATABASEDIR")) {

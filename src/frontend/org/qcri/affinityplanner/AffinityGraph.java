@@ -332,30 +332,40 @@ public class AffinityGraph {
             m_vertexPartition.put(movedVertex, toPartition);
 
             // update plan too
-            // format of vertices is <TABLE>,<PART-KEY>,<VALUE>
+            // format of vertices is <TABLE>,<VALUE>
             String movedVertexName = m_vertex_to_name.get(movedVertex);
             String [] fields = movedVertexName.split(",");
-//            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
-//            System.out.println("remove ID: " + fields[1]);
-            m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[1]));
-//            System.out.println("After removal");
-//            System.out.println(m_plan_handler.toString() + "\n");
-//            m_plan_handler.addPartition(fields[0], toPartition);
-//            System.out.println("After adding partition");
-//            System.out.println(m_plan_handler.toString() + "\n");
-            m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
-//            System.out.println("After adding range");
-//            System.out.println(m_plan_handler.toString() + "\n");
-//            System.exit(0);
+            
+            if(Controller.ROOT_TABLE == null){
+    //            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
+    //            System.out.println("remove ID: " + fields[1]);
+                m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[1]));
+    //            System.out.println("After removal");
+    //            System.out.println(m_plan_handler.toString() + "\n");
+    //            m_plan_handler.addPartition(fields[0], toPartition);
+    //            System.out.println("After adding partition");
+    //            System.out.println(m_plan_handler.toString() + "\n");
+                m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
+    //            System.out.println("After adding range");
+    //            System.out.println(m_plan_handler.toString() + "\n");
+    //            System.exit(0);
+            }
+            else{
+                m_plan_handler.removeTupleIdAllTables(fromPartition, Long.parseLong(fields[1]));
+                m_plan_handler.addRangeAllTables(toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
+            }
         }
         
 //        System.out.println(m_plan_handler.toString() + "\n");
     }
     
-    public void moveColdRange(String table, Plan.Range movedRange, int fromPart, int toPart){
-        
-        m_plan_handler.moveColdRange(table, movedRange, fromPart, toPart);
-
+    public void moveColdRange(String table, Plan.Range movedRange, int fromPart, int toPart){     
+        if (Controller.ROOT_TABLE == null){
+            m_plan_handler.moveColdRange(table, movedRange, fromPart, toPart);
+        }
+        else{
+            m_plan_handler.moveColdRangeAllTables(movedRange, fromPart, toPart);
+        }
     }
     
     public int getPartition(int vertex){

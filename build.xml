@@ -1812,6 +1812,7 @@ TEST CASES
         <arg value="elastic.plan_out=${elastic.plan_out}" />
         <arg value="elastic.algo=${elastic.algo}" />
         <arg value="elastic.topk=${elastic.topk}" />
+        <arg value="elastic.root_table=${elastic.root_table}" />
 
     </java>
 </target>
@@ -2656,6 +2657,7 @@ UTILITIES
 	<arg value="elastic.plan_out=${elastic.plan_out}" />
         <arg value="elastic.algo=${elastic.algo}" />
         <arg value="elastic.topk=${elastic.topk}" />
+    	<arg value="elastic.root_table=${elastic.root_table}" />
 	&common;
         <classpath refid='project.classpath' />
     <assertions><enable/></assertions>
@@ -2688,6 +2690,7 @@ UTILITIES
 	<arg value="elastic.plan_out=${elastic.plan_out}" />
         <arg value="elastic.algo=${elastic.algo}" />
         <arg value="elastic.topk=${elastic.topk}" />
+	    <arg value="elastic.root_table=${elastic.root_table}" />
 	&common;
         <classpath refid='project.classpath' />
     <assertions><enable/></assertions>
