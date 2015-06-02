@@ -220,11 +220,11 @@ public class GreedyExtended implements Partitioner {
     
                     int currHotTuple = fromHotTuples.getInt(fromHotTuples.size() - 1);
     
-                    System.out.println("\nTuple name " + m_tupleToName.get(currHotTuple) + ", id " + currHotTuple + ", and weight " + m_hotTuples.get(currHotTuple));
+//                    System.out.println("\nTuple name " + m_tupleToName.get(currHotTuple) + ", id " + currHotTuple + ", and weight " + m_hotTuples.get(currHotTuple));
     
                     toHotTuples.add(currHotTuple);
     
-                    System.out.println("Load " + getLoadPerPartition(overloadedPartition));
+//                    System.out.println("Load " + getLoadPerPartition(overloadedPartition));
     
                     if (getLoadPerPartition(toPartition) > Controller.MAX_LOAD_PER_PART){
     
