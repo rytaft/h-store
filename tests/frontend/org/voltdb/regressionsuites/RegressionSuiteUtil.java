@@ -8,6 +8,8 @@ import org.voltdb.SysProcSelector;
 import org.voltdb.VoltSystemProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
+import org.voltdb.benchmark.tpcc.MockRandomGenerator;
+import org.voltdb.benchmark.tpcc.RandomGenerator;
 import org.voltdb.benchmark.tpcc.TPCCConstants;
 import org.voltdb.benchmark.tpcc.TPCCLoader;
 import org.voltdb.benchmark.tpcc.TPCCSimulation;
@@ -165,10 +167,11 @@ public abstract class RegressionSuiteUtil {
     
     protected static Object[] generateNewOrder(int num_warehouses, boolean dtxn, int w_id, int d_id) throws Exception {
         short supply_w_id;
+        RandomGenerator generator = new MockRandomGenerator();
         if (dtxn) {
             int start = TPCCConstants.STARTING_WAREHOUSE;
             int stop = TPCCConstants.STARTING_WAREHOUSE + num_warehouses;
-            supply_w_id = TPCCSimulation.generatePairedWarehouse(w_id, start, stop);
+            supply_w_id = TPCCSimulation.generatePairedWarehouseTest(w_id, start, stop, generator, 100);
             assert(supply_w_id != w_id);
         } else {
             supply_w_id = (short)w_id;

@@ -9,10 +9,8 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.voltdb.CatalogContext;
 
-import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.AbstractIntComparator;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -56,7 +54,11 @@ public class GreedyExtended implements Partitioner {
     private void loadLogFile(Path[] logFiles, Path[] intervalFiles) throws Exception{
 
         IntSet[] partitionToHotTuplesSet = new IntSet[Controller.MAX_PARTITIONS];
-
+        
+        for (int part = 0; part < Controller.MAX_PARTITIONS; part ++){
+            partitionToHotTuplesSet[part] = new IntOpenHashSet();
+        }
+        
         // read monitoring intervals for all sites - in seconds
         m_intervalsInSecs = new long[intervalFiles.length];
         int currInterval = 0;
@@ -118,8 +120,12 @@ public class GreedyExtended implements Partitioner {
 
             // PROCESS LINE
             while(line != null){
-                if (!line.equals("END")){
-                    int hash = line.hashCode();
+
+                String[] fields = line.split(";");
+
+                if (!fields[0].equals("END")){
+                    
+                    int hash = fields[1].hashCode();
                     double currWeight = m_hotTuples.get(hash);
                     if(currWeight == m_hotTuples.defaultReturnValue()){
                         m_hotTuples.put(hash, increment);
@@ -127,7 +133,7 @@ public class GreedyExtended implements Partitioner {
                     else{
                         m_hotTuples.put(hash, currWeight + increment);
                     }
-                    m_tupleToName.put(line.hashCode(), line);
+                    m_tupleToName.put(hash, fields[1]);
                     int partition = m_plan_handler.getPartition(line);
                     IntSet tuples = partitionToHotTuplesSet[partition];
                     if (tuples == null){
@@ -214,11 +220,11 @@ public class GreedyExtended implements Partitioner {
     
                     int currHotTuple = fromHotTuples.getInt(fromHotTuples.size() - 1);
     
-                    System.out.println("\nTuple name " + m_tupleToName.get(currHotTuple) + ", id " + currHotTuple + ", and weight " + m_hotTuples.get(currHotTuple));
+//                    System.out.println("\nTuple name " + m_tupleToName.get(currHotTuple) + ", id " + currHotTuple + ", and weight " + m_hotTuples.get(currHotTuple));
     
                     toHotTuples.add(currHotTuple);
     
-                    System.out.println("Load " + getLoadPerPartition(overloadedPartition));
+//                    System.out.println("Load " + getLoadPerPartition(overloadedPartition));
     
                     if (getLoadPerPartition(toPartition) > Controller.MAX_LOAD_PER_PART){
     
@@ -238,11 +244,11 @@ public class GreedyExtended implements Partitioner {
     
                         String [] fields = movedVertexName.split(",");
                         //            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
-                        //            System.out.println("remove ID: " + fields[2]);
-                        m_plan_handler.removeTupleId(fields[0], overloadedPartition, Long.parseLong(fields[2]));
+                        //            System.out.println("remove ID: " + fields[1]);
+                        m_plan_handler.removeTupleId(fields[0], overloadedPartition, Long.parseLong(fields[1]));
                         //            System.out.println("After removal");
                         //            System.out.println(m_plan_handler.toString() + "\n");
-                        m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[2]), Long.parseLong(fields[2]));
+                        m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
                     }
     
                 } // while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART && !fromHotTuples.isEmpty() && topK > 0)
@@ -283,6 +289,11 @@ public class GreedyExtended implements Partitioner {
     }
 
     public double getLoadPerPartition(int partition){
+
+        if (!m_plan_handler.isActive(partition)){
+            return 0;
+        }
+        
         double load = 0;
 
         for (int tuple : m_partitionToHotTuples[partition]){
@@ -390,8 +401,4 @@ public class GreedyExtended implements Partitioner {
         return numMovedVertices;
     }
     
-    @Override
-    public void graphToMetisFile(Path out, Path map) {
-        throw new NotImplementedException();
-    }
 }

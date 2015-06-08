@@ -26,6 +26,8 @@ public class Plan {
     // the TreeMap is a range. The key is the beginning of interval, the value is the end.
     private Map<String, HashMap<Integer, TreeMap<Long, Long>>> tableToPartitionsToRanges = new HashMap<String, HashMap<Integer, TreeMap<Long, Long>>>();
     protected String[] table_names;
+    private String m_defaultTable;
+    
     public class Range{
         Long from;
         Long to;
@@ -73,10 +75,9 @@ public class Plan {
         if (partitionToRanges == null){
             partitionToRanges = new HashMap<Integer, TreeMap<Long, Long>> ();
             tableToPartitionsToRanges.put(table.toLowerCase(), partitionToRanges);
+            TreeMap<Long, Long> emptyRange = new TreeMap<Long,Long>();
+            partitionToRanges.put(partitionId, emptyRange);
         }
-        TreeMap<Long, Long> emptyRange = new TreeMap<Long,Long>();
-        partitionToRanges.put(partitionId, emptyRange);
-
     }
 
     public void removePartition(String table, Integer partitionId) {
@@ -247,6 +248,14 @@ public class Plan {
         return true;
     }
 
+    public boolean addRangeAllTables(Integer partition, Long from, Long to){
+        boolean res = true;
+        for (String table : table_names){
+            res = res && addRange(table, partition, from, to);
+        }
+        return res;
+    }
+        
     /**
      * Returns true if the element was present
      * 
@@ -312,6 +321,13 @@ public class Plan {
         return true;
     }
 
+    public boolean removeTupleIdAllTables(Integer partition, Long tupleId) {
+        boolean res = true;
+        for (String table : table_names){
+            res = res && removeTupleId(table, partition, tupleId);
+        }
+        return res;
+    }
 
     Integer getTuplePartition(String table, Long tupleId) {
         HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
@@ -638,7 +654,8 @@ public class Plan {
                 }
 
             }
-            dstData.put(PLANNED_PARTITIONS, jsonPlan);   
+            dstData.put(PLANNED_PARTITIONS, jsonPlan);
+            dstData.put("default_table", m_defaultTable);
 
         } catch(JSONException f) {
             System.out.println("Convertion of the plan into a JSONObject failed!");
@@ -692,23 +709,24 @@ public class Plan {
     // read in the last plan
     private void loadFromJSON(String filename) {
         tableToPartitionsToRanges.clear();
+        JSONObject firstLevel;
         JSONObject srcData;
         String inputData = FileUtil.readFile(filename);
 
         //		System.out.println("Working from " + inputData);
         try {
-            srcData = new JSONObject(inputData);	
+            firstLevel = new JSONObject(inputData);	
         } catch(JSONException e) {
             System.out.println("Failed to read in " + filename);
             return;
         }
 
-        if(!srcData.has(PLANNED_PARTITIONS)) {
+        if(!firstLevel.has(PLANNED_PARTITIONS)) {
             return;
         }
 
         // traverse "partition_plan" object
-        srcData = traverseLevelSingle(srcData);		
+        srcData = traverseLevelSingle(firstLevel);		
         // traverse "tables" object
         srcData = traverseLevelSingle(srcData);         
 
@@ -740,6 +758,13 @@ public class Plan {
                 }
                 partitionToRanges.put(partitionNo, parseRanges(partitionRanges));
             }
+        }
+        
+        try {
+            m_defaultTable = firstLevel.getString("default_table");
+        } catch(JSONException e) {
+            System.out.println("Failed to read in " + filename);
+            return;
         }
     }
 
@@ -799,6 +824,13 @@ public class Plan {
             }
         }
     }
+    
+    public void moveColdRangeAllTables(Plan.Range movedRange, int fromPart, int toPart){
+        for (String table : table_names){
+            moveColdRange(table, movedRange, fromPart, toPart);
+        }
+    }
+
     
     String[] getTables(){
         return table_names;

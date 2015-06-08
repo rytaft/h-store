@@ -1,18 +1,15 @@
 package org.qcri.affinityplanner;
 
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.UnknownHostException;
-import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.TreeSet;
@@ -53,8 +50,8 @@ public class Controller extends Thread {
     public static int PARTITIONS_PER_SITE;
 
     public static int MONITORING_TIME = 20000;
-    public static boolean RUN_MONITORING = true;
-    public static boolean UPDATE_PLAN = true;
+    public static boolean EXEC_MONITORING = true;
+    public static boolean EXEC_UPDATE_PLAN = true;
     public static boolean EXEC_RECONF = true;
     public static String PLAN_IN = "plan_affinity.json";
     public static String PLAN_OUT = "plan_out.json";
@@ -62,25 +59,29 @@ public class Controller extends Thread {
     public static String METIS_MAP_OUT = "metismap.txt";
     
     
-    public static String ALGO = "graph";
+    public static String ALGO = "default";
     
     // Loader
-    public static int LOAD_THREADS = 6;
+    public static int LOAD_THREADS = 50;
  
     // Repartitioning
     public static double MIN_LOAD_PER_PART = Double.MIN_VALUE;
     public static double MAX_LOAD_PER_PART = Double.MAX_VALUE;
+    public static double IMBALANCE_LOAD = 0;
     public static double LMPT_COST = 1.1;
-    public static double DTXN_COST = 5.0;
+    public static double DTXN_COST = 50.0;
     public static int MAX_MOVED_TUPLES_PER_PART = 10000;
-    public static int MIN_GAIN_MOVE = 0;
+    public static int MIN_SENDER_GAIN_MOVE = 0;
     public static int MAX_PARTITIONS_ADDED = 1;
+    public static double PENALTY_REMOTE_MOVE = 0;
+    public static int GREEDY_STEPS_AHEAD = 5;
     
     public static int COLD_CHUNK_SIZE = 100;
     public static double COLD_TUPLE_FRACTION_ACCESSES = 100;
     public static int TOPK = Integer.MAX_VALUE;
-
-
+    
+    public static String ROOT_TABLE = null;
+   
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
         
         m_client = ClientFactory.createClient();
@@ -114,6 +115,10 @@ public class Controller extends Thread {
             PLAN_IN = hstore_conf.global.hasher_plan;
             LOG.info("Updating plan_in to be " + PLAN_IN);
         }
+        else{
+            System.out.println("No plan specified. Exiting");
+            System.exit(1);
+        }
         
         // verify that all partition ids are contiguous
         Iterator<Integer> partIdsIt = partitionIds.iterator();
@@ -128,28 +133,6 @@ public class Controller extends Thread {
                 System.exit(1);
             }
         }
-
-//        if(hstore_conf.global.hasher_plan == null){
-//            System.out.println("Must set global.hasher_plan to specify plan file!");
-//            System.out.println("Using default (plan.json)");
-//            planFile = FileSystems.getDefault().getPath("plan.json");
-//
-//        }
-//        else{
-//            planFile = FileSystems.getDefault().getPath(hstore_conf.global.hasher_plan);
-//        }
-//
-//        outputPlanFile = FileSystems.getDefault().getPath("plan_out.json");
-//
-//        try {
-//            Files.copy(planFile, outputPlanFile, StandardCopyOption.REPLACE_EXISTING);              
-//        }
-//        catch(IOException e) {
-//            System.out.println("Controller: IO Exception while copying plan file to output plan file");
-//            e.printStackTrace();
-//        }
-
-        //TODO select planners here
     }
     
     public static void record(String s){
@@ -159,7 +142,7 @@ public class Controller extends Thread {
     
     public void run (){
         // turn monitoring on and off
-        if(RUN_MONITORING || EXEC_RECONF){
+        if(EXEC_MONITORING || EXEC_RECONF){
             connectToHost();
         }
         
@@ -171,10 +154,10 @@ public class Controller extends Thread {
         Path[] intervalFiles = new Path[MAX_PARTITIONS];
         for (int i = 0; i < MAX_PARTITIONS; i++){
             logFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + ".log");
-            intervalFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + "-interval.log");
+            intervalFiles[i] = FileSystems.getDefault().getPath(".", "interval-partition-" + i + ".log");
         }
 
-        if(RUN_MONITORING){
+        if(EXEC_MONITORING){
             record("================== RUNNING MONITORING ======================");
 
             String[] confNames = {"site.access_tracking"};
@@ -210,94 +193,93 @@ public class Controller extends Thread {
             String command = "python scripts/partitioning/fetch_monitor.py " + hStoreDir;
             for(Site site: m_sites){
                 command = command + " " + site.getHost().getIpaddr();
-                String ip = site.getHost().getIpaddr();
             }
+            @SuppressWarnings("unused")
             String results = ShellTools.cmd(command);
-    
+            
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
 
         } // END if(RUN_MONITORING)
-        if(UPDATE_PLAN){
+        if(EXEC_UPDATE_PLAN){
             
             record("======================== LOADING GRAPH ========================");
             t1 = System.currentTimeMillis();
             
+            String hStoreDir = ShellTools.cmd("pwd");
+            hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
+            if (ROOT_TABLE != null){
+                System.out.println("Got the root table " + ROOT_TABLE);
+                String command = "python scripts/partitioning/filter_root_table.py " + ROOT_TABLE;
+                String results = ShellTools.cmd(command);
+            }
+    
             Partitioner partitioner = null;
-            
             System.out.println("Algorithm " + ALGO);
             
-            // checks parameter -D
+            // checks parameter -Delastic.algo
             switch(ALGO){
                 case "simple":
                     partitioner = new SimplePartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
+                case "default":
                 case "graph":
                     partitioner = new GraphGreedy(m_catalog_context, planFile, logFiles, intervalFiles);
+                    break;
+                case "graph-ext":
+                    partitioner = new GraphGreedyExtended(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
                 case "greedy-ext":
                     partitioner = new GreedyExtended(m_catalog_context, planFile, logFiles, intervalFiles);
                     break;
+                case "metis":
+                    partitioner = new MetisPartitioner(m_catalog_context, planFile, logFiles, intervalFiles);
+                    break;
                 default:
-                    partitioner = new GraphGreedy(m_catalog_context, planFile, logFiles, intervalFiles);
+                    System.out.println("The name of the specificed partitioner is incorrect. Exiting.");
+                    System.exit(1);
             }
 
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
+                        
+            record("======================== PARTITIONING GRAPH ========================");
+            t1 = System.currentTimeMillis();
             
-            if(partitioner instanceof GreedyExtended){
-                LOG.info("Skipping metis out for greedy extended");
-            } else {
-                LOG.info(String.format("Writing metis graph out to %s ",FileSystems.getDefault().getPath(".", METIS_OUT)));
-                Path metisFile = FileSystems.getDefault().getPath(".", METIS_OUT);
-                Path metisMapFile = FileSystems.getDefault().getPath(".", METIS_MAP_OUT);
-                long start = System.currentTimeMillis();
-                partitioner.graphToMetisFile(metisFile,metisMapFile);
-                long time = System.currentTimeMillis() - start;
-                LOG.info("generating metis out file took : " + time);
-                Path metisOut= FileSystems.getDefault().getPath(".",METIS_OUT + ".part." + this.m_catalog_context.numberOfPartitions); 
-                String metisExe = String.format("gpmetis %s %s", METIS_OUT, m_catalog_context.numberOfPartitions);
-                
-                //RESULTS map of hashID -> new partition ID
-                Int2IntOpenHashMap metisGeneratedPartitioning;
-                try {
-                    Path currentRelativePath = Paths.get("");
-                    String s = currentRelativePath.toAbsolutePath().toString();
-                    LOG.info("Calling metis " + metisExe);
-                     start = System.currentTimeMillis();
-                    Process metisProc = new ProcessBuilder("gpmetis",METIS_OUT, ""+m_catalog_context.numberOfPartitions).start();
-                   // LOG.info("metis proc: " + metisProc.toString());
-                    int result = metisProc.waitFor();
-                    time = System.currentTimeMillis() - start;
-                    if (result == 0){
-                        LOG.info(String.format("Metis ran successfully. took : " + time));
-                        metisGeneratedPartitioning = getMetisMapping(metisOut, metisMapFile);
-                        LOG.info("Results in metis map files: " + metisGeneratedPartitioning.keySet().size());
-                    } else {
-                        LOG.info(String.format("Metis ran unsuccessfully (%s) : %s", result, metisExe));
-                    }
-                } catch (Exception e) {
-                    LOG.error("Exception running metis", e);
+            // detect overloaded and active partitions
+            IntList activePartitions = new IntArrayList(Controller.MAX_PARTITIONS);
+
+            System.out.println("Load per partition before reconfiguration");
+            double sum = 0;
+            for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+                double load = partitioner.getLoadPerPartition(i);
+                sum += load;
+                if(load > 0){
+                    activePartitions.add(i);
+                    System.out.println(i + ": " + load);
                 }
             }
             
-//          Path graphFile = FileSystems.getDefault().getPath(".", "graph.log");
-//          partitioner.toFileDebug(graphFile);
+            if(Controller.IMBALANCE_LOAD != 0){
+                double avg = sum / activePartitions.size();
+                Controller.MAX_LOAD_PER_PART = avg * (1 + Controller.IMBALANCE_LOAD);
+                Controller.MIN_LOAD_PER_PART = Math.max(0.0, avg * (1 - Controller.IMBALANCE_LOAD));
+            }
             
-            record("======================== PARTITIONING GRAPH ========================");
-            t1 = System.currentTimeMillis();
+            System.out.println("Max load: " + Controller.MAX_LOAD_PER_PART);
+            System.out.println("Min load: " + Controller.MIN_LOAD_PER_PART);
+
 
             boolean b = partitioner.repartition();
             if (!b){
-                record("Problem while partitioning graph. Exiting");
-                return;
+                record("Problem while partitioning graph. Writing incomplete plan out");
             }
             partitioner.writePlan(PLAN_OUT);
  
-            String outputPlan = FileUtil.readFile(PLAN_OUT);
-            record("Output plan\n" + outputPlan);
+//            String outputPlan = FileUtil.readFile(PLAN_OUT);
+//            record("Output plan\n" + outputPlan);
             
-            record("Loads per partition after reconfiguration");
+            record("Load per partition after reconfiguration");
             for (int j = 0; j < Controller.MAX_PARTITIONS; j++){
                 record(j + " " + partitioner.getLoadPerPartition(j));
             }
@@ -314,6 +296,7 @@ public class Controller extends Thread {
             record("======================== STARTING RECONFIGURATION ========================");
             ClientResponse cresponse = null;
             try {
+                // TODO should compare with PLAN_IN before reconfiguring
                 String outputPlan = FileUtil.readFile(PLAN_OUT);
                 cresponse = m_client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
                                 //cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
@@ -341,36 +324,6 @@ public class Controller extends Thread {
         
     }
     
-    private Int2IntOpenHashMap getMetisMapping(Path metisOut, Path metisMapFile) {
-        LOG.info(String.format("Getting metis out and mapping to hashes for %s and %s", metisOut, metisMapFile));
-        Int2IntOpenHashMap res = new Int2IntOpenHashMap();
-        BufferedReader outReader, metisMapReader;
-        String outPart, hashId;
-        try {
-            outReader = Files.newBufferedReader(metisOut, Charset.forName("US-ASCII"));
-            metisMapReader = Files.newBufferedReader(metisMapFile, Charset.forName("US-ASCII"));
-            while(true){
-                outPart = outReader.readLine();
-                hashId = metisMapReader.readLine();
-                if (outPart == null && hashId == null){
-                    break;
-                } else if (outPart == null && hashId != null){
-                    LOG.error("Ran out of hashes before partition maps...");
-                    break;
-                } else if (outPart == null && hashId == null){
-                    LOG.error("Ran out of partition maps before hashes...");
-                    break;
-                }
-                res.put(Integer.parseInt(hashId), Integer.parseInt(outPart));
-            }
-
-            
-        } catch (IOException e) {
-            Controller.record("Error while reading out files \n Stack trace:\n" + Controller.stackTraceToString(e));
-        }
-        return res;
-    }
-
     public void connectToHost(){
         Site catalog_site = CollectionUtil.random(m_sites);
         m_connectedHost= catalog_site.getHost().getIpaddr();

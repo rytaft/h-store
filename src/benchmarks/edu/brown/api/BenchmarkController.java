@@ -63,7 +63,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -77,6 +76,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.qcri.affinityplanner.Controller;
+import org.qcri.affinityplanner.ControllerThread;
 import org.voltdb.CatalogContext;
 import org.voltdb.SysProcSelector;
 import org.voltdb.VoltSystemProcedure;
@@ -1253,6 +1254,11 @@ public class BenchmarkController {
             }
         }
         
+        if(m_config.elastic_run){
+            System.out.println("Starting elastic controller thread in " + m_config.elastic_delay/1000 + " seconds");
+            ControllerThread elastic = new ControllerThread (m_config.elastic_delay, m_config.hstore_conf, catalogContext);
+        }
+        
         // 
         if(m_config.procName != null) {
         	String[] params = m_config.params;
@@ -1864,6 +1870,8 @@ public class BenchmarkController {
         Map<String, String> siteParams = new LinkedHashMap<String, String>();
         List<String> siteHosts = new ArrayList<String>();
         
+        boolean elastic_run = false;
+        long elastic_delay = 0;
         
         for (String arg : vargs) {
             String[] parts = arg.split("=",2);
@@ -2088,7 +2096,46 @@ public class BenchmarkController {
             /* Recompute Markovs After Warmup Period*/
             } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_MARKOV_RECOMPUTE_WARMUP)) {
                 markov_recomputeAfterWarmup = Boolean.parseBoolean(parts[1]);
-
+            /* Elastic controller parameters */   
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_MONITORING_TIME)){
+                Controller.MONITORING_TIME = Integer.parseInt(parts[1]);
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_MIN_LOAD)){
+                Controller.MIN_LOAD_PER_PART = Double.parseDouble(parts[1]);
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_MAX_LOAD)){
+                Controller.MAX_LOAD_PER_PART = Double.parseDouble(parts[1]);
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_IMBALANCE_LOAD)){
+                Controller.IMBALANCE_LOAD = Double.parseDouble(parts[1]);
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_DTXN_COST)){
+                Controller.DTXN_COST = Double.parseDouble(parts[1]);
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_LMPT_COST)){
+                Controller.LMPT_COST = Double.parseDouble(parts[1]);
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_MIN_GAIN_MOVE)){
+                Controller.MIN_SENDER_GAIN_MOVE = Integer.parseInt(parts[1]);
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_MAX_TUPLE_MOVE)){
+                Controller.MAX_MOVED_TUPLES_PER_PART = Integer.parseInt(parts[1]);
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_MAX_PARTITIONS_ADDED)){
+                Controller.MAX_PARTITIONS_ADDED = Integer.parseInt(parts[1]);
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_EXEC_MONITORING)){
+                Controller.EXEC_MONITORING = Boolean.parseBoolean(parts[1]);
+                elastic_run = true;
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_EXEC_UPDATE_PLAN)){
+                Controller.EXEC_UPDATE_PLAN = Boolean.parseBoolean(parts[1]);
+                elastic_run = true;
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_EXEC_RECONF)){
+                Controller.EXEC_RECONF = Boolean.parseBoolean(parts[1]);
+                elastic_run = true;
+            } else if (parts[0].equalsIgnoreCase("elastic.delay")){
+                elastic_delay = Long.parseLong(parts[1]);
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_PLAN_IN)){
+                Controller.PLAN_IN = parts[1];
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_PLAN_OUT)){
+                Controller.PLAN_OUT = parts[1];
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_ALGO)){
+                Controller.ALGO = parts[1];
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_TOPK)){
+                Controller.TOPK = Integer.parseInt(parts[1]);
+            } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_ROOT_TABLE)){
+                Controller.ROOT_TABLE = parts[1];
             } else if (parts[0].equalsIgnoreCase("DUMPDATABASE")) {
                 dumpDatabase = Boolean.parseBoolean(parts[1]);                
             } else if (parts[0].equalsIgnoreCase("DUMPDATABASEDIR")) {
@@ -2235,6 +2282,8 @@ public class BenchmarkController {
                 markov_thresholdsValue,
                 markov_recomputeAfterEnd,
                 markov_recomputeAfterWarmup,
+                elastic_run,
+                elastic_delay,
                 evictable,
                 deferrable,
                 dumpDatabase,

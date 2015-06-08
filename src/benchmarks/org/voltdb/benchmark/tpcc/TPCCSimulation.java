@@ -146,18 +146,25 @@ public class TPCCSimulation {
             if(config.neworder_hotspot) {
             	numHotSpots = config.hotspot_size;
             	percentAccessHotSpots = config.hotspot_ops_percent / 100.0;
+
             }
             this.zipf_gen = new VaryingZipfianGenerator(parameters.last_warehouse + 1 - parameters.starting_warehouse, skewFactor);
-            zipf_gen.setNumHotSpots(numHotSpots);
             zipf_gen.setPercentAccessHotSpots(percentAccessHotSpots);
 
-
+            if(config.hot_spots != null){
+                zipf_gen.setHotSpots(config.hot_spots);
+            } else{
+                zipf_gen.setNumHotSpots(numHotSpots);
+            }
         }
         if (config.warehouse_debug) {
             LOG.info("Enabling WAREHOUSE debug mode");
         }
         if (config.neworder_hotspot) {
             LOG.info("Enabling hotspot");
+        }
+        if (config.hot_spots != null){
+            System.out.println("Hotspots: " + config.hot_spots.toString());
         }
 
         lastAssignedWarehouseId += 1;
@@ -265,19 +272,26 @@ public class TPCCSimulation {
             }
         }
         
-        // ZIPFIAN SKEWED WAREHOUSE ID
+        // ZIPFIAN SKEWED WAREHOUSE ID - POTENTIALLY WITH HOTSPOTS
         else if (config.neworder_skew_warehouse) {
             assert(this.zipf_gen != null);
             w_id = (short) (this.zipf_gen.nextInt() + parameters.starting_warehouse);
         }
         
-        // HOTSPOT SKEWED WAREHOUSE ID
+        // UNIFORM WAREHOUSE ID + HOTSPOTS
         else if (config.neworder_hotspot) {
             if (generator.number(1, 100) <= config.hotspot_ops_percent) {
                 //In the hotspot
-                //Hotspot op use 1 - hotspotsize
-                w_id = (short)generator.number(parameters.starting_warehouse, 
-                        Math.min(parameters.last_warehouse, (config.hotspot_size)));
+                if (config.hot_spots == null){
+                    //Hotspot op use 1 - hotspotsize
+                    w_id = (short)generator.number(parameters.starting_warehouse, 
+                            Math.min(parameters.last_warehouse, (config.hotspot_size)));
+                }
+                else{
+                    int pos = generator.number(0, config.hot_spots.size() - 1);
+                    long hotSpot = config.hot_spots.get(pos);
+                    w_id = (short) hotSpot;
+                }
             } else { 
                 //Use uniform random
                 w_id = (short)generator.number(parameters.starting_warehouse, parameters.last_warehouse);
@@ -306,12 +320,60 @@ public class TPCCSimulation {
     // REMOTE WAREHOUSE SELECTION METHODS
     // ----------------------------------------------------------------------------
 
-    public static short generatePairedWarehouse(int w_id, int starting_warehouse, int last_warehouse) {
+    public static short generatePairedWarehouseTest(int w_id, int starting_warehouse, int last_warehouse, 
+            RandomGenerator generator, int warehouse_pairing_percent) {
+
+        /* Marco
         int remote_w_id = (w_id % 2 == 0 ? w_id-1 : w_id+1);
         if (remote_w_id < starting_warehouse) remote_w_id = last_warehouse;
         else if (remote_w_id > last_warehouse) remote_w_id = starting_warehouse;
+        return (short)remote_w_id; */
+        
+        int remote_w_id = 0;
+        
+        if(generator.number(1, 100) <= warehouse_pairing_percent){
+            remote_w_id = (w_id % 2 == 0 ? w_id-1 : w_id+1);
+            if (remote_w_id < starting_warehouse) remote_w_id = last_warehouse;
+            else if (remote_w_id > last_warehouse) remote_w_id = starting_warehouse;
+        }
+        else{
+            remote_w_id = generator.numberExcluding(starting_warehouse, last_warehouse, (int) w_id);
+        }
+
         return (short)remote_w_id;
+
     }
+    
+    public short generatePairedWarehouse(int w_id, int starting_warehouse, int last_warehouse, 
+            RandomGenerator generator, int warehouse_pairing_percent) {
+
+        /* Marco
+        int remote_w_id = (w_id % 2 == 0 ? w_id-1 : w_id+1);
+        if (remote_w_id < starting_warehouse) remote_w_id = last_warehouse;
+        else if (remote_w_id > last_warehouse) remote_w_id = starting_warehouse;
+        return (short)remote_w_id; */
+        
+        int remote_w_id = 0;
+        
+        if(generator.number(1, 100) <= warehouse_pairing_percent){
+            if (config.mirrored_pairings != null && (config.mirrored_pairings.contains(w_id) || config.mirrored_pairings.contains(last_warehouse - w_id + 1))){
+                remote_w_id = last_warehouse - w_id + 1;
+            }
+            else{
+                remote_w_id = (w_id % 2 == 0 ? w_id-1 : w_id+1);
+                if (remote_w_id < starting_warehouse) remote_w_id = last_warehouse;
+                else if (remote_w_id > last_warehouse) remote_w_id = starting_warehouse;
+            }
+        }
+        else{
+            remote_w_id = generator.numberExcluding(starting_warehouse, last_warehouse, (int) w_id);
+        }
+
+        return (short)remote_w_id;
+        
+
+    }
+
     
     // ----------------------------------------------------------------------------
     // UTILITY METHODS
@@ -388,7 +450,7 @@ public class TPCCSimulation {
         } else {
             // 15%: paying through another warehouse:
             if (config.warehouse_pairing) {
-                c_w_id = generatePairedWarehouse(w_id, parameters.starting_warehouse, parameters.last_warehouse);
+                c_w_id = generatePairedWarehouse(w_id, parameters.starting_warehouse, parameters.last_warehouse, generator, config.warehouse_pairing_percent);
             }
             else if (config.payment_multip_remote) {
                 c_w_id = (short)generator.numberRemoteWarehouseId(parameters.starting_warehouse, parameters.last_warehouse, (int)w_id);
@@ -441,7 +503,7 @@ public class TPCCSimulation {
             if (parameters.warehouses > 1 && remote) {
                 short remote_w_id;
                 if (config.warehouse_pairing) {
-                    remote_w_id = generatePairedWarehouse(warehouse_id, parameters.starting_warehouse, parameters.last_warehouse);
+                    remote_w_id = generatePairedWarehouse(warehouse_id, parameters.starting_warehouse, parameters.last_warehouse, generator, config.warehouse_pairing_percent);
                 }
                 else if (config.neworder_multip_remote) {
                     remote_w_id = (short)generator.numberRemoteWarehouseId(parameters.starting_warehouse, parameters.last_warehouse, (int) warehouse_id);
@@ -473,7 +535,7 @@ public class TPCCSimulation {
                 int idx = generator.number(0, ol_cnt-1);
                 short remote_w_id;
                 if (config.warehouse_pairing) {
-                    remote_w_id = generatePairedWarehouse(warehouse_id, parameters.starting_warehouse, parameters.last_warehouse);
+                    remote_w_id = generatePairedWarehouse(warehouse_id, parameters.starting_warehouse, parameters.last_warehouse, generator, config.warehouse_pairing_percent);
                 }
                 else if (config.neworder_multip_remote) {
                 	remote_w_id = (short)generator.numberRemoteWarehouseId(parameters.starting_warehouse, parameters.last_warehouse, (int) warehouse_id);

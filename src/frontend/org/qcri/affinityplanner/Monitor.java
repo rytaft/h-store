@@ -64,7 +64,7 @@ public class Monitor {
      *  
      *  A pattern like this is a batch. There can be multiple batches in a transaction.
      *  
-     *  If VERBOSE = false, it outputs a CSV of the form
+     *  If VERBOSE = false, this method outputs a CSV of the form
      * 
      *  TRANSACTION_ID, TABLE_NAME, COLUMN_NAME, VAL
      *  
@@ -82,7 +82,9 @@ public class Monitor {
             return false;
         }
         
-        for (int i = 0; i < fragmentIds.length; i++) {
+        int loop = Math.min(fragmentIds.length, parameterSets.length);
+        
+        for (int i = 0; i < loop; i++) {
             List<Pair<List<CatalogType>, List<Integer>>> offsets = new ArrayList<>();
             // the following is slow but we can just keep a map to speed it up if needed - similar to columnToTable
             m_p_estimator.getPlanFragmentEstimationParametersMultiCol(CatalogUtil.getPlanFragment(m_catalog_context.database, (int) fragmentIds[i]), offsets);
@@ -90,19 +92,23 @@ public class Monitor {
             for (Pair<List<CatalogType>, List<Integer>> offsetPair : offsets) {
                 // considering a specific Table here
                 try{
-                	String table_name = ((ExplicitHasher) this.m_p_estimator.getHasher()).getPartitions().getParentTableName((Column) offsetPair.getFirst().get(0));
+                    Column column = (Column) offsetPair.getFirst().get(0);
+                	String table_name = ((ExplicitHasher) this.m_p_estimator.getHasher()).getPartitions().getParentTableName(column);
                 	
                     if (table_name == null){
                         LOG.warn("Monitoring cannot determine the table accessed by a transaction");
                     }
                     else{
-                        Iterator<CatalogType> columnIter = offsetPair.getFirst().iterator();
-                        for(Integer offset : offsetPair.getSecond()) {
-                            Column column = (Column) columnIter.next();
-                            s = table_name + "," + column.getName().toLowerCase() + "," + parameterSet.toArray()[offset];
+// EDITED - this would print all fields that accessed. we print only the first one assuming that it is the partitioning key
+//                        Iterator<CatalogType> columnIter = offsetPair.getFirst().iterator();
+//                        for(Integer offset : offsetPair.getSecond()) {
+//                            column = (Column) columnIter.next();
+                            int offset = offsetPair.getSecond().get(0);
+                            s = ts.getTransactionId().toString() + ";" + table_name + "," + parameterSet.toArray()[offset];
+                            // s = ts.getTransactionId().toString() + ";" + table_name + "," + column.getName().toLowerCase() + "," + parameterSet.toArray()[offset];
                             m_writer.write(s, 0, s.length());
                             m_writer.newLine();
-                        }
+//                        }
                     }
                 } catch (ClassCastException e) {
                     e.printStackTrace();
@@ -117,7 +123,7 @@ public class Monitor {
     }
     
     public void logFinishTransaction(Long trans_id){
-        String s = "END";
+        String s = "END;" + trans_id.toString();
         try {
             m_writer.write(s, 0, s.length());
             m_writer.newLine();

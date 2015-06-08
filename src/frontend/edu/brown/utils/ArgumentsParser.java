@@ -191,18 +191,20 @@ public class ArgumentsParser {
     public static final String PARAM_ELASTIC_MONITORING_TIME = PARAM_ELASTIC + ".monitoring_time";
     public static final String PARAM_ELASTIC_MIN_LOAD = PARAM_ELASTIC + ".min_load";
     public static final String PARAM_ELASTIC_MAX_LOAD = PARAM_ELASTIC + ".max_load";
+    public static final String PARAM_ELASTIC_IMBALANCE_LOAD = PARAM_ELASTIC + ".imbalance_load";
     public static final String PARAM_ELASTIC_DTXN_COST = PARAM_ELASTIC + ".dtxn_cost";    
     public static final String PARAM_ELASTIC_LMPT_COST = PARAM_ELASTIC + ".lmpt_cost";    
     public static final String PARAM_ELASTIC_MAX_TUPLE_MOVE = PARAM_ELASTIC + ".max_tuples_move";
     public static final String PARAM_ELASTIC_MIN_GAIN_MOVE = PARAM_ELASTIC + ".min_gain_move";
     public static final String PARAM_ELASTIC_MAX_PARTITIONS_ADDED = PARAM_ELASTIC + ".max_partitions_added";
-    public static final String PARAM_ELASTIC_RUN_MONITORING = PARAM_ELASTIC + ".run_monitoring";
-    public static final String PARAM_ELASTIC_UPDATE_PLAN = PARAM_ELASTIC + ".update_plan";
+    public static final String PARAM_ELASTIC_EXEC_MONITORING = PARAM_ELASTIC + ".run_monitoring";
+    public static final String PARAM_ELASTIC_EXEC_UPDATE_PLAN = PARAM_ELASTIC + ".update_plan";
     public static final String PARAM_ELASTIC_EXEC_RECONF = PARAM_ELASTIC + ".exec_reconf";
     public static final String PARAM_ELASTIC_PLAN_IN = PARAM_ELASTIC + ".plan_in";
     public static final String PARAM_ELASTIC_PLAN_OUT = PARAM_ELASTIC + ".plan_out";
     public static final String PARAM_ELASTIC_ALGO = PARAM_ELASTIC + ".algo";
     public static final String PARAM_ELASTIC_TOPK = PARAM_ELASTIC + ".topk";
+    public static final String PARAM_ELASTIC_ROOT_TABLE = PARAM_ELASTIC + ".root_table";
     
     public static final List<String> PARAMS = new ArrayList<String>();
     static {
@@ -1007,6 +1009,10 @@ public class ArgumentsParser {
             Controller.MAX_LOAD_PER_PART = Double.parseDouble(this.params.get(PARAM_ELASTIC_MAX_LOAD));
         }
         
+        if (this.params.containsKey(PARAM_ELASTIC_IMBALANCE_LOAD)){
+            Controller.IMBALANCE_LOAD = Double.parseDouble(this.params.get(PARAM_ELASTIC_IMBALANCE_LOAD));
+        }
+
         if (this.params.containsKey(PARAM_ELASTIC_DTXN_COST)){
             Controller.DTXN_COST = Double.parseDouble(this.params.get(PARAM_ELASTIC_DTXN_COST));
         }
@@ -1016,7 +1022,7 @@ public class ArgumentsParser {
         }
         
         if (this.params.containsKey(PARAM_ELASTIC_MIN_GAIN_MOVE)){
-            Controller.MIN_GAIN_MOVE = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_GAIN_MOVE));
+            Controller.MIN_SENDER_GAIN_MOVE = Integer.parseInt(this.params.get(PARAM_ELASTIC_MIN_GAIN_MOVE));
         }
 
         if (this.params.containsKey(PARAM_ELASTIC_MAX_TUPLE_MOVE)){
@@ -1027,12 +1033,12 @@ public class ArgumentsParser {
             Controller.MAX_PARTITIONS_ADDED = Integer.parseInt(this.params.get(PARAM_ELASTIC_MAX_PARTITIONS_ADDED));
         }        
 
-        if (this.params.containsKey(PARAM_ELASTIC_RUN_MONITORING)){
-            Controller.RUN_MONITORING = Boolean.parseBoolean(this.params.get(PARAM_ELASTIC_RUN_MONITORING));
+        if (this.params.containsKey(PARAM_ELASTIC_EXEC_MONITORING)){
+            Controller.EXEC_MONITORING = Boolean.parseBoolean(this.params.get(PARAM_ELASTIC_EXEC_MONITORING));
         }        
 
-        if (this.params.containsKey(PARAM_ELASTIC_UPDATE_PLAN)){
-            Controller.UPDATE_PLAN = Boolean.parseBoolean(this.params.get(PARAM_ELASTIC_UPDATE_PLAN));
+        if (this.params.containsKey(PARAM_ELASTIC_EXEC_UPDATE_PLAN)){
+            Controller.EXEC_UPDATE_PLAN = Boolean.parseBoolean(this.params.get(PARAM_ELASTIC_EXEC_UPDATE_PLAN));
         }        
 
         if (this.params.containsKey(PARAM_ELASTIC_EXEC_RECONF)){
@@ -1053,6 +1059,10 @@ public class ArgumentsParser {
 
         if (this.params.containsKey(PARAM_ELASTIC_TOPK)){
             Controller.TOPK= Integer.parseInt(this.params.get(PARAM_ELASTIC_TOPK));
+        }        
+
+        if (this.params.containsKey(PARAM_ELASTIC_ROOT_TABLE)){
+            Controller.ROOT_TABLE= this.params.get(PARAM_ELASTIC_ROOT_TABLE);
         }        
 
         // -------------------------------------------------------

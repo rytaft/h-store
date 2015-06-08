@@ -41,4 +41,14 @@ public class ScanRecord extends VoltProcedure {
         voltQueueSQL(scanStmt, start, start+count);
         return (voltExecuteSQL(true));
     }
+
+//  TO HAVE SEPARATE SQL STATEMENTS
+//    public final SQLStmt scanStmt = new SQLStmt("SELECT * FROM USERTABLE WHERE YCSB_KEY = ?");
+//
+//    public VoltTable[] run(long start, long count) {
+//        for (long pos = start; pos < start + count; pos++){
+//            voltQueueSQL(scanStmt, pos);
+//        }
+//        return (voltExecuteSQL(true));
+//    }
 }

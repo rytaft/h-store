@@ -35,18 +35,41 @@ import org.apache.log4j.Logger;
  */
 public abstract class PartitionerAffinity implements Partitioner {
     
-    public class Pair<A, B> {
-        public A fst;
-        public B snd;
+    public class Move {
+        public int toPartition;
+        public double sndDelta;
+        public double rcvDelta;
+        public IntOpenHashSet movingVertices;
         
-        public Pair (){
-            this.fst = null;
-            this.snd = null;            
+        public Move (){
+            this.toPartition = -1;
+            this.sndDelta = Double.MAX_VALUE;
+            this.rcvDelta = Double.MAX_VALUE;
+            this.movingVertices = new IntOpenHashSet();
         }
 
-        public Pair(A fst, B snd) {
-            this.fst = fst;
-            this.snd = snd;
+        public Move(int toPartition, double sndDelta, double rcvDelta, IntOpenHashSet movingVertices) {
+            this.toPartition = toPartition;
+            this.sndDelta = sndDelta;
+            this.rcvDelta = rcvDelta;
+            this.movingVertices = movingVertices.clone();
+        }
+        
+        public Move clone(){
+            return new Move (this.toPartition, this.sndDelta, this.rcvDelta, this.movingVertices);
+        }
+        
+        public void clear(){
+            this.toPartition = -1;
+            this.sndDelta = Double.MAX_VALUE;
+            this.rcvDelta = Double.MAX_VALUE;
+            this.movingVertices.clear();
+        }
+
+        public void clearExceptMovingVertices(){
+            this.toPartition = -1;
+            this.sndDelta = Double.MAX_VALUE;
+            this.rcvDelta = Double.MAX_VALUE;
         }
     }
     
@@ -194,7 +217,7 @@ public abstract class PartitionerAffinity implements Partitioner {
         double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
 
         // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
-        if(senderDelta <= Controller.MIN_GAIN_MOVE * -1
+        if(senderDelta <= Controller.MIN_SENDER_GAIN_MOVE * -1
                 && (receiverDelta < 0 
                         || getLoadPerPartition(toPartition) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
 
@@ -212,55 +235,84 @@ public abstract class PartitionerAffinity implements Partitioner {
     }
     
     /**
-     * Finds the partition where the movingVertices can be moved while maximizing sender gain
+     * Finds the partition where the movingVertices can be moved while maximizing sender gain.
+     * Looks for a move that does not overload the receiver. If this is not available, return the best we can find.
      * 
      * Output:
+     * - Return value: whether the selected move does not overload the receiver
      * - toPartitionDelta contains the partition where the move should be done and the delta of the move
      * 
      * @param movingVertices
      * @param fromPartition
      * @param activePartitions
-     * @param toPartitionDelta
+     * @param toPartition_senderDelta
      */
-    protected void findBestPartition(IntSet movingVertices, int fromPartition, IntList activePartitions, Pair<Integer, Double> toPartitionDelta){
+    protected void findBestPartition(Move move, int fromPartition, IntList activePartitions){
         
-        toPartitionDelta.fst = -1;
-        toPartitionDelta.snd = Double.MAX_VALUE;
+        move.toPartition = -1;
+        move.sndDelta = Double.MAX_VALUE;
+        move.rcvDelta = Double.MAX_VALUE;
+        boolean feasible = false;
+
+        double currLoad = Double.MAX_VALUE;
         
         IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(fromPartition));
-
-        Collections.sort(localPartitions, new AbstractIntComparator (){
-            @Override
-            public int compare(int o1, int o2) {
-                if (getLoadPerPartition(o1) < getLoadPerPartition(o2)){
-                    return -1;
-                }
-                else if (getLoadPerPartition(o1) > getLoadPerPartition(o2)){
-                    return 1;
-                }
-                return 0;
-            }
-        });
-
         
         for(int toPartition : localPartitions){
-            
-            if(fromPartition == toPartition){
+                        
+            if(fromPartition == toPartition || !activePartitions.contains(toPartition)){
                 continue;
             }
 
-            double delta = getSenderDelta(movingVertices, fromPartition, toPartition);
+            System.out.println("Examining moving to partition: " + toPartition);
+
+            double receiverDelta = getReceiverDelta(move.movingVertices, fromPartition, toPartition);
             
-//            System.out.println("Sender delta to partition " + toPartition + " is " + delta);
-
-            if (delta < toPartitionDelta.snd){
-                toPartitionDelta.fst = toPartition;
-                toPartitionDelta.snd = delta;
+            if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
+            
+                // unfeasible move
+                if (feasible){
+                    System.out.println("Would become overloaded, but have feasible move, skipping");
+                    continue;
+                }
+                System.out.println("Would become overloaded, accepting as unfeasible");
             }
-        }
+            else{
+                // clear any existing unfeasible move
+                if (!feasible){
+                    move.clearExceptMovingVertices();
+                }
+               feasible = true;
+            }
 
-        if (toPartitionDelta.fst != -1){
-            return;
+            // TODO make constant and put out of this loop
+            double sendDelta = getSenderDelta(move.movingVertices, fromPartition, toPartition);
+
+            System.out.println("Receiver delta: " + receiverDelta + " min delta " + move.rcvDelta);
+            if (receiverDelta <= move.rcvDelta){
+
+                if (receiverDelta == move.rcvDelta){
+                    double load = getLoadPerPartition(toPartition);
+                    System.out.println("Load: " + load + " min load " + currLoad);
+                    if (load < currLoad){
+                        currLoad = load;
+                        
+                        System.out.println("Selected!");
+                        move.toPartition = toPartition;
+                        move.sndDelta = sendDelta;
+                        move.rcvDelta = receiverDelta;
+                    }
+                }
+                else{
+                    double load = getLoadPerPartition(toPartition);
+                    currLoad = load;
+                    
+                    System.out.println("Selected!");
+                    move.toPartition = toPartition;
+                    move.sndDelta = sendDelta;
+                    move.rcvDelta = receiverDelta;
+                }
+            }
         }
 
         // then try to offload to remote partitions
@@ -268,17 +320,56 @@ public abstract class PartitionerAffinity implements Partitioner {
 
             if(!localPartitions.contains(toPartition)){
 
-                double delta = getSenderDelta(movingVertices, fromPartition, toPartition);
+                System.out.println("Examining moving to partition: " + toPartition);
+                // TODO make constant and put out of this loop
+                double sendDelta = getSenderDelta(move.movingVertices, fromPartition, toPartition);
 
-//                System.out.println("Sender delta to partition " + toPartition + " is " + delta);
+                double receiverDelta = getReceiverDelta(move.movingVertices, fromPartition, toPartition);
+                
+                if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
 
-                if (delta < toPartitionDelta.snd){
-                    toPartitionDelta.fst = toPartition;
-                    toPartitionDelta.snd = delta;
+                    // unfeasible move
+                    if (feasible){
+                        System.out.println("Would become overloaded, but have feasible move, skipping");
+                        continue;
+                    }
+                    System.out.println("Would become overloaded, accepting as unfeasible");
+                }
+                else{
+                    // clear any existing unfeasible move
+                    if (!feasible){
+                        move.clearExceptMovingVertices();
+                    }
+                    feasible = true;
+                }
+
+                System.out.println("Receiver delta: " + receiverDelta + " min delta " + move.rcvDelta);
+                if (receiverDelta <= (move.rcvDelta * (1 - Controller.PENALTY_REMOTE_MOVE))){
+
+                    if (receiverDelta == move.rcvDelta){
+                        double load = getLoadPerPartition(toPartition);
+                        System.out.println("Load: " + load + " min load " + currLoad);
+                        if (load < currLoad){
+                            currLoad = load;
+                            
+                            System.out.println("Selected!");
+                            move.toPartition = toPartition;
+                            move.sndDelta = sendDelta;
+                            move.rcvDelta = receiverDelta;
+                        }
+                    }
+                    else {
+                        double load = getLoadPerPartition(toPartition);
+                        currLoad = load;
+                        
+                        System.out.println("Selected!");
+                        move.toPartition = toPartition;
+                        move.sndDelta = sendDelta;
+                        move.rcvDelta = receiverDelta;
+                    }
                 }
             }
         }
-        
     }
     
 //    protected double getDeltaMove(IntSet movingVertices, int fromPartition, int toPartition) {

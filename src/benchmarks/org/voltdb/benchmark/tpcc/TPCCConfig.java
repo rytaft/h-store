@@ -1,6 +1,7 @@
 package org.voltdb.benchmark.tpcc;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -22,6 +23,7 @@ public final class TPCCConfig {
     public boolean warehouse_affinity = false;
     public boolean warehouse_debug = false;
     public boolean warehouse_pairing = false;
+    public int warehouse_pairing_percent = 100;
     public boolean reset_on_clear = false;
     
     public int num_loadthreads = 1;
@@ -63,7 +65,12 @@ public final class TPCCConfig {
     /** First N warehouses in the hotspot () **/
     public int hotspot_size = 1;
     
+    /** Set of hotspots **/
+    public ArrayList<Long> hot_spots = null;
     
+    /** Set of hotspots **/
+    public ArrayList<Integer> mirrored_pairings = null;
+
     /**
      * Scale the number of items based on the client scalefactor.
      * @see HStoreConf.ClientConf.scalefactor
@@ -97,6 +104,15 @@ public final class TPCCConfig {
             // WAREHOUSE PAIRING
             else if (key.equalsIgnoreCase("warehouse_pairing") && !val.isEmpty()) {
                 warehouse_pairing = Boolean.parseBoolean(val);
+            }
+            else if (key.equalsIgnoreCase("warehouse_pairing_percent") && !val.isEmpty()) {
+                warehouse_pairing_percent = Integer.parseInt(val);
+                if (warehouse_pairing_percent > 100){
+                    warehouse_pairing_percent = 100;
+                }
+                else if (warehouse_pairing_percent < 1){
+                    warehouse_pairing_percent = 1;
+                } 
             }
             // ENABLE WAREHOUSE DEBUGGING
             else if (key.equalsIgnoreCase("warehouse_debug") && !val.isEmpty()) {
@@ -170,6 +186,24 @@ public final class TPCCConfig {
                 hotspot_size = Integer.parseInt(val);
                 if (hotspot_size <1)
                     hotspot_size = 1;
+            }
+            
+            // HOTSPOT SET
+            else if (key.equalsIgnoreCase("hotspots") && !val.isEmpty()){
+                this.hot_spots = new ArrayList<Long>();
+                String[] hotSpots = val.split("-");
+                for (String hotSpot : hotSpots){
+                    this.hot_spots.add(Long.parseLong(hotSpot));
+                }
+            }
+            
+            // MIRRORED PAIRINGS
+            else if (key.equalsIgnoreCase("mirrored_pairings") && !val.isEmpty()){
+                this.mirrored_pairings = new ArrayList<Integer>();
+                String[] pairings = val.split("-");
+                for (String pairing : pairings){
+                    this.mirrored_pairings.add(Integer.parseInt(pairing));
+                }
             }
             
             // ONLY PAYMENT

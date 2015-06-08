@@ -13,18 +13,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
-import it.unimi.dsi.fastutil.ints.Int2IntMaps;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
-import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -49,8 +49,8 @@ public class AffinityGraph {
     protected static final Int2DoubleOpenHashMap m_vertices = new Int2DoubleOpenHashMap (1000);
     
     // partition -> vertex and vertex -> partition mappings
-    protected static final List<IntOpenHashSet> m_partitionVertices = new ArrayList<IntOpenHashSet> ();
-    protected static final Int2IntOpenHashMap m_vertexPartition = new Int2IntOpenHashMap ();
+    protected static List<IntOpenHashSet> m_partitionVertices = new ArrayList<IntOpenHashSet> ();
+    protected static Int2IntOpenHashMap m_vertexPartition = new Int2IntOpenHashMap ();
     
     private static PlanHandler m_plan_handler = null;
     
@@ -121,82 +121,98 @@ public class AffinityGraph {
             }
 
 //            System.out.println("Tran ID = " + currTransactionId);
-            IntOpenHashSet curr_transaction = new IntOpenHashSet ();
+            
+            HashMap<String, IntOpenHashSet> transactions = new HashMap<String,IntOpenHashSet>();
+
             // PROCESS LINE
             while(line != null){
+                
+                String[] fields = line.split(";");
 
                 // if finished with one transaction, update graph and clear before moving on
 
-                if (line.equals("END")){
+                if (fields[0].equals("END")){
+                    
+                    String transaction_id = fields[1]; 
+                    IntOpenHashSet curr_transaction = transactions.get(transaction_id);
+                    
+                    if(curr_transaction != null){
 
-                    for(int from : curr_transaction){
-                        // update FROM vertex in graph
-                        double currentVertexWeight = vertices.get(from);
-                        if (currentVertexWeight == vertices.defaultReturnValue()){
-                            vertices.put(from, normalizedIncrement);
-                        }
-                        else{
-                            vertices.put(from, currentVertexWeight + normalizedIncrement);                         
-                        }
-                        
-                        // store site mappings for FROM vertex
-                        int partition = 0;
-                        String fromName = vertex_to_name.get(from);
-                        partition = m_plan_handler.getPartition(fromName);
-                        
-                        if (partition == HStoreConstants.NULL_PARTITION_ID){
-                            LOG.info("Exiting graph loading. Could not find partition for key " + fromName);
-                            System.out.println("Exiting graph loading. Could not find partition for key " + fromName);
-                            throw new Exception();                            
-                        }
-                        partitionVertices.get(partition).add(from);
-                        vertexPartition.put(from, partition);
-                        
-                        Int2DoubleOpenHashMap adjacency = null;
-
-                        synchronized(m_edges){
-                            adjacency = m_edges.get(from);
-                            if(adjacency == null){
-                                adjacency = new Int2DoubleOpenHashMap ();
-                                m_edges.put(from, adjacency);
+                        for(int from : curr_transaction){
+                            // store partition mappings for FROM vertex
+                            String fromName = vertex_to_name.get(from);
+                            int partition = m_plan_handler.getPartition(fromName);
+                            partitionVertices.get(partition).add(from);
+                            vertexPartition.put(from, partition);
+                            
+                            // update FROM vertex in graph
+                            double currentVertexWeight = vertices.get(from);
+                            if (currentVertexWeight == vertices.defaultReturnValue()){
+                                vertices.put(from, normalizedIncrement);
                             }
-                        }
-
-                        // update FROM -> TO edges
-                        for(int to : curr_transaction){
-                            if (from != to){
-                                // if lower granularity, edges link vertices to partitions, not other vertices
-                                if(!m_tupleGranularity){
-                                    String toName = vertex_to_name.get(to);
-                                    to = m_plan_handler.getPartition(toName);
+                            else{
+                                vertices.put(from, currentVertexWeight + normalizedIncrement);                         
+                            }
+                            
+                            // update FROM -> TO edges
+                            Int2DoubleOpenHashMap adjacency = null;
+    
+                            synchronized(m_edges){
+                                adjacency = m_edges.get(from);
+                                if(adjacency == null){
+                                    adjacency = new Int2DoubleOpenHashMap ();
+                                    m_edges.put(from, adjacency);
                                 }
+                            }
+    
+                            IntOpenHashSet visitedVertices = new IntOpenHashSet();
+                            for(int to : curr_transaction){
                                 
-                                synchronized(adjacency){
-                                    double currentEdgeWeight = adjacency.get(to);
-                                    if (currentEdgeWeight == 0){
-                                        adjacency.put(to, normalizedIncrement);
+                                if (from != to && !visitedVertices.contains(to)){
+                                    visitedVertices.add(to);
+                                    
+                                    // if lower granularity, edges link vertices to partitions, not other vertices
+                                    if(!m_tupleGranularity){
+                                        String toName = vertex_to_name.get(to);
+                                        to = m_plan_handler.getPartition(toName);
                                     }
-                                    else{
-                                        adjacency.put(to, currentEdgeWeight + normalizedIncrement);
+                                    
+                                    synchronized(adjacency){
+                                        double currentEdgeWeight = adjacency.get(to);
+                                        if (currentEdgeWeight == 0){ // TODO use adjacency.defaultReturnValue() instead of 0
+                                            adjacency.put(to, normalizedIncrement);
+                                        }
+                                        else{
+                                            adjacency.put(to, currentEdgeWeight + normalizedIncrement);
+                                        }
                                     }
                                 }
-                            }
-                        } // END for(String to : curr_transaction)
-
-                    } // END for(String from : curr_transaction)
-
-                    curr_transaction.clear();
-
+                            } // END for(String to : curr_transaction)
+    
+                        } // END for(String from : curr_transaction)
+    
+                        transactions.remove(transaction_id);
+                    } // END if (curr_transaction != null)
+                    
                     //                    System.out.println("Tran ID = " + currTransactionId);
                 } // END if (line.equals("END"))
 
                 else{
-                    int hash = line.hashCode();
-                    curr_transaction.add(hash);
-                    if (!vertex_to_name.containsKey(hash)){
-                        vertex_to_name.put(hash, line);
+                    // add the vertex to the transaction
+                    String transaction_id = fields[0];
+                    int hash = fields[1].hashCode();
+
+                    IntOpenHashSet curr_transaction = transactions.get(transaction_id);
+                    if (curr_transaction == null){
+                        curr_transaction = new IntOpenHashSet ();
+                        transactions.put(transaction_id, curr_transaction);
                     }
-                }
+                    curr_transaction.add(hash);
+
+                    if (!vertex_to_name.containsKey(hash)){
+                        vertex_to_name.put(hash, fields[1]);
+                    }
+                } // END if (!line.equals("END"))
 
                 /* this is what one would do to count different accesses within the same transaction. 
                  * For the moment I count only the number of transactions accessing a tuple
@@ -226,14 +242,24 @@ public class AffinityGraph {
             synchronized(m_vertexPartition){
                 m_vertexPartition.putAll(vertexPartition);
             }
-            synchronized(m_partitionVertices){
-                for (int i = 0; i < m_partitionVertices.size(); i++){
-                    IntSet localVertices = partitionVertices.get(i);
+            for (int i = 0; i < partitionVertices.size(); i++){
+                IntSet localVertices = partitionVertices.get(i);
+                synchronized(m_partitionVertices){
                     m_partitionVertices.get(i).addAll(localVertices);
                 }
             }
-            synchronized(m_vertices){
-                m_vertices.putAll(vertices);
+            for (Int2DoubleMap.Entry vertex : vertices.int2DoubleEntrySet()){
+                double curr_weight = 0;
+                synchronized(m_vertices){
+                    curr_weight = m_vertices.get(vertex.getIntKey());
+                    if(curr_weight != vertices.defaultReturnValue()){
+                        curr_weight += vertex.getDoubleValue();
+                    }
+                    else{
+                        curr_weight = vertex.getDoubleValue();
+                    }
+                    m_vertices.put(vertex.getIntKey(), curr_weight);
+                }
             }
         }
     }
@@ -282,10 +308,11 @@ public class AffinityGraph {
         }
         
         // scan files for all partitions
-        Thread[] loadingThreads = new Thread[Controller.LOAD_THREADS];
+        int threads = Math.min(Controller.LOAD_THREADS, logFiles.length);
+        Thread[] loadingThreads = new Thread[threads];
         AtomicInteger nextLogFileCounter = new AtomicInteger(0);
         
-        for (int currLogFile = 0; currLogFile < Controller.LOAD_THREADS; currLogFile++){
+        for (int currLogFile = 0; currLogFile < threads; currLogFile++){
             
             Thread loader = new Thread (new LoaderThread (logFiles, nextLogFileCounter));
             loadingThreads[currLogFile] = loader;
@@ -305,26 +332,40 @@ public class AffinityGraph {
             m_vertexPartition.put(movedVertex, toPartition);
 
             // update plan too
-            // format of vertices is <TABLE>,<PART-KEY>,<VALUE>
+            // format of vertices is <TABLE>,<VALUE>
             String movedVertexName = m_vertex_to_name.get(movedVertex);
             String [] fields = movedVertexName.split(",");
-//            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
-//            System.out.println("remove ID: " + fields[2]);
-            m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[2]));
-//            System.out.println("After removal");
-//            System.out.println(m_plan_handler.toString() + "\n");
-            m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[2]), Long.parseLong(fields[2]));
-//            System.out.println("After adding");
-//            System.out.println(m_plan_handler.toString() + "\n");
+            
+            if(Controller.ROOT_TABLE == null){
+    //            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
+    //            System.out.println("remove ID: " + fields[1]);
+                m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[1]));
+    //            System.out.println("After removal");
+    //            System.out.println(m_plan_handler.toString() + "\n");
+    //            m_plan_handler.addPartition(fields[0], toPartition);
+    //            System.out.println("After adding partition");
+    //            System.out.println(m_plan_handler.toString() + "\n");
+                m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
+    //            System.out.println("After adding range");
+    //            System.out.println(m_plan_handler.toString() + "\n");
+    //            System.exit(0);
+            }
+            else{
+                m_plan_handler.removeTupleIdAllTables(fromPartition, Long.parseLong(fields[1]));
+                m_plan_handler.addRangeAllTables(toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
+            }
         }
         
 //        System.out.println(m_plan_handler.toString() + "\n");
     }
     
-    public void moveColdRange(String table, Plan.Range movedRange, int fromPart, int toPart){
-        
-        m_plan_handler.moveColdRange(table, movedRange, fromPart, toPart);
-
+    public void moveColdRange(String table, Plan.Range movedRange, int fromPart, int toPart){     
+        if (Controller.ROOT_TABLE == null){
+            m_plan_handler.moveColdRange(table, movedRange, fromPart, toPart);
+        }
+        else{
+            m_plan_handler.moveColdRangeAllTables(movedRange, fromPart, toPart);
+        }
     }
     
     public int getPartition(int vertex){
@@ -465,5 +506,43 @@ public class AffinityGraph {
        }
     }
     
+    public void setPartitionMaps (Int2IntOpenHashMap newVertexPartition){
+        
+        // reset the mapping from partition to vertices
+        int partitionsNo = m_partitionVertices.size();
+        for (int i = 0; i < partitionsNo; i++){
+            m_partitionVertices.set(i, new IntOpenHashSet());
+        }
+        
+        for (Int2IntMap.Entry entry: newVertexPartition.int2IntEntrySet()){
+            
+            int vertex = entry.getIntKey();
+            int toPartition = entry.getIntValue();
+            
+            // update plan
+            String movedVertexName = m_vertex_to_name.get(vertex);
 
+            String [] fields = movedVertexName.split(",");
+            int fromPartition = m_vertexPartition.get(vertex);
+
+            m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[1]));
+            m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
+
+            // update data structures
+            IntOpenHashSet vertices = m_partitionVertices.get(toPartition);
+            vertices.add(vertex);
+        }
+        
+        // copy new partitioning
+        m_vertexPartition = newVertexPartition;
+        
+    }
+
+    public String verticesToString(IntSet set){
+        StringBuilder res = new StringBuilder();
+        for (int val : set){
+            res.append(m_vertex_to_name.get(val) + "\n");
+        }
+        return res.toString();
+    }
 }

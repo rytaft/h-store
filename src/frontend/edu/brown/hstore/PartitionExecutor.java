@@ -112,6 +112,7 @@ import org.voltdb.jni.ExecutionEngineJNI;
 import org.voltdb.jni.MockExecutionEngine;
 import org.voltdb.messaging.FastDeserializer;
 import org.voltdb.messaging.FastSerializer;
+import org.voltdb.processtools.ShellTools;
 import org.voltdb.types.SpecExecSchedulerPolicyType;
 import org.voltdb.types.SpeculationConflictCheckerType;
 import org.voltdb.types.SpeculationType;
@@ -1038,9 +1039,16 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         // EStore++ turn access monitoring on and off
         if(hstore_conf.site.access_tracking && !this.m_access_monitor.isMonitoring()){
-           Path logFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + ".log");
-           Path intervalFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + "-interval.log");
-           this.m_access_monitor.openLog(logFile, intervalFile);
+            // remove previous monitoring files
+            String hStoreDir = ShellTools.cmd("pwd");
+            hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
+            String command = "rm " + hStoreDir + "/transactions-partition-*.log";
+            String results = ShellTools.cmd(command);
+            
+            // create new monitoring files
+            Path logFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + ".log");
+            Path intervalFile = FileSystems.getDefault().getPath(".", "interval-partition-" + partitionId + ".log");
+            this.m_access_monitor.openLog(logFile, intervalFile);
         }
         else if(this.m_access_monitor.isMonitoring()){
             this.m_access_monitor.closeLog();
