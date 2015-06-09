@@ -218,6 +218,8 @@ public class GreedyExtended implements Partitioner {
     
                     int currHotTuple = fromHotTuples.getInt(fromHotTuples.size() - topK);
                     
+                    System.out.println("Considering hot tuple " + currHotTuple);
+                    
                     topK ++;
     
 //                    System.out.println("\nTuple name " + m_tupleToName.get(currHotTuple) + ", id " + currHotTuple + ", and weight " + m_hotTuples.get(currHotTuple));
@@ -236,7 +238,7 @@ public class GreedyExtended implements Partitioner {
     
                         ++numMovedVertices;
                         
-                        System.out.println("Tuple moved");
+                        System.out.println("Tuple " + currHotTuple + " moved");
                         
                         String movedVertexName = m_tupleToName.get(currHotTuple);
     
@@ -261,8 +263,13 @@ public class GreedyExtended implements Partitioner {
     
                 numMovedVertices = moveColdChunks(overloadedPartition, activePartitions, numMovedVertices); 
     
+                System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
+                System.out.println("Current plan\n " + m_plan_handler);
+
                 // ADD NEW PARTITIONS if needed
                 if (getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
+                    
+                    System.out.println("Adding partitions");
                     
                     if(activePartitions.size() < Controller.MAX_PARTITIONS 
                             && addedPartitions < Controller.MAX_PARTITIONS_ADDED){
@@ -282,6 +289,7 @@ public class GreedyExtended implements Partitioner {
                     }
     
                 }
+                
             } // while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART)
         } // for (int overloadedPartition : overloadedPartitions)
 
