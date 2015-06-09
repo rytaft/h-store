@@ -217,6 +217,8 @@ public class GreedyExtended implements Partitioner {
                     IntList toHotTuples = m_partitionToHotTuples[toPartition];
     
                     int currHotTuple = fromHotTuples.getInt(fromHotTuples.size() - topK);
+                    
+                    topK ++;
     
 //                    System.out.println("\nTuple name " + m_tupleToName.get(currHotTuple) + ", id " + currHotTuple + ", and weight " + m_hotTuples.get(currHotTuple));
     
