@@ -211,7 +211,7 @@ public class GreedyExtended implements Partitioner {
     
                 // loops over multiple hot tuples
                 while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART 
-                        && !fromHotTuples.isEmpty() && topK <= Controller.TOPK){
+                        && !fromHotTuples.isEmpty() && topK <= Math.min(Controller.TOPK, fromHotTuples.size())){
     
                     int toPartition = getLeastLoadedPartition(activePartitions);                
                     IntList toHotTuples = m_partitionToHotTuples[toPartition];
