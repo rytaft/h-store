@@ -207,18 +207,16 @@ public class GreedyExtended implements Partitioner {
     
                 // MOVE HOT TUPLES
     
-                int topK = Controller.TOPK;
+                int topK = 1;
     
                 // loops over multiple hot tuples
                 while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART 
-                        && !fromHotTuples.isEmpty() && topK > 0){
-    
-                    --topK;
+                        && !fromHotTuples.isEmpty() && topK <= Controller.TOPK){
     
                     int toPartition = getLeastLoadedPartition(activePartitions);                
                     IntList toHotTuples = m_partitionToHotTuples[toPartition];
     
-                    int currHotTuple = fromHotTuples.getInt(fromHotTuples.size() - 1);
+                    int currHotTuple = fromHotTuples.getInt(fromHotTuples.size() - topK);
     
 //                    System.out.println("\nTuple name " + m_tupleToName.get(currHotTuple) + ", id " + currHotTuple + ", and weight " + m_hotTuples.get(currHotTuple));
     
