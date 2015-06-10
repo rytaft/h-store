@@ -24,9 +24,9 @@ public class Plan {
 
     public static final String PLANNED_PARTITIONS = "partition_plan";
     // the TreeMap is a range. The key is the beginning of interval, the value is the end.
-    private Map<String, HashMap<Integer, TreeMap<Long, Long>>> tableToPartitionsToRanges = new HashMap<String, HashMap<Integer, TreeMap<Long, Long>>>();
+    protected Map<String, HashMap<Integer, TreeMap<Long, Long>>> tableToPartitionsToRanges = new HashMap<String, HashMap<Integer, TreeMap<Long, Long>>>();
     protected String[] table_names;
-    private String m_defaultTable;
+    protected String m_defaultTable;
     
     public class Range{
         Long from;
@@ -837,26 +837,35 @@ public class Plan {
     }
 
     // only for cloning
-    private Plan(){
+    protected Plan(){
         
     }
-
+    
     // adapted from Becca's GreedyExtendedPlacement
     public Plan clone(){
         
         Plan cloned = new Plan ();
         
+        cloned.table_names = this.table_names;
+        cloned.m_defaultTable = this.m_defaultTable;
+        
+        cloned.tableToPartitionsToRanges = new HashMap<String, HashMap<Integer, TreeMap<Long,Long>>> ();
+        
         for(String table : table_names){
             
-            for (int i = 0; i < Controller.MAX_PARTITIONS; i++){
-                cloned.addPartition(table, i);
-            }
+            HashMap<Integer, TreeMap<Long,Long>> clonedPartitionToRanges = new HashMap<Integer, TreeMap<Long,Long>>();
+            cloned.tableToPartitionsToRanges.put(table, clonedPartitionToRanges);
+
+            Map<Integer, TreeMap<Long,Long>> partitionsToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
             
-            Map<Integer, List<Plan.Range>> ranges = getAllRanges(table);
-            for(Integer i : ranges.keySet()) {
-                List<Plan.Range> partitionRanges = ranges.get(i);
-                for(Plan.Range range : partitionRanges) {
-                    cloned.addRange(table, i, range.from, range.to);
+            for (Map.Entry<Integer, TreeMap<Long,Long>> partititionToRanges :  partitionsToRanges.entrySet()){
+                
+                TreeMap<Long,Long> clonedRanges = new TreeMap<Long,Long>();
+                clonedPartitionToRanges.put(partititionToRanges.getKey(), clonedRanges);
+                
+                TreeMap<Long,Long> ranges = partititionToRanges.getValue();
+                for (Map.Entry<Long, Long> range : ranges.entrySet()){
+                    clonedRanges.put(range.getKey(), range.getValue());
                 }
             }
         }
