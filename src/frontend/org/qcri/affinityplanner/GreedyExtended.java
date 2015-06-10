@@ -268,13 +268,16 @@ public class GreedyExtended implements Partitioner {
                 System.out.println("Current plan\n " + m_plan_handler);
     
                 // MOVE COLD CHUNKS
-                System.out.println("\nMove cold chunks\n");
     
-                numMovedVertices = moveColdChunks(fromPartition, fromHotTuples, activePartitions, numMovedVertices); 
-    
-                System.out.println("Current load " + getLoadPerPartition(fromPartition));
-                System.out.println("Current plan\n " + m_plan_handler);
+                if(getLoadPerPartition(fromPartition) > Controller.MAX_LOAD_PER_PART ){
+                    System.out.println("\nMove cold chunks\n");
 
+                    numMovedVertices = moveColdChunks(fromPartition, fromHotTuples, activePartitions, numMovedVertices);
+
+                    System.out.println("Current load " + getLoadPerPartition(fromPartition));
+                    System.out.println("Current plan\n " + m_plan_handler);
+                }
+    
                 // ADD NEW PARTITIONS if needed
                 if (getLoadPerPartition(fromPartition) > Controller.MAX_LOAD_PER_PART){
                     
