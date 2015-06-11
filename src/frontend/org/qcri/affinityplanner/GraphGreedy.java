@@ -380,15 +380,15 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 for(Int2DoubleMap.Entry edge : adjacencyList.int2DoubleEntrySet()){
 
-                    int otherVertex = edge.getIntKey();
+                    int toVertex = edge.getIntKey();
                     double edgeWeight = edge.getDoubleValue();
 
-                    int otherPartition = AffinityGraph.m_vertexPartition.get(otherVertex);
+                    int toPartition = AffinityGraph.m_vertexPartition.get(toVertex);
 
-                    if (otherPartition != fromPartition){
+                    if (toPartition != fromPartition){
 
-                        int otherSite = PlanHandler.getSitePartition(otherPartition);
-                        double h = (fromSite == otherSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
+                        int toSite = PlanHandler.getSitePartition(toPartition);
+                        double h = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
                         load += edgeWeight * h;
                     }
                 }
