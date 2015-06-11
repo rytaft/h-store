@@ -356,13 +356,10 @@ public class GreedyExtended implements Partitioner {
         m_plan_handler.toJSON(plan_out);
     }
 
-    // made a procedure so it is easier to stop when we are done
     private int moveColdChunks(int fromPartition, IntList fromHotTuples, IntList activePartitions, int numMovedVertices){
 
         // clone plan to allow modifications while iterating on the clone
         PlanHandler oldPlan = m_plan_handler.clone();
-        
-        System.out.println("Top k " + Controller.TOPK);
         
         // remove hot tuples from cold chunks
         int topk = 1;

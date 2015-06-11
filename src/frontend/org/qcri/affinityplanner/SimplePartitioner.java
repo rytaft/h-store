@@ -88,6 +88,8 @@ public class SimplePartitioner extends PartitionerAffinity {
                     IntList hotVertices = getHottestVertices(fromPart, Controller.MAX_MOVED_TUPLES_PER_PART);
     
                     for (int vertex : hotVertices){
+                        
+                        System.out.println("Considering vertex " + AffinityGraph.m_vertex_to_name.get(vertex));
     
                         for (int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
     
@@ -108,7 +110,7 @@ public class SimplePartitioner extends PartitionerAffinity {
                     }
                     
                     if (getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
-                        numMovedVertices += moveColdChunks(fromPart, activePartitions, numMovedVertices);
+                        numMovedVertices += moveColdChunks(fromPart, hotVertices, activePartitions, numMovedVertices);
                     }
                     
                     if (getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
