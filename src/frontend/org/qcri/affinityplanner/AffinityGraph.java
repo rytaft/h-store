@@ -359,13 +359,16 @@ public class AffinityGraph {
 //        System.out.println(m_plan_handler.toString() + "\n");
     }
     
+    public String getTupleName(int hash){
+        return m_vertex_to_name.get(hash);
+    }
+    
     public void moveColdRange(String table, Plan.Range movedRange, int fromPart, int toPart){     
-        if (Controller.ROOT_TABLE == null){
-            m_plan_handler.moveColdRange(table, movedRange, fromPart, toPart);
-        }
-        else{
-            m_plan_handler.moveColdRangeAllTables(movedRange, fromPart, toPart);
-        }
+        m_plan_handler.moveColdRange(table, movedRange, fromPart, toPart);
+    }
+    
+    public void moveColdRangeAllTables(Plan.Range movedRange, int fromPart, int toPart){
+        m_plan_handler.moveColdRangeAllTables(movedRange, fromPart, toPart);
     }
     
     public int getPartition(int vertex){
@@ -465,6 +468,10 @@ public class AffinityGraph {
     
     public PlanHandler clonePlan(){
         return m_plan_handler.clone();
+    }
+    
+    public double getColdIncrement(int fromPartition){
+        return 1.0 / m_intervalsInSecs[fromPartition] / Controller.COLD_TUPLE_FRACTION_ACCESSES;
     }
     
     public List<Plan.Range> getRangeValues(String table, int partition, long from, long to){
