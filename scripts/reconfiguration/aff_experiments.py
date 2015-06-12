@@ -93,13 +93,13 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         #fabric.env["client.txnrate"] = 1000
         fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
         
-    if 't1' in  in args['exp_type']:
+    if 't1' in  args['exp_type']:
         fabric.env["client.threads_per_host"] = 80  # * partitions # min(50, int(partitions * 4))
    
-    if 't2' in  in args['exp_type']:
+    if 't2' in  args['exp_type']:
         fabric.env["client.threads_per_host"] = 160  # * partitions # min(50, int(partitions * 4))
    
-    if 't3' in  in args['exp_type']:
+    if 't3' in  args['exp_type']:
         fabric.env["client.threads_per_host"] = 40  # * partitions # min(50, int(partitions * 4))
         fabric.env["client.blocking_concurrent"] = 20 # * int(partitions/8)
 
