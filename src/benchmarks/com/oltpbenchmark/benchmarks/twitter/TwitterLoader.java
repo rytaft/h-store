@@ -8,6 +8,11 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.log4j.Logger;
+import org.voltdb.CatalogContext;
+import org.voltdb.VoltTable;
+import org.voltdb.VoltType;
+import org.voltdb.catalog.Database;
+import org.voltdb.catalog.Table;
 
 import com.oltpbenchmark.benchmarks.twitter.util.NameHistogram;
 import com.oltpbenchmark.benchmarks.twitter.util.TweetHistogram;
@@ -18,19 +23,17 @@ import com.oltpbenchmark.distributions.ZipfianGenerator;
 import com.oltpbenchmark.util.TextGenerator;
 
 import edu.brown.api.Loader;
+import edu.brown.benchmark.ycsb.distributions.IntegerGenerator;
+import edu.brown.benchmark.ycsb.distributions.UniformIntegerGenerator;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.rand.RandomDistribution.FlatHistogram;
-
-import org.voltdb.CatalogContext;
-import org.voltdb.VoltTable;
-import org.voltdb.VoltType;
-import org.voltdb.catalog.Database;
-import org.voltdb.catalog.Table;
 
 public class TwitterLoader extends Loader {
     private static final Logger LOG = Logger.getLogger(TwitterLoader.class);
 
     public final static int configCommitCount = 1000;
+
+	private static final boolean SMALL_GRAPH = true;
 
     private int num_users;
     private final long num_tweets;
@@ -278,8 +281,12 @@ public class TwitterLoader extends Loader {
         int total = 1;
         int batchSize = 0;
         
-        ZipfianGenerator zipfFollowee = new ZipfianGenerator(this.num_users,1.75);
-        ZipfianGenerator zipfFollows = new ZipfianGenerator(this.num_follows,1.75);
+        IntegerGenerator zipfFollowee = new ZipfianGenerator(this.num_users,1.75);
+        IntegerGenerator zipfFollows = new ZipfianGenerator(this.num_follows,1.75);
+        if (SMALL_GRAPH){
+        	LOG.warn("Using a small folls graph");
+        	zipfFollows = new UniformIntegerGenerator(new Random(), 1, 5);
+        }
         List<Integer> followees = new ArrayList<Integer>();
         for (int follower = 0; follower < this.num_users; follower++) {
             followees.clear();

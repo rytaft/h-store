@@ -19,6 +19,8 @@ package com.oltpbenchmark.distributions;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import edu.brown.benchmark.ycsb.distributions.IntegerGenerator;
+
 /**
  * Generates a sequence of integers 0, 1, ...
  */

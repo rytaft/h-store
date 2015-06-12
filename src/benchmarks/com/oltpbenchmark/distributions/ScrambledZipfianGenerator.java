@@ -1,4 +1,6 @@
 package com.oltpbenchmark.distributions;
+
+import edu.brown.benchmark.ycsb.distributions.IntegerGenerator;
 /**                                                                                                                                                                                
  * Copyright (c) 2010 Yahoo! Inc. All rights reserved.                                                                                                                             
  *                                                                                                                                                                                 
