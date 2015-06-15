@@ -15,10 +15,11 @@ FABRIC_TYPE="ssh"
 FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
-    "twitter-aff --partitions=24 --benchmark-size=300 --exp-suffix=24" \
-    "twitter-aff-t1 --partitions=24 --benchmark-size=300 --exp-suffix=24" \
-    "twitter-aff-t2 --partitions=24 --benchmark-size=300 --exp-suffix=24" \
-    "twitter-aff-t3 --partitions=24 --benchmark-size=300 --exp-suffix=24" \
+    "twitter-aff --partitions=1 --benchmark-size=50" \
+#    "twitter-aff --partitions=24 --benchmark-size=300 --exp-suffix=24" \
+#    "twitter-aff-t1 --partitions=24 --benchmark-size=300 --exp-suffix=24" \
+#    "twitter-aff-t2 --partitions=24 --benchmark-size=300 --exp-suffix=24" \
+#    "twitter-aff-t3 --partitions=24 --benchmark-size=300 --exp-suffix=24" \
 )
 
 for b in twitter; do
@@ -29,15 +30,15 @@ for b in twitter; do
         --stop-on-error \
         --exp-trials=1 \
         --exp-attempts=1 \        
-        --no-json \
+#        --no-json \
         --plot \
 	    --client.interval=1000 \
         --client.output_interval=true \
         --client.duration=300000 \
         --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv \
-        --affinity=30000 \
-        --sweep-reconfiguration 
+#        --affinity=30000 \
+#        --sweep-reconfiguration 
     )
         #--global.hasher_plan=plan_affinity.json \
     
