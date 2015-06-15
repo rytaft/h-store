@@ -97,6 +97,7 @@ aff_base = "%s-size%s"
 
 def genAll():
     for p in RAND_PARTITIONS:
+      print p
       for t in RAND_TWITTER_SIZES:   
         plan_base=twitter_base % (twitter_plan_dir_base, t)   
         plan_path = '%s-%s.json' % (plan_base, p)
@@ -106,6 +107,9 @@ def genAll():
         a2['partitions'] = str(p)
         tsize = int(t) * 1000
         a2['twitter'] = "%s:%s:%s" % (tsize,tsize,tsize)
+        plan_string = plan_generator.getPlanString(a2)
+        with open(plan_path.replace("scripts/reconfiguration/",""),"w") as plan_w_file:
+            plan_w_file.write("%s" % plan_string)
       for a in RAND_AFF_SIZES:
         plan_base = aff_base % (aff_plan_dir_base, a)
         plan_path = '%s-%s.json' % (plan_base, p)

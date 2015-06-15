@@ -99,13 +99,28 @@ def getPlanString(args):
   elif args["type"] == "affinity":
     raise Exception("Set to affinity, but no affinity sizes %s" % args["affinity"])
 
+  twt_size = None 
+  if 'twitter' in args and args["twitter"] and ":" in args["twitter"]:
+    _t = args["twitter"].split(":")
+    if len(_t) != 3:
+        raise Exception("twitte size needs 3 values [user_profiles]:[followers]:[follows] : %s " % args["twitter"])
+    twt_size = {}
+    twt_size["user_profiles"] = int(_t[0])
+    twt_size["followers"] = int(_t[1])
+    twt_size["follows"] = int(_t[2])
+  elif args["type"] == "twitter":
+    raise Exception("Set to twt, but no twt sizes %s" % args["twitter"])
+
+
   if "change_type" in args and args["change_type"] == "scale-down":
     raise Exception("not implemented")
   if "," in args["partitions"] or args["partitions"] != None:  
-    if args["type"] != "affinity":
-      tables = { TABLE_MAP[args.type]: args["size"] }
-    else:
+    if args["type"] == "affinity":
       tables =  aff_size
+    elif args["type"] == "twitter":
+      tables = twt_size 
+    else:
+      tables = { TABLE_MAP[args.type]: args["size"] }
     default_table = TABLE_MAP[args["type"]]
     if "multi" in args and args["multi"]:
         default_table="district"
@@ -172,8 +187,8 @@ if __name__ == "__main__":
     twt_size["user_profiles"] = int(_t[0])
     twt_size["followers"] = int(_t[1])
     twt_size["follows"] = int(_t[2])
-  elif args.type == "affinity":
-    raise Exception("Set to affinity, but no affinity sizes %s" % args.affinity)
+  elif args.type == "twitter":
+    raise Exception("Set to twt, but no twt sizes %s" % args.twitter)
   
   
   if args.change_type == "scale-down":
