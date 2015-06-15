@@ -645,7 +645,9 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
                 
         
         if benchmark == "affinity":
-            plan_dir_base = 'plans/affinity/a'       
+            plan_dir_base = 'plans/affinity/a'      
+            if 'rand' in args['exp_type']:
+                args["benchmark_size"] = random.choice(RAND_AFF_SIZES) 
             if "benchmark_size" in args and args["benchmark_size"]:
                 LOG.info("Updating the num of records %s" % args["benchmark_size"])
                 fabric.env["benchmark.num_records"] = args["benchmark_size"]
