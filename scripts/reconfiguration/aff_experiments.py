@@ -1,4 +1,6 @@
 import random
+import plan_generator
+
 
 RECONFIG_EXPERIMENTS = [
     "affinity-dyn-b1000-t10000",
@@ -88,8 +90,8 @@ RAND_PARTITIONS = [4,8,12,16,20,24,28,32]
 RECONFIG_CLIENT_COUNT = 3
 RAND_TWITTER_SIZES=[50,100,250,500]
 RAND_AFF_SIZES=AFF_SIZES.keys()
-aff_plan_dir_base = 'plans/affinity/a'       
-twitter_plan_dir_base = 'plans/twitter/t'
+aff_plan_dir_base = '../../plans/affinity/a'       
+twitter_plan_dir_base = '../../plans/twitter/t'
 twitter_base = "%s-size%sk" 
 aff_base = "%s-size%s" 
 
@@ -99,10 +101,23 @@ def genAll():
         plan_base=twitter_base % (twitter_plan_dir_base, t)   
         plan_path = '%s-%s.json' % (plan_base, p)
         print plan_path
+        a2 = {}
+        a2['type'] = 'twitter'
+        a2['partitions'] = str(p)
+        tsize = int(t) * 1000
+        a2['twitter'] = "%s:%s:%s" % (tsize,tsize,tsize)
       for a in RAND_AFF_SIZES:
-        plan_base = aff_base % (aff_plan_dir_base, t)
+        plan_base = aff_base % (aff_plan_dir_base, a)
         plan_path = '%s-%s.json' % (plan_base, p)
         print plan_path
+        _sz = AFF_SIZES[a]
+        a2 = {}
+        a2['type'] = 'affinity'
+        a2['partitions'] = str(p)
+        a2['affinity'] = "%s:%s:%s" % (_sz['suppliers'],_sz['products'],_sz['parts'])
+        plan_string = plan_generator.getPlanString(a2)
+        with open(plan_path.replace("scripts/reconfiguration/",""),"w") as plan_w_file:
+            plan_w_file.write("%s" % plan_string)
 
 def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
