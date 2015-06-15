@@ -666,6 +666,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
                 fabric.env['benchmark.num_parts'] = _sz['parts']
             else:
                 _sz = None
+            '''    
             if not os.path.exists(plan_path):
                 LOG.error("plan does not exist %s" % plan_path)
                 if _sz:
@@ -677,6 +678,7 @@ def updateExperimentEnv(fabric, args, benchmark, partitions):
                     LOG.info("CREATING NEW PLAN FILE. dirty hack to fix file path")
                     with open(plan_path.replace("scripts/reconfiguration/",""),"w") as plan_w_file:
                         plan_w_file.write("%s" % plan_string)
+            '''
 
         LOG.info("Using plan: %s" % plan_path)
         fabric.env['global.hasher_plan'] = plan_path
