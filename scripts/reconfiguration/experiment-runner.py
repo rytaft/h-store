@@ -1211,6 +1211,9 @@ if __name__ == '__main__':
     agroup.add_argument("--debug-log4j-client", action='store_true')
 
     args = vars(aparser.parse_args())
+    if 'rand' in args['exp_type']:
+        LOG.info('setting partitions')
+        args["partitions"] = [random.choice(RAND_PARTITIONS)]
     if 'exp_suffix' in  args:
         args['exp_type'] = '%s-%s' % (args['exp_type'], args['exp_suffix'])
     ## ----------------------------------------------
@@ -1311,7 +1314,6 @@ if __name__ == '__main__':
         finalResults = { }
         totalAttempts = args['exp_trials'] * args['exp_attempts']
         stop = False
-        
         for partitions in map(int, args["partitions"]):
             LOG.info("*"*100)
             LOG.info("*"*100)

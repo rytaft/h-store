@@ -151,7 +151,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.threads_per_host"] = random.choice(RAND_CLIENT_THREADS)  
         fabric.env["client.blocking_concurrent"] = random.choice(RAND_CLIENT_BLOCKING)     
         fabric.env["client.count"] = random.choice(RAND_CLIENTS)      
-        fabric.env["hstore.partitions"] = random.choice(RAND_PARTITIONS)
+
 
             
 
@@ -186,7 +186,6 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.threads_per_host"] = random.choice(RAND_CLIENT_THREADS)  
         fabric.env["client.blocking_concurrent"] = random.choice(RAND_CLIENT_BLOCKING)     
         fabric.env["client.count"] = random.choice(RAND_CLIENTS)      
-        fabric.env["hstore.partitions"] = random.choice(RAND_PARTITIONS)
         fabric.env["benchmark.supplier_to_parts_offset"] = random.choice([0.0, 0.1, 0.2, 0.3, 0.5])
         
     if 'affinity-ms12' in args['exp_type']:
