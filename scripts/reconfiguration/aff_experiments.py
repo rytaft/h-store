@@ -150,6 +150,11 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     if 't3' in  args['exp_type']:
         fabric.env["client.threads_per_host"] = 40  # * partitions # min(50, int(partitions * 4))
         fabric.env["client.blocking_concurrent"] = 20 # * int(partitions/8)
+    
+    if 'rand' in args['exp_type']:
+        fabric.env["elastic.imbalance_load"] = 0.15
+        fabric.env["elastic.max_tuples_move"] = 1000
+        #fabric.env["elastic."] =
         
     if 'twitter-rand' in args['exp_type']:
         fabric.env["client.threads_per_host"] = random.choice(RAND_CLIENT_THREADS)  
