@@ -600,11 +600,9 @@ public abstract class PartitionerAffinity implements Partitioner {
         PlanHandler oldPlan = m_graph.clonePlan();
         
         // remove hot tuples from cold chunks
-        int topk = 1;
 
-        while (topk <= Math.min(Controller.TOPK, fromHotTuples.size())){
+        for (int topk = 1; topk <= Math.min(Controller.TOPK, fromHotTuples.size()); topk++){
             int hotTuple = fromHotTuples.get(fromHotTuples.size() - topk);
-            topk++;
 
             System.out.println("Hot tuple:" + m_graph.getTupleName(hotTuple));
             String[] fields  = m_graph.getTupleName(hotTuple).split(",");

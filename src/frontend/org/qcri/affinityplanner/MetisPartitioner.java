@@ -16,7 +16,7 @@ import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntSet;
 
-public class MetisPartitioner extends GraphGreedyExtended {
+public class MetisPartitioner extends GraphGreedy {
 
     private static final Logger LOG = Logger.getLogger(MetisPartitioner.class);
     
@@ -42,15 +42,22 @@ public class MetisPartitioner extends GraphGreedyExtended {
         long time = System.currentTimeMillis() - start;
         LOG.info("generating metis out file took : " + time);
         Path metisOut= FileSystems.getDefault().getPath(".", Controller.METIS_OUT + ".part." + m_partitionsNo); 
-        String metisExe = String.format("gpmetis %s %s", Controller.METIS_OUT, m_partitionsNo);
         
         //RESULTS map of hashID -> new partition ID
         Int2IntOpenHashMap metisGeneratedPartitioning = null;
         try {
-            LOG.info("Calling metis " + metisExe);
             start = System.currentTimeMillis();
 
-            Process metisProc = new ProcessBuilder("gpmetis", Controller.METIS_OUT, ""+ m_partitionsNo).start();
+            Process metisProc = null;
+            if (Controller.IMBALANCE_LOAD == 0){
+                metisProc = new ProcessBuilder("gpmetis", "-ptype=rb", Controller.METIS_OUT, ""+ m_partitionsNo).start();
+                System.out.println("Calling gpmetis -ptype=rb " + Controller.METIS_OUT + " "+ m_partitionsNo);
+            }
+            else{
+                double imbalance = (1 + Controller.IMBALANCE_LOAD) * 1000 - 1;
+                metisProc = new ProcessBuilder("gpmetis", "-ptype=rb", "-ufactor=" + imbalance, Controller.METIS_OUT, ""+ m_partitionsNo).start();                
+                System.out.println("Calling gpmetis -ptype=rb -ufactor=" + imbalance + " " + Controller.METIS_OUT + " " + m_partitionsNo);
+            }
 
             // LOG.info("metis proc: " + metisProc.toString());
             int result = metisProc.waitFor();
@@ -65,7 +72,7 @@ public class MetisPartitioner extends GraphGreedyExtended {
                 m_graph.setPartitionMaps(metisGeneratedPartitioning);
             
             } else {
-                LOG.info(String.format("Metis ran unsuccessfully (%s) : %s", result, metisExe));
+                LOG.info(String.format("Metis ran unsuccessfully: %s", result));
                 return false;
             }
             
