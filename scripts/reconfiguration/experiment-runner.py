@@ -42,6 +42,7 @@ import types
 import subprocess
 import shlex
 import csv
+import shutil
 from datetime import datetime
 import time
 import zipfile
@@ -989,7 +990,8 @@ def saveResults(args):
     zipname = "%s-%s.zip" %( args['exp_type'],st)
     zipf = zipfile.ZipFile(zipname, 'w')
     zipdir(resultsDir, zipf)
-    zipf.close()    
+    zipf.close()  
+    shutil.rmtree(resultsDir)  
     
 
 ## ==============================================
