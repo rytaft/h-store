@@ -428,7 +428,7 @@ public class AffinityGraph {
                 StringBuilder sb = new StringBuilder(String.format("%d", (int)(vert_weight*100)));//TODO casting to int
                 
                 for (Entry<Integer, Double> edge: m_edges.get(vert_hash).entrySet()){
-                    int weight = (int) (edge.getValue()*100);
+                    int weight = (int) (edge.getValue() * 100);
                     sb.append(String.format(" %d %d", vert_to_increment.get(edge.getKey()),weight ));//TODO casting to int
                 }
                 writer.write(sb.toString());
