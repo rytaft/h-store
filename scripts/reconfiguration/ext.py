@@ -34,6 +34,15 @@ def plotResults(result_dir):
         if _res != 0:
             print "Error code %s when running %s" % (_res, _cmd)
                 
+
+def getDstDir(dst):
+    i = 0
+    base = dst
+    while os.path.exists(dst):
+        i+=1
+        dst = "%s-%s" % (base,i)
+    return dst
+    
                 
 workdir = '.'                              
 if len(sys.argv) > 1:
@@ -51,6 +60,7 @@ for f in files:
     z.extractall()
     tmp = os.path.join(os.listdir('out')[0])
     dst = os.path.join(workdir,tmp)
+    dst = getDstDir(dst)
     print "Moving %s to local: \n %s -> %s " % (tmp,os.path.join('out',tmp),dst)
     shutil.move(os.path.join('out',tmp),dst)
     shutil.rmtree('out')
