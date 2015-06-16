@@ -531,9 +531,15 @@ public class AffinityGraph {
 
             String [] fields = movedVertexName.split(",");
             int fromPartition = m_vertexPartition.get(vertex);
-
-            m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[1]));
-            m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
+            
+            if(Controller.ROOT_TABLE == null){
+                m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[1]));
+                m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
+            }
+            else{
+                m_plan_handler.removeTupleIdAllTables(fromPartition, Long.parseLong(fields[1]));
+                m_plan_handler.addRangeAllTables(toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));                
+            }
 
             // update data structures
             IntOpenHashSet vertices = m_partitionVertices.get(toPartition);
