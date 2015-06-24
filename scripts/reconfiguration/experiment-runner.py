@@ -990,6 +990,7 @@ def saveResults(args):
     zipname = "%s-%s.zip" %( args['exp_type'],st)
     zipf = zipfile.ZipFile(zipname, 'w')
     zipdir(resultsDir, zipf)
+    zipdir('../../properties', zipf)
     zipf.close()  
     shutil.rmtree(resultsDir)  
     
