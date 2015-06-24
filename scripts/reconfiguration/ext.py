@@ -53,23 +53,44 @@ else:
     print "using default direct"
     
 
+
+graph_dir = os.path.join(workdir,'graphs')
+
+if not os.path.exists(graph_dir):
+    os.mkdir(graph_dir)
+print "graph dir", graph_dir
 files = [x for x in os.listdir(workdir) if '.zip' in x]
 for f in files:
     print "Extracting ", f
     z = zipfile.ZipFile(os.path.join(workdir,f))
-    z.extractall()
-    tmp = os.path.join(os.listdir('out')[0])
-    dst = os.path.join(workdir,tmp)
-    dst = getDstDir(dst)
-    print "Moving %s to local: \n %s -> %s " % (tmp,os.path.join('out',tmp),dst)
-    shutil.move(os.path.join('out',tmp),dst)
-    shutil.rmtree('out')
+    use_out = False    
+    if 'out' in z.namelist():
+        use_out = True
+    
+    if use_out:
+        z.extractall()
+        tmp = os.path.join(os.listdir('out')[0])
+        dst = os.path.join(workdir,tmp)
+        dst = getDstDir(dst)
+        print "Moving %s to local: \n %s -> %s " % (tmp,os.path.join('out',tmp),dst)
+        shutil.move(os.path.join('out',tmp),dst)
+        shutil.rmtree('out')
+    else:
+        dst = z.filename.strip('.zip')
+        dst = getDstDir(dst)
+        z.extractall(path=dst)    
     #Remove Zip
     #os.remove(f)
     graphs = [x for x in os.listdir(dst) if 'tps' in x]
     if len(graphs) ==0:
         print "no graphs"
         plotResults(dst)
+    graph = [x for x in os.listdir(dst) if 'both.png' in x]
+    for g in graph:
+        a = os.path.join(dst,g)
+        b = os.path.join(workdir,"%s.png"%dst)
+        shutil.copyfile(a,b)
+        shutil.move(b,graph_dir)
     #print os.listdir('.') 
     
 
