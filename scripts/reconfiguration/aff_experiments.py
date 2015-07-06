@@ -196,6 +196,10 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.blocking_concurrent"] = random.choice(RAND_CLIENT_BLOCKING)     
         fabric.env["client.count"] = random.choice(RAND_CLIENTS)      
         fabric.env["benchmark.supplier_to_parts_offset"] = random.choice([0.0, 0.1, 0.2, 0.3, 0.5])
+        fabric.env["benchmark.product_to_parts_offset"] = random.choice([0.0, 0.0, 0.0, 0.01, 0.02, 0.10])
+        fabric.env["benchmark.max_parts_per_supplier"] = random.choice([100,100,100,200,500,50,10])
+        fabric.env["benchmark.max_parts_per_product"] = random.choice([10,10,10,20,50,5,2])
+
         
     if 'affinity-ms12' in args['exp_type']:
         fabric.env["hstore.partitions_per_site"] = 12 #args['exp_type'].rsplit("-",1)[1] 

@@ -979,18 +979,24 @@ def plotResults(args):
             
             
 #Used from http://stackoverflow.com/questions/1855095/how-to-create-a-zip-archive-of-a-directory-in-python
-def zipdir(path, zip):
+def zipdir(path, zip, remove=None):
     for root, dirs, files in os.walk(path):
         for file in files:
-            zip.write(os.path.join(root, file))
+            if remove:
+                zip.write(os.path.join(root, file), os.path.join(root,file).replace(remove,''))
+            else:
+                zip.write(os.path.join(root, file) )
 
 def saveResults(args):
     resultsDir = os.path.join(args['results_dir'], args['exp_type'])
     st = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H:%M')
     zipname = "%s-%s.zip" %( args['exp_type'],st)
     zipf = zipfile.ZipFile(zipname, 'w')
-    zipdir(resultsDir, zipf)
-    zipdir('../../properties', zipf)
+    zipdir(resultsDir, zipf, resultsDir)
+    if os.path.exists('./properties'): 
+    	zipdir('./properties', zipf)
+    elif os.path.exists('../../properties'):
+    	zipdir('../../properties', zipf, '../')
     zipf.close()  
     shutil.rmtree(resultsDir)  
     
