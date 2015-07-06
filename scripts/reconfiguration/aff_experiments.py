@@ -15,7 +15,7 @@ RECONFIG_EXPERIMENTS = [
     "affinity-dyn-b10",
     "affinity-ms",
     "affinity-rand",
-    "twitter-aff",    
+    "twitter-aff",
     "twitter-rand",
     "twitter-aff-t1",
     "twitter-aff-t2",
@@ -26,11 +26,12 @@ RECONFIG_EXPERIMENTS = [
     "affinity-ms-sk4",
     "affinity-ms-sk5",
     "affinity-ms12",
+    "affinity-test",
 
 ]
 
 
-AFF_SIZES = { 
+AFF_SIZES = {
   "xs": {
     "suppliers": 100,
     "products": 1000,
@@ -90,16 +91,16 @@ RAND_PARTITIONS = [4,8,12,16,20,24,28,32]
 RECONFIG_CLIENT_COUNT = 3
 RAND_TWITTER_SIZES=[50,100,250,500]
 RAND_AFF_SIZES=AFF_SIZES.keys()
-aff_plan_dir_base = '../../plans/affinity/a'       
+aff_plan_dir_base = '../../plans/affinity/a'
 twitter_plan_dir_base = '../../plans/twitter/t'
-twitter_base = "%s-size%sk" 
-aff_base = "%s-size%s" 
+twitter_base = "%s-size%sk"
+aff_base = "%s-size%s"
 
 def genAll():
     for p in RAND_PARTITIONS:
       print p
-      for t in RAND_TWITTER_SIZES:   
-        plan_base=twitter_base % (twitter_plan_dir_base, t)   
+      for t in RAND_TWITTER_SIZES:
+        plan_base=twitter_base % (twitter_plan_dir_base, t)
         plan_path = '%s-%s.json' % (plan_base, p)
         print plan_path
         a2 = {}
@@ -127,7 +128,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
     partitions_per_site = fabric.env["hstore.partitions_per_site"]
 
 
-    
+
 
     if 'twitter' in args['exp_type']:
         fabric.env["client.count"] = 1
@@ -135,34 +136,34 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.output_response_status"] = True
         fabric.env["output_response_status"] = True
         fabric.env["client.threads_per_host"] = 40  # * partitions # min(50, int(partitions * 4))
-        fabric.env["hstore.partitions_per_site"] =  12  #args['exp_type'].rsplit("-",1)[1] 
+        fabric.env["hstore.partitions_per_site"] =  12  #args['exp_type'].rsplit("-",1)[1]
         fabric.env["site.commandlog_enable"] = False
         #fabric.env["client.txnrate"] = 1000
-        fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)       
-        
-        
+        fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
+
+
     if 't1' in  args['exp_type']:
         fabric.env["client.threads_per_host"] = 80  # * partitions # min(50, int(partitions * 4))
-   
+
     if 't2' in  args['exp_type']:
         fabric.env["client.threads_per_host"] = 160  # * partitions # min(50, int(partitions * 4))
-   
+
     if 't3' in  args['exp_type']:
         fabric.env["client.threads_per_host"] = 40  # * partitions # min(50, int(partitions * 4))
         fabric.env["client.blocking_concurrent"] = 20 # * int(partitions/8)
-    
+
     if 'rand' in args['exp_type']:
         fabric.env["elastic.imbalance_load"] = 0.15
         fabric.env["elastic.max_tuples_move"] = 1000
         #fabric.env["elastic."] =
-        
+
     if 'twitter-rand' in args['exp_type']:
-        fabric.env["client.threads_per_host"] = random.choice(RAND_CLIENT_THREADS)  
-        fabric.env["client.blocking_concurrent"] = random.choice(RAND_CLIENT_BLOCKING)     
-        fabric.env["client.count"] = random.choice(RAND_CLIENTS)      
+        fabric.env["client.threads_per_host"] = random.choice(RAND_CLIENT_THREADS)
+        fabric.env["client.blocking_concurrent"] = random.choice(RAND_CLIENT_BLOCKING)
+        fabric.env["client.count"] = random.choice(RAND_CLIENTS)
 
 
-            
+
 
     if 'affinity-ms' in args['exp_type']:
         fabric.env["client.count"] = 1
@@ -177,10 +178,28 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.output_response_status"] = True
         fabric.env["output_response_status"] = True
         fabric.env["client.threads_per_host"] = 40  # * partitions # min(50, int(partitions * 4))
-        fabric.env["hstore.partitions_per_site"] = 8 #args['exp_type'].rsplit("-",1)[1] 
+        fabric.env["hstore.partitions_per_site"] = 8 #args['exp_type'].rsplit("-",1)[1]
         fabric.env["site.commandlog_enable"] = False
         #fabric.env["client.txnrate"] = 1000
         fabric.env["client.blocking_concurrent"] = 5 # * int(partitions/8)
+
+    if 'affinity-test' in args['exp_type']:
+        fabric.env["client.threads_per_host"] = 1
+        fabric.env["client.blocking_concurrent"] = 20
+        fabric.env["client.count"] = 4
+        fabric.env["benchmark.supplier_to_parts_offset"] = 0.0
+        fabric.env["benchmark.product_to_parts_offset"] = 0.02
+        fabric.env["benchmark.uses.is_random"] = False
+        fabric.env["benchmark.supplies.is_random"] = False
+        fabric.env["benchmark.product_to_parts_random_offset"] = False
+        fabric.env["benchmark.supplier_to_parts_random_offset"] = False
+        fabric.env["benchmark.max_parts_per_supplier"] = 500
+        fabric.env["benchmark.max_parts_per_product"] = 20
+        fabric.env["client.output_response_status"] = True
+        fabric.env["output_response_status"] = True
+        fabric.env["hstore.partitions_per_site"] = 6 #args['exp_type'].rsplit("-",1)[1]
+        fabric.env["site.commandlog_enable"] = False
+        fabric.env["site.status_enable"] = True
 
     if 'sk2' in args['exp_type']:
         fabric.env["benchmark.supplier_to_parts_offset"] = 0.2
@@ -192,17 +211,17 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["benchmark.supplier_to_parts_offset"] = 0.5
 
     if 'affinity-rand' in args['exp_type']:
-        fabric.env["client.threads_per_host"] = random.choice(RAND_CLIENT_THREADS)  
-        fabric.env["client.blocking_concurrent"] = random.choice(RAND_CLIENT_BLOCKING)     
-        fabric.env["client.count"] = random.choice(RAND_CLIENTS)      
+        fabric.env["client.threads_per_host"] = random.choice(RAND_CLIENT_THREADS)
+        fabric.env["client.blocking_concurrent"] = random.choice(RAND_CLIENT_BLOCKING)
+        fabric.env["client.count"] = random.choice(RAND_CLIENTS)
         fabric.env["benchmark.supplier_to_parts_offset"] = random.choice([0.0, 0.1, 0.2, 0.3, 0.5])
         fabric.env["benchmark.product_to_parts_offset"] = random.choice([0.0, 0.0, 0.0, 0.01, 0.02, 0.10])
         fabric.env["benchmark.max_parts_per_supplier"] = random.choice([100,100,100,200,500,50,10])
         fabric.env["benchmark.max_parts_per_product"] = random.choice([10,10,10,20,50,5,2])
 
-        
+
     if 'affinity-ms12' in args['exp_type']:
-        fabric.env["hstore.partitions_per_site"] = 12 #args['exp_type'].rsplit("-",1)[1] 
+        fabric.env["hstore.partitions_per_site"] = 12 #args['exp_type'].rsplit("-",1)[1]
 
     if 'affinity-dyn' in args['exp_type']:
         fabric.env["client.count"] = RECONFIG_CLIENT_COUNT
@@ -217,7 +236,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         fabric.env["client.output_response_status"] = True
         fabric.env["output_response_status"] = True
         fabric.env["client.threads_per_host"] = 20  # * partitions # min(50, int(partitions * 4))
-        fabric.env["hstore.partitions_per_site"] = 6 #args['exp_type'].rsplit("-",1)[1] 
+        fabric.env["hstore.partitions_per_site"] = 6 #args['exp_type'].rsplit("-",1)[1]
         fabric.env["site.commandlog_enable"] = False
         if 'b1000' in args['exp_type']:
             fabric.env["client.blocking_concurrent"] = 1000 # * int(partitions/8)
@@ -229,7 +248,7 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
             fabric.env["client.blocking_concurrent"] = 10 # * int(partitions/8)
         else:
             fabric.env["client.blocking_concurrent"] = 1 # * int(partitions/8)
-            
+
         if 't10000' in args['exp_type']:
             fabric.env["client.txnrate"] = 10000 # * int(partitions/8)
         elif 't5000' in args['exp_type']:
@@ -241,5 +260,3 @@ def updateReconfigurationExperimentEnv(fabric, args, benchmark, partitions ):
         else:
             pass
             #fabric.env["client.txnrate"] = 1 # * int(partitions/8)
-            
-
