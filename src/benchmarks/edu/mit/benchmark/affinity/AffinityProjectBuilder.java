@@ -9,6 +9,7 @@ import edu.mit.benchmark.affinity.procedures.GetSupplier;
 import edu.mit.benchmark.affinity.procedures.GetProduct;
 import edu.mit.benchmark.affinity.procedures.GetPartsBySupplier;
 import edu.mit.benchmark.affinity.procedures.GetPartsByProduct;
+import edu.mit.benchmark.affinity.procedures.UpdatePartByProduct;
 
 public class AffinityProjectBuilder extends AbstractProjectBuilder{
 
@@ -26,6 +27,7 @@ public class AffinityProjectBuilder extends AbstractProjectBuilder{
         GetPart.class,
         GetPartsBySupplier.class,
         GetPartsByProduct.class,
+        UpdatePartByProduct.class
     };
     public static final String PARTITIONING[][] = new String[][] {
         // { "TABLE NAME", "PARTITIONING COLUMN NAME" }
