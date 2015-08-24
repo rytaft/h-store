@@ -348,6 +348,17 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 this.tables_map.put(table_name, new PartitionedTable(tableRanges.getValue(), table_name, this.catalog_context.getTableByName(table_name)));
             }
         }
+        
+        public String toString(){
+            StringBuilder sb = new StringBuilder();
+            for (Entry<String, PartitionedTable> pair: this.tables_map.entrySet()) {
+                sb.append(pair.getKey());
+                sb.append(":");
+                sb.append(pair.getValue().toString());
+                sb.append(System.lineSeparator());
+            }
+            return sb.toString();
+        }
     }
 
     /**
@@ -496,6 +507,15 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
         public Table getCatalog_table() {
             return catalog_table;
+        }
+        
+        public String toString(){
+            StringBuilder sb = new StringBuilder();
+            for (PartitionRange range : this.partitions){
+                sb.append(range.toString());
+                sb.append(",");
+            }
+            return sb.toString();
         }
     }
     
