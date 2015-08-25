@@ -621,4 +621,15 @@ public class AffinityGenerator extends IntegerGenerator
 		throw new UnsupportedOperationException("@todo implement VaryingZipfianGenerator.mean()");
 	    }
 	}
+
+    @Override
+    public String toString() {
+        return "AffinityGenerator [lastTime=" + lastTime + ", items=" + items + ", min=" + min + ", max=" + max + ", base=" + base + ", zipfianconstant=" + zipfianconstant + ", alpha=" + alpha
+                + ", zetan=" + zetan + ", eta=" + eta + ", theta=" + theta + ", zeta2theta=" + zeta2theta + ", countforzeta=" + countforzeta + ", scrambled=" + scrambled + ", mirrored=" + mirrored
+                + ", numHotSpots=" + numHotSpots + ", percentAccessHotSpots=" + percentAccessHotSpots + ", randomHotSpots=" + randomHotSpots + ", isRandom=" + isRandom + ", lastItem=" + lastItem
+                + ", hotSpots=" + hotSpots + "]";
+    }
+	
+	
+	
 }

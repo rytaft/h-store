@@ -95,12 +95,23 @@ public class AffinityConfig {
                 if(debug.val) LOG.debug("Unknown prop : "  + key);
             }
         } // FOR
+        LOG.info(String.format("Suppliers %s Products %s Parts %s",num_suppliers,num_products, num_parts));
             
         supplier_gen = getGenerator(AffinityConstants.SUP_PRE, num_suppliers-1, m_extraParams);
+        LOG.info("supplier_gen : "+ supplier_gen);
+
         product_gen = getGenerator(AffinityConstants.PROD_PRE, num_products-1, m_extraParams);
+        LOG.info("product_gen : "+ product_gen);
+
         part_gen = getGenerator(AffinityConstants.PARTS_PRE, num_parts-1, m_extraParams);
+        LOG.info("part_gen : "+ part_gen);
+
         uses_gen = getAffinityGenerator(AffinityConstants.USES_PRE, num_parts-1, m_extraParams);
+        LOG.info("uses_gen : "+ uses_gen);
+
         supplies_gen = getAffinityGenerator(AffinityConstants.SUPPLIES_PRE, num_parts-1, m_extraParams);
+        LOG.info("supplies_gen : "+ supplies_gen);
+
     }
 
     

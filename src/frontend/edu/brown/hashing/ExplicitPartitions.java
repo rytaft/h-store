@@ -138,7 +138,7 @@ public abstract class ExplicitPartitions {
                     table_name = this.default_table;
                     table = this.catalog_context.getTableByName(this.default_table);
                 } else {
-                    LOG.info(table_name + " adding procedure: " + proc.toString());
+                    LOG.debug(table_name + " adding procedure: " + proc.toString());
                 }
                 this.catalog_to_table_map.put(proc, table);
                 for (Statement statement : proc.getStatements()) {
