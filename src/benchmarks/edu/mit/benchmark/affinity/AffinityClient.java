@@ -124,7 +124,7 @@ public class AffinityClient extends BenchmarkComponent {
                 params = new Object[]{ config.supplier_gen.nextInt() };
                 break;
             case GET_PARTS_BY_PRODUCT:
-                params = new Object[]{ config.supplier_gen.nextInt() };
+                params = new Object[]{ config.part_gen.nextInt() };
                 break;
             default:
                 throw new RuntimeException("Unexpected txn '" + target + "'");
