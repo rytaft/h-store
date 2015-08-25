@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.jfree.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
@@ -44,11 +45,14 @@ public abstract class ExplicitPartitions {
 	protected Map<String, String> partitionedTablesByFK;
 	protected Map<CatalogType, Table> catalog_to_table_map;
 	protected Map<String, Column[]> table_partition_cols_map;
+	protected Map<String, Table> name_table_map;
 	protected String default_table = null;
 	protected Map<String, List<String>> relatedTablesMap;
 	protected ReconfigurationPlan reconfigurationPlan;
 	protected PartitionPhase incrementalPlan;
 	protected PartitionPhase previousIncrementalPlan;
+	
+	protected static Map<String,String> overrideStatementMap;
 	
 	private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
@@ -59,6 +63,9 @@ public abstract class ExplicitPartitions {
     
     static {
         LoggerUtil.attachObserver(LOG, debug, trace);
+        overrideStatementMap = new HashMap<>();
+        
+        overrideStatementMap.put("getPartInfoStmt", "parts");
     }
 	
 	protected ExplicitPartitions(CatalogContext catalog_context, JSONObject partition_json) throws Exception {
@@ -67,6 +74,7 @@ public abstract class ExplicitPartitions {
         this.table_partition_cols_map = new HashMap<>();
         this.plan_tables = null;
         this.relatedTablesMap = new HashMap<>();
+        this.name_table_map = new HashMap<>();
         this.reconfigurationPlan = null;
         Set<String> partitionedTables = getExplicitPartitionedTables(partition_json);
         // TODO find catalogContext.getParameter mapping to find
@@ -78,7 +86,8 @@ public abstract class ExplicitPartitions {
             if (table.getIsreplicated()) continue;
         	
         	String tableName = table.getName().toLowerCase();
-          
+        	LOG.info(String.format(" && Adding to table map %s", tableName));
+        	name_table_map.put(tableName, table);
             Column[] cols = new Column[table.getPartitioncolumns().size()];
             for(ColumnRef colRef : table.getPartitioncolumns().values()) {
             	cols[colRef.getIndex()] = colRef.getColumn();
@@ -134,9 +143,22 @@ public abstract class ExplicitPartitions {
                 }
                 this.catalog_to_table_map.put(proc, table);
                 for (Statement statement : proc.getStatements()) {
+                    if (overrideStatementMap.containsKey(statement.getName())){
+                        String _overrideTable = overrideStatementMap.get(statement.getName());
+                        
+                        LOG.error(String.format("Overriding statment %s  mapping to : %s", statement.getName(), _overrideTable));
+                        if(this.name_table_map.containsKey(_overrideTable)){
+                            this.catalog_to_table_map.put(statement, name_table_map.get(_overrideTable));
+                            continue;
+                        } else {
+                            LOG.error("failed to override as table name was not in map. using default");
+                        }
+                        
+                    } 
+                    
                     LOG.debug(table_name + " adding statement: " + statement.toString());
-
                     this.catalog_to_table_map.put(statement, table);
+                
                 }
 
             }
