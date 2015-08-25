@@ -86,7 +86,6 @@ public abstract class ExplicitPartitions {
             if (table.getIsreplicated()) continue;
         	
         	String tableName = table.getName().toLowerCase();
-        	LOG.info(String.format(" && Adding to table map %s", tableName));
         	name_table_map.put(tableName, table);
             Column[] cols = new Column[table.getPartitioncolumns().size()];
             for(ColumnRef colRef : table.getPartitioncolumns().values()) {
