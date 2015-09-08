@@ -2126,6 +2126,7 @@ public class BenchmarkController {
                 elastic_run = true;
             } else if (parts[0].equalsIgnoreCase("elastic.delay")){
                 elastic_delay = Long.parseLong(parts[1]);
+                elastic_run = true;
             } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_PLAN_IN)){
                 Controller.PLAN_IN = parts[1];
             } else if (parts[0].equalsIgnoreCase(ArgumentsParser.PARAM_ELASTIC_PLAN_OUT)){
