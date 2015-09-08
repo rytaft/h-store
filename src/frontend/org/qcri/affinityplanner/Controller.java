@@ -78,7 +78,7 @@ public class Controller extends Thread {
     
     public static int COLD_CHUNK_SIZE = 100;
     public static double COLD_TUPLE_FRACTION_ACCESSES = 100;
-    public static int TOPK = Integer.MAX_VALUE;
+    public static int TOPK = 10000;
     
     public static String ROOT_TABLE = null;
    
