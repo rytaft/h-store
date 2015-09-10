@@ -525,9 +525,9 @@ public class AffinityGraph {
                 for (int toVertex: adjList.keySet()){
                     int destPart = m_vertexPartition.get(toVertex);
                     if (sourcePart != destPart){
-                        String s = "From: " + m_vertex_to_name.get(fromVertex) + 
-                                " - To: " + m_vertex_to_name.get(toVertex) + 
-                                " - Weight: " + adjList.get(toVertex);
+                        String s = "From: " + m_vertex_to_name.get(fromVertex) + " weight  " + m_vertices.get(fromVertex) + 
+                                " == To: " + m_vertex_to_name.get(toVertex) + " weight  " + m_vertices.get(toVertex) +
+                                " == Edge weight: " + adjList.get(toVertex);
                         writer.write(s, 0, s.length());
                         writer.newLine();
                     }

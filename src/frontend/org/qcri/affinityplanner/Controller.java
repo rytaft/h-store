@@ -243,6 +243,10 @@ public class Controller extends Thread {
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
                         
+            if (partitioner instanceof PartitionerAffinity){
+                ((PartitionerAffinity) partitioner).graphToFile(FileSystems.getDefault().getPath(".", "graph.log"));
+            }
+
             record("======================== PARTITIONING GRAPH ========================");
             t1 = System.currentTimeMillis();
             
@@ -286,7 +290,7 @@ public class Controller extends Thread {
 
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
-            record("Partitioner tuples to move: " + Controller.MAX_MOVED_TUPLES_PER_PART);
+//            record("Partitioner tuples to move: " + Controller.MAX_MOVED_TUPLES_PER_PART);
             
             if (partitioner instanceof PartitionerAffinity){
                 ((PartitionerAffinity) partitioner).graphToFileMPT(FileSystems.getDefault().getPath(".", "mpt.log"));
