@@ -15,6 +15,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -511,6 +512,33 @@ public class AffinityGraph {
             System.out.println("Error while opening file " + file.toString());
             return;
        }
+    }
+    
+    public void toFileMPT(Path file){
+        BufferedWriter writer;
+        try{
+            writer = Files.newBufferedWriter(file, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            
+            for (int fromVertex: m_edges.keySet()){
+                int sourcePart = m_vertexPartition.get(fromVertex);
+                Int2DoubleOpenHashMap adjList = m_edges.get(fromVertex);
+                for (int toVertex: adjList.keySet()){
+                    int destPart = m_vertexPartition.get(toVertex);
+                    if (sourcePart != destPart){
+                        String s = "From: " + m_vertex_to_name.get(fromVertex) + 
+                                " - To: " + m_vertex_to_name.get(toVertex) + 
+                                " - Weight: " + adjList.get(toVertex);
+                        writer.write(s, 0, s.length());
+                    }
+                }
+            }
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Controller.record("Error while opening file " + file.toString());
+            System.out.println("Error while opening file " + file.toString());
+            return;
+       }       
     }
     
     public void setPartitionMaps (Int2IntOpenHashMap newVertexPartition){
