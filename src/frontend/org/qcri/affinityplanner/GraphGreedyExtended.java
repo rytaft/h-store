@@ -121,7 +121,8 @@ public class GraphGreedyExtended extends PartitionerAffinity {
                 if (currMove != null && 
                         (nextHotTuplePos >= hotVerticesList.size() 
                         || numMovedVertices + currMove.movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART 
-                        || currMove.toPartition == -1)){
+                        || currMove.toPartition == -1
+                        || !currMove.wasExtended)){
 
                     // Move candidate if we can
                     
@@ -156,13 +157,6 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
                         System.out.println("Cannot expand - Adding a new partition");
 
-                        if(activePartitions.size() >= Controller.MAX_PARTITIONS 
-                                || addedPartitions >= Controller.MAX_PARTITIONS_ADDED){
-
-                            System.out.println("Cannot add new partition to offload " + overloadedPartitions);
-                            return false;
-                        }
-
                         // We fill up low-order partitions first to minimize the number of servers
                         addedPartitions++;
                         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
@@ -174,21 +168,35 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
                         nextHotTuplePos = lastHotVertexMoved + 1;
                         currMove = null;
+
+                        if(activePartitions.size() >= Controller.MAX_PARTITIONS 
+                                || addedPartitions >= Controller.MAX_PARTITIONS_ADDED){
+
+                            System.out.println("Cannot add new partition to offload " + overloadedPartitions);
+                            return false;
+                        }
+
+                        if (nextHotTuplePos >= hotVerticesList.size()){
+                            System.out.println("No more hot tuples");
+                            return false;
+                        }
                     }
                 }
 
                 // Step 2) add one vertex to movingVertices - either expand to vertex with highest affinity or with the next hot tuple
 
-                if(currMove != null){
-                    System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
-                    System.out.println("Current sender delta " + getSenderDelta(currMove.movingVertices, overloadedPartition, 1));
-                }
-                    
                 if (currMove == null){
                     currMove = new Move();
                 }
+                else {
+                    System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
+                    System.out.println("Current sender delta " + getSenderDelta(currMove.movingVertices, overloadedPartition, 1));                    
+                }
                 
                 nextHotTuplePos = expandMovingVertices (currMove, hotVerticesList, nextHotTuplePos, activePartitions, overloadedPartition);
+                if (!currMove.wasExtended){
+                    continue;
+                }
 
                 // Step 3) move the vertices
 
@@ -198,8 +206,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
                 System.out.println("Receiver: " + currMove.toPartition + ", receiver delta " + currMove.rcvDelta);
 
-                if(!currMove.movingVertices.isEmpty() 
-                        && currMove.toPartition != -1
+                if(currMove.toPartition != -1
                         && currMove.sndDelta <= Controller.MIN_SENDER_GAIN_MOVE * -1
                         && (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta < Controller.MAX_LOAD_PER_PART)){
 
@@ -271,11 +278,12 @@ public class GraphGreedyExtended extends PartitionerAffinity {
             // the second condition is for the case where the vertex has been moved already 
 
             if (nextHotTuplePos == hotVertices.size()){
-                move.clear();
+                move.wasExtended = false;
                 return nextHotTuplePos;
             }
 
             move.movingVertices.add(nextHotVertex);
+            move.wasExtended = true;
 
             findBestPartition(move, fromPartition, activePartitions);
 
@@ -295,6 +303,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
             if(affineVertex != 0){
 
                 move.movingVertices.add(affineVertex);
+                move.wasExtended = true;
 
                 // this will populate all the fields of move
                 findBestPartition(move, fromPartition, activePartitions);
@@ -304,6 +313,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
             else{
                 System.out.println("Could not expand");
+                move.wasExtended = false;
             }
             
         } // END if(!movedVertices.isEmpty())

@@ -40,12 +40,14 @@ public abstract class PartitionerAffinity implements Partitioner {
         public double sndDelta;
         public double rcvDelta;
         public IntOpenHashSet movingVertices;
+        public boolean wasExtended;
         
         public Move (){
             this.toPartition = -1;
             this.sndDelta = Double.MAX_VALUE;
             this.rcvDelta = Double.MAX_VALUE;
             this.movingVertices = new IntOpenHashSet();
+            this.wasExtended = false;
         }
 
         public Move(int toPartition, double sndDelta, double rcvDelta, IntOpenHashSet movingVertices) {
@@ -53,19 +55,13 @@ public abstract class PartitionerAffinity implements Partitioner {
             this.sndDelta = sndDelta;
             this.rcvDelta = rcvDelta;
             this.movingVertices = movingVertices.clone();
+            wasExtended = true;
         }
         
         public Move clone(){
             return new Move (this.toPartition, this.sndDelta, this.rcvDelta, this.movingVertices);
         }
         
-        public void clear(){
-            this.toPartition = -1;
-            this.sndDelta = Double.MAX_VALUE;
-            this.rcvDelta = Double.MAX_VALUE;
-            this.movingVertices.clear();
-        }
-
         public void clearExceptMovingVertices(){
             this.toPartition = -1;
             this.sndDelta = Double.MAX_VALUE;
