@@ -52,22 +52,12 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
         // detect overloaded and active partitions
         IntList activePartitions = new IntArrayList(Controller.MAX_PARTITIONS);
+        IntList overloadedPartitions = new IntArrayList(Controller.MAX_PARTITIONS);
 
         System.out.println("Load per partition before reconfiguration");
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
             if(AffinityGraph.isActive(i)){
                 activePartitions.add(i);
-                System.out.println(getLoadPerPartition(i));
-            }
-        }
-
-        // find overloaded partitions
-
-        IntList overloadedPartitions = new IntArrayList(Controller.MAX_PARTITIONS);
-
-        System.out.println("Load per partition after moving border tuples");
-        for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
-            if(activePartitions.contains(i)){
                 double load =  getLoadPerPartition(i);
                 System.out.println(load);
                 if (load > Controller.MAX_LOAD_PER_PART){

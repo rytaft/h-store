@@ -289,7 +289,7 @@ public class Controller extends Thread {
             record("Partitioner tuples to move: " + Controller.MAX_MOVED_TUPLES_PER_PART);
             
             if (partitioner instanceof PartitionerAffinity){
-                ((PartitionerAffinity) partitioner).graphToFileMPT(FileSystems.getDefault().getPath(".", "MPT.log"));
+                ((PartitionerAffinity) partitioner).graphToFileMPT(FileSystems.getDefault().getPath(".", "mpt.log"));
             }
             
             

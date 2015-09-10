@@ -529,6 +529,7 @@ public class AffinityGraph {
                                 " - To: " + m_vertex_to_name.get(toVertex) + 
                                 " - Weight: " + adjList.get(toVertex);
                         writer.write(s, 0, s.length());
+                        writer.newLine();
                     }
                 }
             }
