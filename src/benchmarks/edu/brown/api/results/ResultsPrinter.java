@@ -227,6 +227,7 @@ public class ResultsPrinter implements BenchmarkInterest {
         if (hstore_conf.client.output_interval == false) return;
         
         Pair<Long, Long> p = results.computeTotalAndDelta();
+        double dtxnRate = results.getDtxnRate();
         assert(p != null);
         long totalTxnCount = p.getFirst();
         long txnDelta = p.getSecond();
@@ -254,7 +255,9 @@ public class ResultsPrinter implements BenchmarkInterest {
         sb.append("\n" + SPACER + SPACER);
         sb.append(String.format("Completed %d txns at a rate of " + RESULT_FORMAT + " txns/s",
                                 txnDelta, txnDelta / (double)(results.getIntervalDuration()) * 1000d));
-        sb.append(String.format(" with " + RESULT_FORMAT + " ms avg latency", intervalLatency));        
+        sb.append(String.format(" with " + RESULT_FORMAT + " ms avg latency", intervalLatency));
+        sb.append(String.format(". Percent Distributed:" + RESULT_FORMAT + "", dtxnRate));
+        
         sb.append("\n" + SPACER);
         sb.append(String.format(" Percentile Latencies 50: " + RESULT_FORMAT + "(ms) Latencies 95: " 
                     + RESULT_FORMAT + "(ms) Latencies 99: " + RESULT_FORMAT + "(ms)", intervalPerLatency[0],intervalPerLatency[1], intervalPerLatency[2]));        
