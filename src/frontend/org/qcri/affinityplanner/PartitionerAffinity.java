@@ -162,7 +162,7 @@ public abstract class PartitionerAffinity implements Partitioner {
      *     
      *     if toPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
-    protected abstract double getGlobalDelta(IntSet movingVertices, int fromPartition, int toPartition);
+    protected abstract double getGlobalDelta(IntSet movingVertices, int toPartition);
     
     /**
      *     Local delta for a receiver by moving a set of vertices
@@ -171,7 +171,7 @@ public abstract class PartitionerAffinity implements Partitioner {
      *     
      *     if toPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
-    protected abstract double getReceiverDelta(IntSet movingVertices, int fromPartition, int toPartition);
+    protected abstract double getReceiverDelta(IntSet movingVertices, int toPartition);
     
     /**
      *     Local delta for a sender by moving a set of vertices
@@ -180,7 +180,7 @@ public abstract class PartitionerAffinity implements Partitioner {
      *     
      *     if toPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
-    protected abstract double getSenderDelta(IntSet movingVertices, int fromPartition, int toPartition);
+    protected abstract double getSenderDelta(IntSet movingVertices, int senderPartition, int toPartition);
 
     public abstract double getLoadPerPartition(int partition);
     
@@ -202,29 +202,29 @@ public abstract class PartitionerAffinity implements Partitioner {
      * If the move is allowed, it updates the graph and the plan
      * 
      * @param movingVertices
-     * @param fromPartition
+     * @param senderPartition
      * @param toPartition
      * @return number of partitions actually moved
      */
-    protected int tryMoveVertices(IntSet movingVertices, int fromPartition, int toPartition) {
+    protected int tryMoveVertices(IntSet movingVertices, int senderPartition, int toPartition) {
 
         int numMovedVertices = 0;
-        double senderDelta = getSenderDelta(movingVertices, fromPartition, toPartition);
-        double receiverDelta = getReceiverDelta(movingVertices, fromPartition, toPartition);
+        double senderDelta = getSenderDelta(movingVertices, senderPartition, toPartition);
+        double receiverDelta = getReceiverDelta(movingVertices, toPartition);
 
         // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
         if(senderDelta <= Controller.MIN_SENDER_GAIN_MOVE * -1
                 && (receiverDelta < 0 
                         || getLoadPerPartition(toPartition) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
 
-            m_graph.moveHotVertices(movingVertices, fromPartition, toPartition);
+            m_graph.moveHotVertices(movingVertices, toPartition);
 
             numMovedVertices = movingVertices.size();
 
             // DEBUG
             System.out.println("Moved " + numMovedVertices + " vertices from partition " 
-                    + fromPartition + " to partition " + toPartition + " for a global gain of " 
-                    + getGlobalDelta(movingVertices, fromPartition, toPartition) + ", a sender gain of " 
+                    + senderPartition + " to partition " + toPartition + " for a global gain of " 
+                    + getGlobalDelta(movingVertices, toPartition) + ", a sender gain of " 
                     + senderDelta + " and a receiver gain of " + receiverDelta);
         }
         return numMovedVertices;
@@ -243,7 +243,7 @@ public abstract class PartitionerAffinity implements Partitioner {
      * @param activePartitions
      * @param toPartition_senderDelta
      */
-    protected void findBestPartition(Move move, int fromPartition, IntList activePartitions){
+    protected void findBestPartition(Move move, int senderPartition, IntList activePartitions){
         
         move.toPartition = -1;
         move.sndDelta = Double.MAX_VALUE;
@@ -252,18 +252,20 @@ public abstract class PartitionerAffinity implements Partitioner {
 
         double currLoad = Double.MAX_VALUE;
         
-        IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(fromPartition));
+        IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(senderPartition));
         
         for(int toPartition : localPartitions){
                         
-            if(fromPartition == toPartition || !activePartitions.contains(toPartition)){
+            if(senderPartition == toPartition || !activePartitions.contains(toPartition)){
                 continue;
             }
 
             System.out.println("Examining moving to partition: " + toPartition);
 
-            double receiverDelta = getReceiverDelta(move.movingVertices, fromPartition, toPartition);
+            double receiverDelta = getReceiverDelta(move.movingVertices, toPartition);
             
+            System.out.println("Receiver delta: " + receiverDelta + " min delta " + move.rcvDelta);
+
             if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
             
                 // unfeasible move
@@ -282,9 +284,8 @@ public abstract class PartitionerAffinity implements Partitioner {
             }
 
             // TODO make constant and put out of this loop
-            double sendDelta = getSenderDelta(move.movingVertices, fromPartition, toPartition);
+            double sendDelta = getSenderDelta(move.movingVertices, senderPartition, toPartition);
 
-            System.out.println("Receiver delta: " + receiverDelta + " min delta " + move.rcvDelta);
             if (receiverDelta <= move.rcvDelta){
 
                 if (receiverDelta == move.rcvDelta){
@@ -318,9 +319,9 @@ public abstract class PartitionerAffinity implements Partitioner {
 
                 System.out.println("Examining moving to partition: " + toPartition);
                 // TODO make constant and put out of this loop
-                double sendDelta = getSenderDelta(move.movingVertices, fromPartition, toPartition);
+                double sendDelta = getSenderDelta(move.movingVertices, senderPartition, toPartition);
 
-                double receiverDelta = getReceiverDelta(move.movingVertices, fromPartition, toPartition);
+                double receiverDelta = getReceiverDelta(move.movingVertices, toPartition);
                 
                 if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
 
