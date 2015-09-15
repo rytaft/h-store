@@ -41,6 +41,8 @@ public class AffinityConfig {
     public boolean supplierToPartsRandomOffset = true;
     public double productToPartsOffset = 0;
     public double supplierToPartsOffset = 0;
+    public static boolean limitPartsScan = false;
+    public static int limitPartsScanTo = 1;
 
     
     public AffinityConfig(Map<String, String> m_extraParams) {
@@ -84,6 +86,11 @@ public class AffinityConfig {
             }
             else if (key.equalsIgnoreCase("supplier_to_parts_offset")) {
             	supplierToPartsOffset = Double.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("limit_parts_scan")) {
+                LOG.info("Setting limit parts scan : " +value );
+                limitPartsScan = true;
+                limitPartsScanTo = Integer.valueOf(value);
             }
             else{
                 if (key.toLowerCase().startsWith(AffinityConstants.PARTS_PRE.toLowerCase()) 
