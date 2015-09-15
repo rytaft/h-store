@@ -35,8 +35,6 @@ public class AffinityConfig {
     public IntegerGenerator supplier_gen;
     public IntegerGenerator product_gen;
     public IntegerGenerator part_gen;
-    public AffinityGenerator uses_gen;
-    public AffinityGenerator supplies_gen;
     public Integer loadthreads = ThreadUtil.availableProcessors();;
     public boolean useFixedSize = true;
     public boolean productToPartsRandomOffset = true;
@@ -105,12 +103,6 @@ public class AffinityConfig {
 
         part_gen = getGenerator(AffinityConstants.PARTS_PRE, num_parts-1, m_extraParams);
         LOG.info("part_gen : "+ part_gen);
-
-        uses_gen = getAffinityGenerator(AffinityConstants.USES_PRE, num_parts-1, m_extraParams);
-        LOG.info("uses_gen : "+ uses_gen);
-
-        supplies_gen = getAffinityGenerator(AffinityConstants.SUPPLIES_PRE, num_parts-1, m_extraParams);
-        LOG.info("supplies_gen : "+ supplies_gen);
 
     }
 
@@ -217,7 +209,7 @@ public class AffinityConfig {
         return keyGenerator;
     }
 
-    private AffinityGenerator getAffinityGenerator(String pre, long num_keys, Map<String, String> m_extraParams) {
+    protected AffinityGenerator getAffinityGenerator(String pre, long num_keys, Map<String, String> m_extraParams) {
 
         String requestDistribution = AffinityConstants.ZIPFIAN_DISTRIBUTION; 
 

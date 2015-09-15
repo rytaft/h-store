@@ -203,6 +203,9 @@ public class AffinityLoader extends Loader {
         final Table catalog_tbl_supplies = catalogContext.getTableByName(AffinityConstants.TABLENAME_SUPPLIES);
         VoltTable table = CatalogUtil.getVoltTable(catalog_tbl_supplies);
         Object row[] = new Object[table.getColumnCount()];
+        
+        AffinityGenerator supplies_gen = config.getAffinityGenerator(AffinityConstants.SUPPLIES_PRE, config.num_parts, m_extraParams);
+        LOG.info("supplies_gen : "+ supplies_gen);
 
         for (int i = start; i < stop && i < config.num_suppliers; i++) {
         	HashSet<Integer> parts = new HashSet<Integer>();
@@ -213,9 +216,9 @@ public class AffinityLoader extends Loader {
         	else {
         		shift = (((double) i)/config.num_suppliers + config.supplierToPartsOffset) % 1.0;
         	}
-        	config.supplies_gen.resetLastItem();
+        	supplies_gen.resetLastItem();
         	for(int j = 0; j < config.max_parts_per_supplier; j++) { 
-        		parts.add(config.supplies_gen.nextInt(shift));
+        		parts.add(supplies_gen.nextInt(shift));
         	}
         	for(Integer part : parts) {
         		row[0] = part;
@@ -254,6 +257,9 @@ public class AffinityLoader extends Loader {
         VoltTable table = CatalogUtil.getVoltTable(catalog_tbl_uses);
         Object row[] = new Object[table.getColumnCount()];
 
+        AffinityGenerator uses_gen = config.getAffinityGenerator(AffinityConstants.USES_PRE, config.num_parts, m_extraParams);
+        LOG.info("uses_gen : "+ uses_gen);
+
         for (int i = start; i < stop && i < config.num_products; i++) {
         	HashSet<Integer> parts = new HashSet<Integer>();
         	double shift = 0;
@@ -263,9 +269,9 @@ public class AffinityLoader extends Loader {
         	else {
         		shift = (((double) i)/config.num_products + config.productToPartsOffset) % 1.0;
         	}
-        	config.uses_gen.resetLastItem();
+        	uses_gen.resetLastItem();
         	for(int j = 0; j < config.max_parts_per_product; j++) { 
-        		parts.add(config.uses_gen.nextInt(shift));
+        		parts.add(uses_gen.nextInt(shift));
         	}
         	for(Integer part : parts) {
         		row[0] = part;
