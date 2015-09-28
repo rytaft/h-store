@@ -105,6 +105,7 @@ public class BenchmarkResults {
     private final Map<String, Integer> transactionNames = new TreeMap<String, Integer>();
     
     private Pair<Long, Long> CACHE_computeTotalAndDelta = null;
+    private Double CACHE_dxtnRate = null;
 
     public BenchmarkResults(long pollIntervalInMillis, long durationInMillis, int clientCount) {
         assert((durationInMillis % pollIntervalInMillis) == 0) : "duration does not comprise an integral number of polling intervals.";
@@ -292,6 +293,7 @@ public class BenchmarkResults {
         return this.getTransactionLatencies(txnName, true);
     }
     
+    
     public Result[] getResultsForClientAndTransaction(String clientName, String txnName) {
         int intervals = getCompletedIntervalCount();
         
@@ -349,7 +351,7 @@ public class BenchmarkResults {
             synchronized (this) {
                 long totalTxnCount = 0;
                 long txnDelta = 0;
-                
+                long totalDtxnCount = 0;
                 for (Map<String, List<Result>> clientResults : this.data.values()) {
                     for (List<Result> txnResults : clientResults.values()) {
                         // Get previous result
@@ -360,13 +362,23 @@ public class BenchmarkResults {
                         Result current = CollectionUtil.last(txnResults);
                         long delta = current.transactionCount - prevTxnCount;
                         totalTxnCount += current.transactionCount;
+                        totalDtxnCount += current.dtxnCount;
                         txnDelta += delta;
                     } // FOR
                 } // FOR
                 CACHE_computeTotalAndDelta = Pair.of(totalTxnCount, txnDelta);
+                System.out.println("Total dtxn" + totalDtxnCount + " total" + totalTxnCount);
+                CACHE_dxtnRate = totalDtxnCount/(double)totalTxnCount;
             } // SYNCH
         }
         return (CACHE_computeTotalAndDelta); 
+    }
+    
+    public double getDtxnRate() {
+        if (CACHE_dxtnRate != null){
+            return CACHE_dxtnRate;
+        }
+        return -1;
     }
 
     /**

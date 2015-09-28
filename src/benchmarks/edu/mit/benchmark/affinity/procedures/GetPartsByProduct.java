@@ -1,14 +1,12 @@
 package edu.mit.benchmark.affinity.procedures;
 
+import java.util.Random;
+
 import org.voltdb.ProcInfo;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
-import org.apache.log4j.Logger;
-
-import edu.brown.logging.LoggerUtil;
-import edu.brown.logging.LoggerUtil.LoggerBoolean;
 
 
 @ProcInfo(
@@ -28,14 +26,39 @@ public class GetPartsByProduct extends VoltProcedure {
     public final SQLStmt getPartsByProductStmt = new SQLStmt("SELECT PART_KEY FROM USES WHERE PRODUCT_KEY = ? ");    
     public final SQLStmt getPartInfoStmt = new SQLStmt("SELECT FIELD1, FIELD2, FIELD3 FROM PARTS WHERE PART_KEY = ? ");
     
-    public VoltTable[] run(long product_key){
+    public VoltTable[] run(long product_key, boolean limitScan, int limitScanTo){
         voltQueueSQL(getProductInfoStmt, product_key);
         voltQueueSQL(getPartsByProductStmt, product_key);
         final VoltTable[] results = voltExecuteSQL();
         assert results.length == 2;
         	
-        for(int i = 0; i < results[1].getRowCount(); ++i) {
-        	voltQueueSQL(getPartInfoStmt, results[1].fetchRow(i).getLong(0));
+        if (limitScan && results[1].getRowCount() > limitScanTo){
+            //Limit the data we are scanning. select parts at random
+            long[] parts = new long[results[1].getRowCount()];
+            
+            //get the list of parts
+            for(int i = 0; i < results[1].getRowCount(); ++i) {
+                parts[i] = results[1].fetchRow(i).getLong(0);
+            }
+            //Shuffle list of parts
+            Random r = new Random();
+            for (int i = parts.length - 1; i > 0; i--) {
+                int index = r.nextInt(i + 1);
+                // Simple swap
+                long a = parts[index];
+                parts[index] = parts[i];
+                parts[i] = a;
+            }            
+            
+            
+            for(int i = 0; i < limitScanTo; ++i) {
+                voltQueueSQL(getPartInfoStmt, parts[i]);
+            }
+            
+        } else {
+            for(int i = 0; i < results[1].getRowCount(); ++i) {
+                voltQueueSQL(getPartInfoStmt, results[1].fetchRow(i).getLong(0));
+            }
         }
         return voltExecuteSQL(true);
     }
