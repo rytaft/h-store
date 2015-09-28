@@ -583,8 +583,8 @@ public class AffinityGraph {
         
     }
     
-    public int sizeVertices(){
-        return m_vertices.size();
+    public int numVertices(int partition){
+        return m_partitionVertices.get(partition).size();
     }
 
     public String verticesToString(IntSet set){

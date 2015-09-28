@@ -99,7 +99,8 @@ public class GraphGreedyExtended extends PartitionerAffinity {
             System.out.println("offloading site " + overloadedPartition);
 
             // get hottest vertices. the actual length of the array is min(Controller.MAX_MOVED_VERTICES, #tuples held site);
-            IntList hotVerticesList = getHottestVertices(overloadedPartition, Controller.TOPK);
+            int topk = Math.min(m_graph.numVertices(overloadedPartition), Controller.TOPK);
+            IntList hotVerticesList = getHottestVertices(overloadedPartition, topk);
 
             int numMovedVertices = 0;
             int nextHotTuplePos = 0;

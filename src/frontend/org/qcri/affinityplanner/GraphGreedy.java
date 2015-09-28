@@ -110,8 +110,8 @@ public class GraphGreedy extends PartitionerAffinity {
             System.out.println("Active partitions " + activePartitions.toString());
 
             // get hottest vertices. the actual length of the array is min(Controller.MAX_MOVED_VERTICES, #tuples held site);
-//            IntList hotVerticesList = getHottestVertices(overloadedPartition, Controller.TOPK);
-            IntList hotVerticesList = getHottestVertices(overloadedPartition, m_graph.sizeVertices());
+            int topk = Math.min(m_graph.numVertices(overloadedPartition), Controller.TOPK);
+            IntList hotVerticesList = getHottestVertices(overloadedPartition, topk);
 
             int numMovedVertices = 0;
             int nextHotTuplePos = 0;

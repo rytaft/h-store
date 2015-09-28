@@ -85,7 +85,8 @@ public class SimplePartitioner extends PartitionerAffinity {
                 // loop over multiple added partitions
                 while(getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
 
-                    IntList hotVertices = getHottestVertices(fromPart, Controller.TOPK);
+                    int topk = Math.min(m_graph.numVertices(fromPart), Controller.TOPK);
+                    IntList hotVertices = getHottestVertices(fromPart, topk);
     
                     for (int vertex : hotVertices){
                         
