@@ -15,6 +15,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -43,7 +44,7 @@ public class AffinityGraph {
     protected static Int2ObjectOpenHashMap<Int2DoubleOpenHashMap> m_edges = new Int2ObjectOpenHashMap <Int2DoubleOpenHashMap> ();
     
     // vertex -> full name
-    protected static Int2ObjectOpenHashMap<String> m_vertex_to_name = new Int2ObjectOpenHashMap <String> ();
+    protected static Int2ObjectOpenHashMap<String> m_vertexName = new Int2ObjectOpenHashMap <String> ();
 
     // vertex -> weight map (number of txns accesses the vertext per second)
     protected static final Int2DoubleOpenHashMap m_vertices = new Int2DoubleOpenHashMap (1000);
@@ -236,8 +237,8 @@ public class AffinityGraph {
             }// END  while(line != null)
             
             // merge local data structures
-            synchronized(m_vertex_to_name){
-                m_vertex_to_name.putAll(vertex_to_name);
+            synchronized(m_vertexName){
+                m_vertexName.putAll(vertex_to_name);
             }
             synchronized(m_vertexPartition){
                 m_vertexPartition.putAll(vertexPartition);
@@ -325,15 +326,16 @@ public class AffinityGraph {
         }
     }
     
-    public void moveHotVertices(IntSet movedVertices, int fromPartition, int toPartition) {
+    public void moveHotVertices(IntSet movedVertices, int toPartition) {
         for (int movedVertex : movedVertices){
+            int fromPartition = m_vertexPartition.get(movedVertex);
             m_partitionVertices.get(fromPartition).remove(movedVertex);
             m_partitionVertices.get(toPartition).add(movedVertex);
             m_vertexPartition.put(movedVertex, toPartition);
 
             // update plan too
             // format of vertices is <TABLE>,<VALUE>
-            String movedVertexName = m_vertex_to_name.get(movedVertex);
+            String movedVertexName = m_vertexName.get(movedVertex);
             String [] fields = movedVertexName.split(",");
             
             if(Controller.ROOT_TABLE == null){
@@ -360,7 +362,7 @@ public class AffinityGraph {
     }
     
     public String getTupleName(int hash){
-        return m_vertex_to_name.get(hash);
+        return m_vertexName.get(hash);
     }
     
     public void moveColdRange(String table, Plan.Range movedRange, int fromPart, int toPart){     
@@ -372,7 +374,7 @@ public class AffinityGraph {
     }
     
     public int getPartition(int vertex){
-        String vertexName = m_vertex_to_name.get(vertex);
+        String vertexName = m_vertexName.get(vertex);
         return m_plan_handler.getPartition(vertexName);
     }
     
@@ -486,7 +488,7 @@ public class AffinityGraph {
         try {
             writer = Files.newBufferedWriter(file, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             for(int vertex : m_vertices.keySet()){
-                s = "Vertex " + m_vertex_to_name.get(vertex) + " - weight " + m_vertices.get(vertex);
+                s = "Vertex " + m_vertexName.get(vertex) + " - weight " + m_vertices.get(vertex);
                 totalWeight += m_vertices.get(vertex);
                 writer.write(s, 0, s.length());
                 writer.newLine();
@@ -496,7 +498,7 @@ public class AffinityGraph {
                     continue;
                 }
                 for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
-                    s = m_vertex_to_name.get(edge.getIntKey()) + " - weight " + edge.getDoubleValue();
+                    s = m_vertexName.get(edge.getIntKey()) + " - weight " + edge.getDoubleValue();
                     writer.write(s, 0, s.length());
                     writer.newLine();
                 }
@@ -513,6 +515,36 @@ public class AffinityGraph {
        }
     }
     
+    public void toFileMPT(Path file){
+        BufferedWriter writer;
+        try{
+            writer = Files.newBufferedWriter(file, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            
+            for (int fromVertex: m_edges.keySet()){
+                int sourcePart = m_vertexPartition.get(fromVertex);
+                Int2DoubleOpenHashMap adjList = m_edges.get(fromVertex);
+                for (int toVertex: adjList.keySet()){
+                    int destPart = m_vertexPartition.get(toVertex);
+                    if (sourcePart != destPart){
+                        String s = "From: " + m_vertexName.get(fromVertex) + " weight  " + m_vertices.get(fromVertex) + 
+                                " in partition " + sourcePart +
+                                " == To: " + m_vertexName.get(toVertex) + " weight  " + m_vertices.get(toVertex) +
+                                " in partition " + destPart +
+                                " == Edge weight: " + adjList.get(toVertex);
+                        writer.write(s, 0, s.length());
+                        writer.newLine();
+                    }
+                }
+            }
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Controller.record("Error while opening file " + file.toString());
+            System.out.println("Error while opening file " + file.toString());
+            return;
+       }       
+    }
+    
     public void setPartitionMaps (Int2IntOpenHashMap newVertexPartition){
         
         // reset the mapping from partition to vertices
@@ -527,7 +559,7 @@ public class AffinityGraph {
             int toPartition = entry.getIntValue();
             
             // update plan
-            String movedVertexName = m_vertex_to_name.get(vertex);
+            String movedVertexName = m_vertexName.get(vertex);
 
             String [] fields = movedVertexName.split(",");
             int fromPartition = m_vertexPartition.get(vertex);
@@ -550,11 +582,15 @@ public class AffinityGraph {
         m_vertexPartition = newVertexPartition;
         
     }
+    
+    public int numVertices(int partition){
+        return m_partitionVertices.get(partition).size();
+    }
 
     public String verticesToString(IntSet set){
         StringBuilder res = new StringBuilder();
         for (int val : set){
-            res.append(m_vertex_to_name.get(val) + "\n");
+            res.append(m_vertexName.get(val) + " from partition " + m_vertexPartition.get(val) + "\n");
         }
         return res.toString();
     }

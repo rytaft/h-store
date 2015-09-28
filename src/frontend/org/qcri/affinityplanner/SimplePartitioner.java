@@ -81,15 +81,17 @@ public class SimplePartitioner extends PartitionerAffinity {
             for(int fromPart : overloadedPartitions){
                 
                 int numMovedVertices = 0;
+                IntSet warmMovedVertices = new IntOpenHashSet();
                 
                 // loop over multiple added partitions
                 while(getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
 
-                    IntList hotVertices = getHottestVertices(fromPart, Controller.TOPK);
+                    int topk = Math.min(m_graph.numVertices(fromPart), Controller.TOPK);
+                    IntList hotVertices = getHottestVertices(fromPart, topk);
     
                     for (int vertex : hotVertices){
                         
-                        System.out.println("Considering vertex " + AffinityGraph.m_vertex_to_name.get(vertex));
+                        System.out.println("Considering vertex " + AffinityGraph.m_vertexName.get(vertex));
     
                         for (int toPart = 0; toPart < Controller.MAX_PARTITIONS; toPart ++){
     
@@ -99,6 +101,7 @@ public class SimplePartitioner extends PartitionerAffinity {
                                 int newMovedVertices = tryMoveVertices(singleton, fromPart, toPart);
                                 if (newMovedVertices > 0){ 
                                     numMovedVertices += newMovedVertices;
+                                    warmMovedVertices.add(vertex);
                                     break;
                                 }
                             }                    
@@ -110,7 +113,7 @@ public class SimplePartitioner extends PartitionerAffinity {
                     }
                     
                     if (getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
-                        numMovedVertices += moveColdChunks(fromPart, hotVertices, activePartitions, numMovedVertices);
+                        numMovedVertices += moveColdChunks(fromPart, warmMovedVertices, activePartitions, numMovedVertices);
                     }
                     
                     if (getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
@@ -177,38 +180,47 @@ public class SimplePartitioner extends PartitionerAffinity {
     
     
     @Override
-    protected double getGlobalDelta(IntSet movingVertices, int fromPartition, int toPartition) {
-        assert(movingVertices.size() == 1);
+    protected double getGlobalDelta(IntSet movingVertices, int toPartition) {
+
+        if (movingVertices == null || movingVertices.isEmpty()){
+            LOG.debug("Trying to move an empty set of vertices");
+            return 0;
+        }
+
+       assert(movingVertices.size() == 1);
 
         double delta = 0;
 
-        int fromSite = PlanHandler.getSitePartition(fromPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
-        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
-
-        for(int vertex : movingVertices){
+        for(int movingVertex : movingVertices){
+            int fromPartition = AffinityGraph.m_vertexPartition.get(movingVertex);
+            int fromSite = PlanHandler.getSitePartition(fromPartition);
             
-            Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(vertex);
+            assert(fromPartition != toPartition);
+            
+            Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(movingVertex);
             if(adjacency != null){
 
                 for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
-                    int otherPartition = edge.getIntKey();
+                    int adjacentPartition = edge.getIntKey();
                     double edgeWeight = edge.getDoubleValue();
                     
-                    if (otherPartition == fromPartition){
+                    if (adjacentPartition == fromPartition){
+                        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
                         delta += edgeWeight * k;
                     }
-                    else if (otherPartition == toPartition){
+                    else if (adjacentPartition == toPartition){
+                        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
                         delta -= edgeWeight * k;
                     }
                     else{
-                        int otherSite = PlanHandler.getSitePartition(otherPartition);
+                        int adjacentVertexSite = PlanHandler.getSitePartition(adjacentPartition);
                         double h = 0;
-                        if (otherSite == fromSite && otherSite != toSite){
+                        if (adjacentVertexSite == fromSite && adjacentVertexSite != toSite){
                             h = Controller.DTXN_COST - Controller.LMPT_COST;
                         }
-                        else if (otherSite != fromSite && otherSite == toSite){
+                        else if (adjacentVertexSite != fromSite && adjacentVertexSite == toSite){
                             h = Controller.LMPT_COST - Controller.DTXN_COST;
                         }
                         delta += edgeWeight * h;
@@ -221,46 +233,52 @@ public class SimplePartitioner extends PartitionerAffinity {
     }
 
     @Override
-    protected double getReceiverDelta(IntSet movingVertices, int fromPartition, int toPartition) {
+    protected double getReceiverDelta(IntSet movingVertices, int toPartition) {
+        
         if (movingVertices == null || movingVertices.isEmpty()){
             LOG.debug("Trying to move an empty set of vertices");
             return 0;
         }
 
+        assert(movingVertices.size() == 1);
+        
         double delta = 0;
-        int fromSite = PlanHandler.getSitePartition(fromPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
-        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
-
-        for(int vertex : movingVertices){ 
+        for(int movingVertex : movingVertices){ 
             
-            double vertexWeight = AffinityGraph.m_vertices.get(vertex);
+            double vertexWeight = AffinityGraph.m_vertices.get(movingVertex);
             if (vertexWeight == AffinityGraph.m_vertices.defaultReturnValue()){
                 LOG.debug("Cannot include external node for delta computation");
                 throw new IllegalStateException("Cannot include external node for delta computation");
             }
 
+            int fromPartition = AffinityGraph.m_vertexPartition.get(movingVertex);
+            int fromSite = PlanHandler.getSitePartition(fromPartition);
+            
+            assert(fromPartition != toPartition);
+            
             delta += vertexWeight;
 
-            Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(vertex);
+            Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(movingVertex);
             if(adjacency != null){
 
                 for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
                     
-                    int otherPartition = edge.getIntKey();
+                    int adjacentPartition = edge.getIntKey();
+                    int adjacentVertexSite = PlanHandler.getSitePartition(adjacentPartition);
+
                     double edgeWeight = edge.getDoubleValue();
                     
-                    if (otherPartition == toPartition){
-                        delta -= edgeWeight * k;
+                    if (adjacentPartition == toPartition){
+                       double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
+                       delta -= edgeWeight * k;
                     }
-                    else if (otherPartition == fromPartition) {
-                        delta += edgeWeight * k;
+                    else if (adjacentVertexSite == toSite) {
+                        delta += edgeWeight * Controller.LMPT_COST;
                     }
                     else{
-                        int otherSite = PlanHandler.getSitePartition(otherPartition);
-                        double h = (toSite == otherSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
-                        delta += edgeWeight * h;
+                        delta += edgeWeight * Controller.DTXN_COST;
                     }
                 }
             }
@@ -270,46 +288,49 @@ public class SimplePartitioner extends PartitionerAffinity {
     }
 
     @Override
-    protected double getSenderDelta(IntSet movingVertices, int fromPartition, int toPartition) {
+    protected double getSenderDelta(IntSet movingVertices, int senderPartition, int toPartition) {
         if (movingVertices == null || movingVertices.isEmpty()){
             LOG.debug("Trying to move an empty set of vertices");
             return 0;
         }
 
         double delta = 0;
-        int fromSite = PlanHandler.getSitePartition(fromPartition);
+        int senderSite = PlanHandler.getSitePartition(senderPartition);
         int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
-        double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
-
-        for(int vertex : movingVertices){ 
+        assert(movingVertices.size() == 1);
+        
+        for(int movingVertex : movingVertices){ 
             
-            double vertexWeight = AffinityGraph.m_vertices.get(vertex);
+            double vertexWeight = AffinityGraph.m_vertices.get(movingVertex);
             if (vertexWeight == AffinityGraph.m_vertices.defaultReturnValue()){
                 LOG.debug("Cannot include external node for delta computation");
                 throw new IllegalStateException("Cannot include external node for delta computation");
             }
 
+            int fromPartition = AffinityGraph.m_vertexPartition.get(movingVertex);
+            assert (fromPartition == senderPartition);
+            
             delta -= vertexWeight;
 
-            Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(vertex);
+            Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(movingVertex);
             if(adjacency != null){
 
                 for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
                     
-                    int otherPartition = edge.getIntKey();
+                    int adjacentPartition = edge.getIntKey();
+                    int adjacentSite = PlanHandler.getSitePartition(adjacentPartition);
                     double edgeWeight = edge.getDoubleValue();
                     
-                    if (otherPartition == toPartition){
-                        delta -= edgeWeight * k;
+                    if (adjacentPartition == senderPartition){
+                        double k = (senderSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
+                        delta += edgeWeight * k;                       
                     }
-                    else if (otherPartition == fromPartition) {
-                        delta += edgeWeight * k;
+                    else if (adjacentSite == senderSite) {
+                        delta -= edgeWeight * Controller.LMPT_COST;
                     }
                     else{
-                        int otherSite = PlanHandler.getSitePartition(otherPartition);
-                        double h = (fromSite == otherSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
-                        delta -= edgeWeight * h;
+                        delta -= edgeWeight * Controller.DTXN_COST;
                     }
                 }
             }

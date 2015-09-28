@@ -75,10 +75,11 @@ public class Controller extends Thread {
     public static int MAX_PARTITIONS_ADDED = 1;
     public static double PENALTY_REMOTE_MOVE = 0;
     public static int GREEDY_STEPS_AHEAD = 5;
+    public static double LOCAL_AFFINITY_THRESHOLD = 0; // if no local edge is this affine, pick remote edge
     
     public static int COLD_CHUNK_SIZE = 100;
     public static double COLD_TUPLE_FRACTION_ACCESSES = 100;
-    public static int TOPK = 10000;
+    public static int TOPK = Integer.MAX_VALUE;
     
     public static String ROOT_TABLE = null;
    
@@ -243,6 +244,10 @@ public class Controller extends Thread {
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
                         
+            if (partitioner instanceof PartitionerAffinity){
+                ((PartitionerAffinity) partitioner).graphToFile(FileSystems.getDefault().getPath(".", "graph.log"));
+            }
+
             record("======================== PARTITIONING GRAPH ========================");
             t1 = System.currentTimeMillis();
             
@@ -286,7 +291,11 @@ public class Controller extends Thread {
 
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
-            record("Partitioner tuples to move: " + Controller.MAX_MOVED_TUPLES_PER_PART);
+//            record("Partitioner tuples to move: " + Controller.MAX_MOVED_TUPLES_PER_PART);
+            
+            if (partitioner instanceof PartitionerAffinity){
+                ((PartitionerAffinity) partitioner).graphToFileMPT(FileSystems.getDefault().getPath(".", "mpt.log"));
+            }
             
             
         } // END if(UPDATE_PLAN)
