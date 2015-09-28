@@ -81,6 +81,7 @@ public class SimplePartitioner extends PartitionerAffinity {
             for(int fromPart : overloadedPartitions){
                 
                 int numMovedVertices = 0;
+                IntSet warmMovedVertices = new IntOpenHashSet();
                 
                 // loop over multiple added partitions
                 while(getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
@@ -100,6 +101,7 @@ public class SimplePartitioner extends PartitionerAffinity {
                                 int newMovedVertices = tryMoveVertices(singleton, fromPart, toPart);
                                 if (newMovedVertices > 0){ 
                                     numMovedVertices += newMovedVertices;
+                                    warmMovedVertices.add(vertex);
                                     break;
                                 }
                             }                    
@@ -111,7 +113,7 @@ public class SimplePartitioner extends PartitionerAffinity {
                     }
                     
                     if (getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
-                        numMovedVertices += moveColdChunks(fromPart, hotVertices, activePartitions, numMovedVertices);
+                        numMovedVertices += moveColdChunks(fromPart, warmMovedVertices, activePartitions, numMovedVertices);
                     }
                     
                     if (getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){

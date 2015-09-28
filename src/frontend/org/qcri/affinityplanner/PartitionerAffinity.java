@@ -595,18 +595,16 @@ public abstract class PartitionerAffinity implements Partitioner {
         m_graph.toFileMPT(file);
     }
 
-    protected int moveColdChunks(int fromPartition, IntList fromHotTuples, IntList activePartitions, int numMovedVertices){
+    protected int moveColdChunks(int fromPartition, IntSet warmMovedVertices, IntList activePartitions, int numMovedVertices){
 
         // clone plan to allow modifications while iterating on the clone
         PlanHandler oldPlan = m_graph.clonePlan();
         
-        // remove hot tuples from cold chunks
+        // remove warm tuples from cold chunks (these are topK hot tuples and the other monitored tuples in the graph that were moved)
 
-        for (int topk = 1; topk <= Math.min(Controller.TOPK, fromHotTuples.size()); topk++){
-            int hotTuple = fromHotTuples.get(fromHotTuples.size() - topk);
-
-            System.out.println("Hot tuple:" + m_graph.getTupleName(hotTuple));
-            String[] fields  = m_graph.getTupleName(hotTuple).split(",");
+        for (int warmTuple : warmMovedVertices){
+            System.out.println("Hot tuple:" + m_graph.getTupleName(warmTuple));
+            String[] fields  = m_graph.getTupleName(warmTuple).split(",");
             String table = fields[0];
             long tupleId = Long.parseLong(fields[1]);
             

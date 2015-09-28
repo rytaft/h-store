@@ -94,7 +94,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
         System.out.println("#######################");
 
         for(int overloadedPartition : overloadedPartitions){
-
+            
             // DEBUG
             System.out.println("offloading site " + overloadedPartition);
 
@@ -102,6 +102,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
             int topk = Math.min(m_graph.numVertices(overloadedPartition), Controller.TOPK);
             IntList hotVerticesList = getHottestVertices(overloadedPartition, topk);
 
+            IntSet warmMovedVertices = new IntOpenHashSet();
             int numMovedVertices = 0;
             int nextHotTuplePos = 0;
             int lastHotVertexMoved = -1;
@@ -137,6 +138,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
                         m_graph.moveHotVertices(candidateMove.movingVertices, candidateMove.toPartition);
                         numMovedVertices += candidateMove.movingVertices.size();
+                        warmMovedVertices.addAll(candidateMove.movingVertices);
                         lastHotVertexMoved = nextHotTuplePos - 1;
 
                         currMove = null;
@@ -150,7 +152,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
                     System.out.println("Move cold tuples");
 
-                    numMovedVertices = moveColdChunks(overloadedPartition, hotVerticesList, activePartitions, numMovedVertices);
+                    numMovedVertices = moveColdChunks(overloadedPartition, warmMovedVertices, activePartitions, numMovedVertices);
 
                     if (getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
                         
@@ -237,6 +239,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
                     m_graph.moveHotVertices(candidateMove.movingVertices, currMove.toPartition);
                     numMovedVertices += candidateMove.movingVertices.size();
+                    warmMovedVertices.addAll(candidateMove.movingVertices);
                     lastHotVertexMoved = nextHotTuplePos - 1;
 
                     currMove = null;
