@@ -41,8 +41,8 @@ public class AffinityConfig {
     public boolean supplierToPartsRandomOffset = true;
     public double productToPartsOffset = 0;
     public double supplierToPartsOffset = 0;
-    public static boolean limitPartsScan = false;
-    public static int limitPartsScanTo = 1;
+    public boolean limitPartsScan = false;
+    public int limitPartsScanTo = 1;
 
     
     public AffinityConfig(Map<String, String> m_extraParams) {
