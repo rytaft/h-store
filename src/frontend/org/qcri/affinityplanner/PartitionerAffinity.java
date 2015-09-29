@@ -214,7 +214,7 @@ public abstract class PartitionerAffinity implements Partitioner {
 
         // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
         if(senderDelta <= Controller.MIN_SENDER_GAIN_MOVE * -1
-                && (receiverDelta < 0 
+                && (receiverDelta <= 0 
                         || getLoadPerPartition(toPartition) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
 
             m_graph.moveHotVertices(movingVertices, toPartition);
@@ -266,7 +266,8 @@ public abstract class PartitionerAffinity implements Partitioner {
             
             System.out.println("Receiver delta: " + receiverDelta + " min delta " + move.rcvDelta);
 
-            if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
+            if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART 
+                    && receiverDelta > 0){
             
                 // unfeasible move
                 if (feasible){
@@ -323,7 +324,8 @@ public abstract class PartitionerAffinity implements Partitioner {
 
                 double receiverDelta = getReceiverDelta(move.movingVertices, toPartition);
                 
-                if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
+                if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART
+                        && receiverDelta > 0){
 
                     // unfeasible move
                     if (feasible){
@@ -595,15 +597,31 @@ public abstract class PartitionerAffinity implements Partitioner {
         m_graph.toFileMPT(file);
     }
 
-    protected int moveColdChunks(int fromPartition, IntSet warmMovedVertices, IntList activePartitions, int numMovedVertices){
+    protected int moveColdChunks(int fromPartition, IntList hotVertices, IntSet warmMovedVertices, IntList activePartitions, int numMovedVertices){
 
         // clone plan to allow modifications while iterating on the clone
         PlanHandler oldPlan = m_graph.clonePlan();
         
-        // remove warm tuples from cold chunks (these are topK hot tuples and the other monitored tuples in the graph that were moved)
+        // remove hot tuples from cold chunks (these are topK hot tuples)
+
+        for (int hotTuple : hotVertices){
+            System.out.println("Hot tuple:" + m_graph.getTupleName(hotTuple));
+            String[] fields  = m_graph.getTupleName(hotTuple).split(",");
+            String table = fields[0];
+            long tupleId = Long.parseLong(fields[1]);
+            
+            if(Controller.ROOT_TABLE == null){
+                oldPlan.removeTupleId(table, fromPartition, tupleId);
+            }
+            else{
+                oldPlan.removeTupleIdAllTables(fromPartition, tupleId);
+            }
+        }
+
+        // remove warm tuples from cold chunks (these are the other monitored tuples in the graph that were moved)
 
         for (int warmTuple : warmMovedVertices){
-            System.out.println("Hot tuple:" + m_graph.getTupleName(warmTuple));
+            System.out.println("Warm tuple:" + m_graph.getTupleName(warmTuple));
             String[] fields  = m_graph.getTupleName(warmTuple).split(",");
             String table = fields[0];
             long tupleId = Long.parseLong(fields[1]);
@@ -617,6 +635,8 @@ public abstract class PartitionerAffinity implements Partitioner {
         }
         
         System.out.println("Cloned plan without hot tuples:\n" + oldPlan);
+        
+        // move the chunks
         
         if(Controller.ROOT_TABLE == null){
             for(String table : m_graph.getTableNames()){

@@ -152,7 +152,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
                     System.out.println("Move cold tuples");
 
-                    numMovedVertices = moveColdChunks(overloadedPartition, warmMovedVertices, activePartitions, numMovedVertices);
+                    numMovedVertices = moveColdChunks(overloadedPartition, hotVerticesList, warmMovedVertices, activePartitions, numMovedVertices);
 
                     if (getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
                         
@@ -211,7 +211,8 @@ public class GraphGreedyExtended extends PartitionerAffinity {
 
                 if(currMove.toPartition != -1
                         && currMove.sndDelta <= Controller.MIN_SENDER_GAIN_MOVE * -1
-                        && (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta < Controller.MAX_LOAD_PER_PART)){
+                        && (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta < Controller.MAX_LOAD_PER_PART
+                                || currMove.rcvDelta <= 0)){
 
                     if(candidateMove == null || currMove.rcvDelta < candidateMove.rcvDelta){
 

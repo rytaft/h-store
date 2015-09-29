@@ -190,7 +190,7 @@ public class GraphGreedy extends PartitionerAffinity {
                 }
                 else {
                     System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
-                    System.out.println("Current sender delta " + getSenderDelta(currMove.movingVertices, overloadedPartition, 1));                    
+                    System.out.println("Current sender delta " + getSenderDelta(currMove.movingVertices, overloadedPartition, currMove.toPartition));                    
                 }
 
                 nextHotTuplePos = expandMovingVertices (currMove, hotVerticesList, nextHotTuplePos, activePartitions, overloadedPartition);
@@ -205,7 +205,8 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 if(currMove.toPartition != -1
                         && currMove.sndDelta <= Controller.MIN_SENDER_GAIN_MOVE * -1
-                        && (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta < Controller.MAX_LOAD_PER_PART)){
+                        && (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta < Controller.MAX_LOAD_PER_PART
+                                || currMove.rcvDelta <= 0)){
                     
                     if(candidateMove == null || currMove.rcvDelta < candidateMove.rcvDelta){
 
