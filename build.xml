@@ -2665,7 +2665,7 @@ UTILITIES
 </target>
 
 <target name='affinity-profile'
-        description="H-Store Affinity Controller">
+        description="H-Store Affinity Controller with Profiler Agent">
   <java fork="yes" failonerror="true" classname="org.qcri.affinityplanner.Controller">
         <jvmarg value="-client" />
         <jvmarg value="-agentpath:/home/mserafini/yjp-2014-build-14120/bin/linux-x86-64/libyjpagent.so=port=10001" />

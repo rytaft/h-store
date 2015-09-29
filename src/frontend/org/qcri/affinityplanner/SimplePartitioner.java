@@ -113,7 +113,7 @@ public class SimplePartitioner extends PartitionerAffinity {
                     }
                     
                     if (getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
-                        numMovedVertices += moveColdChunks(fromPart, warmMovedVertices, activePartitions, numMovedVertices);
+                        numMovedVertices += moveColdChunks(fromPart, hotVertices, warmMovedVertices, activePartitions, numMovedVertices);
                     }
                     
                     if (getLoadPerPartition(fromPart) > Controller.MAX_LOAD_PER_PART){
