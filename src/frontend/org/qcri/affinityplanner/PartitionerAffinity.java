@@ -214,7 +214,7 @@ public abstract class PartitionerAffinity implements Partitioner {
 
         // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
         if(senderDelta <= Controller.MIN_SENDER_GAIN_MOVE * -1
-                && (receiverDelta < 0 
+                && (receiverDelta <= 0 
                         || getLoadPerPartition(toPartition) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
 
             m_graph.moveHotVertices(movingVertices, toPartition);
@@ -266,7 +266,8 @@ public abstract class PartitionerAffinity implements Partitioner {
             
             System.out.println("Receiver delta: " + receiverDelta + " min delta " + move.rcvDelta);
 
-            if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
+            if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART 
+                    && receiverDelta > 0){
             
                 // unfeasible move
                 if (feasible){
@@ -323,7 +324,8 @@ public abstract class PartitionerAffinity implements Partitioner {
 
                 double receiverDelta = getReceiverDelta(move.movingVertices, toPartition);
                 
-                if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART){
+                if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART
+                        && receiverDelta > 0){
 
                     // unfeasible move
                     if (feasible){
