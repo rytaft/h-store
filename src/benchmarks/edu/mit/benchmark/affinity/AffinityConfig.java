@@ -43,6 +43,7 @@ public class AffinityConfig {
     public double supplierToPartsOffset = 0;
     public boolean limitPartsScan = false;
     public int limitPartsScanTo = 1;
+    public boolean limitPartsZipfianScan = false;
 
     
     public AffinityConfig(Map<String, String> m_extraParams) {
@@ -91,6 +92,9 @@ public class AffinityConfig {
                 LOG.info("Setting limit parts scan : " +value );
                 limitPartsScan = true;
                 limitPartsScanTo = Integer.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("limit_parts_zipfian_scan")) {
+                limitPartsZipfianScan = Boolean.valueOf(value);
             }
             else{
                 if (key.toLowerCase().startsWith(AffinityConstants.PARTS_PRE.toLowerCase()) 
