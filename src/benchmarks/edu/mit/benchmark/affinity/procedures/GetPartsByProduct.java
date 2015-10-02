@@ -1,5 +1,6 @@
 package edu.mit.benchmark.affinity.procedures;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
@@ -43,6 +44,7 @@ public class GetPartsByProduct extends VoltProcedure {
             if (limitZipfianScan) {
                 // The chosen set of parts will follow a zipfian distribution
                 // without replacement
+                Arrays.sort(parts);
                 ZipfianGenerator r = new ZipfianGenerator(parts.length);
                 Set<Integer> indices = new HashSet<>();
                 for (int i = 0; i < limitScanTo; ++i) {
