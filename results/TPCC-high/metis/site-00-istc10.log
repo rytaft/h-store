@@ -1,0 +1,32 @@
+# 2015-06-11T09:07:35.499.0
+Buildfile: /home/serafini/h-store/build.xml
+hstore-site:
+09:07:41,240 [main] (ArgumentsParser.java:885) INFO  - Applying PartitionPlan 'tpcc-plan-fine-grained.pplan' to catalog [enableSecondaryIndexes=true]
+09:07:42,178 [H00-main] (HStoreSite.java:477) INFO  - Using hasher class: edu.brown.hashing.TwoTieredRangeHasher
+09:07:46,249 [H00-main] (HStoreSite.java:653) INFO  - Initializing Reconfiguration Coordinator
+09:07:46,257 [H00-main] (ReconfigurationCoordinator.java:224) INFO  - update transfer bytes to :  8241152
+09:07:46,257 [H00-main] (ReconfigurationCoordinator.java:233) INFO  - Using async queue. Disabling other async methods
+09:07:46,257 [H00-main] (ReconfigurationCoordinator.java:254) INFO  - Reconfig configuration. Site:0 DetailedTiming: true AsyncPush:false AysncPull:false AsyncQueuePulls:true LivePulls:true AsyncPullSizeKB:8048 LivePullSizeKB:10048 ForceDestination:false AsyncDelay:511 PlanSplit:20 PlanDelay:1511
+Site is ready for action : Site=H00 / Address=istc10:21212 / Partitions={0, 1, 2, 3, 4, 5}
+09:58:39,311 [H00-000] (PartitionExecutor.java:2092) WARN  - Halting transaction processing at partition 0
+09:58:39,311 [H00-005] (PartitionExecutor.java:2092) WARN  - Halting transaction processing at partition 5
+09:58:39,311 [H00-002] (PartitionExecutor.java:2092) WARN  - Halting transaction processing at partition 2
+09:58:39,311 [H00-001] (PartitionExecutor.java:2092) WARN  - Halting transaction processing at partition 1
+09:58:39,311 [H00-003] (PartitionExecutor.java:2092) WARN  - Halting transaction processing at partition 3
+09:58:39,311 [H00-004] (PartitionExecutor.java:2092) WARN  - Halting transaction processing at partition 4
+09:58:41,916 [H00-coord] (HStoreCoordinator.java:726) WARN  - Got ShutdownPrepareRequest from H01 [hasError=true]
+org.voltdb.exceptions.SerializableException: java.lang.Exception: Shutdown command received at H01
+	at edu.brown.hstore.HStoreSite.processSysProc(HStoreSite.java:1837)
+	at edu.brown.hstore.HStoreSite.invocationProcess(HStoreSite.java:1743)
+	at edu.brown.hstore.HStoreSite.invocationQueue(HStoreSite.java:1630)
+	at edu.brown.hstore.ClientInterface$ClientInputHandler.handleMessage(ClientInterface.java:458)
+	at org.voltdb.network.VoltPort.call(VoltPort.java:146)
+	at org.voltdb.network.VoltNetwork$3.run(VoltNetwork.java:545)
+	at org.voltdb.network.VoltNetwork$2.run(VoltNetwork.java:238)
+	at org.voltdb.network.VoltNetwork$1$1.run(VoltNetwork.java:202)
+
+09:58:46,923 [H00-coord] (HStoreCoordinator.java:740) WARN  - Sent ShutdownPrepareResponse back to H01
+09:58:51,930 [H00-coord] (HStoreCoordinator.java:748) WARN  - Shutting down H00 [status=1]
+09:58:51,939 [H00-coord] (HStoreSite.java:1605) INFO  - Completed shutdown process at H00 [instanceId=1434028071269]
+BUILD SUCCESSFUL
+Total time: 51 minutes 15 seconds
