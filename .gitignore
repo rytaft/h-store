@@ -13,7 +13,6 @@ traces/
 *.arff
 *.pyc
 *.png
-*.csv
 *.ods
 *.markov
 *.hprof
