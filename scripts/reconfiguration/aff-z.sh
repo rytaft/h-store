@@ -16,15 +16,15 @@ FIRST_PARAM_OFFSET=0
 
 EXP_TYPES=( \
     "affinity-ms --partitions=32 --benchmark-size=z --exp-suffix=32z" \
-    "affinity-ms --partitions=24 --benchmark-size=z --exp-suffix=24z" \
-    "affinity-ms-sk2 --partitions=32 --benchmark-size=z --exp-suffix=32zsk2" \
-    "affinity-ms-sk2 --partitions=24 --benchmark-size=z --exp-suffix=24zsk2" \
-    "affinity-ms-sk3 --partitions=32 --benchmark-size=z --exp-suffix=32zsk3" \
-    "affinity-ms-sk3 --partitions=24 --benchmark-size=z --exp-suffix=24zsk3" \
-    "affinity-ms-sk4 --partitions=32 --benchmark-size=z --exp-suffix=32zsk4" \
-    "affinity-ms-sk4 --partitions=24 --benchmark-size=z --exp-suffix=24zsk4" \
-    "affinity-ms-sk5 --partitions=32 --benchmark-size=z --exp-suffix=32zsk5" \
-    "affinity-ms-sk5 --partitions=24 --benchmark-size=z --exp-suffix=24zsk5" \
+#    "affinity-ms --partitions=24 --benchmark-size=z --exp-suffix=24z" \
+#    "affinity-ms-sk2 --partitions=32 --benchmark-size=z --exp-suffix=32zsk2" \
+#    "affinity-ms-sk2 --partitions=24 --benchmark-size=z --exp-suffix=24zsk2" \
+#    "affinity-ms-sk3 --partitions=32 --benchmark-size=z --exp-suffix=32zsk3" \
+#    "affinity-ms-sk3 --partitions=24 --benchmark-size=z --exp-suffix=24zsk3" \
+#    "affinity-ms-sk4 --partitions=32 --benchmark-size=z --exp-suffix=32zsk4" \
+#    "affinity-ms-sk4 --partitions=24 --benchmark-size=z --exp-suffix=24zsk4" \
+#    "affinity-ms-sk5 --partitions=32 --benchmark-size=z --exp-suffix=32zsk5" \
+#    "affinity-ms-sk5 --partitions=24 --benchmark-size=z --exp-suffix=24zsk5" \
 )
 
 for b in affinity; do
@@ -42,7 +42,7 @@ for b in affinity; do
         --client.duration=300000 \
         --client.warmup=10000 \
         --client.output_results_csv=interval_res.csv \
-        --affinity=30000 \
+#        --affinity=30000 \
         --sweep-reconfiguration 
     )
         #--global.hasher_plan=plan_affinity.json \
