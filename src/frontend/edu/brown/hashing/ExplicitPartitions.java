@@ -145,7 +145,7 @@ public abstract class ExplicitPartitions {
                     if (overrideStatementMap.containsKey(statement.getName())){
                         String _overrideTable = overrideStatementMap.get(statement.getName());
                         
-                        LOG.error(String.format("Overriding statment %s  mapping to : %s", statement.getName(), _overrideTable));
+                        LOG.debug(String.format("Overriding statment %s  mapping to : %s", statement.getName(), _overrideTable));
                         if(this.name_table_map.containsKey(_overrideTable)){
                             this.catalog_to_table_map.put(statement, name_table_map.get(_overrideTable));
                             continue;

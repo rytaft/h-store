@@ -78,7 +78,7 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
             throw new JSONException(String.format("JSON file is missing key \"%s\". ", PARTITION_PLAN));
         }
         
-        LOG.error(this.toString());
+        //LOG.error(this.toString());
         // TODO check to make sure partitions exist that are in the plan (ae)
 
     }

@@ -1,5 +1,6 @@
 package edu.mit.benchmark.affinity;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Random;
 
@@ -41,8 +42,9 @@ public class AffinityConfig {
     public boolean supplierToPartsRandomOffset = true;
     public double productToPartsOffset = 0;
     public double supplierToPartsOffset = 0;
-    public static boolean limitPartsScan = false;
-    public static int limitPartsScanTo = 1;
+    public boolean limitPartsScan = false;
+    public int limitPartsScanTo = 1;
+    public boolean limitPartsZipfianScan = false;
 
     
     public AffinityConfig(Map<String, String> m_extraParams) {
@@ -92,6 +94,9 @@ public class AffinityConfig {
                 limitPartsScan = true;
                 limitPartsScanTo = Integer.valueOf(value);
             }
+            else if (key.equalsIgnoreCase("limit_parts_zipfian_scan")) {
+                limitPartsZipfianScan = Boolean.valueOf(value);
+            }
             else{
                 if (key.toLowerCase().startsWith(AffinityConstants.PARTS_PRE.toLowerCase()) 
                         || key.toLowerCase().startsWith(AffinityConstants.SUP_PRE.toLowerCase()) 
@@ -129,6 +134,7 @@ public class AffinityConfig {
         double percentAccessHotSpots = 0.0;
         boolean randomShift = false;
         boolean randomHotSpots = false;    
+	ArrayList<Long> hotSpots = null;
 
         IntegerGenerator keyGenerator;
 
@@ -171,9 +177,17 @@ public class AffinityConfig {
             else if (key.equalsIgnoreCase(pre+"percent_accesses_to_hot_spots")) {
                 percentAccessHotSpots = Double.valueOf(value);
             }
-        // Whether to make the location of the hot spots random
+            // Whether to make the location of the hot spots random
             else if (key.equalsIgnoreCase(pre+"random_hot_spots")) {
                 randomHotSpots = Boolean.valueOf(value);
+            }
+	    // Set hotspots
+            else if (key.equalsIgnoreCase(pre+"hotspots")) {
+                hotSpots = new ArrayList<Long>();
+                String[] hotSpotsStrings = value.split("-");
+                for (String hotSpot : hotSpotsStrings){
+                    hotSpots.add(Long.parseLong(hotSpot));
+                }
             }
         } // FOR
         // initialize distribution generators 
@@ -199,11 +213,16 @@ public class AffinityConfig {
             gen.setInterval(interval);
             gen.setMirrored(mirrored);
             gen.setRandomHotSpots(randomHotSpots);
-            gen.setNumHotSpots(numHotSpots);
             gen.setPercentAccessHotSpots(percentAccessHotSpots);
             gen.setRandomShift(randomShift);
             gen.setScrambled(scrambled);
             gen.setShift(shift);
+	    if(hotSpots != null){
+                gen.setHotSpots(hotSpots);
+            }
+            else{
+                gen.setNumHotSpots(numHotSpots);
+            }
             keyGenerator = gen;
         }
         else{
