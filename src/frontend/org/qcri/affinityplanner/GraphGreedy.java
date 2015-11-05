@@ -95,6 +95,14 @@ public class GraphGreedy extends PartitionerAffinity {
         }
         return true;
     }
+    
+//    private void testNoOverload(int toPartition){
+//        double load =  getLoadPerPartition(toPartition);
+//        if (load > Controller.MAX_LOAD_PER_PART){
+//            System.out.println("Partition " + toPartition + " is overloaded");
+//            System.exit(0);
+//        }
+//    }
 
     private boolean offloadHottestTuples(IntList overloadedPartitions, IntList activePartitions){
 
@@ -147,6 +155,8 @@ public class GraphGreedy extends PartitionerAffinity {
                         m_graph.moveHotVertices(candidateMove.movingVertices, candidateMove.toPartition);
                         numMovedVertices += candidateMove.movingVertices.size();
                         lastHotVertexMoved = nextHotTuplePos - 1;
+
+//                        testNoOverload(candidateMove.toPartition);
 
                         currMove = null;
                         candidateMove = null;
@@ -229,13 +239,14 @@ public class GraphGreedy extends PartitionerAffinity {
                 
                 // move after making enough steps
                 if (greedyStepsAhead == 0){
-                    System.out.println("ACTUALLY moving to " + candidateMove.toPartition + "with sender delta " 
+                    System.out.println("ACTUALLY moving to " + candidateMove.toPartition + " with sender delta " 
                             + candidateMove.sndDelta + " and receiver delta " + candidateMove.rcvDelta);
                     System.out.println("Moving:\n" + m_graph.verticesToString(candidateMove.movingVertices));
 
-                    m_graph.moveHotVertices(candidateMove.movingVertices, currMove.toPartition);
+                    m_graph.moveHotVertices(candidateMove.movingVertices, candidateMove.toPartition);
                     numMovedVertices += candidateMove.movingVertices.size();
                     lastHotVertexMoved = nextHotTuplePos - 1;
+//                    testNoOverload(candidateMove.toPartition);
 
                     currMove = null;
                     candidateMove = null;

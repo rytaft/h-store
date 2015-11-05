@@ -238,7 +238,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
                             + candidateMove.sndDelta + " and receiver delta " + candidateMove.rcvDelta);
                     System.out.println("Moving:\n" + m_graph.verticesToString(candidateMove.movingVertices));
 
-                    m_graph.moveHotVertices(candidateMove.movingVertices, currMove.toPartition);
+                    m_graph.moveHotVertices(candidateMove.movingVertices, candidateMove.toPartition);
                     numMovedVertices += candidateMove.movingVertices.size();
                     warmMovedVertices.addAll(candidateMove.movingVertices);
                     lastHotVertexMoved = nextHotTuplePos - 1;
