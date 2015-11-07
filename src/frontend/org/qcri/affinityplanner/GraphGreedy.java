@@ -427,7 +427,6 @@ public class GraphGreedy extends PartitionerAffinity {
             // remote accesses
             if (fromPartition == -1){
                 fromPartition = AffinityGraph.m_vertexPartition.get(vertex);
-                System.out.println("Processing partition " + fromPartition);
             }
             else{
                 if(fromPartition != AffinityGraph.m_vertexPartition.get(vertex)){
