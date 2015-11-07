@@ -62,7 +62,7 @@ public class Controller extends Thread {
     public static String ALGO = "default";
     
     // Loader
-    public static int LOAD_THREADS = 50;
+    public static int LOAD_THREADS = 6;
  
     // Repartitioning
     public static double MIN_LOAD_PER_PART = Double.MIN_VALUE;
@@ -247,7 +247,7 @@ public class Controller extends Thread {
             if (partitioner instanceof PartitionerAffinity){
                 ((PartitionerAffinity) partitioner).graphToFile(FileSystems.getDefault().getPath(".", "graph.log"));
             }
-
+            
             record("======================== PARTITIONING GRAPH ========================");
             t1 = System.currentTimeMillis();
             

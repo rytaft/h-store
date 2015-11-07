@@ -427,9 +427,16 @@ public class GraphGreedy extends PartitionerAffinity {
             // remote accesses
             if (fromPartition == -1){
                 fromPartition = AffinityGraph.m_vertexPartition.get(vertex);
+                System.out.println("Processing partition " + fromPartition);
             }
             else{
-                assert(fromPartition == AffinityGraph.m_vertexPartition.get(vertex));
+                if(fromPartition != AffinityGraph.m_vertexPartition.get(vertex)){
+                    int otherPartition = AffinityGraph.m_vertexPartition.get(vertex);
+                    System.out.println("vertex with hash " + vertex + " and name " + AffinityGraph.m_vertexName.get(vertex) + " is not on partition " + fromPartition + " but on partition " + otherPartition);
+                    System.out.println("Vertex is in PartitionVertex for partition " + fromPartition + ": " + AffinityGraph.m_partitionVertices.get(fromPartition).contains(vertex));
+                    System.out.println("Vertex is in PartitionVertex for partition " + otherPartition + ": " + AffinityGraph.m_partitionVertices.get(otherPartition).contains(vertex));
+                    System.exit(0);
+                }
             }
 
             int fromSite = PlanHandler.getSitePartition(fromPartition);
