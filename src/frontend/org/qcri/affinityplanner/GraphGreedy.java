@@ -32,11 +32,11 @@ public class GraphGreedy extends PartitionerAffinity {
         }
 
         long t2 = System.currentTimeMillis();
-        Controller.record("Time taken:" + (t2-t1));
+//        Controller.record("Time taken:" + (t2-t1));
 
 
         // DEBUG
-        m_graph.toFile(new File("Graph.txt").toPath());
+//        m_graph.toFile(new File("Graph.txt").toPath());
     }
 
     /**
