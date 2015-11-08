@@ -288,7 +288,7 @@ public class SimplePartitioner extends PartitionerAffinity {
     }
 
     @Override
-    protected double getSenderDelta(IntSet movingVertices, int senderPartition, int toPartition) {
+    protected double getSenderDelta(IntSet movingVertices, int senderPartition, boolean toPartitionLocal) {
         if (movingVertices == null || movingVertices.isEmpty()){
             LOG.debug("Trying to move an empty set of vertices");
             return 0;
@@ -296,7 +296,6 @@ public class SimplePartitioner extends PartitionerAffinity {
 
         double delta = 0;
         int senderSite = PlanHandler.getSitePartition(senderPartition);
-        int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
         assert(movingVertices.size() == 1);
         
@@ -323,7 +322,7 @@ public class SimplePartitioner extends PartitionerAffinity {
                     double edgeWeight = edge.getDoubleValue();
                     
                     if (adjacentPartition == senderPartition){
-                        double k = (senderSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
+                        double k = (toPartitionLocal) ? Controller.LMPT_COST : Controller.DTXN_COST;
                         delta += edgeWeight * k;                       
                     }
                     else if (adjacentSite == senderSite) {
