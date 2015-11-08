@@ -181,8 +181,10 @@ public class GraphGreedy extends PartitionerAffinity {
                     currMove = null;
 
                     if(activePartitions.size() >= Controller.MAX_PARTITIONS 
-                            || addedPartitions >= Controller.MAX_PARTITIONS_ADDED){
+                            || addedPartitions > Controller.MAX_PARTITIONS_ADDED){
+                        
                         System.out.println("GIVING UP!! Cannot add new partition to offload " + overloadedPartitions);
+                        
                         return false;
                     }
 
