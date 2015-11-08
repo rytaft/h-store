@@ -76,6 +76,7 @@ public class Controller extends Thread {
     public static double PENALTY_REMOTE_MOVE = 0;
     public static int GREEDY_STEPS_AHEAD = 5;
     public static double LOCAL_AFFINITY_THRESHOLD = Integer.MAX_VALUE; // for graph algorithms: if no local edge is this affine, pick remote edge
+    public static int ADDED_PARTITION_CHUNK_SIZE = 6;
     
     public static int COLD_CHUNK_SIZE = 100;
     public static double COLD_TUPLE_FRACTION_ACCESSES = 100;

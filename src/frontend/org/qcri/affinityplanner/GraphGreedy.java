@@ -169,19 +169,27 @@ public class GraphGreedy extends PartitionerAffinity {
 
                     // We fill up low-order partitions first to minimize the number of servers
                     addedPartitions++;
+
+                    int newPartition = -1;
+
+                    // add Controller.ADDED_PARTITION_CHUNK_SIZE new partitions, set first to be newPartition
+                    int newPartCount = 0;
                     for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
                         if(!activePartitions.contains(i)){
                             activePartitions.add(i);
-                            break;
+                            if (newPartCount == 0){
+                                newPartition = i;
+                            }
+                            newPartCount++;
+                            if (newPartCount >= Controller.ADDED_PARTITION_CHUNK_SIZE){
+                                break;
+                            }
                         }
                     }
 
-                    // skip one hot tuple
-                    nextHotTuplePos = lastHotVertexMoved + 1;
-                    currMove = null;
-
                     if(activePartitions.size() >= Controller.MAX_PARTITIONS 
-                            || addedPartitions > Controller.MAX_PARTITIONS_ADDED){
+                            || addedPartitions > Controller.MAX_PARTITIONS_ADDED
+                            || newPartition == -1){
                         
                         System.out.println("GIVING UP!! Cannot add new partition to offload " + overloadedPartitions);
                         
@@ -192,6 +200,21 @@ public class GraphGreedy extends PartitionerAffinity {
                         System.out.println("GIVING UP!! No more hot tuples");
                         return false;
                     }
+                    
+                    if (currMove.sndDelta >= 0){
+                        System.out.println("GIVING UP!! This move has no benefit for the sender");
+                        return false;
+                    }
+                    
+                    m_graph.moveHotVertices(candidateMove.movingVertices, newPartition);
+                    numMovedVertices += candidateMove.movingVertices.size();
+                    lastHotVertexMoved = nextHotTuplePos - 1;
+
+                    currMove = null;
+                    candidateMove = null;
+                    greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
+                    
+                    continue;
 
                 } // END if (numMovedVertices + movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART || nextPosToMove >= hotVerticesList.size() || (toPart_sndDelta_glbDelta.fst != null && toPart_sndDelta_glbDelta.fst == -1))
 
