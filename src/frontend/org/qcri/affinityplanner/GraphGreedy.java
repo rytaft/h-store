@@ -123,12 +123,13 @@ public class GraphGreedy extends PartitionerAffinity {
 
             int numMovedVertices = 0;
             int nextHotTuplePos = 0;
-            int lastHotVertexMoved = -1;
+//            int lastHotVertexMoved = -1;
 
             int count_iter = 0;
 
             Move currMove = null;
             Move candidateMove = null;
+            Move minSndDeltaNewPartMove = null;
 
             int greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
 
@@ -154,7 +155,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                         m_graph.moveHotVertices(candidateMove.movingVertices, candidateMove.toPartition);
                         numMovedVertices += candidateMove.movingVertices.size();
-                        lastHotVertexMoved = nextHotTuplePos - 1;
+//                        lastHotVertexMoved = nextHotTuplePos - 1;
 
 //                        testNoOverload(candidateMove.toPartition);
 
@@ -213,11 +214,13 @@ public class GraphGreedy extends PartitionerAffinity {
                     
                     if(candidateMove != null){
                         currMove = candidateMove.clone();
+                        // TODO could also check if it is better to move to minSndDeltaNewPart
                     }
                     
+                    System.out.println("ACTUALLY moving to new partition " + newPartition);
                     m_graph.moveHotVertices(currMove.movingVertices, newPartition);
                     numMovedVertices += currMove.movingVertices.size();
-                    lastHotVertexMoved = nextHotTuplePos - 1;
+//                    lastHotVertexMoved = nextHotTuplePos - 1;
 
                     currMove = null;
                     candidateMove = null;
@@ -246,6 +249,13 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 System.out.println("Moving:\n" + m_graph.verticesToString(currMove.movingVertices));
                 System.out.println("Receiver: " + currMove.toPartition + ", receiver delta " + currMove.rcvDelta);
+                
+                // TODO check if need to be smarter when expanding cluster
+//                double sndDeltaNewPart = getSenderDelta(currMove.movingVertices, overloadedPartition, false);
+//                if(minSndDeltaNewPartMove == null 
+//                        || minSndDeltaNewPartMove.sndDelta > sndDeltaNewPart){
+//                    minSndDeltaNewPartMove = currMove.clone();
+//                }
 
                 if(currMove.toPartition != -1
                         && currMove.sndDelta <= Controller.MIN_SENDER_GAIN_MOVE * -1
@@ -279,7 +289,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                     m_graph.moveHotVertices(candidateMove.movingVertices, candidateMove.toPartition);
                     numMovedVertices += candidateMove.movingVertices.size();
-                    lastHotVertexMoved = nextHotTuplePos - 1;
+//                    lastHotVertexMoved = nextHotTuplePos - 1;
 //                    testNoOverload(candidateMove.toPartition);
 
                     currMove = null;
