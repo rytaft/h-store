@@ -345,18 +345,26 @@ public class AffinityGraph {
             String [] fields = movedVertexName.split(",");
             
             if(Controller.ROOT_TABLE == null){
-    //            System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
-    //            System.out.println("remove ID: " + fields[1]);
-                m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[1]));
-    //            System.out.println("After removal");
-    //            System.out.println(m_plan_handler.toString() + "\n");
-    //            m_plan_handler.addPartition(fields[0], toPartition);
-    //            System.out.println("After adding partition");
-    //            System.out.println(m_plan_handler.toString() + "\n");
-                m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
-    //            System.out.println("After adding range");
-    //            System.out.println(m_plan_handler.toString() + "\n");
-    //            System.exit(0);
+//                System.out.println("table: " + fields[0] + " from partition: " + fromPartition + " to partition " + toPartition);
+//                System.out.println("remove ID: " + fields[1]);
+                boolean res = m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[1]));
+                if (!res){
+                    System.out.println("Problem removing " + movedVertexName + " from partition " + fromPartition);
+                    System.exit(0);
+                }
+//                System.out.println("After removal");
+//                System.out.println(m_plan_handler.toString() + "\n");
+                m_plan_handler.addPartition(fields[0], toPartition);
+//                System.out.println("After adding partition");
+//                System.out.println(m_plan_handler.toString() + "\n");
+                res = m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
+                if (!res){
+                    System.out.println("Problem adding " + movedVertexName + " to partition " + toPartition);
+                    System.exit(0);
+               }
+//                System.out.println("After adding range");
+//                System.out.println(m_plan_handler.toString() + "\n");
+//                System.exit(0);
             }
             else{
                 m_plan_handler.removeTupleIdAllTables(fromPartition, Long.parseLong(fields[1]));

@@ -75,9 +75,9 @@ public class Plan {
         if (partitionToRanges == null){
             partitionToRanges = new HashMap<Integer, TreeMap<Long, Long>> ();
             tableToPartitionsToRanges.put(table.toLowerCase(), partitionToRanges);
-            TreeMap<Long, Long> emptyRange = new TreeMap<Long,Long>();
-            partitionToRanges.put(partitionId, emptyRange);
         }
+        TreeMap<Long, Long> emptyRange = new TreeMap<Long,Long>();
+        partitionToRanges.put(partitionId, emptyRange);
     }
 
     public void removePartition(String table, Integer partitionId) {
@@ -187,7 +187,7 @@ public class Plan {
      * @return
      */
     public boolean addRange(String table, Integer partition, Long from, Long to){
-
+        
         HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges == null){
             return false;
