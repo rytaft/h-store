@@ -334,9 +334,7 @@ public class GraphGreedyExtended extends PartitionerAffinity {
     }
 
     /*
-     * finds the LOCAL vertex with the highest affinity
-     * 
-     * ASSUMES that all vertices are on the same partition
+     * finds the vertex with the highest affinity
      */
     protected int getMostAffineExtension(IntSet vertices, int senderPartition){
         
