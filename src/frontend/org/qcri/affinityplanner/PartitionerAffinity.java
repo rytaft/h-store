@@ -254,7 +254,7 @@ public abstract class PartitionerAffinity implements Partitioner {
             if(senderPartition == toPartition || !activePartitions.contains(toPartition)){
                 continue;
             }
-
+            
             System.out.println("Examining moving to partition: " + toPartition);
 
             double receiverDelta = getReceiverDelta(move.movingVertices, toPartition);
