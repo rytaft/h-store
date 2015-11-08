@@ -62,7 +62,7 @@ public class Controller extends Thread {
     public static String ALGO = "default";
     
     // Loader
-    public static int LOAD_THREADS = 50;
+    public static int LOAD_THREADS = 2;
  
     // Repartitioning
     public static double MIN_LOAD_PER_PART = Double.MIN_VALUE;
@@ -75,7 +75,7 @@ public class Controller extends Thread {
     public static int MAX_PARTITIONS_ADDED = 1;
     public static double PENALTY_REMOTE_MOVE = 0;
     public static int GREEDY_STEPS_AHEAD = 5;
-    public static double LOCAL_AFFINITY_THRESHOLD = 0; // if no local edge is this affine, pick remote edge
+    public static double LOCAL_AFFINITY_THRESHOLD = Integer.MAX_VALUE; // for graph algorithms: if no local edge is this affine, pick remote edge
     
     public static int COLD_CHUNK_SIZE = 100;
     public static double COLD_TUPLE_FRACTION_ACCESSES = 100;
@@ -247,7 +247,7 @@ public class Controller extends Thread {
             if (partitioner instanceof PartitionerAffinity){
                 ((PartitionerAffinity) partitioner).graphToFile(FileSystems.getDefault().getPath(".", "graph.log"));
             }
-
+            
             record("======================== PARTITIONING GRAPH ========================");
             t1 = System.currentTimeMillis();
             

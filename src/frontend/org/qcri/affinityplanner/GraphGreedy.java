@@ -32,11 +32,11 @@ public class GraphGreedy extends PartitionerAffinity {
         }
 
         long t2 = System.currentTimeMillis();
-        Controller.record("Time taken:" + (t2-t1));
+//        Controller.record("Time taken:" + (t2-t1));
 
 
         // DEBUG
-        m_graph.toFile(new File("Graph.txt").toPath());
+//        m_graph.toFile(new File("Graph.txt").toPath());
     }
 
     /**
@@ -218,7 +218,7 @@ public class GraphGreedy extends PartitionerAffinity {
                         && (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta < Controller.MAX_LOAD_PER_PART
                                 || currMove.rcvDelta <= 0)){
                     
-                    if(candidateMove == null || currMove.rcvDelta < candidateMove.rcvDelta){
+                    if(candidateMove == null || currMove.rcvDelta <= candidateMove.rcvDelta){
 
                         System.out.println("CANDIDATE for moving to " + currMove.toPartition);
 
@@ -313,13 +313,15 @@ public class GraphGreedy extends PartitionerAffinity {
 
             if(affineVertex != 0){
 
+                // DEBUG
+                System.out.println("Adding edge extension: " + AffinityGraph.m_vertexName.get(affineVertex));
+
                 move.movingVertices.add(affineVertex);
                 move.wasExtended = true;
 
                 // this will populate all the fields of move
                 findBestPartition(move, fromPartition, activePartitions);
 
-                LOG.debug("Adding edge extension: " + affineVertex);
             }
 
             else{
@@ -345,6 +347,9 @@ public class GraphGreedy extends PartitionerAffinity {
         int res = 0;
 
         for(int vertex : vertices){
+            
+            // DEBUG
+//            System.out.println("Looking at the adjacency list of vertex " + AffinityGraph.m_vertexName.get(vertex));
 
             Int2DoubleMap adjacency = AffinityGraph.m_edges.get(vertex);
             if(adjacency != null){
@@ -354,10 +359,17 @@ public class GraphGreedy extends PartitionerAffinity {
                     int adjacentVertex = edge.getIntKey();
                     double affinity = edge.getDoubleValue();
 
+                    // DEBUG
+//                    System.out.println("Looking at adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
+//                        + " with affinity " + affinity);
+
                     if (affinity > maxAffinity
                             && AffinityGraph.m_vertexPartition.get(adjacentVertex) == senderPartition
                             && !vertices.contains(adjacentVertex)) {
 
+                        //DEBUG
+//                        System.out.println("Picked");
+                        
                         maxAffinity = affinity;
                         res = adjacentVertex;
                     }
@@ -429,7 +441,13 @@ public class GraphGreedy extends PartitionerAffinity {
                 fromPartition = AffinityGraph.m_vertexPartition.get(vertex);
             }
             else{
-                assert(fromPartition == AffinityGraph.m_vertexPartition.get(vertex));
+                if(fromPartition != AffinityGraph.m_vertexPartition.get(vertex)){
+                    int otherPartition = AffinityGraph.m_vertexPartition.get(vertex);
+                    System.out.println("vertex with hash " + vertex + " and name " + AffinityGraph.m_vertexName.get(vertex) + " is not on partition " + fromPartition + " but on partition " + otherPartition);
+                    System.out.println("Vertex is in PartitionVertex for partition " + fromPartition + ": " + AffinityGraph.m_partitionVertices.get(fromPartition).contains(vertex));
+                    System.out.println("Vertex is in PartitionVertex for partition " + otherPartition + ": " + AffinityGraph.m_partitionVertices.get(otherPartition).contains(vertex));
+                    System.exit(0);
+                }
             }
 
             int fromSite = PlanHandler.getSitePartition(fromPartition);

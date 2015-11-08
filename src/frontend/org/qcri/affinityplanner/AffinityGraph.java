@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
@@ -44,7 +45,7 @@ public class AffinityGraph {
     protected static Int2ObjectOpenHashMap<Int2DoubleOpenHashMap> m_edges = new Int2ObjectOpenHashMap <Int2DoubleOpenHashMap> ();
     
     // vertex -> full name
-    protected static Int2ObjectOpenHashMap<String> m_vertexName = new Int2ObjectOpenHashMap <String> ();
+    protected static ConcurrentHashMap<Integer,String> m_vertexName = new ConcurrentHashMap <Integer,String> ();
 
     // vertex -> weight map (number of txns accesses the vertext per second)
     protected static final Int2DoubleOpenHashMap m_vertices = new Int2DoubleOpenHashMap (1000);
@@ -88,7 +89,6 @@ public class AffinityGraph {
         private void loadLogFile(Path logFile, double normalizedIncrement) throws Exception{
             
             // init local data structures to be merged later
-            Int2ObjectOpenHashMap<String> vertex_to_name = new Int2ObjectOpenHashMap <String> ();
             Int2IntOpenHashMap vertexPartition = new Int2IntOpenHashMap();
             Int2DoubleOpenHashMap vertices = new Int2DoubleOpenHashMap (1000);
             List<IntOpenHashSet> partitionVertices = new ArrayList<IntOpenHashSet> ();
@@ -141,7 +141,7 @@ public class AffinityGraph {
 
                         for(int from : curr_transaction){
                             // store partition mappings for FROM vertex
-                            String fromName = vertex_to_name.get(from);
+                            String fromName = m_vertexName.get(from);
                             int partition = m_plan_handler.getPartition(fromName);
                             partitionVertices.get(partition).add(from);
                             vertexPartition.put(from, partition);
@@ -174,7 +174,7 @@ public class AffinityGraph {
                                     
                                     // if lower granularity, edges link vertices to partitions, not other vertices
                                     if(!m_tupleGranularity){
-                                        String toName = vertex_to_name.get(to);
+                                        String toName = m_vertexName.get(to);
                                         to = m_plan_handler.getPartition(toName);
                                     }
                                     
@@ -202,6 +202,17 @@ public class AffinityGraph {
                     // add the vertex to the transaction
                     String transaction_id = fields[0];
                     int hash = fields[1].hashCode();
+                    
+                    if (!m_vertexName.containsKey(hash) || !m_vertexName.get(hash).equals(fields[1])){
+                        // deal with hash collisions. access the global map to guarantee uniqueness. skip in normal case 
+                        String prev = m_vertexName.putIfAbsent(hash, fields[1]);
+                        while (prev != null){
+                            // deterministic re-hashing
+                            hash ^= (hash >>> 20) ^ (hash >>> 12);
+                            hash = hash ^ (hash >>> 7) ^ (hash >>> 4);
+                            prev = m_vertexName.putIfAbsent(hash, fields[1]);
+                        }
+                    }
 
                     IntOpenHashSet curr_transaction = transactions.get(transaction_id);
                     if (curr_transaction == null){
@@ -210,9 +221,6 @@ public class AffinityGraph {
                     }
                     curr_transaction.add(hash);
 
-                    if (!vertex_to_name.containsKey(hash)){
-                        vertex_to_name.put(hash, fields[1]);
-                    }
                 } // END if (!line.equals("END"))
 
                 /* this is what one would do to count different accesses within the same transaction. 
@@ -237,9 +245,6 @@ public class AffinityGraph {
             }// END  while(line != null)
             
             // merge local data structures
-            synchronized(m_vertexName){
-                m_vertexName.putAll(vertex_to_name);
-            }
             synchronized(m_vertexPartition){
                 m_vertexPartition.putAll(vertexPartition);
             }
@@ -310,6 +315,7 @@ public class AffinityGraph {
         
         // scan files for all partitions
         int threads = Math.min(Controller.LOAD_THREADS, logFiles.length);
+        System.out.println("Using " + threads + " threads");
         Thread[] loadingThreads = new Thread[threads];
         AtomicInteger nextLogFileCounter = new AtomicInteger(0);
         
