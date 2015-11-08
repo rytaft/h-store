@@ -337,8 +337,6 @@ public class GraphGreedy extends PartitionerAffinity {
 
             // extend current moved set
 
-            move.clearExceptMovingVertices();
-
             int affineVertex = getMostAffineExtension(move.movingVertices, fromPartition);
 
             if(affineVertex != 0){
@@ -348,18 +346,25 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 move.movingVertices.add(affineVertex);
                 move.wasExtended = true;
+
+                move.sndDelta = getSenderDelta(move.movingVertices, fromPartition, move.toPartition);
+                move.rcvDelta = getReceiverDelta(move.movingVertices, move.toPartition);
                 
+                // check if the move needs to change toPartition after the extension
                 int extensionPartition = getMostAffinePartition(affineVertex);
 
-                if (extensionPartition > -1 && extensionPartition != move.toPartition){
-                    IntList twoPartitions = new IntArrayList(2);
-                    twoPartitions.add(extensionPartition);
-                    twoPartitions.add(move.toPartition);
-
-                    // this will populate all the fields of move
-                    findBestPartition(move, fromPartition, twoPartitions);
+                if (extensionPartition > -1 
+                        && extensionPartition != move.toPartition
+                        && extensionPartition != fromPartition){
+                    
+                    double extensionReceiverDelta = getReceiverDelta(move.movingVertices, extensionPartition);
+                    
+                    if (extensionReceiverDelta < move.rcvDelta){
+                        move.toPartition = extensionPartition;
+                        move.sndDelta = getSenderDelta(move.movingVertices, fromPartition, extensionPartition);
+                        move.rcvDelta = extensionReceiverDelta;
+                    }
                 }
-
             }
 
             else{

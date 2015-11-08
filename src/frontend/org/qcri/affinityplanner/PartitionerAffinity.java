@@ -177,6 +177,11 @@ public abstract class PartitionerAffinity implements Partitioner {
      */
     protected abstract double getSenderDelta(IntSet movingVertices, int senderPartition, boolean toPartitionLocal);
 
+    protected double getSenderDelta(IntSet movingVertices, int senderPartition, int toPartition){
+        boolean toPartitionLocal = (PlanHandler.getSitePartition(senderPartition) == PlanHandler.getSitePartition(toPartition));
+        return getSenderDelta(movingVertices, senderPartition, toPartitionLocal);
+    }
+
     public abstract double getLoadPerPartition(int partition);
     
     public double getLoadPerSite(int site){
@@ -205,9 +210,7 @@ public abstract class PartitionerAffinity implements Partitioner {
 
         int numMovedVertices = 0;
         
-        boolean toPartitionLocal = (PlanHandler.getSitePartition(senderPartition) == PlanHandler.getSitePartition(toPartition));
-
-        double senderDelta = getSenderDelta(movingVertices, senderPartition, toPartitionLocal);
+        double senderDelta = getSenderDelta(movingVertices, senderPartition, toPartition);
         double receiverDelta = getReceiverDelta(movingVertices, toPartition);
 
         // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
