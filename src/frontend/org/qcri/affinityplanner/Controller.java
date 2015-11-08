@@ -62,7 +62,7 @@ public class Controller extends Thread {
     public static String ALGO = "default";
     
     // Loader
-    public static int LOAD_THREADS = 2;
+    public static int LOAD_THREADS = 6;
  
     // Repartitioning
     public static double MIN_LOAD_PER_PART = Double.MIN_VALUE;
@@ -72,7 +72,7 @@ public class Controller extends Thread {
     public static double DTXN_COST = 50.0;
     public static int MAX_MOVED_TUPLES_PER_PART = 10000;
     public static int MIN_SENDER_GAIN_MOVE = 0;
-    public static int MAX_PARTITIONS_ADDED = 1;
+    public static int MAX_PARTITIONS_ADDED = 0;
     public static double PENALTY_REMOTE_MOVE = 0;
     public static int GREEDY_STEPS_AHEAD = 5;
     public static double LOCAL_AFFINITY_THRESHOLD = Integer.MAX_VALUE; // for graph algorithms: if no local edge is this affine, pick remote edge
