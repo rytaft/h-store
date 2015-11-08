@@ -225,7 +225,7 @@ public class GraphGreedy extends PartitionerAffinity {
                 }
                 else {
                     System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
-                    System.out.println("Current sender delta " + getSenderDelta(currMove.movingVertices, overloadedPartition, currMove.toPartition));                    
+                    System.out.println("Current sender delta " + currMove.sndDelta);                    
                 }
 
                 nextHotTuplePos = expandMovingVertices (currMove, hotVerticesList, nextHotTuplePos, activePartitions, overloadedPartition);
@@ -421,7 +421,8 @@ public class GraphGreedy extends PartitionerAffinity {
                         int newVertexPartition = AffinityGraph.m_vertexPartition.get(adjacentVertex);
                                                 
                         vertexSingleton.add(adjacentVertex);
-                        double newVertexPartitionDelta = getSenderDelta(vertexSingleton, newVertexPartition, -1);
+                        // setting the destination partition to be remote = worst case for the sender
+                        double newVertexPartitionDelta = getSenderDelta(vertexSingleton, newVertexPartition, false);
                         vertexSingleton.remove(adjacentVertex);
                         
                         if (affinity > maxAffinity
@@ -635,9 +636,7 @@ public class GraphGreedy extends PartitionerAffinity {
     }
 
     @Override
-    protected double getSenderDelta(IntSet movingVertices, int senderPartition, int toPartition) {
-
-        assert(senderPartition != toPartition);
+    protected double getSenderDelta(IntSet movingVertices, int senderPartition, boolean toPartitionLocal) {
 
         if (movingVertices == null || movingVertices.isEmpty()){
             LOG.debug("Trying to move an empty set of vertices");
@@ -646,7 +645,6 @@ public class GraphGreedy extends PartitionerAffinity {
 
         double delta = 0;
         int senderSite = PlanHandler.getSitePartition(senderPartition);
-        int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
         
         for(int movingVertex : movingVertices){
             
@@ -682,7 +680,7 @@ public class GraphGreedy extends PartitionerAffinity {
                             if (adjacentVertexPartition == senderPartition) {
                                 // the sender was paying nothing, now pays the senderPartition -> toPartition MPTs
                                 // the two vertices are not moved together
-                                double k = (senderSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
+                                double k = toPartitionLocal ? Controller.LMPT_COST : Controller.DTXN_COST;
                                 delta += edgeWeight * k;
                             } else if (adjacentVertexSite == senderSite){
                                     // the sender was paying senderPartition -> adjacentPartition MPTs, now pays nothing
