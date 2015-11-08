@@ -38,7 +38,7 @@ cp *partition*.log results/TPCC-high-nopaired/monitor-${1}/
 cp results/TPCC-high-nopaired/monitor-${1}/*.log .
 
 # run controller
-ant affinity -Dproject=tpcc -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Delastic.run_monitoring=false -Delastic.update_plan=true -Delastic.exec_reconf=false -Delastic.max_load=20000 -Delastic.algo=graph | tee out.log
+ant affinity -Dproject=tpcc -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Delastic.run_monitoring=false -Delastic.update_plan=true -Delastic.exec_reconf=false -Delastic.max_load=2000 -Delastic.algo=graph | tee out.log
 
 # save reconfiguration output
 cp out.log results/TPCC-high-nopaired/graph/${1}/out-controller.log
