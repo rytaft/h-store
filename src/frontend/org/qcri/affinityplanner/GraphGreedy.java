@@ -168,8 +168,6 @@ public class GraphGreedy extends PartitionerAffinity {
                     System.out.println("Cannot expand - Adding a new partition");
 
                     // We fill up low-order partitions first to minimize the number of servers
-                    addedPartitions++;
-
                     int newPartition = -1;
 
                     // add Controller.ADDED_PARTITION_CHUNK_SIZE new partitions, set first to be newPartition
@@ -186,12 +184,19 @@ public class GraphGreedy extends PartitionerAffinity {
                             }
                         }
                     }
+                    addedPartitions += newPartCount;
 
                     if(activePartitions.size() >= Controller.MAX_PARTITIONS 
                             || addedPartitions > Controller.MAX_PARTITIONS_ADDED
                             || newPartition == -1){
                         
                         System.out.println("GIVING UP!! Cannot add new partition to offload " + overloadedPartitions);
+                        
+                        System.out.println(activePartitions.size());
+                        System.out.println(Controller.MAX_PARTITIONS );
+                        System.out.println(addedPartitions);
+                        System.out.println(Controller.MAX_PARTITIONS_ADDED);
+                        System.out.println(newPartition);
                         
                         return false;
                     }
@@ -343,9 +348,14 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 move.movingVertices.add(affineVertex);
                 move.wasExtended = true;
+                
+                IntList twoPartitions = new IntArrayList(2);
+                int extensionPartition = getMostAffinePartition(affineVertex);
+                twoPartitions.add(extensionPartition);
+                twoPartitions.add(move.toPartition);
 
                 // this will populate all the fields of move
-                findBestPartition(move, fromPartition, activePartitions);
+                findBestPartition(move, fromPartition, twoPartitions);
 
             }
 
@@ -360,11 +370,34 @@ public class GraphGreedy extends PartitionerAffinity {
         return nextHotTuplePos;
 
     }
+    
+    private int getMostAffinePartition (int vertex){    
+
+        Int2DoubleMap adjacency = AffinityGraph.m_edges.get(vertex);
+        
+        if(adjacency == null){
+            return -1;
+        }
+        
+        double currAffinity = -1;
+        int currPart = -1;
+        
+        for(Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
+            
+            int adjacentVertex = edge.getIntKey();
+            double affinity = edge.getDoubleValue();
+            
+            if (affinity > currAffinity){
+                currPart = AffinityGraph.m_vertexPartition.get(adjacentVertex);
+                currAffinity = affinity;
+            }
+        }
+        
+        return currPart;
+    }
 
     /*
-     * finds the LOCAL vertex with the highest affinity
-     * 
-     * ASSUMES that all vertices are on the same partition
+     * finds the vertex with the highest affinity
      */
     protected int getMostAffineExtension(IntSet vertices, int senderPartition){
         

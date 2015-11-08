@@ -158,7 +158,6 @@ public abstract class PartitionerAffinity implements Partitioner {
     /**
      *     Global delta by moving a set of vertices
      *     This value is used to decide whether it is globally good to make a move or not
-     *     It ASSUMES that the moved vertices are on the same partition
      *     
      *     if toPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
@@ -167,7 +166,6 @@ public abstract class PartitionerAffinity implements Partitioner {
     /**
      *     Local delta for a receiver by moving a set of vertices
      *     This value is used to determine if the receiver of the vertices will be overloaded 
-     *     It ASSUMES that the moved vertices are on the same partition
      *     
      *     if toPartition = -1 we evaluate moving to an unknown REMOTE partition
      */
@@ -176,8 +174,6 @@ public abstract class PartitionerAffinity implements Partitioner {
     /**
      *     Local delta for a sender by moving a set of vertices
      *     This value is used to determine the best tuple to send for a sender 
-     *     It ASSUMES that the moved vertices are on the same partition
-     *     
      */
     protected abstract double getSenderDelta(IntSet movingVertices, int senderPartition, boolean toPartitionLocal);
 
@@ -237,13 +233,8 @@ public abstract class PartitionerAffinity implements Partitioner {
      * Looks for a move that does not overload the receiver. If this is not available, return the best we can find.
      * 
      * Output:
-     * - Return value: whether the selected move does not overload the receiver
-     * - toPartitionDelta contains the partition where the move should be done and the delta of the move
+     * - Modifies the move argument
      * 
-     * @param movingVertices
-     * @param fromPartition
-     * @param activePartitions
-     * @param toPartition_senderDelta
      */
     protected void findBestPartition(Move move, int senderPartition, IntList activePartitions){
         
