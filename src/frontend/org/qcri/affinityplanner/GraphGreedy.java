@@ -211,8 +211,12 @@ public class GraphGreedy extends PartitionerAffinity {
                         return false;
                     }
                     
-                    m_graph.moveHotVertices(candidateMove.movingVertices, newPartition);
-                    numMovedVertices += candidateMove.movingVertices.size();
+                    if(candidateMove != null){
+                        currMove = candidateMove.clone();
+                    }
+                    
+                    m_graph.moveHotVertices(currMove.movingVertices, newPartition);
+                    numMovedVertices += currMove.movingVertices.size();
                     lastHotVertexMoved = nextHotTuplePos - 1;
 
                     currMove = null;
