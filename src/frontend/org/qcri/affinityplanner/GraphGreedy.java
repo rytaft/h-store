@@ -349,13 +349,16 @@ public class GraphGreedy extends PartitionerAffinity {
                 move.movingVertices.add(affineVertex);
                 move.wasExtended = true;
                 
-                IntList twoPartitions = new IntArrayList(2);
                 int extensionPartition = getMostAffinePartition(affineVertex);
-                twoPartitions.add(extensionPartition);
-                twoPartitions.add(move.toPartition);
 
-                // this will populate all the fields of move
-                findBestPartition(move, fromPartition, twoPartitions);
+                if (extensionPartition > -1 && extensionPartition != move.toPartition){
+                    IntList twoPartitions = new IntArrayList(2);
+                    twoPartitions.add(extensionPartition);
+                    twoPartitions.add(move.toPartition);
+
+                    // this will populate all the fields of move
+                    findBestPartition(move, fromPartition, twoPartitions);
+                }
 
             }
 
