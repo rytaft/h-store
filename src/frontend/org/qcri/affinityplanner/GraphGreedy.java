@@ -250,28 +250,37 @@ public class GraphGreedy extends PartitionerAffinity {
                     minSndDeltaNewPartMove.nextHotTuplePos = nextHotTuplePos;
                 }
 
-                // set candidate
+                // check move
                 if(currMove.toPartition != -1
-                        && currMove.sndDelta <= Controller.MIN_SENDER_GAIN_MOVE * -1
-                        && (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta < Controller.MAX_LOAD_PER_PART
-                                || currMove.rcvDelta <= 0)){
-
-                    if(candidateMove == null || currMove.rcvDelta <= candidateMove.rcvDelta){
-
-                        System.out.println("CANDIDATE for moving to " + currMove.toPartition);
-
-                        // record this move as a candidate
-                        candidateMove = currMove.clone();
-                        candidateMove.nextHotTuplePos = nextHotTuplePos;
-                        greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
+                        && currMove.sndDelta <= Controller.MIN_SENDER_GAIN_MOVE * -1){
+                    
+                    // this move is valid for the sender but we need to find a receiver to make it feasible 
+                        
+                    if (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta > Controller.MAX_LOAD_PER_PART
+                            && currMove.rcvDelta > 0){
+                        
+                        // the receiver in the move is not good enough. see if we can find a better receiver.
+                        findBestPartition(currMove, overloadedPartition, activePartitions);
                     }
-                    else{                        
-                        // current candidate is better  
-                        greedyStepsAhead--;
+                    
+                    if (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta <= Controller.MAX_LOAD_PER_PART
+                            || currMove.rcvDelta <= 0){
+
+                        if(candidateMove == null || currMove.rcvDelta <= candidateMove.rcvDelta){
+    
+                            System.out.println("CANDIDATE for moving to " + currMove.toPartition);
+    
+                            // record this move as a candidate
+                            candidateMove = currMove.clone();
+                            candidateMove.nextHotTuplePos = nextHotTuplePos;
+                            greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
+                            
+                            continue;
+                        }
                     }
 
                 }
-                else if(candidateMove != null){
+                if(candidateMove != null){
                     // this not a candidate but I have found one
                     greedyStepsAhead--;
                 }
@@ -301,15 +310,6 @@ public class GraphGreedy extends PartitionerAffinity {
     /**
      * updates the set movingVertices with one more vertex, either the most affine to the current movingVertices 
      * or the next vertex in the verticesToMove list, depending on which one is more convenient to move out.
-     * 
-     * Inputs:
-     * - toPartitionDelta.fst == null indicates that we don't have a predefined partition to move to
-     * 
-     * Outputs:
-     * - returns the next position to move in verticesToMove
-     * - modifies the argument movingVertices to add the new vertex
-     * - modifies the argument toPartitionDelta to indicate where should the new vertex moved; (-1, inf) indicates that there is no move possible
-     * 
      */
     private int expandMovingVertices (Move move, IntList hotVertices, int nextHotTuplePos, IntList activePartitions, int fromPartition){
 
@@ -361,21 +361,22 @@ public class GraphGreedy extends PartitionerAffinity {
                 move.sndDelta = getSenderDelta(move.movingVertices, fromPartition, move.toPartition);
                 move.rcvDelta = getReceiverDelta(move.movingVertices, move.toPartition);
 
-                // check if the move needs to change toPartition after the extension
-                int extensionPartition = getMostAffinePartition(affineVertex);
-
-                if (extensionPartition > -1 
-                        && extensionPartition != move.toPartition
-                        && extensionPartition != fromPartition){
-
-                    double extensionReceiverDelta = getReceiverDelta(move.movingVertices, extensionPartition);
-
-                    if (extensionReceiverDelta < move.rcvDelta){
-                        move.toPartition = extensionPartition;
-                        move.sndDelta = getSenderDelta(move.movingVertices, fromPartition, extensionPartition);
-                        move.rcvDelta = extensionReceiverDelta;
-                    }
-                }
+//                // check if the move needs to change toPartition after the extension
+//                int extensionPartition = getMostAffinePartition(affineVertex);
+//
+//                if (extensionPartition > -1 
+//                        && extensionPartition != move.toPartition
+//                        && extensionPartition != fromPartition){
+//
+//                    double extensionReceiverDelta = getReceiverDelta(move.movingVertices, extensionPartition);
+//
+//                    if (extensionReceiverDelta < move.rcvDelta){
+//                        move.toPartition = extensionPartition;
+//                        move.sndDelta = getSenderDelta(move.movingVertices, fromPartition, extensionPartition);
+//                        move.rcvDelta = extensionReceiverDelta;
+//                    }
+//                }
+                
             }
 
             else{
@@ -426,7 +427,7 @@ public class GraphGreedy extends PartitionerAffinity {
         for(int vertex : vertices){
 
             // DEBUG
-            //            System.out.println("Looking at the adjacency list of vertex " + AffinityGraph.m_vertexName.get(vertex));
+//            System.out.println("Looking at the adjacency list of vertex " + AffinityGraph.m_vertexName.get(vertex));
 
             Int2DoubleMap adjacency = AffinityGraph.m_edges.get(vertex);
             if(adjacency != null){
@@ -437,15 +438,15 @@ public class GraphGreedy extends PartitionerAffinity {
                     double affinity = edge.getDoubleValue();
 
                     // DEBUG
-                    //                    System.out.println("Looking at adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
-                    //                        + " with affinity " + affinity);
+//                    System.out.println("Looking at adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
+//                        + " with affinity " + affinity);
 
                     if (affinity > maxAffinity
                             && AffinityGraph.m_vertexPartition.get(adjacentVertex) == senderPartition
                             && !vertices.contains(adjacentVertex)) {
 
                         //DEBUG
-                        //                        System.out.println("Picked");
+//                        System.out.println("Picked");
 
                         maxAffinity = affinity;
                         res = adjacentVertex;
