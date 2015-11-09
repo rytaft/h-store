@@ -277,6 +277,7 @@ public class Controller extends Thread {
 
 
             boolean b = partitioner.repartition();
+            
             if (!b){
                 record("Problem while partitioning graph. Writing incomplete plan out");
             }
@@ -293,6 +294,10 @@ public class Controller extends Thread {
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
 //            record("Partitioner tuples to move: " + Controller.MAX_MOVED_TUPLES_PER_PART);
+            
+            PlanHandler inputPlan = new PlanHandler(new File(PLAN_IN), m_catalog_context);
+            PlanHandler outputPlan = new PlanHandler(new File(PLAN_OUT), m_catalog_context);
+            inputPlan.printDataMovementsTo(outputPlan);
             
             if (partitioner instanceof PartitionerAffinity){
                 ((PartitionerAffinity) partitioner).graphToFileMPT(FileSystems.getDefault().getPath(".", "mpt.log"));

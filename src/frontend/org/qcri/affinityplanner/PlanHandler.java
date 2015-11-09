@@ -156,4 +156,59 @@ public class PlanHandler extends Plan {
         }
         return cloned;
     }
+    
+    // writes all partitions that have been moved
+    public void printDataMovementsTo(PlanHandler other){
+        
+        Map<String,Long> moveCounts = new HashMap<String,Long> (this.table_names.length);
+        
+        for(String table : this.table_names){
+            
+            System.out.println("Table " + table);
+            
+            Map<Integer, TreeMap<Long,Long>> thisPartitionToRanges = this.tableToPartitionsToRanges.get(table.toLowerCase());
+            
+            for (Integer partition : thisPartitionToRanges.keySet()){
+                
+                System.out.println("Partition " + partition);
+                
+                List<Range> thisRanges = this.getAllRanges(table, partition);
+                
+                for(Range tr : thisRanges){
+                    
+                    System.out.println("Changes to range " + tr.from + "," + tr.to);
+                    
+                    List<Range> otherIntersectingRanges = other.getRangeValues(table, partition, tr.from, tr.to);
+                    
+                    if(otherIntersectingRanges == null || otherIntersectingRanges.size() == 0){
+
+                        long currCount = moveCounts.get(table);
+                        moveCounts.put(table, currCount + tr.to - tr.from + 1);
+
+                        System.out.println("Removed the whole range");
+                    }
+                    else{
+                        long size_tr = tr.to - tr.from + 1;
+                        long size_overlaps_other = 0;
+                        
+                        for(Range or : otherIntersectingRanges){
+                            long overlap_from = Math.max(or.from, tr.from);
+                            long overlap_to = Math.min(or.to, tr.from);
+                            size_overlaps_other += overlap_to - overlap_from + 1;
+                            
+                            System.out.println("Overlap with other range " + or.from + "," + or.to + " is " + overlap_from  + "," + overlap_to);
+                        }
+                        
+                        long currCount = moveCounts.get(table);
+                        moveCounts.put(table, currCount + size_tr - size_overlaps_other);                        
+                    }
+                }
+            }
+        }
+        
+        System.out.println("Data movements counts: ");
+        for (Map.Entry<String,Long> entry : moveCounts.entrySet()){
+            System.out.println("Table " + entry.getKey() + ": " + entry.getValue());
+        }
+    }
 }
