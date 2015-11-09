@@ -203,6 +203,9 @@ public class GraphGreedy extends PartitionerAffinity {
 
                     System.out.println("ACTUALLY moving to new partition " + newPartition);
                     System.out.println("Moving:\n" + m_graph.verticesToString(minSndDeltaNewPartMove.movingVertices));
+                    
+                    // check if there is some better partition to move this group
+                    findBestPartition(minSndDeltaNewPartMove, overloadedPartition, activePartitions);
 
                     m_graph.moveHotVertices(minSndDeltaNewPartMove.movingVertices, newPartition);
                     numMovedVertices += minSndDeltaNewPartMove.movingVertices.size();
@@ -256,12 +259,12 @@ public class GraphGreedy extends PartitionerAffinity {
                     
                     // this move is valid for the sender but we need to find a receiver to make it feasible 
                         
-                    if (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta > Controller.MAX_LOAD_PER_PART
-                            && currMove.rcvDelta > 0){
-                        
-                        // the receiver in the move is not good enough. see if we can find a better receiver.
-                        findBestPartition(currMove, overloadedPartition, activePartitions);
-                    }
+//                    if (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta > Controller.MAX_LOAD_PER_PART
+//                            && currMove.rcvDelta > 0){
+//                        
+//                        // the receiver in the move is not good enough. see if we can find a better receiver.
+//                        findBestPartition(currMove, overloadedPartition, activePartitions);
+//                    }
                     
                     if (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta <= Controller.MAX_LOAD_PER_PART
                             || currMove.rcvDelta <= 0){
@@ -361,21 +364,21 @@ public class GraphGreedy extends PartitionerAffinity {
                 move.sndDelta = getSenderDelta(move.movingVertices, fromPartition, move.toPartition);
                 move.rcvDelta = getReceiverDelta(move.movingVertices, move.toPartition);
 
-//                // check if the move needs to change toPartition after the extension
-//                int extensionPartition = getMostAffinePartition(affineVertex);
-//
-//                if (extensionPartition > -1 
-//                        && extensionPartition != move.toPartition
-//                        && extensionPartition != fromPartition){
-//
-//                    double extensionReceiverDelta = getReceiverDelta(move.movingVertices, extensionPartition);
-//
-//                    if (extensionReceiverDelta < move.rcvDelta){
-//                        move.toPartition = extensionPartition;
-//                        move.sndDelta = getSenderDelta(move.movingVertices, fromPartition, extensionPartition);
-//                        move.rcvDelta = extensionReceiverDelta;
-//                    }
-//                }
+                // check if the move needs to change toPartition after the extension
+                int extensionPartition = getMostAffinePartition(affineVertex);
+
+                if (extensionPartition > -1 
+                        && extensionPartition != move.toPartition
+                        && extensionPartition != fromPartition){
+
+                    double extensionReceiverDelta = getReceiverDelta(move.movingVertices, extensionPartition);
+
+                    if (extensionReceiverDelta < move.rcvDelta){
+                        move.toPartition = extensionPartition;
+                        move.sndDelta = getSenderDelta(move.movingVertices, fromPartition, extensionPartition);
+                        move.rcvDelta = extensionReceiverDelta;
+                    }
+                }
                 
             }
 
