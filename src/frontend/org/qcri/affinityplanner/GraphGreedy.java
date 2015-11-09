@@ -172,11 +172,11 @@ public class GraphGreedy extends PartitionerAffinity {
                         return false;
                     }
 
-                    // the most affine partition could not take the set, so find best partition to move this set from scratch
+                    // the most affine partition could not take this moving set, so find best partition from scratch
                     findBestPartition(minSndDeltaNewPartMove, overloadedPartition, activePartitions);
                     
-                    if(getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta > Controller.MAX_LOAD_PER_PART
-                            && currMove.rcvDelta > 0){
+                    if(getLoadPerPartition(minSndDeltaNewPartMove.toPartition) + minSndDeltaNewPartMove.rcvDelta > Controller.MAX_LOAD_PER_PART
+                            && minSndDeltaNewPartMove.rcvDelta > 0){
                         
                         // if none of the current partitions wants to take the group, add partitions
                         System.out.println("Cannot expand - Adding a new partition");
@@ -203,15 +203,15 @@ public class GraphGreedy extends PartitionerAffinity {
                             return false;
                         }
                         
-                        // find best partition to move this group again
+                        // find best partition to move this group again, after adding
                         findBestPartition(minSndDeltaNewPartMove, overloadedPartition, activePartitions);
                     }
 
                     System.out.println("ACTUALLY moving to new partition " + minSndDeltaNewPartMove.toPartition);
                     System.out.println("Moving:\n" + m_graph.verticesToString(minSndDeltaNewPartMove.movingVertices));
                                         
-                    if(getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta > Controller.MAX_LOAD_PER_PART
-                            && currMove.rcvDelta > 0){
+                    if(getLoadPerPartition(minSndDeltaNewPartMove.toPartition) + minSndDeltaNewPartMove.rcvDelta > Controller.MAX_LOAD_PER_PART
+                            && minSndDeltaNewPartMove.rcvDelta > 0){
                         System.out.println("GIVING UP!! Cannot find partition to take this group");
 
                         return false;
