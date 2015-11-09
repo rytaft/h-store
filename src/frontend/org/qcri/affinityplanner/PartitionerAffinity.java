@@ -282,7 +282,9 @@ public abstract class PartitionerAffinity implements Partitioner {
             else{
                 // clear any existing unfeasible move
                 if (!feasible){
-                    move.clearExceptMovingVertices();
+                    move.toPartition = -1;
+                    move.sndDelta = Double.MAX_VALUE;
+                    move.rcvDelta = Double.MAX_VALUE;
                 }
                feasible = true;
             }
@@ -337,7 +339,9 @@ public abstract class PartitionerAffinity implements Partitioner {
                 else{
                     // clear any existing unfeasible move
                     if (!feasible){
-                        move.clearExceptMovingVertices();
+                        move.toPartition = -1;
+                        move.sndDelta = Double.MAX_VALUE;
+                        move.rcvDelta = Double.MAX_VALUE;
                     }
                     feasible = true;
                 }
