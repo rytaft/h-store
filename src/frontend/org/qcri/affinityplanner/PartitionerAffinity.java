@@ -41,6 +41,7 @@ public abstract class PartitionerAffinity implements Partitioner {
         public double rcvDelta;
         public IntOpenHashSet movingVertices;
         public boolean wasExtended;
+        public int nextHotTuplePos;
         
         public Move (){
             this.toPartition = -1;
@@ -48,24 +49,28 @@ public abstract class PartitionerAffinity implements Partitioner {
             this.rcvDelta = Double.MAX_VALUE;
             this.movingVertices = new IntOpenHashSet();
             this.wasExtended = false;
+            this.nextHotTuplePos = -1;
         }
 
-        public Move(int toPartition, double sndDelta, double rcvDelta, IntOpenHashSet movingVertices) {
-            this.toPartition = toPartition;
-            this.sndDelta = sndDelta;
-            this.rcvDelta = rcvDelta;
-            this.movingVertices = movingVertices.clone();
-            wasExtended = true;
+        public Move(Move other) {
+            this.toPartition = other.toPartition;
+            this.sndDelta = other.sndDelta;
+            this.rcvDelta = other.rcvDelta;
+            this.movingVertices = other.movingVertices.clone();
+            this.wasExtended = other.wasExtended;
+            this.nextHotTuplePos = other.nextHotTuplePos;
         }
         
         public Move clone(){
-            return new Move (this.toPartition, this.sndDelta, this.rcvDelta, this.movingVertices);
+            return new Move (this);
         }
         
         public void clearExceptMovingVertices(){
             this.toPartition = -1;
             this.sndDelta = Double.MAX_VALUE;
             this.rcvDelta = Double.MAX_VALUE;
+            this.wasExtended = false;
+            this.nextHotTuplePos = -1;
         }
     }
     

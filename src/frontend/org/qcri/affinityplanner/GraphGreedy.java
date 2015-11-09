@@ -32,8 +32,6 @@ public class GraphGreedy extends PartitionerAffinity {
         }
 
         long t2 = System.currentTimeMillis();
-        //        Controller.record("Time taken:" + (t2-t1));
-
 
         // DEBUG
         //        m_graph.toFile(new File("Graph.txt").toPath());
@@ -159,6 +157,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                         //                        testNoOverload(candidateMove.toPartition);
 
+                        nextHotTuplePos = candidateMove.nextHotTuplePos;
                         currMove = null;
                         candidateMove = null;
                         minSndDeltaNewPartMove = null;
@@ -209,6 +208,7 @@ public class GraphGreedy extends PartitionerAffinity {
                     numMovedVertices += minSndDeltaNewPartMove.movingVertices.size();
                     //                    lastHotVertexMoved = nextHotTuplePos - 1;
 
+                    nextHotTuplePos = minSndDeltaNewPartMove.nextHotTuplePos;
                     currMove = null;
                     candidateMove = null;
                     minSndDeltaNewPartMove = null;
@@ -244,6 +244,7 @@ public class GraphGreedy extends PartitionerAffinity {
                         || minSndDeltaNewPartMove.sndDelta > sndDeltaNewPart){
                     minSndDeltaNewPartMove.movingVertices = currMove.movingVertices.clone();
                     minSndDeltaNewPartMove.sndDelta = sndDeltaNewPart;
+                    minSndDeltaNewPartMove.nextHotTuplePos = nextHotTuplePos;
                 }
 
                 if(currMove.toPartition != -1
@@ -257,6 +258,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                         // record this move as a candidate
                         candidateMove = currMove.clone();
+                        candidateMove.nextHotTuplePos = nextHotTuplePos;
                         greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
                     }
                     else{                        

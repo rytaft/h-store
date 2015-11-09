@@ -76,8 +76,10 @@ public class Plan {
             partitionToRanges = new HashMap<Integer, TreeMap<Long, Long>> ();
             tableToPartitionsToRanges.put(table.toLowerCase(), partitionToRanges);
         }
-        TreeMap<Long, Long> emptyRange = new TreeMap<Long,Long>();
-        partitionToRanges.put(partitionId, emptyRange);
+        if(!partitionToRanges.containsKey(partitionId)){
+            TreeMap<Long, Long> emptyRange = new TreeMap<Long,Long>();
+            partitionToRanges.put(partitionId, emptyRange);
+        }
     }
 
     public void removePartition(String table, Integer partitionId) {
