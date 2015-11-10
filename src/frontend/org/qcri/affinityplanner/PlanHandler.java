@@ -182,7 +182,10 @@ public class PlanHandler extends Plan {
                     
                     if(otherIntersectingRanges == null || otherIntersectingRanges.size() == 0){
 
-                        long currCount = moveCounts.get(table);
+                        Long currCount = moveCounts.get(table);
+                        if (currCount == null){
+                            currCount = 0L;
+                        }
                         moveCounts.put(table, currCount + tr.to - tr.from + 1);
 
                         System.out.println("Removed the whole range");
@@ -199,7 +202,10 @@ public class PlanHandler extends Plan {
                             System.out.println("Overlap with other range " + or.from + "," + or.to + " is " + overlap_from  + "," + overlap_to);
                         }
                         
-                        long currCount = moveCounts.get(table);
+                        Long currCount = moveCounts.get(table);
+                        if (currCount == null){
+                            currCount = 0L;
+                        }
                         moveCounts.put(table, currCount + size_tr - size_overlaps_other);                        
                     }
                 }
