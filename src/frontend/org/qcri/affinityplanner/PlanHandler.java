@@ -164,21 +164,21 @@ public class PlanHandler extends Plan {
         
         for(String table : this.table_names){
             
-            System.out.println("Table " + table);
+//            System.out.println("Table " + table);
             
             Map<Integer, TreeMap<Long,Long>> thisPartitionToRanges = this.tableToPartitionsToRanges.get(table.toLowerCase());
             
             for (Integer partition : thisPartitionToRanges.keySet()){
                 
-                System.out.println("Partition " + partition);
+//                System.out.println("Partition " + partition);
                 
                 List<Range> thisRanges = this.getAllRanges(table, partition);
                 
                 for(Range tr : thisRanges){
                     
-                    System.out.println("Changes to range " + tr.from + "," + tr.to);
+//                    System.out.println("Changes to range " + tr.from + "," + tr.to);
                     
-                    List<Range> otherIntersectingRanges = other.getRangeValues(table, partition, tr.from, tr.to);
+                    List<Range> otherIntersectingRanges = other.getRangesOverlappingValues(table, partition, tr.from, tr.to);
                     
                     if(otherIntersectingRanges == null || otherIntersectingRanges.size() == 0){
 
@@ -188,7 +188,7 @@ public class PlanHandler extends Plan {
                         }
                         moveCounts.put(table, currCount + tr.to - tr.from + 1);
 
-                        System.out.println("Removed the whole range");
+//                        System.out.println("Removed the whole range");
                     }
                     else{
                         long size_tr = tr.to - tr.from + 1;
@@ -196,10 +196,10 @@ public class PlanHandler extends Plan {
                         
                         for(Range or : otherIntersectingRanges){
                             long overlap_from = Math.max(or.from, tr.from);
-                            long overlap_to = Math.min(or.to, tr.from);
+                            long overlap_to = Math.min(or.to, tr.to);
                             size_overlaps_other += overlap_to - overlap_from + 1;
                             
-                            System.out.println("Overlap with other range " + or.from + "," + or.to + " is " + overlap_from  + "," + overlap_to);
+//                            System.out.println("Overlap with other range " + or.from + "," + or.to + " is " + overlap_from  + "," + overlap_to);
                         }
                         
                         Long currCount = moveCounts.get(table);
