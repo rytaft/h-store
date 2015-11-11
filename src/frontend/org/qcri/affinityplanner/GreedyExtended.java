@@ -47,6 +47,7 @@ public class GreedyExtended implements Partitioner {
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
+            System.exit(0);
         }
 
     }
@@ -134,7 +135,7 @@ public class GreedyExtended implements Partitioner {
                         m_hotTuples.put(hash, currWeight + increment);
                     }
                     m_tupleToName.put(hash, fields[1]);
-                    int partition = m_plan_handler.getPartition(line);
+                    int partition = m_plan_handler.getPartition(fields[1]);
                     IntSet tuples = partitionToHotTuplesSet[partition];
                     if (tuples == null){
                         tuples = new IntOpenHashSet();
