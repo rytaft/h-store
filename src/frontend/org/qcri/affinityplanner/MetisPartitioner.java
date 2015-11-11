@@ -31,7 +31,7 @@ public class MetisPartitioner extends GraphGreedy {
     @Override
     public boolean repartition() {
         
-        LOG.info(String.format("Writing metis graph out to %s ",FileSystems.getDefault().getPath(".", Controller.METIS_OUT)));
+        System.out.println(String.format("Writing metis graph out to %s ",FileSystems.getDefault().getPath(".", Controller.METIS_OUT)));
 
         Path metisFile = FileSystems.getDefault().getPath(".", Controller.METIS_OUT);
         Path metisMapFile = FileSystems.getDefault().getPath(".", Controller.METIS_MAP_OUT);
@@ -40,7 +40,7 @@ public class MetisPartitioner extends GraphGreedy {
         m_graph.toMetisFile(metisFile, metisMapFile);
 
         long time = System.currentTimeMillis() - start;
-        LOG.info("generating metis out file took : " + time);
+        System.out.println("generating metis out file took : " + time);
         Path metisOut= FileSystems.getDefault().getPath(".", Controller.METIS_OUT + ".part." + m_partitionsNo); 
         
         //RESULTS map of hashID -> new partition ID
@@ -64,15 +64,15 @@ public class MetisPartitioner extends GraphGreedy {
             time = System.currentTimeMillis() - start;
 
             if (result == 0){
-                LOG.info(String.format("Metis ran successfully. took : " + time));
+                System.out.println(String.format("Metis ran successfully. took : " + time));
 
                 metisGeneratedPartitioning = getMetisMapping(metisOut, metisMapFile);
-                LOG.info("Results in metis map files: " + metisGeneratedPartitioning.keySet().size());
+                System.out.println("Results in metis map files: " + metisGeneratedPartitioning.keySet().size());
 
                 m_graph.setPartitionMaps(metisGeneratedPartitioning);
             
             } else {
-                LOG.info(String.format("Metis ran unsuccessfully: %s", result));
+                System.out.println(String.format("Metis ran unsuccessfully: %s", result));
                 return false;
             }
             
@@ -86,7 +86,7 @@ public class MetisPartitioner extends GraphGreedy {
 
     private Int2IntOpenHashMap getMetisMapping(Path metisOut, Path metisMapFile) {
         
-        LOG.info(String.format("Getting metis out and mapping to hashes for %s and %s", metisOut, metisMapFile));
+        System.out.println(String.format("Getting metis out and mapping to hashes for %s and %s", metisOut, metisMapFile));
         Int2IntOpenHashMap res = new Int2IntOpenHashMap();
         BufferedReader outReader, metisMapReader;
         String outPart, hashId;

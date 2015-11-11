@@ -453,7 +453,7 @@ public class Plan {
         else return null;
     }
 
-    // get all the ranges overlapping the given range in the given partition
+    // get all the ranges including the given range in the given partition
     public List<Range> getRangeValues(String table, Integer partition, Long from, Long to){
 
         List<Range> ranges = getAllRanges(table, partition);
@@ -464,6 +464,24 @@ public class Plan {
         List<Range> returnedRanges = new ArrayList<Range>();
         for(Range range : ranges) {
             if(range.from <= to && range.to >= from) {
+                returnedRanges.add(range);
+            }
+        }
+        return returnedRanges;
+    }
+
+    // get all the ranges partially or completely overlapping the given range in the given partition
+    public List<Range> getRangesOverlappingValues(String table, Integer partition, Long from, Long to){
+
+        List<Range> ranges = getAllRanges(table, partition);
+        if(ranges == null){
+            return null;
+        }
+
+        List<Range> returnedRanges = new ArrayList<Range>();
+        for(Range range : ranges) {
+            if(from <= range.from && range.from <= to 
+                    || from <= range.from && range.to <= to) {
                 returnedRanges.add(range);
             }
         }
