@@ -209,18 +209,16 @@ public class GreedyExtended implements Partitioner {
                 // MOVE HOT TUPLES
     
                 int topK = 1;
+
+                int toPartition = getLeastLoadedPartition(activePartitions);                
+                IntList toHotTuples = m_partitionToHotTuples[toPartition];
     
                 // loops over multiple hot tuples
                 while(getLoadPerPartition(fromPartition) > Controller.MAX_LOAD_PER_PART 
                         && !fromHotTuples.isEmpty() && topK <= Math.min(Controller.TOPK, fromHotTuples.size())){
                     
-                    int toPartition = getLeastLoadedPartition(activePartitions);                
-                    IntList toHotTuples = m_partitionToHotTuples[toPartition];
-    
                     int currHotTuple = fromHotTuples.getInt(fromHotTuples.size() - topK);
-                    
-                    topK ++;
-    
+                        
                     System.out.println("Considering hot tuple " + m_tupleToName.get(currHotTuple));
                     
 //                    System.out.println("\nTuple name " + m_tupleToName.get(currHotTuple) + ", id " + currHotTuple + ", and weight " + m_hotTuples.get(currHotTuple));
@@ -232,10 +230,27 @@ public class GreedyExtended implements Partitioner {
                     if (getLoadPerPartition(toPartition) > Controller.MAX_LOAD_PER_PART){
     
                         toHotTuples.remove(toHotTuples.size()-1);
-    
+                        
+                        // get a different toPartition, this one is overloaded
+                        int newToPartition = getLeastLoadedPartition(activePartitions);
+                        
+                        if (newToPartition != toPartition){
+
+                            // retry the same hot tuple with the new partition
+                            toPartition = newToPartition;
+                            toHotTuples = m_partitionToHotTuples[toPartition];
+                        }
+                        else{
+                            // skip this hot tuple
+                            topK ++;
+                        }
+                        
                     }
                     else{
-                        // actually move tuple in plan
+
+                        topK ++;
+
+                        // actually move tuples in plan
     
                         ++numMovedVertices;
                         
