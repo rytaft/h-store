@@ -39,6 +39,15 @@ public class Plan {
             return rangeStr;
         }
 
+        @Override
+        public boolean equals (Object other){
+            return (other instanceof Range) && (this.from == ((Range) other).from) && (this.to == ((Range) other).to);
+        }
+        
+        @Override
+        public int hashCode() {
+            return (int) ((int) (from * 31) ^ to);
+          }
 
     }
 

@@ -18,6 +18,8 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
+import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 
 public class GreedyExtended implements Partitioner {
 
@@ -406,16 +408,16 @@ public class GreedyExtended implements Partitioner {
         m_plan_handler.toJSON(plan_out);
     }
 
-    private int moveColdChunks(int fromPartition, IntList fromHotTuples, IntList activePartitions, int numMovedVertices, double[] partitionLoads){
+    private int moveColdChunks(int fromPartition, IntList fromHotTuplesSortedCopy, IntList activePartitions, int numMovedVertices, double[] partitionLoads){
 
         // clone plan to allow modifications while iterating on the clone
         PlanHandler oldPlan = m_plan_handler.clone();
         
         // remove hot tuples from cold chunks
         int topk = 1;
-
-        while (topk <= Math.min(Controller.TOPK, fromHotTuples.size())){
-            int hotTuple = fromHotTuples.get(fromHotTuples.size() - topk);
+        
+        while (topk <= Math.min(Controller.TOPK, fromHotTuplesSortedCopy.size())){
+            int hotTuple = fromHotTuplesSortedCopy.get(fromHotTuplesSortedCopy.size() - topk);
             topk++;
 
 //            System.out.println("Hot tuple: " + m_tupleToName.get(hotTuple));
@@ -431,22 +433,49 @@ public class GreedyExtended implements Partitioner {
             }
         }
         
+        // consider weight of warm tuples
+        Object2DoubleMap<Plan.Range> rangeToWarmTupleCost = new Object2DoubleOpenHashMap<Plan.Range>(fromHotTuplesSortedCopy.size());
+        
+        double coldIncrement = 1.0 / m_intervalsInSecs[fromPartition] / Controller.COLD_TUPLE_FRACTION_ACCESSES;
+
+        while (topk <= fromHotTuplesSortedCopy.size()){
+            int warmTuple = fromHotTuplesSortedCopy.get(fromHotTuplesSortedCopy.size() - topk);
+            String[] fields  = m_tupleToName.get(warmTuple).split(",");
+            String table = fields[0];
+            Long tupleId = Long.parseLong(fields[1]);
+
+            Plan.Range warmTupleRange = m_plan_handler.getRangeValue(table, fromPartition, tupleId);
+            double warmTupleCost = m_hotTuples.get(warmTuple) - coldIncrement;
+
+            double currRangeCost = rangeToWarmTupleCost.getDouble(warmTupleRange);
+            if (currRangeCost == rangeToWarmTupleCost.defaultReturnValue()){
+                currRangeCost = 0;
+            }
+            currRangeCost += warmTupleCost;
+            
+            rangeToWarmTupleCost.put(warmTupleRange, currRangeCost);
+            
+            topk++;
+        }
+
 //        System.out.println("Cloned plan without hot tuples:\n" + oldPlan);
         
         if(Controller.ROOT_TABLE == null){
             for(String table : m_plan_handler.table_names){
-                numMovedVertices += moveColdChunkTable(table, oldPlan, fromPartition, activePartitions, numMovedVertices, partitionLoads);
+                numMovedVertices += moveColdChunkTable(table, oldPlan, fromPartition, activePartitions, 
+                        numMovedVertices, partitionLoads, rangeToWarmTupleCost);
             }
         }
         else{
-            numMovedVertices += moveColdChunkTable(Controller.ROOT_TABLE, oldPlan, fromPartition, activePartitions, numMovedVertices, partitionLoads);
+            numMovedVertices += moveColdChunkTable(Controller.ROOT_TABLE, oldPlan, fromPartition, activePartitions, 
+                    numMovedVertices, partitionLoads, rangeToWarmTupleCost);
         }
         
         return numMovedVertices;
     }
     
     private int moveColdChunkTable(String table, Plan oldPlan, int fromPartition, IntList activePartitions, 
-            int numMovedVertices, double[] partitionLoads){
+            int numMovedVertices, double[] partitionLoads, Object2DoubleMap<Plan.Range> rangeToWarmTupleCost){
         System.out.println("\nTable " + table);
 
         double coldIncrement = 1.0 / m_intervalsInSecs[fromPartition] / Controller.COLD_TUPLE_FRACTION_ACCESSES;
@@ -467,7 +496,12 @@ public class GreedyExtended implements Partitioner {
 
                     System.out.println("Range " + r.from + " " + r.to);
 
-                    double rangeWeight = Plan.getRangeWidth(r) * coldIncrement;
+                    double warmTuplesCost = rangeToWarmTupleCost.getDouble(r);
+                    if(warmTuplesCost == rangeToWarmTupleCost.defaultReturnValue()){
+                        warmTuplesCost = 0;
+                    }
+                    double rangeWeight = Plan.getRangeWidth(r) * coldIncrement + warmTuplesCost;
+                    
                     int toPartition = getLeastLoadedPartition(activePartitions, partitionLoads);     
 
                     System.out.println("Weight " + rangeWeight);
