@@ -172,8 +172,8 @@ public class GraphGreedyExtended extends PartitionerAffinity {
                         nextHotTuplePos = lastHotVertexMoved + 1;
                         currMove = null;
 
-                        if(activePartitions.size() >= Controller.MAX_PARTITIONS 
-                                || addedPartitions >= Controller.MAX_PARTITIONS_ADDED){
+                        if(activePartitions.size() > Controller.MAX_PARTITIONS 
+                                || addedPartitions > Controller.MAX_PARTITIONS_ADDED){
 
                             System.out.println("Cannot add new partition to offload " + overloadedPartitions);
                             return false;

@@ -609,7 +609,7 @@ public abstract class PartitionerAffinity implements Partitioner {
         // remove hot tuples from cold chunks (these are topK hot tuples)
 
         for (int hotTuple : hotVertices){
-            System.out.println("Hot tuple:" + m_graph.getTupleName(hotTuple));
+//            System.out.println("Hot tuple: " + m_graph.getTupleName(hotTuple));
             String[] fields  = m_graph.getTupleName(hotTuple).split(",");
             String table = fields[0];
             long tupleId = Long.parseLong(fields[1]);
@@ -625,7 +625,7 @@ public abstract class PartitionerAffinity implements Partitioner {
         // remove warm tuples from cold chunks (these are the other monitored tuples in the graph that were moved)
 
         for (int warmTuple : warmMovedVertices){
-            System.out.println("Warm tuple:" + m_graph.getTupleName(warmTuple));
+//            System.out.println("Warm tuple: " + m_graph.getTupleName(warmTuple));
             String[] fields  = m_graph.getTupleName(warmTuple).split(",");
             String table = fields[0];
             long tupleId = Long.parseLong(fields[1]);
@@ -664,7 +664,7 @@ public abstract class PartitionerAffinity implements Partitioner {
 
             for(List<Plan.Range> chunk : partitionChunks) {  // a chunk can consist of multiple ranges if hot tuples are taken away
 
-                System.out.println("\nNew cold chunk");
+                System.out.println("\nNew cold chunk of table " + table);
 
                 for(Plan.Range r : chunk) { 
 
@@ -683,8 +683,8 @@ public abstract class PartitionerAffinity implements Partitioner {
                         
                         numMovedVertices += Plan.getRangeWidth(r);
 
-                        System.out.println("Moving!");
-                        System.out.println("Load before " + getLoadPerPartition(fromPartition));
+//                        System.out.println("Moving!");
+//                        System.out.println("Load before " + getLoadPerPartition(fromPartition));
 
                         if(Controller.ROOT_TABLE == null){
                             m_graph.moveColdRange(table, r, fromPartition, toPartition);
@@ -693,8 +693,8 @@ public abstract class PartitionerAffinity implements Partitioner {
                             m_graph.moveColdRangeAllTables(r, fromPartition, toPartition);                                    
                         }
 
-                        System.out.println("Load after " + getLoadPerPartition(fromPartition));
-                        System.out.println("New plan\n" + m_graph.planToString());
+//                        System.out.println("Load after " + getLoadPerPartition(fromPartition));
+//                        System.out.println("New plan\n" + m_graph.planToString());
 
                         // after every move, see if I can stop
                         if(getLoadPerPartition(fromPartition) <= Controller.MAX_LOAD_PER_PART){
