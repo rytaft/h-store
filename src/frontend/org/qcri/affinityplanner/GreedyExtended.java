@@ -253,8 +253,24 @@ public class GreedyExtended implements Partitioner {
                             toHotTuples = m_partitionToHotTuples[toPartition];
                         }
                         else{
-                            // skip this hot tuple
-                            topK ++;
+                            if(activePartitions.size() <= Controller.MAX_PARTITIONS 
+                                    && addedPartitions <= Controller.MAX_PARTITIONS_ADDED){
+            
+                                // We fill up low-order partitions first to minimize the number of servers
+                                addedPartitions++;
+                                for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+                                    if(!activePartitions.contains(i)){
+                                        activePartitions.add(i);
+                                        break;
+                                    }
+                                }
+                            }
+                            else{
+                                System.out.println("Cannot add new partition to offload " + overloadedPartitions);
+                                System.out.println("Moving cold tuples");
+                                
+                                break;
+                            }      
                         }
                         
                     }
@@ -540,7 +556,13 @@ public class GreedyExtended implements Partitioner {
                         System.out.println(numMovedVertices + Plan.getRangeWidth(r));
                         
                         if(numMovedVertices + Plan.getRangeWidth(r) > Controller.MAX_MOVED_TUPLES_PER_PART){
-                            System.out.println("Moved too many partitions. Exiting.");
+                            System.out.println("Moved too many tuples. Exiting.");
+                            try {
+                                Thread.sleep(1000);
+                            } catch (InterruptedException e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
                             System.exit(0);
                         }
 

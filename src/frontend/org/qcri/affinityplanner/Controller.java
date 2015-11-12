@@ -79,7 +79,7 @@ public class Controller extends Thread {
     public static int ADDED_PARTITION_CHUNK_SIZE = 6;
     
     public static int COLD_CHUNK_SIZE = 100;
-    public static double COLD_TUPLE_FRACTION_ACCESSES = 10;
+    public static double COLD_TUPLE_FRACTION_ACCESSES = 100;
     public static int TOPK = Integer.MAX_VALUE;
     
     public static String ROOT_TABLE = null;
@@ -299,9 +299,9 @@ public class Controller extends Thread {
             PlanHandler outputPlan = new PlanHandler(new File(PLAN_OUT), m_catalog_context);
             inputPlan.printDataMovementsTo(outputPlan);
             
-            if (partitioner instanceof PartitionerAffinity){
-                ((PartitionerAffinity) partitioner).graphToFileMPT(FileSystems.getDefault().getPath(".", "mpt.log"));
-            }
+//            if (partitioner instanceof PartitionerAffinity){
+//                ((PartitionerAffinity) partitioner).graphToFileMPT(FileSystems.getDefault().getPath(".", "mpt.log"));
+//            }
             
             
         } // END if(UPDATE_PLAN)
