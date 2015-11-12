@@ -70,7 +70,7 @@ public class Controller extends Thread {
     public static double IMBALANCE_LOAD = 0;
     public static double LMPT_COST = 1.1;
     public static double DTXN_COST = 50.0;
-    public static int MAX_MOVED_TUPLES_PER_PART = 10000;
+    public static int MAX_MOVED_TUPLES_PER_PART = Integer.MAX_VALUE;
     public static int MIN_SENDER_GAIN_MOVE = 0;
     public static int MAX_PARTITIONS_ADDED = 6;
     public static double PENALTY_REMOTE_MOVE = 0;
