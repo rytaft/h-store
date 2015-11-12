@@ -157,6 +157,35 @@ public class PlanHandler extends Plan {
         return cloned;
     }
     
+    public boolean verifyPlan(){
+        
+        boolean res = true;
+        
+        for (String table : table_names){
+            
+            TreeMap<Long,Long> allRanges = new TreeMap<Long,Long> ();
+
+            // merge ranges from all tuples
+            for (TreeMap<Long,Long> ranges : tableToPartitionsToRanges.get(table).values()){
+                for (Map.Entry<Long, Long> range : ranges.entrySet()){
+                    allRanges.put(range.getKey(), range.getValue());
+                }
+            }
+            
+            Long currVal = allRanges.firstKey();
+            for (Map.Entry<Long, Long> range : allRanges.entrySet()){
+                if (range.getKey() == currVal){
+                    currVal = range.getValue() + 1;
+                }
+                else{
+                    System.out.println("Table " + table + " misses id " + currVal);
+                    res = false;
+                }
+            }
+        }
+        return res;
+    }
+    
     // writes all partitions that have been moved
     public void printDataMovementsTo(PlanHandler other){
         

@@ -295,8 +295,12 @@ public class Controller extends Thread {
             record("Time taken:" + (t2-t1));
 //            record("Partitioner tuples to move: " + Controller.MAX_MOVED_TUPLES_PER_PART);
             
-            PlanHandler inputPlan = new PlanHandler(new File(PLAN_IN), m_catalog_context);
+            System.out.println("Verifying output plan");
             PlanHandler outputPlan = new PlanHandler(new File(PLAN_OUT), m_catalog_context);
+            outputPlan.verifyPlan();
+
+            System.out.println("Printing movements");
+            PlanHandler inputPlan = new PlanHandler(new File(PLAN_IN), m_catalog_context);
             inputPlan.printDataMovementsTo(outputPlan);
             
 //            if (partitioner instanceof PartitionerAffinity){

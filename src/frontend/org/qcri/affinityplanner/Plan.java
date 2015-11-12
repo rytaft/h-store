@@ -797,37 +797,37 @@ public class Plan {
         }
     }
 
-    public boolean verifyPlan (Map<String,Integer> tableSizes){
-
-        for(String table : table_names){
-            Integer maxTuple  = tableSizes.get(table);
-            if (maxTuple == null){
-                System.out.println("Size of table " + table + " not specified for verification");
-                return false;
-            }
-            for(int t = 0; t < maxTuple; t++){
-                int foundInPart = -1;
-                Map<Integer, List<Plan.Range>> ranges = getAllRanges(table);
-                for(Integer part : ranges.keySet()) {
-                    List<Plan.Range> partitionRanges = ranges.get(part);
-                    for(Plan.Range range : partitionRanges) {
-                        if (t >= range.from && t <= range.to){
-                            if (foundInPart >= 0){
-                                System.out.println("Tuple " + t + " of table " + table + " was found in partitions " + foundInPart + " and " + part);
-                                return false;
-                            }
-                            foundInPart = -1;
-                        }
-                    }
-                }
-                if (foundInPart == -1){
-                    System.out.println("Tuple " + t + " of table " + table + " was not found");
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
+//    public boolean verifyPlan (Map<String,Integer> tableSizes){
+//
+//        for(String table : table_names){
+//            Integer maxTuple  = tableSizes.get(table);
+//            if (maxTuple == null){
+//                System.out.println("Size of table " + table + " not specified for verification");
+//                return false;
+//            }
+//            for(int t = 0; t < maxTuple; t++){
+//                int foundInPart = -1;
+//                Map<Integer, List<Plan.Range>> ranges = getAllRanges(table);
+//                for(Integer part : ranges.keySet()) {
+//                    List<Plan.Range> partitionRanges = ranges.get(part);
+//                    for(Plan.Range range : partitionRanges) {
+//                        if (t >= range.from && t <= range.to){
+//                            if (foundInPart >= 0){
+//                                System.out.println("Tuple " + t + " of table " + table + " was found in partitions " + foundInPart + " and " + part);
+//                                return false;
+//                            }
+//                            foundInPart = -1;
+//                        }
+//                    }
+//                }
+//                if (foundInPart == -1){
+//                    System.out.println("Tuple " + t + " of table " + table + " was not found");
+//                    return false;
+//                }
+//            }
+//        }
+//        return true;
+//    }
 
     public void moveColdRange(String table, Plan.Range movedRange, int fromPart, int toPart){
 
