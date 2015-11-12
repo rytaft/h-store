@@ -112,7 +112,7 @@ public class PlanHandler extends Plan {
         return res;
     }
     
-    public boolean isActive(int partition){
+    public boolean isNotEmpty(int partition){
         for(String table: table_names){
             List<Range> ranges = getAllRanges(table, partition);
             if (ranges != null && !ranges.isEmpty()){

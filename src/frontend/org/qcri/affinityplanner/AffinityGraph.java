@@ -393,7 +393,7 @@ public class AffinityGraph {
     }
     
     public static boolean isActive(int partition){
-        return m_plan_handler.isActive(partition);
+        return m_plan_handler.isNotEmpty(partition);
     }
     
     public void planToJSON(String newPlanFile){

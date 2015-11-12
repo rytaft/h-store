@@ -164,7 +164,7 @@ public class GreedyExtended implements Partitioner {
         
         System.out.println("Load per partition before reconfiguration");
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
-            if(m_plan_handler.isActive(i)){
+            if(m_plan_handler.isNotEmpty(i)){
 //                System.out.println(i + " is active");
                 activePartitions.add(i);
                 double load =  getLoadPerPartition(i);
@@ -178,8 +178,6 @@ public class GreedyExtended implements Partitioner {
                 partitionLoads[i] = 0;
             }
         }
-        
-        System.out.println("Debug: " + activePartitions.size());
         
         for (int fromPartition : overloadedPartitions){
 
@@ -195,7 +193,7 @@ public class GreedyExtended implements Partitioner {
                 IntList fromHotTuplesSortedCopy = new IntArrayList();
                 fromHotTuplesSortedCopy.addAll(fromHotTuples);
     
-                System.out.println("Got hot tuples ");
+                System.out.println("Processing hot tuples ");
     
                 // sort determines an _ascending_ order
                 // then offload starting from end of the list in order to facilitate removal
@@ -221,8 +219,6 @@ public class GreedyExtended implements Partitioner {
                 int toPartition = getLeastLoadedPartition(activePartitions, partitionLoads);                
                 IntSet toHotTuples = m_partitionToHotTuples[toPartition];
                 
-                System.out.println("Debug: " + activePartitions.size());
-    
                 // loops over multiple hot tuples
                 while(partitionLoads[fromPartition] > Controller.MAX_LOAD_PER_PART 
                         && !fromHotTuplesSortedCopy.isEmpty() && topK <= Math.min(Controller.TOPK, fromHotTuplesSortedCopy.size())){
@@ -230,29 +226,24 @@ public class GreedyExtended implements Partitioner {
                     int currHotTuple = fromHotTuplesSortedCopy.getInt(fromHotTuplesSortedCopy.size() - topK);
                     double currHotTupleWeight = m_hotTuples.get(currHotTuple);
                         
-                    System.out.println("Considering hot tuple " + m_tupleToName.get(currHotTuple));
-                    
+//                    System.out.println("Considering hot tuple " + m_tupleToName.get(currHotTuple));
+//                    
                     System.out.println("\nTuple name " + m_tupleToName.get(currHotTuple) + ", id " + currHotTuple + ", and weight " + m_hotTuples.get(currHotTuple));
-    
-                    System.out.println("Load of " + fromPartition + " is " + partitionLoads[fromPartition] + " or " + getLoadPerPartition(fromPartition));
-                    System.out.println("Load of " + toPartition + " is " + partitionLoads[toPartition] + " or " + getLoadPerPartition(toPartition));
+//    
+//                    System.out.println("Load of " + fromPartition + " is " + partitionLoads[fromPartition] + " or " + getLoadPerPartition(fromPartition));
+//                    System.out.println("Load of " + toPartition + " is " + partitionLoads[toPartition] + " or " + getLoadPerPartition(toPartition));
 
-                    partitionLoads[toPartition] += currHotTupleWeight;
-    
 //                    System.out.println("Load " + getLoadPerPartition(overloadedPartition));
     
-                    if (partitionLoads[toPartition] > Controller.MAX_LOAD_PER_PART){
+                    if (partitionLoads[toPartition] + currHotTupleWeight > Controller.MAX_LOAD_PER_PART){
 
-                        System.out.println("Not moving to ");
+                        System.out.println("Not moving to " + toPartition);
                         
-                        partitionLoads[toPartition] -= currHotTupleWeight;
-                        System.out.println("Load of " + toPartition + " is " + partitionLoads[toPartition] + " or " + getLoadPerPartition(toPartition));
+//                        System.out.println("Load of " + toPartition + " is " + partitionLoads[toPartition] + " or " + getLoadPerPartition(toPartition));
                         
                         // get a different toPartition, this one is overloaded
                         int newToPartition = getLeastLoadedPartition(activePartitions, partitionLoads);
                         
-                       System.out.println("Debug: " + activePartitions.size());
-
                        if (newToPartition != toPartition){
 
                             // retry the same hot tuple with the new partition
@@ -277,11 +268,14 @@ public class GreedyExtended implements Partitioner {
                         
                         String movedVertexName = m_tupleToName.get(currHotTuple);
     
-                        toHotTuples.add(currHotTuple);
                         fromHotTuples.remove(currHotTuple);
+                        toHotTuples.add(currHotTuple);
+
                         partitionLoads[fromPartition] -= currHotTupleWeight;
-                        System.out.println("Load of " + fromPartition + " is " + partitionLoads[fromPartition] + " or " + getLoadPerPartition(fromPartition));
-                        System.out.println("Load of " + toPartition + " is " + partitionLoads[toPartition] + " or " + getLoadPerPartition(toPartition));
+                        partitionLoads[toPartition] += currHotTupleWeight;
+
+//                        System.out.println("Load of " + fromPartition + " is " + partitionLoads[fromPartition] + " or " + getLoadPerPartition(fromPartition));
+//                        System.out.println("Load of " + toPartition + " is " + partitionLoads[toPartition] + " or " + getLoadPerPartition(toPartition));
                        
     
                         String [] fields = movedVertexName.split(",");
@@ -296,13 +290,13 @@ public class GreedyExtended implements Partitioner {
                             m_plan_handler.removeTupleIdAllTables(fromPartition, Long.parseLong(fields[1]));
                             m_plan_handler.addRangeAllTables(toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
                         }
-                        System.out.println("Load of " + fromPartition + " is " + partitionLoads[fromPartition] + " or " + getLoadPerPartition(fromPartition));
-                        System.out.println("Load of " + toPartition + " is " + partitionLoads[toPartition] + " or " + getLoadPerPartition(toPartition));
+//                        System.out.println("Load of " + fromPartition + " is " + partitionLoads[fromPartition] + " or " + getLoadPerPartition(fromPartition));
+//                        System.out.println("Load of " + toPartition + " is " + partitionLoads[toPartition] + " or " + getLoadPerPartition(toPartition));
                     }
     
                 } // while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART && !fromHotTuples.isEmpty() && topK > 0)
     
-                System.out.println("Current load for partition " + fromPartition + " " + partitionLoads[fromPartition]  + " or " + getLoadPerPartition(fromPartition));
+//                System.out.println("Current load for partition " + fromPartition + " " + partitionLoads[fromPartition]  + " or " + getLoadPerPartition(fromPartition));
 //                System.out.println("Current plan\n " + m_plan_handler);
     
                 // MOVE COLD CHUNKS
@@ -310,25 +304,14 @@ public class GreedyExtended implements Partitioner {
                 if(partitionLoads[fromPartition] > Controller.MAX_LOAD_PER_PART ){
                     System.out.println("\nMove cold chunks for partition " + fromPartition + "\n");
 
-                    numMovedVertices = moveColdChunks(fromPartition, fromHotTuplesSortedCopy, activePartitions, numMovedVertices);
+                    numMovedVertices = moveColdChunks(fromPartition, fromHotTuplesSortedCopy, activePartitions, numMovedVertices, partitionLoads);
 
-                    System.out.println("Debug: " + activePartitions.size());
+//                    System.out.println("Debug: " + activePartitions.size());
 
-                    System.out.println("Current load " + getLoadPerPartition(fromPartition));
+                    System.out.println("Current load " + partitionLoads[fromPartition]);
 //                    System.out.println("Current plan\n " + m_plan_handler);
                 }
 
-                // update partitionLoads since moveColdChunks does not do memoization
-                for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
-                    if(activePartitions.contains(i)){
-                        double load =  getLoadPerPartition(i);
-                        partitionLoads[i] = load;
-                    }
-                    else{
-                        partitionLoads[i] = 0;
-                    }
-                }
-    
                 // ADD NEW PARTITIONS if needed
                 if (partitionLoads[fromPartition] > Controller.MAX_LOAD_PER_PART){
                     
@@ -423,7 +406,7 @@ public class GreedyExtended implements Partitioner {
         m_plan_handler.toJSON(plan_out);
     }
 
-    private int moveColdChunks(int fromPartition, IntList fromHotTuples, IntList activePartitions, int numMovedVertices){
+    private int moveColdChunks(int fromPartition, IntList fromHotTuples, IntList activePartitions, int numMovedVertices, double[] partitionLoads){
 
         // clone plan to allow modifications while iterating on the clone
         PlanHandler oldPlan = m_plan_handler.clone();
@@ -452,17 +435,18 @@ public class GreedyExtended implements Partitioner {
         
         if(Controller.ROOT_TABLE == null){
             for(String table : m_plan_handler.table_names){
-                numMovedVertices += moveColdChunkTable(table, oldPlan, fromPartition, activePartitions, numMovedVertices);
+                numMovedVertices += moveColdChunkTable(table, oldPlan, fromPartition, activePartitions, numMovedVertices, partitionLoads);
             }
         }
         else{
-            numMovedVertices += moveColdChunkTable(Controller.ROOT_TABLE, oldPlan, fromPartition, activePartitions, numMovedVertices);
+            numMovedVertices += moveColdChunkTable(Controller.ROOT_TABLE, oldPlan, fromPartition, activePartitions, numMovedVertices, partitionLoads);
         }
         
         return numMovedVertices;
     }
     
-    private int moveColdChunkTable(String table, Plan oldPlan, int fromPartition, IntList activePartitions, int numMovedVertices){
+    private int moveColdChunkTable(String table, Plan oldPlan, int fromPartition, IntList activePartitions, 
+            int numMovedVertices, double[] partitionLoads){
         System.out.println("\nTable " + table);
 
         double coldIncrement = 1.0 / m_intervalsInSecs[fromPartition] / Controller.COLD_TUPLE_FRACTION_ACCESSES;
@@ -476,19 +460,19 @@ public class GreedyExtended implements Partitioner {
 
                 for(Plan.Range r : chunk) { 
                     
-                    if(getLoadPerPartition(fromPartition) < Controller.MAX_LOAD_PER_PART){
+                    if(partitionLoads[fromPartition] < Controller.MAX_LOAD_PER_PART){
                         return numMovedVertices;
                     }
 
                     System.out.println("Range " + r.from + " " + r.to);
 
                     double rangeWeight = Plan.getRangeWidth(r) * coldIncrement;
-                    int toPartition = getLeastLoadedPartition(activePartitions);     
+                    int toPartition = getLeastLoadedPartition(activePartitions, partitionLoads);     
 
                     System.out.println("Weight " + rangeWeight);
                     System.out.println("To partition " + toPartition);
 
-                    if (rangeWeight + getLoadPerPartition(toPartition) < Controller.MAX_LOAD_PER_PART
+                    if (rangeWeight + partitionLoads[toPartition] < Controller.MAX_LOAD_PER_PART
                            && numMovedVertices + Plan.getRangeWidth(r) < Controller.MAX_MOVED_TUPLES_PER_PART){
 
                         // do the move
@@ -496,20 +480,25 @@ public class GreedyExtended implements Partitioner {
                         numMovedVertices += Plan.getRangeWidth(r);
 
 //                        System.out.println("Moving!");
-//                        System.out.println("Load before " + getLoadPerPartition(fromPartition));
-
+//                        System.out.println("Load before - from partition " + fromPartition + " is " + getLoadPerPartition(fromPartition));
+//                        System.out.println("Load before - to partition " + toPartition + " is " + getLoadPerPartition(toPartition));
+                        
                         if(Controller.ROOT_TABLE == null){
                             m_plan_handler.moveColdRange(table, r, fromPartition, toPartition);
                         }
                         else{
                             m_plan_handler.moveColdRangeAllTables(r, fromPartition, toPartition);                                    
                         }
+                        
+                        partitionLoads[fromPartition] -= rangeWeight;
+                        partitionLoads[toPartition] += rangeWeight;
 
-//                        System.out.println("Load after " + getLoadPerPartition(fromPartition));
+//                        System.out.println("Load after - from partition " + fromPartition + " is " + getLoadPerPartition(fromPartition));
+//                        System.out.println("Load after - to partition " + toPartition + " is " + getLoadPerPartition(toPartition));
 //                        System.out.println("New plan\n" + m_plan_handler);
 
                         // after every move, see if I can stop
-                        if(getLoadPerPartition(fromPartition) <= Controller.MAX_LOAD_PER_PART){
+                        if(partitionLoads[fromPartition] <= Controller.MAX_LOAD_PER_PART){
                             return numMovedVertices;
                         }
                     }
