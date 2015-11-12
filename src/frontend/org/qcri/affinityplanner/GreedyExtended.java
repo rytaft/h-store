@@ -181,6 +181,8 @@ public class GreedyExtended implements Partitioner {
             }
         }
         
+        System.out.println("Total number of hot tuples:" + m_hotTuples.size());
+        
         for (int fromPartition : overloadedPartitions){
 
             int numMovedVertices = 0;
