@@ -90,6 +90,12 @@ public class Plan {
             partitionToRanges.put(partitionId, emptyRange);
         }
     }
+    
+    public void addPartitionAllTables(Integer partitionId){
+        for (String table : table_names){
+            addPartition(table, partitionId);
+        }
+    }
 
     public void removePartition(String table, Integer partitionId) {
         HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());

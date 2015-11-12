@@ -172,9 +172,9 @@ public class PlanHandler extends Plan {
                 }
             }
             
-            Long currVal = allRanges.firstKey();
+            Long currVal = 0L;
             for (Map.Entry<Long, Long> range : allRanges.entrySet()){
-                if (range.getKey() == currVal){
+                if (range.getKey().equals(currVal)){
                     currVal = range.getValue() + 1;
                 }
                 else{
