@@ -560,7 +560,7 @@ public class GreedyExtended implements Partitioner {
                         if(numMovedVertices + Plan.getRangeWidth(r) > Controller.MAX_MOVED_TUPLES_PER_PART){
                             System.out.println("Moved too many tuples. Exiting.");
                             try {
-                                Thread.sleep(1000);
+                                Thread.sleep(5000);
                             } catch (InterruptedException e) {
                                 // TODO Auto-generated catch block
                                 e.printStackTrace();
