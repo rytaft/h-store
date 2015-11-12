@@ -460,7 +460,8 @@ public class GreedyExtended implements Partitioner {
 
                 for(Plan.Range r : chunk) { 
                     
-                    if(partitionLoads[fromPartition] < Controller.MAX_LOAD_PER_PART){
+                    // see if I can stop
+                    if(partitionLoads[fromPartition] <= Controller.MAX_LOAD_PER_PART){
                         return numMovedVertices;
                     }
 
@@ -472,8 +473,8 @@ public class GreedyExtended implements Partitioner {
                     System.out.println("Weight " + rangeWeight);
                     System.out.println("To partition " + toPartition);
 
-                    if (rangeWeight + partitionLoads[toPartition] < Controller.MAX_LOAD_PER_PART
-                           && numMovedVertices + Plan.getRangeWidth(r) < Controller.MAX_MOVED_TUPLES_PER_PART){
+                    if (rangeWeight + partitionLoads[toPartition] <= Controller.MAX_LOAD_PER_PART
+                           && numMovedVertices + Plan.getRangeWidth(r) <= Controller.MAX_MOVED_TUPLES_PER_PART){
 
                         // do the move
                         
@@ -497,13 +498,17 @@ public class GreedyExtended implements Partitioner {
 //                        System.out.println("Load after - to partition " + toPartition + " is " + getLoadPerPartition(toPartition));
 //                        System.out.println("New plan\n" + m_plan_handler);
 
-                        // after every move, see if I can stop
-                        if(partitionLoads[fromPartition] <= Controller.MAX_LOAD_PER_PART){
-                            return numMovedVertices;
-                        }
                     }
                     else{
                         System.out.println("Cannot offload partition " + fromPartition);
+                        
+                        System.out.println(rangeWeight + partitionLoads[toPartition]);
+                        System.out.println(numMovedVertices + Plan.getRangeWidth(r));
+                        
+                        if(numMovedVertices + Plan.getRangeWidth(r) > Controller.MAX_MOVED_TUPLES_PER_PART){
+                            System.out.println("Moved too many partitions. Exiting.");
+                            System.exit(0);
+                        }
 
                         return numMovedVertices;
                     }
