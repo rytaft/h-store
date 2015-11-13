@@ -495,7 +495,15 @@ public class AffinityGraph {
     }
     
     public void toFile(Path file){
-        System.out.println("Writing graph. Number of vertices: " + m_edges.size());
+        
+        System.out.println("Writing graph.\nNumber of vertices: " + m_edges.size());
+        long edgesCount = 0;
+        for (Int2DoubleOpenHashMap adjacency :m_edges.values()){
+            edgesCount += adjacency.size();
+        }
+        edgesCount = edgesCount / 2;
+        System.out.println("Number of edges: " + edgesCount);
+        
         BufferedWriter writer;
         String s;
         double totalWeight = 0;
@@ -559,42 +567,24 @@ public class AffinityGraph {
        }       
     }
     
-    public void setPartitionMaps (Int2IntOpenHashMap newVertexPartition){
+    // get a set of moves in the form tupleId -> toPartition
+    public void movesToMultipleReceivers (Int2IntOpenHashMap newVertexPartition){
         
-        // reset the mapping from partition to vertices
-        int partitionsNo = m_partitionVertices.size();
-        for (int i = 0; i < partitionsNo; i++){
-            m_partitionVertices.set(i, new IntOpenHashSet());
-        }
+        IntSet movedVertices = new IntOpenHashSet(1);
         
         for (Int2IntMap.Entry entry: newVertexPartition.int2IntEntrySet()){
             
             int vertex = entry.getIntKey();
             int toPartition = entry.getIntValue();
             
-            // update plan
-            String movedVertexName = m_vertexName.get(vertex);
-
-            String [] fields = movedVertexName.split(",");
-            int fromPartition = m_vertexPartition.get(vertex);
+            movedVertices.add(vertex);
             
-            if(Controller.ROOT_TABLE == null){
-                m_plan_handler.removeTupleId(fields[0], fromPartition, Long.parseLong(fields[1]));
-                m_plan_handler.addRange(fields[0], toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));
-            }
-            else{
-                m_plan_handler.removeTupleIdAllTables(fromPartition, Long.parseLong(fields[1]));
-                m_plan_handler.addRangeAllTables(toPartition, Long.parseLong(fields[1]), Long.parseLong(fields[1]));                
-            }
-
-            // update data structures
-            IntOpenHashSet vertices = m_partitionVertices.get(toPartition);
-            vertices.add(vertex);
+            moveHotVertices(movedVertices, toPartition);
+            
+            movedVertices.clear();
+            
         }
-        
-        // copy new partitioning
-        m_vertexPartition = newVertexPartition;
-        
+                
     }
     
     public int numVertices(int partition){

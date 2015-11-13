@@ -449,18 +449,18 @@ public class GreedyExtended implements Partitioner {
         return res;
     }
 
-    public int getLeastLoadedPartition(IntList activePartitions){
-        double minLoad = Double.MAX_VALUE;
-        int res = 0;
-        for (int part : activePartitions){
-            double newLoad = getLoadPerPartition(part);
-            if (newLoad < minLoad){
-                res = part;
-                minLoad = newLoad; 
-            }
-        }
-        return res;
-    }
+//    public int getLeastLoadedPartition(IntList activePartitions){
+//        double minLoad = Double.MAX_VALUE;
+//        int res = 0;
+//        for (int part : activePartitions){
+//            double newLoad = getLoadPerPartition(part);
+//            if (newLoad < minLoad){
+//                res = part;
+//                minLoad = newLoad; 
+//            }
+//        }
+//        return res;
+//    }
 
     @Override
     public void writePlan(String plan_out) {

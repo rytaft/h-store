@@ -128,6 +128,8 @@ public class GraphGreedy extends PartitionerAffinity {
             Move currMove = null;
             Move candidateMove = null;
             Move minSndDeltaNewPartMove = null;
+            
+            int leastLoadedPartition = getLeastLoadedPartition(activePartitions); 
 
             int greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
 
@@ -162,6 +164,7 @@ public class GraphGreedy extends PartitionerAffinity {
                         candidateMove = null;
                         minSndDeltaNewPartMove = null;
                         greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
+                        leastLoadedPartition = getLeastLoadedPartition(activePartitions);
 
                         continue;
                     }
@@ -226,6 +229,7 @@ public class GraphGreedy extends PartitionerAffinity {
                     candidateMove = null;
                     minSndDeltaNewPartMove = null;
                     greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
+                    leastLoadedPartition = getLeastLoadedPartition(activePartitions);
 
                     continue;
 
@@ -241,7 +245,7 @@ public class GraphGreedy extends PartitionerAffinity {
                     System.out.println("Current sender delta " + currMove.sndDelta);                    
                 }
 
-                nextHotTuplePos = expandMovingVertices (currMove, hotVerticesList, nextHotTuplePos, activePartitions, overloadedPartition);
+                nextHotTuplePos = expandMovingVertices (currMove, hotVerticesList, nextHotTuplePos, activePartitions, overloadedPartition, leastLoadedPartition);
                 if (!currMove.wasExtended){
                     continue;
                 }
@@ -324,7 +328,7 @@ public class GraphGreedy extends PartitionerAffinity {
      * updates the set movingVertices with one more vertex, either the most affine to the current movingVertices 
      * or the next vertex in the verticesToMove list, depending on which one is more convenient to move out.
      */
-    private int expandMovingVertices (Move move, IntList hotVertices, int nextHotTuplePos, IntList activePartitions, int fromPartition){
+    private int expandMovingVertices (Move move, IntList hotVertices, int nextHotTuplePos, IntList activePartitions, int fromPartition, int leastLoadedPartition){
 
         if (move.movingVertices.isEmpty()){
 
@@ -382,11 +386,27 @@ public class GraphGreedy extends PartitionerAffinity {
                         && extensionPartition != fromPartition){
 
                     double extensionReceiverDelta = getReceiverDelta(move.movingVertices, extensionPartition);
+                    
+                    System.out.println("Receiver delta of affine partition " + extensionPartition + " is " + extensionReceiverDelta);
 
                     if (extensionReceiverDelta < move.rcvDelta){
                         move.toPartition = extensionPartition;
                         move.sndDelta = getSenderDelta(move.movingVertices, fromPartition, extensionPartition);
                         move.rcvDelta = extensionReceiverDelta;
+                    }
+                }
+                
+                if (leastLoadedPartition != move.toPartition &&
+                        leastLoadedPartition != fromPartition){
+
+                    double leastLoadedReceiverDelta = getReceiverDelta(move.movingVertices, leastLoadedPartition);
+                    
+                    System.out.println("Receiver delta of least loaded partition " + leastLoadedPartition + " is " + leastLoadedReceiverDelta);
+
+                    if (leastLoadedReceiverDelta < move.rcvDelta){
+                        move.toPartition = leastLoadedPartition;
+                        move.sndDelta = getSenderDelta(move.movingVertices, fromPartition, leastLoadedPartition);
+                        move.rcvDelta = leastLoadedReceiverDelta;
                     }
                 }
                 
@@ -428,7 +448,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
         return currPart;
     }
-
+    
     /*
      * finds the vertex with the highest affinity
      */

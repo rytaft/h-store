@@ -70,7 +70,7 @@ public class MetisPartitioner extends GraphGreedy {
                 metisGeneratedPartitioning = getMetisMapping(metisOut, metisMapFile);
                 System.out.println("Results in metis map files: " + metisGeneratedPartitioning.keySet().size());
 
-                m_graph.setPartitionMaps(metisGeneratedPartitioning);
+                m_graph.movesToMultipleReceivers(metisGeneratedPartitioning);
             
             } else {
                 System.out.println(String.format("Metis ran unsuccessfully: %s", result));
