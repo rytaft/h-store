@@ -164,7 +164,7 @@ public class AffinityLoader extends Loader {
             if ((i + 1) % AffinityConstants.BATCH_SIZE == 0 || (i + 1) == config.num_products) {
 //            if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
                 System.out.println(String.format("[%d] %s records Loaded: %6d / %d",
-                              thread_id, AffinityConstants.TABLENAME_PRODUCTS, total.get(), config.num_products);
+                              thread_id, AffinityConstants.TABLENAME_PRODUCTS, total.get(), config.num_products));
                 loadVoltTable(AffinityConstants.TABLENAME_PRODUCTS, table);
                 total.addAndGet(table.getRowCount());
                 table.clearRowData();
@@ -214,7 +214,7 @@ public class AffinityLoader extends Loader {
             if ((i + 1) % AffinityConstants.BATCH_SIZE == 0 || (i + 1) == config.num_products) {
 //            if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
                 System.out.println(String.format("[%d] %s records Loaded: %6d / %d",
-                              thread_id, AffinityConstants.TABLENAME_PARTS, total.get(), config.num_parts);
+                              thread_id, AffinityConstants.TABLENAME_PARTS, total.get(), config.num_parts));
                 loadVoltTable(AffinityConstants.TABLENAME_PARTS, table);
                 total.addAndGet(table.getRowCount());
                 table.clearRowData();
