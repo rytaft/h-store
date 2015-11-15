@@ -119,13 +119,12 @@ public class GraphGreedy extends PartitionerAffinity {
 
             int numMovedVertices = 0;
             int nextHotTuplePos = 0;
-            //            int lastHotVertexMoved = -1;
+            int lastHotVertexMoved = -1;
 
             int count_iter = 0;
 
             Move currMove = null;
             Move candidateMove = null;
-            Move minSndDeltaNewPartMove = null;
             
             int leastLoadedPartition = getLeastLoadedPartition(activePartitions); 
 
@@ -158,78 +157,46 @@ public class GraphGreedy extends PartitionerAffinity {
                         //                        testNoOverload(candidateMove.toPartition);
 
                         nextHotTuplePos = candidateMove.nextHotTuplePos;
+                        lastHotVertexMoved = nextHotTuplePos - 1;
                         currMove = null;
                         candidateMove = null;
-                        minSndDeltaNewPartMove = null;
                         greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
                         leastLoadedPartition = getLeastLoadedPartition(activePartitions);
 
                         continue;
                     }
                     
-                    // trying to move the best moving set for the sender
-                    if (minSndDeltaNewPartMove == null || minSndDeltaNewPartMove.sndDelta >= 0){
-                        System.out.println("GIVING UP!! Moving this hot tuple never pays off");
-                        return false;
-                    }
+                    // if none of the current partitions wants to take the group, add partitions
+                    System.out.println("Cannot expand - Adding a new partition");
 
-                    // the most affine partition could not take this moving set, so find best partition from scratch
-                    findBestPartition(minSndDeltaNewPartMove, overloadedPartition, activePartitions);
-                    
-                    if(getLoadPerPartition(minSndDeltaNewPartMove.toPartition) + minSndDeltaNewPartMove.rcvDelta > Controller.MAX_LOAD_PER_PART
-                            && minSndDeltaNewPartMove.rcvDelta > 0){
-                        
-                        // if none of the current partitions wants to take the group, add partitions
-                        System.out.println("Cannot expand - Adding a new partition");
-
-                        // We fill up low-order partitions first to minimize the number of servers
-                        int newPartCount = 0;
-                        for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
-                            if(!activePartitions.contains(i)){
-                                activePartitions.add(i);
-                                newPartCount++;
-                                if (newPartCount >= Controller.ADDED_PARTITION_CHUNK_SIZE){
-                                    break;
-                                }
+                    // We fill up low-order partitions first to minimize the number of servers
+                    int newPartCount = 0;
+                    for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+                        if(!activePartitions.contains(i)){
+                            activePartitions.add(i);
+                            newPartCount++;
+                            if (newPartCount >= Controller.ADDED_PARTITION_CHUNK_SIZE){
+                                break;
                             }
                         }
-                        addedPartitions += newPartCount;
-
-                        if(activePartitions.size() > Controller.MAX_PARTITIONS 
-                                || addedPartitions > Controller.MAX_PARTITIONS_ADDED
-                                || newPartCount == 0){
-
-                            System.out.println("GIVING UP!! Cannot add new partition to offload " + overloadedPartitions);
-
-                            return false;
-                        }
-                        
-                        // find best partition to move this group again, after adding
-                        findBestPartition(minSndDeltaNewPartMove, overloadedPartition, activePartitions);
                     }
+                    addedPartitions += newPartCount;
 
-                    if(getLoadPerPartition(minSndDeltaNewPartMove.toPartition) + minSndDeltaNewPartMove.rcvDelta > Controller.MAX_LOAD_PER_PART
-                            && minSndDeltaNewPartMove.rcvDelta > 0){
-                        System.out.println("GIVING UP!! Cannot find partition to take this group, even if I try a previous move");
+                    if(activePartitions.size() > Controller.MAX_PARTITIONS 
+                            || addedPartitions > Controller.MAX_PARTITIONS_ADDED
+                            || newPartCount == 0){
+
+                        System.out.println("GIVING UP!! Cannot add new partition to offload " + overloadedPartitions);
 
                         return false;
                     }
-
-                    System.out.println("ACTUALLY moving to partition " + minSndDeltaNewPartMove.toPartition);
-                    System.out.println("Moving:\n" + m_graph.verticesToString(minSndDeltaNewPartMove.movingVertices));
-                                        
-                    m_graph.moveHotVertices(minSndDeltaNewPartMove.movingVertices, minSndDeltaNewPartMove.toPartition);
-                    numMovedVertices += minSndDeltaNewPartMove.movingVertices.size();
-                    //                    lastHotVertexMoved = nextHotTuplePos - 1;
-
-                    nextHotTuplePos = minSndDeltaNewPartMove.nextHotTuplePos;
+                        
+                    // reset and restart the moving set
+                    nextHotTuplePos = lastHotVertexMoved + 1;
                     currMove = null;
                     candidateMove = null;
-                    minSndDeltaNewPartMove = null;
                     greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
                     leastLoadedPartition = getLeastLoadedPartition(activePartitions);
-
-                    continue;
 
                 } // END if (numMovedVertices + movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART || nextPosToMove >= hotVerticesList.size() || (toPart_sndDelta_glbDelta.fst != null && toPart_sndDelta_glbDelta.fst == -1))
 
@@ -252,18 +219,6 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 System.out.println("Moving:\n" + m_graph.verticesToString(currMove.movingVertices));
                 System.out.println("Receiver: " + currMove.toPartition + ", receiver delta " + currMove.rcvDelta);
-
-                // remember the best move for the sender in case we add a new (remote) partition
-                double sndDeltaNewPart = getSenderDelta(currMove.movingVertices, overloadedPartition, false);
-                if(minSndDeltaNewPartMove == null 
-                        || minSndDeltaNewPartMove.sndDelta > sndDeltaNewPart){
-                    if(minSndDeltaNewPartMove == null){
-                        minSndDeltaNewPartMove = new Move();
-                    }
-                    minSndDeltaNewPartMove.movingVertices = currMove.movingVertices.clone();
-                    minSndDeltaNewPartMove.sndDelta = sndDeltaNewPart;
-                    minSndDeltaNewPartMove.nextHotTuplePos = nextHotTuplePos;
-                }
 
                 // check move
                 if(currMove.toPartition != -1
@@ -311,10 +266,13 @@ public class GraphGreedy extends PartitionerAffinity {
                     //                    lastHotVertexMoved = nextHotTuplePos - 1;
                     //                    testNoOverload(candidateMove.toPartition);
 
+                    nextHotTuplePos = candidateMove.nextHotTuplePos;
+                    lastHotVertexMoved = nextHotTuplePos - 1;
                     currMove = null;
                     candidateMove = null;
-                    minSndDeltaNewPartMove = null;
                     greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
+                    leastLoadedPartition = getLeastLoadedPartition(activePartitions);
+
                 }
 
             } // END while(getLoadPerSite(overloadedPartition) <= maxLoadPerSite)
@@ -375,6 +333,11 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 move.sndDelta = getSenderDelta(move.movingVertices, fromPartition, move.toPartition);
                 move.rcvDelta = getReceiverDelta(move.movingVertices, move.toPartition);
+                
+                if(move.rcvLoad + move.rcvDelta <= Controller.MAX_LOAD_PER_PART || move.rcvDelta <= 0){
+                    // if the move to the current partition is feasible, go ahead with it
+                    return nextHotTuplePos;
+                }
 
                 // check if the move needs to change toPartition after the extension
                 int extensionPartition = getMostAffinePartition(affineVertex);
@@ -384,37 +347,41 @@ public class GraphGreedy extends PartitionerAffinity {
                         && extensionPartition != fromPartition){
 
                     double extensionReceiverDelta = getReceiverDelta(move.movingVertices, extensionPartition);
+                    double extensionReceiverLoad = getLoadPerPartition(extensionPartition);
                     
                     System.out.println("Receiver delta of affine partition " + extensionPartition + " is " + extensionReceiverDelta);
 
-                    if (extensionReceiverDelta < move.rcvDelta){
+                    if (extensionReceiverLoad + extensionReceiverDelta < Controller.MAX_LOAD_PER_PART){
                         move.toPartition = extensionPartition;
                         move.sndDelta = getSenderDelta(move.movingVertices, fromPartition, extensionPartition);
                         move.rcvDelta = extensionReceiverDelta;
+                        move.rcvLoad = extensionReceiverLoad;
+                        return nextHotTuplePos;
                     }
                 }
                 
-                if (leastLoadedPartition != move.toPartition &&
-                        leastLoadedPartition != fromPartition){
+                if (leastLoadedPartition != move.toPartition && leastLoadedPartition != fromPartition){
 
                     double leastLoadedReceiverDelta = getReceiverDelta(move.movingVertices, leastLoadedPartition);
+                    double leastLoadedReceiverLoad = getLoadPerPartition(leastLoadedPartition);
                     
-                    System.out.println("Receiver delta of least loaded partition " + leastLoadedPartition + " is " + leastLoadedReceiverDelta);
+                    System.out.println("Receiver delta of least loaded partition " + leastLoadedPartition + " is " 
+                    + leastLoadedReceiverDelta + " and load is " + leastLoadedReceiverLoad);
 
-                    if (leastLoadedReceiverDelta < move.rcvDelta){
+                    if (leastLoadedReceiverLoad + leastLoadedReceiverDelta < Controller.MAX_LOAD_PER_PART){
                         move.toPartition = leastLoadedPartition;
                         move.sndDelta = getSenderDelta(move.movingVertices, fromPartition, leastLoadedPartition);
                         move.rcvDelta = leastLoadedReceiverDelta;
+                        move.rcvLoad = leastLoadedReceiverLoad;
+                        return nextHotTuplePos;
                     }
                 }
-                
-            }
-
-            else{
-                System.out.println("Could not expand");
-                move.wasExtended = false;
                 return nextHotTuplePos;
             }
+                
+            System.out.println("Could not expand");
+            move.wasExtended = false;
+            return nextHotTuplePos;
 
         } // END if(!movedVertices.isEmpty())
 

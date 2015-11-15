@@ -39,6 +39,7 @@ public abstract class PartitionerAffinity implements Partitioner {
         public int toPartition;
         public double sndDelta;
         public double rcvDelta;
+        public double rcvLoad;
         public IntOpenHashSet movingVertices;
         public boolean wasExtended;
         public int nextHotTuplePos;
@@ -47,6 +48,7 @@ public abstract class PartitionerAffinity implements Partitioner {
             this.toPartition = -1;
             this.sndDelta = Double.MAX_VALUE;
             this.rcvDelta = Double.MAX_VALUE;
+            this.rcvLoad = -1;
             this.movingVertices = new IntOpenHashSet();
             this.wasExtended = false;
             this.nextHotTuplePos = -1;
@@ -56,6 +58,7 @@ public abstract class PartitionerAffinity implements Partitioner {
             this.toPartition = other.toPartition;
             this.sndDelta = other.sndDelta;
             this.rcvDelta = other.rcvDelta;
+            this.rcvLoad = other.rcvLoad;
             this.movingVertices = other.movingVertices.clone();
             this.wasExtended = other.wasExtended;
             this.nextHotTuplePos = other.nextHotTuplePos;
@@ -249,6 +252,7 @@ public abstract class PartitionerAffinity implements Partitioner {
         move.toPartition = -1;
         move.sndDelta = Double.MAX_VALUE;
         move.rcvDelta = Double.MAX_VALUE;
+        move.rcvLoad = -1;
         boolean feasible = false;
 
         double currLoad = Double.MAX_VALUE;
@@ -266,15 +270,17 @@ public abstract class PartitionerAffinity implements Partitioner {
             System.out.println("Examining moving to partition: " + toPartition);
 
             double receiverDelta = getReceiverDelta(move.movingVertices, toPartition);
+            double receiverLoad = getLoadPerPartition(toPartition);
             
             System.out.println("Receiver delta: " + receiverDelta + " min delta " + move.rcvDelta);
 
-            if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART 
+            if(receiverLoad + receiverDelta >= Controller.MAX_LOAD_PER_PART 
                     && receiverDelta > 0){
             
                 // unfeasible move
                 if (feasible){
                     System.out.println("Would become overloaded, but have feasible move, skipping");
+                    // consider next partition
                     continue;
                 }
                 System.out.println("Would become overloaded, accepting as unfeasible");
@@ -285,6 +291,7 @@ public abstract class PartitionerAffinity implements Partitioner {
                     move.toPartition = -1;
                     move.sndDelta = Double.MAX_VALUE;
                     move.rcvDelta = Double.MAX_VALUE;
+                    move.rcvLoad = -1;
                 }
                feasible = true;
             }
@@ -292,25 +299,25 @@ public abstract class PartitionerAffinity implements Partitioner {
             if (receiverDelta <= move.rcvDelta){
 
                 if (receiverDelta == move.rcvDelta){
-                    double load = getLoadPerPartition(toPartition);
-                    System.out.println("Load: " + load + " min load " + currLoad);
-                    if (load < currLoad){
-                        currLoad = load;
+                    System.out.println("Load: " + receiverLoad + " min load " + currLoad);
+                    if (receiverLoad < currLoad){
+                        currLoad = receiverLoad;
                         
                         System.out.println("Partition " + toPartition + " selected!");
                         move.toPartition = toPartition;
                         move.sndDelta = senderDeltaLocal;
                         move.rcvDelta = receiverDelta;
+                        move.rcvLoad = receiverLoad;
                     }
                 }
                 else{
-                    double load = getLoadPerPartition(toPartition);
-                    currLoad = load;
+                    currLoad = receiverLoad;
                     
                     System.out.println("Partition " + toPartition + " selected!");
                     move.toPartition = toPartition;
                     move.sndDelta = senderDeltaLocal;
                     move.rcvDelta = receiverDelta;
+                    move.rcvLoad = receiverLoad;
                 }
             }
         }
@@ -325,8 +332,9 @@ public abstract class PartitionerAffinity implements Partitioner {
                 System.out.println("Examining moving to partition: " + toPartition);
 
                 double receiverDelta = getReceiverDelta(move.movingVertices, toPartition);
+                double receiverLoad = getLoadPerPartition(toPartition);
                 
-                if(getLoadPerPartition(toPartition) + receiverDelta >= Controller.MAX_LOAD_PER_PART
+                if(receiverLoad + receiverDelta >= Controller.MAX_LOAD_PER_PART
                         && receiverDelta > 0){
 
                     // unfeasible move
@@ -342,6 +350,7 @@ public abstract class PartitionerAffinity implements Partitioner {
                         move.toPartition = -1;
                         move.sndDelta = Double.MAX_VALUE;
                         move.rcvDelta = Double.MAX_VALUE;
+                        move.rcvLoad = -1;
                     }
                     feasible = true;
                 }
@@ -350,25 +359,25 @@ public abstract class PartitionerAffinity implements Partitioner {
                 if (receiverDelta <= (move.rcvDelta * (1 - Controller.PENALTY_REMOTE_MOVE))){
 
                     if (receiverDelta == move.rcvDelta){
-                        double load = getLoadPerPartition(toPartition);
-                        System.out.println("Load: " + load + " min load " + currLoad);
-                        if (load < currLoad){
-                            currLoad = load;
+                        System.out.println("Load: " + receiverLoad + " min load " + currLoad);
+                        if (receiverLoad < currLoad){
+                            currLoad = receiverLoad;
                             
                             System.out.println("Selected!");
                             move.toPartition = toPartition;
                             move.sndDelta = senderDeltaRemote;
                             move.rcvDelta = receiverDelta;
+                            move.rcvLoad = receiverLoad;
                         }
                     }
                     else {
-                        double load = getLoadPerPartition(toPartition);
-                        currLoad = load;
+                        currLoad = receiverLoad;
                         
                         System.out.println("Selected!");
                         move.toPartition = toPartition;
                         move.sndDelta = senderDeltaRemote;
                         move.rcvDelta = receiverDelta;
+                        move.rcvLoad = receiverLoad;
                     }
                 }
             }
