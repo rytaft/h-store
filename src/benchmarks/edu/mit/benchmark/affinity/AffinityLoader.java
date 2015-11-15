@@ -56,29 +56,35 @@ public class AffinityLoader extends Loader {
         final AtomicLong total_uses = new AtomicLong(0);
         
         // Multi-threaded loader
-        final int rows_per_thread = (int) Math.ceil(Math.max(config.num_suppliers, Math.max(config.num_products, config.num_parts)) / 
-        		(double) config.loadthreads);
-        final List<Runnable> runnables = new ArrayList<Runnable>();
-        for (int i = 0; i < config.loadthreads; i++) {
-            final int thread_id = i;
-            final int start = rows_per_thread * i;
-            final int stop = start + rows_per_thread;
-            runnables.add(new Runnable() {
-                @Override
-                public void run() {
-                    loadSuppliers(thread_id, start, stop, total_suppliers);
-                    loadProducts(thread_id, start, stop, total_products);
-                    loadParts(thread_id, start, stop, total_parts);
-                    loadSupplies(thread_id, start, stop, total_supplies);
-                    loadUses(thread_id, start, stop, total_uses);
-                }
-            });
-        } // FOR
-        ThreadUtil.runGlobalPool(runnables);
+//        final int rows_per_thread = (int) Math.ceil(Math.max(config.num_suppliers, Math.max(config.num_products, config.num_parts)) / 
+//        		(double) config.loadthreads);
+//        final List<Runnable> runnables = new ArrayList<Runnable>();
+//        for (int i = 0; i < config.loadthreads; i++) {
+//            final int thread_id = i;
+//            final int start = rows_per_thread * i;
+//            final int stop = start + rows_per_thread;
+//            runnables.add(new Runnable() {
+//                @Override
+//                public void run() {
+//                    loadSuppliers(thread_id, start, stop, total_suppliers);
+//                    loadProducts(thread_id, start, stop, total_products);
+//                    loadParts(thread_id, start, stop, total_parts);
+//                    loadSupplies(thread_id, start, stop, total_supplies);
+//                    loadUses(thread_id, start, stop, total_uses);
+//                }
+//            });
+//        } // FOR
+//        ThreadUtil.runGlobalPool(runnables);
+        
+        loadSuppliers(0, 0, config.num_suppliers, total_suppliers);
+        loadProducts(0, 0, config.num_products, total_products);
+        loadParts(0, 0, config.num_parts, total_parts);
+        loadSupplies(0, 0, config.num_suppliers, total_supplies);
+        loadUses(0, 0, config.num_products, total_uses);
 
     }
     
-    public void loadSuppliers(int thread_id, int start, int stop, AtomicLong total) {
+    public void loadSuppliers(int thread_id, long start, long stop, AtomicLong total) {
     	// Create an empty VoltTable handle and then populate it in batches
         // to be sent to the DBMS
     	final CatalogContext catalogContext = this.getCatalogContext(); 
@@ -92,7 +98,7 @@ public class AffinityLoader extends Loader {
         }
         String paddingString = new String(padding);
         
-        for (int i = start; i < stop && i < config.num_suppliers; i++) {
+        for (long i = start; i < stop && i < config.num_suppliers; i++) {
             row[0] = i;
 
             // randomly generate strings for each column
@@ -125,7 +131,7 @@ public class AffinityLoader extends Loader {
         }
     }
     
-    public void loadProducts(int thread_id, int start, int stop, AtomicLong total) {
+    public void loadProducts(int thread_id, long start, long stop, AtomicLong total) {
     	// Create an empty VoltTable handle and then populate it in batches
         // to be sent to the DBMS
     	final CatalogContext catalogContext = this.getCatalogContext(); 
@@ -139,7 +145,7 @@ public class AffinityLoader extends Loader {
         }
         String paddingString = new String(padding);
 
-        for (int i = start; i < stop && i < config.num_products; i++) {
+        for (long i = start; i < stop && i < config.num_products; i++) {
             row[0] = i;
 
             // randomly generate strings for each column
@@ -172,7 +178,7 @@ public class AffinityLoader extends Loader {
     }
 
     
-    public void loadParts(int thread_id, int start, int stop, AtomicLong total) {
+    public void loadParts(int thread_id, long start, long stop, AtomicLong total) {
     	// Create an empty VoltTable handle and then populate it in batches
         // to be sent to the DBMS
     	final CatalogContext catalogContext = this.getCatalogContext(); 
@@ -186,7 +192,7 @@ public class AffinityLoader extends Loader {
         }
         String paddingString = new String(padding);
 
-        for (int i = start; i < stop && i < config.num_parts; i++) {
+        for (long i = start; i < stop && i < config.num_parts; i++) {
             row[0] = i;
 
             // randomly generate strings for each column
@@ -218,7 +224,7 @@ public class AffinityLoader extends Loader {
         }
     }
 
-    public void loadSupplies(int thread_id, int start, int stop, AtomicLong total) {
+    public void loadSupplies(int thread_id, long start, long stop, AtomicLong total) {
     	// Create an empty VoltTable handle and then populate it in batches
         // to be sent to the DBMS
     	final CatalogContext catalogContext = this.getCatalogContext(); 
@@ -229,7 +235,7 @@ public class AffinityLoader extends Loader {
         AffinityGenerator supplies_gen = config.getAffinityGenerator(AffinityConstants.SUPPLIES_PRE, config.num_parts, m_extraParams);
         LOG.info("supplies_gen : "+ supplies_gen);
 
-        for (int i = start; i < stop && i < config.num_suppliers; i++) {
+        for (long i = start; i < stop && i < config.num_suppliers; i++) {
         	HashSet<Integer> parts = new HashSet<Integer>();
         	double shift = 0;
         	if(config.supplierToPartsRandomOffset) {
@@ -271,7 +277,7 @@ public class AffinityLoader extends Loader {
         }
     }
 
-    public void loadUses(int thread_id, int start, int stop, AtomicLong total) {
+    public void loadUses(int thread_id, long start, long stop, AtomicLong total) {
     	// Create an empty VoltTable handle and then populate it in batches
         // to be sent to the DBMS
     	final CatalogContext catalogContext = this.getCatalogContext(); 
@@ -282,7 +288,7 @@ public class AffinityLoader extends Loader {
         AffinityGenerator uses_gen = config.getAffinityGenerator(AffinityConstants.USES_PRE, config.num_parts, m_extraParams);
         LOG.info("uses_gen : "+ uses_gen);
 
-        for (int i = start; i < stop && i < config.num_products; i++) {
+        for (long i = start; i < stop && i < config.num_products; i++) {
         	HashSet<Integer> parts = new HashSet<Integer>();
         	double shift = 0;
         	if(config.productToPartsRandomOffset) {
