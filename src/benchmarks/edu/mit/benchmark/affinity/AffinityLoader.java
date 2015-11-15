@@ -308,7 +308,7 @@ public class AffinityLoader extends Loader {
                     
         		    System.out.println(String.format("%tT [Worker %d] Loading %s records: %6d - %d / %d",
                             Calendar.getInstance(), thread_id, AffinityConstants.TABLENAME_SUPPLIES, 
-                            total.get(), total.get() + table.getRowCount(), config.max_parts_per_supplier));
+                            total.get(), total.get() + table.getRowCount(), config.num_suppliers * config.max_parts_per_supplier));
         			
         		    loadVoltTable(AffinityConstants.TABLENAME_SUPPLIES, table);
         		    
@@ -376,7 +376,7 @@ public class AffinityLoader extends Loader {
                     
         		    System.out.println(String.format("%tT [Worker %d] Loading %s records: %6d - %d / %d",
                             Calendar.getInstance(), thread_id, AffinityConstants.TABLENAME_USES, 
-                            total.get(), total.get() + table.getRowCount(), config.max_parts_per_product));
+                            total.get(), total.get() + table.getRowCount(), config.num_products * config.max_parts_per_product));
         			
         		    loadVoltTable(AffinityConstants.TABLENAME_USES, table);
         			
