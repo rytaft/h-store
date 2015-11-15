@@ -86,12 +86,20 @@ public class AffinityLoader extends Loader {
         VoltTable table = CatalogUtil.getVoltTable(catalog_tbl_suppliers);
         Object row[] = new Object[table.getColumnCount()];
 
+        byte[] padding = new byte[AffinityConstants.SUPPLIERS_COLUMN_LENGTH];
+        for (int i = 0; i < AffinityConstants.SUPPLIERS_COLUMN_LENGTH; ++i) {
+            padding[i] = 'a';
+        }
+        String paddingString = new String(padding);
+        
         for (int i = start; i < stop && i < config.num_suppliers; i++) {
             row[0] = i;
 
             // randomly generate strings for each column
             for (int col = 1; col < AffinityConstants.SUPPLIERS_NUM_COLUMNS; col++) {
-                row[col] = YCSBUtil.astring(AffinityConstants.SUPPLIERS_COLUMN_LENGTH, AffinityConstants.SUPPLIERS_COLUMN_LENGTH);
+//                row[col] = YCSBUtil.astring(AffinityConstants.SUPPLIERS_COLUMN_LENGTH, AffinityConstants.SUPPLIERS_COLUMN_LENGTH);
+                row[col] = paddingString;
+                // TODO do the same for the other tables
             } // FOR
             table.addRow(row);
 
@@ -125,12 +133,19 @@ public class AffinityLoader extends Loader {
         VoltTable table = CatalogUtil.getVoltTable(catalog_tbl_products);
         Object row[] = new Object[table.getColumnCount()];
 
+        byte[] padding = new byte[AffinityConstants.SUPPLIERS_COLUMN_LENGTH];
+        for (int i = 0; i < AffinityConstants.SUPPLIERS_COLUMN_LENGTH; ++i) {
+            padding[i] = 'a';
+        }
+        String paddingString = new String(padding);
+
         for (int i = start; i < stop && i < config.num_products; i++) {
             row[0] = i;
 
             // randomly generate strings for each column
             for (int col = 1; col < AffinityConstants.PRODUCTS_NUM_COLUMNS; col++) {
-                row[col] = YCSBUtil.astring(AffinityConstants.PRODUCTS_COLUMN_LENGTH, AffinityConstants.PRODUCTS_COLUMN_LENGTH);
+//                row[col] = YCSBUtil.astring(AffinityConstants.PRODUCTS_COLUMN_LENGTH, AffinityConstants.PRODUCTS_COLUMN_LENGTH);
+                row[col] = paddingString;
             } // FOR
             table.addRow(row);
 
@@ -165,12 +180,19 @@ public class AffinityLoader extends Loader {
         VoltTable table = CatalogUtil.getVoltTable(catalog_tbl_parts);
         Object row[] = new Object[table.getColumnCount()];
 
+        byte[] padding = new byte[AffinityConstants.SUPPLIERS_COLUMN_LENGTH];
+        for (int i = 0; i < AffinityConstants.SUPPLIERS_COLUMN_LENGTH; ++i) {
+            padding[i] = 'a';
+        }
+        String paddingString = new String(padding);
+
         for (int i = start; i < stop && i < config.num_parts; i++) {
             row[0] = i;
 
             // randomly generate strings for each column
             for (int col = 1; col < AffinityConstants.PARTS_NUM_COLUMNS; col++) {
-                row[col] = YCSBUtil.astring(AffinityConstants.PARTS_COLUMN_LENGTH, AffinityConstants.PARTS_COLUMN_LENGTH);
+//                row[col] = YCSBUtil.astring(AffinityConstants.PARTS_COLUMN_LENGTH, AffinityConstants.PARTS_COLUMN_LENGTH);
+                row[col] = paddingString;
             } // FOR
             table.addRow(row);
 

@@ -16,9 +16,9 @@ import org.voltdb.CatalogContext;
 public class GraphGreedy extends PartitionerAffinity {
 
     private static final Logger LOG = Logger.getLogger(GraphGreedy.class);
-
-    //    HashSet<String> DEBUG = new HashSet<String>();
-    //    boolean DEB = false;
+    
+    // DEBUG
+    int count_iter = 0;
 
     public GraphGreedy (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles){
 
@@ -108,6 +108,8 @@ public class GraphGreedy extends PartitionerAffinity {
         // offload each overloaded partition
         System.out.println("\nLOAD BALANCING");
         System.out.println("#######################");
+        
+        System.out.println(Controller.DTXN_COST);
 
         for(int overloadedPartition : overloadedPartitions){
 
@@ -123,7 +125,8 @@ public class GraphGreedy extends PartitionerAffinity {
             int nextHotTuplePos = 0;
             //            int lastHotVertexMoved = -1;
 
-            int count_iter = 0;
+            // DEBUG
+//            int count_iter = 0;
 
             Move currMove = null;
             Move candidateMove = null;
@@ -210,16 +213,16 @@ public class GraphGreedy extends PartitionerAffinity {
                         findBestPartition(minSndDeltaNewPartMove, overloadedPartition, activePartitions);
                     }
 
-                    System.out.println("ACTUALLY moving to new partition " + minSndDeltaNewPartMove.toPartition);
-                    System.out.println("Moving:\n" + m_graph.verticesToString(minSndDeltaNewPartMove.movingVertices));
-                                        
                     if(getLoadPerPartition(minSndDeltaNewPartMove.toPartition) + minSndDeltaNewPartMove.rcvDelta > Controller.MAX_LOAD_PER_PART
                             && minSndDeltaNewPartMove.rcvDelta > 0){
-                        System.out.println("GIVING UP!! Cannot find partition to take this group");
+                        System.out.println("GIVING UP!! Cannot find partition to take this group, even if I try a previous move");
 
                         return false;
                     }
 
+                    System.out.println("ACTUALLY moving to partition " + minSndDeltaNewPartMove.toPartition);
+                    System.out.println("Moving:\n" + m_graph.verticesToString(minSndDeltaNewPartMove.movingVertices));
+                                        
                     m_graph.moveHotVertices(minSndDeltaNewPartMove.movingVertices, minSndDeltaNewPartMove.toPartition);
                     numMovedVertices += minSndDeltaNewPartMove.movingVertices.size();
                     //                    lastHotVertexMoved = nextHotTuplePos - 1;
@@ -460,7 +463,9 @@ public class GraphGreedy extends PartitionerAffinity {
         for(int vertex : vertices){
 
             // DEBUG
-//            System.out.println("Looking at the adjacency list of vertex " + AffinityGraph.m_vertexName.get(vertex));
+            if(count_iter == 202){
+                System.out.println("Looking at the adjacency list of vertex " + AffinityGraph.m_vertexName.get(vertex));
+            }
 
             Int2DoubleMap adjacency = AffinityGraph.m_edges.get(vertex);
             if(adjacency != null){
@@ -471,15 +476,18 @@ public class GraphGreedy extends PartitionerAffinity {
                     double affinity = edge.getDoubleValue();
 
                     // DEBUG
-//                    System.out.println("Looking at adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
-//                        + " with affinity " + affinity);
+//                        System.out.println("Looking at adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
+//                            + " with affinity " + affinity);
 
                     if (affinity > maxAffinity
                             && AffinityGraph.m_vertexPartition.get(adjacentVertex) == senderPartition
                             && !vertices.contains(adjacentVertex)) {
 
                         //DEBUG
-//                        System.out.println("Picked");
+                        if(count_iter == 202){
+                            System.out.println("Picked adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
+                            + " with affinity " + affinity);
+                        }
 
                         maxAffinity = affinity;
                         res = adjacentVertex;
@@ -517,11 +525,18 @@ public class GraphGreedy extends PartitionerAffinity {
                                 && newVertexPartitionDelta <= 0) {
                             maxAffinity = affinity;
                             res = adjacentVertex;
+
+                            if(count_iter == 202){
+                                System.out.println("Picked adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
+                                + " with affinity " + affinity);
+                            }
                         }
                     }
                 }
             }            
         }
+        
+        System.out.println("Max affinity: " + maxAffinity);
 
         return res;
     }
