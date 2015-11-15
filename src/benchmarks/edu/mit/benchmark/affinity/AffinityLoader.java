@@ -110,7 +110,10 @@ public class AffinityLoader extends Loader {
             table.addRow(row);
 
             // insert this batch of tuples
-            if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
+            if ((i + 1) % AffinityConstants.BATCH_SIZE == 0 || (i + 1) == config.num_suppliers) {
+//            if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
+                System.out.println(String.format("[%d] %s records Loaded: %6d / %d",
+                        thread_id, AffinityConstants.TABLENAME_SUPPLIERS, total.get(), config.num_suppliers));
                 loadVoltTable(AffinityConstants.TABLENAME_SUPPLIERS, table);
                 total.addAndGet(table.getRowCount());
                 table.clearRowData();
@@ -120,15 +123,17 @@ public class AffinityLoader extends Loader {
             }
         } // FOR
 
-        // load remaining records
-        if (table.getRowCount() > 0) {
-            loadVoltTable(AffinityConstants.TABLENAME_SUPPLIERS, table);
-            total.addAndGet(table.getRowCount());
-            table.clearRowData();
-            if (debug.val)
-                LOG.debug(String.format("[%d] %s records Loaded: %6d / %d",
-                          thread_id, AffinityConstants.TABLENAME_SUPPLIERS, total.get(), config.num_suppliers));
-        }
+//        // load remaining records
+//        if (table.getRowCount() > 0) {
+//            System.out.println(String.format("[%d] %s records Loaded: %6d / %d",
+//                    thread_id, AffinityConstants.TABLENAME_SUPPLIERS, total.get(), config.num_suppliers));
+//            loadVoltTable(AffinityConstants.TABLENAME_SUPPLIERS, table);
+//            total.addAndGet(table.getRowCount());
+//            table.clearRowData();
+//            if (debug.val)
+//                LOG.debug(String.format("[%d] %s records Loaded: %6d / %d",
+//                          thread_id, AffinityConstants.TABLENAME_SUPPLIERS, total.get(), config.num_suppliers));
+//        }
     }
     
     public void loadProducts(int thread_id, long start, long stop, AtomicLong total) {
@@ -156,7 +161,10 @@ public class AffinityLoader extends Loader {
             table.addRow(row);
 
             // insert this batch of tuples
-            if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
+            if ((i + 1) % AffinityConstants.BATCH_SIZE == 0 || (i + 1) == config.num_products) {
+//            if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
+                System.out.println(String.format("[%d] %s records Loaded: %6d / %d",
+                              thread_id, AffinityConstants.TABLENAME_PRODUCTS, total.get(), config.num_products);
                 loadVoltTable(AffinityConstants.TABLENAME_PRODUCTS, table);
                 total.addAndGet(table.getRowCount());
                 table.clearRowData();
@@ -166,15 +174,15 @@ public class AffinityLoader extends Loader {
             }
         } // FOR
 
-        // load remaining records
-        if (table.getRowCount() > 0) {
-            loadVoltTable(AffinityConstants.TABLENAME_PRODUCTS, table);
-            total.addAndGet(table.getRowCount());
-            table.clearRowData();
-            if (debug.val)
-                LOG.debug(String.format("[%d] %s records Loaded: %6d / %d",
-                          thread_id, AffinityConstants.TABLENAME_PRODUCTS, total.get(), config.num_products));
-        }
+//        // load remaining records
+//        if (table.getRowCount() > 0) {
+//            loadVoltTable(AffinityConstants.TABLENAME_PRODUCTS, table);
+//            total.addAndGet(table.getRowCount());
+//            table.clearRowData();
+//            if (debug.val)
+//                LOG.debug(String.format("[%d] %s records Loaded: %6d / %d",
+//                          thread_id, AffinityConstants.TABLENAME_PRODUCTS, total.get(), config.num_products));
+//        }
     }
 
     
@@ -203,7 +211,10 @@ public class AffinityLoader extends Loader {
             table.addRow(row);
 
             // insert this batch of tuples
-            if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
+            if ((i + 1) % AffinityConstants.BATCH_SIZE == 0 || (i + 1) == config.num_products) {
+//            if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
+                System.out.println(String.format("[%d] %s records Loaded: %6d / %d",
+                              thread_id, AffinityConstants.TABLENAME_PARTS, total.get(), config.num_parts);
                 loadVoltTable(AffinityConstants.TABLENAME_PARTS, table);
                 total.addAndGet(table.getRowCount());
                 table.clearRowData();
@@ -214,14 +225,14 @@ public class AffinityLoader extends Loader {
         } // FOR
 
         // load remaining records
-        if (table.getRowCount() > 0) {
-            loadVoltTable(AffinityConstants.TABLENAME_PARTS, table);
-            total.addAndGet(table.getRowCount());
-            table.clearRowData();
-            if (debug.val)
-                LOG.debug(String.format("[%d] %s records Loaded: %6d / %d",
-                          thread_id, AffinityConstants.TABLENAME_PARTS, total.get(), config.num_parts));
-        }
+//        if (table.getRowCount() > 0) {
+//            loadVoltTable(AffinityConstants.TABLENAME_PARTS, table);
+//            total.addAndGet(table.getRowCount());
+//            table.clearRowData();
+//            if (debug.val)
+//                LOG.debug(String.format("[%d] %s records Loaded: %6d / %d",
+//                          thread_id, AffinityConstants.TABLENAME_PARTS, total.get(), config.num_parts));
+//        }
     }
 
     public void loadSupplies(int thread_id, long start, long stop, AtomicLong total) {
@@ -255,7 +266,10 @@ public class AffinityLoader extends Loader {
         		table.addRow(row);
 
         		// insert this batch of tuples
-        		if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
+                if ((i + 1) % AffinityConstants.BATCH_SIZE == 0 || (i + 1) == config.max_parts_per_supplier) {
+//        		if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
+                    System.out.println(String.format("[%d] %s records Loaded: %6d",
+                                thread_id, AffinityConstants.TABLENAME_SUPPLIES, total.get()));
         			loadVoltTable(AffinityConstants.TABLENAME_SUPPLIES, table);
         			total.addAndGet(table.getRowCount());
         			table.clearRowData();
@@ -267,14 +281,14 @@ public class AffinityLoader extends Loader {
         } // FOR
 
         // load remaining records
-        if (table.getRowCount() > 0) {
-            loadVoltTable(AffinityConstants.TABLENAME_SUPPLIES, table);
-            total.addAndGet(table.getRowCount());
-            table.clearRowData();
-            if (debug.val)
-                LOG.debug(String.format("[%d] %s records Loaded: %6d",
-                          thread_id, AffinityConstants.TABLENAME_SUPPLIES, total.get()));
-        }
+//        if (table.getRowCount() > 0) {
+//            loadVoltTable(AffinityConstants.TABLENAME_SUPPLIES, table);
+//            total.addAndGet(table.getRowCount());
+//            table.clearRowData();
+//            if (debug.val)
+//                LOG.debug(String.format("[%d] %s records Loaded: %6d",
+//                          thread_id, AffinityConstants.TABLENAME_SUPPLIES, total.get()));
+//        }
     }
 
     public void loadUses(int thread_id, long start, long stop, AtomicLong total) {
@@ -308,7 +322,10 @@ public class AffinityLoader extends Loader {
         		table.addRow(row);
 
         		// insert this batch of tuples
-        		if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
+                if ((i + 1) % AffinityConstants.BATCH_SIZE == 0 || (i + 1) == config.max_parts_per_supplier) {
+//        		if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
+                    System.out.println(String.format("[%d] %s records Loaded: %6d",
+                                thread_id, AffinityConstants.TABLENAME_USES, total.get()));
         			loadVoltTable(AffinityConstants.TABLENAME_USES, table);
         			total.addAndGet(table.getRowCount());
         			table.clearRowData();
@@ -320,14 +337,14 @@ public class AffinityLoader extends Loader {
         } // FOR
 
         // load remaining records
-        if (table.getRowCount() > 0) {
-            loadVoltTable(AffinityConstants.TABLENAME_USES, table);
-            total.addAndGet(table.getRowCount());
-            table.clearRowData();
-            if (debug.val)
-                LOG.debug(String.format("[%d] %s records Loaded: %6d",
-                          thread_id, AffinityConstants.TABLENAME_USES, total.get()));
-        }
+//        if (table.getRowCount() > 0) {
+//            loadVoltTable(AffinityConstants.TABLENAME_USES, table);
+//            total.addAndGet(table.getRowCount());
+//            table.clearRowData();
+//            if (debug.val)
+//                LOG.debug(String.format("[%d] %s records Loaded: %6d",
+//                          thread_id, AffinityConstants.TABLENAME_USES, total.get()));
+//        }
     }
 
 }
