@@ -114,7 +114,7 @@ public class AffinityLoader extends Loader {
 //            if ((i + 1) % AffinityConstants.BATCH_SIZE == 0 || (i + 1) == config.num_suppliers) {
             if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
                 
-                System.out.println(String.format("%T [Worker %d] Loading %s records: %6d - %d / %d",
+                System.out.println(String.format("%tT [Worker %d] Loading %s records: %6d - %d / %d",
                         Calendar.getInstance(), thread_id, AffinityConstants.TABLENAME_SUPPLIERS, 
                         total.get(), total.get() + table.getRowCount(), config.num_suppliers));
                 
@@ -133,7 +133,7 @@ public class AffinityLoader extends Loader {
 //        // load remaining records
         if (table.getRowCount() > 0) {
             
-            System.out.println(String.format("%T [Worker %d] Loading %s records: remaining", 
+            System.out.println(String.format("%tT [Worker %d] Loading %s records: remaining", 
                     Calendar.getInstance(), thread_id, AffinityConstants.TABLENAME_SUPPLIERS));
             
             loadVoltTable(AffinityConstants.TABLENAME_SUPPLIERS, table);
@@ -176,7 +176,7 @@ public class AffinityLoader extends Loader {
 //            if ((i + 1) % AffinityConstants.BATCH_SIZE == 0 || (i + 1) == config.num_products) {
             if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
                 
-                System.out.println(String.format("%T [Worker %d] Loading %s records: %6d - %d / %d",
+                System.out.println(String.format("%tT [Worker %d] Loading %s records: %6d - %d / %d",
                         Calendar.getInstance(), thread_id, AffinityConstants.TABLENAME_PRODUCTS, 
                         total.get(), total.get() + table.getRowCount(), config.num_products));
                 
@@ -195,7 +195,7 @@ public class AffinityLoader extends Loader {
         // load remaining records
         if (table.getRowCount() > 0) {
             
-            System.out.println(String.format("%T [Worker %d] Loading %s records: remaining", 
+            System.out.println(String.format("%tT [Worker %d] Loading %s records: remaining", 
                     Calendar.getInstance(), thread_id, AffinityConstants.TABLENAME_PRODUCTS));
             
             loadVoltTable(AffinityConstants.TABLENAME_PRODUCTS, table);
@@ -238,7 +238,7 @@ public class AffinityLoader extends Loader {
             // insert this batch of tuples
             if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
                 
-                System.out.println(String.format("%T [Worker %d] Loading %s records: %6d - %d / %d",
+                System.out.println(String.format("%tT [Worker %d] Loading %s records: %6d - %d / %d",
                         Calendar.getInstance(), thread_id, AffinityConstants.TABLENAME_PARTS, 
                         total.get(), total.get() + table.getRowCount(), config.num_parts));
                 
@@ -257,7 +257,7 @@ public class AffinityLoader extends Loader {
         // load remaining records
         if (table.getRowCount() > 0) {
             
-            System.out.println(String.format("%T [Worker %d] Loading %s records: remaining", 
+            System.out.println(String.format("%tT [Worker %d] Loading %s records: remaining", 
                     Calendar.getInstance(), thread_id, AffinityConstants.TABLENAME_PARTS));
             
             loadVoltTable(AffinityConstants.TABLENAME_PARTS, table);
@@ -306,7 +306,7 @@ public class AffinityLoader extends Loader {
 //                if ((i + 1) % AffinityConstants.BATCH_SIZE == 0 || (i + 1) == config.max_parts_per_supplier) {
         		if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
                     
-        		    System.out.println(String.format("%T [Worker %d] Loading %s records: %6d - %d / %d",
+        		    System.out.println(String.format("%tT [Worker %d] Loading %s records: %6d - %d / %d",
                             Calendar.getInstance(), thread_id, AffinityConstants.TABLENAME_SUPPLIES, 
                             total.get(), total.get() + table.getRowCount(), config.max_parts_per_supplier));
         			
@@ -326,7 +326,7 @@ public class AffinityLoader extends Loader {
         // load remaining records
         if (table.getRowCount() > 0) {
             
-            System.out.println(String.format("%T [Worker %d] Loading %s records: remaining", 
+            System.out.println(String.format("%tT [Worker %d] Loading %s records: remaining", 
                     Calendar.getInstance(), thread_id, AffinityConstants.TABLENAME_SUPPLIES));
             
             loadVoltTable(AffinityConstants.TABLENAME_SUPPLIES, table);
@@ -374,7 +374,7 @@ public class AffinityLoader extends Loader {
         		// insert this batch of tuples
         		if (table.getRowCount() >= AffinityConstants.BATCH_SIZE) {
                     
-        		    System.out.println(String.format("%T [Worker %d] Loading %s records: %6d - %d / %d",
+        		    System.out.println(String.format("%tT [Worker %d] Loading %s records: %6d - %d / %d",
                             Calendar.getInstance(), thread_id, AffinityConstants.TABLENAME_USES, 
                             total.get(), total.get() + table.getRowCount(), config.max_parts_per_product));
         			
@@ -394,7 +394,7 @@ public class AffinityLoader extends Loader {
         // load remaining records
         if (table.getRowCount() > 0) {
             
-            System.out.println(String.format("%T [Worker %d] Loading %s records: remaining", 
+            System.out.println(String.format("%tT [Worker %d] Loading %s records: remaining", 
                     Calendar.getInstance(), thread_id, AffinityConstants.TABLENAME_USES));
             
             loadVoltTable(AffinityConstants.TABLENAME_USES, table);
