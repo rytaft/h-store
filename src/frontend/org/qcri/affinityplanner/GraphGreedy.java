@@ -17,9 +17,6 @@ public class GraphGreedy extends PartitionerAffinity {
 
     private static final Logger LOG = Logger.getLogger(GraphGreedy.class);
     
-    // DEBUG
-    int count_iter = 0;
-
     public GraphGreedy (CatalogContext catalogContext, File planFile, Path[] logFiles, Path[] intervalFiles){
 
         long t1 = System.currentTimeMillis();
@@ -113,7 +110,6 @@ public class GraphGreedy extends PartitionerAffinity {
 
         for(int overloadedPartition : overloadedPartitions){
 
-            // DEBUG
             System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% offloading site " + overloadedPartition + " %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
             System.out.println("Active partitions " + activePartitions.toString());
 
@@ -125,8 +121,7 @@ public class GraphGreedy extends PartitionerAffinity {
             int nextHotTuplePos = 0;
             //            int lastHotVertexMoved = -1;
 
-            // DEBUG
-//            int count_iter = 0;
+            int count_iter = 0;
 
             Move currMove = null;
             Move candidateMove = null;
@@ -463,9 +458,9 @@ public class GraphGreedy extends PartitionerAffinity {
         for(int vertex : vertices){
 
             // DEBUG
-            if(count_iter == 202){
-                System.out.println("Looking at the adjacency list of vertex " + AffinityGraph.m_vertexName.get(vertex));
-            }
+//            if(count_iter == 202){
+//                System.out.println("Looking at the adjacency list of vertex " + AffinityGraph.m_vertexName.get(vertex));
+//            }
 
             Int2DoubleMap adjacency = AffinityGraph.m_edges.get(vertex);
             if(adjacency != null){
@@ -484,10 +479,10 @@ public class GraphGreedy extends PartitionerAffinity {
                             && !vertices.contains(adjacentVertex)) {
 
                         //DEBUG
-                        if(count_iter == 202){
-                            System.out.println("Picked adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
-                            + " with affinity " + affinity);
-                        }
+//                        if(count_iter == 202){
+//                            System.out.println("Picked adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
+//                            + " with affinity " + affinity);
+//                        }
 
                         maxAffinity = affinity;
                         res = adjacentVertex;
@@ -526,10 +521,10 @@ public class GraphGreedy extends PartitionerAffinity {
                             maxAffinity = affinity;
                             res = adjacentVertex;
 
-                            if(count_iter == 202){
-                                System.out.println("Picked adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
-                                + " with affinity " + affinity);
-                            }
+//                            if(count_iter == 202){
+//                                System.out.println("Picked adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
+//                                + " with affinity " + affinity);
+//                            }
                         }
                     }
                 }
