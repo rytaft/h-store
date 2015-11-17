@@ -179,6 +179,7 @@ public class PlanHandler extends Plan {
                 }
                 else{
                     System.out.println("Table " + table + " misses id " + currVal + " next range " + range.getKey() + "-" + range.getValue());
+                    currVal = range.getValue() + 1;
                     res = false;
                 }
             }
