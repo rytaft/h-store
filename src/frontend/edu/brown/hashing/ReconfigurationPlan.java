@@ -186,8 +186,8 @@ public class ReconfigurationPlan {
           table_name = old_table.table_name;
           this.conf = HStoreConf.singleton(false);
           setReconfigurations(new ArrayList<ReconfigurationRange>());
-          Iterator<PartitionRange> old_ranges = old_table.getRanges().iterator();
-          Iterator<PartitionRange> new_ranges = new_table.getRanges().iterator();
+          Iterator<PartitionRange> old_ranges = old_table.partitions.iterator();
+          Iterator<PartitionRange> new_ranges = new_table.partitions.iterator();
 
           PartitionRange new_range = new_ranges.next();
           PartitionKeyComparator cmp = new PartitionKeyComparator();

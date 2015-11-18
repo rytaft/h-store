@@ -7,7 +7,6 @@ import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -15,10 +14,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.apache.commons.collections.map.LRUMap;
 import org.apache.commons.lang.NotImplementedException;
@@ -371,7 +368,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     public static class PartitionedTable {
 
-        protected TreeSet<PartitionRange> partitionRanges;
+        protected List<PartitionRange> partitions;
         protected String table_name;
         private Table catalog_table;
         private JSONObject table_json;
@@ -379,7 +376,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
         public PartitionedTable(String table_name, JSONObject table_json, Table catalog_table) throws Exception {
             this.catalog_table = catalog_table;
-            this.partitionRanges = new TreeSet<PartitionRange>();
+            this.partitions = new ArrayList<>();
             this.table_name = table_name;
             this.table_json = table_json;
             this.find_partition_cache = new LRUMap(1000);
@@ -394,6 +391,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 int partition_id = Integer.parseInt(partition);
                 this.addPartitionRanges(partition_id, partitions_json.getString(partition));
             }
+            Collections.sort(this.partitions);
         }
 
         public PartitionedTable clone(String new_table_name, Table new_catalog_table) throws Exception {
@@ -401,7 +399,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         }
 
         public PartitionedTable(List<PartitionRange> partitions, String table_name, Table catalog_table) {
-            this.partitionRanges.addAll(partitions);
+            this.partitions = partitions;
             this.table_name = table_name;
             this.catalog_table = catalog_table;
             this.find_partition_cache = new LRUMap(1000);
@@ -428,35 +426,17 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 //                }
             	
             	Object[] keys = ids.toArray();
-            	
-            	PartitionRange precedingRange = partitionRanges.floor(new PartitionRange(this.catalog_table, 0, keys, keys));
-                if(precedingRange != null) {
-//                for (PartitionRange p : this.partitions) {
+                for (PartitionRange p : this.partitions) {
                     // if this greater than or equal to the min inclusive val
                     // and
                     // less than
                     // max_exclusive or equal to both min and max (singleton)
                     // TODO fix partitiontype
-                    if (precedingRange.inRange(keys)) {
+                    if (p.inRange(keys)) {
 //                        synchronized (this) {
 //                            this.find_partition_cache.put(ids, p.partition);
 //                        }
-                    	return precedingRange.partition;
-                    }
-                }
-                PartitionRange followingRange = partitionRanges.ceiling(new PartitionRange(this.catalog_table, 0, keys, keys));
-                if(followingRange != null) {
-//                for (PartitionRange p : this.partitions) {
-                    // if this greater than or equal to the min inclusive val
-                    // and
-                    // less than
-                    // max_exclusive or equal to both min and max (singleton)
-                    // TODO fix partitiontype
-                    if (followingRange.inRange(keys)) {
-//                        synchronized (this) {
-//                            this.find_partition_cache.put(ids, p.partition);
-//                        }
-                        return followingRange.partition;
+                    	return p.partition;
                     }
                 }
             } catch (Exception e) {
@@ -464,7 +444,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
 
             if (debug.val)
-                LOG.debug("Partition not found. ids: " + ids.toString() + ", partitions: " + this.partitionRanges.toString());
+                LOG.debug("Partition not found. ids: " + ids.toString() + ", partitions: " + this.partitions.toString());
 //            synchronized(this){
 //                this.find_partition_cache.put(ids, HStoreConstants.NULL_PARTITION_ID);
 //            }
@@ -485,7 +465,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             List<Integer> partitionIds = new ArrayList<Integer>();
             Object[] keys = ids.toArray();
-            for (PartitionRange p : this.partitionRanges) {
+            for (PartitionRange p : this.partitions) {
                 try {
 
                     // if this greater than or equal to the min inclusive val
@@ -517,12 +497,12 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 this.find_partition_cache.clear();   
             }
             for (String range : partition_values.split(",")) {
-                 this.partitionRanges.add(new PartitionRange(this.catalog_table, partition_id, range));
+                this.partitions.add(new PartitionRange(this.catalog_table, partition_id, range));
             }
         }
 
         public List<PartitionRange> getRanges() {
-            return Arrays.asList(this.partitionRanges.toArray(new PartitionRange[]{}));
+            return this.partitions;
         }
 
         public Table getCatalog_table() {
@@ -531,7 +511,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         
         public String toString(){
             StringBuilder sb = new StringBuilder();
-            for (PartitionRange range : this.partitionRanges){
+            for (PartitionRange range : this.partitions){
                 sb.append(range.toString());
                 sb.append(",");
             }
