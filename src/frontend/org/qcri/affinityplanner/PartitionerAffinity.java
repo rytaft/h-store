@@ -267,23 +267,23 @@ public abstract class PartitionerAffinity implements Partitioner {
                 continue;
             }
             
-            System.out.println("Examining moving to partition: " + toPartition);
+            ////System.out.println("Examining moving to partition: " + toPartition);
 
             double receiverDelta = getReceiverDelta(move.movingVertices, toPartition);
             double receiverLoad = getLoadPerPartition(toPartition);
             
-            System.out.println("Receiver delta: " + receiverDelta + " min delta " + move.rcvDelta);
+            ////System.out.println("Receiver delta: " + receiverDelta + " min delta " + move.rcvDelta);
 
             if(receiverLoad + receiverDelta >= Controller.MAX_LOAD_PER_PART 
                     && receiverDelta > 0){
             
                 // unfeasible move
                 if (feasible){
-                    System.out.println("Would become overloaded, but have feasible move, skipping");
+                    ////System.out.println("Would become overloaded, but have feasible move, skipping");
                     // consider next partition
                     continue;
                 }
-                System.out.println("Would become overloaded, accepting as unfeasible");
+                ////System.out.println("Would become overloaded, accepting as unfeasible");
             }
             else{
                 // clear any existing unfeasible move
@@ -299,11 +299,11 @@ public abstract class PartitionerAffinity implements Partitioner {
             if (receiverDelta <= move.rcvDelta){
 
                 if (receiverDelta == move.rcvDelta){
-                    System.out.println("Load: " + receiverLoad + " min load " + currLoad);
+                    ////System.out.println("Load: " + receiverLoad + " min load " + currLoad);
                     if (receiverLoad < currLoad){
                         currLoad = receiverLoad;
                         
-                        System.out.println("Partition " + toPartition + " selected!");
+                        ////System.out.println("Partition " + toPartition + " selected!");
                         move.toPartition = toPartition;
                         move.sndDelta = senderDeltaLocal;
                         move.rcvDelta = receiverDelta;
@@ -313,7 +313,7 @@ public abstract class PartitionerAffinity implements Partitioner {
                 else{
                     currLoad = receiverLoad;
                     
-                    System.out.println("Partition " + toPartition + " selected!");
+                    ////System.out.println("Partition " + toPartition + " selected!");
                     move.toPartition = toPartition;
                     move.sndDelta = senderDeltaLocal;
                     move.rcvDelta = receiverDelta;
@@ -329,7 +329,7 @@ public abstract class PartitionerAffinity implements Partitioner {
 
             if(!localPartitions.contains(toPartition)){
 
-                System.out.println("Examining moving to partition: " + toPartition);
+                ////System.out.println("Examining moving to partition: " + toPartition);
 
                 double receiverDelta = getReceiverDelta(move.movingVertices, toPartition);
                 double receiverLoad = getLoadPerPartition(toPartition);
@@ -339,10 +339,10 @@ public abstract class PartitionerAffinity implements Partitioner {
 
                     // unfeasible move
                     if (feasible){
-                        System.out.println("Would become overloaded, but have feasible move, skipping");
+                        ////System.out.println("Would become overloaded, but have feasible move, skipping");
                         continue;
                     }
-                    System.out.println("Would become overloaded, accepting as unfeasible");
+                    ////System.out.println("Would become overloaded, accepting as unfeasible");
                 }
                 else{
                     // clear any existing unfeasible move
@@ -355,15 +355,15 @@ public abstract class PartitionerAffinity implements Partitioner {
                     feasible = true;
                 }
 
-                System.out.println("Receiver delta: " + receiverDelta + " min delta " + move.rcvDelta);
+                ////System.out.println("Receiver delta: " + receiverDelta + " min delta " + move.rcvDelta);
                 if (receiverDelta <= (move.rcvDelta * (1 - Controller.PENALTY_REMOTE_MOVE))){
 
                     if (receiverDelta == move.rcvDelta){
-                        System.out.println("Load: " + receiverLoad + " min load " + currLoad);
+                        ////System.out.println("Load: " + receiverLoad + " min load " + currLoad);
                         if (receiverLoad < currLoad){
                             currLoad = receiverLoad;
                             
-                            System.out.println("Selected!");
+                            ////System.out.println("Selected!");
                             move.toPartition = toPartition;
                             move.sndDelta = senderDeltaRemote;
                             move.rcvDelta = receiverDelta;
@@ -373,7 +373,7 @@ public abstract class PartitionerAffinity implements Partitioner {
                     else {
                         currLoad = receiverLoad;
                         
-                        System.out.println("Selected!");
+                        ////System.out.println("Selected!");
                         move.toPartition = toPartition;
                         move.sndDelta = senderDeltaRemote;
                         move.rcvDelta = receiverDelta;
@@ -647,7 +647,7 @@ public abstract class PartitionerAffinity implements Partitioner {
             }
         }
         
-        System.out.println("Cloned plan without hot tuples:\n" + oldPlan);
+        ////System.out.println("Cloned plan without hot tuples:\n" + oldPlan);
         
         // move the chunks
         
