@@ -157,7 +157,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                         //                        testNoOverload(candidateMove.toPartition);
 
-                        partitionLoadCache[overloadedPartition] += candidateMove.sndDelta;
+                        partitionLoadCache[overloadedPartition] = getLoadPerPartition(overloadedPartition);
                         nextHotTuplePos = candidateMove.nextHotTuplePos;
                         lastHotVertexMoved = nextHotTuplePos - 1;
                         currMove = null;
@@ -268,7 +268,7 @@ public class GraphGreedy extends PartitionerAffinity {
                     //                    lastHotVertexMoved = nextHotTuplePos - 1;
                     //                    testNoOverload(candidateMove.toPartition);
 
-                    partitionLoadCache[overloadedPartition] += candidateMove.sndDelta;
+                    partitionLoadCache[overloadedPartition] = getLoadPerPartition(overloadedPartition);
                     nextHotTuplePos = candidateMove.nextHotTuplePos;
                     lastHotVertexMoved = nextHotTuplePos - 1;
                     currMove = null;
