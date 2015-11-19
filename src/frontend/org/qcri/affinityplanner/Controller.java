@@ -39,7 +39,7 @@ public class Controller extends Thread {
     private CatalogContext m_catalog_context;
     private String m_connectedHost;
     
-    private static final Logger LOG = Logger.getLogger(Controller.class);
+//    private static final Logger LOG = Logger.getLogger(Controller.class);
 
 //    private Path planFile;
 //    private Path outputPlanFile;
@@ -86,8 +86,10 @@ public class Controller extends Thread {
    
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
         
-        m_client = ClientFactory.createClient();
-        m_client.configureBlocking(false);
+        if(EXEC_MONITORING || EXEC_RECONF){
+            m_client = ClientFactory.createClient();
+            m_client.configureBlocking(false);
+        }
         m_sites = CatalogUtil.getAllSites(catalog);
         m_catalog_context = catalog_context;
         
@@ -115,7 +117,7 @@ public class Controller extends Thread {
         
         if (hstore_conf.global.hasher_plan != null) {
             PLAN_IN = hstore_conf.global.hasher_plan;
-            LOG.info("Updating plan_in to be " + PLAN_IN);
+//            LOG.info("Updating plan_in to be " + PLAN_IN);
         }
         else{
             System.out.println("No plan specified. Exiting");
