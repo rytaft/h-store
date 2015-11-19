@@ -116,41 +116,41 @@ public abstract class LoggerUtil {
         }
         
         public void run() {
-            if (PROPERTIES_FILE == null) setupLogging();
-            Thread self = Thread.currentThread();
-            self.setName(HStoreConstants.THREAD_NAME_LOGGING);
-            
-            while (!self.isInterrupted()) {
-                try {
-                    Thread.sleep(this.interval);
-                } catch (InterruptedException ex) {
-                    break;
-                }
-                
-                // HACK: Look for an HStoreSite so that we can set our name properly
-                // This probably doesn't need to be synchronized
-                if (THREAD_MANAGER == null) {
-                    synchronized (LoggerUtil.class) {
-                        if (THREAD_MANAGER == null) {
-                            HStoreSite hstore_site = HStore.instance();
-                            if (hstore_site != null) {
-                                String name = HStoreThreadManager.getThreadName(hstore_site, HStoreConstants.THREAD_NAME_LOGGING);
-                                self.setName(name);
-                                THREAD_MANAGER = hstore_site.getThreadManager();
-                                THREAD_MANAGER.registerProcessingThread();
-                            }
-                        }
-                    } // SYNCH
-                }
-                
-                // Refresh our configuration if the file has changed
-                if (PROPERTIES_FILE != null && LAST_TIMESTAMP != PROPERTIES_FILE.lastModified()) {
-                    loadConfiguration(PROPERTIES_FILE);
-                    assert(PROPERTIES_FILE != null);
-                    Logger.getRootLogger().info("Refreshed log4j configuration [" + PROPERTIES_FILE.getAbsolutePath() + "]");
-                    LoggerUtil.OBSERVABLE.notifyObservers();
-                }
-            }
+//            if (PROPERTIES_FILE == null) setupLogging();
+//            Thread self = Thread.currentThread();
+//            self.setName(HStoreConstants.THREAD_NAME_LOGGING);
+//            
+//            while (!self.isInterrupted()) {
+//                try {
+//                    Thread.sleep(this.interval);
+//                } catch (InterruptedException ex) {
+//                    break;
+//                }
+//                
+//                // HACK: Look for an HStoreSite so that we can set our name properly
+//                // This probably doesn't need to be synchronized
+//                if (THREAD_MANAGER == null) {
+//                    synchronized (LoggerUtil.class) {
+//                        if (THREAD_MANAGER == null) {
+//                            HStoreSite hstore_site = HStore.instance();
+//                            if (hstore_site != null) {
+//                                String name = HStoreThreadManager.getThreadName(hstore_site, HStoreConstants.THREAD_NAME_LOGGING);
+//                                self.setName(name);
+//                                THREAD_MANAGER = hstore_site.getThreadManager();
+//                                THREAD_MANAGER.registerProcessingThread();
+//                            }
+//                        }
+//                    } // SYNCH
+//                }
+//                
+//                // Refresh our configuration if the file has changed
+//                if (PROPERTIES_FILE != null && LAST_TIMESTAMP != PROPERTIES_FILE.lastModified()) {
+//                    loadConfiguration(PROPERTIES_FILE);
+//                    assert(PROPERTIES_FILE != null);
+//                    Logger.getRootLogger().info("Refreshed log4j configuration [" + PROPERTIES_FILE.getAbsolutePath() + "]");
+//                    LoggerUtil.OBSERVABLE.notifyObservers();
+//                }
+//            }
         }
     }
     
