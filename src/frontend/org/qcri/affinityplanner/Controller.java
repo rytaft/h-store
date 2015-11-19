@@ -281,6 +281,9 @@ public class Controller extends Thread {
             if (!b){
                 record("Problem while partitioning graph. Writing incomplete plan out");
             }
+            t2 = System.currentTimeMillis();
+            record("Time taken:" + (t2-t1));
+
             partitioner.writePlan(PLAN_OUT);
  
 //            String outputPlan = FileUtil.readFile(PLAN_OUT);
@@ -291,8 +294,6 @@ public class Controller extends Thread {
                 record(j + " " + partitioner.getLoadPerPartition(j));
             }
 
-            t2 = System.currentTimeMillis();
-            record("Time taken:" + (t2-t1));
 //            record("Partitioner tuples to move: " + Controller.MAX_MOVED_TUPLES_PER_PART);
             
             System.out.println("Verifying output plan");

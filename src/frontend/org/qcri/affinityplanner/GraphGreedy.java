@@ -43,7 +43,7 @@ public class GraphGreedy extends PartitionerAffinity {
     public boolean repartition () {
 
         if (Controller.PARTITIONS_PER_SITE == -1 || Controller.MAX_PARTITIONS == -1){
-            System.out.println("GraphPartitioner: Must initialize PART_PER_SITE and MAX_PARTITIONS");
+            ////System.out.println("GraphPartitioner: Must initialize PART_PER_SITE and MAX_PARTITIONS");
             return false;
         }
 
@@ -60,11 +60,11 @@ public class GraphGreedy extends PartitionerAffinity {
 
         IntList overloadedPartitions = new IntArrayList();
 
-        System.out.println("Load per partition after moving border tuples");
+        ////System.out.println("Load per partition after moving border tuples");
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
             if(activePartitions.contains(i)){
                 double load =  getLoadPerPartition(i);
-                System.out.println(load);
+                ////System.out.println(load);
                 if (load > Controller.MAX_LOAD_PER_PART){
                     overloadedPartitions.add(i);
                 }
@@ -77,7 +77,7 @@ public class GraphGreedy extends PartitionerAffinity {
              *  SCALE OUT
              */
 
-            System.out.println("Move hot tuples");
+            ////System.out.println("Move hot tuples");
 
             return offloadHottestTuples(overloadedPartitions, activePartitions);
         }
@@ -94,7 +94,7 @@ public class GraphGreedy extends PartitionerAffinity {
     //    private void testNoOverload(int toPartition){
     //        double load =  getLoadPerPartition(toPartition);
     //        if (load > Controller.MAX_LOAD_PER_PART){
-    //            System.out.println("Partition " + toPartition + " is overloaded");
+    //            ////System.out.println("Partition " + toPartition + " is overloaded");
     //            System.exit(0);
     //        }
     //    }
@@ -103,15 +103,15 @@ public class GraphGreedy extends PartitionerAffinity {
 
         int addedPartitions = 0;
         // offload each overloaded partition
-        System.out.println("\nLOAD BALANCING");
-        System.out.println("#######################");
+        ////System.out.println("\nLOAD BALANCING");
+        ////System.out.println("#######################");
         
-        System.out.println(Controller.DTXN_COST);
+        ////System.out.println(Controller.DTXN_COST);
 
         for(int overloadedPartition : overloadedPartitions){
 
-            System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% offloading site " + overloadedPartition + " %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
-            System.out.println("Active partitions " + activePartitions.toString());
+            ////System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% offloading site " + overloadedPartition + " %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+            ////System.out.println("Active partitions " + activePartitions.toString());
 
             // get hottest vertices. the actual length of the array is min(Controller.MAX_MOVED_VERTICES, #tuples held site);
             int topk = Math.min(m_graph.numVertices(overloadedPartition), Controller.TOPK);
@@ -130,9 +130,9 @@ public class GraphGreedy extends PartitionerAffinity {
 
             int greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
 
-            while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
+            while(partitionLoadCache[overloadedPartition] > Controller.MAX_LOAD_PER_PART){
 
-                System.out.println("\n ######## ITERATION " + (count_iter++) + " ###########");
+                ////System.out.println("\n ######## ITERATION " + (count_iter++) + " ###########");
 
                 // ######## add partition and reset if I have over-expanded movingVertices, or if I cannot expand it anymore ##########
 
@@ -145,10 +145,10 @@ public class GraphGreedy extends PartitionerAffinity {
                     if(candidateMove != null ){
                         //                            && numMovedVertices + candidateMove.movingVertices.size() <= Controller.MAX_MOVED_TUPLES_PER_PART){
                         // before adding a partition, move current candidate if we have one
-                        System.out.println("Giving up on expanding the moving set");
-                        System.out.println("ACTUALLY moving to " + candidateMove.toPartition 
-                                + " with sender delta " + candidateMove.sndDelta + " and receiver delta " + candidateMove.rcvDelta);
-                        System.out.println("Moving:\n" + m_graph.verticesToString(candidateMove.movingVertices));
+                        ////System.out.println("Giving up on expanding the moving set");
+                        ////System.out.println("ACTUALLY moving to " + candidateMove.toPartition 
+//                                + " with sender delta " + candidateMove.sndDelta + " and receiver delta " + candidateMove.rcvDelta);
+                        ////System.out.println("Moving:\n" + m_graph.verticesToString(candidateMove.movingVertices));
 
                         m_graph.moveHotVertices(candidateMove.movingVertices, candidateMove.toPartition);
                         numMovedVertices += candidateMove.movingVertices.size();
@@ -156,6 +156,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                         //                        testNoOverload(candidateMove.toPartition);
 
+                        partitionLoadCache[overloadedPartition] += candidateMove.sndDelta;
                         nextHotTuplePos = candidateMove.nextHotTuplePos;
                         lastHotVertexMoved = nextHotTuplePos - 1;
                         currMove = null;
@@ -167,7 +168,7 @@ public class GraphGreedy extends PartitionerAffinity {
                     }
                     
                     // if none of the current partitions wants to take the group, add partitions
-                    System.out.println("Cannot expand - Adding a new partition");
+                    ////System.out.println("Cannot expand - Adding a new partition");
 
                     // We fill up low-order partitions first to minimize the number of servers
                     int newPartCount = 0;
@@ -186,7 +187,7 @@ public class GraphGreedy extends PartitionerAffinity {
                             || addedPartitions > Controller.MAX_PARTITIONS_ADDED
                             || newPartCount == 0){
 
-                        System.out.println("GIVING UP!! Cannot add new partition to offload " + overloadedPartitions);
+                        ////System.out.println("GIVING UP!! Cannot add new partition to offload " + overloadedPartitions);
 
                         return false;
                     }
@@ -206,8 +207,8 @@ public class GraphGreedy extends PartitionerAffinity {
                     currMove = new Move();
                 }
                 else {
-                    System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
-                    System.out.println("Current sender delta " + currMove.sndDelta);                    
+                    ////System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
+                    ////System.out.println("Current sender delta " + currMove.sndDelta);                    
                 }
 
                 nextHotTuplePos = expandMovingVertices (currMove, hotVerticesList, nextHotTuplePos, activePartitions, overloadedPartition, leastLoadedPartition);
@@ -217,8 +218,8 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 // ########## move the vertices if could expand
 
-                System.out.println("Moving:\n" + m_graph.verticesToString(currMove.movingVertices));
-                System.out.println("Receiver: " + currMove.toPartition + ", receiver delta " + currMove.rcvDelta);
+                ////System.out.println("Moving:\n" + m_graph.verticesToString(currMove.movingVertices));
+                ////System.out.println("Receiver: " + currMove.toPartition + ", receiver delta " + currMove.rcvDelta);
 
                 // check move
                 if(currMove.toPartition != -1
@@ -233,12 +234,12 @@ public class GraphGreedy extends PartitionerAffinity {
 //                        findBestPartition(currMove, overloadedPartition, activePartitions);
 //                    }
                     
-                    if (getLoadPerPartition(currMove.toPartition) + currMove.rcvDelta <= Controller.MAX_LOAD_PER_PART
+                    if (currMove.rcvLoad + currMove.rcvDelta <= Controller.MAX_LOAD_PER_PART
                             || currMove.rcvDelta <= 0){
 
                         if(candidateMove == null || currMove.rcvDelta <= candidateMove.rcvDelta){
     
-                            System.out.println("CANDIDATE for moving to " + currMove.toPartition);
+                            ////System.out.println("CANDIDATE for moving to " + currMove.toPartition);
     
                             // record this move as a candidate
                             candidateMove = currMove.clone();
@@ -257,15 +258,16 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 // move after making enough steps
                 if (greedyStepsAhead == 0){
-                    System.out.println("ACTUALLY moving to " + candidateMove.toPartition + " with sender delta " 
-                            + candidateMove.sndDelta + " and receiver delta " + candidateMove.rcvDelta);
-                    System.out.println("Moving:\n" + m_graph.verticesToString(candidateMove.movingVertices));
+                    ////System.out.println("ACTUALLY moving to " + candidateMove.toPartition + " with sender delta " 
+//                            + candidateMove.sndDelta + " and receiver delta " + candidateMove.rcvDelta);
+                    ////System.out.println("Moving:\n" + m_graph.verticesToString(candidateMove.movingVertices));
 
                     m_graph.moveHotVertices(candidateMove.movingVertices, candidateMove.toPartition);
                     numMovedVertices += candidateMove.movingVertices.size();
                     //                    lastHotVertexMoved = nextHotTuplePos - 1;
                     //                    testNoOverload(candidateMove.toPartition);
 
+                    partitionLoadCache[overloadedPartition] += candidateMove.sndDelta;
                     nextHotTuplePos = candidateMove.nextHotTuplePos;
                     lastHotVertexMoved = nextHotTuplePos - 1;
                     currMove = null;
@@ -306,7 +308,7 @@ public class GraphGreedy extends PartitionerAffinity {
             }
 
             move.movingVertices.add(nextHotVertex);
-            System.out.println("Adding vertex " + m_graph.m_vertexName.get(nextHotVertex));
+            ////System.out.println("Adding vertex " + m_graph.m_vertexName.get(nextHotVertex));
 
             findBestPartition(move, fromPartition, activePartitions);
 
@@ -326,7 +328,7 @@ public class GraphGreedy extends PartitionerAffinity {
             if(affineVertex != 0){
 
                 // DEBUG
-                System.out.println("Adding edge extension: " + AffinityGraph.m_vertexName.get(affineVertex));
+                ////System.out.println("Adding edge extension: " + AffinityGraph.m_vertexName.get(affineVertex));
 
                 move.movingVertices.add(affineVertex);
                 move.wasExtended = true;
@@ -347,9 +349,9 @@ public class GraphGreedy extends PartitionerAffinity {
                         && extensionPartition != fromPartition){
 
                     double extensionReceiverDelta = getReceiverDelta(move.movingVertices, extensionPartition);
-                    double extensionReceiverLoad = getLoadPerPartition(extensionPartition);
+                    double extensionReceiverLoad = partitionLoadCache[extensionPartition];
                     
-                    System.out.println("Receiver delta of affine partition " + extensionPartition + " is " + extensionReceiverDelta);
+                    ////System.out.println("Receiver delta of affine partition " + extensionPartition + " is " + extensionReceiverDelta);
 
                     if (extensionReceiverLoad + extensionReceiverDelta <= Controller.MAX_LOAD_PER_PART
                             || extensionReceiverDelta <= 0){
@@ -364,9 +366,9 @@ public class GraphGreedy extends PartitionerAffinity {
                 if (leastLoadedPartition != move.toPartition && leastLoadedPartition != fromPartition){
 
                     double leastLoadedReceiverDelta = getReceiverDelta(move.movingVertices, leastLoadedPartition);
-                    double leastLoadedReceiverLoad = getLoadPerPartition(leastLoadedPartition);
+                    double leastLoadedReceiverLoad = partitionLoadCache[leastLoadedPartition];
                     
-                    System.out.println("Receiver delta of least loaded partition " + leastLoadedPartition + " is " + leastLoadedReceiverDelta + " and load is " + leastLoadedReceiverLoad);
+                    ////System.out.println("Receiver delta of least loaded partition " + leastLoadedPartition + " is " + leastLoadedReceiverDelta + " and load is " + leastLoadedReceiverLoad);
 
                     if (leastLoadedReceiverLoad < move.rcvDelta &&
                             (leastLoadedReceiverLoad + leastLoadedReceiverDelta < Controller.MAX_LOAD_PER_PART
@@ -381,7 +383,7 @@ public class GraphGreedy extends PartitionerAffinity {
                 return nextHotTuplePos;
             }
                 
-            System.out.println("Could not expand");
+            ////System.out.println("Could not expand");
             move.wasExtended = false;
             return nextHotTuplePos;
 
@@ -428,7 +430,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
             // DEBUG
 //            if(count_iter == 202){
-//                System.out.println("Looking at the adjacency list of vertex " + AffinityGraph.m_vertexName.get(vertex));
+//                ////System.out.println("Looking at the adjacency list of vertex " + AffinityGraph.m_vertexName.get(vertex));
 //            }
 
             Int2DoubleMap adjacency = AffinityGraph.m_edges.get(vertex);
@@ -440,7 +442,7 @@ public class GraphGreedy extends PartitionerAffinity {
                     double affinity = edge.getDoubleValue();
 
                     // DEBUG
-//                        System.out.println("Looking at adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
+//                        ////System.out.println("Looking at adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
 //                            + " with affinity " + affinity);
 
                     if (affinity > maxAffinity
@@ -449,7 +451,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
                         //DEBUG
 //                        if(count_iter == 202){
-//                            System.out.println("Picked adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
+//                            ////System.out.println("Picked adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
 //                            + " with affinity " + affinity);
 //                        }
 
@@ -491,7 +493,7 @@ public class GraphGreedy extends PartitionerAffinity {
                             res = adjacentVertex;
 
 //                            if(count_iter == 202){
-//                                System.out.println("Picked adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
+//                                ////System.out.println("Picked adjacent vertex " + AffinityGraph.m_vertexName.get(adjacentVertex)
 //                                + " with affinity " + affinity);
 //                            }
                         }
@@ -500,7 +502,7 @@ public class GraphGreedy extends PartitionerAffinity {
             }            
         }
         
-        System.out.println("Max affinity: " + maxAffinity);
+        ////System.out.println("Max affinity: " + maxAffinity);
 
         return res;
     }
@@ -534,9 +536,9 @@ public class GraphGreedy extends PartitionerAffinity {
             else{
                 if(fromPartition != AffinityGraph.m_vertexPartition.get(vertex)){
                     int otherPartition = AffinityGraph.m_vertexPartition.get(vertex);
-                    System.out.println("vertex with hash " + vertex + " and name " + AffinityGraph.m_vertexName.get(vertex) + " is not on partition " + fromPartition + " but on partition " + otherPartition);
-                    System.out.println("Vertex is in PartitionVertex for partition " + fromPartition + ": " + AffinityGraph.m_partitionVertices.get(fromPartition).contains(vertex));
-                    System.out.println("Vertex is in PartitionVertex for partition " + otherPartition + ": " + AffinityGraph.m_partitionVertices.get(otherPartition).contains(vertex));
+                    ////System.out.println("vertex with hash " + vertex + " and name " + AffinityGraph.m_vertexName.get(vertex) + " is not on partition " + fromPartition + " but on partition " + otherPartition);
+                    ////System.out.println("Vertex is in PartitionVertex for partition " + fromPartition + ": " + AffinityGraph.m_partitionVertices.get(fromPartition).contains(vertex));
+                    ////System.out.println("Vertex is in PartitionVertex for partition " + otherPartition + ": " + AffinityGraph.m_partitionVertices.get(otherPartition).contains(vertex));
                     System.exit(0);
                 }
             }
