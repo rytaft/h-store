@@ -486,8 +486,8 @@ public class GraphGreedy extends PartitionerAffinity {
 
                         if (affinity > maxAffinity
                                 && !vertices.contains(adjacentVertex)
-                                && newVertexPartition != senderPartition){ 
-//                                && getSenderDelta(vertexSingleton, newVertexPartition, false) <= 0) {
+                                && newVertexPartition != senderPartition
+                                && getSenderDelta(vertexSingleton, newVertexPartition, false) <= 0) {
                             maxAffinity = affinity;
                             res = adjacentVertex;
 
