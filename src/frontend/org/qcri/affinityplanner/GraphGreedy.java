@@ -64,6 +64,7 @@ public class GraphGreedy extends PartitionerAffinity {
         for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
             if(activePartitions.contains(i)){
                 double load =  getLoadPerPartition(i);
+                partitionLoadCache[i] = load;
                 ////System.out.println(load);
                 if (load > Controller.MAX_LOAD_PER_PART){
                     overloadedPartitions.add(i);
