@@ -208,7 +208,7 @@ public class GraphGreedy extends PartitionerAffinity {
                     currMove = new Move();
                 }
                 else {
-                    System.out.println("Current load " + getLoadPerPartition(overloadedPartition));
+                    System.out.println("Current load " + partitionLoadCache[overloadedPartition]);
                     System.out.println("Current sender delta " + currMove.sndDelta);                    
                 }
 
