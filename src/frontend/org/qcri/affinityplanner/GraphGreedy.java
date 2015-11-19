@@ -482,14 +482,12 @@ public class GraphGreedy extends PartitionerAffinity {
                         int newVertexPartition = AffinityGraph.m_vertexPartition.get(adjacentVertex);
 
                         vertexSingleton.add(adjacentVertex);
-                        // setting the destination partition to be remote = worst case for the sender
-//                        double newVertexPartitionDelta = getSenderDelta(vertexSingleton, newVertexPartition, false);
                         vertexSingleton.remove(adjacentVertex);
 
                         if (affinity > maxAffinity
                                 && !vertices.contains(adjacentVertex)
                                 && newVertexPartition != senderPartition){ 
-//                                && newVertexPartitionDelta <= 0) {
+//                                && getSenderDelta(vertexSingleton, newVertexPartition, false) <= 0) {
                             maxAffinity = affinity;
                             res = adjacentVertex;
 
