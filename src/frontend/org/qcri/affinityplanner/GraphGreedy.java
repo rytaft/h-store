@@ -117,7 +117,7 @@ public class GraphGreedy extends PartitionerAffinity {
             int topk = Math.min(m_graph.numVertices(overloadedPartition), Controller.TOPK);
             IntList hotVerticesList = getHottestVertices(overloadedPartition, topk);
 
-            int numMovedVertices = 0;
+//            int numMovedVertices = 0;
             int nextHotTuplePos = 0;
             int lastHotVertexMoved = -1;
 
@@ -140,7 +140,8 @@ public class GraphGreedy extends PartitionerAffinity {
 
                 if (currMove != null && 
                         (nextHotTuplePos >= hotVerticesList.size() 
-                        || numMovedVertices + currMove.movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART 
+//                        || numMovedVertices + currMove.movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART 
+                        || currMove.movingVertices.size() >= Controller.MAX_MOVED_TUPLES_PER_PART 
                         || currMove.toPartition == -1
                         || !currMove.wasExtended)){
 
@@ -153,7 +154,7 @@ public class GraphGreedy extends PartitionerAffinity {
                         System.out.println("Moving:\n" + m_graph.verticesToString(candidateMove.movingVertices));
 
                         m_graph.moveHotVertices(candidateMove.movingVertices, candidateMove.toPartition);
-                        numMovedVertices += candidateMove.movingVertices.size();
+//                        numMovedVertices += candidateMove.movingVertices.size();
                         //                        lastHotVertexMoved = nextHotTuplePos - 1;
 
                         //                        testNoOverload(candidateMove.toPartition);
@@ -265,7 +266,7 @@ public class GraphGreedy extends PartitionerAffinity {
                     System.out.println("Moving:\n" + m_graph.verticesToString(candidateMove.movingVertices));
 
                     m_graph.moveHotVertices(candidateMove.movingVertices, candidateMove.toPartition);
-                    numMovedVertices += candidateMove.movingVertices.size();
+//                    numMovedVertices += candidateMove.movingVertices.size();
                     //                    lastHotVertexMoved = nextHotTuplePos - 1;
                     //                    testNoOverload(candidateMove.toPartition);
 
