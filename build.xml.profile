@@ -1698,6 +1698,8 @@ TEST CASES
         <jvmarg value="-Xcheck:jni"/>
         <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
         <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
+        <!--<jvmarg value="-agentpath:/home/serafini/yjp-2015-build-15076/bin/linux-x86-64/libyjpagent.so=port=10001" />-->
+
         
         <assertions refid="site.assertions"/>
 
@@ -2527,6 +2529,7 @@ UTILITIES
         <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
         <jvmarg value="-server" />
         <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
+        <jvmarg value="-agentpath:/home/serafini/yjp-2015-build-15076/bin/linux-x86-64/libyjpagent.so=port=10001" />
 
         <arg value="catalog.jar=${jar}" />
         <arg value="conf=${conf}" />
@@ -2668,7 +2671,7 @@ UTILITIES
         description="H-Store Affinity Controller with Profiler Agent">
   <java fork="yes" failonerror="true" classname="org.qcri.affinityplanner.Controller">
         <jvmarg value="-client" />
-        <jvmarg value="-agentpath:/home/serafini/yjp-2015-build-15076/bin/linux-x86-64/libyjpagent.so=port=10001" />
+        <jvmarg value="-agentpath:/home/mserafini/yjp-2014-build-14120/bin/linux-x86-64/libyjpagent.so=port=10001" />
         <jvmarg value="-Xms256m" />
         <jvmarg value="-Xmx${client.memory}m" />
         <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
