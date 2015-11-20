@@ -130,9 +130,7 @@ public class GraphGreedy extends PartitionerAffinity {
 
             int greedyStepsAhead = Controller.GREEDY_STEPS_AHEAD;
             
-            double overloadedPartitionLoad = getLoadPerPartition(overloadedPartition);
-
-            while(overloadedPartitionLoad > Controller.MAX_LOAD_PER_PART){
+            while(getLoadPerPartition(overloadedPartition) > Controller.MAX_LOAD_PER_PART){
 
                 System.out.println("\n ######## ITERATION " + (count_iter++) + " ###########");
 
@@ -158,7 +156,6 @@ public class GraphGreedy extends PartitionerAffinity {
 
                         //                        testNoOverload(candidateMove.toPartition);
 
-                        overloadedPartitionLoad = getLoadPerPartition(overloadedPartition);
                         nextHotTuplePos = candidateMove.nextHotTuplePos;
                         lastHotVertexMoved = nextHotTuplePos - 1;
                         currMove = null;
@@ -269,7 +266,6 @@ public class GraphGreedy extends PartitionerAffinity {
                     //                    lastHotVertexMoved = nextHotTuplePos - 1;
                     //                    testNoOverload(candidateMove.toPartition);
 
-                    overloadedPartitionLoad = getLoadPerPartition(overloadedPartition);
                     nextHotTuplePos = candidateMove.nextHotTuplePos;
                     lastHotVertexMoved = nextHotTuplePos - 1;
                     currMove = null;
