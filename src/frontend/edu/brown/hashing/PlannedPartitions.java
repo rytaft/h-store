@@ -671,7 +671,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
         private int getNonNullCols() {
             int non_null_cols = 0;
-            for (int i = 0; i < min_incl.length; i++) {
+            for (int i = 0; i < Math.min(min_incl.length, keySchema.getColumnCount()); i++) {
                 VoltType vt = keySchema.getColumnType(i);
                 if (vt.getNullValue().equals(min_incl[i]) && vt.getNullValue().equals(max_excl[i])) {
                     break;
