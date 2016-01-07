@@ -74,7 +74,7 @@
    "SINGLE_PARTITION": true,
    "METHOD": "HASH",
    "ATTRIBUTE": "{'delivery':'0'}",
-   "ATTRIBUTE_class": "org.voltdb.catalog.ProcParameter"
+   "ATTRIBUTE_class": "org.voltdb.catalog.ProcParameter",
    "TABLE": "{'database':'WAREHOUSE'}",
    "COLUMN": "{'WAREHOUSE':'W_ID'}",
    "COLUMN_class": "org.voltdb.catalog.Column"
@@ -83,7 +83,7 @@
    "SINGLE_PARTITION": false,
    "METHOD": "HASH",
    "ATTRIBUTE": "{'neworder#*MultiProcParameter*':[{'neworder':'0'},{'neworder':'1'}]}",
-   "ATTRIBUTE_class": "edu.brown.catalog.special.MultiProcParameter"
+   "ATTRIBUTE_class": "edu.brown.catalog.special.MultiProcParameter",
    "TABLE": "{'database':'DISTRICT'}",
    "COLUMN": "{'DISTRICT#*MultiColumn*':[{'DISTRICT':'D_W_ID'},{'DISTRICT':'D_ID'}]}",
    "COLUMN_class": "edu.brown.catalog.special.MultiColumn"
@@ -92,7 +92,7 @@
    "SINGLE_PARTITION": true,
    "METHOD": "HASH",
    "ATTRIBUTE": "{'ostatByCustomerId#*MultiProcParameter*':[{'ostatByCustomerId':'0'},{'ostatByCustomerId':'1'}]}",
-   "ATTRIBUTE_class": "edu.brown.catalog.special.MultiProcParameter"
+   "ATTRIBUTE_class": "edu.brown.catalog.special.MultiProcParameter",
    "TABLE": "{'database':'DISTRICT'}",
    "COLUMN": "{'DISTRICT#*MultiColumn*':[{'DISTRICT':'D_W_ID'},{'DISTRICT':'D_ID'}]}",
    "COLUMN_class": "edu.brown.catalog.special.MultiColumn"
@@ -101,7 +101,7 @@
    "SINGLE_PARTITION": true,
    "METHOD": "HASH",
    "ATTRIBUTE": "{'ostatByCustomerName#*MultiProcParameter*':[{'ostatByCustomerName':'0'},{'ostatByCustomerName':'1'}]}",
-   "ATTRIBUTE_class": "edu.brown.catalog.special.MultiProcParameter"
+   "ATTRIBUTE_class": "edu.brown.catalog.special.MultiProcParameter",
    "TABLE": "{'database':'DISTRICT'}",
    "COLUMN": "{'DISTRICT#*MultiColumn*':[{'DISTRICT':'D_W_ID'},{'DISTRICT':'D_ID'}]}",
    "COLUMN_class": "edu.brown.catalog.special.MultiColumn"
@@ -110,7 +110,7 @@
    "SINGLE_PARTITION": false,
    "METHOD": "HASH",
    "ATTRIBUTE": "{'paymentByCustomerId#*MultiProcParameter*':[{'paymentByCustomerId':'0'},{'paymentByCustomerId':'1'}]}",
-   "ATTRIBUTE_class": "edu.brown.catalog.special.MultiProcParameter"
+   "ATTRIBUTE_class": "edu.brown.catalog.special.MultiProcParameter",
    "TABLE": "{'database':'DISTRICT'}",
    "COLUMN": "{'DISTRICT#*MultiColumn*':[{'DISTRICT':'D_W_ID'},{'DISTRICT':'D_ID'}]}",
    "COLUMN_class": "edu.brown.catalog.special.MultiColumn"
@@ -119,7 +119,7 @@
    "SINGLE_PARTITION": false,
    "METHOD": "HASH",
    "ATTRIBUTE": "{'paymentByCustomerName#*MultiProcParameter*':[{'paymentByCustomerName':'0'},{'paymentByCustomerName':'1'}]}",
-   "ATTRIBUTE_class": "edu.brown.catalog.special.MultiProcParameter"
+   "ATTRIBUTE_class": "edu.brown.catalog.special.MultiProcParameter",
    "TABLE": "{'database':'DISTRICT'}",
    "COLUMN": "{'DISTRICT#*MultiColumn*':[{'DISTRICT':'D_W_ID'},{'DISTRICT':'D_ID'}]}",
    "COLUMN_class": "edu.brown.catalog.special.MultiColumn"
@@ -128,7 +128,7 @@
    "SINGLE_PARTITION": false,
    "METHOD": "HASH",
    "ATTRIBUTE": "{'slev#*MultiProcParameter*':[{'slev':'0'},{'slev':'1'}]}",
-   "ATTRIBUTE_class": "edu.brown.catalog.special.MultiProcParameter"
+   "ATTRIBUTE_class": "edu.brown.catalog.special.MultiProcParameter",
    "TABLE": "{'database':'DISTRICT'}",
    "COLUMN": "{'DISTRICT#*MultiColumn*':[{'DISTRICT':'D_W_ID'},{'DISTRICT':'D_ID'}]}",
    "COLUMN_class": "edu.brown.catalog.special.MultiColumn"
