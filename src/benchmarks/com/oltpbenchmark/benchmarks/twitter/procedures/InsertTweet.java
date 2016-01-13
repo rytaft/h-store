@@ -9,7 +9,7 @@ import org.voltdb.VoltTable;
 import org.voltdb.types.TimestampType;
 
 @ProcInfo(
-		partitionInfo = "ADDED_TWEETS.UID: 0",
+		partitionInfo = "ADDED_TWEETS.UID: 1",
         singlePartition = true
 )
 public class InsertTweet extends VoltProcedure {
