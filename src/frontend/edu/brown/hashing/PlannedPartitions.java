@@ -401,6 +401,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         }
 
         public PartitionedTable(List<PartitionRange> partitions, String table_name, Table catalog_table) {
+            this.partitionRanges = new TreeSet<PartitionRange>();
             this.partitionRanges.addAll(partitions);
             this.table_name = table_name;
             this.catalog_table = catalog_table;
