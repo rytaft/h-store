@@ -122,8 +122,6 @@ public class AffinityLoader extends Loader {
                 }
                 this.loadVoltTable(AffinityConstants.TABLENAME_SUPPLIERS, table);
 
-                System.out.println("Done");
-
                 total.addAndGet(table.getRowCount());
                 table.clearRowData();
                 if (debug.val) {
@@ -139,8 +137,6 @@ public class AffinityLoader extends Loader {
             }
 
             this.loadVoltTable(AffinityConstants.TABLENAME_SUPPLIERS, table);
-
-            System.out.println("Done");
 
             total.addAndGet(table.getRowCount());
             table.clearRowData();
@@ -187,8 +183,6 @@ public class AffinityLoader extends Loader {
 
                 this.loadVoltTable(AffinityConstants.TABLENAME_PRODUCTS, table);
 
-                System.out.println("Done");
-
                 total.addAndGet(table.getRowCount());
                 table.clearRowData();
                 if (debug.val) {
@@ -204,8 +198,6 @@ public class AffinityLoader extends Loader {
             }
 
             this.loadVoltTable(AffinityConstants.TABLENAME_PRODUCTS, table);
-
-            System.out.println("Done");
 
             total.addAndGet(table.getRowCount());
             table.clearRowData();
@@ -250,8 +242,6 @@ public class AffinityLoader extends Loader {
 
                 this.loadVoltTable(AffinityConstants.TABLENAME_PARTS, table);
 
-                System.out.println("Done");
-
                 total.addAndGet(table.getRowCount());
                 table.clearRowData();
                 if (debug.val) {
@@ -267,8 +257,6 @@ public class AffinityLoader extends Loader {
             }
 
             this.loadVoltTable(AffinityConstants.TABLENAME_PARTS, table);
-
-            System.out.println("Done");
 
             total.addAndGet(table.getRowCount());
             table.clearRowData();
@@ -335,8 +323,6 @@ public class AffinityLoader extends Loader {
 
             this.loadVoltTable(AffinityConstants.TABLENAME_SUPPLIES, table);
 
-            System.out.println("Done");
-
             total.addAndGet(table.getRowCount());
             table.clearRowData();
             if (debug.val) {
@@ -398,8 +384,6 @@ public class AffinityLoader extends Loader {
             }
 
             this.loadVoltTable(AffinityConstants.TABLENAME_USES, table);
-
-            System.out.println("Done");
 
             total.addAndGet(table.getRowCount());
             table.clearRowData();
