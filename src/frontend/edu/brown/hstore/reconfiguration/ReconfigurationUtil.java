@@ -358,7 +358,10 @@ public class ReconfigurationUtil {
     	
     	// find reverse map of fk partitioning
     	for(Entry<String, String> entry : plan.getPartitionedTablesByFK().entrySet()) {
-    		explicitPartitionedTables.get(entry.getValue()).add(entry.getKey());
+    	    List<String> table = explicitPartitionedTables.get(entry.getValue());
+    	    if (table != null) {
+    	        table.add(entry.getKey());
+    	    }
     	}
     	
     	// sort the ranges
