@@ -309,6 +309,7 @@ public class ReconfigurationPlan {
                 	Object[] min = range.getMinIncl().get(0);
                     partialRange.getMaxExcl().add(max);
                     partialRange.getMinIncl().add(min);
+                    partialRange.updateNonNullCols();
                     long max_potential_keys = partialRange.getMaxPotentialKeys();
                     
                     // once we have reached the minimum number of rows, we can add this set of ranges to the output
@@ -505,10 +506,7 @@ public class ReconfigurationPlan {
         		this.max_excl.add(max_excl.getRowArray());
         	}
         	
-        	this.non_null_cols = new int[this.min_incl.size()];
-        	for(int i = 0; i < this.min_incl.size(); i++) {
-        		this.non_null_cols[i] = this.getNonNullCols(i);
-        	}
+        	this.updateNonNullCols();
         }
         
         public ReconfigurationRange(Table table, VoltTable min_incl, VoltTable max_excl, int old_partition, int new_partition) {
@@ -521,10 +519,7 @@ public class ReconfigurationPlan {
         		this.max_excl.add(max_excl.getRowArray());
         	}
         	
-        	this.non_null_cols = new int[this.min_incl.size()];
-        	for(int i = 0; i < this.min_incl.size(); i++) {
-        		this.non_null_cols[i] = this.getNonNullCols(i);
-        	}
+        	this.updateNonNullCols();
         }
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition) {
@@ -533,10 +528,7 @@ public class ReconfigurationPlan {
         	this.min_incl.add(min_incl);
         	this.max_excl.add(max_excl);
         	
-        	this.non_null_cols = new int[this.min_incl.size()];
-        	for(int i = 0; i < this.min_incl.size(); i++) {
-        		this.non_null_cols[i] = this.getNonNullCols(i);
-        	}
+        	this.updateNonNullCols();
         }
         
         public ReconfigurationRange(Table table, Object[] min_incl, Object[] max_excl, int old_partition, int new_partition) {
@@ -545,10 +537,7 @@ public class ReconfigurationPlan {
         	this.min_incl.add(min_incl);
         	this.max_excl.add(max_excl);
         	
-        	this.non_null_cols = new int[this.min_incl.size()];
-        	for(int i = 0; i < this.min_incl.size(); i++) {
-        		this.non_null_cols[i] = this.getNonNullCols(i);
-        	}
+        	this.updateNonNullCols();
         }
         
         public ReconfigurationRange(String table_name, VoltTable keySchema, List<Object[]> min_incl, List<Object[]> max_excl, int old_partition, int new_partition) {
@@ -563,10 +552,7 @@ public class ReconfigurationPlan {
             this.new_partition = new_partition;
             this.table_name = table_name;
             
-            this.non_null_cols = new int[this.min_incl.size()];
-        	for(int i = 0; i < this.min_incl.size(); i++) {
-        		this.non_null_cols[i] = this.getNonNullCols(i);
-        	}
+            this.updateNonNullCols();
         }
         
         public ReconfigurationRange(Table table, List<Object[]> min_incl, List<Object[]> max_excl, int old_partition, int new_partition) {
@@ -582,10 +568,7 @@ public class ReconfigurationPlan {
             this.new_partition = new_partition;
             this.table_name = table.getName().toLowerCase();
             
-            this.non_null_cols = new int[this.min_incl.size()];
-        	for(int i = 0; i < this.min_incl.size(); i++) {
-        		this.non_null_cols[i] = this.getNonNullCols(i);
-        	}
+            this.updateNonNullCols();
         }
         
         public ReconfigurationRange clone(Table new_table) {
@@ -852,6 +835,13 @@ public class ReconfigurationPlan {
         
         public Table getTable() {
         	return this.catalog_table;
+        }
+        
+        public void updateNonNullCols() {
+            this.non_null_cols = new int[this.min_incl.size()];
+            for(int i = 0; i < this.min_incl.size(); i++) {
+                this.non_null_cols[i] = this.getNonNullCols(i);
+            }
         }
        
     }
