@@ -77,7 +77,8 @@ public class Monitor {
         String s = null;
         m_curr_entries ++;
         if (m_curr_entries > max_entries){
-            LOG.warn("Must close access log file because of too many entries");
+            LOG.error("Must close access log file because of too many entries");
+            System.out.println("Must close access log file because of too many entries");
             closeLog();
             return false;
         }
@@ -96,7 +97,8 @@ public class Monitor {
                 	String table_name = ((ExplicitHasher) this.m_p_estimator.getHasher()).getPartitions().getParentTableName(column);
                 	
                     if (table_name == null){
-                        LOG.warn("Monitoring cannot determine the table accessed by a transaction");
+                        LOG.error("Monitoring cannot determine the table accessed by a transaction");
+                        System.out.println("Monitoring cannot determine the table accessed by a transaction");
                     }
                     else{
 // EDITED - this would print all fields that accessed. we print only the first one assuming that it is the partitioning key
@@ -112,10 +114,12 @@ public class Monitor {
                     }
                 } catch (ClassCastException e) {
                     e.printStackTrace();
-                   LOG.warn("Monitoring cannot determine the table accessed by a transaction");
+                    LOG.error("Monitoring cannot determine the table accessed by a transaction");
+                    System.out.println("Monitoring cannot determine the table accessed by a transaction");
                 } catch (IOException e) {
                     e.printStackTrace();
-                    LOG.warn("Failed while writing file " + m_logFile.toString());
+                    LOG.error("Failed while writing file " + m_logFile.toString());
+                    System.out.println("Failed while writing file " + m_logFile.toString());
                 }
             }
         }
@@ -129,13 +133,15 @@ public class Monitor {
             m_writer.newLine();
         } catch (IOException e) {
             e.printStackTrace();
-            LOG.warn("Failed while writing file " + m_logFile.toString());
+            LOG.error("Failed while writing file " + m_logFile.toString());
+            System.out.println("Failed while writing file " + m_logFile.toString());
         }
     }
     
     public void openLog(Path logFile, Path intervalPath){
         if(m_is_monitoring){
-            LOG.warn("Monitor opened accessed monitoring log - " + logFile.toString() + " - before closing the previous one - " + m_logFile.toString());
+            LOG.error("Monitor opened accessed monitoring log - " + logFile.toString() + " - before closing the previous one - " + m_logFile.toString());
+            System.out.println("Monitor opened accessed monitoring log - " + logFile.toString() + " - before closing the previous one - " + m_logFile.toString());
             closeLog();
         }
         m_start_monitoring = System.currentTimeMillis();
@@ -145,7 +151,8 @@ public class Monitor {
             m_writer = Files.newBufferedWriter(m_logFile, Charset.forName("US-ASCII"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
             m_writer = null;
-            LOG.warn("Monitor failed while creating file " + m_logFile.toString());
+            LOG.error("Monitor failed while creating file " + m_logFile.toString());
+            System.out.println("Monitor failed while creating file " + m_logFile.toString());
             return;
        }       
         m_is_monitoring = true;
@@ -153,14 +160,15 @@ public class Monitor {
     
     public void closeLog(){
         if(! m_is_monitoring){
-            LOG.warn("Monitor tried to close access log but it was not open");
+            LOG.error("Monitor tried to close access log but it was not open");
             System.out.println("Monitor tried to close access log but it was not open");
         }
         else{
             try {
                 m_writer.close();
             } catch (IOException e) {
-                LOG.warn("Monitor failed while closing file " + m_logFile.toString() + "\nStack trace " + Controller.stackTraceToString(e));
+                LOG.error("Monitor failed while closing file " + m_logFile.toString() + "\nStack trace " + Controller.stackTraceToString(e));
+                System.out.println("Monitor failed while closing file " + m_logFile.toString() + "\nStack trace " + Controller.stackTraceToString(e));
             }
             try {
                 long interval = System.currentTimeMillis() - m_start_monitoring;
@@ -169,7 +177,8 @@ public class Monitor {
                 intervalFile.write(Long.toString(interval));
                 intervalFile.close();
             } catch (IOException e) {
-                LOG.warn("Monitor failed while writing time interval file " + m_intervalPath.toString() + ".\nStack trace " + Controller.stackTraceToString(e));
+                LOG.error("Monitor failed while writing time interval file " + m_intervalPath.toString() + ".\nStack trace " + Controller.stackTraceToString(e));
+                System.out.println("Monitor failed while writing time interval file " + m_intervalPath.toString() + ".\nStack trace " + Controller.stackTraceToString(e));
             }
         }
         m_is_monitoring = false;
