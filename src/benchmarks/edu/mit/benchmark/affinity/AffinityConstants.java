@@ -36,6 +36,8 @@ public class AffinityConstants {
     public static final int FREQ_READ_PART = 20;
     public static final int FREQ_READ_PARTS_BY_SUPPLIER = 20;
     public static final int FREQ_READ_PARTS_BY_PRODUCT = 20;
+    public static final int FREQ_READ_PRODUCTS_BY_SUPPLIER = 0;
+    public static final int FREQ_READ_SUPPLIERS_BY_PRODUCT = 0;
     public static final String REQUEST_DISTRIBUTION_PROPERTY = "requestDistribution";
     
     public static final int HOT_DATA_WORKLOAD_SKEW = 95;
