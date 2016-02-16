@@ -27,8 +27,17 @@
   "COEFFICIENT": 1.0
  },
  {
-  "STATEMENT": "{'GetPartsBySupplier':'getPartsBySupplierStmt'}",
+  "STATEMENT": "{'GetPartsBySupplier':'getSupplierInfoStmt'}",
   "STATEMENT_INDEX": 0,
+  "STATEMENT_PARAMETER": "{'GetPartsBySupplier.getSupplierInfoStmt':'0'}",
+  "STATEMENT_COLUMN": "{'SUPPLIERS':'SUPPLIER_KEY'}",
+  "PROCEDURE_PARAMETER": "{'GetPartsBySupplier':'0'}",
+  "PROCEDURE_PARAMETER_INDEX": 0,
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetPartsBySupplier':'getPartsBySupplierStmt'}",
+  "STATEMENT_INDEX": 1,
   "STATEMENT_PARAMETER": "{'GetPartsBySupplier.getPartsBySupplierStmt':'0'}",
   "STATEMENT_COLUMN": "{'SUPPLIES':'SUPPLIER_KEY'}",
   "PROCEDURE_PARAMETER": "{'GetPartsBySupplier':'0'}",
@@ -36,12 +45,99 @@
   "COEFFICIENT": 1.0
  },
  {
-  "STATEMENT": "{'GetPartsByProduct':'getPartsByProductStmt'}",
+  "STATEMENT": "{'GetPartsBySupplier':'getPartInfoStmt'}",
+  "STATEMENT_INDEX": 2,
+  "STATEMENT_PARAMETER": "{'GetPartsBySupplier.getPartInfoStmt':'0'}",
+  "STATEMENT_COLUMN": "{'PARTS':'PART_KEY'}",
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetPartsByProduct':'getProductInfoStmt'}",
   "STATEMENT_INDEX": 0,
+  "STATEMENT_PARAMETER": "{'GetPartsByProduct.getProductInfoStmt':'0'}",
+  "STATEMENT_COLUMN": "{'PRODUCTS':'PRODUCT_KEY'}",
+  "PROCEDURE_PARAMETER": "{'GetPartsByProduct':'0'}",
+  "PROCEDURE_PARAMETER_INDEX": 0,
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetPartsByProduct':'getPartsByProductStmt'}",
+  "STATEMENT_INDEX": 1,
   "STATEMENT_PARAMETER": "{'GetPartsByProduct.getPartsByProductStmt':'0'}",
   "STATEMENT_COLUMN": "{'USES':'PRODUCT_KEY'}",
   "PROCEDURE_PARAMETER": "{'GetPartsByProduct':'0'}",
   "PROCEDURE_PARAMETER_INDEX": 0,
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetPartsByProduct':'getPartInfoStmt'}",
+  "STATEMENT_INDEX": 2,
+  "STATEMENT_PARAMETER": "{'GetPartsByProduct.getPartInfoStmt':'0'}",
+  "STATEMENT_COLUMN": "{'PARTS':'PART_KEY'}",
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetSuppliersByProduct':'getProductInfoStmt'}",
+  "STATEMENT_INDEX": 0,
+  "STATEMENT_PARAMETER": "{'GetSuppliersByProduct.getProductInfoStmt':'0'}",
+  "STATEMENT_COLUMN": "{'PRODUCTS':'PRODUCT_KEY'}",
+  "PROCEDURE_PARAMETER": "{'GetSuppliersByProduct':'0'}",
+  "PROCEDURE_PARAMETER_INDEX": 0,
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetSuppliersByProduct':'getPartsByProductStmt'}",
+  "STATEMENT_INDEX": 1,
+  "STATEMENT_PARAMETER": "{'GetSuppliersByProduct.getPartsByProductStmt':'0'}",
+  "STATEMENT_COLUMN": "{'USES':'PRODUCT_KEY'}",
+  "PROCEDURE_PARAMETER": "{'GetSuppliersByProduct':'0'}",
+  "PROCEDURE_PARAMETER_INDEX": 0,
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetSuppliersByProduct':'getSuppliersByPartStmt'}",
+  "STATEMENT_INDEX": 2,
+  "STATEMENT_PARAMETER": "{'GetSuppliersByProduct.getSuppliersByPartStmt':'0'}",
+  "STATEMENT_COLUMN": "{'SUPPLIES':'PART_KEY'}",
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetSuppliersByProduct':'getSupplierInfoStmt'}",
+  "STATEMENT_INDEX": 3,
+  "STATEMENT_PARAMETER": "{'GetSuppliersByProduct.getSupplierInfoStmt':'0'}",
+  "STATEMENT_COLUMN": "{'SUPPLIERS':'SUPPLIER_KEY'}",
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetProductsBySupplier':'getSupplierInfoStmt'}",
+  "STATEMENT_INDEX": 0,
+  "STATEMENT_PARAMETER": "{'GetProductsBySupplier.getSupplierInfoStmt':'0'}",
+  "STATEMENT_COLUMN": "{'SUPPLIERS':'SUPPLIER_KEY'}",
+  "PROCEDURE_PARAMETER": "{'GetProductsBySupplier':'0'}",
+  "PROCEDURE_PARAMETER_INDEX": 0,
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetProductsBySupplier':'getPartsBySupplierStmt'}",
+  "STATEMENT_INDEX": 1,
+  "STATEMENT_PARAMETER": "{'GetProductsBySupplier.getPartsBySupplierStmt':'0'}",
+  "STATEMENT_COLUMN": "{'SUPPLIES':'SUPPLIER_KEY'}",
+  "PROCEDURE_PARAMETER": "{'GetProductsBySupplier':'0'}",
+  "PROCEDURE_PARAMETER_INDEX": 0,
+  "COEFFICIENT": 1.0
+ },
+ {
+  "STATEMENT": "{'GetProductsBySupplier':'getProductsByPartStmt'}",
+  "STATEMENT_INDEX": 2,
+  "STATEMENT_PARAMETER": "{'GetProductsBySupplier.getProductsByPartStmt':'0'}",
+  "STATEMENT_COLUMN": "{'USES':'PART_KEY'}",
+  "COEFFICIENT": 1.0
+ }, 
+ {
+  "STATEMENT": "{'GetProductsBySupplier':'getProductInfoStmt'}",
+  "STATEMENT_INDEX": 3,
+  "STATEMENT_PARAMETER": "{'GetProductsBySupplier.getProductInfoStmt':'0'}",
+  "STATEMENT_COLUMN": "{'PRODUCTS':'PRODUCT_KEY'}",
   "COEFFICIENT": 1.0
  }
 ]}
