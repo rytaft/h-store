@@ -586,22 +586,41 @@ public abstract class PartitionerAffinity implements Partitioner {
 
             // try to offload to remote partitions
             IntList localPartitions = PlanHandler.getPartitionsSite(PlanHandler.getSitePartition(underloadedPartition));
+
             for(int toPartition : activePartitions){
-                
-                if(underloadedPartition == toPartition){
+
+                if(underloadedPartition == toPartition
+                        || localPartitions.contains(toPartition)
+                        || removedPartitions.contains(toPartition)){
                     continue;
                 }
 
                 if(!localPartitions.contains(toPartition) && !removedPartitions.contains(toPartition)){
+                    double senderDelta = getSenderDelta(movingVertices, underloadedPartition, toPartition);
+                    double receiverDelta = getReceiverDelta(movingVertices, toPartition);
 
-                    LOG.debug("Trying with partition " + toPartition);
-                    int movedVertices = tryMoveVertices(movingVertices, underloadedPartition, toPartition);
+                    // check that I get enough overall gain and the additional load of the receiving site does not make it overloaded
+                    if(senderDelta <= Controller.MIN_SENDER_GAIN_MOVE * -1
+                            && (receiverDelta <= 0
+                            || getLoadPerPartition(toPartition) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
 
-                    if(movedVertices > 0){
+                        m_graph.mergePartitions(underloadedPartition,toPartition);
+
                         removedPartitions.add(underloadedPartition);
-                        break;                            
+                        break;
                     }
                 }
+
+//                if(!localPartitions.contains(toPartition) && !removedPartitions.contains(toPartition)){
+//
+//                    LOG.debug("Trying with partition " + toPartition);
+//                    int movedVertices = tryMoveVertices(movingVertices, underloadedPartition, toPartition);
+//
+//                    if(movedVertices > 0){
+//                        removedPartitions.add(underloadedPartition);
+//                        break;
+//                    }
+//                }
             }
         }
         activePartitions.removeAll(removedPartitions);

@@ -378,6 +378,10 @@ public class AffinityGraph {
     public String getTupleName(int hash){
         return m_vertexName.get(hash);
     }
+
+    public void mergePartitions(int sourcePartition, int destinationPartition){
+        m_plan_handler.mergePartitions(sourcePartition, destinationPartition);
+    }
     
     public void moveColdRange(String table, Plan.Range movedRange, int fromPart, int toPart){     
         m_plan_handler.moveColdRange(table, movedRange, fromPart, toPart);
