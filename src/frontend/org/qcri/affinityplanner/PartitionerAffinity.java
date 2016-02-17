@@ -604,7 +604,9 @@ public abstract class PartitionerAffinity implements Partitioner {
                             && (receiverDelta <= 0
                             || getLoadPerPartition(toPartition) + receiverDelta < Controller.MAX_LOAD_PER_PART)){
 
-                        m_graph.mergePartitions(underloadedPartition,toPartition);
+                        tryMoveVertices(movingVertices, underloadedPartition, toPartition);
+
+                        m_graph.mergePartitions(underloadedPartition, toPartition);
 
                         removedPartitions.add(underloadedPartition);
                         break;
