@@ -866,6 +866,17 @@ public class Plan {
         }
     }
 
+    public void mergePartitions (int sourcePartition, int destinationPartition){
+        for (String table : table_names){
+            List<Range> sourceRanges = getAllRanges(table, sourcePartition);
+
+            for (Plan.Range sourceRange : sourceRanges){
+                removeRange(table, sourcePartition, sourceRange.from);
+                addRange(table, destinationPartition, sourceRange.from, sourceRange.to);
+            }
+        }
+    }
+
     
     String[] getTables(){
         return table_names;
