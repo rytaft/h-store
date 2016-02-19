@@ -156,17 +156,17 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public int getPartitionId(String table_name, List<Object> ids) throws Exception {
-    	if (this.reconfigurationPlan != null) {
-    		ReconfigurationRange range = this.reconfigurationPlan.findReconfigurationRange(table_name, ids);
-    		if (range != null) {
-    			return range.getNewPartition();
-    		}
-    	}
-    	if (this.incrementalPlan != null) {
-    		PartitionedTable table = incrementalPlan.getTable(table_name);
-    		assert table != null : "Table not found " + table_name;
-    		return table.findPartition(ids);
-    	}
+        if (this.reconfigurationPlan != null) {
+            ReconfigurationRange range = this.reconfigurationPlan.findReconfigurationRange(table_name, ids);
+            if (range != null) {
+                return range.getNewPartition();
+            }
+        }
+        if (this.incrementalPlan != null) {
+            PartitionedTable table = incrementalPlan.getTable(table_name);
+            assert table != null : "Table not found " + table_name;
+            return table.findPartition(ids);
+        }
 
         PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
         PartitionedTable table = phase.getTable(table_name);
@@ -190,17 +190,17 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception {
-    	if (this.reconfigurationPlan != null) {
-    		ReconfigurationRange range = this.reconfigurationPlan.findReconfigurationRange(table_name, ids);
-    		if (range != null) {
-    			return range.getOldPartition();
-    		}
-    	}
-    	if (this.previousIncrementalPlan != null) {
-    		PartitionedTable table = previousIncrementalPlan.getTable(table_name);
-    		assert table != null : "Table not found " + table_name;
-    		return table.findPartition(ids);
-    	}
+        if (this.reconfigurationPlan != null) {
+            ReconfigurationRange range = this.reconfigurationPlan.findReconfigurationRange(table_name, ids);
+            if (range != null) {
+                return range.getOldPartition();
+            }
+        }
+        if (this.previousIncrementalPlan != null) {
+            PartitionedTable table = previousIncrementalPlan.getTable(table_name);
+            assert table != null : "Table not found " + table_name;
+            return table.findPartition(ids);
+        }
 
         String previousPhase = this.getPreviousPhase_phase();
         if (previousPhase == null)
@@ -218,16 +218,16 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     public List<Integer> getAllPartitionIds(String table_name, List<Object> ids) throws Exception {
         List<Integer> allPartitionIds = new ArrayList<Integer>();
         if (this.reconfigurationPlan != null) {
-        	List<ReconfigurationRange> ranges = this.reconfigurationPlan.findAllReconfigurationRanges(table_name, ids);
-        	for (ReconfigurationRange range : ranges) {
-        		allPartitionIds.add(range.getNewPartition());
-        	}
+            List<ReconfigurationRange> ranges = this.reconfigurationPlan.findAllReconfigurationRanges(table_name, ids);
+            for (ReconfigurationRange range : ranges) {
+                allPartitionIds.add(range.getNewPartition());
+            }
         }
         if (this.incrementalPlan != null) {
-        	PartitionedTable table = incrementalPlan.getTable(table_name);
-        	assert table != null : "Table not found " + table_name;
-        	allPartitionIds.addAll(table.findAllPartitions(ids));
-        	return allPartitionIds;
+            PartitionedTable table = incrementalPlan.getTable(table_name);
+            assert table != null : "Table not found " + table_name;
+            allPartitionIds.addAll(table.findAllPartitions(ids));
+            return allPartitionIds;
         }
 
         PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
@@ -248,16 +248,16 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     public List<Integer> getAllPreviousPartitionIds(String table_name, List<Object> ids) throws Exception {
         List<Integer> allPartitionIds = new ArrayList<Integer>();
         if (this.reconfigurationPlan != null) {
-        	List<ReconfigurationRange> ranges = this.reconfigurationPlan.findAllReconfigurationRanges(table_name, ids);
-        	for (ReconfigurationRange range : ranges) {
-        		allPartitionIds.add(range.getOldPartition());
-        	}
+            List<ReconfigurationRange> ranges = this.reconfigurationPlan.findAllReconfigurationRanges(table_name, ids);
+            for (ReconfigurationRange range : ranges) {
+                allPartitionIds.add(range.getOldPartition());
+            }
         }
         if (this.previousIncrementalPlan != null) {
-        	PartitionedTable table = previousIncrementalPlan.getTable(table_name);
-        	assert table != null : "Table not found " + table_name;
-        	allPartitionIds.addAll(table.findAllPartitions(ids));
-        	return allPartitionIds;
+            PartitionedTable table = previousIncrementalPlan.getTable(table_name);
+            assert table != null : "Table not found " + table_name;
+            allPartitionIds.addAll(table.findAllPartitions(ids));
+            return allPartitionIds;
         }
 
         String previousPhase = this.getPreviousPhase_phase();
@@ -335,7 +335,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.tables_map = new HashMap<String, PlannedPartitions.PartitionedTable>();
             this.catalog_context = catalog_context;
             this.partitionedTablesByFK = partitionedTablesByFK;
-            
+
             HashMap<String, List<PartitionRange>> table_name_map = new HashMap<String, List<PartitionRange>>();
 
             for (PartitionRange range : ranges) {
@@ -351,10 +351,10 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 this.tables_map.put(table_name, new PartitionedTable(tableRanges.getValue(), table_name, this.catalog_context.getTableByName(table_name)));
             }
         }
-        
-        public String toString(){
+
+        public String toString() {
             StringBuilder sb = new StringBuilder();
-            for (Entry<String, PartitionedTable> pair: this.tables_map.entrySet()) {
+            for (Entry<String, PartitionedTable> pair : this.tables_map.entrySet()) {
                 sb.append(pair.getKey());
                 sb.append(":");
                 sb.append(pair.getValue().toString());
@@ -375,14 +375,16 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         protected String table_name;
         private Table catalog_table;
         private JSONObject table_json;
-        private LRUMap find_partition_cache;
+        private VoltTable key_schema;
+        private PartitionKeyComparator cmp;
 
         public PartitionedTable(String table_name, JSONObject table_json, Table catalog_table) throws Exception {
             this.catalog_table = catalog_table;
             this.partitionRanges = new TreeSet<PartitionRange>();
+            this.key_schema = ReconfigurationUtil.getPartitionKeysVoltTable(catalog_table);
+            this.cmp = new PartitionKeyComparator();
             this.table_name = table_name;
             this.table_json = table_json;
-            this.find_partition_cache = new LRUMap(1000);
             assert (table_json.has(PARTITIONS));
             JSONObject partitions_json = table_json.getJSONObject(PARTITIONS);
             Iterator<String> partitions = partitions_json.keys();
@@ -405,7 +407,6 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.partitionRanges.addAll(partitions);
             this.table_name = table_name;
             this.catalog_table = catalog_table;
-            this.find_partition_cache = new LRUMap(1000);
         }
 
         /**
@@ -421,44 +422,17 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
 
             try {
-            	// check the cache first
-//                synchronized(this){
-//                	if(this.find_partition_cache.containsKey(ids)) {
-//                		return (Integer) this.find_partition_cache.get(ids);
-//                	}
-//                }
-            	
-            	Object[] keys = ids.toArray();
-            	
-            	PartitionRange precedingRange = partitionRanges.floor(new PartitionRange(this.catalog_table, 0, keys, keys));
-                if(precedingRange != null) {
-//                for (PartitionRange p : this.partitions) {
-                    // if this greater than or equal to the min inclusive val
-                    // and
-                    // less than
-                    // max_exclusive or equal to both min and max (singleton)
-                    // TODO fix partitiontype
-                    if (precedingRange.inRange(keys)) {
-//                        synchronized (this) {
-//                            this.find_partition_cache.put(ids, p.partition);
-//                        }
-                    	return precedingRange.partition;
-                    }
+                Object[] keys = ids.toArray();
+                PartitionRange range = new PartitionRange(this.catalog_table, this.key_schema, this.cmp, 0, keys, keys);
+
+                PartitionRange precedingRange = partitionRanges.floor(range);
+                if (precedingRange != null && precedingRange.inRange(keys)) {
+                    return precedingRange.partition;
                 }
-                PartitionRange followingRange = partitionRanges.ceiling(new PartitionRange(this.catalog_table, 0, keys, keys));
-                if(followingRange != null) {
-//                for (PartitionRange p : this.partitions) {
-                    // if this greater than or equal to the min inclusive val
-                    // and
-                    // less than
-                    // max_exclusive or equal to both min and max (singleton)
-                    // TODO fix partitiontype
-                    if (followingRange.inRange(keys)) {
-//                        synchronized (this) {
-//                            this.find_partition_cache.put(ids, p.partition);
-//                        }
-                        return followingRange.partition;
-                    }
+
+                PartitionRange followingRange = partitionRanges.ceiling(range);
+                if (followingRange != null && followingRange.inRange(keys)) {
+                    return followingRange.partition;
                 }
             } catch (Exception e) {
                 LOG.error("Error looking up partition", e);
@@ -466,10 +440,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             if (debug.val)
                 LOG.debug("Partition not found. ids: " + ids.toString() + ", partitions: " + this.partitionRanges.toString());
-//            synchronized(this){
-//                this.find_partition_cache.put(ids, HStoreConstants.NULL_PARTITION_ID);
-//            }
-            
+
             return HStoreConstants.NULL_PARTITION_ID;
         }
 
@@ -514,57 +485,57 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
          * @throws ParseException
          */
         public void addPartitionRanges(int partition_id, String partition_values) throws ParseException {
-            synchronized (this) {
-                this.find_partition_cache.clear();   
-            }
             for (String range : partition_values.split(",")) {
-                 this.partitionRanges.add(new PartitionRange(this.catalog_table, partition_id, range));
+                this.partitionRanges.add(new PartitionRange(this.catalog_table, partition_id, range));
             }
         }
 
         public List<PartitionRange> getRanges() {
-            return Arrays.asList(this.partitionRanges.toArray(new PartitionRange[]{}));
+            return Arrays.asList(this.partitionRanges.toArray(new PartitionRange[] {}));
         }
 
         public Table getCatalog_table() {
             return catalog_table;
         }
-        
-        public String toString(){
+
+        public String toString() {
             StringBuilder sb = new StringBuilder();
-            for (PartitionRange range : this.partitionRanges){
+            for (PartitionRange range : this.partitionRanges) {
                 sb.append(range.toString());
                 sb.append(",");
             }
             return sb.toString();
         }
     }
-    
+
     public static class PartitionKeyComparator implements Comparator<Object[]> {
 
-    	@Override
-    	public int compare(Object[] o1, Object[] o2) {
-    		assert (o1 != null);
-    		assert (o2 != null);
-    		
-    		int length = Math.min(o1.length, o2.length);
-    		long cmp = 0;
-    		for (int i = 0; i < length; i++) {
-    			cmp = ((Number) o1[i]).longValue() - ((Number) o2[i]).longValue();
-    			
-    			if (cmp != 0)
-    				break;
-    		} // FOR
-    		
-    		if(cmp == 0) {
-    			if(o1.length > o2.length) return 1;
-    			else if(o2.length > o1.length) return -1;
-    			else return 0;
-    		}
-    		
-    		return (cmp < 0 ? -1 : 1);
-    	}
-    
+        @Override
+        public int compare(Object[] o1, Object[] o2) {
+            assert (o1 != null);
+            assert (o2 != null);
+
+            int length = Math.min(o1.length, o2.length);
+            long cmp = 0;
+            for (int i = 0; i < length; i++) {
+                cmp = ((Number) o1[i]).longValue() - ((Number) o2[i]).longValue();
+
+                if (cmp != 0)
+                    break;
+            } // FOR
+
+            if (cmp == 0) {
+                if (o1.length > o2.length)
+                    return 1;
+                else if (o2.length > o1.length)
+                    return -1;
+                else
+                    return 0;
+            }
+
+            return (cmp < 0 ? -1 : 1);
+        }
+
     }
 
     /**
@@ -618,17 +589,19 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             if (cmp.compare(this.min_incl, this.max_excl) > 0) {
                 throw new ParseException("Min cannot be greater than max", -1);
             }
-            
+
             this.non_null_cols = this.getNonNullCols();
         }
 
         public PartitionRange(Table table, int partition_id, Object[] min_incl, Object[] max_excl) {
+            this(table, ReconfigurationUtil.getPartitionKeysVoltTable(table), new PartitionKeyComparator(), partition_id, min_incl, max_excl);
+        }
+
+        public PartitionRange(Table table, VoltTable key_schema, PartitionKeyComparator cmp, int partition_id, Object[] min_incl, Object[] max_excl) {
             this.partition = partition_id;
             this.catalog_table = table;
-
-            this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(table);
-            this.cmp = new PartitionKeyComparator();
-
+            this.keySchema = key_schema;
+            this.cmp = cmp;
             this.min_incl = min_incl;
             this.max_excl = max_excl;
             this.non_null_cols = this.getNonNullCols();
@@ -728,8 +701,8 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         }
 
         public boolean inRangeIgnoreNullCols(Object[] keys) {
-        	Object[] keys_all = new Object[min_incl.length];
-        	for (int j = 0; j < keys.length; j++) {
+            Object[] keys_all = new Object[min_incl.length];
+            for (int j = 0; j < keys.length; j++) {
                 keys_all[j] = keys[j];
             }
             for (int j = keys.length; j < keys_all.length; j++) {
@@ -796,7 +769,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         this.previous_phase = old_phase;
         this.incrementalPlan = null;
         this.previousIncrementalPlan = null;
-        
+
         try {
             if (old_phase == null) {
                 return null;
@@ -829,7 +802,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      * @see org.json.JSONString#toJSONString()
      */
     @Override
-    public String toJSONString() {        
+    public String toJSONString() {
         throw new NotImplementedException();
     }
 
@@ -838,7 +811,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      * @see edu.brown.utils.JSONSerializable#save(java.io.File)
      */
     @Override
-    public void save(File output_path) throws IOException {        
+    public void save(File output_path) throws IOException {
         throw new NotImplementedException();
 
     }
@@ -850,7 +823,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public void load(File input_path, Database catalog_db) throws IOException {
-        
+
         throw new NotImplementedException();
 
     }
@@ -861,7 +834,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public void toJSON(JSONStringer stringer) throws JSONException {
-        
+
         throw new NotImplementedException();
 
     }
@@ -873,7 +846,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public void fromJSON(JSONObject json_object, Database catalog_db) throws JSONException {
-        
+
         throw new NotImplementedException();
 
     }
