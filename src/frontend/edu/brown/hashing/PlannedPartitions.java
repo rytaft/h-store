@@ -407,6 +407,8 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.partitionRanges.addAll(partitions);
             this.table_name = table_name;
             this.catalog_table = catalog_table;
+            this.key_schema = ReconfigurationUtil.getPartitionKeysVoltTable(catalog_table);
+            this.cmp = new PartitionKeyComparator();
         }
 
         /**
