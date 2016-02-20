@@ -208,7 +208,9 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
             }
         }
         assert table != null : "Table not found " + table_name;
-        return table.findAllPartitions(ids);
+        allPartitionIds.clear();
+        allPartitionIds.addAll(table.findAllPartitions(ids));
+        return allPartitionIds;
     }
     
     @Override
@@ -234,7 +236,9 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
             return new ArrayList<Integer>();
         PartitionedTable table = previousPlan.getTable(table_name);
         assert table != null : "Table not found " + table_name;
-        return table.findAllPartitions(ids);
+        allPartitionIds.clear();
+        allPartitionIds.addAll(table.findAllPartitions(ids));
+        return allPartitionIds;
     }
 
     /* (non-Javadoc)

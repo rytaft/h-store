@@ -241,7 +241,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             }
         }
         assert table != null : "Table not found " + table_name;
-        return table.findAllPartitions(ids);
+        allPartitionIds.clear();
+        allPartitionIds.addAll(table.findAllPartitions(ids));
+        return allPartitionIds;
     }
 
     @Override
@@ -269,7 +271,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             throw new Exception("Unable to find table " + table_name + " in phase  " + previousPhase);
         }
         assert table != null : "Table not found " + table_name;
-        return table.findAllPartitions(ids);
+        allPartitionIds.clear();
+        allPartitionIds.addAll(table.findAllPartitions(ids));
+        return allPartitionIds;
     }
 
     // ******** Containers *****************************************/
@@ -452,23 +456,25 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
          * @param id
          * @return the matching partition ids
          */
-        public List<Integer> findAllPartitions(List<Object> ids) throws Exception {
+        public Set<Integer> findAllPartitions(List<Object> ids) throws Exception {
             if (trace.val) {
                 LOG.trace(String.format("Looking up key %s on table %s during phase %s", ids.get(0), this.table_name));
             }
 
-            List<Integer> partitionIds = new ArrayList<Integer>();
+            Set<Integer> partitionIds = new HashSet<Integer>();
             Object[] keys = ids.toArray();
-            for (PartitionRange p : this.partitionRanges) {
+            PartitionRange range = new PartitionRange(this.catalog_table, this.key_schema, this.cmp, 0, keys, keys);
+            PartitionRange precedingRange = partitionRanges.floor(range);
+            if (precedingRange != null && precedingRange.overlapsRange(keys)) {
+                partitionIds.add(precedingRange.partition);
+            }
+            for (PartitionRange p : this.partitionRanges.tailSet(range, false)) {
                 try {
-
-                    // if this greater than or equal to the min inclusive val
-                    // and
-                    // less than
-                    // max_exclusive or equal to both min and max (singleton)
-                    // TODO fix partitiontype
-                    if (p.inRangeIgnoreNullCols(keys)) {
+                    if (p.overlapsRange(keys)) {
                         partitionIds.add(p.partition);
+                    }
+                    else {
+                        break;
                     }
                 } catch (Exception e) {
                     LOG.error("Error looking up partition", e);
@@ -512,6 +518,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
     public static class PartitionKeyComparator implements Comparator<Object[]> {
 
+        // if o1 is a strict prefix of o2 (or vice-versa), return -2 (or 2)
+        // otherwise, return -1, 0, or 1 corresponding to the lexicographic
+        // order of o1 and o2
         @Override
         public int compare(Object[] o1, Object[] o2) {
             assert (o1 != null);
@@ -528,9 +537,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             if (cmp == 0) {
                 if (o1.length > o2.length)
-                    return 1;
+                    return 2;
                 else if (o2.length > o1.length)
-                    return -1;
+                    return -2;
                 else
                     return 0;
             }
@@ -555,7 +564,6 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         private Object[] max_excl;
         private PartitionKeyComparator cmp;
         private Table catalog_table;
-        private int non_null_cols;
 
         public PartitionRange(Table table, int partition_id, String range_str) throws ParseException {
             this.partition = partition_id;
@@ -592,7 +600,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
                 throw new ParseException("Min cannot be greater than max", -1);
             }
 
-            this.non_null_cols = this.getNonNullCols();
+            this.truncateNullCols();
         }
 
         public PartitionRange(Table table, int partition_id, Object[] min_incl, Object[] max_excl) {
@@ -606,7 +614,7 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             this.cmp = cmp;
             this.min_incl = min_incl;
             this.max_excl = max_excl;
-            this.non_null_cols = this.getNonNullCols();
+            this.truncateNullCols();
         }
 
         private Object[] getRangeKeys(String key_str) throws ParseException {
@@ -645,16 +653,21 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             return VoltTypeUtil.getObjectFromString(vt, value);
         }
 
-        private int getNonNullCols() {
-            int non_null_cols = 0;
-            for (int i = 0; i < Math.min(min_incl.length, keySchema.getColumnCount()); i++) {
+        private void truncateNullCols() {
+            for (int i = 0;  i < min_incl.length && i < keySchema.getColumnCount(); i++) {
                 VoltType vt = keySchema.getColumnType(i);
-                if (vt.getNullValue().equals(min_incl[i]) && vt.getNullValue().equals(max_excl[i])) {
+                if (vt.getNullValue().equals(min_incl[i])) {
+                    min_incl = Arrays.copyOf(min_incl, i);
                     break;
-                }
-                non_null_cols++;
+                } 
             }
-            return non_null_cols;
+            for (int i = 0; i < max_excl.length && i < keySchema.getColumnCount(); i++) {
+                VoltType vt = keySchema.getColumnType(i);
+                if (vt.getNullValue().equals(max_excl[i])) {
+                   max_excl = Arrays.copyOf(max_excl, i);
+                   break;
+                }
+            }
         }
 
         @Override
@@ -662,30 +675,26 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             String min_str = "";
             String max_str = "";
             for (int i = 0; i < this.min_incl.length; i++) {
-                Object min = this.min_incl[i];
-                Object max = this.max_excl[i];
-                VoltType vt = this.keySchema.getColumnType(i);
-                if (!vt.getNullValue().equals(min)) {
-                    if (i != 0) {
-                        min_str += ":";
-                    }
-                    min_str += min.toString();
+                if (i != 0) {
+                    min_str += ":";
                 }
-                if (!vt.getNullValue().equals(max)) {
-                    if (i != 0) {
-                        max_str += ":";
-                    }
-                    max_str += max.toString();
+                min_str += this.min_incl[i].toString();
+            }
+            for (int i = 0; i < this.max_excl.length; i++) {
+                if (i != 0) {
+                    max_str += ":";
                 }
+                max_str += this.max_excl[i].toString();  
             }
             return "[PartitionRange (" + this.catalog_table.getName().toLowerCase() + ") [" + min_str + "-" + max_str + ") p_id=" + this.partition + "]";
         }
 
         @Override
         public int compareTo(PartitionRange o) {
-            if (cmp.compare(this.min_incl, o.min_incl) < 0) {
+            int min_incl_cmp = cmp.compare(this.min_incl, o.min_incl);
+            if (min_incl_cmp < 0) {
                 return -1;
-            } else if (cmp.compare(this.min_incl, o.min_incl) == 0) {
+            } else if (min_incl_cmp == 0) {
                 return cmp.compare(this.max_excl, o.max_excl);
             } else {
                 return 1;
@@ -693,24 +702,22 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
         }
 
         public boolean inRange(Object[] keys) {
-            if (cmp.compare(min_incl, keys) <= 0 && (cmp.compare(max_excl, keys) > 0 || (cmp.compare(min_incl, max_excl) == 0 && cmp.compare(min_incl, keys) == 0))) {
-                if (keys.length >= this.non_null_cols) {
-                    return true;
-                }
+            int min_incl_cmp = cmp.compare(min_incl, keys);
+            // the following ensures that [6] is not in the ranges [5,6:2), [6,6:2), [6:2,6:2) or [6:2,7)
+            // but is in the ranges [6,7:2), [5,7), [6,7), [6,6), etc.
+            if (min_incl_cmp <= 0 && (cmp.compare(max_excl, keys) == 1 || (cmp.compare(min_incl, max_excl) == 0 && min_incl_cmp == 0))) {
+                return true;
             }
 
             return false;
         }
 
-        public boolean inRangeIgnoreNullCols(Object[] keys) {
-            Object[] keys_all = new Object[min_incl.length];
-            for (int j = 0; j < keys.length; j++) {
-                keys_all[j] = keys[j];
-            }
-            for (int j = keys.length; j < keys_all.length; j++) {
-                keys_all[j] = min_incl[j];
-            }
-            if (cmp.compare(min_incl, keys_all) <= 0 && (cmp.compare(max_excl, keys_all) > 0 || (cmp.compare(min_incl, max_excl) == 0 && cmp.compare(min_incl, keys_all) == 0))) {
+        public boolean overlapsRange(Object[] keys) {
+            int min_incl_cmp = cmp.compare(min_incl, keys);
+            // the following ensures that [6] overlaps the ranges [5,6:2), [6,6:2), [6:2,6:2), [6:2,7), etc.
+            // as well as all the ranges that satisfy inRange(),
+            // but not [5,6), [7,8), etc.
+            if ((min_incl_cmp <= 0 || min_incl_cmp == 2) && (cmp.compare(max_excl, keys) > 0 || (cmp.compare(min_incl, max_excl) == 0 && (min_incl_cmp == 0 || min_incl_cmp == 2)))) {
                 return true;
             }
 
