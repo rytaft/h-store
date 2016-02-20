@@ -775,16 +775,28 @@ public class ReconfigurationPlan {
 
         public VoltTable getMinInclTable() {
             VoltTable minInclTable = this.keySchema.clone(0);
+            int column_count = this.keySchema.getColumnCount();
             for (Object[] row : this.min_incl) {
-                minInclTable.addRow(row);
+                Object[] padded_row = Arrays.copyOf(row, column_count);
+                for (int i = row.length; i < column_count; ++i) {
+                    VoltType vt = keySchema.getColumnType(i);
+                    padded_row[i] = vt.getNullValue();
+                }
+                minInclTable.addRow(padded_row);
             }
             return minInclTable;
         }
 
         public VoltTable getMaxExclTable() {
             VoltTable maxExclTable = this.keySchema.clone(0);
+            int column_count = this.keySchema.getColumnCount();
             for (Object[] row : this.max_excl) {
-                maxExclTable.addRow(row);
+                Object[] padded_row = Arrays.copyOf(row, column_count);
+                for (int i = row.length; i < column_count; ++i) {
+                    VoltType vt = keySchema.getColumnType(i);
+                    padded_row[i] = vt.getNullValue();
+                }
+                maxExclTable.addRow(padded_row);
             }
             return maxExclTable;
         }
