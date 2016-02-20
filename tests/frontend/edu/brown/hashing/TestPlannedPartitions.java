@@ -96,7 +96,8 @@ public class TestPlannedPartitions extends BaseTestCase {
         String tmp_dir = System.getProperty("java.io.tmpdir");
         json_path = FileUtil.join(tmp_dir, "test1.json");
         FileUtil.writeStringToFile(json_path, test_json1);
-        HStoreConf.singleton().site.reconfig_min_transfer_bytes = 2;
+        HStoreConf.singleton().site.reconfig_min_transfer_bytes = 1000000;
+        HStoreConf.singleton().site.reconfig_max_transfer_bytes = 0;
     }
 
     public void testReadJSON() throws Exception {
@@ -203,6 +204,9 @@ public class TestPlannedPartitions extends BaseTestCase {
     }
 
     public void testReconfigurationTable1() throws Exception {
+        HStoreConf.singleton().site.reconfig_min_transfer_bytes = 0;
+        HStoreConf.singleton().site.reconfig_max_transfer_bytes = 0;
+
         List<PartitionRange> olds = new ArrayList<>();
         List<PartitionRange> news = new ArrayList<>();
 
@@ -251,6 +255,9 @@ public class TestPlannedPartitions extends BaseTestCase {
     }
 
     public void testReconfigurationTable2() throws Exception {
+        HStoreConf.singleton().site.reconfig_min_transfer_bytes = 0;
+        HStoreConf.singleton().site.reconfig_max_transfer_bytes = 0;
+
         List<PartitionRange> olds = new ArrayList<>();
         List<PartitionRange> news = new ArrayList<>();
 
@@ -279,6 +286,9 @@ public class TestPlannedPartitions extends BaseTestCase {
     }
 
     public void testReconfigurationTable3() throws Exception {
+        HStoreConf.singleton().site.reconfig_min_transfer_bytes = 0;
+        HStoreConf.singleton().site.reconfig_max_transfer_bytes = 0;
+
         List<PartitionRange> olds = new ArrayList<>();
         List<PartitionRange> news = new ArrayList<>();
 
