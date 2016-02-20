@@ -291,7 +291,7 @@ public class TestMultiColumnPlannedPartitions extends BaseTestCase {
         
         range = reconfig.getReconfigurations().get(1);
         assertEquals((byte)20, range.getMinIncl().get(0)[1]);
-        assertEquals(range.getKeySchema().getColumnType(1).getNullValue(), range.getMaxExcl().get(0)[1]);
+        assertEquals(1, range.getMaxExcl().get(0).length);
         assertEquals(1, range.getOldPartition());
         assertEquals(3, range.getNewPartition());
     }
