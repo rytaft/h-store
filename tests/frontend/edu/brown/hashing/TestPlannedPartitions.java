@@ -19,6 +19,7 @@ import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationTable;
+import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.FileUtil;
 import edu.brown.utils.ProjectType;
 
@@ -30,11 +31,32 @@ public class TestPlannedPartitions extends BaseTestCase {
 
     }
 
-    public String test_json1 = "{" + "       \"default_table\":\"usertable\"," + "       \"partition_plans\":{" + "          \"1\" : {" + "            \"tables\":{" + "              \"usertable\":{"
-            + "                \"partitions\":{" + "                  1 : \"1-100\"," + "                  2 : \"100-300\"," + "                  3 : \"300-301,350-400,302-303\","
-            + "                  4 : \"301-302,303-304,304-350\"       " + "                }     " + "              }" + "            }" + "          }," + "          \"2\" : {" + "            \"tables\":{"
-            + "              \"usertable\":{" + "                \"partitions\":{" + "                  1 : \"1-400\"," + "                }     " + "              }" + "            }"
-            + "          }" + "        }" + "}";
+    public String test_json1 = "{" + 
+    "       \"default_table\":\"usertable\"," + 
+    "       \"partition_plans\":{" + 
+    "          \"1\" : {" + 
+    "            \"tables\":{" + 
+    "              \"usertable\":{" + 
+    "                \"partitions\":{" + 
+    "                  1 : \"1-100\"," + 
+    "                  2 : \"100-300\"," + 
+    "                  3 : \"300-301,350-400,302-303\"," + 
+    "                  4 : \"301-302,303-304,304-350\"       " + 
+    "                }     " + 
+    "              }" + 
+    "            }" + 
+    "          }," + 
+    "          \"2\" : {" + 
+    "            \"tables\":{" + 
+    "              \"usertable\":{" + 
+    "                \"partitions\":{" + 
+    "                  1 : \"1-400\"," + 
+    "                }     " + 
+    "              }" + 
+    "            }" + 
+    "          }" + 
+    "        }" + 
+    "}";
 
     public String test_json2 = "{" + 
 	"       \"default_table\":\"usertable\"," + 
@@ -74,6 +96,7 @@ public class TestPlannedPartitions extends BaseTestCase {
         String tmp_dir = System.getProperty("java.io.tmpdir");
         json_path = FileUtil.join(tmp_dir, "test1.json");
         FileUtil.writeStringToFile(json_path, test_json1);
+        HStoreConf.singleton().site.reconfig_min_transfer_bytes = 2;
     }
 
     public void testReadJSON() throws Exception {
