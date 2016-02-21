@@ -605,7 +605,7 @@ public class AffinityGraph {
 
         try{
             PrintWriter out = new PrintWriter(new FileWriter(file.toString()));
-            out.println("param P := " + m_vertices.size() + ";");
+            out.println("param P := " + hottestVertices.size() + ";");
             out.println("param K := 1;");
 
             // assumes that all active partitions are consecutive
@@ -655,7 +655,7 @@ public class AffinityGraph {
             out.println(";");
 
             out.print("param DTXN_PER_PART:\t");
-            for (int i = 0; i < m_vertices.size(); i++) out.print((i+1) + "\t");
+            for (int i = 0; i < hottestVertices.size(); i++) out.print((i+1) + "\t");
             out.println(":=");
 
             currPos = 0;
