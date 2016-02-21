@@ -249,6 +249,7 @@ public class Controller extends Thread {
                         
             if (partitioner instanceof PartitionerAffinity){
                 ((PartitionerAffinity) partitioner).graphToFile(FileSystems.getDefault().getPath(".", "graph.log"));
+                ((PartitionerAffinity) partitioner).graphToCPLEXFile(FileSystems.getDefault().getPath(".", "graph-cplex.txt"));
             }
             
             record("======================== PARTITIONING GRAPH ========================");

@@ -635,6 +635,10 @@ public abstract class PartitionerAffinity implements Partitioner {
     public void graphToFile (Path file){
         m_graph.toFile(file);
     }
+
+    public void graphToCPLEXFile(Path file) {
+        m_graph.toCPLEXFile(file);
+    }
     
     public void graphToFileMPT (Path file){
         m_graph.toFileMPT(file);

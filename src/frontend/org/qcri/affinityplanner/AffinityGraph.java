@@ -4,10 +4,7 @@
 
 package org.qcri.affinityplanner;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.File;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,13 +17,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
-import it.unimi.dsi.fastutil.ints.Int2IntMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.ints.IntSet;
+import it.unimi.dsi.fastutil.ints.*;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -601,5 +592,90 @@ public class AffinityGraph {
             res.append(m_vertexName.get(val) + " from partition " + m_vertexPartition.get(val) + "\n");
         }
         return res.toString();
+    }
+
+    public void toCPLEXFile(Path file) {
+
+        // ACCORDION -> clay nomeclature: HOSTS -> partition, PARTITION -> vertex
+
+        try{
+            PrintWriter out = new PrintWriter(new FileWriter(file.toString()));
+            out.println("param P := " + m_vertices.size() + ";");
+            out.println("param K := 1;");
+
+            // assumes that all active partitions are consecutive
+            int numPartitions = 0;
+            for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+                if(AffinityGraph.isActive(i)){
+                    numPartitions++;
+                }
+            }
+            out.println("param CURR_HOSTS := " + numPartitions + ";");
+
+            out.println("param MAX_HOSTS := " + Controller.MAX_PARTITIONS + ";");
+            out.println("param MAX_CAPACITY := " + Controller.MAX_LOAD_PER_PART + ";");
+            out.println("param DTXN_COST := " + Controller.DTXN_COST + ";");
+
+            out.print("param INITIAL:\t");
+            for (int i = 0; i < Controller.MAX_PARTITIONS; i++) out.print((i+1) + "\t");
+            out.println(":=");
+
+            int currPos = 0;
+            for (int hash : m_vertices.keySet()) {
+
+                currPos++;
+                out.print(currPos + "\t");
+
+                int currPartition = m_vertexPartition.get(hash);
+                for (int j = 0; j < Controller.MAX_PARTITIONS; j++) {
+                    // what is i what is j?
+                    if(currPartition == j){
+                        out.print(1 + "\t");
+                    }
+                    else{
+                        out.print(0 + "\t");
+                    }
+                }
+                out.println();
+            }
+            out.println(";");
+
+            out.println("param \tRATE :=");
+            currPos = 0;
+            for (int hash : m_vertices.keySet()) {
+                currPos++;
+                out.println(currPos + "\t" + m_vertices.get(hash));
+            }
+            out.println(";");
+
+            out.print("param DTXN_PER_PART:\t");
+            for (int i = 0; i < m_vertices.size(); i++) out.print((i+1) + "\t");
+            out.println(":=");
+
+            currPos = 0;
+            for (int hashFrom : m_vertices.keySet()) {
+
+                currPos++;
+                out.print((currPos) + "\t");
+
+                Int2DoubleOpenHashMap adjacency = m_edges.get(hashFrom);
+
+                for (int hashTo : m_vertices.keySet()) {
+                    if (hashFrom != hashTo){
+                        out.print(adjacency.get(hashTo) + "\t");
+                    }
+                    else out.print("0\t");
+                }
+                out.println();
+            }
+            out.println(";");
+
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Controller.record("Error while opening file " + file.toString());
+            System.out.println("Error while opening file " + file.toString());
+            return;
+        }
     }
 }
