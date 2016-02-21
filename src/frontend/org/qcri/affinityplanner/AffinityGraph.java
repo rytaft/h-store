@@ -593,7 +593,15 @@ public class AffinityGraph {
 
     public void toCPLEXFile(Path file) {
 
-        // ACCORDION -> clay nomeclature: HOSTS -> partition, PARTITION -> vertex
+        // ACCORDION -> clay nomeclature: HOSTS -> partition, PARTITION -> hottest vertex
+
+        IntArrayList hottestVertices = new IntArrayList();
+
+        int k = 1000;
+
+        for (int i = 0; i < Controller.MAX_PARTITIONS; i++){
+            hottestVertices.addAll(getHottestVertices(i,k));
+        }
 
         try{
             PrintWriter out = new PrintWriter(new FileWriter(file.toString()));
@@ -618,7 +626,7 @@ public class AffinityGraph {
             out.println(":=");
 
             int currPos = 0;
-            for (int hash : m_vertices.keySet()) {
+            for (int hash : hottestVertices) {
 
                 currPos++;
                 out.print(currPos + "\t");
@@ -640,7 +648,7 @@ public class AffinityGraph {
 
             out.println("param \tRATE :=");
             currPos = 0;
-            for (int hash : m_vertices.keySet()) {
+            for (int hash : hottestVertices) {
                 currPos++;
                 out.println(currPos + "\t" + m_vertices.get(hash));
             }
@@ -651,14 +659,14 @@ public class AffinityGraph {
             out.println(":=");
 
             currPos = 0;
-            for (int hashFrom : m_vertices.keySet()) {
+            for (int hashFrom : hottestVertices) {
 
                 currPos++;
                 out.print((currPos) + "\t");
 
                 Int2DoubleOpenHashMap adjacency = m_edges.get(hashFrom);
 
-                for (int hashTo : m_vertices.keySet()) {
+                for (int hashTo : hottestVertices) {
                     if (hashFrom != hashTo){
                         if(adjacency.containsKey(hashTo)) {
                             out.print(System.out.format("%d", Math.ceil(adjacency.get(hashTo))) + "\t");
@@ -681,6 +689,10 @@ public class AffinityGraph {
             return;
         }
     }
+
+    // #######################################################
+    // ############ DEFAULT LOAD-RELATED FUNCTIONS ###########
+    // #######################################################
 
     public double getSenderDelta(IntSet movingVertices, int senderPartition, int toPartition){
         boolean toPartitionLocal = (PlanHandler.getSitePartition(senderPartition) == PlanHandler.getSitePartition(toPartition));
