@@ -823,8 +823,14 @@ public class ReconfigurationPlan {
         // in min_incl and max_excl.
         // Should be called any time min_incl or max_excl are updated.
         public void updateMinMax() {
-            this.smallest_min_incl = Collections.min(this.min_incl, this.cmp);
-            this.largest_max_excl = Collections.max(this.max_excl, this.cmp);
+            if (this.min_incl.isEmpty() || this.max_excl.isEmpty()) {
+                this.smallest_min_incl = null;
+                this.largest_max_excl = null;
+            }
+            else {
+                this.smallest_min_incl = Collections.min(this.min_incl, this.cmp);
+                this.largest_max_excl = Collections.max(this.max_excl, this.cmp);
+            }
         }
 
     }
