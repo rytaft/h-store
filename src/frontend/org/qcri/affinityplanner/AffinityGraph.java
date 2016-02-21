@@ -669,7 +669,7 @@ public class AffinityGraph {
                 for (int hashTo : hottestVertices) {
                     if (hashFrom != hashTo){
                         if(adjacency.containsKey(hashTo)) {
-                            out.print(System.out.format("%d", Math.ceil(adjacency.get(hashTo))) + "\t");
+                            out.print((int) Math.ceil(adjacency.get(hashTo)) + "\t");
                         }
                         else{
                             out.print("0\t");
