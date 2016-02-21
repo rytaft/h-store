@@ -203,7 +203,7 @@ public class ReconfigurationUtil {
     	keySplits.remove(0);
     
     	for(Object[] keySplit : keySplits) {
-    		max = new Object[min.length];
+    		max = new Object[temp.getColumnCount()];
     		for(int i = 0; i < max.length && i < keySplit.length; i++) {
     			max[i] = keySplit[i];
     		}
