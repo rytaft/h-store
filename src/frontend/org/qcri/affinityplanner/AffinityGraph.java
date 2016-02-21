@@ -627,6 +627,7 @@ public class AffinityGraph {
                 out.print(currPos + "\t");
 
                 int currPartition = m_vertexPartition.get(hash);
+
                 for (int j = 0; j < Controller.MAX_PARTITIONS; j++) {
                     // what is i what is j?
                     if(currPartition == j){
@@ -662,7 +663,12 @@ public class AffinityGraph {
 
                 for (int hashTo : m_vertices.keySet()) {
                     if (hashFrom != hashTo){
-                        out.print(adjacency.get(hashTo) + "\t");
+                        if(adjacency.containsKey(hashTo)) {
+                            out.print(System.out.format("%d", Math.ceil(adjacency.get(hashTo))) + "\t");
+                        }
+                        else{
+                            out.print("0\t");
+                        }
                     }
                     else out.print("0\t");
                 }
