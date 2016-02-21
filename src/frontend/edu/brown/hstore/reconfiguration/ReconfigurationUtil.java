@@ -456,6 +456,7 @@ public class ReconfigurationUtil {
             mergedRanges.getMaxExcl().addAll(max);
             mergedRanges.getMinIncl().addAll(min);
             mergedRanges.truncateNullCols();
+            mergedRanges.updateMinMax();
         }
 
         return getExtractVoltTable(mergedRanges);
