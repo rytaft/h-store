@@ -66,6 +66,10 @@ public abstract class ExplicitPartitions {
         overrideStatementMap = new HashMap<>();
         
         overrideStatementMap.put("getPartInfoStmt", "parts");
+        overrideStatementMap.put("getProductsByPartStmt", "uses");
+        overrideStatementMap.put("getProductInfoStmt", "products");
+        overrideStatementMap.put("getSuppliersByPartStmt", "supplies");
+        overrideStatementMap.put("getSupplierInfoStmt", "suppliers");
     }
 	
 	protected ExplicitPartitions(CatalogContext catalog_context, JSONObject partition_json) throws Exception {

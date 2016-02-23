@@ -291,8 +291,63 @@ public class TestMultiColumnPlannedPartitions extends BaseTestCase {
         
         range = reconfig.getReconfigurations().get(1);
         assertEquals((byte)20, range.getMinIncl().get(0)[1]);
-        assertEquals(range.getKeySchema().getColumnType(1).getNullValue(), range.getMaxExcl().get(0)[1]);
+        assertEquals(1, range.getMaxExcl().get(0).length);
         assertEquals(1, range.getOldPartition());
         assertEquals(3, range.getNewPartition());
+    }
+    
+    public void testInRange() throws Exception {
+        Table catalog_tbl = getTable(TPCCConstants.TABLENAME_DISTRICT);
+        
+        Object[] keys = new Object[]{ 6 };
+        PartitionRange r1 = new PartitionRange(catalog_tbl, 0, new Object[]{ 5 }, new Object[]{ 6, 2 });
+        PartitionRange r2 = new PartitionRange(catalog_tbl, 0, new Object[]{ 6 }, new Object[]{ 6, 2 });
+        PartitionRange r3 = new PartitionRange(catalog_tbl, 0, new Object[]{ 6, 2 }, new Object[]{ 6, 2 });
+        PartitionRange r4 = new PartitionRange(catalog_tbl, 0, new Object[]{ 6, 2 }, new Object[]{ 7 });
+        PartitionRange r5 = new PartitionRange(catalog_tbl, 0, new Object[]{ 6 }, new Object[]{ 7, 2 });
+        PartitionRange r6 = new PartitionRange(catalog_tbl, 0, new Object[]{ 5 }, new Object[]{ 7 });
+        PartitionRange r7 = new PartitionRange(catalog_tbl, 0, new Object[]{ 6 }, new Object[]{ 7 });
+        PartitionRange r8 = new PartitionRange(catalog_tbl, 0, new Object[]{ 6 }, new Object[]{ 6 });
+        PartitionRange r9 = new PartitionRange(catalog_tbl, 0, new Object[]{ 5 }, new Object[]{ 6 });
+        PartitionRange r10 = new PartitionRange(catalog_tbl, 0, new Object[]{ 7 }, new Object[]{ 8 });
+
+        assertFalse(r1.inRange(keys));
+        assertFalse(r2.inRange(keys));
+        assertFalse(r3.inRange(keys));
+        assertFalse(r4.inRange(keys));
+        assertTrue(r5.inRange(keys));
+        assertTrue(r6.inRange(keys));
+        assertTrue(r7.inRange(keys));
+        assertTrue(r8.inRange(keys));
+        assertFalse(r9.inRange(keys));
+        assertFalse(r10.inRange(keys));
+
+    }
+
+    public void testOverlapsRange() throws Exception {
+        Table catalog_tbl = getTable(TPCCConstants.TABLENAME_DISTRICT);
+        
+        Object[] keys = new Object[]{ 6 };
+        PartitionRange r1 = new PartitionRange(catalog_tbl, 0, new Object[]{ 5 }, new Object[]{ 6, 2 });
+        PartitionRange r2 = new PartitionRange(catalog_tbl, 0, new Object[]{ 6 }, new Object[]{ 6, 2 });
+        PartitionRange r3 = new PartitionRange(catalog_tbl, 0, new Object[]{ 6, 2 }, new Object[]{ 6, 2 });
+        PartitionRange r4 = new PartitionRange(catalog_tbl, 0, new Object[]{ 6, 2 }, new Object[]{ 7 });
+        PartitionRange r5 = new PartitionRange(catalog_tbl, 0, new Object[]{ 6 }, new Object[]{ 7, 2 });
+        PartitionRange r6 = new PartitionRange(catalog_tbl, 0, new Object[]{ 5 }, new Object[]{ 7 });
+        PartitionRange r7 = new PartitionRange(catalog_tbl, 0, new Object[]{ 6 }, new Object[]{ 7 });
+        PartitionRange r8 = new PartitionRange(catalog_tbl, 0, new Object[]{ 6 }, new Object[]{ 6 });
+        PartitionRange r9 = new PartitionRange(catalog_tbl, 0, new Object[]{ 5 }, new Object[]{ 6 });
+        PartitionRange r10 = new PartitionRange(catalog_tbl, 0, new Object[]{ 7 }, new Object[]{ 8 });
+
+        assertTrue(r1.overlapsRange(keys));
+        assertTrue(r2.overlapsRange(keys));
+        assertTrue(r3.overlapsRange(keys));
+        assertTrue(r4.overlapsRange(keys));
+        assertTrue(r5.overlapsRange(keys));
+        assertTrue(r6.overlapsRange(keys));
+        assertTrue(r7.overlapsRange(keys));
+        assertTrue(r8.overlapsRange(keys));
+        assertFalse(r9.overlapsRange(keys));
+        assertFalse(r10.overlapsRange(keys));
     }
 }

@@ -5,10 +5,12 @@ import org.voltdb.VoltProcedure;
 import edu.brown.api.BenchmarkComponent;
 import edu.brown.benchmark.AbstractProjectBuilder;
 import edu.mit.benchmark.affinity.procedures.GetPart;
+import edu.mit.benchmark.affinity.procedures.GetProductsBySupplier;
 import edu.mit.benchmark.affinity.procedures.GetSupplier;
 import edu.mit.benchmark.affinity.procedures.GetProduct;
 import edu.mit.benchmark.affinity.procedures.GetPartsBySupplier;
 import edu.mit.benchmark.affinity.procedures.GetPartsByProduct;
+import edu.mit.benchmark.affinity.procedures.GetSuppliersByProduct;
 import edu.mit.benchmark.affinity.procedures.UpdatePartByProduct;
 
 public class AffinityProjectBuilder extends AbstractProjectBuilder{
@@ -27,6 +29,8 @@ public class AffinityProjectBuilder extends AbstractProjectBuilder{
         GetPart.class,
         GetPartsBySupplier.class,
         GetPartsByProduct.class,
+        GetProductsBySupplier.class,
+        GetSuppliersByProduct.class,
         UpdatePartByProduct.class
     };
     public static final String PARTITIONING[][] = new String[][] {
