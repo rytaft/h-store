@@ -68,7 +68,12 @@ public class ReconfigurationPlan {
         }
         outgoing_ranges.get(range.old_partition).add(range);
         incoming_ranges.get(range.new_partition).add(range);
-        range_map.get(range.table_name).add(range);
+        for (int i = 0; i < range.getMinIncl().size() && i < range.getMaxExcl().size(); ++i) {
+            // Every ReconfigurationRange in range_map should contain exactly one contiguous range (i.e. one min and one max value)
+            // so that findReconfigurationRange and findAllReconfigurationRanges will be correct
+            range_map.get(range.table_name).add(new ReconfigurationRange(range.table_name, range.keySchema, 
+                    range.min_incl.get(i), range.max_excl.get(i), range.old_partition, range.new_partition));
+        }
     }
 
     /**
@@ -112,17 +117,23 @@ public class ReconfigurationPlan {
             if (ranges == null) {
                 return null;
             }
+            
+            ReconfigurationTable reconfigTable = this.tables_map.get(table_name);
+            if (reconfigTable == null) {
+                return null;
+            }
 
             Object[] keys = ids.toArray();
-            for (ReconfigurationRange r : ranges) {
-                if (r.inRange(keys)) {
-                    return r;
-                }
-                else {
-                    if (this.cmp.compare(r.smallest_min_incl, keys) == 1) {
-                        break;
-                    }
-                }
+            ReconfigurationRange range = new ReconfigurationRange(table_name, reconfigTable.keySchema, keys, keys, 0, 0);
+
+            ReconfigurationRange precedingRange = ranges.floor(range);
+            if (precedingRange != null && precedingRange.inRange(keys)) {
+                return precedingRange;
+            }
+
+            ReconfigurationRange followingRange = ranges.ceiling(range);
+            if (followingRange != null && followingRange.inRange(keys)) {
+                return followingRange;
             }
 
         } catch (Exception e) {
@@ -145,16 +156,24 @@ public class ReconfigurationPlan {
             return matchingRanges;
         }
         
+        ReconfigurationTable reconfigTable = this.tables_map.get(table_name);
+        if (reconfigTable == null) {
+            return null;
+        }
+
         Object[] keys = ids.toArray();
-        for (ReconfigurationRange r : ranges) {
+        ReconfigurationRange range = new ReconfigurationRange(table_name, reconfigTable.keySchema, keys, keys, 0, 0);
+        ReconfigurationRange precedingRange = ranges.floor(range);
+        if (precedingRange != null && precedingRange.overlapsRange(keys)) {
+            matchingRanges.add(precedingRange);
+        }
+        for (ReconfigurationRange r : ranges.tailSet(range, false)) {
             try {
                 if (r.overlapsRange(keys)) {
                     matchingRanges.add(r);
                 }
                 else {
-                    if (this.cmp.compare(r.smallest_min_incl, keys) == 1) {
-                        break;
-                    }
+                    break;
                 }
             } catch (Exception e) {
                 LOG.error("Error looking up reconfiguration range", e);
@@ -169,11 +188,13 @@ public class ReconfigurationPlan {
         String table_name;
         HStoreConf conf = null;
         CatalogContext catalogContext;
+        VoltTable keySchema;
         
         public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table) throws Exception {
             this.catalogContext = catalogContext;
             table_name = old_table.table_name;
             this.conf = HStoreConf.singleton(false);
+            this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(catalogContext.getTableByName(table_name));
             setReconfigurations(new ArrayList<ReconfigurationRange>());
             Iterator<PartitionRange> old_ranges = old_table.getRanges().iterator();
             Iterator<PartitionRange> new_ranges = new_table.getRanges().iterator();
