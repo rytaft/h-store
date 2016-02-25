@@ -119,13 +119,8 @@ public class ReconfigurationPlan {
                 return null;
             }
             
-            ReconfigurationTable reconfigTable = this.tables_map.get(table_name);
-            if (reconfigTable == null) {
-                return null;
-            }
-
             Object[] keys = ids.toArray();
-            ReconfigurationRange range = new ReconfigurationRange(table_name, reconfigTable.keySchema, keys, keys, 0, 0);
+            ReconfigurationRange range = new ReconfigurationRange(catalogContext.getTableByName(table_name), keys, keys, 0, 0);
 
             ReconfigurationRange precedingRange = ranges.floor(range);
             if (precedingRange != null && precedingRange.inRange(keys)) {
@@ -157,13 +152,8 @@ public class ReconfigurationPlan {
             return matchingRanges;
         }
         
-        ReconfigurationTable reconfigTable = this.tables_map.get(table_name);
-        if (reconfigTable == null) {
-            return null;
-        }
-
         Object[] keys = ids.toArray();
-        ReconfigurationRange range = new ReconfigurationRange(table_name, reconfigTable.keySchema, keys, keys, 0, 0);
+        ReconfigurationRange range = new ReconfigurationRange(catalogContext.getTableByName(table_name), keys, keys, 0, 0);
         ReconfigurationRange precedingRange = ranges.floor(range);
         if (precedingRange != null && precedingRange.overlapsRange(keys)) {
             matchingRanges.add(precedingRange);
@@ -189,13 +179,11 @@ public class ReconfigurationPlan {
         String table_name;
         HStoreConf conf = null;
         CatalogContext catalogContext;
-        VoltTable keySchema;
         
         public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table) throws Exception {
             this.catalogContext = catalogContext;
             table_name = old_table.table_name;
             this.conf = HStoreConf.singleton(false);
-            this.keySchema = ReconfigurationUtil.getPartitionKeysVoltTable(catalogContext.getTableByName(table_name));
             setReconfigurations(new ArrayList<ReconfigurationRange>());
             Iterator<PartitionRange> old_ranges = old_table.getRanges().iterator();
             Iterator<PartitionRange> new_ranges = new_table.getRanges().iterator();
