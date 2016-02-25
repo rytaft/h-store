@@ -51,6 +51,7 @@ public class ReconfigurationPlan {
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
         range_map = new HashMap<>();
+        tables_map = new HashMap<>();
         this.partitionedTablesByFK = partitionedTablesByFK;
         this.cmp = new PartitionKeyComparator();
     }
