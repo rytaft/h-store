@@ -156,12 +156,6 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public int getPartitionId(String table_name, List<Object> ids) throws Exception {
-        if (this.reconfigurationPlan != null) {
-            ReconfigurationRange range = this.reconfigurationPlan.findReconfigurationRange(table_name, ids);
-            if (range != null) {
-                return range.getNewPartition();
-            }
-        }
         if (this.incrementalPlan != null) {
             PartitionedTable table = incrementalPlan.getTable(table_name);
             assert table != null : "Table not found " + table_name;
@@ -190,12 +184,6 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception {
-        if (this.reconfigurationPlan != null) {
-            ReconfigurationRange range = this.reconfigurationPlan.findReconfigurationRange(table_name, ids);
-            if (range != null) {
-                return range.getOldPartition();
-            }
-        }
         if (this.previousIncrementalPlan != null) {
             PartitionedTable table = previousIncrementalPlan.getTable(table_name);
             assert table != null : "Table not found " + table_name;
@@ -217,12 +205,6 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     @Override
     public List<Integer> getAllPartitionIds(String table_name, List<Object> ids) throws Exception {
         List<Integer> allPartitionIds = new ArrayList<Integer>();
-        if (this.reconfigurationPlan != null) {
-            List<ReconfigurationRange> ranges = this.reconfigurationPlan.findAllReconfigurationRanges(table_name, ids);
-            for (ReconfigurationRange range : ranges) {
-                allPartitionIds.add(range.getNewPartition());
-            }
-        }
         if (this.incrementalPlan != null) {
             PartitionedTable table = incrementalPlan.getTable(table_name);
             assert table != null : "Table not found " + table_name;
@@ -249,12 +231,6 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     @Override
     public List<Integer> getAllPreviousPartitionIds(String table_name, List<Object> ids) throws Exception {
         List<Integer> allPartitionIds = new ArrayList<Integer>();
-        if (this.reconfigurationPlan != null) {
-            List<ReconfigurationRange> ranges = this.reconfigurationPlan.findAllReconfigurationRanges(table_name, ids);
-            for (ReconfigurationRange range : ranges) {
-                allPartitionIds.add(range.getOldPartition());
-            }
-        }
         if (this.previousIncrementalPlan != null) {
             PartitionedTable table = previousIncrementalPlan.getTable(table_name);
             assert table != null : "Table not found " + table_name;

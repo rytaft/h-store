@@ -51,6 +51,7 @@ public class ReconfigurationPlan {
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
         range_map = new HashMap<>();
+        tables_map = new HashMap<>();
         this.partitionedTablesByFK = partitionedTablesByFK;
         this.cmp = new PartitionKeyComparator();
     }
@@ -68,7 +69,12 @@ public class ReconfigurationPlan {
         }
         outgoing_ranges.get(range.old_partition).add(range);
         incoming_ranges.get(range.new_partition).add(range);
-        range_map.get(range.table_name).add(range);
+        for (int i = 0; i < range.getMinIncl().size() && i < range.getMaxExcl().size(); ++i) {
+            // Every ReconfigurationRange in range_map should contain exactly one contiguous range (i.e. one min and one max value)
+            // so that findReconfigurationRange and findAllReconfigurationRanges will be correct
+            range_map.get(range.table_name).add(new ReconfigurationRange(range.table_name, range.keySchema, 
+                    range.min_incl.get(i), range.max_excl.get(i), range.old_partition, range.new_partition));
+        }
     }
 
     /**
@@ -112,17 +118,18 @@ public class ReconfigurationPlan {
             if (ranges == null) {
                 return null;
             }
-
+            
             Object[] keys = ids.toArray();
-            for (ReconfigurationRange r : ranges) {
-                if (r.inRange(keys)) {
-                    return r;
-                }
-                else {
-                    if (this.cmp.compare(r.smallest_min_incl, keys) == 1) {
-                        break;
-                    }
-                }
+            ReconfigurationRange range = new ReconfigurationRange(catalogContext.getTableByName(table_name), keys, keys, 0, 0);
+
+            ReconfigurationRange precedingRange = ranges.floor(range);
+            if (precedingRange != null && precedingRange.inRange(keys)) {
+                return precedingRange;
+            }
+
+            ReconfigurationRange followingRange = ranges.ceiling(range);
+            if (followingRange != null && followingRange.inRange(keys)) {
+                return followingRange;
             }
 
         } catch (Exception e) {
@@ -146,15 +153,18 @@ public class ReconfigurationPlan {
         }
         
         Object[] keys = ids.toArray();
-        for (ReconfigurationRange r : ranges) {
+        ReconfigurationRange range = new ReconfigurationRange(catalogContext.getTableByName(table_name), keys, keys, 0, 0);
+        ReconfigurationRange precedingRange = ranges.floor(range);
+        if (precedingRange != null && precedingRange.overlapsRange(keys)) {
+            matchingRanges.add(precedingRange);
+        }
+        for (ReconfigurationRange r : ranges.tailSet(range, false)) {
             try {
                 if (r.overlapsRange(keys)) {
                     matchingRanges.add(r);
                 }
                 else {
-                    if (this.cmp.compare(r.smallest_min_incl, keys) == 1) {
-                        break;
-                    }
+                    break;
                 }
             } catch (Exception e) {
                 LOG.error("Error looking up reconfiguration range", e);
