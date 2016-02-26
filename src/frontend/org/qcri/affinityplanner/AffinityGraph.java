@@ -4,29 +4,17 @@
 
 package org.qcri.affinityplanner;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.File;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
-import it.unimi.dsi.fastutil.ints.Int2IntMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.ints.IntSet;
+import it.unimi.dsi.fastutil.ints.*;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -602,4 +590,462 @@ public class AffinityGraph {
         }
         return res.toString();
     }
+
+    public void toCPLEXFile(Path file) {
+
+        // ACCORDION -> clay nomeclature: HOSTS -> partition, PARTITION -> hottest vertex
+
+        IntArrayList hottestVertices = new IntArrayList();
+
+        int k = 1000;
+
+        for (int i = 0; i < Controller.MAX_PARTITIONS; i++){
+            hottestVertices.addAll(getHottestVertices(i,k));
+        }
+
+        try{
+            PrintWriter out = new PrintWriter(new FileWriter(file.toString()));
+            out.println("param P := " + hottestVertices.size() + ";");
+            out.println("param K := 1;");
+
+            // assumes that all active partitions are consecutive
+            int numPartitions = 0;
+            for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
+                if(AffinityGraph.isActive(i)){
+                    numPartitions++;
+                }
+            }
+            out.println("param CURR_HOSTS := " + numPartitions + ";");
+
+            out.println("param MAX_HOSTS := " + Controller.MAX_PARTITIONS + ";");
+            out.println("param MAX_CAPACITY := " + Controller.MAX_LOAD_PER_PART + ";");
+            out.println("param DTXN_COST := " + Controller.DTXN_COST + ";");
+
+            out.print("param INITIAL:\t");
+            for (int i = 0; i < Controller.MAX_PARTITIONS; i++) out.print((i+1) + "\t");
+            out.println(":=");
+
+            int currPos = 0;
+            for (int hash : hottestVertices) {
+
+                currPos++;
+                out.print(currPos + "\t");
+
+                int currPartition = m_vertexPartition.get(hash);
+
+                for (int j = 0; j < Controller.MAX_PARTITIONS; j++) {
+                    // what is i what is j?
+                    if(currPartition == j){
+                        out.print(1 + "\t");
+                    }
+                    else{
+                        out.print(0 + "\t");
+                    }
+                }
+                out.println();
+            }
+            out.println(";");
+
+            out.println("param \tRATE :=");
+            currPos = 0;
+            for (int hash : hottestVertices) {
+                currPos++;
+                out.println(currPos + "\t" + m_vertices.get(hash));
+            }
+            out.println(";");
+
+            out.print("param DTXN_PER_PART:\t");
+            for (int i = 0; i < hottestVertices.size(); i++) out.print((i+1) + "\t");
+            out.println(":=");
+
+            currPos = 0;
+            for (int hashFrom : hottestVertices) {
+
+                currPos++;
+                out.print((currPos) + "\t");
+
+                Int2DoubleOpenHashMap adjacency = m_edges.get(hashFrom);
+
+                for (int hashTo : hottestVertices) {
+                    if (hashFrom != hashTo){
+                        if(adjacency.containsKey(hashTo)) {
+                            out.print((int) Math.ceil(adjacency.get(hashTo)) + "\t");
+                        }
+                        else{
+                            out.print("0\t");
+                        }
+                    }
+                    else out.print("0\t");
+                }
+                out.println();
+            }
+            out.println(";");
+
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Controller.record("Error while opening file " + file.toString());
+            System.out.println("Error while opening file " + file.toString());
+            return;
+        }
+    }
+
+    // #######################################################
+    // ############ DEFAULT LOAD-RELATED FUNCTIONS ###########
+    // #######################################################
+
+    public double getSenderDelta(IntSet movingVertices, int senderPartition, int toPartition){
+        boolean toPartitionLocal = (PlanHandler.getSitePartition(senderPartition) == PlanHandler.getSitePartition(toPartition));
+        return getSenderDelta(movingVertices, senderPartition, toPartitionLocal);
+    }
+
+    public double getLoadPerSite(int site){
+        IntList partitions = PlanHandler.getPartitionsSite(site);
+        double load = 0;
+        for (int partition : partitions){
+            load += getLoadPerPartition(partition);
+        }
+        return load;
+    }
+
+    public double getLoadVertices(IntSet vertices){
+
+        //        DEBUG.clear();
+
+        double load = 0;
+
+        int fromPartition = -1;
+
+        for(int vertex : vertices){
+
+            // local accesses - vertex weight
+            double vertexWeight = AffinityGraph.m_vertices.get(vertex);
+
+            if (vertexWeight == AffinityGraph.m_vertices.defaultReturnValue()){
+                LOG.debug("Cannot include external node for delta computation");
+                throw new IllegalStateException("Cannot include external node for delta computation");
+            }
+
+            load += vertexWeight;
+
+            // remote accesses
+            if (fromPartition == -1){
+                fromPartition = AffinityGraph.m_vertexPartition.get(vertex);
+            }
+            else{
+                if(fromPartition != AffinityGraph.m_vertexPartition.get(vertex)){
+                    int otherPartition = AffinityGraph.m_vertexPartition.get(vertex);
+                    ////System.out.println("vertex with hash " + vertex + " and name " + AffinityGraph.m_vertexName.get(vertex) + " is not on partition " + fromPartition + " but on partition " + otherPartition);
+                    ////System.out.println("Vertex is in PartitionVertex for partition " + fromPartition + ": " + AffinityGraph.m_partitionVertices.get(fromPartition).contains(vertex));
+                    ////System.out.println("Vertex is in PartitionVertex for partition " + otherPartition + ": " + AffinityGraph.m_partitionVertices.get(otherPartition).contains(vertex));
+                    System.exit(0);
+                }
+            }
+
+            int fromSite = PlanHandler.getSitePartition(fromPartition);
+
+            Int2DoubleMap adjacencyList = AffinityGraph.m_edges.get(vertex);
+            if(adjacencyList != null){
+
+                for(Int2DoubleMap.Entry edge : adjacencyList.int2DoubleEntrySet()){
+
+                    int toVertex = edge.getIntKey();
+                    double edgeWeight = edge.getDoubleValue();
+
+                    int toPartition = AffinityGraph.m_vertexPartition.get(toVertex);
+
+                    if (toPartition != fromPartition){
+
+                        int toSite = PlanHandler.getSitePartition(toPartition);
+                        double h = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
+                        load += edgeWeight * h;
+                    }
+                }
+            }
+        }
+        return load;
+    }
+
+    public double getLoadPerPartition(int partition){
+
+        if (!AffinityGraph.isActive(partition)){
+            return 0;
+        }
+
+        return getLoadVertices(AffinityGraph.m_partitionVertices.get(partition));
+    }
+
+    public double getGlobalDelta(IntSet movingVertices, int toPartition){
+
+        if (movingVertices == null || movingVertices.isEmpty()){
+            LOG.debug("Trying to move an empty set of vertices");
+            return 0;
+        }
+
+        double delta = 0;
+        int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
+
+        for(int movingVertex : movingVertices){
+
+            int fromPartition = AffinityGraph.m_vertexPartition.get(movingVertex);
+            int fromSite = PlanHandler.getSitePartition(fromPartition);
+
+            // if fromPartition = toPartition, there is no move so the delta is 0
+            if (fromPartition != toPartition){
+
+                Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(movingVertex);
+                if(adjacency != null){
+
+                    for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
+
+                        int adjacentVertex = edge.getIntKey();
+                        double edgeWeight = edge.getDoubleValue();
+
+                        if(!movingVertices.contains(adjacentVertex)){
+                            int adjacentVertexPartition = AffinityGraph.m_vertexPartition.get(adjacentVertex);
+                            int adjacentVertexSite = PlanHandler.getSitePartition(adjacentVertexPartition);
+
+                            if (adjacentVertexPartition == fromPartition){
+                                // new MPTs from fromPartition to toPartition
+                                double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
+                                delta += edgeWeight * k;
+                            }
+                            else if (adjacentVertexPartition == toPartition){
+                                // eliminating MTPs from fromPartition to toPartition
+                                double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
+                                delta -= edgeWeight * k;
+                            }
+                            else{
+                                // from fromPartition -> adjacentPartition to toPartition -> adjacentPartition
+                                double h = 0;
+                                if (adjacentVertexSite == fromSite && adjacentVertexSite != toSite){
+                                    // we had a local mpt, now we have a dtxn
+                                    h = Controller.DTXN_COST - Controller.LMPT_COST;
+                                }
+                                else if (adjacentVertexSite != fromSite && adjacentVertexSite == toSite){
+                                    // we had a dtxn, now we have a local mpt
+                                    h = Controller.LMPT_COST - Controller.DTXN_COST;
+                                }
+                                delta += edgeWeight * h;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return delta;
+    }
+
+    public double getReceiverDelta(IntSet movingVertices, int toPartition){
+
+        if (movingVertices == null || movingVertices.isEmpty()){
+            LOG.debug("Trying to move an empty set of vertices");
+            return 0;
+        }
+
+        double delta = 0;
+        int toSite = (toPartition == -1) ? -1 : PlanHandler.getSitePartition(toPartition);
+
+        for(int movedVertex : movingVertices){
+
+            double vertexWeight = AffinityGraph.m_vertices.get(movedVertex);
+            if (vertexWeight == AffinityGraph.m_vertices.defaultReturnValue()){
+                LOG.debug("Cannot include external node for delta computation");
+                throw new IllegalStateException("Cannot include external node for delta computation");
+            }
+
+            int fromPartition = AffinityGraph.m_vertexPartition.get(movedVertex);
+            int fromSite = PlanHandler.getSitePartition(fromPartition);
+
+            // if fromPartition == toPartition there is no movement so delta is 0
+            if(fromPartition != toPartition){
+
+                delta += vertexWeight;
+
+                // compute cost of new multi-partition transactions
+                Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(movedVertex);
+                if(adjacency != null){
+
+                    for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
+
+                        int adjacentVertex = edge.getIntKey();
+                        double edgeWeight = edge.getDoubleValue();
+
+                        int adjacentVertexPartition = AffinityGraph.m_vertexPartition.get(adjacentVertex);
+                        int adjacentVertexSite = PlanHandler.getSitePartition(adjacentVertexPartition);
+
+                        if (adjacentVertexPartition == toPartition){
+                            // the moved vertex used to be accessed with a tuple in the destination partition
+                            // the destination saves old MPTs by moving the vertex
+                            double k = (fromSite == toSite) ? Controller.LMPT_COST : Controller.DTXN_COST;
+                            delta -= edgeWeight * k;
+                        }
+                        else if (!movingVertices.contains(adjacentVertex)){
+                            // the destination pays new MPTs unless the adjacent vertex is also moved here
+                            if (adjacentVertexSite == toSite){
+                                delta += edgeWeight * Controller.LMPT_COST;
+                            }
+                            else {
+                                delta += edgeWeight * Controller.DTXN_COST;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return delta;
+    }
+
+    public double getSenderDelta(IntSet movingVertices, int senderPartition, boolean toPartitionLocal) {
+
+        if (movingVertices == null || movingVertices.isEmpty()){
+            LOG.debug("Trying to move an empty set of vertices");
+            return 0;
+        }
+
+        double delta = 0;
+        int senderSite = PlanHandler.getSitePartition(senderPartition);
+
+        for(int movingVertex : movingVertices){
+
+            double vertexWeight = AffinityGraph.m_vertices.get(movingVertex);
+            if (vertexWeight == AffinityGraph.m_vertices.defaultReturnValue()){
+                LOG.debug("Cannot include external node for delta computation");
+                throw new IllegalStateException("Cannot include external node for delta computation");
+            }
+
+            int fromPartition = AffinityGraph.m_vertexPartition.get(movingVertex);
+
+            // if fromPartition != senderPartition, there is no change for the sender so no delta
+            if(fromPartition == senderPartition){
+
+                // lose vertex weight
+                delta -= vertexWeight;
+
+                // consider MPTs
+                Int2DoubleOpenHashMap adjacency = AffinityGraph.m_edges.get(movingVertex);
+                if(adjacency != null){
+
+                    for (Int2DoubleMap.Entry edge : adjacency.int2DoubleEntrySet()){
+
+                        int adjacentVertex = edge.getIntKey();
+                        double edgeWeight = edge.getDoubleValue();
+
+                        int adjacentVertexPartition = AffinityGraph.m_vertexPartition.get(adjacentVertex);
+                        int adjacentVertexSite = PlanHandler.getSitePartition(adjacentVertexPartition);
+
+                        if (! (adjacentVertexPartition == senderPartition && movingVertices.contains(adjacentVertex))){
+                            // if the two vertices are local to the sender and are moved together, only save the vertex weight
+                            // else need to consider MPT costs
+                            if (adjacentVertexPartition == senderPartition) {
+                                // the sender was paying nothing, now pays the senderPartition -> toPartition MPTs
+                                // the two vertices are not moved together
+                                double k = toPartitionLocal ? Controller.LMPT_COST : Controller.DTXN_COST;
+                                delta += edgeWeight * k;
+                            } else if (adjacentVertexSite == senderSite){
+                                // the sender was paying senderPartition -> adjacentPartition MPTs, now pays nothing
+                                delta -= edgeWeight * Controller.LMPT_COST;
+                            } else {
+                                delta -= edgeWeight * Controller.DTXN_COST;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return delta;
+    }
+
+
+    public int getLeastLoadedPartition(IntList activePartitions){
+        double minLoad = Double.MAX_VALUE;
+        int res = 0;
+        for (int part : activePartitions){
+            double newLoad = getLoadPerPartition(part);
+            if (newLoad < minLoad){
+                res = part;
+                minLoad = newLoad;
+            }
+        }
+        return res;
+    }
+
+    /**
+     * Returns sorted (descending order) list of top-k vertices from site
+     *
+     * @param partition
+     * @param k
+     * @return
+     */
+    protected IntList getHottestVertices(int partition, int k){
+
+        IntList res = new IntArrayList (k);
+        final Int2DoubleMap hotnessMap = new Int2DoubleOpenHashMap (k);
+
+        k = Math.min(k, AffinityGraph.m_partitionVertices.get(partition).size());
+        int lowestPos = 0;
+        double lowestLoad = Double.MAX_VALUE;
+
+        IntSet singleton = new IntOpenHashSet(1);
+
+        for(int vertex : AffinityGraph.m_partitionVertices.get(partition)){
+
+            singleton.clear();
+            singleton.add(vertex);
+            double vertexLoad = getLoadVertices(singleton);
+
+            if (res.size() < k){
+
+                res.add(vertex);
+                hotnessMap.put(vertex, vertexLoad);
+                if (lowestLoad > vertexLoad){
+                    lowestPos = res.size() - 1;
+                    lowestLoad = vertexLoad;
+                }
+            }
+
+            else{
+                if(vertexLoad > lowestLoad){
+
+                    hotnessMap.remove(res.get(lowestPos));
+
+                    res.set(lowestPos, vertex);
+                    hotnessMap.put(vertex, vertexLoad);
+
+                    // find new lowest load
+                    lowestLoad = vertexLoad;
+                    for (int i = 0; i < k; i++){
+                        double currLoad = hotnessMap.get(res.get(i));
+                        if(currLoad < lowestLoad){
+                            lowestPos = i;
+                            lowestLoad = currLoad;
+                        }
+                    }
+                }
+            }
+        }
+
+        // sort determines an _ascending_ order
+        // Comparator should return "a negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater than the second"
+        // We want a _descending_ order, so we need to invert the comparator result
+        Collections.sort(res, new AbstractIntComparator(){
+            @Override
+            public int compare(int o1, int o2) {
+                if (hotnessMap.get(o1) < hotnessMap.get(o2)){
+                    return 1;
+                }
+                else if (hotnessMap.get(o1) > hotnessMap.get(o2)){
+                    return -1;
+                }
+                return 0;
+            }
+        });
+
+        return res;
+    }
+
+
 }
