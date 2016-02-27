@@ -156,10 +156,12 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public int getPartitionId(String table_name, List<Object> ids) throws Exception {
-        if (this.incrementalPlan != null) {
-            PartitionedTable table = incrementalPlan.getTable(table_name);
-            assert table != null : "Table not found " + table_name;
-            return table.findPartition(ids);
+        synchronized(this) {
+            if (this.incrementalPlan != null) {
+                PartitionedTable table = incrementalPlan.getTable(table_name);
+                assert table != null : "Table not found " + table_name;
+                return table.findPartition(ids);
+            }
         }
 
         PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
@@ -184,10 +186,12 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
      */
     @Override
     public int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception {
-        if (this.previousIncrementalPlan != null) {
-            PartitionedTable table = previousIncrementalPlan.getTable(table_name);
-            assert table != null : "Table not found " + table_name;
-            return table.findPartition(ids);
+        synchronized(this) {
+            if (this.previousIncrementalPlan != null) {
+                PartitionedTable table = previousIncrementalPlan.getTable(table_name);
+                assert table != null : "Table not found " + table_name;
+                return table.findPartition(ids);
+            }
         }
 
         String previousPhase = this.getPreviousPhase_phase();
@@ -205,11 +209,13 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     @Override
     public List<Integer> getAllPartitionIds(String table_name, List<Object> ids) throws Exception {
         List<Integer> allPartitionIds = new ArrayList<Integer>();
-        if (this.incrementalPlan != null) {
-            PartitionedTable table = incrementalPlan.getTable(table_name);
-            assert table != null : "Table not found " + table_name;
-            allPartitionIds.addAll(table.findAllPartitions(ids));
-            return allPartitionIds;
+        synchronized(this) {
+            if (this.incrementalPlan != null) {
+                PartitionedTable table = incrementalPlan.getTable(table_name);
+                assert table != null : "Table not found " + table_name;
+                allPartitionIds.addAll(table.findAllPartitions(ids));
+                return allPartitionIds;
+            }
         }
 
         PartitionPhase phase = this.partition_phase_map.get(this.getCurrent_phase());
@@ -231,11 +237,13 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     @Override
     public List<Integer> getAllPreviousPartitionIds(String table_name, List<Object> ids) throws Exception {
         List<Integer> allPartitionIds = new ArrayList<Integer>();
-        if (this.previousIncrementalPlan != null) {
-            PartitionedTable table = previousIncrementalPlan.getTable(table_name);
-            assert table != null : "Table not found " + table_name;
-            allPartitionIds.addAll(table.findAllPartitions(ids));
-            return allPartitionIds;
+        synchronized(this) {
+            if (this.previousIncrementalPlan != null) {
+                PartitionedTable table = previousIncrementalPlan.getTable(table_name);
+                assert table != null : "Table not found " + table_name;
+                allPartitionIds.addAll(table.findAllPartitions(ids));
+                return allPartitionIds;
+            }
         }
 
         String previousPhase = this.getPreviousPhase_phase();
@@ -751,15 +759,18 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
             throw new RuntimeException("Invalid Phase Name: " + new_phase + " phases: " + StringUtil.join(",", this.partition_phase_map.keySet()));
         }
         this.current_phase = new_phase;
-        this.previous_phase = old_phase;
-        this.incrementalPlan = null;
-        this.previousIncrementalPlan = null;
+        this.previous_phase = old_phase;       
 
         try {
             if (old_phase == null) {
                 return null;
             }
-            return new ReconfigurationPlan(this.catalog_context, this.partition_phase_map.get(old_phase), this.partition_phase_map.get(new_phase));
+            PartitionPhase old_plan = this.partition_phase_map.get(old_phase);
+            synchronized(this) {
+                this.incrementalPlan = old_plan;
+                this.previousIncrementalPlan = old_plan;
+            }
+            return new ReconfigurationPlan(this.catalog_context, old_plan, this.partition_phase_map.get(new_phase));
         } catch (Exception ex) {
             LOG.error("Exception on setting partition phase", ex);
             LOG.error(String.format("Old phase: %s  New Phase: %s", old_phase, new_phase));

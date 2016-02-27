@@ -68,8 +68,6 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
     	super(catalog_context, partition_json);
     	this.old_partition_plan = null;
         this.partition_plan = null;
-        this.incrementalPlan = null;
-        this.previousIncrementalPlan = null;
 
         if (partition_json.has(PARTITION_PLAN)) {
             JSONObject plan = partition_json.getJSONObject(PARTITION_PLAN);
@@ -151,11 +149,11 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
      */
     @Override
     public int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception {
-    	synchronized (this) {
-    		if(this.previousIncrementalPlan != null) {
-    			PartitionedTable table = previousIncrementalPlan.getTable(table_name);
-			assert table != null : "Table not found " + table_name;
-			return table.findPartition(ids);
+        synchronized (this) {
+            if(this.previousIncrementalPlan != null) {
+                PartitionedTable table = previousIncrementalPlan.getTable(table_name);
+                assert table != null : "Table not found " + table_name;
+                return table.findPartition(ids);
     		}
     	}
     	
@@ -199,11 +197,11 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
     public List<Integer> getAllPreviousPartitionIds(String table_name, List<Object> ids) throws Exception {
     	List<Integer> allPartitionIds = new ArrayList<Integer>();
     	synchronized (this) {
-    		if(this.previousIncrementalPlan != null) {
-    			PartitionedTable table = previousIncrementalPlan.getTable(table_name);
-			assert table != null : "Table not found " + table_name;
-			allPartitionIds.addAll(table.findAllPartitions(ids));
-	        return allPartitionIds;
+    	    if(this.previousIncrementalPlan != null) {
+    	        PartitionedTable table = previousIncrementalPlan.getTable(table_name);
+    	        assert table != null : "Table not found " + table_name;
+    	        allPartitionIds.addAll(table.findAllPartitions(ids));
+    	        return allPartitionIds;
     		}
     	}
     	
@@ -244,8 +242,8 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
             		this.old_partition_plan = this.partition_plan;
             		this.partition_plan = new_plan;
             		old_plan = this.old_partition_plan;
-            		this.incrementalPlan = null;
-            		this.previousIncrementalPlan = null;
+            		this.previousIncrementalPlan = old_plan;
+            		this.incrementalPlan = old_plan;      		
             	}
             } else {
                 throw new JSONException(String.format("JSON file is missing key \"%s\". ", PARTITION_PLAN));

@@ -80,6 +80,8 @@ public abstract class ExplicitPartitions {
         this.relatedTablesMap = new HashMap<>();
         this.name_table_map = new HashMap<>();
         this.reconfigurationPlan = null;
+        this.incrementalPlan = null;
+        this.previousIncrementalPlan = null;
         Set<String> partitionedTables = getExplicitPartitionedTables(partition_json);
         // TODO find catalogContext.getParameter mapping to find
         // statement_column
@@ -398,6 +400,10 @@ public abstract class ExplicitPartitions {
     public void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan) {
         if (reconfigurationPlan == null) {
             this.reconfigurationPlan = null;
+            synchronized(this) {
+                this.previousIncrementalPlan = null;
+                this.incrementalPlan = null;
+            }
             return;
         }
 
@@ -407,14 +413,18 @@ public abstract class ExplicitPartitions {
         }
 
         this.reconfigurationPlan = reconfigurationPlan;
-        if (this.incrementalPlan == null) {
-            this.previousIncrementalPlan = this.getPreviousPlan();
-            this.incrementalPlan = this.getPreviousPlan();
+        Map<String, PartitionedTable> tables_map;
+        synchronized(this) {
+            if (this.incrementalPlan == null) {
+                this.previousIncrementalPlan = this.getPreviousPlan();
+                this.incrementalPlan = this.getPreviousPlan();
+            }
+            tables_map = this.incrementalPlan.tables_map;
         }
         assert (this.reconfigurationPlan.range_map != null) : "Null reconfiguration range map";
 
         List<PartitionRange> newRanges = new ArrayList<PartitionRange>();
-        for (Map.Entry<String, PartitionedTable> tables : this.incrementalPlan.tables_map.entrySet()) {
+        for (Map.Entry<String, PartitionedTable> tables : tables_map.entrySet()) {
             String table_name = tables.getKey();
             Iterator<PartitionRange> partitionRanges = tables.getValue().getRanges().iterator();
             Iterator<ReconfigurationRange> reconfigRanges;
@@ -487,8 +497,11 @@ public abstract class ExplicitPartitions {
         LOG.info("New incremental plan ranges: " + newRanges.toString());
 
         try {
-            this.previousIncrementalPlan = this.incrementalPlan;
-            this.incrementalPlan = new PartitionPhase(this.incrementalPlan.catalog_context, newRanges, this.partitionedTablesByFK);
+            PartitionPhase new_plan = new PartitionPhase(this.catalog_context, newRanges, this.partitionedTablesByFK);
+            synchronized(this) {
+                this.previousIncrementalPlan = this.incrementalPlan;
+                this.incrementalPlan = new_plan;
+            }
         } catch (Exception e) {
             LOG.error(e);
             throw new RuntimeException(e);
