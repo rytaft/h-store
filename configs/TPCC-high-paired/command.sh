@@ -52,6 +52,12 @@ ant hstore-benchmark -Dproject=tpcc -Dglobal.hasher_plan=plan_out.json -Dglobal.
 # save results
 ./scripts/save_results.sh results/TPCC-high-paired/graph/${1}
 
+# run reconfiguration
+ant hstore-benchmark -Dproject=tpcc -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dsite.txn_restart_limit_sysproc=100 -Dsite.jvm_asserts=false -Dsite.commandlog_enable=false -Dsite.exec_db2_redirects=false -Dsite.exec_early_prepare=false -Dsite.exec_force_singlepartitioned=true -Dsite.markov_fixed=false -Dsite.planner_caching=false -Dsite.reconfig_async_chunk_size_kb=8048 -Dsite.reconfig_async_delay_ms=711 -Dsite.reconfig_chunk_size_kb=10048 -Dsite.reconfig_plan_delay=2511 -Dsite.reconfig_subplan_split=100 -Dsite.specexec_enable=true -Dpartitionplan=tpcc-plan-fine-grained.pplan  -Dclient.duration=1200000 -Dclient.interval=1000 -Dclient.txnrate=1000 -Dclient.count=6 -Dclient.hosts="istc11;istc12;istc13;istc4;istc6;istc7" -Dclient.threads_per_host=16 -Dclient.blocking_concurrent=30 -Dclient.output_interval=true -Dsite.planner_caching=false -Dclient.txn_hints=false  -Dclient.skewfactor=0.65  -Dclient.output_results_csv=results.csv -Delastic.run_monitoring=false -Delastic.update_plan=false -Delastic.exec_reconf=true -Delastic.delay=20000 | tee out.log
+
+# save results
+./scripts/save_results.sh results/TPCC-high-paired/graph/reconf-1
+
 ##### Greedy #####
 
 # load monitoring files
