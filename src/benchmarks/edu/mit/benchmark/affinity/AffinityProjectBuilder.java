@@ -39,7 +39,8 @@ public class AffinityProjectBuilder extends AbstractProjectBuilder{
         {"PRODUCTS", "PRODUCT_KEY"},
         {"PARTS", "PART_KEY"},
         {"SUPPLIES", "SUPPLIER_KEY"},
-        {"USES", "PRODUCT_KEY"},
+	//        {"USES", "PRODUCT_KEY"},
+        {"USES", "PART_KEY"},
     };
     
     public AffinityProjectBuilder() {

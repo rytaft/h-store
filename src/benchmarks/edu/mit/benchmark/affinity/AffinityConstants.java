@@ -35,13 +35,13 @@ public class AffinityConstants {
     public static final int FREQ_READ_PRODUCT = 20;
     public static final int FREQ_READ_PART = 20;
     public static final int FREQ_READ_PARTS_BY_SUPPLIER = 20;
-    public static final int FREQ_READ_PARTS_BY_PRODUCT = 20;
+    public static final int FREQ_READ_PARTS_BY_PRODUCT = 0;
 
     // If you use GetProductsBySupplier, you should change the partition attribute
     // of USES to PART_KEY in AffinityProjectBuilder.java, and add an index on 
     // USES(PART_KEY) to affinity-ddl.sql (this will make GetPartsByProduct and 
     // GetSuppliersByProduct 100% distributed)
-    public static final int FREQ_READ_PRODUCTS_BY_SUPPLIER = 0;
+    public static final int FREQ_READ_PRODUCTS_BY_SUPPLIER = 20;
     // If you use GetSuppliersByProduct, you should change the partition attribute
     // of SUPPLIES to PART_KEY in AffinityProjectBuilder.java, and add an index on 
     // SUPPLIES(PART_KEY) to affinity-ddl.sql (this will make GetPartsBySupplier and 
