@@ -377,7 +377,7 @@ public class TwitterLoader extends Loader {
         		vt_followers.clearRowData();
         		batchSize = 0;
         		if (LOG.isDebugEnabled()) 
-        			LOG.debug("Follows  % " + (int)(((double)e.follower/(double)this.num_users)*100));
+        			LOG.debug("Follows  % " + ((double)e.followee/(double)this.num_users)*100);
         	}
         }
 
