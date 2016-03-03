@@ -349,9 +349,8 @@ public class TwitterLoader extends Loader {
         int total = 1;
         int batchSize = 0;
         
-        while(this.graph_loader.hasNext()) {
-        	TwitterGraphEdge e = this.graph_loader.readNextEdge();
-        	if(e == null) break;
+        TwitterGraphEdge e = null;
+        while((e = this.graph_loader.readNextEdge()) != null) {
         	Object row_follows[] = new Object[num_cols_follows];
         	int param = 0;
         	row_follows[param++] = e.follower;
@@ -383,6 +382,7 @@ public class TwitterLoader extends Loader {
         		}
         	}
         }
+        this.graph_loader.close();
 
         if (batchSize > 0) {
         	this.loadVoltTable(catalog_tbl_follows.getName(), vt_follows);

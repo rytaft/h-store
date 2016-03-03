@@ -20,10 +20,12 @@
 package com.oltpbenchmark.benchmarks.twitter.util;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
@@ -32,7 +34,7 @@ import java.util.Random;
 public class TwitterGraphLoader {
 
 	String filename;
-	DataInputStream dis = null;
+	BufferedReader br = null;
 	Random r = null;
 	static final double READ_WRITE_RATIO = 11.8; // from
 													// http://www.globule.org/publi/WWADH_comnet2009.html
@@ -47,15 +49,8 @@ public class TwitterGraphLoader {
 			throw new FileNotFoundException("You must specify a filename to instantiate the TwitterGraphLoader... (probably missing in your workload configuration?)");
 
 		File file = new File(filename);
-		FileInputStream fis = null;
-		BufferedInputStream bis = null;
-		fis = new FileInputStream(file);
-
-		// Here BufferedInputStream is added for fast reading.
-		bis = new BufferedInputStream(fis);
-		dis = new DataInputStream(bis);
-		dis.mark(1024 * 1024 * 1024);
-	
+		FileReader fr = new FileReader(file);
+		br = new BufferedReader(fr);
 	}
 
 	public void setMaxUserId(int max_user_id) {
@@ -68,7 +63,8 @@ public class TwitterGraphLoader {
 		int follower = Integer.MAX_VALUE;
 
 		while(follower > max_user_id) {
-			String line = dis.readLine();
+			String line = br.readLine();
+			if (line == null) return null;
 			String[] sa = line.split("\\s+");
 			followee = Integer.parseInt(sa[0]);
 			follower = Integer.parseInt(sa[1]);
@@ -82,22 +78,8 @@ public class TwitterGraphLoader {
 		return new TwitterGraphEdge(follower,followee);
 	}
 
-	public ArrayList<TwitterGraphEdge> readAll() throws IOException {
-		ArrayList<TwitterGraphEdge> edges = new ArrayList<TwitterGraphEdge>();
-
-		while (dis.available() > 0) {
-			edges.add(readNextEdge());
-		}
-
-		return edges;
-	}
-	
-	public boolean hasNext() throws IOException {
-		return dis.available() > 0 && last_followee <= max_user_id;
-	}
-
 	public void close() throws IOException {
-		dis.close();
+		br.close();
 	}
 
 }
