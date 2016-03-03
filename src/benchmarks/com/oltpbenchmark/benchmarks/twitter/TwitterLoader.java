@@ -378,7 +378,7 @@ public class TwitterLoader extends Loader {
         		batchSize = 0;
         		if (LOG.isDebugEnabled()) 
         			LOG.debug("Follows  % " + ((double)e.followee/(double)this.num_users)*100);
-        		if (total % 100000 == 0) {
+        		if ((total % 100000) == 0) {
         		    LOG.info("Follows  % " + ((double)e.followee/(double)this.num_users)*100);
         		}
         	}
