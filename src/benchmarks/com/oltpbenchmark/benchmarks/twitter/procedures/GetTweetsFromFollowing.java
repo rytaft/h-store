@@ -19,7 +19,13 @@
  ******************************************************************************/
 package com.oltpbenchmark.benchmarks.twitter.procedures;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 import com.oltpbenchmark.benchmarks.twitter.TwitterConstants;
+
+import edu.brown.benchmark.ycsb.distributions.ZipfianGenerator;
 
 import org.voltdb.ProcInfo;
 import org.voltdb.SQLStmt;
@@ -34,7 +40,7 @@ public class GetTweetsFromFollowing extends VoltProcedure {
 
     public final SQLStmt getFollowing = new SQLStmt(
         "SELECT f2 FROM " + TwitterConstants.TABLENAME_FOLLOWS +
-        " WHERE f1 = ? LIMIT " + TwitterConstants.LIMIT_FOLLOWERS
+        " WHERE f1 = ?"
     );
     
     /** NOTE: The ?? is substituted into a string of repeated ?'s */
@@ -45,16 +51,36 @@ public class GetTweetsFromFollowing extends VoltProcedure {
     
     public VoltTable[] run(int uid) {
     	voltQueueSQL(getFollowing, uid);
-    	VoltTable result[] = voltExecuteSQL();
+    	final VoltTable result[] = voltExecuteSQL();
+    	assert result.length == 1;
         
-        int num_params = Math.min(result[0].getRowCount(), TwitterConstants.LIMIT_FOLLOWERS);
-        for(int i = 0; i < num_params; ++i) {
-        	voltQueueSQL(getTweets, result[0].fetchRow(i).getLong(0));
-        }
+    	if (Math.min(result[0].getRowCount(), TwitterConstants.LIMIT_FOLLOWING) > 0) {
+            long[] following = new long[result[0].getRowCount()];
+
+            // get the list of users that uid is following
+            for (int i = 0; i < result[0].getRowCount(); ++i) {
+                following[i] = result[0].fetchRow(i).getLong(0);
+            }
+
+            // The chosen set of users will follow a zipfian distribution
+            // without replacement
+            Arrays.sort(following);
+            ZipfianGenerator r = new ZipfianGenerator(following.length);
+            Set<Integer> indices = new HashSet<>();
+            for (int i = 0; i < TwitterConstants.LIMIT_FOLLOWING && i < following.length; ++i) {
+                Integer index = r.nextInt();
+                while (indices.contains(index)) {
+                    index = (index + 1) % following.length;
+                }
+                indices.add(index);
+            }
+            for (Integer index : indices) {
+                voltQueueSQL(getTweets, following[index]);
+            }
         
-        if (num_params > 0) {
             return voltExecuteSQL(true);
         }
+
         
         return null;
     }
