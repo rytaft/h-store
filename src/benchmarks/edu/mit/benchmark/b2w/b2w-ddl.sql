@@ -2,20 +2,20 @@
 CREATE TABLE STK_INVENTORY_STOCK (
         sku BIGINT,
         id VARCHAR(128) NOT NULL,
-        warehouse INT,
-        sub_inventory INT,
-        stock_type INT,
+        warehouse INTEGER,
+        sub_inventory INTEGER,
+        stock_type INTEGER,
         store_id BIGINT,
-        lead_time INT,
+        lead_time INTEGER,
         PRIMARY KEY (id)
 );
 CREATE INDEX IDX_STK_INVENTORY_STOCK ON STK_INVENTORY_STOCK(sku);
 
 CREATE TABLE STK_INVENTORY_STOCK_QUANTITY (
         id VARCHAR(128) NOT NULL, -- REFERENCES STK_INVENTORY_STOCK(id)
-        available INT,
-        purchase INT,
-        session INT,
+        available INTEGER,
+        purchase INTEGER,
+        session INTEGER,
         PRIMARY KEY (id)
 );
 
@@ -23,19 +23,19 @@ CREATE TABLE STK_STOCK_TRANSACTION (
         transaction_id VARCHAR(128) NOT NULL,
         reserve_id VARCHAR(128),
         brand VARCHAR(32),
-        creation_date DATE,
+        creation_date TIMESTAMP,
         current_status VARCHAR(32),
-        expiration_date DATE,
-        is_kit BOOLEAN,
-        requested_quantity INT,
+        expiration_date TIMESTAMP,
+        is_kit TINYINT,
+        requested_quantity INTEGER,
         reserve_lines VARCHAR(256),
-        reserved_quantity INT,
+        reserved_quantity INTEGER,
         sku BIGINT,
         solr_query VARCHAR(128),
         status VARCHAR(256),
         store_id BIGINT,
-        subinventory INT,
-        warehouse INT,
+        subinventory INTEGER,
+        warehouse INTEGER,
         PRIMARY KEY (transaction_id)
 );
 
@@ -46,9 +46,9 @@ CREATE TABLE CART (
         salesChannel VARCHAR(32),
         opn VARCHAR(32),
         epar VARCHAR(128),
-        lastModified DATE,
+        lastModified TIMESTAMP,
         status VARCHAR(32),
-        autoMerge BOOLEAN,
+        autoMerge TINYINT,
         PRIMARY KEY (id)
 );
 
@@ -56,8 +56,8 @@ CREATE TABLE CART_CUSTOMER (
         cartId VARCHAR(128) NOT NULL REFERENCES CART(id),
         id VARCHAR(128),
         token VARCHAR(256),
-        guest BOOLEAN,
-        isGuest BOOLEAN
+        guest TINYINT,
+        isGuest TINYINT
 );
 CREATE INDEX IDX_CART_CUSTOMER ON CART_CUSTOMER(cartId);
 
@@ -69,15 +69,15 @@ CREATE TABLE CART_LINES (
         storeId BIGINT, -- REFERENCES CART_LINE_PRODUCT_STORES(id)
         unitSalesPrice FLOAT,
         salesPrice FLOAT,
-        quantity INT,
-        maxQuantity INT,
+        quantity INTEGER,
+        maxQuantity INTEGER,
         maximumQuantityReason VARCHAR(32),
         type VARCHAR(32),
         stockTransactionId VARCHAR(128), -- REFERENCES STK_STOCK_TRANSACTION(transaction_id),
-        requestedQuantity INT,
+        requestedQuantity INTEGER,
         status VARCHAR(32),
         stockType VARCHAR(32),
-        insertDate DATE
+        insertDate TIMESTAMP
 );
 CREATE INDEX IDX_CART_LINES ON CART_LINES(cartId);
 
@@ -89,10 +89,10 @@ CREATE TABLE CART_LINE_PRODUCTS (
         sku BIGINT,
         image VARCHAR(256),
         name VARCHAR(128),
-        isKit BOOLEAN,
+        isKit TINYINT,
         price FLOAT,
         originalPrice FLOAT,
-        isLarge BOOLEAN,
+        isLarge TINYINT,
         department BIGINT,
         line BIGINT,
         subClass BIGINT,
@@ -108,7 +108,7 @@ CREATE TABLE CART_LINE_PROMOTIONS (
         category VARCHAR(32),
         sourceValue FLOAT,
         type VARCHAR(32),
-        conditional BOOLEAN,
+        conditional TINYINT,
         discountValue FLOAT
 );
 CREATE INDEX IDX_CART_LINE_PROMOTIONS ON CART_LINE_PROMOTIONS(cartId);
@@ -149,12 +149,12 @@ CREATE TABLE CHECKOUT_PAYMENTS (
         checkoutId VARCHAR(128) NOT NULL REFERENCES CHECKOUT(id),
         paymentOptionId VARCHAR(32),
         paymentOptionType VARCHAR(32),
-        dueDays INT,
+        dueDays INTEGER,
         amount FLOAT,
-        installmentQuantity INT,
+        installmentQuantity INTEGER,
         interestAmount FLOAT,
-        interestRate INT,
-        annualCET INT,
+        interestRate INTEGER,
+        annualCET INTEGER,
         number VARCHAR(32),
         criptoNumber BIGINT,
         holdersName VARCHAR(32),
@@ -166,7 +166,7 @@ CREATE INDEX IDX_CHECKOUT_PAYMENTS ON CHECKOUT_PAYMENTS(checkoutId);
 CREATE TABLE CHECKOUT_FREIGHT_DELIVERY_TIME (
         checkoutId VARCHAR(128) NOT NULL REFERENCES CHECKOUT(id),
         lineId BIGINT, -- REFERENCES CART_LINES(id)
-        deliveryTime INT
+        deliveryTime INTEGER
 );
 CREATE INDEX IDX_CHECKOUT_FREIGHT_DELIVERY_TIME ON CHECKOUT_FREIGHT_DELIVERY_TIME(checkoutId);
 
