@@ -21,7 +21,7 @@ CREATE TABLE STK_INVENTORY_STOCK_QUANTITY (
 
 CREATE TABLE STK_STOCK_TRANSACTION (
         transaction_id VARCHAR(128) NOT NULL,
-        reserve_id VARCHAR(128),
+        reserve_id VARCHAR(128) NOT NULL,
         brand VARCHAR(32),
         creation_date TIMESTAMP,
         current_status VARCHAR(32),
