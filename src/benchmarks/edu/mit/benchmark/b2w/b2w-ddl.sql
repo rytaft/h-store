@@ -36,7 +36,7 @@ CREATE TABLE STK_STOCK_TRANSACTION (
         store_id BIGINT,
         subinventory INTEGER,
         warehouse INTEGER,
-        PRIMARY KEY (transaction_id)
+        PRIMARY KEY (reserve_id)
 );
 
 CREATE TABLE CART (
