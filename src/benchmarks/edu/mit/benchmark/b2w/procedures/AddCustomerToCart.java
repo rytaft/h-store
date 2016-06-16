@@ -7,13 +7,15 @@ import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
 import org.voltdb.types.TimestampType;
 
+import edu.brown.benchmark.ycsb.YCSBConstants;
+import edu.brown.benchmark.ycsb.YCSBUtil;
 import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
         partitionInfo = "PARTS.PART_KEY: 0",
         singlePartition = true
     )
-public class AddToCart extends VoltProcedure {
+public class AddCustomerToCart extends VoltProcedure {
 //    private static final Logger LOG = Logger.getLogger(VoltProcedure.class);
 //    private static final LoggerBoolean debug = new LoggerBoolean();
 //    private static final LoggerBoolean trace = new LoggerBoolean();
@@ -58,78 +60,6 @@ public class AddToCart extends VoltProcedure {
                 "?, " +   // isGuest
             ");");
     
-    public final SQLStmt createCartLineStmt = new SQLStmt(
-            "INSERT INTO CART_LINES (" +
-                "cartId" +
-                "id" +
-                "productSku" +
-                "productId" +
-                "storeId" +
-                "unitSalesPrice" +
-                "salesPrice" +
-                "quantity" +
-                "maxQuantity" +
-                "maximumQuantityReason" +
-                "type" +
-                "stockTransactionId" +
-                "requestedQuantity" +
-                "status" +
-                "stockType" +
-                "insertDate" +
-            ") VALUES (" +
-                "?, " +   // cartId
-                "?, " +   // id
-                "?, " +   // productSku
-                "?, " +   // productId
-                "?, " +   // storeId
-                "?, " +   // unitSalesPrice
-                "?, " +   // salesPrice
-                "?, " +   // quantity
-                "?, " +   // maxQuantity
-                "?, " +   // maximumQuantityReason
-                "?, " +   // type
-                "?, " +   // stockTransactionId
-                "?, " +   // requestedQuantity
-                "?, " +   // status
-                "?, " +   // stockType
-                "?, " +   // insertDate
-            ");");
-
-    public final SQLStmt createCartLineProductStmt = new SQLStmt(
-            "INSERT INTO CART_LINE_PRODUCTS (" +
-                "cartId" +
-                "lineId" +
-                "id" +
-                "sku" +
-                "image" +
-                "name" +
-                "isKit" +
-                "price" +
-                "originalPrice" +
-                "isLarge" +
-                "department" +
-                "line" +
-                "subClass" +
-                "weight" +
-                "class" +
-            ") VALUES (" +
-                "?, " +   // cartId
-                "?, " +   // lineId
-                "?, " +   // id
-                "?, " +   // sku
-                "?, " +   // image
-                "?, " +   // name
-                "?, " +   // isKit
-                "?, " +   // price
-                "?, " +   // originalPrice
-                "?, " +   // isLarge
-                "?, " +   // department
-                "?, " +   // line
-                "?, " +   // subClass
-                "?, " +   // weight
-                "?, " +   // class
-            ");");
-
     
     public final SQLStmt getCartStmt = new SQLStmt("SELECT * FROM CART WHERE id = ? ");
     
@@ -142,8 +72,7 @@ public class AddToCart extends VoltProcedure {
         ); //total, lastModified, status, id
 
 
-    public VoltTable[] run(String cart_id, String salesChannel, TimestampType timestamp, 
-            String line_id, long product_sku, long product_id, long store_id, int quantity){
+    public VoltTable[] run(String cart_id, String salesChannel, TimestampType timestamp, String customer_id){
         voltQueueSQL(getCartStmt, cart_id);
         final VoltTable[] cart_results = voltExecuteSQL();
         assert cart_results.length == 1;
@@ -154,6 +83,9 @@ public class AddToCart extends VoltProcedure {
         TimestampType lastModified = timestamp;
         String status = B2WConstants.STATUS_NEW;
         int autoMerge = 0;
+        String token = YCSBUtil.astring(B2WConstants.TOKEN_LENGTH, B2WConstants.TOKEN_LENGTH);
+        int guest = 0;
+        int isGuest = 0;
         
         if (cart_results[0].getRowCount() > 0) {
             final VoltTableRow cart = cart_results[0].fetchRow(0);
@@ -170,34 +102,7 @@ public class AddToCart extends VoltProcedure {
             voltQueueSQL(createCartStmt, cart_id, total, salesChannel, opn, epar, lastModified, status, autoMerge);
         }
         
-        double unitSalesPrice = 0;
-        double salesPrice = 0;
-        int maxQuantity = 0;
-        String maximumQuantityReason = null;
-        String type = null;
-        String stockTransactionId = null;
-        int requestedQuantity = 0;
-        String line_status = null;
-        String stockType = null;
-        
-        voltQueueSQL(createCartLineStmt, 
-                cart_id, 
-                line_id,
-                product_sku,
-                product_id,
-                store_id,
-                unitSalesPrice,
-                salesPrice,
-                quantity,
-                maxQuantity,
-                maximumQuantityReason,
-                type,
-                stockTransactionId,
-                requestedQuantity,
-                line_status,
-                stockType,
-                timestamp);
-        voltQueueSQL(createCartLineProductStmt);
+        voltQueueSQL(createCartCustomerStmt, cart_id, customer_id, token, guest, isGuest);
         voltQueueSQL(updateCartStmt, total, timestamp, status, cart_id);
         
         return voltExecuteSQL(true);
