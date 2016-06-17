@@ -7,12 +7,11 @@ import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
 import org.voltdb.types.TimestampType;
 
-import edu.brown.benchmark.ycsb.YCSBConstants;
 import edu.brown.benchmark.ycsb.YCSBUtil;
 import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
-        partitionInfo = "PARTS.PART_KEY: 0",
+        partitionInfo = "CART.ID: 0",
         singlePartition = true
     )
 public class AddCustomerToCart extends VoltProcedure {
@@ -26,13 +25,13 @@ public class AddCustomerToCart extends VoltProcedure {
     
     public final SQLStmt createCartStmt = new SQLStmt(
             "INSERT INTO CART (" +
-                "id" + 
-                "total" +
-                "salesChannel" +
-                "opn" +
-                "epar" +
-                "lastModified" +
-                "status" +
+                "id, " + 
+                "total, " +
+                "salesChannel, " +
+                "opn, " +
+                "epar, " +
+                "lastModified, " +
+                "status, " +
                 "autoMerge" +
             ") VALUES (" +
                 "?, " +   // id
@@ -42,22 +41,22 @@ public class AddCustomerToCart extends VoltProcedure {
                 "?, " +   // epar
                 "?, " +   // lastModified
                 "?, " +   // status
-                "?, " +   // autoMerge
+                "?"   +   // autoMerge
             ");");
     
     public final SQLStmt createCartCustomerStmt = new SQLStmt(
             "INSERT INTO CART_CUSTOMER (" +
-                "cartId" +
-                "id" +
-                "token" +
-                "guest" +
+                "cartId, " +
+                "id, " +
+                "token, " +
+                "guest, " +
                 "isGuest" +
             ") VALUES (" +
                 "?, " +   // cartId
                 "?, " +   // id
                 "?, " +   // token
                 "?, " +   // guest
-                "?, " +   // isGuest
+                "?"   +   // isGuest
             ");");
     
     

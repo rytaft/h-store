@@ -10,7 +10,7 @@ import org.voltdb.types.TimestampType;
 import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
-        partitionInfo = "PARTS.PART_KEY: 0",
+        partitionInfo = "CART.ID: 0",
         singlePartition = true
     )
 public class AddToCart extends VoltProcedure {
@@ -24,13 +24,13 @@ public class AddToCart extends VoltProcedure {
     
     public final SQLStmt createCartStmt = new SQLStmt(
             "INSERT INTO CART (" +
-                "id" + 
-                "total" +
-                "salesChannel" +
-                "opn" +
-                "epar" +
-                "lastModified" +
-                "status" +
+                "id, " + 
+                "total, " +
+                "salesChannel, " +
+                "opn, " +
+                "epar, " +
+                "lastModified, " +
+                "status, " +
                 "autoMerge" +
             ") VALUES (" +
                 "?, " +   // id
@@ -40,41 +40,41 @@ public class AddToCart extends VoltProcedure {
                 "?, " +   // epar
                 "?, " +   // lastModified
                 "?, " +   // status
-                "?, " +   // autoMerge
+                "?"   +   // autoMerge
             ");");
     
     public final SQLStmt createCartCustomerStmt = new SQLStmt(
             "INSERT INTO CART_CUSTOMER (" +
-                "cartId" +
-                "id" +
-                "token" +
-                "guest" +
+                "cartId, " +
+                "id, " +
+                "token, " +
+                "guest, " +
                 "isGuest" +
             ") VALUES (" +
                 "?, " +   // cartId
                 "?, " +   // id
                 "?, " +   // token
                 "?, " +   // guest
-                "?, " +   // isGuest
+                "?"   +   // isGuest
             ");");
     
     public final SQLStmt createCartLineStmt = new SQLStmt(
             "INSERT INTO CART_LINES (" +
-                "cartId" +
-                "id" +
-                "productSku" +
-                "productId" +
-                "storeId" +
-                "unitSalesPrice" +
-                "salesPrice" +
-                "quantity" +
-                "maxQuantity" +
-                "maximumQuantityReason" +
-                "type" +
-                "stockTransactionId" +
-                "requestedQuantity" +
-                "status" +
-                "stockType" +
+                "cartId, " +
+                "id, " +
+                "productSku, " +
+                "productId, " +
+                "storeId, " +
+                "unitSalesPrice, " +
+                "salesPrice, " +
+                "quantity, " +
+                "maxQuantity, " +
+                "maximumQuantityReason, " +
+                "type, " +
+                "stockTransactionId, " +
+                "requestedQuantity, " +
+                "status, " +
+                "stockType, " +
                 "insertDate" +
             ") VALUES (" +
                 "?, " +   // cartId
@@ -92,25 +92,25 @@ public class AddToCart extends VoltProcedure {
                 "?, " +   // requestedQuantity
                 "?, " +   // status
                 "?, " +   // stockType
-                "?, " +   // insertDate
+                "?"   +   // insertDate
             ");");
 
     public final SQLStmt createCartLineProductStmt = new SQLStmt(
             "INSERT INTO CART_LINE_PRODUCTS (" +
-                "cartId" +
-                "lineId" +
-                "id" +
-                "sku" +
-                "image" +
-                "name" +
-                "isKit" +
-                "price" +
-                "originalPrice" +
-                "isLarge" +
-                "department" +
-                "line" +
-                "subClass" +
-                "weight" +
+                "cartId, " +
+                "lineId, " +
+                "id, " +
+                "sku, " +
+                "image, " +
+                "name, " +
+                "isKit, " +
+                "price, " +
+                "originalPrice, " +
+                "isLarge, " +
+                "department, " +
+                "line, " +
+                "subClass, " +
+                "weight, " +
                 "class" +
             ") VALUES (" +
                 "?, " +   // cartId
@@ -127,7 +127,7 @@ public class AddToCart extends VoltProcedure {
                 "?, " +   // line
                 "?, " +   // subClass
                 "?, " +   // weight
-                "?, " +   // class
+                "?"   +   // class
             ");");
 
     
@@ -179,6 +179,17 @@ public class AddToCart extends VoltProcedure {
         int requestedQuantity = 0;
         String line_status = null;
         String stockType = null;
+        String image = null;
+        String name = null;
+        int isKit = 0;
+        double price = 0;
+        double originalPrice = 0;
+        int isLarge = 0;
+        long department = 0;
+        long line = 0;
+        long subClass = 0;
+        double weight = 0;
+        long product_class = 0;
         
         voltQueueSQL(createCartLineStmt, 
                 cart_id, 
@@ -197,7 +208,24 @@ public class AddToCart extends VoltProcedure {
                 line_status,
                 stockType,
                 timestamp);
-        voltQueueSQL(createCartLineProductStmt);
+        
+        voltQueueSQL(createCartLineProductStmt,
+                cart_id,
+                line_id,
+                product_id,
+                product_sku,
+                image,
+                name,
+                isKit,
+                price,
+                originalPrice,
+                isLarge,
+                department,
+                line,
+                subClass,
+                weight,
+                product_class);
+        
         voltQueueSQL(updateCartStmt, total, timestamp, status, cart_id);
         
         return voltExecuteSQL(true);
