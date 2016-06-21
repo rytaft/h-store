@@ -13,7 +13,7 @@ import edu.mit.benchmark.b2w.B2WConstants;
         partitionInfo = "CART.ID: 0",
         singlePartition = true
     )
-public class CreateCheckout extends VoltProcedure {
+public class CreateCheckoutPayment extends VoltProcedure {
 //    private static final Logger LOG = Logger.getLogger(VoltProcedure.class);
 //    private static final LoggerBoolean debug = new LoggerBoolean();
 //    private static final LoggerBoolean trace = new LoggerBoolean();
@@ -101,24 +101,35 @@ public class CreateCheckout extends VoltProcedure {
             ");");
 
     public VoltTable[] run(String checkout_id, String cart_id){
-        String deliveryAddressId = null;
-        String billingAddressId = null;
-        double amountDue = 0;
-        double total = 0;
-        String freightContract = null;
-        double freightPrice = 0;
-        String freightStatus = null;
+        String paymentOptionId = null;
+        String paymentOptionType = null;
+        int dueDays = 0;
+        double amount = 0;
+        int installmentQuantity = 0;
+        double interestAmount = 0;
+        int interestRate = 0;
+        int annualCET = 0;
+        String number = null;
+        long criptoNumber = 0;
+        String holdersName = null;
+        long securityCode = 0;
+        String expirationDate = null;
 
-        voltQueueSQL(createCheckoutStmt,
+        voltQueueSQL(createCheckoutPaymentStmt,
                 checkout_id,
-                cart_id,
-                deliveryAddressId,
-                billingAddressId,
-                amountDue,
-                total,
-                freightContract,
-                freightPrice,
-                freightStatus);
+                paymentOptionId,
+                paymentOptionType,
+                dueDays,
+                amount,
+                installmentQuantity,
+                interestAmount,
+                interestRate,
+                annualCET,
+                number,
+                criptoNumber,
+                holdersName,
+                securityCode,
+                expirationDate);
         
         return voltExecuteSQL(true);
     }
