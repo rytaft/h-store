@@ -64,19 +64,19 @@ public class AddCustomerToCart extends VoltProcedure {
     
     public final SQLStmt updateCartStmt = new SQLStmt(
             "UPDATE CART " +
-            "   SET total = ?, " +
-            "       lastModified = ?, " +
+            "   SET lastModified = ?, " +
             "       status = ? " +
             " WHERE id = ?;"
-        ); //total, lastModified, status, id
+        ); // lastModified, status, id
 
 
-    public VoltTable[] run(String cart_id, String salesChannel, TimestampType timestamp, String customer_id){
+    public VoltTable[] run(String cart_id, TimestampType timestamp, String customer_id){
         voltQueueSQL(getCartStmt, cart_id);
         final VoltTable[] cart_results = voltExecuteSQL();
         assert cart_results.length == 1;
         
         double total = 0;
+        String salesChannel = null; 
         String opn = null;
         String epar = null;
         TimestampType lastModified = timestamp;
@@ -91,7 +91,7 @@ public class AddCustomerToCart extends VoltProcedure {
             final int CART_ID = 0, TOTAL = 1, SALES_CHANNEL = 2, OPN = 3, EPAR = 4, LAST_MODIFIED = 5, STATUS = 6, AUTO_MERGE = 7;
             assert cart_id.equals(cart.getString(CART_ID));
             total = cart.getDouble(TOTAL);
-            assert salesChannel.equals(cart.getString(SALES_CHANNEL));
+            salesChannel = cart.getString(SALES_CHANNEL);
             opn = cart.getString(OPN);
             epar = cart.getString(EPAR);
             lastModified = cart.getTimestampAsTimestamp(LAST_MODIFIED);
@@ -102,7 +102,7 @@ public class AddCustomerToCart extends VoltProcedure {
         }
         
         voltQueueSQL(createCartCustomerStmt, cart_id, customer_id, token, guest, isGuest);
-        voltQueueSQL(updateCartStmt, total, timestamp, status, cart_id);
+        voltQueueSQL(updateCartStmt, timestamp, status, cart_id);
         
         return voltExecuteSQL(true);
     }

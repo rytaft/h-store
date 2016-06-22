@@ -4,10 +4,6 @@ import org.voltdb.ProcInfo;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
-import org.voltdb.VoltTableRow;
-import org.voltdb.types.TimestampType;
-
-import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
         partitionInfo = "CART.ID: 0",
@@ -21,29 +17,6 @@ public class CreateCheckoutPayment extends VoltProcedure {
 //        LoggerUtil.setupLogging();
 //        LoggerUtil.attachObserver(LOG, debug, trace);
 //    }
-    
-    public final SQLStmt createCheckoutStmt = new SQLStmt(
-            "INSERT INTO CHECKOUT (" +
-                "id, " +
-                "cartId, " +
-                "deliveryAddressId, " +
-                "billingAddressId, " +
-                "amountDue, " +
-                "total, " +
-                "freightContract, " +
-                "freightPrice, " +
-                "freightStatus" +
-            ") VALUES (" +
-                "?, " +   // id
-                "?, " +   // cartId
-                "?, " +   // deliveryAddressId
-                "?, " +   // billingAddressId
-                "?, " +   // amountDue
-                "?, " +   // total
-                "?, " +   // freightContract
-                "?, " +   // freightPrice
-                "?"   +   // freightStatus
-            ");");
     
     public final SQLStmt createCheckoutPaymentStmt = new SQLStmt(
             "INSERT INTO CHECKOUT_PAYMENTS (" +
@@ -78,28 +51,6 @@ public class CreateCheckoutPayment extends VoltProcedure {
                 "?"   +   // expirationDate
             ");");
     
-    public final SQLStmt createCheckoutFreightDeliveryTimeStmt = new SQLStmt(
-            "INSERT INTO CHECKOUT_FREIGHT_DELIVERY_TIME (" +
-                "checkoutId, " +
-                "lineId, " +
-                "deliveryTime" +
-            ") VALUES (" +
-                "?, " +   // checkoutId
-                "?, " +   // lineId
-                "?"   +   // deliveryTime
-            ");");
-
-    public final SQLStmt createCheckoutStockTxnStmt = new SQLStmt(
-            "INSERT INTO CHECKOUT_STOCK_TRANSACTIONS (" +
-                "checkoutId, " +
-                "id, " +
-                "lineId" +
-            ") VALUES (" +
-                "?, " +   // checkoutId
-                "?, " +   // id
-                "?"   +   // lineId
-            ");");
-
     public VoltTable[] run(String checkout_id, String cart_id){
         String paymentOptionId = null;
         String paymentOptionType = null;

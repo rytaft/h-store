@@ -9,7 +9,6 @@ import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
 import org.voltdb.types.TimestampType;
 
-import edu.brown.benchmark.ycsb.YCSBUtil;
 import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
