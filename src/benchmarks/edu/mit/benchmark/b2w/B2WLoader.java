@@ -1,6 +1,6 @@
 package edu.mit.benchmark.b2w;
 
-import java.io.IOException;
+import java.io.*;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicLong;
@@ -41,12 +41,18 @@ public class B2WLoader extends Loader {
             LOG.debug(this.config.toString());
         }
     }
+    
+    protected void loadCartData(String fileName) throws FileNotFoundException {
+        BufferedReader in = new BufferedReader(new InputStreamReader(
+                new FileInputStream(fileName)));
+    }
 
     @Override
     public void load() throws IOException {
         if (debug.val) {
             LOG.debug("Starting B2WLoader");
         }
+        LOG.debug("Starting B2WLoader");
     }
 
 
