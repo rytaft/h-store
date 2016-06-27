@@ -163,7 +163,7 @@ public class B2WLoader extends Loader {
             row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "epar", "cart " + total + ":cart[epar]");
             row_cart[param++] = getDataByType(cart, KEY_TYPE_TIMESTAMP, "lastModified", "cart " + total + ":cart[lastModified]");
             row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "status", "cart " + total + ":cart[status]");
-            row_cart[param++] = cart.getBoolean("autoMerge")?1:0;
+            row_cart[param++] = getDataByType(cart, KEY_TYPE_TINYINT, "autoMerge", "cart " + total + ":cart[autoMerge]");
             vt_cart.addRow(row_cart);
 
 //            load table CART_CUSTOMER
@@ -173,8 +173,8 @@ public class B2WLoader extends Loader {
             row_customer[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
             row_customer[param++] = getDataByType(customer, KEY_TYPE_VARCHAR, "id", "cart " + total + ":customer[id]");
             row_customer[param++] = getDataByType(customer, KEY_TYPE_VARCHAR, "token", "cart " + total + ":customer[token]");
-            row_customer[param++] = customer.getBoolean("guest")?1:0;
-            row_customer[param++] = customer.getBoolean("isGuest")?1:0;
+            row_customer[param++] = getDataByType(customer, KEY_TYPE_TINYINT, "guest", "cart " + total + ":customer[guest]");
+            row_customer[param++] = getDataByType(customer, KEY_TYPE_TINYINT, "isGuest", "cart " + total + ":customer[isGuest]");
             vt_customer.addRow(row_customer);
 
             JSONArray lines = cart.getJSONArray("lines");
@@ -215,10 +215,10 @@ public class B2WLoader extends Loader {
                 row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "sku", "cart " + total + ":product[sku]");
                 row_products[param++] = getDataByType(product, KEY_TYPE_VARCHAR, "image", "cart " + total + ":product[image]");
                 row_products[param++] = getDataByType(product, KEY_TYPE_VARCHAR, "name", "cart " + total + ":product[name]");
-                row_products[param++] = product.getBoolean("isKit")?1:0;
+                row_products[param++] = getDataByType(product, KEY_TYPE_TINYINT, "isKit", "cart " + total + ":product[isKit]");
                 row_products[param++] = getDataByType(product, KEY_TYPE_FLOAT, "price", "cart " + total + ":product[price]");
                 row_products[param++] = getDataByType(product, KEY_TYPE_FLOAT, "originalPrice", "cart " + total + ":product[originalPrice]");
-                row_products[param++] = product.getBoolean("isLarge")?1:0;
+                row_products[param++] = getDataByType(product, KEY_TYPE_TINYINT, "isLarge", "cart " + total + ":product[isLarge]");
                 row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "department", "cart " + total + ":product[department]");
                 row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "line", "cart " + total + ":product[line]");
                 row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "subClass", "cart " + total + ":product[subClass]");
@@ -238,7 +238,7 @@ public class B2WLoader extends Loader {
                     row_promotions[param++] = getDataByType(promotion, KEY_TYPE_VARCHAR, "category", "cart " + total + ":promotion[category]");
                     row_promotions[param++] = getDataByType(promotion, KEY_TYPE_FLOAT, "sourceValue", "cart " + total + ":promotion[sourceValue]");
                     row_promotions[param++] = getDataByType(promotion, KEY_TYPE_VARCHAR, "type", "cart " + total + ":promotion[type]");
-                    row_promotions[param++] = promotion.getBoolean("conditional")?1:0;
+                    row_promotions[param++] = getDataByType(promotion, KEY_TYPE_TINYINT, "conditional", "cart " + total + ":promotion[conditional]");
                     row_promotions[param++] = getDataByType(promotion, KEY_TYPE_FLOAT, "discountValue", "cart " + total + ":promotion[discountValue]");
                     vt_promotions.addRow(row_promotions);
                 }
@@ -317,6 +317,10 @@ public class B2WLoader extends Loader {
         }
 
         if (LOG.isDebugEnabled()) LOG.debug("[Carts Loaded] "+total);
+    }
+
+    private void loadCheckOutData(Database catalog_db, String path) throws FileNotFoundException, JSONException {
+
     }
 
     @Override
