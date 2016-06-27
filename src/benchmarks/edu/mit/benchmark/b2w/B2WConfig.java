@@ -17,9 +17,13 @@ public class B2WConfig {
     }
      
     public Random rand_gen;
-    public Integer loadthreads = ThreadUtil.availableProcessors();;
-    public boolean useFixedSize = true;
-
+    public Integer loadthreads = ThreadUtil.availableProcessors();
+    public String cart_data_file = null;
+    public String checkout_data_file = null;
+    public String stock_transaction_data_file = null;
+    public String stock_quantity_data_file = null;
+    public String stock_inventory_data_file = null;
+    
     
     public B2WConfig(Map<String, String> m_extraParams) {
         this.rand_gen = new Random(); 
@@ -27,13 +31,24 @@ public class B2WConfig {
         for (String key : m_extraParams.keySet()) {
             String value = m_extraParams.get(key);
 
-            // Used Fixed-size Database
-            if  (key.equalsIgnoreCase("fixed_size")) {
-                useFixedSize = Boolean.valueOf(value);
-            }
             // Multi-Threaded Loader
-            else if (key.equalsIgnoreCase("loadthreads")) {
+            if (key.equalsIgnoreCase("loadthreads")) {
                 this.loadthreads  = Integer.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("cart_data_file")) {
+                this.cart_data_file = String.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("checkout_data_file")) {
+                this.checkout_data_file = String.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("stock_transaction_data_file")) {
+                this.stock_transaction_data_file = String.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("stock_quantity_data_file")) {
+                this.stock_quantity_data_file = String.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("stock_inventory_data_file")) {
+                this.stock_inventory_data_file = String.valueOf(value);
             }
         } // FOR
             
@@ -43,7 +58,9 @@ public class B2WConfig {
     
     @Override
     public String toString() {
-        return "B2WConfig [loadthreads=" + loadthreads + ", useFixedSize=" + useFixedSize + "]";
+        return "B2WConfig [loadthreads=" + loadthreads + ", cart_data_file=" + cart_data_file
+                + ", checkout_data_file=" + checkout_data_file + ", stock_transaction_data_file=" + stock_transaction_data_file
+                + ", stock_quantity_data_file=" + stock_quantity_data_file + ", stock_inventory_data_file=" + stock_inventory_data_file + "]";
     }
 
 }

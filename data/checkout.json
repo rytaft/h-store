@@ -1,0 +1,36 @@
+{
+        "id": "L50YjtrBtg6QKwzpMYdOk545531",
+        "cartId": "NVoHX5o8whV8BKpeGrvfCgKUqm7",
+        "deliveryAddressId": "02-203210418-1",
+        "billingAddressId": "02-203210418-1",
+        "amountDue": 14.91,
+        "total": 14.91,
+        "payments": [{
+            "paymentOptionId": "CARTAO_VISA",
+            "paymentOptionType": "CREDIT_CARD",
+            "dueDays": 1,
+            "amount": 14.91,
+            "installmentQuantity": 1,
+            "interestAmount": 0.00,
+            "interestRate": 0,
+            "annualCET": 0,
+            "number": "444433####1111",
+            "criptoNumber": "22222222222",
+            "holdersName": "Ricardo Mayerhofer",
+            "securityCode": "1111111111111111",
+            "expirationDate": "04/2016"
+        }],
+        "freight": {
+            "contract": "GERAL",
+            "price": 4.20,
+            "status": "VALID",
+            "deliveryTime": [{
+                "lineId": "163213",
+                "time": 12
+            }]
+        },
+        "stockTransactions": [{
+            "id": "d0c641c9-08c5-4682-9b55-d8ca71f06409",
+            "lineId": "163213"
+        }]
+    }
