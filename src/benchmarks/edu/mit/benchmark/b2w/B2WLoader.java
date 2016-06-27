@@ -156,7 +156,6 @@ public class B2WLoader extends Loader {
 //            load table CART
             Object row_cart[] = new Object[num_cols_cart];
             int param = 0;
-
             row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
             row_cart[param++] = getDataByType(cart, KEY_TYPE_FLOAT, "total", "cart " + total + ":cart[total]");
             row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "salesChannel", "cart " + total + ":cart[salesChannel]");
@@ -321,7 +320,44 @@ public class B2WLoader extends Loader {
     }
 
     private void loadCheckOutData(Database catalog_db, String path) throws FileNotFoundException, JSONException {
+        JSONObject checkout = new JSONObject(FileUtil.readFile(new File(path)));
 
+        Table catalog_tbl_checkout = catalog_db.getTables().getIgnoreCase(B2WConstants.TABLENAME_CHECKOUT);
+        assert(catalog_tbl_checkout != null);
+        VoltTable vt_checkout = CatalogUtil.getVoltTable(catalog_tbl_checkout);
+        int num_cols_checkout = catalog_tbl_checkout.getColumns().size();
+
+        Table catalog_tbl_freight = catalog_db.getTables().getIgnoreCase(B2WConstants.TABLENAME_CHECKOUT_FREIGHT_DELIVERY_TIME);
+        assert(catalog_tbl_freight != null);
+        VoltTable vt_freight = CatalogUtil.getVoltTable(catalog_tbl_freight);
+        int num_cols_freight = catalog_tbl_freight.getColumns().size();
+        
+        Table catalog_tbl_payments = catalog_db.getTables().getIgnoreCase(B2WConstants.TABLENAME_CHECKOUT_PAYMENTS);
+        assert(catalog_tbl_payments != null);
+        VoltTable vt_payments = CatalogUtil.getVoltTable(catalog_tbl_payments);
+        int num_cols_payments = catalog_tbl_payments.getColumns().size();
+        
+        Table catalog_tbl_stock = catalog_db.getTables().getIgnoreCase(B2WConstants.TABLENAME_CHECKOUT_STOCK_TRANSACTIONS);
+        assert(catalog_tbl_stock != null);
+        VoltTable vt_stock = CatalogUtil.getVoltTable(catalog_tbl_stock);
+        int num_cols_stock = catalog_tbl_stock.getColumns().size();
+
+        //            load table CART
+        Object row_checkout[] = new Object[num_cols_checkout];
+        int param = 0;
+        row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "id", path + ":checkout[id]");
+        row_checkout[param++] = getDataByType(checkout, KEY_TYPE_FLOAT, "total", path + ":checkout[total]");
+        vt_checkout.addRow(row_checkout);
+
+
+        this.loadVoltTable(catalog_tbl_checkout.getName(), vt_checkout);
+        this.loadVoltTable(catalog_tbl_freight.getName(), vt_freight);
+        this.loadVoltTable(catalog_tbl_payments.getName(), vt_payments);
+        this.loadVoltTable(catalog_tbl_stock.getName(), vt_stock);
+        vt_checkout.clearRowData();
+        vt_freight.clearRowData();
+        vt_payments.clearRowData();
+        vt_stock.clearRowData();
     }
 
     @Override
