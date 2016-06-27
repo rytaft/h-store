@@ -39,6 +39,7 @@ public class B2WProjectBuilder extends AbstractProjectBuilder{
         PurchaseStock.class,
         ReserveStock.class
     };
+    
     public static final String PARTITIONING[][] = new String[][] {
         // { "TABLE NAME", "PARTITIONING COLUMN NAME" }
         {"STK_INVENTORY_STOCK", "sku"},

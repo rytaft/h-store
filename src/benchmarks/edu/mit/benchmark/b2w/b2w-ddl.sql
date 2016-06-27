@@ -1,6 +1,6 @@
 
 CREATE TABLE STK_INVENTORY_STOCK (
-        sku BIGINT,
+        sku BIGINT NOT NULL,
         id VARCHAR(128) NOT NULL,
         warehouse INTEGER,
         sub_inventory INTEGER,
@@ -139,7 +139,7 @@ CREATE TABLE CHECKOUT (
         total FLOAT,
         freightContract VARCHAR(32),
         freightPrice FLOAT,
-        freightStatus VARCHAR(32)
+        freightStatus VARCHAR(32),
         PRIMARY KEY (id)
 );
 
