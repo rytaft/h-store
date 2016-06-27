@@ -4,6 +4,17 @@ import org.voltdb.VoltProcedure;
 
 import edu.brown.api.BenchmarkComponent;
 import edu.brown.benchmark.AbstractProjectBuilder;
+import edu.mit.benchmark.b2w.procedures.AddCustomerToCart;
+import edu.mit.benchmark.b2w.procedures.AddLineToCart;
+import edu.mit.benchmark.b2w.procedures.CreateCheckout;
+import edu.mit.benchmark.b2w.procedures.CreateCheckoutPayment;
+import edu.mit.benchmark.b2w.procedures.DeleteLineFromCart;
+import edu.mit.benchmark.b2w.procedures.GetCart;
+import edu.mit.benchmark.b2w.procedures.GetCheckout;
+import edu.mit.benchmark.b2w.procedures.GetStock;
+import edu.mit.benchmark.b2w.procedures.GetStockQuantity;
+import edu.mit.benchmark.b2w.procedures.PurchaseStock;
+import edu.mit.benchmark.b2w.procedures.ReserveStock;
 
 public class B2WProjectBuilder extends AbstractProjectBuilder{
 
@@ -16,8 +27,19 @@ public class B2WProjectBuilder extends AbstractProjectBuilder{
  
     @SuppressWarnings("unchecked")
     public static final Class<? extends VoltProcedure> PROCEDURES[] = (Class<? extends VoltProcedure>[]) new Class<?>[] {
-
+        AddCustomerToCart.class,
+        AddLineToCart.class,
+        CreateCheckout.class,
+        CreateCheckoutPayment.class,
+        DeleteLineFromCart.class,
+        GetCart.class,
+        GetCheckout.class,
+        GetStock.class,
+        GetStockQuantity.class,
+        PurchaseStock.class,
+        ReserveStock.class
     };
+    
     public static final String PARTITIONING[][] = new String[][] {
         // { "TABLE NAME", "PARTITIONING COLUMN NAME" }
         {"STK_INVENTORY_STOCK", "sku"},

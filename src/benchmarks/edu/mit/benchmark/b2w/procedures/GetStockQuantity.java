@@ -6,7 +6,7 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
 @ProcInfo(
-        partitionInfo = "STK_INVENTORY_STOCK.ID: 0",
+        partitionInfo = "STK_INVENTORY_STOCK_QUANTITY.ID: 0",
         singlePartition = true
     )
 public class GetStockQuantity extends VoltProcedure {

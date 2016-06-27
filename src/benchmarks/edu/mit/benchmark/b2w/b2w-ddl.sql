@@ -1,6 +1,6 @@
 
 CREATE TABLE STK_INVENTORY_STOCK (
-        sku BIGINT,
+        sku BIGINT NOT NULL,
         id VARCHAR(128) NOT NULL,
         warehouse INTEGER,
         sub_inventory INTEGER,
@@ -40,7 +40,6 @@ CREATE TABLE STK_STOCK_TRANSACTION (
 );
 
 CREATE TABLE CART (
-{
         id VARCHAR(128) NOT NULL,
         total FLOAT,
         salesChannel VARCHAR(32),
@@ -82,7 +81,6 @@ CREATE TABLE CART_LINES (
 CREATE INDEX IDX_CART_LINES ON CART_LINES(cartId);
 
 CREATE TABLE CART_LINE_PRODUCTS (
-{
         cartId VARCHAR(128) NOT NULL REFERENCES CART(id),
         lineId VARCHAR(128), -- REFERENCES CART_LINES(id)
         id BIGINT,
@@ -141,7 +139,7 @@ CREATE TABLE CHECKOUT (
         total FLOAT,
         freightContract VARCHAR(32),
         freightPrice FLOAT,
-        freightStatus VARCHAR(32)
+        freightStatus VARCHAR(32),
         PRIMARY KEY (id)
 );
 

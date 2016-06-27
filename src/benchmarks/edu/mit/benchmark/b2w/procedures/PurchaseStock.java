@@ -34,7 +34,7 @@ public class PurchaseStock extends VoltProcedure {
 
     public final SQLStmt updateStockTxnStmt = new SQLStmt(
             "UPDATE STK_STOCK_TRANSACTION " +
-            "   SET current_status = ?, " +
+            "   SET current_status = ? " +
             " WHERE transaction_id = ?;"
         ); // current_status, transaction_id
 
