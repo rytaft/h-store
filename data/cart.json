@@ -1,0 +1,59 @@
+{
+    "id": "NVoHX5o8whV8BKpeGrvfCgKUqm7",
+    "total": 10.71,
+    "customer": {
+        "id": "ACOM7442494",
+        "token": "v5VSp_xJQsjssGg8w9uAxSH9CkgXK3Nq77ls8DjjuekPkTtQsmy48Fwej6dVD_LF",
+        "guest": false,
+        "isGuest": false
+    },
+    "lines": [{
+        "id": "163213",
+        "productSku": "163213",
+        "productId": "163212",
+        "product": {
+            "id": "163212",
+            "sku": "163213",
+            "image": "//a248.e.akamai.net/f/248/31637/1d//iacom.s8.com.br/produtos/01/00/sku/163/2/163213G1.jpg",
+            "name": "Livro - O pequeno principe aquarelas do autor",
+            "isKit": false,
+            "warranties": [],
+            "price": 11.90,
+            "originalPrice": 29.90,
+            "isLarge": false,
+            "department": "10000036",
+            "line": "20002783",
+            "subClass": "40000001",
+            "weight": 0.27831748,
+            "class": "30000001"
+        },
+        "unitSalesPrice": 10.71,
+        "salesPrice": 10.71,
+        "quantity": 1,
+        "maxQuantity": 6,
+        "maximumQuantityReason": "LOCK",
+        "promotions": [{
+            "name": "PURCHASE_CLUB",
+            "category": "PURCHASE_CLUB",
+            "sourceValue": 10.00,
+            "type": "PERCENTAGE",
+            "conditional": false,
+            "discountValue": 1.19
+        }],
+        "type": "B2W",
+        "stockTransaction": {
+            "id": "d0c641c9-08c5-4682-9b55-d8ca71f06409",
+            "requestedQuantity": 1,
+            "status": "COMPLETE",
+            "stockType": "FISICO"
+        },
+        "stockTransactionId": "d0c641c9-08c5-4682-9b55-d8ca71f06409",
+        "insertDate": "2016-02-02T13:43:05Z"
+    }],
+    "salesChannel": "ACOM",
+    "opn": "YSMESP",
+    "epar": "BP_PL_00_GO_PLA-INF-ACESACESSORIOS-TODAS",
+    "lastModified": "Tue Feb 02 11:44:36 BRST 2016",
+    "status": "RESERVED",
+    "autoMerge": false
+}
