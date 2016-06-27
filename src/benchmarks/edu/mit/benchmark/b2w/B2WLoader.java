@@ -50,6 +50,10 @@ public class B2WLoader extends Loader {
 
     private final static int KEY_TYPE_TIMESTAMP = 5;
 
+    private final static int KEY_TYPE_OBJECT = 6;
+
+    private final static int KEY_TYPE_ARRAY = 7;
+
 
     private B2WConfig config;
 
@@ -76,7 +80,10 @@ public class B2WLoader extends Loader {
             if (debug.val) {
                 LOG.debug(className + "is missing!!");
             }
-            return null;
+            if (type == KEY_TYPE_ARRAY)
+                return new JSONArray();
+            else
+                return null;
         }
         switch (type){
             case KEY_TYPE_INTEGER:
@@ -84,7 +91,7 @@ public class B2WLoader extends Loader {
             case KEY_TYPE_VARCHAR:
                 return obj.getString(key).toCharArray();
             case KEY_TYPE_BIGINT:
-                return Integer.parseInt(obj.getString(key));
+                return Long.parseLong(obj.getString(key));
             case KEY_TYPE_TINYINT:
                 return obj.getBoolean(key)?1:0;
             case KEY_TYPE_FLOAT:
@@ -105,6 +112,11 @@ public class B2WLoader extends Loader {
                     }
                 }
                 return new TimestampType(date);
+            case KEY_TYPE_OBJECT:
+                return obj.getJSONObject(key);
+            case KEY_TYPE_ARRAY:
+                return obj.getJSONArray(key);
+
             default:
                 return null;
         }
@@ -167,7 +179,7 @@ public class B2WLoader extends Loader {
             vt_cart.addRow(row_cart);
 
 //            load table CART_CUSTOMER
-            JSONObject customer = cart.getJSONObject("customer");
+            JSONObject customer = (JSONObject)getDataByType(cart, KEY_TYPE_OBJECT, "customer", "cart " + total + ":cart[customer]");
             Object row_customer[] = new Object[num_cols_customer];
             param = 0;
             row_customer[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
@@ -177,12 +189,12 @@ public class B2WLoader extends Loader {
             row_customer[param++] = getDataByType(customer, KEY_TYPE_TINYINT, "isGuest", "cart " + total + ":customer[isGuest]");
             vt_customer.addRow(row_customer);
 
-            JSONArray lines = cart.getJSONArray("lines");
+            JSONArray lines = (JSONArray)getDataByType(cart, KEY_TYPE_ARRAY, "lines", "cart " + total + ":cart[lines]");
             for (int i = 0; i < lines.length(); i++){
                 JSONObject line = lines.getJSONObject(i);
-                JSONObject product = line.getJSONObject("product");
-                JSONObject store = product.getJSONObject("store");
-                JSONObject stock_transaction = line.getJSONObject("stockTransaction");
+                JSONObject product = (JSONObject)getDataByType(line, KEY_TYPE_OBJECT, "product", "cart " + total + ":line[product]");
+                JSONObject store = (JSONObject)getDataByType(product, KEY_TYPE_OBJECT, "store", "cart " + total + ":product[store]");
+                JSONObject stock_transaction = (JSONObject)getDataByType(line, KEY_TYPE_OBJECT, "stockTransaction", "cart " + total + ":line[stockTransaction]");
 
 //                load table CART_LINES
                 Object row_lines[] = new Object[num_cols_lines];
@@ -227,7 +239,7 @@ public class B2WLoader extends Loader {
                 vt_products.addRow(row_products);
 
 //                load table CART_LINE_PROMOTIONS
-                JSONArray promotions = line.getJSONArray("promotions");
+                JSONArray promotions = (JSONArray)getDataByType(line, KEY_TYPE_ARRAY, "promotions", "cart " + total + ":line[promotions]");
                 for (int j = 0; j < promotions.length(); j++){
                     JSONObject promotion = promotions.getJSONObject(j);
                     Object row_promotions[] = new Object[num_cols_promotions];
@@ -245,7 +257,7 @@ public class B2WLoader extends Loader {
 
 
 //                load table CART_LINE_PRODUCT_WARRANTIES
-                JSONArray warranties = product.getJSONArray("warranties");
+                JSONArray warranties = (JSONArray)getDataByType(product, KEY_TYPE_ARRAY, "warranties", "cart " + total + ":product[warranties]");
                 for (int j = 0; j < warranties.length(); j++){
                     JSONObject warranty = warranties.getJSONObject(j);
                     Object row_warranties[] = new Object[num_cols_warranties];
@@ -342,12 +354,74 @@ public class B2WLoader extends Loader {
         VoltTable vt_stock = CatalogUtil.getVoltTable(catalog_tbl_stock);
         int num_cols_stock = catalog_tbl_stock.getColumns().size();
 
-        //            load table CART
+//        load table CHECKOUT
+        JSONObject freight = (JSONObject)getDataByType(checkout, KEY_TYPE_OBJECT, "freight", path + ":checkout[freight]");
         Object row_checkout[] = new Object[num_cols_checkout];
         int param = 0;
         row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "id", path + ":checkout[id]");
+        row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "cartId", path + ":checkout[cartId]");
+        row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "deliveryAddressId", path + ":checkout[deliveryAddressId]");
+        row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "billingAddressId", path + ":checkout[billingAddressId]");
+        row_checkout[param++] = getDataByType(checkout, KEY_TYPE_FLOAT, "amountDue", path + ":checkout[amountDue]");
         row_checkout[param++] = getDataByType(checkout, KEY_TYPE_FLOAT, "total", path + ":checkout[total]");
+        row_checkout[param++] = getDataByType(freight, KEY_TYPE_VARCHAR, "contract", path + ":freight[contract]");
+        row_checkout[param++] = getDataByType(freight, KEY_TYPE_FLOAT, "price", path + ":freight[price]");
+        row_checkout[param++] = getDataByType(freight, KEY_TYPE_VARCHAR, "status", path + ":freight[status]");
+
         vt_checkout.addRow(row_checkout);
+
+//        load table CHECKOUT_PAYMENTS 
+        JSONArray payments = (JSONArray) getDataByType(checkout, KEY_TYPE_ARRAY, "payments", path + ":checkout[payments]");
+        for (int i = 0; i < payments.length(); i++){
+            JSONObject payment = payments.getJSONObject(i);
+
+            Object row_payments[] = new Object[num_cols_payments];
+            param = 0;
+            row_payments[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "id", path + ":checkout[id]");
+            row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "paymentOptionId", path + ":payment[paymentOptionId]");
+            row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "paymentOptionType", path + ":payment[paymentOptionType]");
+            row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "dueDays", path + ":payment[dueDays]");
+            row_payments[param++] = getDataByType(payment, KEY_TYPE_FLOAT, "amount", path + ":payment[amount]");
+            row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "installmentQuantity", path + ":payment[installmentQuantity]");
+            row_payments[param++] = getDataByType(payment, KEY_TYPE_FLOAT, "interestAmount", path + ":payment[interestAmount]");
+            row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "interestRate", path + ":payment[interestRate]");
+            row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "annualCET", path + ":payment[annualCET]");
+            row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "number", path + ":payment[number]");
+            row_payments[param++] = getDataByType(payment, KEY_TYPE_BIGINT, "criptoNumber", path + ":payment[criptoNumber]");
+            row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "holdersName", path + ":payment[holdersName]");
+            row_payments[param++] = getDataByType(payment, KEY_TYPE_BIGINT, "securityCode", path + ":payment[securityCode]");
+            row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "expirationDate", path + ":payment[expirationDate]");
+
+            vt_payments.addRow(row_payments);
+        }
+
+
+//        load table CHECKOUT_FREIGHT_DELIVERY_TIME
+        JSONArray deliverTimes = (JSONArray)getDataByType(freight, KEY_TYPE_ARRAY, "deliveryTime", path + ":freight[deliveryTime]");
+        for (int i = 0; i < deliverTimes.length(); i++){
+            JSONObject deliverTime = (JSONObject) deliverTimes.get(i);
+            Object row_freight[] = new Object[num_cols_freight];
+            param = 0;
+            row_freight[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "id", path + ":checkout[id]");
+            row_freight[param++] = getDataByType(deliverTime, KEY_TYPE_BIGINT, "lineId", path + ":deliverTime[lineId]");
+            row_freight[param++] = getDataByType(deliverTime, KEY_TYPE_INTEGER, "time", path + ":deliverTime[time]");
+
+            vt_freight.addRow(row_freight);
+        }
+
+
+//        load table CHECKOUT_STOCK_TRANSACTIONS
+        JSONArray stockTransactions = (JSONArray)getDataByType(checkout, KEY_TYPE_ARRAY, "stockTransactions", path + ":checkout[stockTransactions]");
+        for (int i = 0; i < stockTransactions.length(); i++){
+            JSONObject stockTransaction = (JSONObject) stockTransactions.get(i);
+            Object row_stock[] = new Object[num_cols_stock];
+            param = 0;
+            row_stock[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "id", path + ":checkout[id]");
+            row_stock[param++] = getDataByType(stockTransaction, KEY_TYPE_VARCHAR, "id", path + ":stockTransaction[id]");
+            row_stock[param++] = getDataByType(stockTransaction, KEY_TYPE_BIGINT, "lineId", path + ":stockTransaction[lineId]");
+
+            vt_stock.addRow(row_stock);
+        }
 
 
         this.loadVoltTable(catalog_tbl_checkout.getName(), vt_checkout);
@@ -362,16 +436,21 @@ public class B2WLoader extends Loader {
 
     @Override
     public void load() throws IOException {
+        boolean b = debug.val;
+        debug.set(true);
         if (debug.val) {
             LOG.debug("Starting B2WLoader");
         }
         final CatalogContext catalogContext = this.getCatalogContext();
         try {
-            this.loadCartData(catalogContext.database,"");
+            this.loadCartData(catalogContext.database,config.cart_data_file);
+            this.loadCheckOutData(catalogContext.database,config.checkout_data_file);
+            LOG.info("Load success!!");
         } catch (JSONException e) {
-            LOG.error("JSON load failed while loadCartData");
+            LOG.error("JSON load failed");
             e.printStackTrace();
         }
+        debug.set(b);
     }
 
 
