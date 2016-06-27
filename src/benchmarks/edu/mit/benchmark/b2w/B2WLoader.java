@@ -24,6 +24,7 @@ import edu.brown.api.BenchmarkComponent;
 import edu.brown.api.Loader;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import org.voltdb.client.ClientResponse;
 import org.voltdb.types.TimestampType;
 
 import static com.google.gdata.util.ContentType.JSON;
@@ -53,6 +54,10 @@ public class B2WLoader extends Loader {
     private final static int KEY_TYPE_OBJECT = 6;
 
     private final static int KEY_TYPE_ARRAY = 7;
+
+    private final static byte TINY_INT_TRUE = 1;
+
+    private final static byte TINY_INT_FALSE = 0;
 
 
     private B2WConfig config;
@@ -85,15 +90,16 @@ public class B2WLoader extends Loader {
             else
                 return null;
         }
+        byte jj = 1;
         switch (type){
             case KEY_TYPE_INTEGER:
                 return obj.getInt(key);
             case KEY_TYPE_VARCHAR:
-                return obj.getString(key).toCharArray();
+                return obj.getString(key);
             case KEY_TYPE_BIGINT:
                 return Long.parseLong(obj.getString(key));
             case KEY_TYPE_TINYINT:
-                return obj.getBoolean(key)?1:0;
+                return obj.getBoolean(key)?TINY_INT_TRUE:TINY_INT_FALSE;
             case KEY_TYPE_FLOAT:
                 return obj.getDouble(key);
             case KEY_TYPE_TIMESTAMP:
@@ -121,6 +127,16 @@ public class B2WLoader extends Loader {
                 return null;
         }
     }
+
+    @Override
+    public ClientResponse loadVoltTable(String tableName, VoltTable vt){
+        if (vt.getRowSize() == 0)
+            return null;
+        else
+            return super.loadVoltTable(tableName, vt);
+    }
+
+
 
     private void loadCartData(Database catalog_db, String path) throws FileNotFoundException, JSONException {
         JSONArray cart_lists = new JSONArray(FileUtil.readFile(new File(path)));
@@ -168,7 +184,7 @@ public class B2WLoader extends Loader {
 //            load table CART
             Object row_cart[] = new Object[num_cols_cart];
             int param = 0;
-            row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
+            row_cart[param++] = (String)getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
             row_cart[param++] = getDataByType(cart, KEY_TYPE_FLOAT, "total", "cart " + total + ":cart[total]");
             row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "salesChannel", "cart " + total + ":cart[salesChannel]");
             row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "opn", "cart " + total + ":cart[opn]");
@@ -212,7 +228,7 @@ public class B2WLoader extends Loader {
                 row_lines[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "maximumQuantityReason", "cart " + total + ":line[maximumQuantityReason]");
                 row_lines[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "type", "cart " + total + ":line[type]");
                 row_lines[param++] = getDataByType(stock_transaction, KEY_TYPE_VARCHAR, "id", "cart " + total + ":stock_transaction[id]");
-                row_lines[param++] = getDataByType(stock_transaction, KEY_TYPE_VARCHAR, "requestedQuantity", "cart " + total + ":stock_transaction[requestedQuantity]");
+                row_lines[param++] = getDataByType(stock_transaction, KEY_TYPE_INTEGER, "requestedQuantity", "cart " + total + ":stock_transaction[requestedQuantity]");
                 row_lines[param++] = getDataByType(stock_transaction, KEY_TYPE_VARCHAR, "status", "cart " + total + ":stock_transaction[status]");
                 row_lines[param++] = getDataByType(stock_transaction, KEY_TYPE_VARCHAR, "stockType", "cart " + total + ":stock_transaction[stockType]");
                 row_lines[param++] = getDataByType(line, KEY_TYPE_TIMESTAMP, "insertDate", "cart " + total + ":line[insertDate]");
@@ -432,6 +448,10 @@ public class B2WLoader extends Loader {
         vt_freight.clearRowData();
         vt_payments.clearRowData();
         vt_stock.clearRowData();
+    }
+
+    private void loadStockData(Database catalog_db, String path){
+
     }
 
     @Override
