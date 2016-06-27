@@ -8,7 +8,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oltpbenchmark.benchmarks.twitter.TwitterConstants;
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.utils.FileUtil;
 import edu.brown.utils.JSONUtil;
@@ -38,6 +37,20 @@ public class B2WLoader extends Loader {
 
     public final static int configCommitCount = 500;
 
+
+    private final static int KEY_TYPE_INTEGER = 0;
+
+    private final static int KEY_TYPE_VARCHAR = 1;
+
+    private final static int KEY_TYPE_BIGINT = 2;
+
+    private final static int KEY_TYPE_TINYINT = 3;
+
+    private final static int KEY_TYPE_FLOAT = 4;
+
+    private final static int KEY_TYPE_TIMESTAMP = 5;
+
+
     private B2WConfig config;
 
     public static void main(String args[]) throws Exception {
@@ -58,23 +71,48 @@ public class B2WLoader extends Loader {
         }
     }
 
-    private TimestampType toTIMESTAMP(String time){
-        SimpleDateFormat format = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy");
-        Date date;
-        try {
-            date = format.parse(time);
-        } catch (ParseException e) {
-//            format = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy");
-//            date = format.parse(time);
-            LOG.error("invalid timestamp");
-            date = new Date();
+    private Object getDataByType(JSONObject obj, int type, String key, String className) throws JSONException {
+        if (obj == null || !obj.has(key)){
+            if (debug.val) {
+                LOG.debug(className + "is missing!!");
+            }
+            return null;
         }
-        return new TimestampType(date);
+        switch (type){
+            case KEY_TYPE_INTEGER:
+                return obj.getInt(key);
+            case KEY_TYPE_VARCHAR:
+                return obj.getString(key).toCharArray();
+            case KEY_TYPE_BIGINT:
+                return Integer.parseInt(obj.getString(key));
+            case KEY_TYPE_TINYINT:
+                return obj.getBoolean(key)?1:0;
+            case KEY_TYPE_FLOAT:
+                return obj.getDouble(key);
+            case KEY_TYPE_TIMESTAMP:
+                String time = obj.getString(key);
+                SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
+                Date date;
+                try {
+                    date = format.parse(time);
+                } catch (ParseException e) {
+                    format = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy");
+                    try {
+                        date = format.parse(time);
+                    } catch (ParseException e1) {
+                        LOG.error("invalid timestamp");
+                        date = new Date();
+                    }
+                }
+                return new TimestampType(date);
+            default:
+                return null;
+        }
     }
-    
+
     private void loadCartData(Database catalog_db, String path) throws FileNotFoundException, JSONException {
         JSONArray cart_lists = new JSONArray(FileUtil.readFile(new File(path)));
-        
+
         Table catalog_tbl_cart = catalog_db.getTables().getIgnoreCase(B2WConstants.TABLENAME_CART);
         assert(catalog_tbl_cart != null);
         VoltTable vt_cart = CatalogUtil.getVoltTable(catalog_tbl_cart);
@@ -112,20 +150,19 @@ public class B2WLoader extends Loader {
 
         int batchSize = 0;
         int total;
-
         for (total = 0; total < cart_lists.length(); total++) {
             JSONObject cart = cart_lists.getJSONObject(total);
 
 //            load table CART
             Object row_cart[] = new Object[num_cols_cart];
             int param = 0;
-            row_cart[param++] = cart.getString("id");
-            row_cart[param++] = cart.getDouble("total");
-            row_cart[param++] = cart.getString("salesChannel");
-            row_cart[param++] = cart.getString("opn");
-            row_cart[param++] = cart.getString("epar");
-            row_cart[param++] = toTIMESTAMP(cart.getString("lastModified"));
-            row_cart[param++] = cart.getString("status");
+            row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
+            row_cart[param++] = getDataByType(cart, KEY_TYPE_FLOAT, "total", "cart " + total + ":cart[total]");
+            row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "salesChannel", "cart " + total + ":cart[salesChannel]");
+            row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "opn", "cart " + total + ":cart[opn]");
+            row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "epar", "cart " + total + ":cart[epar]");
+            row_cart[param++] = getDataByType(cart, KEY_TYPE_TIMESTAMP, "lastModified", "cart " + total + ":cart[lastModified]");
+            row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "status", "cart " + total + ":cart[status]");
             row_cart[param++] = cart.getBoolean("autoMerge")?1:0;
             vt_cart.addRow(row_cart);
 
@@ -133,9 +170,9 @@ public class B2WLoader extends Loader {
             JSONObject customer = cart.getJSONObject("customer");
             Object row_customer[] = new Object[num_cols_customer];
             param = 0;
-            row_customer[param++] = cart.getString("id");
-            row_customer[param++] = customer.getString("id");
-            row_customer[param++] = customer.getString("token");
+            row_customer[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
+            row_customer[param++] = getDataByType(customer, KEY_TYPE_VARCHAR, "id", "cart " + total + ":customer[id]");
+            row_customer[param++] = getDataByType(customer, KEY_TYPE_VARCHAR, "token", "cart " + total + ":customer[token]");
             row_customer[param++] = customer.getBoolean("guest")?1:0;
             row_customer[param++] = customer.getBoolean("isGuest")?1:0;
             vt_customer.addRow(row_customer);
@@ -150,42 +187,43 @@ public class B2WLoader extends Loader {
 //                load table CART_LINES
                 Object row_lines[] = new Object[num_cols_lines];
                 param = 0;
-                row_lines[param++] = cart.getString("id");
-                row_lines[param++] = line.getString("productSku");
-                row_lines[param++] = Integer.parseInt(product.getString("sku"));
-                row_lines[param++] = Integer.parseInt(product.getString("id"));
-                row_lines[param++] = Integer.parseInt(store.getString("id"));
-                row_lines[param++] = line.getDouble("unitSalesPrice");
-                row_lines[param++] = line.getDouble("salesPrice");
-                row_lines[param++] = line.getInt("quantity");
-                row_lines[param++] = line.getInt("maxQuantity");
-                row_lines[param++] = line.getString("maximumQuantityReason");
-                row_lines[param++] = line.getString("type");
-                row_lines[param++] = stock_transaction.getString("id");
-                row_lines[param++] = stock_transaction.getString("requestedQuantity");
-                row_lines[param++] = stock_transaction.getString("status");
-                row_lines[param++] = stock_transaction.getString("stockType");
-                row_lines[param++] = toTIMESTAMP(line.getString("insertDate"));
+
+                row_lines[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
+                row_lines[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "id", "cart " + total + ":line[id]");
+                row_lines[param++] = getDataByType(product, KEY_TYPE_BIGINT, "sku", "cart " + total + ":product[sku]");
+                row_lines[param++] = getDataByType(product, KEY_TYPE_BIGINT, "id", "cart " + total + ":product[id]");
+                row_lines[param++] = getDataByType(store, KEY_TYPE_BIGINT, "id", "cart " + total + ":store[id]");
+                row_lines[param++] = getDataByType(line, KEY_TYPE_FLOAT, "unitSalesPrice", "cart " + total + ":line[unitSalesPrice]");
+                row_lines[param++] = getDataByType(line, KEY_TYPE_FLOAT, "salesPrice", "cart " + total + ":line[salesPrice]");
+                row_lines[param++] = getDataByType(line, KEY_TYPE_INTEGER, "quantity", "cart " + total + ":line[quantity]");
+                row_lines[param++] = getDataByType(line, KEY_TYPE_INTEGER, "maxQuantity", "cart " + total + ":line[maxQuantity]");
+                row_lines[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "maximumQuantityReason", "cart " + total + ":line[maximumQuantityReason]");
+                row_lines[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "type", "cart " + total + ":line[type]");
+                row_lines[param++] = getDataByType(stock_transaction, KEY_TYPE_VARCHAR, "id", "cart " + total + ":stock_transaction[id]");
+                row_lines[param++] = getDataByType(stock_transaction, KEY_TYPE_VARCHAR, "requestedQuantity", "cart " + total + ":stock_transaction[requestedQuantity]");
+                row_lines[param++] = getDataByType(stock_transaction, KEY_TYPE_VARCHAR, "status", "cart " + total + ":stock_transaction[status]");
+                row_lines[param++] = getDataByType(stock_transaction, KEY_TYPE_VARCHAR, "stockType", "cart " + total + ":stock_transaction[stockType]");
+                row_lines[param++] = getDataByType(line, KEY_TYPE_TIMESTAMP, "insertDate", "cart " + total + ":line[insertDate]");
                 vt_lines.addRow(row_lines);
 
 //                load table CART_LINE_PRODUCTS
                 Object row_products[] = new Object[num_cols_products];
                 param = 0;
-                row_products[param++] = cart.getString("id");
-                row_products[param++] = line.getString("productSku");
-                row_products[param++] = Integer.parseInt(product.getString("id"));
-                row_products[param++] = Integer.parseInt(product.getString("sku"));
-                row_products[param++] = product.getString("image");
-                row_products[param++] = product.getString("name");
+                row_products[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
+                row_products[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "id", "cart " + total + ":line[id]");
+                row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "id", "cart " + total + ":product[id]");
+                row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "sku", "cart " + total + ":product[sku]");
+                row_products[param++] = getDataByType(product, KEY_TYPE_VARCHAR, "image", "cart " + total + ":product[image]");
+                row_products[param++] = getDataByType(product, KEY_TYPE_VARCHAR, "name", "cart " + total + ":product[name]");
                 row_products[param++] = product.getBoolean("isKit")?1:0;
-                row_products[param++] = product.getDouble("price");
-                row_products[param++] = product.getDouble("originalPrice");
+                row_products[param++] = getDataByType(product, KEY_TYPE_FLOAT, "price", "cart " + total + ":product[price]");
+                row_products[param++] = getDataByType(product, KEY_TYPE_FLOAT, "originalPrice", "cart " + total + ":product[originalPrice]");
                 row_products[param++] = product.getBoolean("isLarge")?1:0;
-                row_products[param++] = Integer.parseInt(product.getString("department"));
-                row_products[param++] = Integer.parseInt(product.getString("line"));
-                row_products[param++] = Integer.parseInt(product.getString("subClass"));
-                row_products[param++] = product.getDouble("weight");
-                row_products[param++] = Integer.parseInt(product.getString("class"));
+                row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "department", "cart " + total + ":product[department]");
+                row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "line", "cart " + total + ":product[line]");
+                row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "subClass", "cart " + total + ":product[subClass]");
+                row_products[param++] = getDataByType(product, KEY_TYPE_FLOAT, "weight", "cart " + total + ":product[weight]");
+                row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "class", "cart " + total + ":product[class]");
                 vt_products.addRow(row_products);
 
 //                load table CART_LINE_PROMOTIONS
@@ -194,14 +232,14 @@ public class B2WLoader extends Loader {
                     JSONObject promotion = promotions.getJSONObject(j);
                     Object row_promotions[] = new Object[num_cols_promotions];
                     param = 0;
-                    row_promotions[param++] = cart.getString("id");
-                    row_promotions[param++] = line.getString("productSku");
-                    row_promotions[param++] = promotion.getString("name");
-                    row_promotions[param++] = promotion.getString("category");
-                    row_promotions[param++] = promotion.getDouble("sourceValue");
-                    row_promotions[param++] = promotion.getString("type");
+                    row_promotions[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
+                    row_promotions[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "id", "cart " + total + ":line[id]");
+                    row_promotions[param++] = getDataByType(promotion, KEY_TYPE_VARCHAR, "name", "cart " + total + ":promotion[name]");
+                    row_promotions[param++] = getDataByType(promotion, KEY_TYPE_VARCHAR, "category", "cart " + total + ":promotion[category]");
+                    row_promotions[param++] = getDataByType(promotion, KEY_TYPE_FLOAT, "sourceValue", "cart " + total + ":promotion[sourceValue]");
+                    row_promotions[param++] = getDataByType(promotion, KEY_TYPE_VARCHAR, "type", "cart " + total + ":promotion[type]");
                     row_promotions[param++] = promotion.getBoolean("conditional")?1:0;
-                    row_promotions[param++] = promotion.getDouble("discountValue");
+                    row_promotions[param++] = getDataByType(promotion, KEY_TYPE_FLOAT, "discountValue", "cart " + total + ":promotion[discountValue]");
                     vt_promotions.addRow(row_promotions);
                 }
 
@@ -212,35 +250,34 @@ public class B2WLoader extends Loader {
                     JSONObject warranty = warranties.getJSONObject(j);
                     Object row_warranties[] = new Object[num_cols_warranties];
                     param = 0;
-                    row_warranties[param++] = cart.getString("id");
-                    row_warranties[param++] = line.getString("productSku");
-                    row_warranties[param++] = Integer.parseInt(warranty.getString("sku"));
-//                    Yu Lu: I think the b2w-ddl.sql file is wrong at this point.
-                    row_warranties[param++] = warranty.getString("productSku");
-                    row_warranties[param++] = warranty.getString("description");
+                    row_warranties[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
+                    row_warranties[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "id", "cart " + total + ":line[id]");
+                    row_warranties[param++] = getDataByType(warranty, KEY_TYPE_BIGINT, "sku", "cart " + total + ":warranty[sku]");
+                    row_warranties[param++] = getDataByType(warranty, KEY_TYPE_VARCHAR, "productSku", "cart " + total + ":warranty[productSku]");
+                    row_warranties[param++] = getDataByType(warranty, KEY_TYPE_VARCHAR, "description", "cart " + total + ":warranty[description]");
                     vt_warranties.addRow(row_warranties);
                 }
-                
+
 
 //                load table CART_LINE_PRODUCT_STORES
                 Object row_stores[] = new Object[num_cols_stores];
                 param = 0;
-                row_stores[param++] = cart.getString("id");
-                row_stores[param++] = line.getString("productSku");
-                row_stores[param++] = Integer.parseInt(store.getString("id"));
-                row_stores[param++] = store.getString("name");
-                row_stores[param++] = store.getString("image");
-                row_stores[param++] = store.getString("deliveryType");
+                row_stores[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
+                row_stores[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "id", "cart " + total + ":line[id]");
+                row_stores[param++] = getDataByType(store, KEY_TYPE_BIGINT, "id", "cart " + total + ":store[id]");
+                row_stores[param++] = getDataByType(store, KEY_TYPE_VARCHAR, "name", "cart " + total + ":store[name]");
+                row_stores[param++] = getDataByType(store, KEY_TYPE_VARCHAR, "image", "cart " + total + ":store[image]");
+                row_stores[param++] = getDataByType(store, KEY_TYPE_VARCHAR, "deliveryType", "cart " + total + ":store[deliveryType]");
                 vt_stores.addRow(row_stores);
             }
-            
-            
+
+
             batchSize++;
-            
+
             if ((batchSize % configCommitCount) == 0) {
                 this.loadVoltTable(catalog_tbl_cart.getName(), vt_cart);
                 this.loadVoltTable(catalog_tbl_customer.getName(), vt_customer);
-                this.loadVoltTable(catalog_tbl_lines.getName(), vt_lines);                
+                this.loadVoltTable(catalog_tbl_lines.getName(), vt_lines);
                 this.loadVoltTable(catalog_tbl_products.getName(), vt_products);
                 this.loadVoltTable(catalog_tbl_promotions.getName(), vt_promotions);
                 this.loadVoltTable(catalog_tbl_stores.getName(), vt_stores);
@@ -252,7 +289,7 @@ public class B2WLoader extends Loader {
                 vt_promotions.clearRowData();
                 vt_stores.clearRowData();
                 vt_warranties.clearRowData();
-                
+
                 batchSize = 0;
                 if (LOG.isDebugEnabled())
                     LOG.debug("Carts  % " + ((double)total/(double)cart_lists.length())*100);
@@ -279,7 +316,7 @@ public class B2WLoader extends Loader {
             vt_warranties.clearRowData();
         }
 
-        if (LOG.isDebugEnabled()) LOG.debug("[Follows Loaded] "+total);
+        if (LOG.isDebugEnabled()) LOG.debug("[Carts Loaded] "+total);
     }
 
     @Override
@@ -291,6 +328,7 @@ public class B2WLoader extends Loader {
         try {
             this.loadCartData(catalogContext.database,"");
         } catch (JSONException e) {
+            LOG.error("JSON load failed while loadCartData");
             e.printStackTrace();
         }
     }
