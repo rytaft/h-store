@@ -1,7 +1,10 @@
 package edu.mit.benchmark.b2w;
 
 import java.io.*;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -22,6 +25,7 @@ import edu.brown.api.BenchmarkComponent;
 import edu.brown.api.Loader;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import org.voltdb.types.TimestampType;
 
 import static com.google.gdata.util.ContentType.JSON;
 
@@ -54,12 +58,21 @@ public class B2WLoader extends Loader {
         }
     }
 
-//    Yu Lu : how to convert string into timestamp?
-    private Object toTIMESTAMP(String time){
-        return time;
+    private TimestampType toTIMESTAMP(String time){
+        SimpleDateFormat format = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy");
+        Date date;
+        try {
+            date = format.parse(time);
+        } catch (ParseException e) {
+//            format = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy");
+//            date = format.parse(time);
+            LOG.error("invalid timestamp");
+            date = new Date();
+        }
+        return new TimestampType(date);
     }
     
-    protected void loadCartData(Database catalog_db, String path) throws FileNotFoundException, JSONException {
+    private void loadCartData(Database catalog_db, String path) throws FileNotFoundException, JSONException {
         JSONArray cart_lists = new JSONArray(FileUtil.readFile(new File(path)));
         
         Table catalog_tbl_cart = catalog_db.getTables().getIgnoreCase(B2WConstants.TABLENAME_CART);
@@ -102,7 +115,7 @@ public class B2WLoader extends Loader {
 
         for (total = 0; total < cart_lists.length(); total++) {
             JSONObject cart = cart_lists.getJSONObject(total);
-            
+
 //            load table CART
             Object row_cart[] = new Object[num_cols_cart];
             int param = 0;
@@ -112,45 +125,114 @@ public class B2WLoader extends Loader {
             row_cart[param++] = cart.getString("opn");
             row_cart[param++] = cart.getString("epar");
             row_cart[param++] = toTIMESTAMP(cart.getString("lastModified"));
-//            Yu Lu : how to process status and autoMerge?
-//            row_cart[param++] = cart.getString("status");            
-//            row_cart[param++] = cart.getString("autoMerge");
+            row_cart[param++] = cart.getString("status");
+            row_cart[param++] = cart.getBoolean("autoMerge")?1:0;
             vt_cart.addRow(row_cart);
 
 //            load table CART_CUSTOMER
+            JSONObject customer = cart.getJSONObject("customer");
             Object row_customer[] = new Object[num_cols_customer];
             param = 0;
             row_customer[param++] = cart.getString("id");
-            vt_customer.addRow(row_customer);
-//            load table CART_CUSTOMER
-            Object row_customer[] = new Object[num_cols_customer];
-            param = 0;
-            row_customer[param++] = cart.getString("id");
-            vt_customer.addRow(row_customer);
-
-//            load table CART_CUSTOMER
-            Object row_customer[] = new Object[num_cols_customer];
-            param = 0;
-            row_customer[param++] = cart.getString("id");
+            row_customer[param++] = customer.getString("id");
+            row_customer[param++] = customer.getString("token");
+            row_customer[param++] = customer.getBoolean("guest")?1:0;
+            row_customer[param++] = customer.getBoolean("isGuest")?1:0;
             vt_customer.addRow(row_customer);
 
-//            load table CART_CUSTOMER
-            Object row_customer[] = new Object[num_cols_customer];
-            param = 0;
-            row_customer[param++] = cart.getString("id");
-            vt_customer.addRow(row_customer);
+            JSONArray lines = cart.getJSONArray("lines");
+            for (int i = 0; i < lines.length(); i++){
+                JSONObject line = lines.getJSONObject(i);
+                JSONObject product = line.getJSONObject("product");
+                JSONObject store = product.getJSONObject("store");
+                JSONObject stock_transaction = line.getJSONObject("stockTransaction");
 
-//            load table CART_CUSTOMER
-            Object row_customer[] = new Object[num_cols_customer];
-            param = 0;
-            row_customer[param++] = cart.getString("id");
-            vt_customer.addRow(row_customer);
+//                load table CART_LINES
+                Object row_lines[] = new Object[num_cols_lines];
+                param = 0;
+                row_lines[param++] = cart.getString("id");
+                row_lines[param++] = line.getString("productSku");
+                row_lines[param++] = Integer.parseInt(product.getString("sku"));
+                row_lines[param++] = Integer.parseInt(product.getString("id"));
+                row_lines[param++] = Integer.parseInt(store.getString("id"));
+                row_lines[param++] = line.getDouble("unitSalesPrice");
+                row_lines[param++] = line.getDouble("salesPrice");
+                row_lines[param++] = line.getInt("quantity");
+                row_lines[param++] = line.getInt("maxQuantity");
+                row_lines[param++] = line.getString("maximumQuantityReason");
+                row_lines[param++] = line.getString("type");
+                row_lines[param++] = stock_transaction.getString("id");
+                row_lines[param++] = stock_transaction.getString("requestedQuantity");
+                row_lines[param++] = stock_transaction.getString("status");
+                row_lines[param++] = stock_transaction.getString("stockType");
+                row_lines[param++] = toTIMESTAMP(line.getString("insertDate"));
+                vt_lines.addRow(row_lines);
 
-//            load table CART_CUSTOMER
-            Object row_customer[] = new Object[num_cols_customer];
-            param = 0;
-            row_customer[param++] = cart.getString("id");
-            vt_customer.addRow(row_customer);
+//                load table CART_LINE_PRODUCTS
+                Object row_products[] = new Object[num_cols_products];
+                param = 0;
+                row_products[param++] = cart.getString("id");
+                row_products[param++] = line.getString("productSku");
+                row_products[param++] = Integer.parseInt(product.getString("id"));
+                row_products[param++] = Integer.parseInt(product.getString("sku"));
+                row_products[param++] = product.getString("image");
+                row_products[param++] = product.getString("name");
+                row_products[param++] = product.getBoolean("isKit")?1:0;
+                row_products[param++] = product.getDouble("price");
+                row_products[param++] = product.getDouble("originalPrice");
+                row_products[param++] = product.getBoolean("isLarge")?1:0;
+                row_products[param++] = Integer.parseInt(product.getString("department"));
+                row_products[param++] = Integer.parseInt(product.getString("line"));
+                row_products[param++] = Integer.parseInt(product.getString("subClass"));
+                row_products[param++] = product.getDouble("weight");
+                row_products[param++] = Integer.parseInt(product.getString("class"));
+                vt_products.addRow(row_products);
+
+//                load table CART_LINE_PROMOTIONS
+                JSONArray promotions = line.getJSONArray("promotions");
+                for (int j = 0; j < promotions.length(); j++){
+                    JSONObject promotion = promotions.getJSONObject(j);
+                    Object row_promotions[] = new Object[num_cols_promotions];
+                    param = 0;
+                    row_promotions[param++] = cart.getString("id");
+                    row_promotions[param++] = line.getString("productSku");
+                    row_promotions[param++] = promotion.getString("name");
+                    row_promotions[param++] = promotion.getString("category");
+                    row_promotions[param++] = promotion.getDouble("sourceValue");
+                    row_promotions[param++] = promotion.getString("type");
+                    row_promotions[param++] = promotion.getBoolean("conditional")?1:0;
+                    row_promotions[param++] = promotion.getDouble("discountValue");
+                    vt_promotions.addRow(row_promotions);
+                }
+
+
+//                load table CART_LINE_PRODUCT_WARRANTIES
+                JSONArray warranties = product.getJSONArray("warranties");
+                for (int j = 0; j < warranties.length(); j++){
+                    JSONObject warranty = warranties.getJSONObject(j);
+                    Object row_warranties[] = new Object[num_cols_warranties];
+                    param = 0;
+                    row_warranties[param++] = cart.getString("id");
+                    row_warranties[param++] = line.getString("productSku");
+                    row_warranties[param++] = Integer.parseInt(warranty.getString("sku"));
+//                    Yu Lu: I think the b2w-ddl.sql file is wrong at this point.
+                    row_warranties[param++] = warranty.getString("productSku");
+                    row_warranties[param++] = warranty.getString("description");
+                    vt_warranties.addRow(row_warranties);
+                }
+                
+
+//                load table CART_LINE_PRODUCT_STORES
+                Object row_stores[] = new Object[num_cols_stores];
+                param = 0;
+                row_stores[param++] = cart.getString("id");
+                row_stores[param++] = line.getString("productSku");
+                row_stores[param++] = Integer.parseInt(store.getString("id"));
+                row_stores[param++] = store.getString("name");
+                row_stores[param++] = store.getString("image");
+                row_stores[param++] = store.getString("deliveryType");
+                vt_stores.addRow(row_stores);
+            }
             
             
             batchSize++;
@@ -198,9 +280,6 @@ public class B2WLoader extends Loader {
         }
 
         if (LOG.isDebugEnabled()) LOG.debug("[Follows Loaded] "+total);
-        
-        
-
     }
 
     @Override
