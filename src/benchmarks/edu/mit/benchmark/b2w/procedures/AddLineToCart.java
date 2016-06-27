@@ -13,7 +13,7 @@ import edu.mit.benchmark.b2w.B2WConstants;
         partitionInfo = "CART.ID: 0",
         singlePartition = true
     )
-public class AddToCart extends VoltProcedure {
+public class AddLineToCart extends VoltProcedure {
 //    private static final Logger LOG = Logger.getLogger(VoltProcedure.class);
 //    private static final LoggerBoolean debug = new LoggerBoolean();
 //    private static final LoggerBoolean trace = new LoggerBoolean();
