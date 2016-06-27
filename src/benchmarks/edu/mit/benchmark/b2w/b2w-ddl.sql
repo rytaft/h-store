@@ -30,7 +30,7 @@ CREATE TABLE STK_STOCK_TRANSACTION (
         requested_quantity INTEGER,
         reserve_lines VARCHAR(256),
         reserved_quantity INTEGER,
-        sku BIGINT,
+        sku BIGINT, -- REFERENCES STK_INVENTORY_STOCK(sku)
         solr_query VARCHAR(128),
         status VARCHAR(256),
         store_id BIGINT,
