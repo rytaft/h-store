@@ -156,6 +156,7 @@ public class B2WLoader extends Loader {
 //            load table CART
             Object row_cart[] = new Object[num_cols_cart];
             int param = 0;
+
             row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
             row_cart[param++] = getDataByType(cart, KEY_TYPE_FLOAT, "total", "cart " + total + ":cart[total]");
             row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "salesChannel", "cart " + total + ":cart[salesChannel]");
