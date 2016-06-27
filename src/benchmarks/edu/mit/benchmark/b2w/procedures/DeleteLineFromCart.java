@@ -44,7 +44,7 @@ public class DeleteLineFromCart extends VoltProcedure {
     public final SQLStmt updateCartStmt = new SQLStmt(
             "UPDATE CART " +
             "   SET total = ?, " +
-            "       lastModified = ?, " +
+            "       lastModified = ? " +
             " WHERE id = ?;"
         ); //total, lastModified, id
 
