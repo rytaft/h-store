@@ -511,7 +511,7 @@ public class B2WLoader extends Loader {
         vt_stock.clearRowData();
     }
 
-    private void loadStockData(Database catalog_db, String name, String path, int[] types) throws IOException {
+    private void loadTableFormatData(Database catalog_db, String name, String path, int[] types) throws IOException {
         BufferedReader in = new BufferedReader(new InputStreamReader(
                 new FileInputStream(path)));
         in.readLine();
@@ -533,6 +533,12 @@ public class B2WLoader extends Loader {
 
     }
 
+    void loadStockData(Database catalog_db) throws IOException {
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_INVENTORY_STOCK, config.stock_inventory_data_file, INVENTORY_STOCK_TYPES);
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_INVENTORY_STOCK_QUANTITY, config.stock_quantity_data_file, STOCK_QUANTITY_TYPES);
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_STOCK_TRANSACTION, config.stock_transaction_data_file, STOCK_TRANSACTION_TYPES);
+    }
+
     @Override
     public void load() throws IOException {
         boolean b = debug.val;
@@ -549,9 +555,7 @@ public class B2WLoader extends Loader {
             LOG.error("JSON load failed");
             e.printStackTrace();
         }
-        this.loadStockData(catalogContext.database, B2WConstants.TABLENAME_INVENTORY_STOCK, config.stock_inventory_data_file, INVENTORY_STOCK_TYPES);
-        this.loadStockData(catalogContext.database, B2WConstants.TABLENAME_INVENTORY_STOCK_QUANTITY, config.stock_quantity_data_file, STOCK_QUANTITY_TYPES);
-        this.loadStockData(catalogContext.database, B2WConstants.TABLENAME_STOCK_TRANSACTION, config.stock_transaction_data_file, STOCK_TRANSACTION_TYPES);
+        this.loadStockData(catalogContext.database);
         debug.set(b);
     }
 
