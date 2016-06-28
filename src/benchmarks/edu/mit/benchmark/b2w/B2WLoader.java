@@ -29,6 +29,7 @@ import org.voltdb.types.TimestampType;
 
 import static com.google.gdata.util.ContentType.JSON;
 
+@SuppressWarnings("UnusedAssignment")
 public class B2WLoader extends Loader {
     private static final Logger LOG = Logger.getLogger(B2WLoader.class);
     private static final LoggerBoolean debug = new LoggerBoolean();
@@ -59,6 +60,38 @@ public class B2WLoader extends Loader {
 
     private final static byte TINY_INT_FALSE = 0;
 
+    private final static int[] INVENTORY_STOCK_TYPES = {
+            KEY_TYPE_BIGINT,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_BIGINT,
+            KEY_TYPE_INTEGER};
+
+    private final static int[] STOCK_QUANTITY_TYPES = {
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_INTEGER};
+
+    private final static int[] STOCK_TRANSACTION_TYPES = {
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_TIMESTAMP,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_TIMESTAMP,
+            KEY_TYPE_TINYINT,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_BIGINT,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_BIGINT,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_INTEGER};
 
     private B2WConfig config;
 
@@ -90,7 +123,6 @@ public class B2WLoader extends Loader {
             else
                 return null;
         }
-        byte jj = 1;
         switch (type){
             case KEY_TYPE_INTEGER:
                 return obj.getInt(key);
@@ -123,6 +155,35 @@ public class B2WLoader extends Loader {
             case KEY_TYPE_ARRAY:
                 return obj.getJSONArray(key);
 
+            default:
+                return null;
+        }
+    }
+
+    private Object getDataByType(String value, int type){
+        if (value.equals("null"))
+            return null;
+        switch (type){
+            case KEY_TYPE_INTEGER:
+                return Integer.parseInt(value);
+            case KEY_TYPE_VARCHAR:
+                return value;
+            case KEY_TYPE_BIGINT:
+                return Long.parseLong(value);
+            case KEY_TYPE_TINYINT:
+                return Boolean.parseBoolean(value)?TINY_INT_TRUE:TINY_INT_FALSE;
+            case KEY_TYPE_FLOAT:
+                return Double.parseDouble(value);
+            case KEY_TYPE_TIMESTAMP:
+                SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
+                Date date;
+                try {
+                    date = format.parse(value);
+                } catch (ParseException e) {
+                    LOG.error("invalid timestamp");
+                    date = new Date();
+                }
+                return new TimestampType(date);
             default:
                 return null;
         }
@@ -184,7 +245,7 @@ public class B2WLoader extends Loader {
 //            load table CART
             Object row_cart[] = new Object[num_cols_cart];
             int param = 0;
-            row_cart[param++] = (String)getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
+            row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
             row_cart[param++] = getDataByType(cart, KEY_TYPE_FLOAT, "total", "cart " + total + ":cart[total]");
             row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "salesChannel", "cart " + total + ":cart[salesChannel]");
             row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "opn", "cart " + total + ":cart[opn]");
@@ -450,7 +511,25 @@ public class B2WLoader extends Loader {
         vt_stock.clearRowData();
     }
 
-    private void loadStockData(Database catalog_db, String path){
+    private void loadStockData(Database catalog_db, String path, int[] types) throws IOException {
+        BufferedReader in = new BufferedReader(new InputStreamReader(
+                new FileInputStream(path)));
+        in.readLine();
+        in.readLine();
+        String[] items = in.readLine().split("\\s*\\|\\s*");
+
+        Table catalog_tbl_stock = catalog_db.getTables().getIgnoreCase(B2WConstants.TABLENAME_CHECKOUT);
+        assert(catalog_tbl_stock != null);
+        VoltTable vt_stock = CatalogUtil.getVoltTable(catalog_tbl_stock);
+        int num_cols_stock = catalog_tbl_stock.getColumns().size();
+
+        Object row_stock[] = new Object[num_cols_stock];
+        for (int param = 0; param < num_cols_stock; param++){
+            row_stock[param] = getDataByType(items[param], types[param]);
+        }
+
+        this.loadVoltTable(catalog_tbl_stock.getName(), vt_stock);
+        vt_stock.clearRowData();
 
     }
 
@@ -470,6 +549,9 @@ public class B2WLoader extends Loader {
             LOG.error("JSON load failed");
             e.printStackTrace();
         }
+        this.loadStockData(catalogContext.database, config.stock_inventory_data_file, INVENTORY_STOCK_TYPES);
+        this.loadStockData(catalogContext.database, config.stock_quantity_data_file, STOCK_QUANTITY_TYPES);
+        this.loadStockData(catalogContext.database, config.stock_transaction_data_file, STOCK_TRANSACTION_TYPES);
         debug.set(b);
     }
 
