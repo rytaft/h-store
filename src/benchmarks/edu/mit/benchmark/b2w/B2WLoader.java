@@ -561,7 +561,7 @@ public class B2WLoader extends Loader {
             vt_stock.clearRowData();
         }
 
-        if (LOG.isDebugEnabled()) LOG.debug("[Carts Loaded] "+total);
+        if (LOG.isDebugEnabled()) LOG.debug("[Checkouts Loaded] "+total);
     }
 
     /**
@@ -577,28 +577,51 @@ public class B2WLoader extends Loader {
     private void loadTableFormatData(Database catalog_db, String name, String path, int[] types) throws IOException {
         BufferedReader in = new BufferedReader(new InputStreamReader(
                 new FileInputStream(path)));
+
+        Table catalog_tbl_stock = catalog_db.getTables().getIgnoreCase(name);
+        assert(catalog_tbl_stock != null);
+        VoltTable vt_stock = CatalogUtil.getVoltTable(catalog_tbl_stock);
+        int num_cols_stock = catalog_tbl_stock.getColumns().size();
+
         in.readLine();
         in.readLine();
         String line;
+        int total = 0;
+        int batchSize = 0;
+
         while (true){
             line = in.readLine();
             if (line == null || line.isEmpty())
                 break;
             String[] items = line.split("\\s*\\|\\s*");
 
-            Table catalog_tbl_stock = catalog_db.getTables().getIgnoreCase(name);
-            assert(catalog_tbl_stock != null);
-            VoltTable vt_stock = CatalogUtil.getVoltTable(catalog_tbl_stock);
-            int num_cols_stock = catalog_tbl_stock.getColumns().size();
-
             Object row_stock[] = new Object[num_cols_stock];
             for (int param = 0; param < num_cols_stock; param++){
                 row_stock[param] = getDataByType(items[param], types[param]);
             }
 
+            total++;
+            batchSize++;
+
+            if ((batchSize % configCommitCount) == 0) {
+                this.loadVoltTable(catalog_tbl_stock.getName(), vt_stock);
+                vt_stock.clearRowData();
+
+                batchSize = 0;
+                if (LOG.isDebugEnabled())
+                    LOG.debug(name + "  : " + total);
+                else if ((total % 100000) == 0) {
+                    LOG.info(name + "  : " + total);
+                }
+            }
+        }
+
+        if (batchSize > 0) {
             this.loadVoltTable(catalog_tbl_stock.getName(), vt_stock);
             vt_stock.clearRowData();
         }
+
+        if (LOG.isDebugEnabled()) LOG.debug("[" + name + " Loaded] "+total);
 
 
     }
