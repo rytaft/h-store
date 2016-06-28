@@ -511,14 +511,14 @@ public class B2WLoader extends Loader {
         vt_stock.clearRowData();
     }
 
-    private void loadStockData(Database catalog_db, String path, int[] types) throws IOException {
+    private void loadStockData(Database catalog_db, String name, String path, int[] types) throws IOException {
         BufferedReader in = new BufferedReader(new InputStreamReader(
                 new FileInputStream(path)));
         in.readLine();
         in.readLine();
         String[] items = in.readLine().split("\\s*\\|\\s*");
 
-        Table catalog_tbl_stock = catalog_db.getTables().getIgnoreCase(B2WConstants.TABLENAME_CHECKOUT);
+        Table catalog_tbl_stock = catalog_db.getTables().getIgnoreCase(name);
         assert(catalog_tbl_stock != null);
         VoltTable vt_stock = CatalogUtil.getVoltTable(catalog_tbl_stock);
         int num_cols_stock = catalog_tbl_stock.getColumns().size();
@@ -549,9 +549,9 @@ public class B2WLoader extends Loader {
             LOG.error("JSON load failed");
             e.printStackTrace();
         }
-        this.loadStockData(catalogContext.database, config.stock_inventory_data_file, INVENTORY_STOCK_TYPES);
-        this.loadStockData(catalogContext.database, config.stock_quantity_data_file, STOCK_QUANTITY_TYPES);
-        this.loadStockData(catalogContext.database, config.stock_transaction_data_file, STOCK_TRANSACTION_TYPES);
+        this.loadStockData(catalogContext.database, B2WConstants.TABLENAME_INVENTORY_STOCK, config.stock_inventory_data_file, INVENTORY_STOCK_TYPES);
+        this.loadStockData(catalogContext.database, B2WConstants.TABLENAME_INVENTORY_STOCK_QUANTITY, config.stock_quantity_data_file, STOCK_QUANTITY_TYPES);
+        this.loadStockData(catalogContext.database, B2WConstants.TABLENAME_STOCK_TRANSACTION, config.stock_transaction_data_file, STOCK_TRANSACTION_TYPES);
         debug.set(b);
     }
 
