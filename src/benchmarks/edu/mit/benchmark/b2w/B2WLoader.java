@@ -113,10 +113,21 @@ public class B2WLoader extends Loader {
         }
     }
 
-    private Object getDataByType(JSONObject obj, int type, String key, String className) throws JSONException {
+
+    /**
+     * This function is used to get the item from a JSONObject by key and translate it into specific type
+     * which could be accepted by VoltType.
+     * @param obj the JSONObject
+     * @param type the target type we want to get.
+     * @param key the key of the item, we can put the key into JSONObject's get function to get the value we want.
+     * @param dataName the name of the data, it is only used for debug. When the item is missing, it will send a
+     *                 debug message dataName + "is missing!".
+     * @return return the target object we want, if the value is null or the type is invalid, then return null.
+     */
+    private Object getDataByType(JSONObject obj, int type, String key, String dataName) throws JSONException {
         if (obj == null || !obj.has(key)){
             if (debug.val) {
-                LOG.debug(className + "is missing!!");
+                LOG.debug(dataName + "is missing!!");
             }
             if (type == KEY_TYPE_ARRAY)
                 return new JSONArray();
@@ -160,6 +171,13 @@ public class B2WLoader extends Loader {
         }
     }
 
+    /**
+     * This function is used to translate the string value into specific type which could be
+     * accepted by VoltType.
+     * @param value the original value we want to translate.
+     * @param type the target type we want to get.
+     * @return return the target object we want, if the value is null or the type is invalid, then return null.
+     */
     private Object getDataByType(String value, int type){
         if (value.equals("null"))
             return null;
@@ -257,14 +275,17 @@ public class B2WLoader extends Loader {
 
 //            load table CART_CUSTOMER
             JSONObject customer = (JSONObject)getDataByType(cart, KEY_TYPE_OBJECT, "customer", "cart " + total + ":cart[customer]");
-            Object row_customer[] = new Object[num_cols_customer];
-            param = 0;
-            row_customer[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
-            row_customer[param++] = getDataByType(customer, KEY_TYPE_VARCHAR, "id", "cart " + total + ":customer[id]");
-            row_customer[param++] = getDataByType(customer, KEY_TYPE_VARCHAR, "token", "cart " + total + ":customer[token]");
-            row_customer[param++] = getDataByType(customer, KEY_TYPE_TINYINT, "guest", "cart " + total + ":customer[guest]");
-            row_customer[param++] = getDataByType(customer, KEY_TYPE_TINYINT, "isGuest", "cart " + total + ":customer[isGuest]");
-            vt_customer.addRow(row_customer);
+            if (customer != null){
+                Object row_customer[] = new Object[num_cols_customer];
+                param = 0;
+                row_customer[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
+                row_customer[param++] = getDataByType(customer, KEY_TYPE_VARCHAR, "id", "cart " + total + ":customer[id]");
+                row_customer[param++] = getDataByType(customer, KEY_TYPE_VARCHAR, "token", "cart " + total + ":customer[token]");
+                row_customer[param++] = getDataByType(customer, KEY_TYPE_TINYINT, "guest", "cart " + total + ":customer[guest]");
+                row_customer[param++] = getDataByType(customer, KEY_TYPE_TINYINT, "isGuest", "cart " + total + ":customer[isGuest]");
+                vt_customer.addRow(row_customer);
+            }
+
 
             JSONArray lines = (JSONArray)getDataByType(cart, KEY_TYPE_ARRAY, "lines", "cart " + total + ":cart[lines]");
             for (int i = 0; i < lines.length(); i++){
@@ -276,7 +297,6 @@ public class B2WLoader extends Loader {
 //                load table CART_LINES
                 Object row_lines[] = new Object[num_cols_lines];
                 param = 0;
-
                 row_lines[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
                 row_lines[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "id", "cart " + total + ":line[id]");
                 row_lines[param++] = getDataByType(product, KEY_TYPE_BIGINT, "sku", "cart " + total + ":product[sku]");
@@ -296,24 +316,26 @@ public class B2WLoader extends Loader {
                 vt_lines.addRow(row_lines);
 
 //                load table CART_LINE_PRODUCTS
-                Object row_products[] = new Object[num_cols_products];
-                param = 0;
-                row_products[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
-                row_products[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "id", "cart " + total + ":line[id]");
-                row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "id", "cart " + total + ":product[id]");
-                row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "sku", "cart " + total + ":product[sku]");
-                row_products[param++] = getDataByType(product, KEY_TYPE_VARCHAR, "image", "cart " + total + ":product[image]");
-                row_products[param++] = getDataByType(product, KEY_TYPE_VARCHAR, "name", "cart " + total + ":product[name]");
-                row_products[param++] = getDataByType(product, KEY_TYPE_TINYINT, "isKit", "cart " + total + ":product[isKit]");
-                row_products[param++] = getDataByType(product, KEY_TYPE_FLOAT, "price", "cart " + total + ":product[price]");
-                row_products[param++] = getDataByType(product, KEY_TYPE_FLOAT, "originalPrice", "cart " + total + ":product[originalPrice]");
-                row_products[param++] = getDataByType(product, KEY_TYPE_TINYINT, "isLarge", "cart " + total + ":product[isLarge]");
-                row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "department", "cart " + total + ":product[department]");
-                row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "line", "cart " + total + ":product[line]");
-                row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "subClass", "cart " + total + ":product[subClass]");
-                row_products[param++] = getDataByType(product, KEY_TYPE_FLOAT, "weight", "cart " + total + ":product[weight]");
-                row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "class", "cart " + total + ":product[class]");
-                vt_products.addRow(row_products);
+                if (product != null){
+                    Object row_products[] = new Object[num_cols_products];
+                    param = 0;
+                    row_products[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
+                    row_products[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "id", "cart " + total + ":line[id]");
+                    row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "id", "cart " + total + ":product[id]");
+                    row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "sku", "cart " + total + ":product[sku]");
+                    row_products[param++] = getDataByType(product, KEY_TYPE_VARCHAR, "image", "cart " + total + ":product[image]");
+                    row_products[param++] = getDataByType(product, KEY_TYPE_VARCHAR, "name", "cart " + total + ":product[name]");
+                    row_products[param++] = getDataByType(product, KEY_TYPE_TINYINT, "isKit", "cart " + total + ":product[isKit]");
+                    row_products[param++] = getDataByType(product, KEY_TYPE_FLOAT, "price", "cart " + total + ":product[price]");
+                    row_products[param++] = getDataByType(product, KEY_TYPE_FLOAT, "originalPrice", "cart " + total + ":product[originalPrice]");
+                    row_products[param++] = getDataByType(product, KEY_TYPE_TINYINT, "isLarge", "cart " + total + ":product[isLarge]");
+                    row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "department", "cart " + total + ":product[department]");
+                    row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "line", "cart " + total + ":product[line]");
+                    row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "subClass", "cart " + total + ":product[subClass]");
+                    row_products[param++] = getDataByType(product, KEY_TYPE_FLOAT, "weight", "cart " + total + ":product[weight]");
+                    row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT, "class", "cart " + total + ":product[class]");
+                    vt_products.addRow(row_products);
+                }
 
 //                load table CART_LINE_PROMOTIONS
                 JSONArray promotions = (JSONArray)getDataByType(line, KEY_TYPE_ARRAY, "promotions", "cart " + total + ":line[promotions]");
@@ -349,15 +371,17 @@ public class B2WLoader extends Loader {
 
 
 //                load table CART_LINE_PRODUCT_STORES
-                Object row_stores[] = new Object[num_cols_stores];
-                param = 0;
-                row_stores[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
-                row_stores[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "id", "cart " + total + ":line[id]");
-                row_stores[param++] = getDataByType(store, KEY_TYPE_BIGINT, "id", "cart " + total + ":store[id]");
-                row_stores[param++] = getDataByType(store, KEY_TYPE_VARCHAR, "name", "cart " + total + ":store[name]");
-                row_stores[param++] = getDataByType(store, KEY_TYPE_VARCHAR, "image", "cart " + total + ":store[image]");
-                row_stores[param++] = getDataByType(store, KEY_TYPE_VARCHAR, "deliveryType", "cart " + total + ":store[deliveryType]");
-                vt_stores.addRow(row_stores);
+                if (store != null){
+                    Object row_stores[] = new Object[num_cols_stores];
+                    param = 0;
+                    row_stores[param++] = getDataByType(cart, KEY_TYPE_VARCHAR, "id", "cart " + total + ":cart[id]");
+                    row_stores[param++] = getDataByType(line, KEY_TYPE_VARCHAR, "id", "cart " + total + ":line[id]");
+                    row_stores[param++] = getDataByType(store, KEY_TYPE_BIGINT, "id", "cart " + total + ":store[id]");
+                    row_stores[param++] = getDataByType(store, KEY_TYPE_VARCHAR, "name", "cart " + total + ":store[name]");
+                    row_stores[param++] = getDataByType(store, KEY_TYPE_VARCHAR, "image", "cart " + total + ":store[image]");
+                    row_stores[param++] = getDataByType(store, KEY_TYPE_VARCHAR, "deliveryType", "cart " + total + ":store[deliveryType]");
+                    vt_stores.addRow(row_stores);
+                }
             }
 
 
@@ -409,7 +433,8 @@ public class B2WLoader extends Loader {
     }
 
     private void loadCheckOutData(Database catalog_db, String path) throws FileNotFoundException, JSONException {
-        JSONObject checkout = new JSONObject(FileUtil.readFile(new File(path)));
+        JSONArray checkout_lists = new JSONArray(FileUtil.readFile(new File(path)));
+
 
         Table catalog_tbl_checkout = catalog_db.getTables().getIgnoreCase(B2WConstants.TABLENAME_CHECKOUT);
         assert(catalog_tbl_checkout != null);
@@ -431,105 +456,150 @@ public class B2WLoader extends Loader {
         VoltTable vt_stock = CatalogUtil.getVoltTable(catalog_tbl_stock);
         int num_cols_stock = catalog_tbl_stock.getColumns().size();
 
-//        load table CHECKOUT
-        JSONObject freight = (JSONObject)getDataByType(checkout, KEY_TYPE_OBJECT, "freight", path + ":checkout[freight]");
-        Object row_checkout[] = new Object[num_cols_checkout];
-        int param = 0;
-        row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "id", path + ":checkout[id]");
-        row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "cartId", path + ":checkout[cartId]");
-        row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "deliveryAddressId", path + ":checkout[deliveryAddressId]");
-        row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "billingAddressId", path + ":checkout[billingAddressId]");
-        row_checkout[param++] = getDataByType(checkout, KEY_TYPE_FLOAT, "amountDue", path + ":checkout[amountDue]");
-        row_checkout[param++] = getDataByType(checkout, KEY_TYPE_FLOAT, "total", path + ":checkout[total]");
-        row_checkout[param++] = getDataByType(freight, KEY_TYPE_VARCHAR, "contract", path + ":freight[contract]");
-        row_checkout[param++] = getDataByType(freight, KEY_TYPE_FLOAT, "price", path + ":freight[price]");
-        row_checkout[param++] = getDataByType(freight, KEY_TYPE_VARCHAR, "status", path + ":freight[status]");
+        int batchSize = 0;
+        int total;
+        for (total = 0; total < checkout_lists.length(); total++) {
+            JSONObject checkout = checkout_lists.getJSONObject(total);
+//            load table CHECKOUT
+            JSONObject freight = (JSONObject)getDataByType(checkout, KEY_TYPE_OBJECT, "freight", path + ":checkout[freight]");
+            Object row_checkout[] = new Object[num_cols_checkout];
+            int param = 0;
+            row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "id", path + ":checkout[id]");
+            row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "cartId", path + ":checkout[cartId]");
+            row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "deliveryAddressId", path + ":checkout[deliveryAddressId]");
+            row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "billingAddressId", path + ":checkout[billingAddressId]");
+            row_checkout[param++] = getDataByType(checkout, KEY_TYPE_FLOAT, "amountDue", path + ":checkout[amountDue]");
+            row_checkout[param++] = getDataByType(checkout, KEY_TYPE_FLOAT, "total", path + ":checkout[total]");
+            row_checkout[param++] = getDataByType(freight, KEY_TYPE_VARCHAR, "contract", path + ":freight[contract]");
+            row_checkout[param++] = getDataByType(freight, KEY_TYPE_FLOAT, "price", path + ":freight[price]");
+            row_checkout[param++] = getDataByType(freight, KEY_TYPE_VARCHAR, "status", path + ":freight[status]");
 
-        vt_checkout.addRow(row_checkout);
+            vt_checkout.addRow(row_checkout);
 
-//        load table CHECKOUT_PAYMENTS 
-        JSONArray payments = (JSONArray) getDataByType(checkout, KEY_TYPE_ARRAY, "payments", path + ":checkout[payments]");
-        for (int i = 0; i < payments.length(); i++){
-            JSONObject payment = payments.getJSONObject(i);
+//            load table CHECKOUT_PAYMENTS
+            JSONArray payments = (JSONArray) getDataByType(checkout, KEY_TYPE_ARRAY, "payments", path + ":checkout[payments]");
+            for (int i = 0; i < payments.length(); i++){
+                JSONObject payment = payments.getJSONObject(i);
 
-            Object row_payments[] = new Object[num_cols_payments];
-            param = 0;
-            row_payments[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "id", path + ":checkout[id]");
-            row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "paymentOptionId", path + ":payment[paymentOptionId]");
-            row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "paymentOptionType", path + ":payment[paymentOptionType]");
-            row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "dueDays", path + ":payment[dueDays]");
-            row_payments[param++] = getDataByType(payment, KEY_TYPE_FLOAT, "amount", path + ":payment[amount]");
-            row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "installmentQuantity", path + ":payment[installmentQuantity]");
-            row_payments[param++] = getDataByType(payment, KEY_TYPE_FLOAT, "interestAmount", path + ":payment[interestAmount]");
-            row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "interestRate", path + ":payment[interestRate]");
-            row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "annualCET", path + ":payment[annualCET]");
-            row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "number", path + ":payment[number]");
-            row_payments[param++] = getDataByType(payment, KEY_TYPE_BIGINT, "criptoNumber", path + ":payment[criptoNumber]");
-            row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "holdersName", path + ":payment[holdersName]");
-            row_payments[param++] = getDataByType(payment, KEY_TYPE_BIGINT, "securityCode", path + ":payment[securityCode]");
-            row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "expirationDate", path + ":payment[expirationDate]");
+                Object row_payments[] = new Object[num_cols_payments];
+                param = 0;
+                row_payments[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "id", path + ":checkout[id]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "paymentOptionId", path + ":payment[paymentOptionId]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "paymentOptionType", path + ":payment[paymentOptionType]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "dueDays", path + ":payment[dueDays]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_FLOAT, "amount", path + ":payment[amount]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "installmentQuantity", path + ":payment[installmentQuantity]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_FLOAT, "interestAmount", path + ":payment[interestAmount]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "interestRate", path + ":payment[interestRate]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "annualCET", path + ":payment[annualCET]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "number", path + ":payment[number]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_BIGINT, "criptoNumber", path + ":payment[criptoNumber]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "holdersName", path + ":payment[holdersName]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_BIGINT, "securityCode", path + ":payment[securityCode]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "expirationDate", path + ":payment[expirationDate]");
 
-            vt_payments.addRow(row_payments);
+                vt_payments.addRow(row_payments);
+            }
+
+
+//            load table CHECKOUT_FREIGHT_DELIVERY_TIME
+            JSONArray deliverTimes = (JSONArray)getDataByType(freight, KEY_TYPE_ARRAY, "deliveryTime", path + ":freight[deliveryTime]");
+            for (int i = 0; i < deliverTimes.length(); i++){
+                JSONObject deliverTime = (JSONObject) deliverTimes.get(i);
+                Object row_freight[] = new Object[num_cols_freight];
+                param = 0;
+                row_freight[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "id", path + ":checkout[id]");
+                row_freight[param++] = getDataByType(deliverTime, KEY_TYPE_BIGINT, "lineId", path + ":deliverTime[lineId]");
+                row_freight[param++] = getDataByType(deliverTime, KEY_TYPE_INTEGER, "time", path + ":deliverTime[time]");
+
+                vt_freight.addRow(row_freight);
+            }
+
+
+//            load table CHECKOUT_STOCK_TRANSACTIONS
+            JSONArray stockTransactions = (JSONArray)getDataByType(checkout, KEY_TYPE_ARRAY, "stockTransactions", path + ":checkout[stockTransactions]");
+            for (int i = 0; i < stockTransactions.length(); i++){
+                JSONObject stockTransaction = (JSONObject) stockTransactions.get(i);
+                Object row_stock[] = new Object[num_cols_stock];
+                param = 0;
+                row_stock[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "id", path + ":checkout[id]");
+                row_stock[param++] = getDataByType(stockTransaction, KEY_TYPE_VARCHAR, "id", path + ":stockTransaction[id]");
+                row_stock[param++] = getDataByType(stockTransaction, KEY_TYPE_BIGINT, "lineId", path + ":stockTransaction[lineId]");
+
+                vt_stock.addRow(row_stock);
+            }
+
+            batchSize++;
+
+            if ((batchSize % configCommitCount) == 0) {
+                this.loadVoltTable(catalog_tbl_checkout.getName(), vt_checkout);
+                this.loadVoltTable(catalog_tbl_freight.getName(), vt_freight);
+                this.loadVoltTable(catalog_tbl_payments.getName(), vt_payments);
+                this.loadVoltTable(catalog_tbl_stock.getName(), vt_stock);
+                vt_checkout.clearRowData();
+                vt_freight.clearRowData();
+                vt_payments.clearRowData();
+                vt_stock.clearRowData();
+
+                batchSize = 0;
+                if (LOG.isDebugEnabled())
+                    LOG.debug("Checkout  % " + ((double)total/(double)checkout_lists.length())*100);
+                else if ((total % 100000) == 0) {
+                    LOG.info("Checkout  % " + ((double)total/(double)checkout_lists.length())*100);
+                }
+            }
         }
 
-
-//        load table CHECKOUT_FREIGHT_DELIVERY_TIME
-        JSONArray deliverTimes = (JSONArray)getDataByType(freight, KEY_TYPE_ARRAY, "deliveryTime", path + ":freight[deliveryTime]");
-        for (int i = 0; i < deliverTimes.length(); i++){
-            JSONObject deliverTime = (JSONObject) deliverTimes.get(i);
-            Object row_freight[] = new Object[num_cols_freight];
-            param = 0;
-            row_freight[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "id", path + ":checkout[id]");
-            row_freight[param++] = getDataByType(deliverTime, KEY_TYPE_BIGINT, "lineId", path + ":deliverTime[lineId]");
-            row_freight[param++] = getDataByType(deliverTime, KEY_TYPE_INTEGER, "time", path + ":deliverTime[time]");
-
-            vt_freight.addRow(row_freight);
+        if (batchSize > 0) {
+            this.loadVoltTable(catalog_tbl_checkout.getName(), vt_checkout);
+            this.loadVoltTable(catalog_tbl_freight.getName(), vt_freight);
+            this.loadVoltTable(catalog_tbl_payments.getName(), vt_payments);
+            this.loadVoltTable(catalog_tbl_stock.getName(), vt_stock);
+            vt_checkout.clearRowData();
+            vt_freight.clearRowData();
+            vt_payments.clearRowData();
+            vt_stock.clearRowData();
         }
 
-
-//        load table CHECKOUT_STOCK_TRANSACTIONS
-        JSONArray stockTransactions = (JSONArray)getDataByType(checkout, KEY_TYPE_ARRAY, "stockTransactions", path + ":checkout[stockTransactions]");
-        for (int i = 0; i < stockTransactions.length(); i++){
-            JSONObject stockTransaction = (JSONObject) stockTransactions.get(i);
-            Object row_stock[] = new Object[num_cols_stock];
-            param = 0;
-            row_stock[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR, "id", path + ":checkout[id]");
-            row_stock[param++] = getDataByType(stockTransaction, KEY_TYPE_VARCHAR, "id", path + ":stockTransaction[id]");
-            row_stock[param++] = getDataByType(stockTransaction, KEY_TYPE_BIGINT, "lineId", path + ":stockTransaction[lineId]");
-
-            vt_stock.addRow(row_stock);
-        }
-
-
-        this.loadVoltTable(catalog_tbl_checkout.getName(), vt_checkout);
-        this.loadVoltTable(catalog_tbl_freight.getName(), vt_freight);
-        this.loadVoltTable(catalog_tbl_payments.getName(), vt_payments);
-        this.loadVoltTable(catalog_tbl_stock.getName(), vt_stock);
-        vt_checkout.clearRowData();
-        vt_freight.clearRowData();
-        vt_payments.clearRowData();
-        vt_stock.clearRowData();
+        if (LOG.isDebugEnabled()) LOG.debug("[Carts Loaded] "+total);
     }
 
+    /**
+     * This function is used to read the file has the format like :
+     * sku    | id                                   | warehouse | sub_inventory | stock_type | store_id | lead_time
+     * -------+--------------------------------------+-----------+---------------+------------+----------+-----------
+     * 163213 | f9705d24-a125-4429-8626-16fc98cfe784 |        77 |          1001 |          1 |     null |         1
+     * and load it to the VoltTable.
+     * @param name the name of the table we want to modified.
+     * @param path the path of the file we want to read.
+     * @param types the types list of the table, an example is this.STOCK_TRANSACTION_TYPES
+     */
     private void loadTableFormatData(Database catalog_db, String name, String path, int[] types) throws IOException {
         BufferedReader in = new BufferedReader(new InputStreamReader(
                 new FileInputStream(path)));
         in.readLine();
         in.readLine();
-        String[] items = in.readLine().split("\\s*\\|\\s*");
+        String line;
+        while (true){
+            line = in.readLine();
+            if (line == null || line.isEmpty())
+                break;
+            String[] items = line.split("\\s*\\|\\s*");
 
-        Table catalog_tbl_stock = catalog_db.getTables().getIgnoreCase(name);
-        assert(catalog_tbl_stock != null);
-        VoltTable vt_stock = CatalogUtil.getVoltTable(catalog_tbl_stock);
-        int num_cols_stock = catalog_tbl_stock.getColumns().size();
+            Table catalog_tbl_stock = catalog_db.getTables().getIgnoreCase(name);
+            assert(catalog_tbl_stock != null);
+            VoltTable vt_stock = CatalogUtil.getVoltTable(catalog_tbl_stock);
+            int num_cols_stock = catalog_tbl_stock.getColumns().size();
 
-        Object row_stock[] = new Object[num_cols_stock];
-        for (int param = 0; param < num_cols_stock; param++){
-            row_stock[param] = getDataByType(items[param], types[param]);
+            Object row_stock[] = new Object[num_cols_stock];
+            for (int param = 0; param < num_cols_stock; param++){
+                row_stock[param] = getDataByType(items[param], types[param]);
+            }
+
+            this.loadVoltTable(catalog_tbl_stock.getName(), vt_stock);
+            vt_stock.clearRowData();
         }
 
-        this.loadVoltTable(catalog_tbl_stock.getName(), vt_stock);
-        vt_stock.clearRowData();
 
     }
 
