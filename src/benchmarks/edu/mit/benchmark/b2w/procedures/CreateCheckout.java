@@ -5,7 +5,7 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
-import edu.mit.benchmark.b2w.types.Checkout;
+import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
         partitionInfo = "CHECKOUT.ID: 0",
@@ -103,39 +103,40 @@ public class CreateCheckout extends VoltProcedure {
             "SELECT id, stockTransactionId FROM CART_LINES WHERE cartId = ?;");
     
     
-    public VoltTable[] run(String checkout_id, Checkout checkout){
+    public VoltTable[] run(String checkout_id, String cart_id, String deliveryAddressId, String billingAddressId, 
+            double amountDue, double total, String freightContract, double freightPrice, String freightStatus,
+            String line_id[], String transaction_id[], int delivery_time[]) {
         voltQueueSQL(createCheckoutStmt,
                 checkout_id,
-                checkout.cart_id,
-                checkout.deliveryAddressId,
-                checkout.billingAddressId,
-                checkout.amountDue,
-                checkout.total,
-                checkout.freightContract,
-                checkout.freightPrice,
-                checkout.freightStatus);
+                cart_id,
+                deliveryAddressId,
+                billingAddressId,
+                amountDue,
+                total,
+                freightContract,
+                freightPrice,
+                freightStatus);
         
-        for (int i = 0; i < checkout.freightDelivery.length; ++i) {
-            String line_id = checkout.freightDelivery[i].line_id;
-            int delivery_time = checkout.freightDelivery[i].delivery_time;
+        assert(line_id.length == transaction_id.length);
+        assert(line_id.length == delivery_time.length);
+        
+        for (int i = 0; i < line_id.length; ++i) {
+            if(line_id[i] == null) continue;
             
-            voltQueueSQL(createCheckoutFreightDeliveryTimeStmt,
-                    checkout_id,
-                    line_id,
-                    delivery_time);
-            
-        }        
+            if(transaction_id[i] != null) {
+                voltQueueSQL(createCheckoutStockTxnStmt,
+                        checkout_id,
+                        transaction_id,
+                        line_id);           
+            }
 
-        for (int i = 0; i < checkout.stockTransactions.length; ++i) {
-            String line_id = checkout.stockTransactions[i].line_id;
-            String transaction_id = checkout.stockTransactions[i].transaction_id;
-            
-            voltQueueSQL(createCheckoutStockTxnStmt,
-                    checkout_id,
-                    transaction_id,
-                    line_id);           
-        }        
-
+            if(delivery_time[i] != B2WConstants.NULL_DELIVERY_TIME) {                
+                voltQueueSQL(createCheckoutFreightDeliveryTimeStmt,
+                        checkout_id,
+                        line_id,
+                        delivery_time);
+            }        
+        }
         
         return voltExecuteSQL(true);
     }

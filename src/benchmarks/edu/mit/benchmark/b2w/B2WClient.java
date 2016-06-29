@@ -11,7 +11,6 @@ import org.voltdb.client.ProcedureCallback;
 import edu.brown.api.BenchmarkComponent;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
-import edu.mit.benchmark.b2w.types.Checkout;
 
 public class B2WClient extends BenchmarkComponent {
     private static final Logger LOG = Logger.getLogger(B2WClient.class);
@@ -100,8 +99,19 @@ public class B2WClient extends BenchmarkComponent {
     
     private boolean runCheckout() throws IOException {
         String checkout_id = "test";
-        Checkout checkout = new Checkout();
-        Object params[] = new Object[]{ checkout_id, checkout };
+        String cart_id = null; 
+        String deliveryAddressId = null; 
+        String billingAddressId = null;
+        double amountDue = 0; 
+        double total = 0; 
+        String freightContract = null; 
+        double freightPrice = 0; 
+        String freightStatus = null;
+        String line_id[] = new String[]{}; 
+        String transaction_id[] = new String[]{};
+        int delivery_time[] = new int[]{};
+        Object params[] = new Object[]{ checkout_id, cart_id, deliveryAddressId, billingAddressId, amountDue, total, 
+                freightContract, freightPrice, freightStatus, line_id, transaction_id, delivery_time };
         return runTransaction(Transaction.CREATE_CHECKOUT, params);   
     }
     

@@ -24,5 +24,5 @@ public class B2WConstants {
     
     public static final int TOKEN_LENGTH = 150;
     
-    public static final int FREQ_CHECKOUT = 100; 
+    public static final int NULL_DELIVERY_TIME = -1;
 }
