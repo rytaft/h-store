@@ -3,14 +3,10 @@ package edu.mit.benchmark.b2w;
 import java.io.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
-import java.util.HashSet;
-import java.util.concurrent.atomic.AtomicLong;
 
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.utils.FileUtil;
-import edu.brown.utils.JSONUtil;
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -27,9 +23,6 @@ import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import org.voltdb.client.ClientResponse;
 import org.voltdb.types.TimestampType;
 
-import static com.google.gdata.util.ContentType.JSON;
-
-@SuppressWarnings("UnusedAssignment")
 public class B2WLoader extends Loader {
     private static final Logger LOG = Logger.getLogger(B2WLoader.class);
     private static final LoggerBoolean debug = new LoggerBoolean();
@@ -623,7 +616,7 @@ public class B2WLoader extends Loader {
 
         if (LOG.isDebugEnabled()) LOG.debug("[" + name + " Loaded] "+total);
 
-
+        in.close();
     }
 
     void loadStockData(Database catalog_db) throws IOException {

@@ -3,16 +3,16 @@ package edu.mit.benchmark.b2w.types;
 /** Class containing information about the checkout object. */
 public final class Checkout {
 	
-    public String cart_id; 
-    public String deliveryAddressId; 
-    public String billingAddressId; 
-    public double amountDue; 
-    public double total; 
-    public String freightContract; 
-    public double freightPrice; 
-    public String freightStatus;
-    public CheckoutFreightDelivery[] freightDelivery; 
-    public CheckoutStockTransaction[] stockTransactions;
+    public String cart_id = null; 
+    public String deliveryAddressId = null; 
+    public String billingAddressId = null; 
+    public double amountDue = 0; 
+    public double total = 0; 
+    public String freightContract = null; 
+    public double freightPrice = 0; 
+    public String freightStatus = null;
+    public CheckoutFreightDelivery[] freightDelivery = null; 
+    public CheckoutStockTransaction[] stockTransactions = null;
     
     public Checkout() {}
     

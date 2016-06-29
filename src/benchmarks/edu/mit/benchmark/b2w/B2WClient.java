@@ -11,9 +11,7 @@ import org.voltdb.client.ProcedureCallback;
 import edu.brown.api.BenchmarkComponent;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
-import edu.brown.rand.RandomDistribution.FlatHistogram;
-import edu.brown.statistics.Histogram;
-import edu.brown.statistics.ObjectHistogram;
+import edu.mit.benchmark.b2w.types.Checkout;
 
 public class B2WClient extends BenchmarkComponent {
     private static final Logger LOG = Logger.getLogger(B2WClient.class);
@@ -23,22 +21,36 @@ public class B2WClient extends BenchmarkComponent {
     }
 
     public static enum Transaction {
-        CHECKOUT("Checkout", B2WConstants.FREQ_CHECKOUT); 
+        ADD_LINE_TO_CART("AddLineToCart"),
+        CREATE_CHECKOUT("CreateCheckout"),
+        CREATE_CHECKOUT_PAYMENT("CreateCheckoutPayment"),
+        DELETE_LINE_FROM_CART("DeleteLineFromCart"),
+        GET_CART("GetCart"),
+        GET_CHECKOUT("GetCheckout"),
+        GET_STOCK("GetStock"),
+        GET_STOCK_QUANTITY("GetStockQuantity"),
+        PURCHASE_STOCK("PurchaseStock"),
+        RESERVE_CART("ReserveCart"),
+        RESERVE_STOCK("ReserveStock");
         
         /**
          * Constructor
          */
-        private Transaction(String displayName, int weight) {
+        private Transaction(String displayName) {
             this.displayName = displayName;
             this.callName = displayName.replace(" ", "");
-            this.weight = weight;
         }
         
         public final String displayName;
         public final String callName;
-        public final int weight; // probability (in terms of percentage) the transaction gets executed
     
     } // TRANSCTION ENUM
+
+    public static enum Operation {
+        CHECKOUT;
+    
+    } // OPERATION ENUM
+
     
     
     public static void main(String args[]) {
@@ -46,7 +58,6 @@ public class B2WClient extends BenchmarkComponent {
     }
 
 
-    private final FlatHistogram<Transaction> txnWeights;
     private B2WConfig config;
 
   
@@ -55,31 +66,6 @@ public class B2WClient extends BenchmarkComponent {
         super(args);     
         this.config = new B2WConfig(m_extraParams);
 
-        
-        // Figure out the # of records that we need
-
-        // Initialize the sampling table
-        Histogram<Transaction> txns = new ObjectHistogram<Transaction>(); 
-        for (Transaction t : Transaction.values()) {
-            String propOverride = t.callName+"Proportion";
-            propOverride = propOverride.toUpperCase();
-            if(m_extraParams.containsKey(propOverride)){
-                if(debug.val) LOG.debug("Using override for operation weight for " + propOverride);
-                Float weightFlt = Float.valueOf(m_extraParams.get(propOverride));
-                
-                if(weightFlt<1){
-                    weightFlt*=100;
-                }
-                txns.put(t,weightFlt.intValue());
-            }
-            else{
-                Integer weight = this.getTransactionWeight(t.callName);
-                if (weight == null) weight = t.weight;
-                txns.put(t, weight);
-            }
-        } // FOR
-        assert(txns.getSampleCount() == 100) : txns;
-        this.txnWeights = new FlatHistogram<Transaction>(config.rand_gen, txns);
     }
 
     @SuppressWarnings("unused")
@@ -103,24 +89,27 @@ public class B2WClient extends BenchmarkComponent {
     
     @Override
     protected boolean runOnce() throws IOException {
-        Object params[];
-
-        final Transaction target = this.txnWeights.nextValue();
+        final Operation target = Operation.CHECKOUT; // TODO read operations and params from file
         switch (target) {
             case CHECKOUT:
-                params = new Object[]{ };
-                break;
+                return runCheckout();
             default:
-                throw new RuntimeException("Unexpected txn '" + target + "'");
+                throw new RuntimeException("Unexpected operation '" + target + "'");
         }
-        assert(params != null);
-
-        //LOG.info("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName);
+    }
+    
+    private boolean runCheckout() throws IOException {
+        String checkout_id = "test";
+        Checkout checkout = new Checkout();
+        Object params[] = new Object[]{ checkout_id, checkout };
+        return runTransaction(Transaction.CREATE_CHECKOUT, params);   
+    }
+    
+    private boolean runTransaction(Transaction target, Object params[]) throws IOException {
+        if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName);
         Callback callback = new Callback(target.ordinal());
         return this.getClientHandle().callProcedure(callback, target.callName, params);
     }
-    
-
     
     private class Callback implements ProcedureCallback {
         private final int idx;

@@ -7,8 +7,6 @@ import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
 import org.voltdb.types.TimestampType;
 
-import edu.mit.benchmark.b2w.B2WConstants;
-
 @ProcInfo(
         partitionInfo = "CART.ID: 0",
         singlePartition = true
