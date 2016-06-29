@@ -6,7 +6,7 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
 @ProcInfo(
-        partitionInfo = "CART.ID: 0",
+        partitionInfo = "CHECKOUT.ID: 0",
         singlePartition = true
     )
 public class GetCheckout extends VoltProcedure {

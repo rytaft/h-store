@@ -3,6 +3,7 @@ package edu.mit.benchmark.b2w;
 public class B2WConstants {
 
     public static final String STATUS_NEW = "NEW";
+    public static final String STATUS_RESERVED = "RESERVED";
     public static final String STATUS_PURCHASED = "PURCHASED";
 
     public static final String TABLENAME_INVENTORY_STOCK                = "STK_INVENTORY_STOCK";
