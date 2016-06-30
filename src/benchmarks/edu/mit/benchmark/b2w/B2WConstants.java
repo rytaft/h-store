@@ -5,6 +5,8 @@ public class B2WConstants {
     public static final String STATUS_NEW = "NEW";
     public static final String STATUS_RESERVED = "RESERVED";
     public static final String STATUS_PURCHASED = "PURCHASED";
+    public static final String STATUS_COMPLETED = "COMPLETED";
+    public static final String STATUS_INCOMPLETE = "INCOMPLETE";
 
     public static final String TABLENAME_INVENTORY_STOCK                = "STK_INVENTORY_STOCK";
     public static final String TABLENAME_INVENTORY_STOCK_QUANTITY       = "STK_INVENTORY_STOCK_QUANTITY";
@@ -21,6 +23,9 @@ public class B2WConstants {
     public static final String TABLENAME_CHECKOUT_FREIGHT_DELIVERY_TIME = "CHECKOUT_FREIGHT_DELIVERY_TIME";
     public static final String TABLENAME_CHECKOUT_STOCK_TRANSACTIONS    = "CHECKOUT_STOCK_TRANSACTIONS";
 
+    public static final int STOCK_TABLE_COUNT = 3;
+    public static final int CART_TABLE_COUNT = 7;
+    public static final int CHECKOUT_TABLE_COUNT = 4;
     
     public static final int TOKEN_LENGTH = 150;
     

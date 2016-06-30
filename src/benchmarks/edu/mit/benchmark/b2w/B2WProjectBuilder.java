@@ -8,6 +8,7 @@ import edu.mit.benchmark.b2w.procedures.ReserveCart;
 import edu.mit.benchmark.b2w.procedures.AddLineToCart;
 import edu.mit.benchmark.b2w.procedures.CreateCheckout;
 import edu.mit.benchmark.b2w.procedures.CreateCheckoutPayment;
+import edu.mit.benchmark.b2w.procedures.CreateStockTransaction;
 import edu.mit.benchmark.b2w.procedures.DeleteLineFromCart;
 import edu.mit.benchmark.b2w.procedures.GetCart;
 import edu.mit.benchmark.b2w.procedures.GetCheckout;
@@ -31,6 +32,7 @@ public class B2WProjectBuilder extends AbstractProjectBuilder{
         AddLineToCart.class,
         CreateCheckout.class,
         CreateCheckoutPayment.class,
+        CreateStockTransaction.class,
         DeleteLineFromCart.class,
         GetCart.class,
         GetCheckout.class,

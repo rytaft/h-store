@@ -1,10 +1,13 @@
 package edu.mit.benchmark.b2w.procedures;
 
+import java.util.HashMap;
+
 import org.apache.log4j.Logger;
 import org.voltdb.ProcInfo;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
+import org.voltdb.VoltTableRow;
 import org.voltdb.types.TimestampType;
 
 import edu.brown.logging.LoggerUtil;
@@ -40,7 +43,24 @@ public class ReserveCart extends VoltProcedure {
             ");");
     
     
-    public final SQLStmt getCartStmt = new SQLStmt("SELECT * FROM CART WHERE id = ? ");
+    public final SQLStmt getCartLinesStmt = new SQLStmt("SELECT * FROM CART_LINES WHERE cartId = ? ");
+    
+    public final SQLStmt updateCartLineStmt = new SQLStmt(
+            "UPDATE CART_LINES " +
+            "   SET quantity = ?, " +
+            "       stockTransactionId = ?, " +
+            "       requestedQuantity = ?, " +
+            "       status = ?, " +
+            "       stockType = ? " +
+            " WHERE cartId = ? AND id = ?;"
+        ); // quantity, stockTransactionId, requestedQuantity, status, stockType, cartId, id
+
+    public final SQLStmt updateCartLineQtyStmt = new SQLStmt(
+            "UPDATE CART_LINES " +
+            "   SET quantity = ?, " +
+            "       requestedQuantity = ?, " +
+            " WHERE cartId = ? AND id = ?;"
+        ); // quantity, requestedQuantity, cartId, id
     
     public final SQLStmt updateCartStmt = new SQLStmt(
             "UPDATE CART " +
@@ -51,21 +71,49 @@ public class ReserveCart extends VoltProcedure {
 
 
     public VoltTable[] run(String cart_id, TimestampType timestamp, String customer_id,
-            String token, int guest, int isGuest){
-        voltQueueSQL(getCartStmt, cart_id);
+            String token, int guest, int isGuest, String line_ids[], int requested_quantity[],
+            int reserved_quantity[], String status[], String stock_type[], String transaction_id[]){
+        assert(line_ids.length == transaction_id.length);
+        assert(line_ids.length == requested_quantity.length);
+        assert(line_ids.length == reserved_quantity.length);
+        assert(line_ids.length == status.length);
+        assert(line_ids.length == stock_type.length);
+        
+        HashMap<String, Integer> line_id_index = new HashMap<>();
+        for(int i = 0; i < line_ids.length; ++i) {
+            line_id_index.put(line_ids[i], i);
+        }
+        
+        voltQueueSQL(getCartLinesStmt, cart_id);
         final VoltTable[] cart_results = voltExecuteSQL();
         assert cart_results.length == 1;
                 
         if (cart_results[0].getRowCount() <= 0) {
             if(debug.val) 
-                LOG.debug("No cart found with cart_id " + cart_id + " during attempt to reserve cart");
+                LOG.debug("No cart lines found with cart_id " + cart_id + " during attempt to reserve cart");
             return null;
         }
         
-        String status = B2WConstants.STATUS_RESERVED;
+        for (int i = 0; i < cart_results[0].getRowCount(); ++i) {
+            final VoltTableRow cartLine = cart_results[0].fetchRow(i);
+            final int LINE_ID = 1, QUANTITY = 7;
+            String line_id = cartLine.getString(LINE_ID);
+            int original_quantity = (int) cartLine.getLong(QUANTITY);
+            
+            if (line_id_index.containsKey(line_id)) {
+                int index = line_id_index.get(line_id);
+                voltQueueSQL(updateCartLineStmt, reserved_quantity[index], transaction_id[index], requested_quantity[index], status[index], stock_type[index], cart_id, line_id);
+            }
+            else {
+                voltQueueSQL(updateCartLineQtyStmt, 0, original_quantity, cart_id, line_id);
+            }
+            
+        }
+        
+        String cart_status = B2WConstants.STATUS_RESERVED;
         
         voltQueueSQL(createCartCustomerStmt, cart_id, customer_id, token, guest, isGuest);
-        voltQueueSQL(updateCartStmt, timestamp, status, cart_id);
+        voltQueueSQL(updateCartStmt, timestamp, cart_status, cart_id);
         
         return voltExecuteSQL(true);
     }
