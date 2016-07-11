@@ -52,7 +52,8 @@ public class B2WClient extends BenchmarkComponent {
     } // TRANSCTION ENUM
 
     public static enum Operation {
-        CHECKOUT;
+        CHECKOUT,
+        PURCHASE;
     
     } // OPERATION ENUM
 
@@ -98,6 +99,8 @@ public class B2WClient extends BenchmarkComponent {
         switch (target) {
             case CHECKOUT:
                 return runCheckout();
+            case PURCHASE:
+                return runPurchase();
             default:
                 throw new RuntimeException("Unexpected operation '" + target + "'");
         }
@@ -194,6 +197,28 @@ public class B2WClient extends BenchmarkComponent {
                 freightContract, freightPrice, freightStatus, line_id, transaction_id_list.toArray(new String[]{}), delivery_time };
         
         return runAsynchTransaction(Transaction.CREATE_CHECKOUT, checkoutParams);   
+    }
+    
+    private boolean runPurchase() throws IOException {
+        // Add payment info to the checkout object
+        String checkout_id = null;
+        String cart_id = null;
+        Object checkoutPaymentParams[] = { checkout_id, cart_id };
+        runSynchTransaction(Transaction.CREATE_CHECKOUT_PAYMENT, checkoutPaymentParams);
+        
+        // Get all the stock transactions for the purchase from the checkout object
+        Object checkoutParams[] = { checkout_id };
+        ClientResponse checkoutResponse = runSynchTransaction(Transaction.GET_CHECKOUT, checkoutParams);
+        if (checkoutResponse.getResults().length != B2WConstants.CHECKOUT_TABLE_COUNT) return false;        
+        final int CHECKOUT_STOCK_TRANSACTIONS_RESULTS = 3;
+        
+        for (int i = 0; i < checkoutResponse.getResults()[CHECKOUT_STOCK_TRANSACTIONS_RESULTS].getRowCount(); ++i) {
+            final VoltTableRow stockTransaction = checkoutResponse.getResults()[CHECKOUT_STOCK_TRANSACTIONS_RESULTS].fetchRow(i);
+            
+            // TODO do something with the stockTransaction (purchaseStock)
+        }
+        
+        return true; // TODO return the result of an asynchTransaction
     }
     
     private boolean runAsynchTransaction(Transaction target, Object params[]) throws IOException {
