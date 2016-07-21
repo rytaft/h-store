@@ -5,6 +5,7 @@ public class B2WConstants {
     public static final String STATUS_NEW = "NEW";
     public static final String STATUS_RESERVED = "RESERVED";
     public static final String STATUS_PURCHASED = "PURCHASED";
+    public static final String STATUS_CANCELLED = "CANCELLED";
     public static final String STATUS_COMPLETED = "COMPLETED";
     public static final String STATUS_INCOMPLETE = "INCOMPLETE";
 
@@ -50,8 +51,9 @@ public class B2WConstants {
     public static final String PARAMS_FREIGHT_STATUS = "freightStatus"; 
     public static final String PARAMS_LINES = "lines";
     public static final String PARAMS_LINE_ID = "lineId";
-    public static final String PARAMS_STOCK_ID = "stockId"; 
     public static final String PARAMS_TRANSACTION_ID = "transactionId"; 
+    public static final String PARAMS_RESERVES = "reserves";
+    public static final String PARAMS_STOCK_ID = "stockId"; 
     public static final String PARAMS_RESERVE_ID = "reserveId"; 
     public static final String PARAMS_BRAND = "brand"; 
     public static final String PARAMS_CREATION_DATE = "stockTxnCreationTimestamp"; 
@@ -66,4 +68,5 @@ public class B2WConstants {
     public static final String PARAMS_WAREHOUSE = "warehouse";
     public static final String PARAMS_STOCK_TYPE = "stockType";
     public static final String PARAMS_DELIVERY_TIME = "deliveryTime";
+    public static final String PARAMS_TIMESTAMP = "timestamp";
 }

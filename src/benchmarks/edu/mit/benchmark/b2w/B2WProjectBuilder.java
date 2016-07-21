@@ -4,6 +4,7 @@ import org.voltdb.VoltProcedure;
 
 import edu.brown.api.BenchmarkComponent;
 import edu.brown.benchmark.AbstractProjectBuilder;
+import edu.mit.benchmark.b2w.procedures.GetStockTransaction;
 import edu.mit.benchmark.b2w.procedures.ReserveCart;
 import edu.mit.benchmark.b2w.procedures.AddLineToCart;
 import edu.mit.benchmark.b2w.procedures.CreateCheckout;
@@ -16,6 +17,7 @@ import edu.mit.benchmark.b2w.procedures.GetStock;
 import edu.mit.benchmark.b2w.procedures.GetStockQuantity;
 import edu.mit.benchmark.b2w.procedures.PurchaseStock;
 import edu.mit.benchmark.b2w.procedures.ReserveStock;
+import edu.mit.benchmark.b2w.procedures.UpdateStockTransaction;
 
 public class B2WProjectBuilder extends AbstractProjectBuilder{
 
@@ -38,8 +40,10 @@ public class B2WProjectBuilder extends AbstractProjectBuilder{
         GetCheckout.class,
         GetStock.class,
         GetStockQuantity.class,
+        GetStockTransaction.class,
         PurchaseStock.class,
-        ReserveStock.class
+        ReserveStock.class,
+        UpdateStockTransaction.class
     };
     
     public static final String PARTITIONING[][] = new String[][] {
