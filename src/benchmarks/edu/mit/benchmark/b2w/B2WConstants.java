@@ -30,4 +30,8 @@ public class B2WConstants {
     public static final int TOKEN_LENGTH = 150;
     
     public static final int NULL_DELIVERY_TIME = -1;
+    
+    public static final String OPERATION = "operation";
+    public static final String OPERATION_OFFSET = "offset";
+    public static final String OPERATION_PARAMS = "params";
 }
