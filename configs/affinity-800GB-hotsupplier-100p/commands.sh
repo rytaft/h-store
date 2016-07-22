@@ -1,6 +1,6 @@
 == PREPARE
 
-ant hstore-prepare -Dproject=affinity -Dhosts="istc2:0:0-24;istc3:1:25-49;istc6:2:50-74;istc13:3:75-99"
+ant hstore-prepare -Dproject=affinity -Dhosts="istc2:0:0-24;istc6:1:25-49;istc12:2:50-74;istc13:3:75-99"
 
 == LOAD
 
