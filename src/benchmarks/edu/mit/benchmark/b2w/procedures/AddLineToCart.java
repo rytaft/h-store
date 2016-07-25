@@ -143,54 +143,26 @@ public class AddLineToCart extends VoltProcedure {
 
 
     public VoltTable[] run(String cart_id, TimestampType timestamp, String line_id, 
-            long product_sku, long product_id, long store_id, int quantity){
+            long product_sku, long product_id, long store_id, int quantity, String salesChannel, String opn, String epar, int autoMerge,
+            double unitSalesPrice, double salesPrice, int maxQuantity, String maximumQuantityReason, String type, String stockTransactionId,
+            int requestedQuantity, String line_status, String stockType, String image, String name, int isKit, double price, double originalPrice,
+            int isLarge, long department, long line, long subClass, double weight, long product_class){
         voltQueueSQL(getCartStmt, cart_id);
         final VoltTable[] cart_results = voltExecuteSQL();
         assert cart_results.length == 1;
         
         double total = 0;
-        String salesChannel = null;
-        String opn = null;
-        String epar = null;
-        TimestampType lastModified = timestamp;
-        String status = B2WConstants.STATUS_NEW;
-        int autoMerge = 0;
+        String status = B2WConstants.STATUS_NEW;       
         
         if (cart_results[0].getRowCount() > 0) {
             final VoltTableRow cart = cart_results[0].fetchRow(0);
-            final int CART_ID = 0, TOTAL = 1, SALES_CHANNEL = 2, OPN = 3, EPAR = 4, LAST_MODIFIED = 5, STATUS = 6, AUTO_MERGE = 7;
+            final int CART_ID = 0, TOTAL = 1, STATUS = 6;
             assert cart_id.equals(cart.getString(CART_ID));
             total = cart.getDouble(TOTAL);
-            salesChannel = cart.getString(SALES_CHANNEL);
-            opn = cart.getString(OPN);
-            epar = cart.getString(EPAR);
-            lastModified = cart.getTimestampAsTimestamp(LAST_MODIFIED);
-            status = cart.getString(STATUS);
-            autoMerge = (int) cart.getLong(AUTO_MERGE);           
+            status = cart.getString(STATUS);        
         } else {
-            voltQueueSQL(createCartStmt, cart_id, total, salesChannel, opn, epar, lastModified, status, autoMerge);
+            voltQueueSQL(createCartStmt, cart_id, total, salesChannel, opn, epar, timestamp, status, autoMerge);
         }
-        
-        double unitSalesPrice = 0;
-        double salesPrice = 0;
-        int maxQuantity = 0;
-        String maximumQuantityReason = null;
-        String type = null;
-        String stockTransactionId = null;
-        int requestedQuantity = 0;
-        String line_status = null;
-        String stockType = null;
-        String image = null;
-        String name = null;
-        int isKit = 0;
-        double price = 0;
-        double originalPrice = 0;
-        int isLarge = 0;
-        long department = 0;
-        long line = 0;
-        long subClass = 0;
-        double weight = 0;
-        long product_class = 0;
         
         voltQueueSQL(createCartLineStmt, 
                 cart_id, 

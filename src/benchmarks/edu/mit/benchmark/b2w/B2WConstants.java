@@ -1,5 +1,7 @@
 package edu.mit.benchmark.b2w;
 
+import org.voltdb.types.TimestampType;
+
 public class B2WConstants {
 
     public static final String STATUS_NEW = "NEW";
@@ -69,4 +71,42 @@ public class B2WConstants {
     public static final String PARAMS_STOCK_TYPE = "stockType";
     public static final String PARAMS_DELIVERY_TIME = "deliveryTime";
     public static final String PARAMS_TIMESTAMP = "timestamp";
+    public static final String PARAMS_PAYMENT_OPTION_ID = "paymentOptionId";
+    public static final String PARAMS_PAYMENT_OPTION_TYPE = "paymentOptionType";
+    public static final String PARAMS_DUE_DAYS = "dueDays";
+    public static final String PARAMS_AMOUNT = "amount";
+    public static final String PARAMS_INSTALLMENT_QUANTITY = "installmentQuantity";
+    public static final String PARAMS_INTEREST_AMOUNT = "interestAmount";
+    public static final String PARAMS_INTEREST_RATE = "interestRate";
+    public static final String PARAMS_ANNUAL_CET = "annualCET";
+    public static final String PARAMS_NUMBER = "number";
+    public static final String PARAMS_CRIPTO_NUMBER = "criptoNumber";
+    public static final String PARAMS_HOLDERS_NAME = "holdersName";
+    public static final String PARAMS_SECURITY_CODE = "securityCode";
+    public static final String PARAMS_EXPIRATION_DATE = "expirationDate";
+    public static final String PARAMS_SALES_CHANNEL = "salesChannel";
+    public static final String PARAMS_OPN = "opn";
+    public static final String PARAMS_EPAR = "epar";
+    public static final String PARAMS_AUTO_MERGE = "autoMerge";    
+    public static final String PARAMS_UNIT_SALES_PRICE = "unitSalesPrice";
+    public static final String PARAMS_SALES_PRICE = "salesPrice";
+    public static final String PARAMS_MAX_QUANTITY = "maxQuantity";
+    public static final String PARAMS_MAXIMUM_QUANTITY_REASON = "maximumQuantityReason";
+    public static final String PARAMS_TYPE = "type";
+    public static final String PARAMS_STOCK_TRANSACTION_ID = "stockTransactionId";
+    public static final String PARAMS_LINE_STATUS = "lineStatus";
+    public static final String PARAMS_IMAGE = "image";
+    public static final String PARAMS_NAME = "name";
+    public static final String PARAMS_PRICE = "price";
+    public static final String PARAMS_ORIGINAL_PRICE = "originalPrice";
+    public static final String PARAMS_IS_LARGE = "isLarge";
+    public static final String PARAMS_DEPARTMENT = "department";
+    public static final String PARAMS_LINE = "line";
+    public static final String PARAMS_SUB_CLASS = "subClass";
+    public static final String PARAMS_WEIGHT = "weight";
+    public static final String PARAMS_PRODUCT_CLASS = "productClass";
+    public static final String PARAMS_PRODUCT_SKU = "productSku"; 
+    public static final String PARAMS_PRODUCT_ID = "productId";
+    public static final String PARAMS_QUANTITY = "quantity";
+
 }

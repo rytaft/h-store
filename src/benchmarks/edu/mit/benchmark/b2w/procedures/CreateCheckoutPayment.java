@@ -51,21 +51,9 @@ public class CreateCheckoutPayment extends VoltProcedure {
                 "?"   +   // expirationDate
             ");");
     
-    public VoltTable[] run(String checkout_id, String cart_id){
-        String paymentOptionId = null;
-        String paymentOptionType = null;
-        int dueDays = 0;
-        double amount = 0;
-        int installmentQuantity = 0;
-        double interestAmount = 0;
-        int interestRate = 0;
-        int annualCET = 0;
-        String number = null;
-        long criptoNumber = 0;
-        String holdersName = null;
-        long securityCode = 0;
-        String expirationDate = null;
-
+    public VoltTable[] run(String checkout_id, String cart_id, String paymentOptionId, String paymentOptionType, int dueDays, double amount,
+            int installmentQuantity, double interestAmount, int interestRate, int annualCET, String number, long criptoNumber, String holdersName, 
+            long securityCode, String expirationDate){
         voltQueueSQL(createCheckoutPaymentStmt,
                 checkout_id,
                 paymentOptionId,

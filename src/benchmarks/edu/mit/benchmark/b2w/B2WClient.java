@@ -60,7 +60,13 @@ public class B2WClient extends BenchmarkComponent {
     } // TRANSCTION ENUM
 
     public static enum Operation {
+        ADD_LINE_TO_CART,
         CHECKOUT,
+        GET_CART,
+        GET_CHECKOUT,
+        GET_STOCK,
+        GET_STOCK_QUANTITY,
+        GET_STOCK_TRANSACTION,
         PURCHASE;
     
     } // OPERATION ENUM
@@ -165,14 +171,109 @@ public class B2WClient extends BenchmarkComponent {
         Operation operation = Operation.valueOf(txn.getString(B2WConstants.OPERATION));
         JSONObject params = txn.getJSONObject(B2WConstants.OPERATION_PARAMS);
         switch (operation) {
+            case ADD_LINE_TO_CART:
+                return runAddLineToCart(params);
             case CHECKOUT:
                 return runCheckout(params);
+            case GET_CART:
+                return runGetCart(params);
+            case GET_CHECKOUT:
+                return runGetCheckout(params);
+            case GET_STOCK:
+                return runGetStock(params);
+            case GET_STOCK_QUANTITY:
+                return runGetStockQuantity(params);
+            case GET_STOCK_TRANSACTION:
+                return runGetStockTransaction(params);
             case PURCHASE:
                 return runPurchase(params);
             default:
                 throw new RuntimeException("Unexpected operation '" + operation + "'");
         }
     }
+    
+    // Example JSON
+    //
+    // {
+    //   "operation": "ADD_LINE_TO_CART",
+    //   "offset": <milliseconds>,
+    //   "params": {
+    //      "cartId": <cart_id>,
+    //      "lineId": <line_id>,
+    //      "timestamp": <timestamp>, // microseconds since epoch
+    //      "productSku": <product_sku>,
+    //      "productId": <product_id>,
+    //      "storeId": <store_id>,
+    //      "quantity": <store_id>,
+    //      "salesChannel": <sales_channel>,
+    //      "opn": <opn>,
+    //      "epar": <epar>,
+    //      "autoMerge": <auto_merge>,       
+    //      "unitSalesPrice": <unit_sales_price>,
+    //      "salesPrice": <sales_price>,
+    //      "maxQuantity": <max_quantity>,
+    //      "maximumQuantityReason": <maximum_quantity_reason>,
+    //      "type": <type>,
+    //      "stockTransactionId": <stock_transaction_id>,
+    //      "requestedQuantity": <requested_quantity>,
+    //      "lineStatus": <line_status>,
+    //      "stockType": <stock_type>,
+    //      "image": <stock_type>,
+    //      "name": <name>,
+    //      "isKit": <name>,
+    //      "price": <price>,
+    //      "originalPrice": <original_price>,
+    //      "isLarge": <is_large>,
+    //      "department": <department>,
+    //      "line": <line>,
+    //      "subClass": <sub_class>,
+    //      "weight": <weight>,
+    //      "productClass": <product_class>
+    //   }
+    // }
+    private boolean runAddLineToCart(JSONObject params) throws IOException, JSONException {
+        String cart_id = params.getString(B2WConstants.PARAMS_CART_ID);
+        TimestampType timestamp = new TimestampType(params.getLong(B2WConstants.PARAMS_TIMESTAMP));
+        String line_id = params.getString(B2WConstants.PARAMS_LINE_ID);
+        long product_sku = params.getLong(B2WConstants.PARAMS_PRODUCT_SKU); 
+        long product_id = params.getLong(B2WConstants.PARAMS_PRODUCT_ID);
+        long store_id = params.getLong(B2WConstants.PARAMS_STORE_ID);
+        int quantity = params.getInt(B2WConstants.PARAMS_QUANTITY);
+        String salesChannel = params.getString(B2WConstants.PARAMS_SALES_CHANNEL);
+        String opn = params.getString(B2WConstants.PARAMS_OPN);
+        String epar = params.getString(B2WConstants.PARAMS_EPAR);
+        int autoMerge = params.getInt(B2WConstants.PARAMS_AUTO_MERGE);        
+        double unitSalesPrice = params.getDouble(B2WConstants.PARAMS_UNIT_SALES_PRICE);
+        double salesPrice = params.getDouble(B2WConstants.PARAMS_SALES_PRICE);
+        int maxQuantity = params.getInt(B2WConstants.PARAMS_MAX_QUANTITY);
+        String maximumQuantityReason = params.getString(B2WConstants.PARAMS_MAXIMUM_QUANTITY_REASON);
+        String type = params.getString(B2WConstants.PARAMS_TYPE);
+        String stockTransactionId = params.getString(B2WConstants.PARAMS_STOCK_TRANSACTION_ID);
+        int requestedQuantity = params.getInt(B2WConstants.PARAMS_REQUESTED_QUANTITY);
+        String line_status = params.getString(B2WConstants.PARAMS_LINE_STATUS);
+        String stockType = params.getString(B2WConstants.PARAMS_STOCK_TYPE);
+        String image = params.getString(B2WConstants.PARAMS_IMAGE);
+        String name = params.getString(B2WConstants.PARAMS_NAME);
+        int isKit = params.getInt(B2WConstants.PARAMS_IS_KIT);
+        double price = params.getDouble(B2WConstants.PARAMS_PRICE);
+        double originalPrice = params.getDouble(B2WConstants.PARAMS_ORIGINAL_PRICE);
+        int isLarge = params.getInt(B2WConstants.PARAMS_IS_LARGE);
+        long department = params.getLong(B2WConstants.PARAMS_DEPARTMENT);
+        long line = params.getLong(B2WConstants.PARAMS_LINE);
+        long subClass = params.getLong(B2WConstants.PARAMS_SUB_CLASS);
+        double weight = params.getDouble(B2WConstants.PARAMS_WEIGHT);
+        long product_class = params.getLong(B2WConstants.PARAMS_PRODUCT_CLASS);
+        
+        // TODO: What if there is already a checkout object?  Should we try to reserve this item here, and update the cart/checkout?
+        
+        Object addLineParams[] = { cart_id, timestamp, line_id, 
+                product_sku, product_id, store_id, quantity, salesChannel, opn, epar, autoMerge,
+                unitSalesPrice, salesPrice, maxQuantity, maximumQuantityReason, type, stockTransactionId,
+                requestedQuantity, line_status, stockType, image, name, isKit, price, originalPrice,
+                isLarge, department, line, subClass, weight, product_class };
+        return runAsynchTransaction(Transaction.ADD_LINE_TO_CART, addLineParams);   
+    }
+
     
     // Example JSON
     //
@@ -357,6 +458,19 @@ public class B2WClient extends BenchmarkComponent {
     //   "params": {
     //      "cartId": <cart_id>,
     //      "checkoutId": <checkout_id>,
+    //      "paymentOptionId": <payment_option_id>, 
+    //      "paymentOptionType": <payment_option_type>, 
+    //      "dueDays": <due_days>, 
+    //      "amount": <amount>, 
+    //      "installmentQuantity": <installment_quantity>,
+    //      "interestAmount": <interest_amount>,
+    //      "interestRate": <interest_rate>, 
+    //      "annualCET": <annual_cet>, 
+    //      "number": <number>, 
+    //      "criptoNumber": <cripto_number>, 
+    //      "holdersName": <holders_name>, 
+    //      "securityCode": <security_code>, 
+    //      "expirationDate": <expiration_date>,
     //      "timestamp": <timestamp> // microseconds since epoch
     //   }
     // }
@@ -364,7 +478,22 @@ public class B2WClient extends BenchmarkComponent {
         // Add payment info to the checkout object
         String checkout_id = params.getString(B2WConstants.PARAMS_CHECKOUT_ID);
         String cart_id = params.getString(B2WConstants.PARAMS_CART_ID);
-        Object checkoutPaymentParams[] = { checkout_id, cart_id };
+        String paymentOptionId = params.getString(B2WConstants.PARAMS_PAYMENT_OPTION_ID);
+        String paymentOptionType = params.getString(B2WConstants.PARAMS_PAYMENT_OPTION_TYPE);
+        int dueDays = params.getInt(B2WConstants.PARAMS_DUE_DAYS);
+        double amount = params.getDouble(B2WConstants.PARAMS_AMOUNT);
+        int installmentQuantity = params.getInt(B2WConstants.PARAMS_INSTALLMENT_QUANTITY);
+        double interestAmount = params.getDouble(B2WConstants.PARAMS_INTEREST_AMOUNT);
+        int interestRate = params.getInt(B2WConstants.PARAMS_INTEREST_RATE);
+        int annualCET = params.getInt(B2WConstants.PARAMS_ANNUAL_CET);
+        String number = params.getString(B2WConstants.PARAMS_NUMBER);
+        long criptoNumber = params.getLong(B2WConstants.PARAMS_CRIPTO_NUMBER);
+        String holdersName = params.getString(B2WConstants.PARAMS_HOLDERS_NAME);
+        long securityCode = params.getLong(B2WConstants.PARAMS_SECURITY_CODE);
+        String expirationDate = params.getString(B2WConstants.PARAMS_EXPIRATION_DATE);
+
+        Object checkoutPaymentParams[] = { checkout_id, cart_id, paymentOptionId, paymentOptionType, dueDays, amount, installmentQuantity,
+                interestAmount, interestRate, annualCET, number, criptoNumber, holdersName, securityCode, expirationDate };
         runSynchTransaction(Transaction.CREATE_CHECKOUT_PAYMENT, checkoutPaymentParams);
         
         // Get all the stock transactions for the purchase from the checkout object
@@ -412,6 +541,81 @@ public class B2WClient extends BenchmarkComponent {
         return success;
     }
     
+    // Example JSON
+    //
+    // {
+    //   "operation": "GET_CART",
+    //   "offset": <milliseconds>,
+    //   "params": {
+    //      "cartId": <cart_id>
+    //   }
+    // }
+    private boolean runGetCart(JSONObject params) throws IOException, JSONException {
+        String cart_id = params.getString(B2WConstants.PARAMS_CART_ID);
+        Object cartParams[] = { cart_id };
+        return runAsynchTransaction(Transaction.GET_CART, cartParams);      
+    }
+
+    // Example JSON
+    //
+    // {
+    //   "operation": "GET_CHECKOUT",
+    //   "offset": <milliseconds>,
+    //   "params": {
+    //      "checkoutId": <checkout_id>
+    //   }
+    // }
+    private boolean runGetCheckout(JSONObject params) throws IOException, JSONException {
+        String checkout_id = params.getString(B2WConstants.PARAMS_CHECKOUT_ID);
+        Object checkoutParams[] = { checkout_id };
+        return runAsynchTransaction(Transaction.GET_CHECKOUT, checkoutParams);
+    }
+
+    // Example JSON
+    //
+    // {
+    //   "operation": "GET_STOCK",
+    //   "offset": <milliseconds>,
+    //   "params": {
+    //      "sku": <sku>
+    //   }
+    // }
+    private boolean runGetStock(JSONObject params) throws IOException, JSONException {
+        long sku = params.getLong(B2WConstants.PARAMS_SKU);
+        Object stockParams[] = { sku };
+        return runAsynchTransaction(Transaction.GET_STOCK, stockParams);
+    }
+
+    // Example JSON
+    //
+    // {
+    //   "operation": "GET_STOCK_QUANTITY",
+    //   "offset": <milliseconds>,
+    //   "params": {
+    //      "stockId": <stock_id>
+    //   }
+    // }
+    private boolean runGetStockQuantity(JSONObject params) throws IOException, JSONException {
+        String stock_id = params.getString(B2WConstants.PARAMS_STOCK_ID);
+        Object stockParams[] = { stock_id };
+        return runAsynchTransaction(Transaction.GET_STOCK_QUANTITY, stockParams);
+    }
+
+    // Example JSON
+    //
+    // {
+    //   "operation": "GET_STOCK_TRANSACTION",
+    //   "offset": <milliseconds>,
+    //   "params": {
+    //      "transactionId": <transaction_id>
+    //   }
+    // }
+    private boolean runGetStockTransaction(JSONObject params) throws IOException, JSONException {
+        String transaction_id = params.getString(B2WConstants.PARAMS_TRANSACTION_ID);
+        Object stockParams[] = { transaction_id };
+        return runAsynchTransaction(Transaction.GET_STOCK_TRANSACTION, stockParams);
+    }
+
     private boolean runAsynchTransaction(Transaction target, Object params[]) throws IOException {
         if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName);
         Callback callback = new Callback(target.ordinal());
