@@ -1,0 +1,1 @@
+ant affinity -Dproject=affinity -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Delastic.run_monitoring=false -Delastic.update_plan=true -Delastic.exec_reconf=false -Delastic.max_load=4000 -Delastic.algo=graph -Dclient.memory=8192 -Delastic.max_partitions_added=25 | tee out.log
