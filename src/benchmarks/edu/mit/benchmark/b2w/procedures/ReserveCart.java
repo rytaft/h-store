@@ -104,7 +104,7 @@ public class ReserveCart extends VoltProcedure {
                 int index = line_id_index.get(line_id);
                 voltQueueSQL(updateCartLineStmt, reserved_quantity[index], transaction_id[index], requested_quantity[index], status[index], stock_type[index], cart_id, line_id);
             }
-            else {
+            else { // the cart line was not successfully reserved, so update the quantity to 0
                 voltQueueSQL(updateCartLineQtyStmt, 0, original_quantity, cart_id, line_id);
             }
             

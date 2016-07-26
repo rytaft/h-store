@@ -8,7 +8,7 @@ public class B2WConstants {
     public static final String STATUS_RESERVED = "RESERVED";
     public static final String STATUS_PURCHASED = "PURCHASED";
     public static final String STATUS_CANCELLED = "CANCELLED";
-    public static final String STATUS_COMPLETED = "COMPLETED";
+    public static final String STATUS_COMPLETE = "COMPLETE";
     public static final String STATUS_INCOMPLETE = "INCOMPLETE";
 
     public static final String TABLENAME_INVENTORY_STOCK                = "STK_INVENTORY_STOCK";

@@ -8,6 +8,7 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
+import org.voltdb.VoltType;
 import org.voltdb.types.TimestampType;
 
 import edu.brown.logging.LoggerUtil;
@@ -27,7 +28,7 @@ public class UpdateStockTransaction extends VoltProcedure {
         LoggerUtil.attachObserver(LOG, debug, trace);
     }
         
-    public final SQLStmt getStockTxnStmt = new SQLStmt("SELECT status FROM STK_STOCK_TRANSACTION WHERE transaction_id = ? ");
+    public final SQLStmt getStockTxnStmt = new SQLStmt("SELECT current_status, status FROM STK_STOCK_TRANSACTION WHERE transaction_id = ? ");
 
     public final SQLStmt updateStockTxnStmt = new SQLStmt(
             "UPDATE STK_STOCK_TRANSACTION " +
@@ -42,27 +43,38 @@ public class UpdateStockTransaction extends VoltProcedure {
         final VoltTable[] stock_txn_results = voltExecuteSQL();
         assert stock_txn_results.length == 1;
         
+        String previous_status = null;
         String status = null;
         
         if (stock_txn_results[0].getRowCount() > 0) {
             final VoltTableRow stock_txn = stock_txn_results[0].fetchRow(0);
-            final int STATUS = 0;
+            final int CURRENT_STATUS = 0, STATUS = 1;
+            previous_status = stock_txn.getString(CURRENT_STATUS);
             status = stock_txn.getString(STATUS);
         } else {
             return null;
         }
         
-        try {
-            JSONObject status_obj = new JSONObject(status);
-            status_obj.append(timestamp.toString(), current_status);
-            status = status_obj.toString();
-        } catch (JSONException e) {
-            LOG.info("Failed to parse status: " + status);
+        VoltTable[] result = new VoltTable[1];
+        result[0] = new VoltTable(new VoltTable.ColumnInfo("StatusChanged", VoltType.BOOLEAN));
+        if (previous_status.equals(current_status)) {
+            result[0].addRow(false);
+        } else {
+            try {
+                JSONObject status_obj = new JSONObject(status);
+                status_obj.append(timestamp.toString(), current_status);
+                status = status_obj.toString();
+            } catch (JSONException e) {
+                LOG.info("Failed to parse status: " + status);
+            }
+
+            voltQueueSQL(updateStockTxnStmt, current_status, status, transaction_id);
+            voltExecuteSQL(true);
+
+            result[0].addRow(true);
         }
-        
-        voltQueueSQL(updateStockTxnStmt, current_status, status, transaction_id);
-        
-        return voltExecuteSQL(true);
+
+        return result;
     }
 
 }

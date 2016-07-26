@@ -4,6 +4,9 @@ import org.voltdb.VoltProcedure;
 
 import edu.brown.api.BenchmarkComponent;
 import edu.brown.benchmark.AbstractProjectBuilder;
+import edu.mit.benchmark.b2w.procedures.AddLineToCheckout;
+import edu.mit.benchmark.b2w.procedures.CancelStockReservation;
+import edu.mit.benchmark.b2w.procedures.DeleteLineFromCheckout;
 import edu.mit.benchmark.b2w.procedures.GetStockTransaction;
 import edu.mit.benchmark.b2w.procedures.ReserveCart;
 import edu.mit.benchmark.b2w.procedures.AddLineToCart;
@@ -30,18 +33,21 @@ public class B2WProjectBuilder extends AbstractProjectBuilder{
  
     @SuppressWarnings("unchecked")
     public static final Class<? extends VoltProcedure> PROCEDURES[] = (Class<? extends VoltProcedure>[]) new Class<?>[] {
-        ReserveCart.class,
         AddLineToCart.class,
+        AddLineToCheckout.class,
+        CancelStockReservation.class,
         CreateCheckout.class,
         CreateCheckoutPayment.class,
         CreateStockTransaction.class,
         DeleteLineFromCart.class,
+        DeleteLineFromCheckout.class,
         GetCart.class,
         GetCheckout.class,
         GetStock.class,
         GetStockQuantity.class,
         GetStockTransaction.class,
         PurchaseStock.class,
+        ReserveCart.class,
         ReserveStock.class,
         UpdateStockTransaction.class
     };
