@@ -6,6 +6,8 @@ import edu.brown.api.BenchmarkComponent;
 import edu.brown.benchmark.AbstractProjectBuilder;
 import edu.mit.benchmark.b2w.procedures.AddLineToCheckout;
 import edu.mit.benchmark.b2w.procedures.CancelStockReservation;
+import edu.mit.benchmark.b2w.procedures.DeleteCart;
+import edu.mit.benchmark.b2w.procedures.DeleteCheckout;
 import edu.mit.benchmark.b2w.procedures.DeleteLineFromCheckout;
 import edu.mit.benchmark.b2w.procedures.GetStockTransaction;
 import edu.mit.benchmark.b2w.procedures.ReserveCart;
@@ -39,6 +41,8 @@ public class B2WProjectBuilder extends AbstractProjectBuilder{
         CreateCheckout.class,
         CreateCheckoutPayment.class,
         CreateStockTransaction.class,
+        DeleteCart.class,
+        DeleteCheckout.class,
         DeleteLineFromCart.class,
         DeleteLineFromCheckout.class,
         GetCart.class,

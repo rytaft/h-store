@@ -37,6 +37,8 @@ public class B2WClient extends BenchmarkComponent {
         CREATE_CHECKOUT("CreateCheckout"),
         CREATE_CHECKOUT_PAYMENT("CreateCheckoutPayment"),
         CREATE_STOCK_TRANSACTION("CreateStockTransaction"),
+        DELETE_CART("DeleteCart"),
+        DELETE_CHECKOUT("DeleteCheckout"),
         DELETE_LINE_FROM_CART("DeleteLineFromCart"),
         DELETE_LINE_FROM_CHECKOUT("DeleteLineFromCheckout"),
         GET_CART("GetCart"),
@@ -64,7 +66,10 @@ public class B2WClient extends BenchmarkComponent {
 
     public static enum Operation {
         ADD_LINE_TO_CART,
+        CANCEL_STOCK_TRANSACTION,
         CHECKOUT,
+        DELETE_CART,
+        DELETE_CHECKOUT,
         DELETE_LINE_FROM_CART,
         GET_CART,
         GET_CHECKOUT,
@@ -177,8 +182,14 @@ public class B2WClient extends BenchmarkComponent {
         switch (operation) {
             case ADD_LINE_TO_CART:
                 return runAddLineToCart(params);
+            case CANCEL_STOCK_TRANSACTION:
+                return runCancelStockTransaction(params);
             case CHECKOUT:
                 return runCheckout(params);
+            case DELETE_CART:
+                return runDeleteCart(params);
+            case DELETE_CHECKOUT:
+                return runDeleteCheckout(params);
             case DELETE_LINE_FROM_CART:
                 return runDeleteLineFromCart(params);
             case GET_CART:
@@ -196,6 +207,112 @@ public class B2WClient extends BenchmarkComponent {
             default:
                 throw new RuntimeException("Unexpected operation '" + operation + "'");
         }
+    }
+    
+    // Reserve stock and create a stock transaction
+    private int reserveStock(JSONArray reserves, String transaction_id, int requested_quantity, TimestampType cartTimestamp) 
+            throws IOException, JSONException {
+        // TODO we should probably check a cache based on the sku to find the stock_ids, and every 5 minutes
+        // refresh the cache by running the GetStock transaction
+        
+        // This code currently tries to reserve stock_ids that we know succeeded from the input parameters
+        
+        int reserve_count = reserves.length();
+        
+        int total_reserved_quantity = 0;
+        String[] reserve_id = new String[reserve_count]; 
+        String[] brand = new String[reserve_count];
+        TimestampType[] timestamp = new TimestampType[reserve_count];
+        TimestampType[] expiration_date = new TimestampType[reserve_count];
+        int[] is_kit = new int[reserve_count];
+        String[] reserve_lines = new String[reserve_count];
+        int[] reserved_quantity = new int[reserve_count];
+        long[] sku = new long[reserve_count];
+        String[] solr_query = new String[reserve_count];
+        long[] store_id = new long[reserve_count];
+        int[] subinventory = new int[reserve_count];
+        int[] warehouse = new int[reserve_count];
+
+        for (int j = 0; j < reserve_count; ++j) {
+            JSONObject reserve = reserves.getJSONObject(j);
+            String stock_id = reserve.getString(B2WConstants.PARAMS_STOCK_ID); 
+            if (requested_quantity != reserve.getInt(B2WConstants.PARAMS_REQUESTED_QUANTITY)) {
+                LOG.info("Requested quantity in database <" + requested_quantity + "> doesn't match log <" + reserve.getInt(B2WConstants.PARAMS_REQUESTED_QUANTITY) +">");
+            }
+         
+            // Attempt to reserve the stock
+            Object reserveStockParams[] = { stock_id, requested_quantity };
+            /**** TRANSACTION ****/
+            ClientResponse reserveStockResponse = runSynchTransaction(Transaction.RESERVE_STOCK, reserveStockParams);
+            if (reserveStockResponse.getResults().length != 1 && 
+                    reserveStockResponse.getResults()[0].getRowCount() != 1) return total_reserved_quantity;
+            reserved_quantity[j] = (int) reserveStockResponse.getResults()[0].fetchRow(0).getLong(0);
+            if (reserved_quantity[j] != reserve.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY)) {
+                LOG.info("Reserved quantity in database <" + reserved_quantity[j] + "> doesn't match log <" + reserve.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY) +">");
+            }
+
+            // If successfully reserved, create a stock transaction reserve
+            if (reserved_quantity[j] > 0) {
+                reserve_id[j] = reserve.getString(B2WConstants.PARAMS_RESERVE_ID); 
+                brand[j] = reserve.getString(B2WConstants.PARAMS_BRAND);
+                timestamp[j] = new TimestampType(reserve.getLong(B2WConstants.PARAMS_CREATION_DATE));
+                if (timestamp[j].getMSTime() > cartTimestamp.getMSTime()) cartTimestamp = timestamp[j];
+                expiration_date[j] = new TimestampType(new Date(timestamp[j].getMSTime() + 30 * 60 * 1000)); // add 30 mins
+                is_kit[j] = reserve.getInt(B2WConstants.PARAMS_IS_KIT);
+                reserve_lines[j] = reserve.getString(B2WConstants.PARAMS_RESERVE_LINES);
+                sku[j] = reserve.getLong(B2WConstants.PARAMS_SKU);
+                solr_query[j] = reserve.getString(B2WConstants.PARAMS_SOLR_QUERY);
+                store_id[j] = reserve.getLong(B2WConstants.PARAMS_STORE_ID);
+                subinventory[j] = reserve.getInt(B2WConstants.PARAMS_SUBINVENTORY);
+                warehouse[j] = reserve.getInt(B2WConstants.PARAMS_WAREHOUSE);
+
+                total_reserved_quantity += reserved_quantity[j];
+            }
+        }
+        
+        // Create the stock transaction
+        Object createStockTxnParams[] = new Object[]{ transaction_id, reserve_id, brand, timestamp, 
+                expiration_date, is_kit, requested_quantity, reserve_lines, reserved_quantity, sku, 
+                solr_query, store_id, subinventory, warehouse };
+        /**** TRANSACTION ****/
+        runAsynchTransaction(Transaction.CREATE_STOCK_TRANSACTION, createStockTxnParams);               
+        
+        return total_reserved_quantity;
+    }
+    
+    // Cancel stock reservations and cancel the stock transaction
+    private boolean cancelStockTransaction(String stockTransactionId, TimestampType timestamp) throws IOException, JSONException {
+        // cancel stock transaction
+        String current_status = B2WConstants.STATUS_CANCELLED;
+        Object updateStockTxnParams[] = { stockTransactionId, timestamp, current_status };
+        /**** TRANSACTION ****/
+        ClientResponse cancelStockTransactionResponse = runSynchTransaction(Transaction.UPDATE_STOCK_TRANSACTION, updateStockTxnParams); 
+        if (cancelStockTransactionResponse.getResults().length != 1 && 
+                cancelStockTransactionResponse.getResults()[0].getRowCount() != 1) return false;
+        boolean status_changed = cancelStockTransactionResponse.getResults()[0].fetchRow(0).getBoolean(0);
+
+        // cancel stock reservations
+        if (status_changed) { // if no change, someone else already cancelled the transaction and canceled the reservations
+            Object getStockTxnParams[] = { stockTransactionId };
+            /**** TRANSACTION ****/
+            ClientResponse getStockTxnResponse = runSynchTransaction(Transaction.GET_STOCK_TRANSACTION, getStockTxnParams);
+            if (getStockTxnResponse.getResults().length != 1) return false;
+            for (int j = 0; j < getStockTxnResponse.getResults()[0].getRowCount(); ++j) {
+                final VoltTableRow stockTransaction = getStockTxnResponse.getResults()[0].fetchRow(j);
+                final int RESERVE_LINES = 8;
+
+                String reserve_lines = stockTransaction.getString(RESERVE_LINES);
+                JSONObject reserve_lines_obj = new JSONObject(reserve_lines);
+                String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
+                int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
+                Object cancelReserveStockParams[] = { stock_id, reserved_quantity };
+                /**** TRANSACTION ****/
+                boolean success = runAsynchTransaction(Transaction.CANCEL_STOCK_RESERVATION, cancelReserveStockParams);
+                if (!success) return false;
+            }
+        }
+        
+        return true;
     }
     
     // Example JSON
@@ -292,77 +409,19 @@ public class B2WClient extends BenchmarkComponent {
         double weight = params.getDouble(B2WConstants.PARAMS_WEIGHT);
         long product_class = params.getLong(B2WConstants.PARAMS_PRODUCT_CLASS);
         
+        // if necessary, reserve stock
         JSONArray reserves = params.getJSONArray(B2WConstants.PARAMS_RESERVES);
-        if (reserves != null) {
-            int reserve_count = reserves.length();
-
-            int total_reserved_quantity = 0;
-            String[] reserve_id = new String[reserve_count]; 
-            String[] brand = new String[reserve_count];
-            TimestampType[] reserve_timestamp = new TimestampType[reserve_count];
-            TimestampType[] expiration_date = new TimestampType[reserve_count];
-            int[] is_kit = new int[reserve_count];
-            String[] reserve_lines = new String[reserve_count];
-            int[] reserved_quantity = new int[reserve_count];
-            long[] sku = new long[reserve_count];
-            String[] solr_query = new String[reserve_count];
-            long[] reserve_store_id = new long[reserve_count];
-            int[] subinventory = new int[reserve_count];
-            int[] warehouse = new int[reserve_count];
-
-            for (int j = 0; j < reserve_count; ++j) {
-                JSONObject reserve = reserves.getJSONObject(j);
-                String stock_id = reserve.getString(B2WConstants.PARAMS_STOCK_ID); 
-                if (requested_quantity != reserve.getInt(B2WConstants.PARAMS_REQUESTED_QUANTITY)) {
-                    LOG.info("Requested quantity in database <" + requested_quantity + "> doesn't match log <" + reserve.getInt(B2WConstants.PARAMS_REQUESTED_QUANTITY) +">");
-                }
-
-                // Attempt to reserve the stock
-                Object reserveStockParams[] = { stock_id, requested_quantity };
-                /**** TRANSACTION ****/
-                ClientResponse reserveStockResponse = runSynchTransaction(Transaction.RESERVE_STOCK, reserveStockParams);
-                if (reserveStockResponse.getResults().length != 1 && 
-                        reserveStockResponse.getResults()[0].getRowCount() != 1) return false;
-                reserved_quantity[j] = (int) reserveStockResponse.getResults()[0].fetchRow(0).getLong(0);
-                if (reserved_quantity[j] != reserve.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY)) {
-                    LOG.info("Reserved quantity in database <" + reserved_quantity[j] + "> doesn't match log <" + reserve.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY) +">");
-                }
-
-                // If successfully reserved, create a stock transaction reserve
-                if (reserved_quantity[j] > 0 && transaction_id != null && !transaction_id.isEmpty()) {
-                    reserve_id[j] = reserve.getString(B2WConstants.PARAMS_RESERVE_ID); 
-                    brand[j] = reserve.getString(B2WConstants.PARAMS_BRAND);
-                    reserve_timestamp[j] = new TimestampType(reserve.getLong(B2WConstants.PARAMS_CREATION_DATE));
-                    expiration_date[j] = new TimestampType(new Date(reserve_timestamp[j].getMSTime() + 30 * 60 * 1000)); // add 30 mins
-                    is_kit[j] = reserve.getInt(B2WConstants.PARAMS_IS_KIT);
-                    reserve_lines[j] = reserve.getString(B2WConstants.PARAMS_RESERVE_LINES);
-                    sku[j] = reserve.getLong(B2WConstants.PARAMS_SKU);
-                    solr_query[j] = reserve.getString(B2WConstants.PARAMS_SOLR_QUERY);
-                    reserve_store_id[j] = reserve.getLong(B2WConstants.PARAMS_STORE_ID);
-                    subinventory[j] = reserve.getInt(B2WConstants.PARAMS_SUBINVENTORY);
-                    warehouse[j] = reserve.getInt(B2WConstants.PARAMS_WAREHOUSE);
-
-                    total_reserved_quantity += reserved_quantity[j];
-                }
-            }
+        if (reserves != null && transaction_id != null && !transaction_id.isEmpty()) {
+            TimestampType cartTimestamp = new TimestampType(0);
+            int total_reserved_quantity = reserveStock(reserves, transaction_id, requested_quantity, cartTimestamp);
             
             String actual_line_status = (requested_quantity == total_reserved_quantity ? B2WConstants.STATUS_COMPLETE : B2WConstants.STATUS_INCOMPLETE);  
             if (actual_line_status != line_status) {
                 LOG.info("Actual line status in database <" + actual_line_status + "> doesn't match log <" + line_status +">");
             }
-
-            if (transaction_id != null && !transaction_id.isEmpty()) {
-                // Create the stock transaction
-                Object createStockTxnParams[] = new Object[]{ transaction_id, reserve_id, brand, reserve_timestamp, 
-                        expiration_date, is_kit, requested_quantity, reserve_lines, reserved_quantity, sku, 
-                        solr_query, reserve_store_id, subinventory, warehouse };
-                /**** TRANSACTION ****/
-                boolean success = runAsynchTransaction(Transaction.CREATE_STOCK_TRANSACTION, createStockTxnParams);               
-                if (!success) return false;
-            }
         }
         
-        // add line to checkout
+        // if necessary, add line to checkout
         String checkout_id = params.getString(B2WConstants.PARAMS_CHECKOUT_ID);
         if (checkout_id != null && !checkout_id.isEmpty()) {
             String freightContract = params.getString(B2WConstants.PARAMS_FREIGHT_CONTRACT);
@@ -385,7 +444,24 @@ public class B2WClient extends BenchmarkComponent {
                 isLarge, department, line, subClass, weight, product_class };
         /**** TRANSACTION ****/
         return runAsynchTransaction(Transaction.ADD_LINE_TO_CART, addLineParams);   
+    }    
+    
+    // Example JSON
+    //
+    // {
+    //   "operation": "CANCEL_STOCK_TRANSACTION",
+    //   "offset": <milliseconds>,
+    //   "params": {
+    //      "transactionId": <transaction_id>,
+    //      "timestamp": <timestamp>, // microseconds since epoch
+    //   }
+    // }
+    private boolean runCancelStockTransaction(JSONObject params) throws IOException, JSONException {
+        TimestampType timestamp = new TimestampType(params.getLong(B2WConstants.PARAMS_TIMESTAMP));
+        String stockTransactionId = params.getString(B2WConstants.PARAMS_TRANSACTION_ID);
+        return cancelStockTransaction(stockTransactionId, timestamp);
     }
+
     
     // Example JSON
     //
@@ -414,54 +490,26 @@ public class B2WClient extends BenchmarkComponent {
         final int CART_LINES_RESULTS = 2;
         
         VoltTableRow cartLine = null;
+        final int LINE_ID = 1, SALES_PRICE = 6, STOCK_TRANSACTION_ID = 11;
         for (int i = 0; i < cartResponse.getResults()[CART_LINES_RESULTS].getRowCount(); ++i) {
             cartLine = cartResponse.getResults()[CART_LINES_RESULTS].fetchRow(i);
-            final int LINE_ID = 1;
             if (cartLine.getString(LINE_ID).equals(line_id)) {
                 break;
             }
         }        
         if (cartLine == null) return false;
         
-        final int SALES_PRICE = 6, STOCK_TRANSACTION_ID = 11;
-        double salesPrice = cartLine.getDouble(SALES_PRICE);
+        // if necessary, cancel the stock transaction
         String stockTransactionId = cartLine.getString(STOCK_TRANSACTION_ID);
         if (!cartLine.wasNull() && stockTransactionId != null) {
-            // cancel stock transaction
-            String current_status = B2WConstants.STATUS_CANCELLED;
-            Object updateStockTxnParams[] = { stockTransactionId, timestamp, current_status };
-            /**** TRANSACTION ****/
-            ClientResponse cancelStockTransactionResponse = runSynchTransaction(Transaction.UPDATE_STOCK_TRANSACTION, updateStockTxnParams); 
-            if (cancelStockTransactionResponse.getResults().length != 1 && 
-                    cancelStockTransactionResponse.getResults()[0].getRowCount() != 1) return false;
-            boolean status_changed = cancelStockTransactionResponse.getResults()[0].fetchRow(0).getBoolean(0);
-            
-            // cancel stock reservations
-            if (status_changed) { // if no change, someone else already cancelled the transaction and canceled the reservations
-                Object getStockTxnParams[] = { stockTransactionId };
-                /**** TRANSACTION ****/
-                ClientResponse getStockTxnResponse = runSynchTransaction(Transaction.GET_STOCK_TRANSACTION, getStockTxnParams);
-                if (getStockTxnResponse.getResults().length != 1) return false;
-                for (int j = 0; j < getStockTxnResponse.getResults()[0].getRowCount(); ++j) {
-                    final VoltTableRow stockTransaction = getStockTxnResponse.getResults()[0].fetchRow(j);
-                    final int RESERVE_LINES = 8;
-
-                    String reserve_lines = stockTransaction.getString(RESERVE_LINES);
-                    JSONObject reserve_lines_obj = new JSONObject(reserve_lines);
-                    String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
-                    int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
-                    Object cancelReserveStockParams[] = { stock_id, reserved_quantity };
-                    /**** TRANSACTION ****/
-                    boolean success = runAsynchTransaction(Transaction.CANCEL_STOCK_RESERVATION, cancelReserveStockParams);
-                    if (!success) return false;
-                }
-            }
-
+            boolean success = cancelStockTransaction(stockTransactionId, timestamp);
+            if (!success) return false;
         }
         
         // If necessary, delete lines from checkout
         String checkout_id = params.getString(B2WConstants.PARAMS_CHECKOUT_ID);
         if (checkout_id != null && !checkout_id.isEmpty()) {
+            double salesPrice = cartLine.getDouble(SALES_PRICE);
             String freightContract = params.getString(B2WConstants.PARAMS_FREIGHT_CONTRACT);
             double freightPrice = params.getDouble(B2WConstants.PARAMS_FREIGHT_PRICE);
             String freightStatus = params.getString(B2WConstants.PARAMS_FREIGHT_STATUS);
@@ -568,75 +616,11 @@ public class B2WClient extends BenchmarkComponent {
             String transaction_id = line.getString(B2WConstants.PARAMS_TRANSACTION_ID); 
             if (transaction_id == null || transaction_id.isEmpty()) {
                 if (debug.val) LOG.debug("No transaction_id for line_id: " + line_id);
-            }
-            
-            // TODO we should probably check a cache based on the sku to find the stock_ids, and every 5 minutes
-            // refresh the cache by running the GetStock transaction
-            
-            // This code currently tries to reserve stock_ids that we know succeeded from the input parameters
-            
-            JSONArray reserves = params.getJSONArray(B2WConstants.PARAMS_RESERVES);
-            int reserve_count = reserves.length();
-            
-            String[] reserve_id = new String[reserve_count]; 
-            String[] brand = new String[reserve_count];
-            TimestampType[] timestamp = new TimestampType[reserve_count];
-            TimestampType[] expiration_date = new TimestampType[reserve_count];
-            int[] is_kit = new int[reserve_count];
-            String[] reserve_lines = new String[reserve_count];
-            int[] reserved_quantity = new int[reserve_count];
-            long[] sku = new long[reserve_count];
-            String[] solr_query = new String[reserve_count];
-            long[] store_id = new long[reserve_count];
-            int[] subinventory = new int[reserve_count];
-            int[] warehouse = new int[reserve_count];
-
-            for (int j = 0; j < reserve_count; ++j) {
-                JSONObject reserve = reserves.getJSONObject(j);
-                String stock_id = reserve.getString(B2WConstants.PARAMS_STOCK_ID); 
-                if (requested_quantity != reserve.getInt(B2WConstants.PARAMS_REQUESTED_QUANTITY)) {
-                    LOG.info("Requested quantity in database <" + requested_quantity + "> doesn't match log <" + reserve.getInt(B2WConstants.PARAMS_REQUESTED_QUANTITY) +">");
-                }
-             
-                // Attempt to reserve the stock
-                Object reserveStockParams[] = { stock_id, requested_quantity };
-                /**** TRANSACTION ****/
-                ClientResponse reserveStockResponse = runSynchTransaction(Transaction.RESERVE_STOCK, reserveStockParams);
-                if (reserveStockResponse.getResults().length != 1 && 
-                        reserveStockResponse.getResults()[0].getRowCount() != 1) return false;
-                reserved_quantity[j] = (int) reserveStockResponse.getResults()[0].fetchRow(0).getLong(0);
-                if (reserved_quantity[j] != reserve.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY)) {
-                    LOG.info("Reserved quantity in database <" + reserved_quantity[j] + "> doesn't match log <" + reserve.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY) +">");
-                }
-
-                // If successfully reserved, create a stock transaction reserve
-                if (reserved_quantity[j] > 0 && transaction_id != null && !transaction_id.isEmpty()) {
-                    reserve_id[j] = reserve.getString(B2WConstants.PARAMS_RESERVE_ID); 
-                    brand[j] = reserve.getString(B2WConstants.PARAMS_BRAND);
-                    timestamp[j] = new TimestampType(reserve.getLong(B2WConstants.PARAMS_CREATION_DATE));
-                    if (timestamp[j].getMSTime() > cartTimestamp.getMSTime()) cartTimestamp = timestamp[j];
-                    expiration_date[j] = new TimestampType(new Date(timestamp[j].getMSTime() + 30 * 60 * 1000)); // add 30 mins
-                    is_kit[j] = reserve.getInt(B2WConstants.PARAMS_IS_KIT);
-                    reserve_lines[j] = reserve.getString(B2WConstants.PARAMS_RESERVE_LINES);
-                    sku[j] = reserve.getLong(B2WConstants.PARAMS_SKU);
-                    solr_query[j] = reserve.getString(B2WConstants.PARAMS_SOLR_QUERY);
-                    store_id[j] = reserve.getLong(B2WConstants.PARAMS_STORE_ID);
-                    subinventory[j] = reserve.getInt(B2WConstants.PARAMS_SUBINVENTORY);
-                    warehouse[j] = reserve.getInt(B2WConstants.PARAMS_WAREHOUSE);
-
-                    total_reserved_quantity += reserved_quantity[j];
-                }
-            }
-            
-            if (transaction_id != null && !transaction_id.isEmpty()) {
-                // Create the stock transaction
-                Object createStockTxnParams[] = new Object[]{ transaction_id, reserve_id, brand, timestamp, 
-                        expiration_date, is_kit, requested_quantity, reserve_lines, reserved_quantity, sku, 
-                        solr_query, store_id, subinventory, warehouse };
-                /**** TRANSACTION ****/
-                boolean success = runAsynchTransaction(Transaction.CREATE_STOCK_TRANSACTION, createStockTxnParams);               
-                if (!success) return false;
-            }
+            } else {
+                // reserve the stock
+                JSONArray reserves = params.getJSONArray(B2WConstants.PARAMS_RESERVES);
+                total_reserved_quantity = reserveStock(reserves, transaction_id, requested_quantity, cartTimestamp);                
+            }           
             
             // store the line id and transaction info to add to the cart and checkout
             line_ids[i] = line_id;
@@ -741,13 +725,15 @@ public class B2WClient extends BenchmarkComponent {
             /**** TRANSACTION ****/
             ClientResponse getStockTxnResponse = runSynchTransaction(Transaction.GET_STOCK_TRANSACTION, getStockTxnParams);
             if (getStockTxnResponse.getResults().length != 1) return false;
+            boolean purchased = false;
             for (int j = 0; j < getStockTxnResponse.getResults()[0].getRowCount(); ++j) {
                 final VoltTableRow stockTransaction = getStockTxnResponse.getResults()[0].fetchRow(j);
                 final int CURRENT_STATUS = 4, RESERVE_LINES = 8;
                 
                 String current_status = stockTransaction.getString(CURRENT_STATUS);                
                 if (current_status.equals(B2WConstants.STATUS_CANCELLED)) {
-                    // TODO: try to reserve stock again
+                    // TODO: try to reserve stock again?
+                    LOG.info("Attempt to purchase stock transaction that has been cancelled: " + transaction_id);
                 } else {
                     String reserve_lines = stockTransaction.getString(RESERVE_LINES);
                     JSONObject reserve_lines_obj = new JSONObject(reserve_lines);
@@ -756,16 +742,19 @@ public class B2WClient extends BenchmarkComponent {
                     Object purchaseStockParams[] = { stock_id, reserved_quantity };
                     /**** TRANSACTION ****/
                     success = runAsynchTransaction(Transaction.PURCHASE_STOCK, purchaseStockParams);
+                    purchased = true;
                 } 
                 
                 if (!success) return false;
             }
             
-            String current_status = B2WConstants.STATUS_PURCHASED;
-            Object updateStockTxnParams[] = { transaction_id, timestamp, current_status };
-            /**** TRANSACTION ****/
-            success = runAsynchTransaction(Transaction.UPDATE_STOCK_TRANSACTION, updateStockTxnParams);               
-            if (!success) return false;
+            if (purchased) {
+                String current_status = B2WConstants.STATUS_PURCHASED;
+                Object updateStockTxnParams[] = { transaction_id, timestamp, current_status };
+                /**** TRANSACTION ****/
+                success = runAsynchTransaction(Transaction.UPDATE_STOCK_TRANSACTION, updateStockTxnParams);               
+                if (!success) return false;
+            }
         }
         
         return success;
@@ -801,6 +790,35 @@ public class B2WClient extends BenchmarkComponent {
         return runAsynchTransaction(Transaction.GET_CHECKOUT, checkoutParams);
     }
 
+    // Example JSON
+    //
+    // {
+    //   "operation": "DELETE_CART",
+    //   "offset": <milliseconds>,
+    //   "params": {
+    //      "cartId": <cart_id>
+    //   }
+    // }
+    private boolean runDeleteCart(JSONObject params) throws IOException, JSONException {
+        String cart_id = params.getString(B2WConstants.PARAMS_CART_ID);
+        Object cartParams[] = { cart_id };
+        return runAsynchTransaction(Transaction.DELETE_CART, cartParams);      
+    }
+
+    // Example JSON
+    //
+    // {
+    //   "operation": "DELETE_CHECKOUT",
+    //   "offset": <milliseconds>,
+    //   "params": {
+    //      "checkoutId": <checkout_id>
+    //   }
+    // }
+    private boolean runDeleteCheckout(JSONObject params) throws IOException, JSONException {
+        String checkout_id = params.getString(B2WConstants.PARAMS_CHECKOUT_ID);
+        Object checkoutParams[] = { checkout_id };
+        return runAsynchTransaction(Transaction.DELETE_CHECKOUT, checkoutParams);
+    }
     // Example JSON
     //
     // {
