@@ -71,6 +71,7 @@ public class B2WClient extends BenchmarkComponent {
         DELETE_CART,
         DELETE_CHECKOUT,
         DELETE_LINE_FROM_CART,
+        FINISH_STOCK_TRANSACTION,
         GET_CART,
         GET_CHECKOUT,
         GET_STOCK,
@@ -192,6 +193,8 @@ public class B2WClient extends BenchmarkComponent {
                 return runDeleteCheckout(params);
             case DELETE_LINE_FROM_CART:
                 return runDeleteLineFromCart(params);
+            case FINISH_STOCK_TRANSACTION:
+                return runFinishStockTransaction(params);
             case GET_CART:
                 return runGetCart(params);
             case GET_CHECKOUT:
@@ -357,6 +360,7 @@ public class B2WClient extends BenchmarkComponent {
     //      "freightPrice": <freight_price>, // optional 
     //      "freightStatus": <freight_status> // optional 
     //      "deliveryTime": <delivery_time>, // optional
+    //      "stockId": [ <stock_id1>, ... ]
     //      "reserves": [{ // optional
     //          "stockId": <stock_id>, 
     //          "reserveId": <reserve_id>, 
@@ -418,6 +422,30 @@ public class B2WClient extends BenchmarkComponent {
             String actual_line_status = (requested_quantity == total_reserved_quantity ? B2WConstants.STATUS_COMPLETE : B2WConstants.STATUS_INCOMPLETE);  
             if (actual_line_status != line_status) {
                 LOG.info("Actual line status in database <" + actual_line_status + "> doesn't match log <" + line_status +">");
+            } 
+        } 
+        // otherwise check that the stock is available
+        else {
+            // TODO: should probably check cache with sku -> stock_ids
+            JSONArray stockIds = params.getJSONArray(B2WConstants.PARAMS_STOCK_ID);
+            int total_available = 0;
+            for(int i = 0; i < stockIds.length(); ++i) {
+                Object getStockQtyParams[] = { stockIds.getString(i) };
+                /**** TRANSACTION ****/
+                ClientResponse stockQtyResponse = runSynchTransaction(Transaction.GET_STOCK_QUANTITY, getStockQtyParams);
+                if (stockQtyResponse.getResults().length != 1 && stockQtyResponse.getResults()[0].getRowCount() != 1) return false; 
+                final VoltTableRow stockQty = stockQtyResponse.getResults()[0].fetchRow(0);
+                final int AVAILABLE = 1;
+                total_available += stockQty.getLong(AVAILABLE);
+            }
+            
+            if (total_available < requested_quantity) {
+                LOG.info("Total available (" + total_available + ") less than requested (" + requested_quantity + ")");
+                if (total_available > 0) {
+                    requested_quantity = total_available;
+                } else { // no point in adding to cart
+                    return true;
+                }
             }
         }
         
@@ -758,6 +786,25 @@ public class B2WClient extends BenchmarkComponent {
         }
         
         return success;
+    }
+    
+    // Example JSON
+    //
+    // {
+    //   "operation": "FINISH_STOCK_TRANSACTION",
+    //   "offset": <milliseconds>,
+    //   "params": {
+    //      "transactionId": <transaction_id>,
+    //      "timestamp": <timestamp> // microseconds since epoch
+    //   }
+    // }
+    private boolean runFinishStockTransaction(JSONObject params) throws IOException, JSONException {
+        TimestampType timestamp = new TimestampType(params.getLong(B2WConstants.PARAMS_TIMESTAMP));
+        String transaction_id = params.getString(B2WConstants.PARAMS_TRANSACTION_ID);
+        String current_status = B2WConstants.STATUS_FINISHED;
+        Object updateStockTxnParams[] = { transaction_id, timestamp, current_status };
+        /**** TRANSACTION ****/
+        return runAsynchTransaction(Transaction.UPDATE_STOCK_TRANSACTION, updateStockTxnParams);
     }
     
     // Example JSON
