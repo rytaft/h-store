@@ -1,10 +1,10 @@
 package edu.mit.benchmark.b2w;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Random;
+import java.util.HashSet;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
@@ -90,6 +90,18 @@ public class B2WClient extends BenchmarkComponent {
 
     private B2WConfig config;
     private TransactionSelector txn_selector;
+    private ConcurrentHashMap<Long,StockIdCacheElement> stock_id_cache; // sku -> stock_ids
+    
+    // Cache element to contain stock IDs. Cache elements expire after 5 minutes.
+    private class StockIdCacheElement {
+       public long timestamp; // milliseconds since epoch
+       public HashSet<String> stock_ids;
+       
+       public StockIdCacheElement(long timestamp, HashSet<String> stock_ids) {
+           this.timestamp = timestamp;
+           this.stock_ids = stock_ids;
+       }
+    };
 
     /**
      *  Time of first transaction in milliseconds
@@ -100,11 +112,9 @@ public class B2WClient extends BenchmarkComponent {
     public B2WClient(String[] args) {
         super(args);     
         this.config = new B2WConfig(m_extraParams);
-
+        this.stock_id_cache = new ConcurrentHashMap<>();
     }
 
-    @SuppressWarnings("unused")
-    @Deprecated
     @Override
     public void runLoop() {
 
@@ -212,13 +222,34 @@ public class B2WClient extends BenchmarkComponent {
         }
     }
     
-    // Reserve stock and create a stock transaction
-    private int reserveStock(JSONArray reserves, String transaction_id, int requested_quantity, TimestampType cartTimestamp) 
-            throws IOException, JSONException {
-        // TODO we should probably check a cache based on the sku to find the stock_ids, and every 5 minutes
-        // refresh the cache by running the GetStock transaction
+    private HashSet<String> getStockIds(long sku) throws IOException {
+        // cache element expires after 5 minutes
+        final int FIVE_MINUTES = 300000; // 1000 ms/s * 60 s/min * 5 min
+        if (this.stock_id_cache.contains(sku) && 
+                this.stock_id_cache.get(sku).timestamp > (System.currentTimeMillis() - FIVE_MINUTES)) {
+            return this.stock_id_cache.get(sku).stock_ids;
+        }
         
-        // This code currently tries to reserve stock_ids that we know succeeded from the input parameters
+        Object getStockParams[] = { sku };
+        /**** TRANSACTION ****/
+        ClientResponse getStockResponse = runSynchTransaction(Transaction.GET_STOCK, getStockParams);
+        if (getStockResponse.getResults().length != 1) return null;
+        
+        HashSet<String> stock_ids = new HashSet<>();
+        for (int i = 0; i < getStockResponse.getResults()[0].getRowCount(); ++i) {
+            final VoltTableRow stock = getStockResponse.getResults()[0].fetchRow(i);
+            final int STOCK_ID = 1;
+            stock_ids.add(stock.getString(STOCK_ID));
+        }
+        
+        this.stock_id_cache.put(sku, new StockIdCacheElement(System.currentTimeMillis(), stock_ids));
+        
+        return stock_ids;
+    }
+    
+    // Reserve stock and create a stock transaction
+    private int reserveStock(JSONArray reserves, long product_sku, String transaction_id, int requested_quantity, TimestampType cartTimestamp) 
+            throws IOException, JSONException {
         
         int reserve_count = reserves.length();
         
@@ -235,10 +266,18 @@ public class B2WClient extends BenchmarkComponent {
         long[] store_id = new long[reserve_count];
         int[] subinventory = new int[reserve_count];
         int[] warehouse = new int[reserve_count];
+        
+        HashSet<String> stock_ids = getStockIds(product_sku);
+        // This code only tries to reserve stock_ids that we know succeeded from the input parameters.
+        // It may be more realistic to try some of the other stock_ids, but the priority depends on some complicated
+        // logic about where the warehouse is located relative to the customer, stock type, and total available....
 
         for (int j = 0; j < reserve_count; ++j) {
             JSONObject reserve = reserves.getJSONObject(j);
             String stock_id = reserve.getString(B2WConstants.PARAMS_STOCK_ID); 
+            if (!stock_ids.contains(stock_id)) {
+                LOG.info("Attempting to reserve stock_id " + stock_id + " which is not present in the cache for sku " + sku);
+            }
             if (requested_quantity != reserve.getInt(B2WConstants.PARAMS_REQUESTED_QUANTITY)) {
                 LOG.info("Requested quantity in database <" + requested_quantity + "> doesn't match log <" + reserve.getInt(B2WConstants.PARAMS_REQUESTED_QUANTITY) +">");
             }
@@ -360,7 +399,6 @@ public class B2WClient extends BenchmarkComponent {
     //      "freightPrice": <freight_price>, // optional 
     //      "freightStatus": <freight_status> // optional 
     //      "deliveryTime": <delivery_time>, // optional
-    //      "stockId": [ <stock_id1>, ... ]
     //      "reserves": [{ // optional
     //          "stockId": <stock_id>, 
     //          "reserveId": <reserve_id>, 
@@ -417,7 +455,7 @@ public class B2WClient extends BenchmarkComponent {
         JSONArray reserves = params.getJSONArray(B2WConstants.PARAMS_RESERVES);
         if (reserves != null && transaction_id != null && !transaction_id.isEmpty()) {
             TimestampType cartTimestamp = new TimestampType(0);
-            int total_reserved_quantity = reserveStock(reserves, transaction_id, requested_quantity, cartTimestamp);
+            int total_reserved_quantity = reserveStock(reserves, product_sku, transaction_id, requested_quantity, cartTimestamp);
             
             String actual_line_status = (requested_quantity == total_reserved_quantity ? B2WConstants.STATUS_COMPLETE : B2WConstants.STATUS_INCOMPLETE);  
             if (actual_line_status != line_status) {
@@ -426,17 +464,17 @@ public class B2WClient extends BenchmarkComponent {
         } 
         // otherwise check that the stock is available
         else {
-            // TODO: should probably check cache with sku -> stock_ids
-            JSONArray stockIds = params.getJSONArray(B2WConstants.PARAMS_STOCK_ID);
+            HashSet<String> stockIds = getStockIds(product_sku);
             int total_available = 0;
-            for(int i = 0; i < stockIds.length(); ++i) {
-                Object getStockQtyParams[] = { stockIds.getString(i) };
+            for(String stockId : stockIds) {
+                Object getStockQtyParams[] = { stockId };
                 /**** TRANSACTION ****/
                 ClientResponse stockQtyResponse = runSynchTransaction(Transaction.GET_STOCK_QUANTITY, getStockQtyParams);
                 if (stockQtyResponse.getResults().length != 1 && stockQtyResponse.getResults()[0].getRowCount() != 1) return false; 
                 final VoltTableRow stockQty = stockQtyResponse.getResults()[0].fetchRow(0);
                 final int AVAILABLE = 1;
                 total_available += stockQty.getLong(AVAILABLE);
+                if (total_available >= requested_quantity) break;
             }
             
             if (total_available < requested_quantity) {
@@ -578,6 +616,7 @@ public class B2WClient extends BenchmarkComponent {
     //      "lines": [{
     //        "lineId": <line_id>,
     //        "transactionId": <transaction_id>, 
+    //        "productSku": <product_sku>,
     //        "stockType": <stock_type>,
     //        "deliveryTime": <delivery_time>,
     //        "reserves": [{
@@ -646,8 +685,9 @@ public class B2WClient extends BenchmarkComponent {
                 if (debug.val) LOG.debug("No transaction_id for line_id: " + line_id);
             } else {
                 // reserve the stock
-                JSONArray reserves = params.getJSONArray(B2WConstants.PARAMS_RESERVES);
-                total_reserved_quantity = reserveStock(reserves, transaction_id, requested_quantity, cartTimestamp);                
+                long sku = line.getLong(B2WConstants.PARAMS_PRODUCT_SKU);
+                JSONArray reserves = line.getJSONArray(B2WConstants.PARAMS_RESERVES);
+                total_reserved_quantity = reserveStock(reserves, sku, transaction_id, requested_quantity, cartTimestamp);                
             }           
             
             // store the line id and transaction info to add to the cart and checkout
