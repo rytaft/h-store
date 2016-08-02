@@ -592,6 +592,7 @@ public class B2WLoader extends Loader {
             for (int param = 0; param < num_cols_stock; param++){
                 row_stock[param] = getDataByType(items[param], types[param]);
             }
+            vt_stock.addRow(param);
 
             total++;
             batchSize++;
