@@ -589,7 +589,8 @@ public class B2WLoader extends Loader {
             String[] items = line.split("\\s*\\|\\s*");
 
             Object row_stock[] = new Object[num_cols_stock];
-            for (int param = 0; param < num_cols_stock; param++){
+            int param;
+            for (param = 0; param < num_cols_stock; param++){
                 row_stock[param] = getDataByType(items[param], types[param]);
             }
             vt_stock.addRow(param);
