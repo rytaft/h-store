@@ -58,7 +58,7 @@ public class ReserveCart extends VoltProcedure {
     public final SQLStmt updateCartLineQtyStmt = new SQLStmt(
             "UPDATE CART_LINES " +
             "   SET quantity = ?, " +
-            "       requestedQuantity = ?, " +
+            "       requestedQuantity = ? " +
             " WHERE cartId = ? AND id = ?;"
         ); // quantity, requestedQuantity, cartId, id
     
