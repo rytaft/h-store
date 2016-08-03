@@ -1,5 +1,6 @@
 package edu.mit.benchmark.b2w;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
@@ -113,6 +114,12 @@ public class B2WClient extends BenchmarkComponent {
         super(args);     
         this.config = new B2WConfig(m_extraParams);
         this.stock_id_cache = new ConcurrentHashMap<>();
+        try {
+            this.txn_selector = new TransactionSelector(this.config.operations_file);
+        } catch (FileNotFoundException e) {
+            LOG.error("File not found: " + this.config.operations_file + ". Stack trace: " + e.getStackTrace(), e);
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -151,6 +158,7 @@ public class B2WClient extends BenchmarkComponent {
                     offset = next_txn.getLong(B2WConstants.OPERATION_OFFSET);
                 } catch (JSONException e) {
                     LOG.error("Failed to parse transaction: " + e.getMessage(), e);
+                    continue;
                 }
 
                 // Wait to generate the transaction until sufficient time has passed
