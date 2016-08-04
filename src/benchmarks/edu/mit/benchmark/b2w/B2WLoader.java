@@ -6,7 +6,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import edu.brown.catalog.CatalogUtil;
-import edu.brown.utils.FileUtil;
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -505,6 +504,7 @@ public class B2WLoader extends Loader {
         }
 
         if (LOG.isDebugEnabled()) LOG.debug("[Carts Loaded] "+total);
+        in.close();
     }
 
     private void loadCheckOutData(Database catalog_db, String path)
@@ -685,6 +685,7 @@ public class B2WLoader extends Loader {
         }
 
         if (LOG.isDebugEnabled()) LOG.debug("[Checkouts Loaded] "+total);
+        in.close();
     }
 
     /**

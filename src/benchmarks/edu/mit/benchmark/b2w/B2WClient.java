@@ -360,7 +360,7 @@ public class B2WClient extends BenchmarkComponent {
             Object reserveStockParams[] = { stock_id, requested_quantity };
             /**** TRANSACTION ****/
             ClientResponse reserveStockResponse = runSynchTransaction(Transaction.RESERVE_STOCK, reserveStockParams);
-            if (reserveStockResponse.getResults().length != 1 && 
+            if (reserveStockResponse.getResults().length != 1 || 
                     reserveStockResponse.getResults()[0].getRowCount() != 1) {
                 if (debug.val) {
                     LOG.debug("ReserveStock response has incorrect number of results (" + reserveStockResponse.getResults().length 
@@ -412,7 +412,7 @@ public class B2WClient extends BenchmarkComponent {
         Object updateStockTxnParams[] = { stockTransactionId, timestamp, current_status };
         /**** TRANSACTION ****/
         ClientResponse cancelStockTransactionResponse = runSynchTransaction(Transaction.UPDATE_STOCK_TRANSACTION, updateStockTxnParams); 
-        if (cancelStockTransactionResponse.getResults().length != 1 && 
+        if (cancelStockTransactionResponse.getResults().length != 1 || 
                 cancelStockTransactionResponse.getResults()[0].getRowCount() != 1) {
             if (debug.val) {
                 LOG.debug("UpdateStockTransaction response has incorrect number of results (" + cancelStockTransactionResponse.getResults().length 
@@ -570,7 +570,7 @@ public class B2WClient extends BenchmarkComponent {
                 Object getStockQtyParams[] = { stockId };
                 /**** TRANSACTION ****/
                 ClientResponse stockQtyResponse = runSynchTransaction(Transaction.GET_STOCK_QUANTITY, getStockQtyParams);
-                if (stockQtyResponse.getResults().length != 1 && stockQtyResponse.getResults()[0].getRowCount() != 1) {
+                if (stockQtyResponse.getResults().length != 1 || stockQtyResponse.getResults()[0].getRowCount() != 1) {
                     if (debug.val) {
                         LOG.debug("GetStockQuantity response has incorrect number of results (" + stockQtyResponse.getResults().length 
                                 + ") or incorrect number of rows");
