@@ -170,9 +170,6 @@ public class B2WClient extends BenchmarkComponent {
                 // Wait to generate the transaction until sufficient time has passed
                 final long now = System.currentTimeMillis();
                 final long delta = now - startTime;
-		if (trace.val) {
-		    LOG.trace("Now: " + now + ", Start time: " + startTime + ", delta: " + delta + ", offset: " + offset);
-		}
                 if (delta >= offset) {
                     try {
                         bp = !this.runOnce(next_txn);
@@ -293,13 +290,21 @@ public class B2WClient extends BenchmarkComponent {
         final int FIVE_MINUTES = 300000; // 1000 ms/s * 60 s/min * 5 min
         if (this.stock_id_cache.contains(sku) && 
                 this.stock_id_cache.get(sku).timestamp > (System.currentTimeMillis() - FIVE_MINUTES)) {
+            if (debug.val) {
+                LOG.debug("Returning stock IDs for sku " + sku + " from the cache: " + this.stock_id_cache.get(sku).stock_ids.toString());
+            }
             return this.stock_id_cache.get(sku).stock_ids;
         }
         
         Object getStockParams[] = { sku };
         /**** TRANSACTION ****/
         ClientResponse getStockResponse = runSynchTransaction(Transaction.GET_STOCK, getStockParams);
-        if (getStockResponse.getResults().length != 1) return null;
+        if (getStockResponse.getResults().length != 1) {
+            if (debug.val) {
+                LOG.debug("GetStock response has incorrect number of results (" + getStockResponse.getResults().length + " != 1)");
+            }
+            return null;
+        }
         
         HashSet<String> stock_ids = new HashSet<>();
         for (int i = 0; i < getStockResponse.getResults()[0].getRowCount(); ++i) {
@@ -308,6 +313,9 @@ public class B2WClient extends BenchmarkComponent {
             stock_ids.add(stock.getString(STOCK_ID));
         }
         
+        if (debug.val) {
+            LOG.debug("Adding stock IDs for sku " + sku + " to the cache: " + stock_ids.toString());
+        }
         this.stock_id_cache.put(sku, new StockIdCacheElement(System.currentTimeMillis(), stock_ids));
         
         return stock_ids;
@@ -353,8 +361,17 @@ public class B2WClient extends BenchmarkComponent {
             /**** TRANSACTION ****/
             ClientResponse reserveStockResponse = runSynchTransaction(Transaction.RESERVE_STOCK, reserveStockParams);
             if (reserveStockResponse.getResults().length != 1 && 
-                    reserveStockResponse.getResults()[0].getRowCount() != 1) return total_reserved_quantity;
+                    reserveStockResponse.getResults()[0].getRowCount() != 1) {
+                if (debug.val) {
+                    LOG.debug("ReserveStock response has incorrect number of results (" + reserveStockResponse.getResults().length 
+                            + ") or incorrect number of rows");
+                }
+                return total_reserved_quantity;
+            }
             reserved_quantity[j] = (int) reserveStockResponse.getResults()[0].fetchRow(0).getLong(0);
+            if (trace.val) {
+                LOG.trace("Successfully reserved " + reserved_quantity[j] + " of stock ID " + stock_id + " (requested " + requested_quantity + ")");
+            } 
             if (reserved_quantity[j] != getInteger(reserve, B2WConstants.PARAMS_RESERVED_QUANTITY)) {
                 LOG.info("Reserved quantity in database <" + reserved_quantity[j] + "> doesn't match log <" + getInteger(reserve, B2WConstants.PARAMS_RESERVED_QUANTITY) +">");
             }
@@ -396,17 +413,34 @@ public class B2WClient extends BenchmarkComponent {
         /**** TRANSACTION ****/
         ClientResponse cancelStockTransactionResponse = runSynchTransaction(Transaction.UPDATE_STOCK_TRANSACTION, updateStockTxnParams); 
         if (cancelStockTransactionResponse.getResults().length != 1 && 
-                cancelStockTransactionResponse.getResults()[0].getRowCount() != 1) return false;
+                cancelStockTransactionResponse.getResults()[0].getRowCount() != 1) {
+            if (debug.val) {
+                LOG.debug("UpdateStockTransaction response has incorrect number of results (" + cancelStockTransactionResponse.getResults().length 
+                        + ") or incorrect number of rows");
+            }
+            return false;
+        }
         boolean status_changed = cancelStockTransactionResponse.getResults()[0].fetchRow(0).getBoolean(0);
+        if (trace.val) {
+            LOG.trace("Txn ID " + stockTransactionId + (status_changed ? " successfully cancelled" : " was already cancelled"));
+        }       
 
         // cancel stock reservations
         if (status_changed) { // if no change, someone else already cancelled the transaction and canceled the reservations
             Object getStockTxnParams[] = { stockTransactionId };
             /**** TRANSACTION ****/
             ClientResponse getStockTxnResponse = runSynchTransaction(Transaction.GET_STOCK_TRANSACTION, getStockTxnParams);
-            if (getStockTxnResponse.getResults().length != 1) return false;
+            if (getStockTxnResponse.getResults().length != 1)  {
+                if (debug.val) {
+                    LOG.debug("GetStockTransaction response has incorrect number of results (" + getStockTxnResponse.getResults().length + " != 1)");
+                }
+                return false;
+            }
             for (int j = 0; j < getStockTxnResponse.getResults()[0].getRowCount(); ++j) {
                 final VoltTableRow stockTransaction = getStockTxnResponse.getResults()[0].fetchRow(j);
+                if (trace.val) {
+                    LOG.trace("StockTransaction for txn ID " + stockTransactionId + ": " + stockTransaction.toString());
+                }
                 final int RESERVE_LINES = 8;
 
                 String reserve_lines = stockTransaction.getString(RESERVE_LINES);
@@ -536,8 +570,17 @@ public class B2WClient extends BenchmarkComponent {
                 Object getStockQtyParams[] = { stockId };
                 /**** TRANSACTION ****/
                 ClientResponse stockQtyResponse = runSynchTransaction(Transaction.GET_STOCK_QUANTITY, getStockQtyParams);
-                if (stockQtyResponse.getResults().length != 1 && stockQtyResponse.getResults()[0].getRowCount() != 1) return false; 
+                if (stockQtyResponse.getResults().length != 1 && stockQtyResponse.getResults()[0].getRowCount() != 1) {
+                    if (debug.val) {
+                        LOG.debug("GetStockQuantity response has incorrect number of results (" + stockQtyResponse.getResults().length 
+                                + ") or incorrect number of rows");
+                    }
+                    return false; 
+                }
                 final VoltTableRow stockQty = stockQtyResponse.getResults()[0].fetchRow(0);
+                if (trace.val) {
+                    LOG.trace("StockQty for stock ID " + stockId + ": " + stockQty.toString());
+                }
                 final int AVAILABLE = 1;
                 total_available += stockQty.getLong(AVAILABLE);
                 if (total_available >= requested_quantity) break;
@@ -618,7 +661,13 @@ public class B2WClient extends BenchmarkComponent {
         Object cartParams[] = { cart_id };
         /**** TRANSACTION ****/
         ClientResponse cartResponse = runSynchTransaction(Transaction.GET_CART, cartParams);
-        if (cartResponse.getResults().length != B2WConstants.CART_TABLE_COUNT) return false;        
+        if (cartResponse.getResults().length != B2WConstants.CART_TABLE_COUNT) {
+            if (debug.val) {
+                LOG.debug("GetCart response has incorrect number of results (" + cartResponse.getResults().length + " != " 
+                        + B2WConstants.CART_TABLE_COUNT + ")");
+            }
+            return false;        
+        }
         final int CART_LINES_RESULTS = 2;
         
         VoltTableRow cartLine = null;
@@ -713,7 +762,13 @@ public class B2WClient extends BenchmarkComponent {
         Object cartParams[] = { cart_id };
         /**** TRANSACTION ****/
         ClientResponse cartResponse = runSynchTransaction(Transaction.GET_CART, cartParams);
-        if (cartResponse.getResults().length != B2WConstants.CART_TABLE_COUNT) return false;        
+        if (cartResponse.getResults().length != B2WConstants.CART_TABLE_COUNT) {
+            if (debug.val) {
+                LOG.debug("GetCart response has incorrect number of results (" + cartResponse.getResults().length + " != " 
+                        + B2WConstants.CART_TABLE_COUNT + ")");
+            }
+            return false;        
+        }
         final int CART_LINES_RESULTS = 2;
         
         JSONArray lines = getArray(params, B2WConstants.PARAMS_LINES);
@@ -737,6 +792,9 @@ public class B2WClient extends BenchmarkComponent {
         // Create a new stock transaction.
         for (int i = 0; i < lines_count; ++i) {
             final VoltTableRow cartLine = cartResponse.getResults()[CART_LINES_RESULTS].fetchRow(i);
+            if (trace.val) {
+                LOG.trace("CartLine " + i + " of cart " + cart_id + ": " + cartLine.toString());
+            }
             final int LINE_ID = 1, QUANTITY = 7;
             String line_id = cartLine.getString(LINE_ID);
             if (!lines_map.containsKey(line_id)) {
@@ -846,22 +904,39 @@ public class B2WClient extends BenchmarkComponent {
         Object checkoutParams[] = { checkout_id };
         /**** TRANSACTION ****/
         ClientResponse checkoutResponse = runSynchTransaction(Transaction.GET_CHECKOUT, checkoutParams);
-        if (checkoutResponse.getResults().length != B2WConstants.CHECKOUT_TABLE_COUNT) return false;        
+        if (checkoutResponse.getResults().length != B2WConstants.CHECKOUT_TABLE_COUNT) {
+            if (debug.val) {
+                LOG.debug("GetCheckout response has incorrect number of results (" + checkoutResponse.getResults().length + " != " 
+                        + B2WConstants.CHECKOUT_TABLE_COUNT + ")");
+            }
+            return false;        
+        }
         final int CHECKOUT_STOCK_TRANSACTIONS_RESULTS = 3;
         
         TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
         for (int i = 0; i < checkoutResponse.getResults()[CHECKOUT_STOCK_TRANSACTIONS_RESULTS].getRowCount(); ++i) {
             final VoltTableRow checkoutStockTransaction = checkoutResponse.getResults()[CHECKOUT_STOCK_TRANSACTIONS_RESULTS].fetchRow(i);
+            if (trace.val) {
+                LOG.trace("StockTransaction " + i + " of checkout " + checkout_id + ": " + checkoutStockTransaction.toString());
+            }
             final int TRANSACTION_ID = 1;
             String transaction_id = checkoutStockTransaction.getString(TRANSACTION_ID);
             
             Object getStockTxnParams[] = { transaction_id };
             /**** TRANSACTION ****/
             ClientResponse getStockTxnResponse = runSynchTransaction(Transaction.GET_STOCK_TRANSACTION, getStockTxnParams);
-            if (getStockTxnResponse.getResults().length != 1) return false;
+            if (getStockTxnResponse.getResults().length != 1) {
+                if (debug.val) {
+                    LOG.debug("GetStockTransaction response has incorrect number of results (" + getStockTxnResponse.getResults().length + " != 1)");
+                }
+                return false;
+            }
             boolean purchased = false;
             for (int j = 0; j < getStockTxnResponse.getResults()[0].getRowCount(); ++j) {
                 final VoltTableRow stockTransaction = getStockTxnResponse.getResults()[0].fetchRow(j);
+                if (trace.val) {
+                    LOG.trace("Reserve " + j + " of stock transaction " + transaction_id + ": " + stockTransaction.toString());
+                }
                 final int CURRENT_STATUS = 4, RESERVE_LINES = 8;
                 
                 String current_status = stockTransaction.getString(CURRENT_STATUS);                
