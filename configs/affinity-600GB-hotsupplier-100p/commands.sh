@@ -1,6 +1,7 @@
 == PREPARE
 
 ant hstore-prepare -Dproject=affinity -Dhosts="istc2:0:0-24;istc6:1:25-49;istc12:2:50-74;istc13:3:75-99"
+ant hstore-prepare -Dproject=affinity -Dhosts="istc2:0:0-9;istc3:1:10-19;istc6:2:20-29;istc7:3:30-39;istc8:4:40-49;istc9:5:50-59;istc10:6:60-69;istc11:7:70-79;istc12:8:80-89;istc13:9:90-99"
 
 == LOAD
 
@@ -29,4 +30,4 @@ ant hstore-benchmark -Dproject=affinity -Dglobal.hasher_plan=plan.json -Dglobal.
 
 == RECONFIGURE NO LOAD
 
-ant hstore-benchmark -Dproject=affinity -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnostart=true -Dnoloader=true -Dnoshutdown=true -Dclient.duration=1200000 -Dclient.interval=1000 -Dclient.txnrate=1000 -Dclient.count=5 -Dclient.hosts="istc7;istc8;istc9;istc10;istc11" -Dclient.threads_per_host=16 -Dclient.blocking_concurrent=30 -Dclient.output_results_csv=results.csv -Dclient.output_interval=true -Dsite.planner_caching=false -Dclient.txn_hints=false -Dsite.exec_early_prepare=false -Dclient.output_basepartitions=true -Delastic.run_monitoring=false -Delastic.update_plan=false -Delastic.exec_reconf=true -Delastic.delay=600000 -Dclient.memory=4096 | tee out.log
+ant hstore-benchmark -Dproject=affinity -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnostart=true -Dnoloader=true -Dnoshutdown=true -Dclient.duration=600000 -Dclient.interval=1000 -Dclient.txnrate=1000 -Dclient.count=5 -Dclient.hosts="istc7;istc8;istc9;istc10;istc11" -Dclient.threads_per_host=16 -Dclient.blocking_concurrent=30 -Dclient.output_results_csv=results.csv -Dclient.output_interval=true -Dsite.planner_caching=false -Dclient.txn_hints=false -Dsite.exec_early_prepare=false -Dclient.output_basepartitions=true -Delastic.run_monitoring=false -Delastic.update_plan=false -Delastic.exec_reconf=true -Delastic.delay=300000 -Dclient.memory=4096 | tee out.log
