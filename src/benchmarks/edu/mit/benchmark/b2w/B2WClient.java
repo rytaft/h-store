@@ -12,6 +12,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.voltdb.VoltTableRow;
+import org.voltdb.VoltType;
 import org.voltdb.client.Client;
 import org.voltdb.client.ClientResponse;
 import org.voltdb.client.ProcCallException;
@@ -230,6 +231,51 @@ public class B2WClient extends BenchmarkComponent {
         }
     }
     
+    /**********************************************************/
+    /** Convenience methods to convert JSONObjects to values **/
+    /**********************************************************/
+    private String getString(JSONObject obj, String key) throws JSONException {
+        if (obj == null || !obj.has(key)){
+            return null;
+        }
+        return obj.getString(key);
+    }
+    
+    private byte getBoolean(JSONObject obj, String key) throws JSONException {
+        if (obj == null || !obj.has(key)){
+            return VoltType.NULL_TINYINT;
+        }
+        return (byte) (obj.getBoolean(key) ? 1 : 0);
+    }
+    
+    private int getInteger(JSONObject obj, String key) throws JSONException {
+        if (obj == null || !obj.has(key)){
+            return VoltType.NULL_INTEGER;
+        }
+        return obj.getInt(key);
+    }
+    
+    private long getLong(JSONObject obj, String key) throws JSONException {
+        if (obj == null || !obj.has(key)){
+            return VoltType.NULL_BIGINT;
+        }
+        return obj.getLong(key);
+    }
+    
+    private double getDouble(JSONObject obj, String key) throws JSONException {
+        if (obj == null || !obj.has(key)){
+            return VoltType.NULL_FLOAT;
+        }
+        return obj.getDouble(key);
+    }
+    
+    private JSONArray getArray(JSONObject obj, String key) throws JSONException {
+        if (obj == null || !obj.has(key)){
+            return new JSONArray();
+        }
+        return obj.getJSONArray(key);
+    }
+    
     private HashSet<String> getStockIds(long sku) throws IOException {
         // cache element expires after 5 minutes
         final int FIVE_MINUTES = 300000; // 1000 ms/s * 60 s/min * 5 min
@@ -266,7 +312,7 @@ public class B2WClient extends BenchmarkComponent {
         String[] brand = new String[reserve_count];
         TimestampType[] timestamp = new TimestampType[reserve_count];
         TimestampType[] expiration_date = new TimestampType[reserve_count];
-        int[] is_kit = new int[reserve_count];
+        byte[] is_kit = new byte[reserve_count];
         String[] reserve_lines = new String[reserve_count];
         int[] reserved_quantity = new int[reserve_count];
         long[] sku = new long[reserve_count];
@@ -282,12 +328,12 @@ public class B2WClient extends BenchmarkComponent {
 
         for (int j = 0; j < reserve_count; ++j) {
             JSONObject reserve = reserves.getJSONObject(j);
-            String stock_id = reserve.getString(B2WConstants.PARAMS_STOCK_ID); 
+            String stock_id = getString(reserve, B2WConstants.PARAMS_STOCK_ID); 
             if (!stock_ids.contains(stock_id)) {
                 LOG.info("Attempting to reserve stock_id " + stock_id + " which is not present in the cache for sku " + sku);
             }
-            if (requested_quantity != reserve.getInt(B2WConstants.PARAMS_REQUESTED_QUANTITY)) {
-                LOG.info("Requested quantity in database <" + requested_quantity + "> doesn't match log <" + reserve.getInt(B2WConstants.PARAMS_REQUESTED_QUANTITY) +">");
+            if (requested_quantity != getInteger(reserve, B2WConstants.PARAMS_REQUESTED_QUANTITY)) {
+                LOG.info("Requested quantity in database <" + requested_quantity + "> doesn't match log <" + getInteger(reserve, B2WConstants.PARAMS_REQUESTED_QUANTITY) +">");
             }
          
             // Attempt to reserve the stock
@@ -297,24 +343,24 @@ public class B2WClient extends BenchmarkComponent {
             if (reserveStockResponse.getResults().length != 1 && 
                     reserveStockResponse.getResults()[0].getRowCount() != 1) return total_reserved_quantity;
             reserved_quantity[j] = (int) reserveStockResponse.getResults()[0].fetchRow(0).getLong(0);
-            if (reserved_quantity[j] != reserve.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY)) {
-                LOG.info("Reserved quantity in database <" + reserved_quantity[j] + "> doesn't match log <" + reserve.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY) +">");
+            if (reserved_quantity[j] != getInteger(reserve, B2WConstants.PARAMS_RESERVED_QUANTITY)) {
+                LOG.info("Reserved quantity in database <" + reserved_quantity[j] + "> doesn't match log <" + getInteger(reserve, B2WConstants.PARAMS_RESERVED_QUANTITY) +">");
             }
 
             // If successfully reserved, create a stock transaction reserve
             if (reserved_quantity[j] > 0) {
-                reserve_id[j] = reserve.getString(B2WConstants.PARAMS_RESERVE_ID); 
-                brand[j] = reserve.getString(B2WConstants.PARAMS_BRAND);
-                timestamp[j] = new TimestampType(reserve.getLong(B2WConstants.PARAMS_CREATION_DATE));
+                reserve_id[j] = getString(reserve, B2WConstants.PARAMS_RESERVE_ID); 
+                brand[j] = getString(reserve, B2WConstants.PARAMS_BRAND);
+                timestamp[j] = new TimestampType(getLong(reserve, B2WConstants.PARAMS_CREATION_DATE));
                 if (timestamp[j].getMSTime() > cartTimestamp.getMSTime()) cartTimestamp = timestamp[j];
                 expiration_date[j] = new TimestampType(new Date(timestamp[j].getMSTime() + 30 * 60 * 1000)); // add 30 mins
-                is_kit[j] = reserve.getInt(B2WConstants.PARAMS_IS_KIT);
-                reserve_lines[j] = reserve.getString(B2WConstants.PARAMS_RESERVE_LINES);
-                sku[j] = reserve.getLong(B2WConstants.PARAMS_SKU);
-                solr_query[j] = reserve.getString(B2WConstants.PARAMS_SOLR_QUERY);
-                store_id[j] = reserve.getLong(B2WConstants.PARAMS_STORE_ID);
-                subinventory[j] = reserve.getInt(B2WConstants.PARAMS_SUBINVENTORY);
-                warehouse[j] = reserve.getInt(B2WConstants.PARAMS_WAREHOUSE);
+                is_kit[j] = getBoolean(reserve, B2WConstants.PARAMS_IS_KIT);
+                reserve_lines[j] = getString(reserve, B2WConstants.PARAMS_RESERVE_LINES);
+                sku[j] = getLong(reserve, B2WConstants.PARAMS_SKU);
+                solr_query[j] = getString(reserve, B2WConstants.PARAMS_SOLR_QUERY);
+                store_id[j] = getLong(reserve, B2WConstants.PARAMS_STORE_ID);
+                subinventory[j] = getInteger(reserve, B2WConstants.PARAMS_SUBINVENTORY);
+                warehouse[j] = getInteger(reserve, B2WConstants.PARAMS_WAREHOUSE);
 
                 total_reserved_quantity += reserved_quantity[j];
             }
@@ -427,40 +473,40 @@ public class B2WClient extends BenchmarkComponent {
     //   }
     // }
     private boolean runAddLineToCart(JSONObject params) throws IOException, JSONException {
-        String cart_id = params.getString(B2WConstants.PARAMS_CART_ID);
-        TimestampType timestamp = new TimestampType(params.getLong(B2WConstants.PARAMS_TIMESTAMP));
-        String line_id = params.getString(B2WConstants.PARAMS_LINE_ID);
-        long product_sku = params.getLong(B2WConstants.PARAMS_PRODUCT_SKU); 
-        long product_id = params.getLong(B2WConstants.PARAMS_PRODUCT_ID);
-        long store_id = params.getLong(B2WConstants.PARAMS_STORE_ID);
-        int quantity = params.getInt(B2WConstants.PARAMS_QUANTITY);
-        String salesChannel = params.getString(B2WConstants.PARAMS_SALES_CHANNEL);
-        String opn = params.getString(B2WConstants.PARAMS_OPN);
-        String epar = params.getString(B2WConstants.PARAMS_EPAR);
-        int autoMerge = params.getInt(B2WConstants.PARAMS_AUTO_MERGE);        
-        double unitSalesPrice = params.getDouble(B2WConstants.PARAMS_UNIT_SALES_PRICE);
-        double salesPrice = params.getDouble(B2WConstants.PARAMS_SALES_PRICE);
-        int maxQuantity = params.getInt(B2WConstants.PARAMS_MAX_QUANTITY);
-        String maximumQuantityReason = params.getString(B2WConstants.PARAMS_MAXIMUM_QUANTITY_REASON);
-        String type = params.getString(B2WConstants.PARAMS_TYPE);
-        String transaction_id = params.getString(B2WConstants.PARAMS_STOCK_TRANSACTION_ID);
-        int requested_quantity = params.getInt(B2WConstants.PARAMS_REQUESTED_QUANTITY);
-        String line_status = params.getString(B2WConstants.PARAMS_LINE_STATUS);
-        String stockType = params.getString(B2WConstants.PARAMS_STOCK_TYPE);
-        String image = params.getString(B2WConstants.PARAMS_IMAGE);
-        String name = params.getString(B2WConstants.PARAMS_NAME);
-        int isKit = params.getInt(B2WConstants.PARAMS_IS_KIT);
-        double price = params.getDouble(B2WConstants.PARAMS_PRICE);
-        double originalPrice = params.getDouble(B2WConstants.PARAMS_ORIGINAL_PRICE);
-        int isLarge = params.getInt(B2WConstants.PARAMS_IS_LARGE);
-        long department = params.getLong(B2WConstants.PARAMS_DEPARTMENT);
-        long line = params.getLong(B2WConstants.PARAMS_LINE);
-        long subClass = params.getLong(B2WConstants.PARAMS_SUB_CLASS);
-        double weight = params.getDouble(B2WConstants.PARAMS_WEIGHT);
-        long product_class = params.getLong(B2WConstants.PARAMS_PRODUCT_CLASS);
+        String cart_id = getString(params, B2WConstants.PARAMS_CART_ID);
+        TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
+        String line_id = getString(params, B2WConstants.PARAMS_LINE_ID);
+        long product_sku = getLong(params, B2WConstants.PARAMS_PRODUCT_SKU); 
+        long product_id = getLong(params, B2WConstants.PARAMS_PRODUCT_ID);
+        long store_id = getLong(params, B2WConstants.PARAMS_STORE_ID);
+        int quantity = getInteger(params, B2WConstants.PARAMS_QUANTITY);
+        String salesChannel = getString(params, B2WConstants.PARAMS_SALES_CHANNEL);
+        String opn = getString(params, B2WConstants.PARAMS_OPN);
+        String epar = getString(params, B2WConstants.PARAMS_EPAR);
+        byte autoMerge = getBoolean(params, B2WConstants.PARAMS_AUTO_MERGE);        
+        double unitSalesPrice = getDouble(params, B2WConstants.PARAMS_UNIT_SALES_PRICE);
+        double salesPrice = getDouble(params, B2WConstants.PARAMS_SALES_PRICE);
+        int maxQuantity = getInteger(params, B2WConstants.PARAMS_MAX_QUANTITY);
+        String maximumQuantityReason = getString(params, B2WConstants.PARAMS_MAXIMUM_QUANTITY_REASON);
+        String type = getString(params, B2WConstants.PARAMS_TYPE);
+        String transaction_id = getString(params, B2WConstants.PARAMS_STOCK_TRANSACTION_ID);
+        int requested_quantity = getInteger(params, B2WConstants.PARAMS_REQUESTED_QUANTITY);
+        String line_status = getString(params, B2WConstants.PARAMS_LINE_STATUS);
+        String stockType = getString(params, B2WConstants.PARAMS_STOCK_TYPE);
+        String image = getString(params, B2WConstants.PARAMS_IMAGE);
+        String name = getString(params, B2WConstants.PARAMS_NAME);
+        byte isKit = getBoolean(params, B2WConstants.PARAMS_IS_KIT);
+        double price = getDouble(params, B2WConstants.PARAMS_PRICE);
+        double originalPrice = getDouble(params, B2WConstants.PARAMS_ORIGINAL_PRICE);
+        byte isLarge = getBoolean(params, B2WConstants.PARAMS_IS_LARGE);
+        long department = getLong(params, B2WConstants.PARAMS_DEPARTMENT);
+        long line = getLong(params, B2WConstants.PARAMS_LINE);
+        long subClass = getLong(params, B2WConstants.PARAMS_SUB_CLASS);
+        double weight = getDouble(params, B2WConstants.PARAMS_WEIGHT);
+        long product_class = getLong(params, B2WConstants.PARAMS_PRODUCT_CLASS);
         
         // if necessary, reserve stock
-        JSONArray reserves = params.getJSONArray(B2WConstants.PARAMS_RESERVES);
+        JSONArray reserves = getArray(params, B2WConstants.PARAMS_RESERVES);
         if (reserves != null && transaction_id != null && !transaction_id.isEmpty()) {
             TimestampType cartTimestamp = new TimestampType(0);
             int total_reserved_quantity = reserveStock(reserves, product_sku, transaction_id, requested_quantity, cartTimestamp);
@@ -496,12 +542,12 @@ public class B2WClient extends BenchmarkComponent {
         }
         
         // if necessary, add line to checkout
-        String checkout_id = params.getString(B2WConstants.PARAMS_CHECKOUT_ID);
+        String checkout_id = getString(params, B2WConstants.PARAMS_CHECKOUT_ID);
         if (checkout_id != null && !checkout_id.isEmpty()) {
-            String freightContract = params.getString(B2WConstants.PARAMS_FREIGHT_CONTRACT);
-            double freightPrice = params.getDouble(B2WConstants.PARAMS_FREIGHT_PRICE);
-            String freightStatus = params.getString(B2WConstants.PARAMS_FREIGHT_STATUS);
-            int delivery_time = params.getInt(B2WConstants.PARAMS_DELIVERY_TIME);
+            String freightContract = getString(params, B2WConstants.PARAMS_FREIGHT_CONTRACT);
+            double freightPrice = getDouble(params, B2WConstants.PARAMS_FREIGHT_PRICE);
+            String freightStatus = getString(params, B2WConstants.PARAMS_FREIGHT_STATUS);
+            int delivery_time = getInteger(params, B2WConstants.PARAMS_DELIVERY_TIME);
 
             Object addCheckoutLineParams[] = { checkout_id, line_id, salesPrice, transaction_id, delivery_time, 
                     freightContract, freightPrice, freightStatus };
@@ -531,8 +577,8 @@ public class B2WClient extends BenchmarkComponent {
     //   }
     // }
     private boolean runCancelStockTransaction(JSONObject params) throws IOException, JSONException {
-        TimestampType timestamp = new TimestampType(params.getLong(B2WConstants.PARAMS_TIMESTAMP));
-        String stockTransactionId = params.getString(B2WConstants.PARAMS_TRANSACTION_ID);
+        TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
+        String stockTransactionId = getString(params, B2WConstants.PARAMS_TRANSACTION_ID);
         return cancelStockTransaction(stockTransactionId, timestamp);
     }
 
@@ -554,9 +600,9 @@ public class B2WClient extends BenchmarkComponent {
     // }
     private boolean runDeleteLineFromCart(JSONObject params) throws IOException, JSONException {
         
-        String cart_id = params.getString(B2WConstants.PARAMS_CART_ID);
-        String line_id = params.getString(B2WConstants.PARAMS_LINE_ID);
-        TimestampType timestamp = new TimestampType(params.getLong(B2WConstants.PARAMS_TIMESTAMP));
+        String cart_id = getString(params, B2WConstants.PARAMS_CART_ID);
+        String line_id = getString(params, B2WConstants.PARAMS_LINE_ID);
+        TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
         Object cartParams[] = { cart_id };
         /**** TRANSACTION ****/
         ClientResponse cartResponse = runSynchTransaction(Transaction.GET_CART, cartParams);
@@ -581,12 +627,12 @@ public class B2WClient extends BenchmarkComponent {
         }
         
         // If necessary, delete lines from checkout
-        String checkout_id = params.getString(B2WConstants.PARAMS_CHECKOUT_ID);
+        String checkout_id = getString(params, B2WConstants.PARAMS_CHECKOUT_ID);
         if (checkout_id != null && !checkout_id.isEmpty()) {
             double salesPrice = cartLine.getDouble(SALES_PRICE);
-            String freightContract = params.getString(B2WConstants.PARAMS_FREIGHT_CONTRACT);
-            double freightPrice = params.getDouble(B2WConstants.PARAMS_FREIGHT_PRICE);
-            String freightStatus = params.getString(B2WConstants.PARAMS_FREIGHT_STATUS);
+            String freightContract = getString(params, B2WConstants.PARAMS_FREIGHT_CONTRACT);
+            double freightPrice = getDouble(params, B2WConstants.PARAMS_FREIGHT_PRICE);
+            String freightStatus = getString(params, B2WConstants.PARAMS_FREIGHT_STATUS);
             
             Object deleteCheckoutLineParams[] = { checkout_id, line_id, salesPrice, freightContract, freightPrice, freightStatus };
             /**** TRANSACTION ****/
@@ -651,14 +697,14 @@ public class B2WClient extends BenchmarkComponent {
     // }
     private boolean runCheckout(JSONObject params) throws IOException, JSONException {
         // Get the cart and cart lines
-        String cart_id = params.getString(B2WConstants.PARAMS_CART_ID);
+        String cart_id = getString(params, B2WConstants.PARAMS_CART_ID);
         Object cartParams[] = { cart_id };
         /**** TRANSACTION ****/
         ClientResponse cartResponse = runSynchTransaction(Transaction.GET_CART, cartParams);
         if (cartResponse.getResults().length != B2WConstants.CART_TABLE_COUNT) return false;        
         final int CART_LINES_RESULTS = 2;
         
-        JSONArray lines = params.getJSONArray(B2WConstants.PARAMS_LINES);
+        JSONArray lines = getArray(params, B2WConstants.PARAMS_LINES);
         HashMap<String,JSONObject> lines_map = new HashMap<>();
         for(int i = 0; i < lines.length(); ++i) {
             JSONObject line = lines.getJSONObject(i);
@@ -710,10 +756,10 @@ public class B2WClient extends BenchmarkComponent {
         
         
         // Update the cart with the new transactions, customer, etc
-        String customer_id = params.getString(B2WConstants.PARAMS_CUSTOMER_ID);
-        String token = params.getString(B2WConstants.PARAMS_TOKEN); 
-        int guest = params.getInt(B2WConstants.PARAMS_GUEST);
-        int isGuest = params.getInt(B2WConstants.PARAMS_IS_GUEST);
+        String customer_id = getString(params, B2WConstants.PARAMS_CUSTOMER_ID);
+        String token = getString(params, B2WConstants.PARAMS_TOKEN); 
+        byte guest = getBoolean(params, B2WConstants.PARAMS_GUEST);
+        byte isGuest = getBoolean(params, B2WConstants.PARAMS_IS_GUEST);
         Object reserveCartParams[] = new Object[]{ cart_id, cartTimestamp, customer_id, token, guest, isGuest, 
                 line_ids, requested_quantities, reserved_quantities, statuses, stock_types, transaction_ids };
         /**** TRANSACTION ****/
@@ -721,14 +767,14 @@ public class B2WClient extends BenchmarkComponent {
         if (!success) return false;
 
         // Finally, create the checkout object
-        String checkout_id = params.getString(B2WConstants.PARAMS_CHECKOUT_ID);
-        String deliveryAddressId = params.getString(B2WConstants.PARAMS_DELIVERY_ADDRESS_ID); 
-        String billingAddressId = params.getString(B2WConstants.PARAMS_BILLING_ADDRESS_ID);
-        double amountDue = params.getDouble(B2WConstants.PARAMS_AMOUNT_DUE); 
-        double total = params.getDouble(B2WConstants.PARAMS_TOTAL); 
-        String freightContract = params.getString(B2WConstants.PARAMS_FREIGHT_CONTRACT); 
-        double freightPrice = params.getDouble(B2WConstants.PARAMS_FREIGHT_PRICE); 
-        String freightStatus = params.getString(B2WConstants.PARAMS_FREIGHT_STATUS);
+        String checkout_id = getString(params, B2WConstants.PARAMS_CHECKOUT_ID);
+        String deliveryAddressId = getString(params, B2WConstants.PARAMS_DELIVERY_ADDRESS_ID); 
+        String billingAddressId = getString(params, B2WConstants.PARAMS_BILLING_ADDRESS_ID);
+        double amountDue = getDouble(params, B2WConstants.PARAMS_AMOUNT_DUE); 
+        double total = getDouble(params, B2WConstants.PARAMS_TOTAL); 
+        String freightContract = getString(params, B2WConstants.PARAMS_FREIGHT_CONTRACT); 
+        double freightPrice = getDouble(params, B2WConstants.PARAMS_FREIGHT_PRICE); 
+        String freightStatus = getString(params, B2WConstants.PARAMS_FREIGHT_STATUS);
         Object checkoutParams[] = new Object[]{ checkout_id, cart_id, deliveryAddressId, billingAddressId, amountDue, total, 
                 freightContract, freightPrice, freightStatus, line_ids, transaction_ids, delivery_times };
         
@@ -762,21 +808,21 @@ public class B2WClient extends BenchmarkComponent {
     // }
     private boolean runPurchase(JSONObject params) throws IOException, JSONException {
         // Add payment info to the checkout object
-        String checkout_id = params.getString(B2WConstants.PARAMS_CHECKOUT_ID);
-        String cart_id = params.getString(B2WConstants.PARAMS_CART_ID);
-        String paymentOptionId = params.getString(B2WConstants.PARAMS_PAYMENT_OPTION_ID);
-        String paymentOptionType = params.getString(B2WConstants.PARAMS_PAYMENT_OPTION_TYPE);
-        int dueDays = params.getInt(B2WConstants.PARAMS_DUE_DAYS);
-        double amount = params.getDouble(B2WConstants.PARAMS_AMOUNT);
-        int installmentQuantity = params.getInt(B2WConstants.PARAMS_INSTALLMENT_QUANTITY);
-        double interestAmount = params.getDouble(B2WConstants.PARAMS_INTEREST_AMOUNT);
-        int interestRate = params.getInt(B2WConstants.PARAMS_INTEREST_RATE);
-        int annualCET = params.getInt(B2WConstants.PARAMS_ANNUAL_CET);
-        String number = params.getString(B2WConstants.PARAMS_NUMBER);
-        long criptoNumber = params.getLong(B2WConstants.PARAMS_CRIPTO_NUMBER);
-        String holdersName = params.getString(B2WConstants.PARAMS_HOLDERS_NAME);
-        long securityCode = params.getLong(B2WConstants.PARAMS_SECURITY_CODE);
-        String expirationDate = params.getString(B2WConstants.PARAMS_EXPIRATION_DATE);
+        String checkout_id = getString(params, B2WConstants.PARAMS_CHECKOUT_ID);
+        String cart_id = getString(params, B2WConstants.PARAMS_CART_ID);
+        String paymentOptionId = getString(params, B2WConstants.PARAMS_PAYMENT_OPTION_ID);
+        String paymentOptionType = getString(params, B2WConstants.PARAMS_PAYMENT_OPTION_TYPE);
+        int dueDays = getInteger(params, B2WConstants.PARAMS_DUE_DAYS);
+        double amount = getDouble(params, B2WConstants.PARAMS_AMOUNT);
+        int installmentQuantity = getInteger(params, B2WConstants.PARAMS_INSTALLMENT_QUANTITY);
+        double interestAmount = getDouble(params, B2WConstants.PARAMS_INTEREST_AMOUNT);
+        int interestRate = getInteger(params, B2WConstants.PARAMS_INTEREST_RATE);
+        int annualCET = getInteger(params, B2WConstants.PARAMS_ANNUAL_CET);
+        String number = getString(params, B2WConstants.PARAMS_NUMBER);
+        long criptoNumber = getLong(params, B2WConstants.PARAMS_CRIPTO_NUMBER);
+        String holdersName = getString(params, B2WConstants.PARAMS_HOLDERS_NAME);
+        long securityCode = getLong(params, B2WConstants.PARAMS_SECURITY_CODE);
+        String expirationDate = getString(params, B2WConstants.PARAMS_EXPIRATION_DATE);
 
         Object checkoutPaymentParams[] = { checkout_id, cart_id, paymentOptionId, paymentOptionType, dueDays, amount, installmentQuantity,
                 interestAmount, interestRate, annualCET, number, criptoNumber, holdersName, securityCode, expirationDate };
@@ -791,7 +837,7 @@ public class B2WClient extends BenchmarkComponent {
         if (checkoutResponse.getResults().length != B2WConstants.CHECKOUT_TABLE_COUNT) return false;        
         final int CHECKOUT_STOCK_TRANSACTIONS_RESULTS = 3;
         
-        TimestampType timestamp = new TimestampType(params.getLong(B2WConstants.PARAMS_TIMESTAMP));
+        TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
         for (int i = 0; i < checkoutResponse.getResults()[CHECKOUT_STOCK_TRANSACTIONS_RESULTS].getRowCount(); ++i) {
             final VoltTableRow checkoutStockTransaction = checkoutResponse.getResults()[CHECKOUT_STOCK_TRANSACTIONS_RESULTS].fetchRow(i);
             final int TRANSACTION_ID = 1;
@@ -847,8 +893,8 @@ public class B2WClient extends BenchmarkComponent {
     //   }
     // }
     private boolean runFinishStockTransaction(JSONObject params) throws IOException, JSONException {
-        TimestampType timestamp = new TimestampType(params.getLong(B2WConstants.PARAMS_TIMESTAMP));
-        String transaction_id = params.getString(B2WConstants.PARAMS_TRANSACTION_ID);
+        TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
+        String transaction_id = getString(params, B2WConstants.PARAMS_TRANSACTION_ID);
         String current_status = B2WConstants.STATUS_FINISHED;
         Object updateStockTxnParams[] = { transaction_id, timestamp, current_status };
         /**** TRANSACTION ****/
@@ -865,7 +911,7 @@ public class B2WClient extends BenchmarkComponent {
     //   }
     // }
     private boolean runGetCart(JSONObject params) throws IOException, JSONException {
-        String cart_id = params.getString(B2WConstants.PARAMS_CART_ID);
+        String cart_id = getString(params, B2WConstants.PARAMS_CART_ID);
         Object cartParams[] = { cart_id };
         return runAsynchTransaction(Transaction.GET_CART, cartParams);      
     }
@@ -880,7 +926,7 @@ public class B2WClient extends BenchmarkComponent {
     //   }
     // }
     private boolean runGetCheckout(JSONObject params) throws IOException, JSONException {
-        String checkout_id = params.getString(B2WConstants.PARAMS_CHECKOUT_ID);
+        String checkout_id = getString(params, B2WConstants.PARAMS_CHECKOUT_ID);
         Object checkoutParams[] = { checkout_id };
         return runAsynchTransaction(Transaction.GET_CHECKOUT, checkoutParams);
     }
@@ -895,7 +941,7 @@ public class B2WClient extends BenchmarkComponent {
     //   }
     // }
     private boolean runDeleteCart(JSONObject params) throws IOException, JSONException {
-        String cart_id = params.getString(B2WConstants.PARAMS_CART_ID);
+        String cart_id = getString(params, B2WConstants.PARAMS_CART_ID);
         Object cartParams[] = { cart_id };
         return runAsynchTransaction(Transaction.DELETE_CART, cartParams);      
     }
@@ -910,7 +956,7 @@ public class B2WClient extends BenchmarkComponent {
     //   }
     // }
     private boolean runDeleteCheckout(JSONObject params) throws IOException, JSONException {
-        String checkout_id = params.getString(B2WConstants.PARAMS_CHECKOUT_ID);
+        String checkout_id = getString(params, B2WConstants.PARAMS_CHECKOUT_ID);
         Object checkoutParams[] = { checkout_id };
         return runAsynchTransaction(Transaction.DELETE_CHECKOUT, checkoutParams);
     }
@@ -924,7 +970,7 @@ public class B2WClient extends BenchmarkComponent {
     //   }
     // }
     private boolean runGetStock(JSONObject params) throws IOException, JSONException {
-        long sku = params.getLong(B2WConstants.PARAMS_SKU);
+        long sku = getLong(params, B2WConstants.PARAMS_SKU);
         Object stockParams[] = { sku };
         return runAsynchTransaction(Transaction.GET_STOCK, stockParams);
     }
@@ -939,7 +985,7 @@ public class B2WClient extends BenchmarkComponent {
     //   }
     // }
     private boolean runGetStockQuantity(JSONObject params) throws IOException, JSONException {
-        String stock_id = params.getString(B2WConstants.PARAMS_STOCK_ID);
+        String stock_id = getString(params, B2WConstants.PARAMS_STOCK_ID);
         Object stockParams[] = { stock_id };
         return runAsynchTransaction(Transaction.GET_STOCK_QUANTITY, stockParams);
     }
@@ -954,7 +1000,7 @@ public class B2WClient extends BenchmarkComponent {
     //   }
     // }
     private boolean runGetStockTransaction(JSONObject params) throws IOException, JSONException {
-        String transaction_id = params.getString(B2WConstants.PARAMS_TRANSACTION_ID);
+        String transaction_id = getString(params, B2WConstants.PARAMS_TRANSACTION_ID);
         Object stockParams[] = { transaction_id };
         return runAsynchTransaction(Transaction.GET_STOCK_TRANSACTION, stockParams);
     }

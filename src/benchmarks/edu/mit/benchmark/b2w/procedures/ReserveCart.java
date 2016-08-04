@@ -71,7 +71,7 @@ public class ReserveCart extends VoltProcedure {
 
 
     public VoltTable[] run(String cart_id, TimestampType timestamp, String customer_id,
-            String token, int guest, int isGuest, String line_ids[], int requested_quantity[],
+            String token, byte guest, byte isGuest, String line_ids[], int requested_quantity[],
             int reserved_quantity[], String status[], String stock_type[], String transaction_id[]){
         assert(line_ids.length == transaction_id.length);
         assert(line_ids.length == requested_quantity.length);
