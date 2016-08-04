@@ -68,7 +68,7 @@ public class B2WClient extends BenchmarkComponent {
         GET_STOCK_QUANTITY,
         GET_STOCK_TRANSACTION,
         PURCHASE;
-    
+
     } // OPERATION ENUM
 
     

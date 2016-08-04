@@ -604,11 +604,11 @@ public class B2WLoader extends Loader {
                         "annualCET", path + ":payment[annualCET]");
                 row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR,
                         "number", path + ":payment[number]");
-                row_payments[param++] = getDataByType(payment, KEY_TYPE_BIGINT,
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR,
                         "criptoNumber", path + ":payment[criptoNumber]");
                 row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR,
                         "holdersName", path + ":payment[holdersName]");
-                row_payments[param++] = getDataByType(payment, KEY_TYPE_BIGINT,
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR,
                         "securityCode", path + ":payment[securityCode]");
                 row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR,
                         "expirationDate", path + ":payment[expirationDate]");
@@ -626,7 +626,7 @@ public class B2WLoader extends Loader {
                 param = 0;
                 row_freight[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR,
                         "id", path + ":checkout[id]");
-                row_freight[param++] = getDataByType(deliverTime, KEY_TYPE_BIGINT,
+                row_freight[param++] = getDataByType(deliverTime, KEY_TYPE_VARCHAR,
                         "lineId", path + ":deliverTime[lineId]");
                 row_freight[param++] = getDataByType(deliverTime, KEY_TYPE_INTEGER,
                         "time", path + ":deliverTime[time]");
@@ -646,7 +646,7 @@ public class B2WLoader extends Loader {
                         "id", path + ":checkout[id]");
                 row_stock[param++] = getDataByType(stockTransaction, KEY_TYPE_VARCHAR,
                         "id", path + ":stockTransaction[id]");
-                row_stock[param++] = getDataByType(stockTransaction, KEY_TYPE_BIGINT,
+                row_stock[param++] = getDataByType(stockTransaction, KEY_TYPE_VARCHAR,
                         "lineId", path + ":stockTransaction[lineId]");
 
                 vt_stock.addRow(row_stock);
