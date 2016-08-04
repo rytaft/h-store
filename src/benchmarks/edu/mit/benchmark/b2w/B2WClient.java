@@ -156,6 +156,7 @@ public class B2WClient extends BenchmarkComponent {
                 JSONObject next_txn = null;
                 try {
                     next_txn = txn_selector.nextTransaction();
+                    if (next_txn == null) return;
                     offset = next_txn.getLong(B2WConstants.OPERATION_OFFSET);
                 } catch (JSONException e) {
                     LOG.error("Failed to parse transaction: " + e.getMessage(), e);
