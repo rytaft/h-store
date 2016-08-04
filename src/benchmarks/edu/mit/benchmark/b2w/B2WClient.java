@@ -831,9 +831,9 @@ public class B2WClient extends BenchmarkComponent {
         int interestRate = getInteger(params, B2WConstants.PARAMS_INTEREST_RATE);
         int annualCET = getInteger(params, B2WConstants.PARAMS_ANNUAL_CET);
         String number = getString(params, B2WConstants.PARAMS_NUMBER);
-        long criptoNumber = getLong(params, B2WConstants.PARAMS_CRIPTO_NUMBER);
+        String criptoNumber = getString(params, B2WConstants.PARAMS_CRIPTO_NUMBER);
         String holdersName = getString(params, B2WConstants.PARAMS_HOLDERS_NAME);
-        long securityCode = getLong(params, B2WConstants.PARAMS_SECURITY_CODE);
+        String securityCode = getString(params, B2WConstants.PARAMS_SECURITY_CODE);
         String expirationDate = getString(params, B2WConstants.PARAMS_EXPIRATION_DATE);
 
         Object checkoutPaymentParams[] = { checkout_id, cart_id, paymentOptionId, paymentOptionType, dueDays, amount, installmentQuantity,

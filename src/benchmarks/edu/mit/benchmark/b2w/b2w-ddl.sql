@@ -154,9 +154,9 @@ CREATE TABLE CHECKOUT_PAYMENTS (
         interestRate INTEGER,
         annualCET INTEGER,
         number VARCHAR(32),
-        criptoNumber BIGINT,
+        criptoNumber VARCHAR(128),
         holdersName VARCHAR(32),
-        securityCode BIGINT,
+        securityCode VARCHAR(64),
         expirationDate VARCHAR(16)
 );
 CREATE INDEX IDX_CHECKOUT_PAYMENTS ON CHECKOUT_PAYMENTS(checkoutId);

@@ -486,9 +486,9 @@ public class B2WLoader extends Loader {
                 row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "interestRate", path + ":payment[interestRate]");
                 row_payments[param++] = getDataByType(payment, KEY_TYPE_INTEGER, "annualCET", path + ":payment[annualCET]");
                 row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "number", path + ":payment[number]");
-                row_payments[param++] = getDataByType(payment, KEY_TYPE_BIGINT, "criptoNumber", path + ":payment[criptoNumber]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "criptoNumber", path + ":payment[criptoNumber]");
                 row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "holdersName", path + ":payment[holdersName]");
-                row_payments[param++] = getDataByType(payment, KEY_TYPE_BIGINT, "securityCode", path + ":payment[securityCode]");
+                row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "securityCode", path + ":payment[securityCode]");
                 row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR, "expirationDate", path + ":payment[expirationDate]");
 
                 vt_payments.addRow(row_payments);
