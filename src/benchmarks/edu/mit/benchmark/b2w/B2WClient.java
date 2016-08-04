@@ -28,8 +28,10 @@ import edu.brown.utils.ThreadUtil;
 public class B2WClient extends BenchmarkComponent {
     private static final Logger LOG = Logger.getLogger(B2WClient.class);
     private static final LoggerBoolean debug = new LoggerBoolean();
+    private static final LoggerBoolean trace = new LoggerBoolean();
     static {
-        LoggerUtil.attachObserver(LOG, debug);
+        LoggerUtil.setupLogging();
+        LoggerUtil.attachObserver(LOG, debug, trace);
     }
 
     public static enum Transaction {
@@ -200,6 +202,9 @@ public class B2WClient extends BenchmarkComponent {
     protected boolean runOnce(JSONObject txn) throws IOException, JSONException {
         Operation operation = Operation.valueOf(txn.getString(B2WConstants.OPERATION));
         JSONObject params = txn.getJSONObject(B2WConstants.OPERATION_PARAMS);
+        if (trace.val) {
+            LOG.trace("Running operation " + txn.getString(B2WConstants.OPERATION) + " with params: " + params.toString());
+        }
         switch (operation) {
             case ADD_LINE_TO_CART:
                 return runAddLineToCart(params);
