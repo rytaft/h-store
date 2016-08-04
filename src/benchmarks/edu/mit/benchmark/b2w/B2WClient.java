@@ -135,6 +135,8 @@ public class B2WClient extends BenchmarkComponent {
             final boolean doSingle = this.getHStoreConf().client.runOnce;
             boolean hadErrors = false;
             boolean bp = false;
+	    long offset = 0;
+	    JSONObject next_txn = null;
             while (true) {
                 // If there is back pressure don't send any requests. Update the
                 // last request time so that a large number of requests won't
@@ -154,23 +156,27 @@ public class B2WClient extends BenchmarkComponent {
                 }
                 assert(this.m_controlState != ControlState.PAUSED) : "Unexpected " + this.m_controlState;
 
-                long offset = 0;
-                JSONObject next_txn = null;
-                try {
-                    next_txn = txn_selector.nextTransaction();
-                    if (next_txn == null) return;
-                    offset = next_txn.getLong(B2WConstants.OPERATION_OFFSET);
-                } catch (JSONException e) {
-                    LOG.error("Failed to parse transaction: " + e.getMessage(), e);
-                    continue;
-                }
+		if (next_txn == null) {
+		    try {
+			next_txn = txn_selector.nextTransaction();
+			if (next_txn == null) return;
+			offset = next_txn.getLong(B2WConstants.OPERATION_OFFSET);
+		    } catch (JSONException e) {
+			LOG.error("Failed to parse transaction: " + e.getMessage(), e);
+			continue;
+		    }
+		}
 
                 // Wait to generate the transaction until sufficient time has passed
                 final long now = System.currentTimeMillis();
                 final long delta = now - startTime;
+		if (trace.val) {
+		    LOG.trace("Now: " + now + ", Start time: " + startTime + ", delta: " + delta + ", offset: " + offset);
+		}
                 if (delta >= offset) {
                     try {
                         bp = !this.runOnce(next_txn);
+			next_txn = null; // indicates that we are ready for the next txn
 
                         if (doSingle) {
                             LOG.warn("Stopping client due to a run once setting");
