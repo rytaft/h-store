@@ -73,7 +73,7 @@ public class CreateCheckout extends VoltProcedure {
     
     public VoltTable[] run(String checkout_id, String cart_id, String deliveryAddressId, String billingAddressId, 
             double amountDue, double total, String freightContract, double freightPrice, String freightStatus,
-            String line_id[], String transaction_id[], int delivery_time[]) {
+            String[] line_id, String[] transaction_id, int[] delivery_time) {
         if (trace.val) {
             LOG.trace("Creating checkout with params: " + checkout_id + ", " + cart_id + ", " + deliveryAddressId + ", " + billingAddressId + ", " +
              amountDue + ", " + total + ", " + freightContract + ", " + freightPrice + ", " + freightStatus + ", " +
