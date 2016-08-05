@@ -853,7 +853,7 @@ public class B2WClient extends BenchmarkComponent {
         if (trace.val) {
             LOG.trace("Creating checkout with params: " + checkout_id + ", " + cart_id + ", " + deliveryAddressId + ", " + billingAddressId + ", " +
              amountDue + ", " + total + ", " + freightContract + ", " + freightPrice + ", " + freightStatus + ", " +
-             Arrays.asList(line_ids).toString() + ", " + Arrays.asList(transaction_ids).toString() + ", " + Arrays.asList(transaction_ids).toString());
+             Arrays.asList(line_ids).toString() + ", " + Arrays.asList(transaction_ids).toString() + ", " + Arrays.asList(delivery_times).toString());
         }
         
         /**** TRANSACTION ****/
