@@ -62,7 +62,7 @@ public class UpdateStockTransaction extends VoltProcedure {
         } else {
             try {
                 JSONObject status_obj = new JSONObject(status);
-                status_obj.append(timestamp.toString(), current_status);
+                status_obj.put(timestamp.toString(), current_status);
                 status = status_obj.toString();
             } catch (JSONException e) {
                 LOG.info("Failed to parse status: " + status);

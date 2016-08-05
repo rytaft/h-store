@@ -74,7 +74,7 @@ public class CreateStockTransaction extends VoltProcedure {
 
             JSONObject status_obj = new JSONObject();
             try {
-                status_obj.append(timestamp[i].toString(), current_status);
+                status_obj.put(timestamp[i].toString(), current_status);
             } catch (JSONException e) {
                 if (debug.val) {
                     LOG.debug("Failed to append current status " + current_status + " at timestamp " + timestamp[i].toString());

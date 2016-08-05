@@ -2,6 +2,7 @@ package edu.mit.benchmark.b2w;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -849,6 +850,11 @@ public class B2WClient extends BenchmarkComponent {
         String freightStatus = getString(params, B2WConstants.PARAMS_FREIGHT_STATUS);
         Object checkoutParams[] = new Object[]{ checkout_id, cart_id, deliveryAddressId, billingAddressId, amountDue, total, 
                 freightContract, freightPrice, freightStatus, line_ids, transaction_ids, delivery_times };
+        if (trace.val) {
+            LOG.trace("Creating checkout with params: " + checkout_id + ", " + cart_id + ", " + deliveryAddressId + ", " + billingAddressId + ", " +
+             amountDue + ", " + total + ", " + freightContract + ", " + freightPrice + ", " + freightStatus + ", " +
+             Arrays.asList(line_ids).toString() + ", " + Arrays.asList(transaction_ids).toString() + ", " + Arrays.asList(transaction_ids).toString());
+        }
         
         /**** TRANSACTION ****/
         return runAsynchTransaction(Transaction.CREATE_CHECKOUT, checkoutParams);   
