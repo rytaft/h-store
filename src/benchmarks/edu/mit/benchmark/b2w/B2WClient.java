@@ -436,11 +436,12 @@ public class B2WClient extends BenchmarkComponent {
                 }
                 return false;
             }
+            if (trace.val) {
+                LOG.trace("StockTransaction for txn ID " + stockTransactionId + ": " + getStockTxnResponse.getResults()[0].toString());
+            }
+            
             for (int j = 0; j < getStockTxnResponse.getResults()[0].getRowCount(); ++j) {
                 final VoltTableRow stockTransaction = getStockTxnResponse.getResults()[0].fetchRow(j);
-                if (trace.val) {
-                    LOG.trace("StockTransaction for txn ID " + stockTransactionId + ": " + stockTransaction.toString());
-                }
                 final int RESERVE_LINES = 8;
 
                 String reserve_lines = stockTransaction.getString(RESERVE_LINES);
@@ -577,10 +578,11 @@ public class B2WClient extends BenchmarkComponent {
                     }
                     return false; 
                 }
-                final VoltTableRow stockQty = stockQtyResponse.getResults()[0].fetchRow(0);
                 if (trace.val) {
-                    LOG.trace("StockQty for stock ID " + stockId + ": " + stockQty.toString());
+                    LOG.trace("StockQty for stock ID " + stockId + ": " + stockQtyResponse.getResults()[0].toString());
                 }
+                
+                final VoltTableRow stockQty = stockQtyResponse.getResults()[0].fetchRow(0);
                 final int AVAILABLE = 1;
                 total_available += stockQty.getLong(AVAILABLE);
                 if (total_available >= requested_quantity) break;
@@ -770,6 +772,9 @@ public class B2WClient extends BenchmarkComponent {
             return false;        
         }
         final int CART_LINES_RESULTS = 2;
+        if (trace.val) {
+            LOG.trace("CartLines of cart " + cart_id + ": " + cartResponse.getResults()[CART_LINES_RESULTS].toString());
+        }
         
         JSONArray lines = getArray(params, B2WConstants.PARAMS_LINES);
         HashMap<String,JSONObject> lines_map = new HashMap<>();
@@ -792,9 +797,6 @@ public class B2WClient extends BenchmarkComponent {
         // Create a new stock transaction.
         for (int i = 0; i < lines_count; ++i) {
             final VoltTableRow cartLine = cartResponse.getResults()[CART_LINES_RESULTS].fetchRow(i);
-            if (trace.val) {
-                LOG.trace("CartLine " + i + " of cart " + cart_id + ": " + cartLine.toString());
-            }
             final int LINE_ID = 1, QUANTITY = 7;
             String line_id = cartLine.getString(LINE_ID);
             if (!lines_map.containsKey(line_id)) {
@@ -912,13 +914,14 @@ public class B2WClient extends BenchmarkComponent {
             return false;        
         }
         final int CHECKOUT_STOCK_TRANSACTIONS_RESULTS = 3;
+        if (trace.val) {
+            LOG.trace("StockTransactions of checkout " + checkout_id + ": " + 
+                    checkoutResponse.getResults()[CHECKOUT_STOCK_TRANSACTIONS_RESULTS].toString());
+        }
         
         TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
         for (int i = 0; i < checkoutResponse.getResults()[CHECKOUT_STOCK_TRANSACTIONS_RESULTS].getRowCount(); ++i) {
             final VoltTableRow checkoutStockTransaction = checkoutResponse.getResults()[CHECKOUT_STOCK_TRANSACTIONS_RESULTS].fetchRow(i);
-            if (trace.val) {
-                LOG.trace("StockTransaction " + i + " of checkout " + checkout_id + ": " + checkoutStockTransaction.toString());
-            }
             final int TRANSACTION_ID = 1;
             String transaction_id = checkoutStockTransaction.getString(TRANSACTION_ID);
             
@@ -931,12 +934,13 @@ public class B2WClient extends BenchmarkComponent {
                 }
                 return false;
             }
+            if (trace.val) {
+                LOG.trace("Stock transaction " + transaction_id + ": " + getStockTxnResponse.getResults()[0].toString());
+            }
+            
             boolean purchased = false;
             for (int j = 0; j < getStockTxnResponse.getResults()[0].getRowCount(); ++j) {
                 final VoltTableRow stockTransaction = getStockTxnResponse.getResults()[0].fetchRow(j);
-                if (trace.val) {
-                    LOG.trace("Reserve " + j + " of stock transaction " + transaction_id + ": " + stockTransaction.toString());
-                }
                 final int CURRENT_STATUS = 4, RESERVE_LINES = 8;
                 
                 String current_status = stockTransaction.getString(CURRENT_STATUS);                
