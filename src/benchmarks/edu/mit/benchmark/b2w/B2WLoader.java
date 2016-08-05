@@ -6,7 +6,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import edu.brown.catalog.CatalogUtil;
-import edu.brown.utils.FileUtil;
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONException;
