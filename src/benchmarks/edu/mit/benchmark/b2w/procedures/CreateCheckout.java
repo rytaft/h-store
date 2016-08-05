@@ -48,40 +48,7 @@ public class CreateCheckout extends VoltProcedure {
                 "?, " +   // freightPrice
                 "?"   +   // freightStatus
             ");");
-    
-    public final SQLStmt createCheckoutPaymentStmt = new SQLStmt(
-            "INSERT INTO CHECKOUT_PAYMENTS (" +
-                "checkoutId, " +
-                "paymentOptionId, " +
-                "paymentOptionType, " +
-                "dueDays, " +
-                "amount, " +
-                "installmentQuantity, " +
-                "interestAmount, " +
-                "interestRate, " +
-                "annualCET, " +
-                "number, " +
-                "criptoNumber, " +
-                "holdersName, " +
-                "securityCode, " +
-                "expirationDate" +
-            ") VALUES (" +
-                "?, " +   // checkoutId
-                "?, " +   // paymentOptionId
-                "?, " +   // paymentOptionType
-                "?, " +   // dueDays
-                "?, " +   // amount
-                "?, " +   // installmentQuantity
-                "?, " +   // interestAmount
-                "?, " +   // interestRate
-                "?, " +   // annualCET
-                "?, " +   // number
-                "?, " +   // criptoNumber
-                "?, " +   // holdersName
-                "?, " +   // securityCode
-                "?"   +   // expirationDate
-            ");");
-    
+        
     public final SQLStmt createCheckoutFreightDeliveryTimeStmt = new SQLStmt(
             "INSERT INTO CHECKOUT_FREIGHT_DELIVERY_TIME (" +
                 "checkoutId, " +
@@ -103,11 +70,6 @@ public class CreateCheckout extends VoltProcedure {
                 "?, " +   // id
                 "?"   +   // lineId
             ");");
-
-    public final SQLStmt getCartStmt = new SQLStmt("SELECT total FROM CART WHERE id = ? ");
-    public final SQLStmt getCartLinesStmt = new SQLStmt(
-            "SELECT id, stockTransactionId FROM CART_LINES WHERE cartId = ?;");
-    
     
     public VoltTable[] run(String checkout_id, String cart_id, String deliveryAddressId, String billingAddressId, 
             double amountDue, double total, String freightContract, double freightPrice, String freightStatus,
