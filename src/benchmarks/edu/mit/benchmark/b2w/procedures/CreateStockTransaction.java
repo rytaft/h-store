@@ -1,5 +1,6 @@
 package edu.mit.benchmark.b2w.procedures;
 
+import org.apache.log4j.Logger;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.voltdb.ProcInfo;
@@ -8,6 +9,8 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.types.TimestampType;
 
+import edu.brown.logging.LoggerUtil;
+import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
@@ -15,13 +18,13 @@ import edu.mit.benchmark.b2w.B2WConstants;
         singlePartition = true
     )
 public class CreateStockTransaction extends VoltProcedure {
-//    private static final Logger LOG = Logger.getLogger(VoltProcedure.class);
-//    private static final LoggerBoolean debug = new LoggerBoolean();
-//    private static final LoggerBoolean trace = new LoggerBoolean();
-//    static {
-//        LoggerUtil.setupLogging();
-//        LoggerUtil.attachObserver(LOG, debug, trace);
-//    }
+    private static final Logger LOG = Logger.getLogger(VoltProcedure.class);
+    private static final LoggerBoolean debug = new LoggerBoolean();
+    private static final LoggerBoolean trace = new LoggerBoolean();
+    static {
+        LoggerUtil.setupLogging();
+        LoggerUtil.attachObserver(LOG, debug, trace);
+    }
     
     public final SQLStmt createStockTxnStmt = new SQLStmt(
             "INSERT INTO STK_STOCK_TRANSACTION (" +
@@ -73,9 +76,14 @@ public class CreateStockTransaction extends VoltProcedure {
             try {
                 status_obj.append(timestamp[i].toString(), current_status);
             } catch (JSONException e) {
-                // ignore
+                if (debug.val) {
+                    LOG.debug("Failed to append current status " + current_status + " at timestamp " + timestamp[i].toString());
+                }
             }       
             String status = status_obj.toString();
+            if (trace.val) {
+                LOG.trace("Creating transaction " + transaction_id + " with status " + status);
+            }
             
             voltQueueSQL(createStockTxnStmt,
                     transaction_id,
@@ -95,6 +103,8 @@ public class CreateStockTransaction extends VoltProcedure {
                     subinventory[i],
                     warehouse[i]);
         }
+        
+        if (reserve_id.length == 0) return null;
         
         return voltExecuteSQL(true);
     }
