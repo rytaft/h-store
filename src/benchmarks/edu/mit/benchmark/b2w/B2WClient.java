@@ -1103,7 +1103,7 @@ public class B2WClient extends BenchmarkComponent {
     }
 
     private boolean runAsynchTransaction(Transaction target, Object params[]) throws IOException {
-        if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName);
+        if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName + " params: " + Arrays.asList(params).toString());
         Callback callback = new Callback(target.ordinal());
         return this.getClientHandle().callProcedure(callback, target.callName, params);
     }
