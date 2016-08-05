@@ -143,10 +143,10 @@ public class AddLineToCart extends VoltProcedure {
 
 
     public VoltTable[] run(String cart_id, TimestampType timestamp, String line_id, 
-            long product_sku, long product_id, long store_id, int quantity, String salesChannel, String opn, String epar, int autoMerge,
+            long product_sku, long product_id, long store_id, int quantity, String salesChannel, String opn, String epar, byte autoMerge,
             double unitSalesPrice, double salesPrice, int maxQuantity, String maximumQuantityReason, String type, String stockTransactionId,
-            int requestedQuantity, String line_status, String stockType, String image, String name, int isKit, double price, double originalPrice,
-            int isLarge, long department, long line, long subClass, double weight, long product_class){
+            int requestedQuantity, String line_status, String stockType, String image, String name, byte isKit, double price, double originalPrice,
+            byte isLarge, long department, long line, long subClass, double weight, long product_class){
         voltQueueSQL(getCartStmt, cart_id);
         final VoltTable[] cart_results = voltExecuteSQL();
         assert cart_results.length == 1;

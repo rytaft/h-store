@@ -58,7 +58,7 @@ public class ReserveCart extends VoltProcedure {
     public final SQLStmt updateCartLineQtyStmt = new SQLStmt(
             "UPDATE CART_LINES " +
             "   SET quantity = ?, " +
-            "       requestedQuantity = ?, " +
+            "       requestedQuantity = ? " +
             " WHERE cartId = ? AND id = ?;"
         ); // quantity, requestedQuantity, cartId, id
     
@@ -71,7 +71,7 @@ public class ReserveCart extends VoltProcedure {
 
 
     public VoltTable[] run(String cart_id, TimestampType timestamp, String customer_id,
-            String token, int guest, int isGuest, String line_ids[], int requested_quantity[],
+            String token, byte guest, byte isGuest, String line_ids[], int requested_quantity[],
             int reserved_quantity[], String status[], String stock_type[], String transaction_id[]){
         assert(line_ids.length == transaction_id.length);
         assert(line_ids.length == requested_quantity.length);
@@ -104,7 +104,7 @@ public class ReserveCart extends VoltProcedure {
                 int index = line_id_index.get(line_id);
                 voltQueueSQL(updateCartLineStmt, reserved_quantity[index], transaction_id[index], requested_quantity[index], status[index], stock_type[index], cart_id, line_id);
             }
-            else {
+            else { // the cart line was not successfully reserved, so update the quantity to 0
                 voltQueueSQL(updateCartLineQtyStmt, 0, original_quantity, cart_id, line_id);
             }
             

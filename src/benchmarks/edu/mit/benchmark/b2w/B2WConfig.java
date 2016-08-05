@@ -23,6 +23,7 @@ public class B2WConfig {
     public String stock_transaction_data_file = null;
     public String stock_quantity_data_file = null;
     public String stock_inventory_data_file = null;
+    public String operations_file = null;
     
     
     public B2WConfig(Map<String, String> m_extraParams) {
@@ -50,6 +51,9 @@ public class B2WConfig {
             else if (key.equalsIgnoreCase("stock_inventory_data_file")) {
                 this.stock_inventory_data_file = String.valueOf(value);
             }
+            else if (key.equalsIgnoreCase("operations_file")) {
+                this.operations_file = String.valueOf(value);
+            }
         } // FOR
             
     }
@@ -60,7 +64,8 @@ public class B2WConfig {
     public String toString() {
         return "B2WConfig [loadthreads=" + loadthreads + ", cart_data_file=" + cart_data_file
                 + ", checkout_data_file=" + checkout_data_file + ", stock_transaction_data_file=" + stock_transaction_data_file
-                + ", stock_quantity_data_file=" + stock_quantity_data_file + ", stock_inventory_data_file=" + stock_inventory_data_file + "]";
+                + ", stock_quantity_data_file=" + stock_quantity_data_file + ", stock_inventory_data_file=" + stock_inventory_data_file
+                + ", operations_file=" + operations_file + "]";
     }
 
 }
