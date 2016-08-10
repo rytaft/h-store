@@ -449,6 +449,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             this.num_sites_complete = 0;
                             this.sites_complete = new HashSet<Integer>();
                         }
+                        hasher.getPartitions().setReconfigurationPlan(reconfig_plan);
                         for (PartitionExecutor executor : this.local_executors) {
                             executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
                             this.partitionStates.put(partitionId, ReconfigurationState.PREPARE);

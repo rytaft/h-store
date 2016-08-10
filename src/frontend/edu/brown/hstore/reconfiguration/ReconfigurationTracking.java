@@ -340,7 +340,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                         List<ReconfigurationRange> rangesToPull = new ArrayList<>();    
                         for(ReconfigurationRange range : this.incoming_ranges){
 			    if(relatedTables == null) {
-                                if(range.getTableName().equalsIgnoreCase(table_name) && range.inRangeIgnoreNullCols(key_arr)){
+                                if(range.getTableName().equalsIgnoreCase(table_name) && range.overlapsRange(key_arr)){
                                     LOG.info(String.format("Access for key %s, pulling entire range :%s (%s)", key, range.toString(),table_name));
                                     rangesToPull.add(range);
                                     //we only have table to match
@@ -349,7 +349,7 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
                             }
                             else {
                             	for(String rTableName : relatedTables){
-                                    if(range.getTableName().equalsIgnoreCase(rTableName) && range.inRangeIgnoreNullCols(key_arr)){
+                                    if(range.getTableName().equalsIgnoreCase(rTableName) && range.overlapsRange(key_arr)){
                                         if (dataMigratedIn.contains(range)){
                                             LOG.info(String.format("Range %s has already been migrated in. Not pulling again", range));
                                         } else {

@@ -27,7 +27,9 @@ public class AffinityClient extends BenchmarkComponent {
         GET_PRODUCT("Get Product", AffinityConstants.FREQ_READ_PRODUCT),
         GET_PART("Get Part", AffinityConstants.FREQ_READ_PART),
         GET_PARTS_BY_SUPPLIER("Get Parts By Supplier", AffinityConstants.FREQ_READ_PARTS_BY_SUPPLIER),
-        GET_PARTS_BY_PRODUCT("Get Parts By Product", AffinityConstants.FREQ_READ_PARTS_BY_PRODUCT); 
+        GET_PARTS_BY_PRODUCT("Get Parts By Product", AffinityConstants.FREQ_READ_PARTS_BY_PRODUCT), 
+        GET_PRODUCTS_BY_SUPPLIER("Get Products By Supplier", AffinityConstants.FREQ_READ_PRODUCTS_BY_SUPPLIER),
+        GET_SUPPLIERS_BY_PRODUCT("Get Suppliers By Product", AffinityConstants.FREQ_READ_SUPPLIERS_BY_PRODUCT); 
         
         /**
          * Constructor
@@ -124,6 +126,12 @@ public class AffinityClient extends BenchmarkComponent {
                 params = new Object[]{ config.supplier_gen.nextInt(), config.limitPartsScan, config.limitPartsScanTo, config.limitPartsZipfianScan };
                 break;
             case GET_PARTS_BY_PRODUCT:
+                params = new Object[]{ config.product_gen.nextInt(), config.limitPartsScan, config.limitPartsScanTo, config.limitPartsZipfianScan };
+                break;
+            case GET_PRODUCTS_BY_SUPPLIER:
+                params = new Object[]{ config.supplier_gen.nextInt(), config.limitPartsScan, config.limitPartsScanTo, config.limitPartsZipfianScan };
+                break;
+            case GET_SUPPLIERS_BY_PRODUCT:
                 params = new Object[]{ config.product_gen.nextInt(), config.limitPartsScan, config.limitPartsScanTo, config.limitPartsZipfianScan };
                 break;
             default:

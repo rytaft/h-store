@@ -40,42 +40,48 @@ import edu.brown.mappings.ParameterMappingsSet;
 
 public abstract class ExplicitPartitions {
 
-	protected CatalogContext catalog_context;
-	protected Set<String> plan_tables;
-	protected Map<String, String> partitionedTablesByFK;
-	protected Map<CatalogType, Table> catalog_to_table_map;
-	protected Map<String, Column[]> table_partition_cols_map;
-	protected Map<String, Table> name_table_map;
-	protected String default_table = null;
-	protected Map<String, List<String>> relatedTablesMap;
-	protected ReconfigurationPlan reconfigurationPlan;
-	protected PartitionPhase incrementalPlan;
-	protected PartitionPhase previousIncrementalPlan;
-	
-	protected static Map<String,String> overrideStatementMap;
-	
-	private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
+    protected CatalogContext catalog_context;
+    protected Set<String> plan_tables;
+    protected Map<String, String> partitionedTablesByFK;
+    protected Map<CatalogType, Table> catalog_to_table_map;
+    protected Map<String, Column[]> table_partition_cols_map;
+    protected Map<String, Table> name_table_map;
+    protected String default_table = null;
+    protected Map<String, List<String>> relatedTablesMap;
+    protected ReconfigurationPlan reconfigurationPlan;
+    protected PartitionPhase incrementalPlan;
+    protected PartitionPhase previousIncrementalPlan;
+
+    protected static Map<String, String> overrideStatementMap;
+
+    private static final Logger LOG = Logger.getLogger(ExplicitPartitions.class);
     private static final LoggerBoolean debug = new LoggerBoolean(LOG.isDebugEnabled());
     private static final LoggerBoolean trace = new LoggerBoolean(LOG.isTraceEnabled());
     public static final String TABLES = "tables";
     public static final String PARTITIONS = "partitions";
     protected static final String DEFAULT_TABLE = "default_table";
-    
+
     static {
         LoggerUtil.attachObserver(LOG, debug, trace);
         overrideStatementMap = new HashMap<>();
-        
+
         overrideStatementMap.put("getPartInfoStmt", "parts");
+        overrideStatementMap.put("getProductsByPartStmt", "uses");
+        overrideStatementMap.put("getProductInfoStmt", "products");
+        overrideStatementMap.put("getSuppliersByPartStmt", "supplies");
+        overrideStatementMap.put("getSupplierInfoStmt", "suppliers");
     }
-	
-	protected ExplicitPartitions(CatalogContext catalog_context, JSONObject partition_json) throws Exception {
-		this.catalog_context = catalog_context;
+
+    protected ExplicitPartitions(CatalogContext catalog_context, JSONObject partition_json) throws Exception {
+        this.catalog_context = catalog_context;
         this.catalog_to_table_map = new HashMap<>();
         this.table_partition_cols_map = new HashMap<>();
         this.plan_tables = null;
         this.relatedTablesMap = new HashMap<>();
         this.name_table_map = new HashMap<>();
         this.reconfigurationPlan = null;
+        this.incrementalPlan = null;
+        this.previousIncrementalPlan = null;
         Set<String> partitionedTables = getExplicitPartitionedTables(partition_json);
         // TODO find catalogContext.getParameter mapping to find
         // statement_column
@@ -83,26 +89,26 @@ public abstract class ExplicitPartitions {
         assert partition_json.has(DEFAULT_TABLE) : "default_table missing from planned partition json";
         this.default_table = partition_json.getString(DEFAULT_TABLE);
         for (Table table : catalog_context.getDataTables()) {
-            if (table.getIsreplicated()) continue;
-        	
-        	String tableName = table.getName().toLowerCase();
-        	name_table_map.put(tableName, table);
+            if (table.getIsreplicated())
+                continue;
+
+            String tableName = table.getName().toLowerCase();
+            name_table_map.put(tableName, table);
             Column[] cols = new Column[table.getPartitioncolumns().size()];
-            for(ColumnRef colRef : table.getPartitioncolumns().values()) {
-            	cols[colRef.getIndex()] = colRef.getColumn();
-        	}
-            
+            for (ColumnRef colRef : table.getPartitioncolumns().values()) {
+                cols[colRef.getIndex()] = colRef.getColumn();
+            }
+
             // partition columns may not have been set
             Column partitionCol;
             if (cols.length == 0) {
-            	partitionCol = table.getPartitioncolumn();
-            	if (partitionCol != null) {
-            		table_partition_cols_map.put(tableName, new Column[]{partitionCol});
-            	}
-            }
-            else {
-            	partitionCol = cols[0];
-            	table_partition_cols_map.put(tableName, cols);
+                partitionCol = table.getPartitioncolumn();
+                if (partitionCol != null) {
+                    table_partition_cols_map.put(tableName, new Column[] { partitionCol });
+                }
+            } else {
+                partitionCol = cols[0];
+                table_partition_cols_map.put(tableName, cols);
             }
             if (partitionCol == null) {
                 LOG.info(String.format("Partition col for table %s is null. Skipping", tableName));
@@ -114,24 +120,23 @@ public abstract class ExplicitPartitions {
 
         for (Procedure proc : catalog_context.procedures) {
             if (!proc.getSystemproc()) {
-            	Column[] cols = new Column[proc.getPartitioncolumns().size()];
-                for(ColumnRef colRef : proc.getPartitioncolumns().values()) {
-                	cols[colRef.getIndex()] = colRef.getColumn();
-            	}
-                
+                Column[] cols = new Column[proc.getPartitioncolumns().size()];
+                for (ColumnRef colRef : proc.getPartitioncolumns().values()) {
+                    cols[colRef.getIndex()] = colRef.getColumn();
+                }
+
                 // partition columns may not have been set
                 Column partitionCol;
                 if (cols.length == 0) {
-                	partitionCol = proc.getPartitioncolumn();
+                    partitionCol = proc.getPartitioncolumn();
+                } else {
+                    partitionCol = cols[0];
                 }
-                else {
-                	partitionCol = cols[0];
-                }
-            	
+
                 String table_name = null;
                 Table table = this.catalog_to_table_map.get(partitionCol);
-                if(table != null) {
-                	table_name = table.getName().toLowerCase();
+                if (table != null) {
+                    table_name = table.getName().toLowerCase();
                 }
                 if ((table_name == null) || (table_name.equals("null")) || (table_name.trim().length() == 0)) {
                     LOG.info(String.format("Using default table %s for procedure: %s ", this.default_table, proc.toString()));
@@ -142,22 +147,22 @@ public abstract class ExplicitPartitions {
                 }
                 this.catalog_to_table_map.put(proc, table);
                 for (Statement statement : proc.getStatements()) {
-                    if (overrideStatementMap.containsKey(statement.getName())){
+                    if (overrideStatementMap.containsKey(statement.getName())) {
                         String _overrideTable = overrideStatementMap.get(statement.getName());
-                        
+
                         LOG.debug(String.format("Overriding statment %s  mapping to : %s", statement.getName(), _overrideTable));
-                        if(this.name_table_map.containsKey(_overrideTable)){
+                        if (this.name_table_map.containsKey(_overrideTable)) {
                             this.catalog_to_table_map.put(statement, name_table_map.get(_overrideTable));
                             continue;
                         } else {
                             LOG.error("failed to override as table name was not in map. using default");
                         }
-                        
-                    } 
-                    
+
+                    }
+
                     LOG.debug(table_name + " adding statement: " + statement.toString());
                     this.catalog_to_table_map.put(statement, table);
-                
+
                 }
 
             }
@@ -191,66 +196,64 @@ public abstract class ExplicitPartitions {
                         // if in table then map to it
                         String relatedTblName = p.getName().toLowerCase();
                         Table relatedTbl = (Table) p;
-                        LOG.info(String.format("Table %s is related to %s",tableName,relatedTblName));
-                        if (partitionedTables.contains(relatedTblName) && 
-                        		this.table_partition_cols_map.get(relatedTblName) != null &&
-                        		this.table_partition_cols_map.get(relatedTblName)[0].equals(c)) {
+                        LOG.info(String.format("Table %s is related to %s", tableName, relatedTblName));
+                        if (partitionedTables.contains(relatedTblName) && this.table_partition_cols_map.get(relatedTblName) != null && this.table_partition_cols_map.get(relatedTblName)[0].equals(c)) {
                             parentCandidates.add(relatedTbl);
                         }
                     }
                 }
-                
-                // find the parent with the greatest number of partition columns in common
-                for(int i = 1; i < partitionCols.length; i++) {
-                	if(parentCandidates.size() != 0) {
-                		prevParentCandidates = parentCandidates;
-                		parentCandidates = new ArrayList<>();
-                	} else {
-                		break;
-                	}
-                	
-                	depCols = dependUtil.getAncestors(partitionCols[i]);
-                	for (Column c : depCols) {
+
+                // find the parent with the greatest number of partition columns
+                // in common
+                for (int i = 1; i < partitionCols.length; i++) {
+                    if (parentCandidates.size() != 0) {
+                        prevParentCandidates = parentCandidates;
+                        parentCandidates = new ArrayList<>();
+                    } else {
+                        break;
+                    }
+
+                    depCols = dependUtil.getAncestors(partitionCols[i]);
+                    for (Column c : depCols) {
                         CatalogType p = c.getParent();
                         if (p instanceof Table) {
-                        	String relatedTblName = p.getName().toLowerCase();
+                            String relatedTblName = p.getName().toLowerCase();
                             Table relatedTbl = (Table) p;
-                            if (prevParentCandidates.contains(relatedTbl) && 
-                            		this.table_partition_cols_map.get(relatedTblName) != null &&
-                            		this.table_partition_cols_map.get(relatedTblName)[i].equals(c)) {
+                            if (prevParentCandidates.contains(relatedTbl) && this.table_partition_cols_map.get(relatedTblName) != null
+                                    && this.table_partition_cols_map.get(relatedTblName)[i].equals(c)) {
                                 parentCandidates.add(relatedTbl);
                             }
                         }
                     }
                 }
-                
+
                 Table parentTbl = null;
-                if(parentCandidates.size() != 0) {
-                	parentTbl = parentCandidates.get(0);
-                } else if(prevParentCandidates.size() != 0) {
-                	parentTbl = prevParentCandidates.get(0);
+                if (parentCandidates.size() != 0) {
+                    parentTbl = parentCandidates.get(0);
+                } else if (prevParentCandidates.size() != 0) {
+                    parentTbl = prevParentCandidates.get(0);
                 } else {
-                	throw new RuntimeException("No partitioned relationship found for table : " + tableName + " partitioned:" + partitionedTables.toString());
+                    throw new RuntimeException("No partitioned relationship found for table : " + tableName + " partitioned:" + partitionedTables.toString());
                 }
-                
+
                 String parentTblName = parentTbl.getName().toLowerCase();
                 LOG.info("parent partitioned table for " + tableName + ": " + parentTbl + " : " + parentTblName);
                 partitionedTablesByFK.put(tableName, parentTblName);
                 catalog_to_table_map.put(table, parentTbl);
                 catalog_to_table_map.put(partitionCols[0], table);
-                
-                if(!relatedTablesMap.containsKey(parentTblName)) {
-                	relatedTablesMap.put(parentTblName, new ArrayList<String>());
-                	relatedTablesMap.get(parentTblName).add(parentTblName);
+
+                if (!relatedTablesMap.containsKey(parentTblName)) {
+                    relatedTablesMap.put(parentTblName, new ArrayList<String>());
+                    relatedTablesMap.get(parentTblName).add(parentTblName);
                 }
                 relatedTablesMap.get(parentTblName).add(tableName);
             }
         }
-	}
-	
+    }
+
     /**
-     * Get the explicit partitioned tables and ensure that the old plan and the new plan have the
-     * same set of tables
+     * Get the explicit partitioned tables and ensure that the old plan and the
+     * new plan have the same set of tables
      * 
      * @param partition_json
      * @return the set of tables in the partition plan
@@ -267,20 +270,20 @@ public abstract class ExplicitPartitions {
      * @throws Exception
      */
     public abstract int getPartitionId(String table_name, List<Object> ids) throws Exception;
-    
+
     public int getPartitionId(String table_name, Object[] ids) throws Exception {
-    	return getPartitionId(table_name, Arrays.asList(ids));
+        return getPartitionId(table_name, Arrays.asList(ids));
     }
-    
+
     public int getPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception {
-    	String table_name = this.catalog_to_table_map.get(catalogs.get(0)).getName().toLowerCase();
+        String table_name = this.catalog_to_table_map.get(catalogs.get(0)).getName().toLowerCase();
         return this.getPartitionId(table_name, ids);
     }
 
     public String getTableName(CatalogType catalog) {
         return this.catalog_to_table_map.get(catalog).getName().toLowerCase();
     }
-    
+
     public String getTableName(List<CatalogType> catalog) {
         return this.catalog_to_table_map.get(catalog.get(0)).getName().toLowerCase();
     }
@@ -290,11 +293,11 @@ public abstract class ExplicitPartitions {
     }
 
     public String getParentTableName(CatalogType catalog) {
-	String table_name = this.catalog_to_table_map.get(catalog).getName().toLowerCase();
-	if(partitionedTablesByFK.containsKey(table_name)) {
-	    table_name = partitionedTablesByFK.get(table_name);
-	}
-	return table_name;
+        String table_name = this.catalog_to_table_map.get(catalog).getName().toLowerCase();
+        if (partitionedTablesByFK.containsKey(table_name)) {
+            table_name = partitionedTablesByFK.get(table_name);
+        }
+        return table_name;
     }
 
     /**
@@ -306,28 +309,30 @@ public abstract class ExplicitPartitions {
      *         found in the plan OR if there is no previous plan
      * @throws Exception
      */
-    
+
     public int getPreviousPartitionId(List<CatalogType> catalogs, List<Object> ids) throws Exception {
         String table_name = this.catalog_to_table_map.get(catalogs.get(0)).getName().toLowerCase();
         return this.getPreviousPartitionId(table_name, ids);
     }
-    
+
     public abstract int getPreviousPartitionId(String table_name, List<Object> ids) throws Exception;
 
     /**
      * get all partitions that may contain the key
+     * 
      * @param table_name
      * @param ids
      * @return
      * @throws Exception
      */
     public abstract List<Integer> getAllPartitionIds(String table_name, List<Object> ids) throws Exception;
-    
+
     public abstract List<Integer> getAllPreviousPartitionIds(String table_name, List<Object> ids) throws Exception;
-    
+
     public abstract ReconfigurationPlan setPartitionPlan(File partition_json_file) throws Exception;
 
     public abstract ReconfigurationPlan setPartitionPhase(String new_phase);
+
     /**
      * Update the current partition plan
      * 
@@ -379,139 +384,152 @@ public abstract class ExplicitPartitions {
     public abstract void fromJSON(JSONObject json_object, Database catalog_db) throws JSONException;
 
     public List<String> getRelatedTables(String table_name) {
-        if(relatedTablesMap.containsKey(table_name)) {
-        	return relatedTablesMap.get(table_name);
-        } else if(this.partitionedTablesByFK.containsKey(table_name)) {
-        	return relatedTablesMap.get(this.partitionedTablesByFK.get(table_name));
+        if (relatedTablesMap.containsKey(table_name)) {
+            return relatedTablesMap.get(table_name);
+        } else if (this.partitionedTablesByFK.containsKey(table_name)) {
+            return relatedTablesMap.get(this.partitionedTablesByFK.get(table_name));
         }
-        
+
         return null;
     }
-    
+
     public CatalogContext getCatalogContext() {
-    	return this.catalog_context;
+        return this.catalog_context;
     }
-    
+
     public void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan) {
-	if(reconfigurationPlan == null) {
-	    this.reconfigurationPlan = null;
-	    return;
-	}
+        if (reconfigurationPlan == null) {
+            this.reconfigurationPlan = null;
+            synchronized(this) {
+                this.previousIncrementalPlan = null;
+                this.incrementalPlan = null;
+            }
+            return;
+        }
 
-	if(this.reconfigurationPlan != null && reconfigurationPlan.equals(this.reconfigurationPlan)) {
-	    LOG.debug("plan already set");
-	    return;
-	}
+        if (this.reconfigurationPlan != null && reconfigurationPlan.equals(this.reconfigurationPlan)) {
+            LOG.debug("plan already set");
+            return;
+        }
 
-   	this.reconfigurationPlan = reconfigurationPlan;
-    	if(this.incrementalPlan == null) {
-    		this.previousIncrementalPlan = this.getPreviousPlan();
-    		this.incrementalPlan = this.getPreviousPlan();
-    	}
-	assert (this.reconfigurationPlan.range_map != null) : "Null reconfiguration range map";
+        this.reconfigurationPlan = reconfigurationPlan;
+        Map<String, PartitionedTable> tables_map;
+        synchronized(this) {
+            if (this.incrementalPlan == null) {
+                this.previousIncrementalPlan = this.getPreviousPlan();
+                this.incrementalPlan = this.getPreviousPlan();
+            }
+            tables_map = this.incrementalPlan.tables_map;
+        }
+        assert (this.reconfigurationPlan.range_map != null) : "Null reconfiguration range map";
 
-    	List<PartitionRange> newRanges = new ArrayList<PartitionRange>();
-	for(Map.Entry<String, PartitionedTable> tables : this.incrementalPlan.tables_map.entrySet()) {
-	    String table_name = tables.getKey();
-    		Iterator<PartitionRange> partitionRanges = tables.getValue().getRanges().iterator();
-		Iterator<ReconfigurationRange> reconfigRanges;
-		if(this.reconfigurationPlan.range_map.get(table_name) != null) {
-		    reconfigRanges = this.reconfigurationPlan.range_map.get(table_name).iterator();
-		} else {
-		    newRanges.addAll(tables.getValue().getRanges());
-		    continue;
-		}
- 		
-    		ReconfigurationRange reconfigRange = reconfigRanges.next();
-    		PartitionKeyComparator cmp = new PartitionKeyComparator();
+        List<PartitionRange> newRanges = new ArrayList<PartitionRange>();
+        for (Map.Entry<String, PartitionedTable> tables : tables_map.entrySet()) {
+            String table_name = tables.getKey();
+            Iterator<PartitionRange> partitionRanges = tables.getValue().getRanges().iterator();
+            Iterator<ReconfigurationRange> reconfigRanges;
+            if (this.reconfigurationPlan.range_map.get(table_name) != null) {
+                reconfigRanges = this.reconfigurationPlan.range_map.get(table_name).iterator();
+            } else {
+                newRanges.addAll(tables.getValue().getRanges());
+                continue;
+            }
 
-    		Object[] max_old_accounted_for = null;
+            ReconfigurationRange reconfigRange = reconfigRanges.next();
+            PartitionKeyComparator cmp = new PartitionKeyComparator();
 
-    		PartitionRange partitionRange = null;
-    		// Iterate through the old partition ranges.
-    		// Only move to the next old rang
-    		while (partitionRanges.hasNext() || (max_old_accounted_for != null && (cmp.compare(max_old_accounted_for, partitionRange.getMaxExcl())) != 0 )) {
-    			// only move to the next element if first time, or all of the previous
-    			// range has been accounted for
-    			if (partitionRange == null || cmp.compare(partitionRange.getMaxExcl(), max_old_accounted_for) <= 0) {
-    				partitionRange = partitionRanges.next();
-    			}
+            Object[] max_old_accounted_for = null;
 
-    			if (max_old_accounted_for == null) {
-    				// We have not accounted for any range yet
-    				max_old_accounted_for = partitionRange.getMinIncl();
-    			}
-   			if(cmp.compare(max_old_accounted_for, reconfigRange.getMinIncl().get(0)) < 0) {
-    				if(cmp.compare(partitionRange.getMaxExcl(), reconfigRange.getMinIncl().get(0)) <= 0) {
-    					// the end of the range is not moving
-        				newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
-    					max_old_accounted_for = partitionRange.getMaxExcl();
-    				} else {
-    					// the beginning/middle of the range is not moving
-				    newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, reconfigRange.getMinIncl().get(0)));
-    					max_old_accounted_for = reconfigRange.getMinIncl().get(0);
-    				}
-    			} else if(cmp.compare(max_old_accounted_for, reconfigRange.getMaxExcl().get(0)) < 0) {
-			    assert (partitionRange.getPartition() == reconfigRange.getOldPartition()) : "partitions do not match: <" + partitionRange.getPartition() + "> != <" + reconfigRange.getOldPartition() + ">";
-					if (cmp.compare(partitionRange.getMaxExcl(), reconfigRange.getMaxExcl().get(0)) < 0) {
-						// the end of the range is moving
-	    				newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), reconfigRange.getNewPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
-    					max_old_accounted_for = partitionRange.getMaxExcl();
-    				} else {
-    					// the beginning/middle of the range is moving
-        				newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), reconfigRange.getNewPartition(), max_old_accounted_for, reconfigRange.getMaxExcl().get(0)));
-    					max_old_accounted_for = reconfigRange.getMaxExcl().get(0);
-    					if(reconfigRanges.hasNext()) {
-    						reconfigRange = reconfigRanges.next();  
-    					}
-    				}
-    			} else {
-    				if(reconfigRanges.hasNext()) {
-    					reconfigRange = reconfigRanges.next();  
-    				}
-				else {
-        				newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
-    					max_old_accounted_for = partitionRange.getMaxExcl();
-    				    
-				}
-    			}
+            PartitionRange partitionRange = null;
+            // Iterate through the old partition ranges.
+            // Only move to the next old rang
+            while (partitionRanges.hasNext() || (max_old_accounted_for != null && (cmp.compare(max_old_accounted_for, partitionRange.getMaxExcl())) != 0)) {
+                // only move to the next element if first time, or all of the
+                // previous
+                // range has been accounted for
+                if (partitionRange == null || cmp.compare(partitionRange.getMaxExcl(), max_old_accounted_for) <= 0) {
+                    partitionRange = partitionRanges.next();
+                }
+
+                if (max_old_accounted_for == null) {
+                    // We have not accounted for any range yet
+                    max_old_accounted_for = partitionRange.getMinIncl();
+                }
+                if (cmp.compare(max_old_accounted_for, reconfigRange.getMinIncl().get(0)) < 0) {
+                    if (cmp.compare(partitionRange.getMaxExcl(), reconfigRange.getMinIncl().get(0)) <= 0) {
+                        // the end of the range is not moving
+                        newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
+                        max_old_accounted_for = partitionRange.getMaxExcl();
+                    } else {
+                        // the beginning/middle of the range is not moving
+                        newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, reconfigRange.getMinIncl().get(0)));
+                        max_old_accounted_for = reconfigRange.getMinIncl().get(0);
+                    }
+                } else if (cmp.compare(max_old_accounted_for, reconfigRange.getMaxExcl().get(0)) < 0) {
+                    assert (partitionRange.getPartition() == reconfigRange.getOldPartition()) : "partitions do not match: <" + partitionRange.getPartition() + "> != <"
+                            + reconfigRange.getOldPartition() + ">";
+                    if (cmp.compare(partitionRange.getMaxExcl(), reconfigRange.getMaxExcl().get(0)) < 0) {
+                        // the end of the range is moving
+                        newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), reconfigRange.getNewPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
+                        max_old_accounted_for = partitionRange.getMaxExcl();
+                    } else {
+                        // the beginning/middle of the range is moving
+                        newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), reconfigRange.getNewPartition(), max_old_accounted_for, reconfigRange.getMaxExcl()
+                                .get(0)));
+                        max_old_accounted_for = reconfigRange.getMaxExcl().get(0);
+                        if (reconfigRanges.hasNext()) {
+                            reconfigRange = reconfigRanges.next();
+                        }
+                    }
+                } else {
+                    if (reconfigRanges.hasNext()) {
+                        reconfigRange = reconfigRanges.next();
+                    } else {
+                        newRanges = addAndMergeRanges(newRanges, new PartitionRange(partitionRange.getTable(), partitionRange.getPartition(), max_old_accounted_for, partitionRange.getMaxExcl()));
+                        max_old_accounted_for = partitionRange.getMaxExcl();
+
+                    }
+                }
 
             }
-    	}
+        }
 
-	LOG.info("New incremental plan ranges: " + newRanges.toString());
-		
-		try {
-			this.previousIncrementalPlan = this.incrementalPlan;
-			this.incrementalPlan = new PartitionPhase(this.incrementalPlan.catalog_context, newRanges, this.partitionedTablesByFK);
-		} catch (Exception e) {
-			LOG.error(e);
-			throw new RuntimeException(e);
-		}
+        LOG.info("New incremental plan ranges: " + newRanges.toString());
+
+        try {
+            PartitionPhase new_plan = new PartitionPhase(this.catalog_context, newRanges, this.partitionedTablesByFK);
+            synchronized(this) {
+                this.previousIncrementalPlan = this.incrementalPlan;
+                this.incrementalPlan = new_plan;
+            }
+        } catch (Exception e) {
+            LOG.error(e);
+            throw new RuntimeException(e);
+        }
 
     }
-    
+
     public List<PartitionRange> addAndMergeRanges(List<PartitionRange> ranges, PartitionRange newRange) {
-    	ArrayList<PartitionRange> newRanges = new ArrayList<>();
-    	PartitionKeyComparator cmp = new PartitionKeyComparator();
-    	
-    	for(PartitionRange range : ranges) {
-    		if(range.getTable().equals(newRange.getTable()) && range.getPartition() == newRange.getPartition()) {
-    			if(cmp.compare(newRange.getMinIncl(), range.getMaxExcl()) == 0) {
-    				newRange = new PartitionRange(newRange.getTable(), newRange.getPartition(), range.getMinIncl(), newRange.getMaxExcl());
-    			} else if (cmp.compare(newRange.getMaxExcl(), range.getMinIncl()) == 0) {
-    				newRange = new PartitionRange(newRange.getTable(), newRange.getPartition(), newRange.getMinIncl(), range.getMaxExcl());
-    			} else {
-    				newRanges.add(range);
-    			}
-    		} else {
-    			newRanges.add(range);
-    		}
-    	}
-    	
-    	newRanges.add(newRange);
-    	
-    	return newRanges;
+        ArrayList<PartitionRange> newRanges = new ArrayList<>();
+        PartitionKeyComparator cmp = new PartitionKeyComparator();
+
+        for (PartitionRange range : ranges) {
+            if (range.getTable().equals(newRange.getTable()) && range.getPartition() == newRange.getPartition()) {
+                if (cmp.compare(newRange.getMinIncl(), range.getMaxExcl()) == 0) {
+                    newRange = new PartitionRange(newRange.getTable(), newRange.getPartition(), range.getMinIncl(), newRange.getMaxExcl());
+                } else if (cmp.compare(newRange.getMaxExcl(), range.getMinIncl()) == 0) {
+                    newRange = new PartitionRange(newRange.getTable(), newRange.getPartition(), newRange.getMinIncl(), range.getMaxExcl());
+                } else {
+                    newRanges.add(range);
+                }
+            } else {
+                newRanges.add(range);
+            }
+        }
+
+        newRanges.add(newRange);
+
+        return newRanges;
     }
 
 }
