@@ -4,6 +4,8 @@ import java.io.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import edu.brown.catalog.CatalogUtil;
 import org.apache.log4j.Logger;
@@ -715,7 +717,12 @@ public class B2WLoader extends Loader {
         int batchSize = 0;
 
         while (true){
-            line = in.readLine();
+            Matcher m = Pattern.compile("^\\s*(.*?)\\s*$").matcher(in.readLine());
+            if (m.find())
+                line =  m.group(1);
+            else
+                continue;
+
             if (line == null || line.isEmpty())
                 break;
             String[] items = line.split("\\s*\\|\\s*");
