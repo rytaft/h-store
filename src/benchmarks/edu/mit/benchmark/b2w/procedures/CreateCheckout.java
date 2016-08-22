@@ -1,10 +1,16 @@
 package edu.mit.benchmark.b2w.procedures;
 
+import java.util.Arrays;
+
+import org.apache.log4j.Logger;
 import org.voltdb.ProcInfo;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
+import org.voltdb.VoltType;
 
+import edu.brown.logging.LoggerUtil;
+import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
@@ -12,13 +18,13 @@ import edu.mit.benchmark.b2w.B2WConstants;
         singlePartition = true
     )
 public class CreateCheckout extends VoltProcedure {
-//    private static final Logger LOG = Logger.getLogger(VoltProcedure.class);
-//    private static final LoggerBoolean debug = new LoggerBoolean();
-//    private static final LoggerBoolean trace = new LoggerBoolean();
-//    static {
-//        LoggerUtil.setupLogging();
-//        LoggerUtil.attachObserver(LOG, debug, trace);
-//    }
+    private static final Logger LOG = Logger.getLogger(VoltProcedure.class);
+    private static final LoggerBoolean debug = new LoggerBoolean();
+    private static final LoggerBoolean trace = new LoggerBoolean();
+    static {
+        LoggerUtil.setupLogging();
+        LoggerUtil.attachObserver(LOG, debug, trace);
+    }
     
     public final SQLStmt createCheckoutStmt = new SQLStmt(
             "INSERT INTO CHECKOUT (" +
@@ -42,40 +48,7 @@ public class CreateCheckout extends VoltProcedure {
                 "?, " +   // freightPrice
                 "?"   +   // freightStatus
             ");");
-    
-    public final SQLStmt createCheckoutPaymentStmt = new SQLStmt(
-            "INSERT INTO CHECKOUT_PAYMENTS (" +
-                "checkoutId, " +
-                "paymentOptionId, " +
-                "paymentOptionType, " +
-                "dueDays, " +
-                "amount, " +
-                "installmentQuantity, " +
-                "interestAmount, " +
-                "interestRate, " +
-                "annualCET, " +
-                "number, " +
-                "criptoNumber, " +
-                "holdersName, " +
-                "securityCode, " +
-                "expirationDate" +
-            ") VALUES (" +
-                "?, " +   // checkoutId
-                "?, " +   // paymentOptionId
-                "?, " +   // paymentOptionType
-                "?, " +   // dueDays
-                "?, " +   // amount
-                "?, " +   // installmentQuantity
-                "?, " +   // interestAmount
-                "?, " +   // interestRate
-                "?, " +   // annualCET
-                "?, " +   // number
-                "?, " +   // criptoNumber
-                "?, " +   // holdersName
-                "?, " +   // securityCode
-                "?"   +   // expirationDate
-            ");");
-    
+        
     public final SQLStmt createCheckoutFreightDeliveryTimeStmt = new SQLStmt(
             "INSERT INTO CHECKOUT_FREIGHT_DELIVERY_TIME (" +
                 "checkoutId, " +
@@ -97,15 +70,15 @@ public class CreateCheckout extends VoltProcedure {
                 "?, " +   // id
                 "?"   +   // lineId
             ");");
-
-    public final SQLStmt getCartStmt = new SQLStmt("SELECT total FROM CART WHERE id = ? ");
-    public final SQLStmt getCartLinesStmt = new SQLStmt(
-            "SELECT id, stockTransactionId FROM CART_LINES WHERE cartId = ?;");
-    
     
     public VoltTable[] run(String checkout_id, String cart_id, String deliveryAddressId, String billingAddressId, 
             double amountDue, double total, String freightContract, double freightPrice, String freightStatus,
-            String line_id[], String transaction_id[], int delivery_time[]) {
+            String[] line_id, String[] transaction_id, int[] delivery_time) {
+        if (trace.val) {
+            LOG.trace("Creating checkout with params: " + checkout_id + ", " + cart_id + ", " + deliveryAddressId + ", " + billingAddressId + ", " +
+             amountDue + ", " + total + ", " + freightContract + ", " + freightPrice + ", " + freightStatus + ", " +
+             Arrays.asList(line_id).toString() + ", " + Arrays.asList(transaction_id).toString() + ", " + Arrays.asList(delivery_time).toString());
+        }
         voltQueueSQL(createCheckoutStmt,
                 checkout_id,
                 cart_id,
@@ -130,7 +103,7 @@ public class CreateCheckout extends VoltProcedure {
                         line_id);           
             }
 
-            if(delivery_time[i] != B2WConstants.NULL_DELIVERY_TIME) {                
+            if(delivery_time[i] != VoltType.NULL_INTEGER) {                
                 voltQueueSQL(createCheckoutFreightDeliveryTimeStmt,
                         checkout_id,
                         line_id,

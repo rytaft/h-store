@@ -5,6 +5,7 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
+import org.voltdb.VoltType;
 
 import edu.mit.benchmark.b2w.B2WConstants;
 
@@ -80,7 +81,7 @@ public class AddLineToCheckout extends VoltProcedure {
                 transaction_id,
                 line_id);           
 
-        if(delivery_time != B2WConstants.NULL_DELIVERY_TIME) {                
+        if(delivery_time != VoltType.NULL_INTEGER) {                
             voltQueueSQL(createCheckoutFreightDeliveryTimeStmt,
                     checkout_id,
                     line_id,

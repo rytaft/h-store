@@ -725,7 +725,7 @@ public class B2WLoader extends Loader {
 
             if (line == null || line.isEmpty())
                 break;
-            String[] items = line.split("\\s*\\|\\s*");
+            String[] items = line.trim().split("\\s*\\|\\s*");
 
             Object row_stock[] = new Object[num_cols_stock];
             int param;
