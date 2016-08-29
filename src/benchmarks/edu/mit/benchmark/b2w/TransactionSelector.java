@@ -18,7 +18,21 @@ public class TransactionSelector {
 	BufferedReader br = null;
 	Random r = null;
 
-	public TransactionSelector(String filename) throws FileNotFoundException {
+    private static TransactionSelector singleInstant = null;
+
+    public static TransactionSelector getTransactionSelector(String filename) throws FileNotFoundException {
+        if (singleInstant == null)
+            singleInstant = new TransactionSelector(filename);
+        else if (!singleInstant.getFilename().equals(filename))
+            throw new FileNotFoundException("All the filename passed to a TransactionSelector must be the same!");
+        return singleInstant;
+    }
+
+    public String getFilename(){
+        return filename;
+    }
+
+	private TransactionSelector(String filename) throws FileNotFoundException {
 		r = new Random();
 		this.filename = filename;
 

@@ -262,12 +262,11 @@ public class B2WLoader extends Loader {
         int batchSize = 0;
         int total = 0;
         while (true){
-            total++;
             String cart_line = in.readLine();
             if (cart_line == null || cart_line.isEmpty())
                 break;
+            total++;
             JSONObject cart = new JSONObject(cart_line);
-
 //            load table CART
             Object row_cart[] = new Object[num_cols_cart];
             int param = 0;
@@ -542,7 +541,6 @@ public class B2WLoader extends Loader {
         int batchSize = 0;
         int total = 0;
         while (true) {
-            total++;
             String checkout_line = in.readLine();
             if (checkout_line == null || checkout_line.isEmpty())
                 break;
@@ -553,6 +551,7 @@ public class B2WLoader extends Loader {
                 LOG.error("Can't find checkout in checkout identity :" + checkout_line);
                 continue;
             }
+            total++;
 //            load table CHECKOUT
             JSONObject freight = (JSONObject)getDataByType(checkout, KEY_TYPE_OBJECT,
                     "freight", path + ":checkout[freight]");
@@ -717,14 +716,14 @@ public class B2WLoader extends Loader {
         int batchSize = 0;
 
         while (true){
-            Matcher m = Pattern.compile("^\\s*(.*?)\\s*$").matcher(in.readLine());
+            line = in.readLine();
+            if (line == null || line.isEmpty())
+                break;
+            Matcher m = Pattern.compile("^\\s*(.*?)\\s*$").matcher(line);
             if (m.find())
                 line =  m.group(1);
             else
                 continue;
-
-            if (line == null || line.isEmpty())
-                break;
             String[] items = line.trim().split("\\s*\\|\\s*");
 
             Object row_stock[] = new Object[num_cols_stock];

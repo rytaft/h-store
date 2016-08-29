@@ -7,6 +7,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
@@ -119,7 +120,7 @@ public class B2WClient extends BenchmarkComponent {
         this.config = new B2WConfig(m_extraParams);
         this.stock_id_cache = new ConcurrentHashMap<>();
         try {
-            this.txn_selector = new TransactionSelector(this.config.operations_file);
+            this.txn_selector = TransactionSelector.getTransactionSelector(this.config.operations_file);
         } catch (FileNotFoundException e) {
             LOG.error("File not found: " + this.config.operations_file + ". Stack trace: " + e.getStackTrace(), e);
             throw new RuntimeException(e);
@@ -128,6 +129,7 @@ public class B2WClient extends BenchmarkComponent {
 
     @Override
     public void runLoop() {
+        LOG.debug("RUNNING B2WClient:" + ThreadLocalRandom.current().nextInt());
 
         try {
             Client client = this.getClientHandle();
