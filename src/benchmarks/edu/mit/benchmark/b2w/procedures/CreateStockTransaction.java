@@ -13,8 +13,10 @@ import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.mit.benchmark.b2w.B2WConstants;
 
+import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
+
 @ProcInfo(
-        partitionInfo = "STK_INVENTORY_STOCK.ID: 0",
+        partitionInfo = "STK_INVENTORY_STOCK.partition_key: 0",
         singlePartition = true
     )
 public class CreateStockTransaction extends VoltProcedure {
@@ -28,6 +30,7 @@ public class CreateStockTransaction extends VoltProcedure {
     
     public final SQLStmt createStockTxnStmt = new SQLStmt(
             "INSERT INTO STK_STOCK_TRANSACTION (" +
+                "partition_key, " +
                 "transaction_id, " +
                 "reserve_id, " +
                 "brand, " +
@@ -45,6 +48,7 @@ public class CreateStockTransaction extends VoltProcedure {
                 "subinventory, " +
                 "warehouse" +
             ") VALUES (" +
+                "?, " +   // partition_key
                 "?, " +   // transaction_id
                 "?, " +   // reserve_id
                 "?, " +   // brand
@@ -63,7 +67,7 @@ public class CreateStockTransaction extends VoltProcedure {
                 "?"   +   // warehouse
             ");");
 
-    public VoltTable[] run(String transaction_id, String[] reserve_id, String[] brand, TimestampType[] timestamp,
+    public VoltTable[] run(Integer partition_key, String transaction_id, String[] reserve_id, String[] brand, TimestampType[] timestamp,
         TimestampType[] expiration_date, byte[] is_kit, int requested_quantity, String[] reserve_lines, int[] reserved_quantity, long[] sku, 
         String[] solr_query, long[] store_id, int[] subinventory, int[] warehouse) {
         
@@ -86,6 +90,7 @@ public class CreateStockTransaction extends VoltProcedure {
             }
             
             voltQueueSQL(createStockTxnStmt,
+                    hashPartition(transaction_id),
                     transaction_id,
                     reserve_id[i],
                     brand[i],

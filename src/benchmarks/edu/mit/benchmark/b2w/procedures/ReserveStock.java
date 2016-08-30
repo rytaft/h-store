@@ -8,7 +8,7 @@ import org.voltdb.VoltTableRow;
 import org.voltdb.VoltType;
 
 @ProcInfo(
-        partitionInfo = "STK_INVENTORY_STOCK_QUANTITY.ID: 0",
+        partitionInfo = "STK_INVENTORY_STOCK_QUANTITY.partition_key: 0",
         singlePartition = true
     )
 public class ReserveStock extends VoltProcedure {
@@ -31,7 +31,7 @@ public class ReserveStock extends VoltProcedure {
         ); // available, purchase, session, id
 
 
-    public VoltTable[] run(String stock_id, int requested_quantity){
+    public VoltTable[] run(Integer partition_key, String stock_id, int requested_quantity){
         voltQueueSQL(getStockQtyStmt, stock_id);
         final VoltTable[] stock_results = voltExecuteSQL();
         assert stock_results.length == 1;

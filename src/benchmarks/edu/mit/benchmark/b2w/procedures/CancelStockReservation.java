@@ -13,7 +13,7 @@ import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
-        partitionInfo = "STK_INVENTORY_STOCK.ID: 0",
+        partitionInfo = "STK_INVENTORY_STOCK.partition_key: 0",
         singlePartition = true
     )
 public class CancelStockReservation extends VoltProcedure {
@@ -36,7 +36,7 @@ public class CancelStockReservation extends VoltProcedure {
         ); // available, purchase, session, id
 
     
-    public VoltTable[] run(String stock_id, int reserved_quantity){
+    public VoltTable[] run(Integer partition_key, String stock_id, int reserved_quantity){
         voltQueueSQL(getStockQtyStmt, stock_id);
         final VoltTable[] stock_results = voltExecuteSQL();
         assert stock_results.length == 1;

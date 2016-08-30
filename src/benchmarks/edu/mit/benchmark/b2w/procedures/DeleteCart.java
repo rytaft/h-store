@@ -6,7 +6,7 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
 @ProcInfo(
-        partitionInfo = "CART.ID: 0",
+        partitionInfo = "CART.partition_key: 0",
         singlePartition = true
     )
 public class DeleteCart extends VoltProcedure {
@@ -40,7 +40,7 @@ public class DeleteCart extends VoltProcedure {
             "DELETE FROM CART_LINE_PRODUCT_STORES WHERE cartId = ? ");
 
 
-    public VoltTable[] run(String cart_id){
+    public VoltTable[] run(Integer partition_key, String cart_id){
         voltQueueSQL(deleteCartCustomerStmt, cart_id);
         voltQueueSQL(deleteCartLinesStmt, cart_id);
         voltQueueSQL(deleteCartLineProductsStmt, cart_id);
