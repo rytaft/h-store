@@ -5,11 +5,14 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
+import org.voltdb.VoltType;
 
 import edu.mit.benchmark.b2w.B2WConstants;
 
+import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
+
 @ProcInfo(
-        partitionInfo = "CHECKOUT.ID: 0",
+        partitionInfo = "CHECKOUT.partition_key: 0",
         singlePartition = true
     )
 public class AddLineToCheckout extends VoltProcedure {
@@ -23,10 +26,12 @@ public class AddLineToCheckout extends VoltProcedure {
         
     public final SQLStmt createCheckoutFreightDeliveryTimeStmt = new SQLStmt(
             "INSERT INTO CHECKOUT_FREIGHT_DELIVERY_TIME (" +
+                "partition_key, " +
                 "checkoutId, " +
                 "lineId, " +
                 "deliveryTime" +
             ") VALUES (" +
+                "?, " +   // partition_key
                 "?, " +   // checkoutId
                 "?, " +   // lineId
                 "?"   +   // deliveryTime
@@ -34,10 +39,12 @@ public class AddLineToCheckout extends VoltProcedure {
 
     public final SQLStmt createCheckoutStockTxnStmt = new SQLStmt(
             "INSERT INTO CHECKOUT_STOCK_TRANSACTIONS (" +
+                "partition_key, " +
                 "checkoutId, " +
                 "id, " +
                 "lineId" +
             ") VALUES (" +
+                "?, " +   // partition_key
                 "?, " +   // checkoutId
                 "?, " +   // id
                 "?"   +   // lineId
@@ -55,7 +62,7 @@ public class AddLineToCheckout extends VoltProcedure {
             " WHERE id = ?;"
         ); //amountDue, total, freightContract, freightPrice, freightStatus, id
     
-    public VoltTable[] run(String checkout_id, String line_id, double salesPrice, String transaction_id, int delivery_time, 
+    public VoltTable[] run(Integer partition_key, String checkout_id, String line_id, double salesPrice, String transaction_id, int delivery_time,
             String freightContract, double freightPrice, String freightStatus) {
         voltQueueSQL(getCheckoutStmt, checkout_id);
         final VoltTable[] checkout_results = voltExecuteSQL();
@@ -76,12 +83,14 @@ public class AddLineToCheckout extends VoltProcedure {
         }      
 
         voltQueueSQL(createCheckoutStockTxnStmt,
+                hashPartition(checkout_id),
                 checkout_id,
                 transaction_id,
                 line_id);           
 
-        if(delivery_time != B2WConstants.NULL_DELIVERY_TIME) {                
+        if(delivery_time != VoltType.NULL_INTEGER) {                
             voltQueueSQL(createCheckoutFreightDeliveryTimeStmt,
+                    hashPartition(checkout_id),
                     checkout_id,
                     line_id,
                     delivery_time);

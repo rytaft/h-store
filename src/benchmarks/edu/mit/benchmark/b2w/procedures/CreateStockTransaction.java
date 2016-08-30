@@ -1,5 +1,6 @@
 package edu.mit.benchmark.b2w.procedures;
 
+import org.apache.log4j.Logger;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.voltdb.ProcInfo;
@@ -8,23 +9,28 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.types.TimestampType;
 
+import edu.brown.logging.LoggerUtil;
+import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.mit.benchmark.b2w.B2WConstants;
 
+import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
+
 @ProcInfo(
-        partitionInfo = "STK_INVENTORY_STOCK.ID: 0",
+        partitionInfo = "STK_INVENTORY_STOCK.partition_key: 0",
         singlePartition = true
     )
 public class CreateStockTransaction extends VoltProcedure {
-//    private static final Logger LOG = Logger.getLogger(VoltProcedure.class);
-//    private static final LoggerBoolean debug = new LoggerBoolean();
-//    private static final LoggerBoolean trace = new LoggerBoolean();
-//    static {
-//        LoggerUtil.setupLogging();
-//        LoggerUtil.attachObserver(LOG, debug, trace);
-//    }
+    private static final Logger LOG = Logger.getLogger(VoltProcedure.class);
+    private static final LoggerBoolean debug = new LoggerBoolean();
+    private static final LoggerBoolean trace = new LoggerBoolean();
+    static {
+        LoggerUtil.setupLogging();
+        LoggerUtil.attachObserver(LOG, debug, trace);
+    }
     
     public final SQLStmt createStockTxnStmt = new SQLStmt(
             "INSERT INTO STK_STOCK_TRANSACTION (" +
+                "partition_key, " +
                 "transaction_id, " +
                 "reserve_id, " +
                 "brand, " +
@@ -42,6 +48,7 @@ public class CreateStockTransaction extends VoltProcedure {
                 "subinventory, " +
                 "warehouse" +
             ") VALUES (" +
+                "?, " +   // partition_key
                 "?, " +   // transaction_id
                 "?, " +   // reserve_id
                 "?, " +   // brand
@@ -60,8 +67,8 @@ public class CreateStockTransaction extends VoltProcedure {
                 "?"   +   // warehouse
             ");");
 
-    public VoltTable[] run(String transaction_id, String[] reserve_id, String[] brand, TimestampType[] timestamp,
-        TimestampType[] expiration_date, byte[] is_kit, int[] requested_quantity, String[] reserve_lines, int[] reserved_quantity, long[] sku, 
+    public VoltTable[] run(Integer partition_key, String transaction_id, String[] reserve_id, String[] brand, TimestampType[] timestamp,
+        TimestampType[] expiration_date, byte[] is_kit, int requested_quantity, String[] reserve_lines, int[] reserved_quantity, long[] sku, 
         String[] solr_query, long[] store_id, int[] subinventory, int[] warehouse) {
         
         String current_status = B2WConstants.STATUS_NEW;
@@ -71,13 +78,19 @@ public class CreateStockTransaction extends VoltProcedure {
 
             JSONObject status_obj = new JSONObject();
             try {
-                status_obj.append(timestamp[i].toString(), current_status);
+                status_obj.put(timestamp[i].toString(), current_status);
             } catch (JSONException e) {
-                // ignore
+                if (debug.val) {
+                    LOG.debug("Failed to append current status " + current_status + " at timestamp " + timestamp[i].toString());
+                }
             }       
             String status = status_obj.toString();
+            if (trace.val) {
+                LOG.trace("Creating transaction " + transaction_id + " with status " + status);
+            }
             
             voltQueueSQL(createStockTxnStmt,
+                    hashPartition(transaction_id),
                     transaction_id,
                     reserve_id[i],
                     brand[i],
@@ -85,7 +98,7 @@ public class CreateStockTransaction extends VoltProcedure {
                     current_status,
                     expiration_date[i],
                     is_kit[i],
-                    requested_quantity[i],
+                    requested_quantity,
                     reserve_lines[i],
                     reserved_quantity[i],
                     sku[i],
@@ -95,6 +108,8 @@ public class CreateStockTransaction extends VoltProcedure {
                     subinventory[i],
                     warehouse[i]);
         }
+        
+        if (reserve_id.length == 0) return null;
         
         return voltExecuteSQL(true);
     }

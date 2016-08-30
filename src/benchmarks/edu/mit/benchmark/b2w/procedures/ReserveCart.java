@@ -14,8 +14,10 @@ import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.mit.benchmark.b2w.B2WConstants;
 
+import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
+
 @ProcInfo(
-        partitionInfo = "CART.ID: 0",
+        partitionInfo = "CART.partition_key: 0",
         singlePartition = true
     )
 public class ReserveCart extends VoltProcedure {
@@ -29,12 +31,14 @@ public class ReserveCart extends VoltProcedure {
     
     public final SQLStmt createCartCustomerStmt = new SQLStmt(
             "INSERT INTO CART_CUSTOMER (" +
+                "partition_key, " +
                 "cartId, " +
                 "id, " +
                 "token, " +
                 "guest, " +
                 "isGuest" +
             ") VALUES (" +
+                "?, " +   // partition_key
                 "?, " +   // cartId
                 "?, " +   // id
                 "?, " +   // token
@@ -70,7 +74,7 @@ public class ReserveCart extends VoltProcedure {
         ); // lastModified, status, id
 
 
-    public VoltTable[] run(String cart_id, TimestampType timestamp, String customer_id,
+    public VoltTable[] run(Integer partition_key, String cart_id, TimestampType timestamp, String customer_id,
             String token, byte guest, byte isGuest, String line_ids[], int requested_quantity[],
             int reserved_quantity[], String status[], String stock_type[], String transaction_id[]){
         assert(line_ids.length == transaction_id.length);
@@ -112,7 +116,7 @@ public class ReserveCart extends VoltProcedure {
         
         String cart_status = B2WConstants.STATUS_RESERVED;
         
-        voltQueueSQL(createCartCustomerStmt, cart_id, customer_id, token, guest, isGuest);
+        voltQueueSQL(createCartCustomerStmt, hashPartition(cart_id), cart_id, customer_id, token, guest, isGuest);
         voltQueueSQL(updateCartStmt, timestamp, cart_status, cart_id);
         
         return voltExecuteSQL(true);

@@ -8,7 +8,7 @@ import org.voltdb.VoltTableRow;
 import org.voltdb.types.TimestampType;
 
 @ProcInfo(
-        partitionInfo = "CART.ID: 0",
+        partitionInfo = "CART.partition_key: 0",
         singlePartition = true
     )
 public class DeleteLineFromCart extends VoltProcedure {
@@ -47,7 +47,7 @@ public class DeleteLineFromCart extends VoltProcedure {
         ); //total, lastModified, id
 
 
-    public VoltTable[] run(String cart_id, TimestampType timestamp, String line_id){
+    public VoltTable[] run(Integer partition_key, String cart_id, TimestampType timestamp, String line_id){
         voltQueueSQL(getCartStmt, cart_id);
         voltQueueSQL(getCartLineStmt, cart_id, line_id);
         final VoltTable[] cart_results = voltExecuteSQL();
