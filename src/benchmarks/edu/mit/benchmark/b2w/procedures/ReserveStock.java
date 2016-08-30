@@ -31,7 +31,7 @@ public class ReserveStock extends VoltProcedure {
         ); // available, purchase, session, id
 
 
-    public VoltTable[] run(Integer partition_key, String stock_id, int requested_quantity){
+    public VoltTable[] run(int partition_key, String stock_id, int requested_quantity){
         voltQueueSQL(getStockQtyStmt, stock_id);
         final VoltTable[] stock_results = voltExecuteSQL();
         assert stock_results.length == 1;

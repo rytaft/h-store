@@ -79,7 +79,7 @@ public class CreateCheckout extends VoltProcedure {
                 "?"   +   // lineId
             ");");
     
-    public VoltTable[] run(Integer partition_key, String checkout_id, String cart_id, String deliveryAddressId, String billingAddressId,
+    public VoltTable[] run(int partition_key, String checkout_id, String cart_id, String deliveryAddressId, String billingAddressId,
             double amountDue, double total, String freightContract, double freightPrice, String freightStatus,
             String[] line_id, String[] transaction_id, int[] delivery_time) {
         if (trace.val) {

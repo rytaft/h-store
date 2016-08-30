@@ -131,8 +131,6 @@ public class B2WClient extends BenchmarkComponent {
 
     @Override
     public void runLoop() {
-        LOG.debug("RUNNING B2WClient:" + ThreadLocalRandom.current().nextInt());
-
         try {
             Client client = this.getClientHandle();
 
@@ -1113,7 +1111,7 @@ public class B2WClient extends BenchmarkComponent {
     }
 
     private ClientResponse runSynchTransaction(Transaction target, Object params[]) throws IOException {
-        if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName);
+        if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName + " params: " + Arrays.asList(params).toString());
         try {
             ClientResponse clientResponse = this.getClientHandle().callProcedure(target.callName, params);
             // Increment the BenchmarkComponent's internal counter on the

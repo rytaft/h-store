@@ -39,7 +39,7 @@ public class DeleteLineFromCheckout extends VoltProcedure {
         ); //amountDue, total, freightContract, freightPrice, freightStatus, id
 
 
-    public VoltTable[] run(Integer partition_key, String checkout_id, String line_id, double salesPrice, String freightContract, double freightPrice, String freightStatus){
+    public VoltTable[] run(int partition_key, String checkout_id, String line_id, double salesPrice, String freightContract, double freightPrice, String freightStatus){
         voltQueueSQL(getCheckoutStmt, checkout_id);
         final VoltTable[] checkout_results = voltExecuteSQL();
         assert checkout_results.length == 2;

@@ -47,7 +47,7 @@ public class DeleteLineFromCart extends VoltProcedure {
         ); //total, lastModified, id
 
 
-    public VoltTable[] run(Integer partition_key, String cart_id, TimestampType timestamp, String line_id){
+    public VoltTable[] run(int partition_key, String cart_id, TimestampType timestamp, String line_id){
         voltQueueSQL(getCartStmt, cart_id);
         voltQueueSQL(getCartLineStmt, cart_id, line_id);
         final VoltTable[] cart_results = voltExecuteSQL();

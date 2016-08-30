@@ -30,7 +30,7 @@ public class GetCheckout extends VoltProcedure {
     public final SQLStmt getCheckoutStockTransactionsStmt = new SQLStmt(
             "SELECT * FROM CHECKOUT_STOCK_TRANSACTIONS WHERE checkoutId = ? ");
 
-    public VoltTable[] run(Integer partition_key, String checkout_id){
+    public VoltTable[] run(int partition_key, String checkout_id){
         voltQueueSQL(getCheckoutStmt, checkout_id);
         voltQueueSQL(getCheckoutPaymentsStmt, checkout_id);
         voltQueueSQL(getCheckoutFreightDeliveryTimeStmt, checkout_id);

@@ -38,7 +38,7 @@ public class UpdateStockTransaction extends VoltProcedure {
         ); // current_status, status, transaction_id
 
     
-    public VoltTable[] run(Integer partition_key, String transaction_id, TimestampType timestamp, String current_status){
+    public VoltTable[] run(int partition_key, String transaction_id, TimestampType timestamp, String current_status){
         voltQueueSQL(getStockTxnStmt, transaction_id);
         final VoltTable[] stock_txn_results = voltExecuteSQL();
         assert stock_txn_results.length == 1;

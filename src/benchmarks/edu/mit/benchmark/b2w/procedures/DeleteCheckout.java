@@ -30,7 +30,7 @@ public class DeleteCheckout extends VoltProcedure {
     public final SQLStmt deleteCheckoutStockTransactionsStmt = new SQLStmt(
             "DELETE FROM CHECKOUT_STOCK_TRANSACTIONS WHERE checkoutId = ? ");
 
-    public VoltTable[] run(Integer partition_key, String checkout_id){
+    public VoltTable[] run(int partition_key, String checkout_id){
         voltQueueSQL(deleteCheckoutPaymentsStmt, checkout_id);
         voltQueueSQL(deleteCheckoutFreightDeliveryTimeStmt, checkout_id);
         voltQueueSQL(deleteCheckoutStockTransactionsStmt, checkout_id);

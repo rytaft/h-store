@@ -40,7 +40,7 @@ public class GetCart extends VoltProcedure {
             "SELECT * FROM CART_LINE_PRODUCT_STORES WHERE cartId = ? ");
 
 
-    public VoltTable[] run(Integer partition_key, String cart_id){
+    public VoltTable[] run(int partition_key, String cart_id){
         voltQueueSQL(getCartStmt, cart_id);
         voltQueueSQL(getCartCustomerStmt, cart_id);
         voltQueueSQL(getCartLinesStmt, cart_id);

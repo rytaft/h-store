@@ -62,7 +62,7 @@ public class AddLineToCheckout extends VoltProcedure {
             " WHERE id = ?;"
         ); //amountDue, total, freightContract, freightPrice, freightStatus, id
     
-    public VoltTable[] run(Integer partition_key, String checkout_id, String line_id, double salesPrice, String transaction_id, int delivery_time,
+    public VoltTable[] run(int partition_key, String checkout_id, String line_id, double salesPrice, String transaction_id, int delivery_time,
             String freightContract, double freightPrice, String freightStatus) {
         voltQueueSQL(getCheckoutStmt, checkout_id);
         final VoltTable[] checkout_results = voltExecuteSQL();

@@ -67,7 +67,7 @@ public class CreateStockTransaction extends VoltProcedure {
                 "?"   +   // warehouse
             ");");
 
-    public VoltTable[] run(Integer partition_key, String transaction_id, String[] reserve_id, String[] brand, TimestampType[] timestamp,
+    public VoltTable[] run(int partition_key, String transaction_id, String[] reserve_id, String[] brand, TimestampType[] timestamp,
         TimestampType[] expiration_date, byte[] is_kit, int requested_quantity, String[] reserve_lines, int[] reserved_quantity, long[] sku, 
         String[] solr_query, long[] store_id, int[] subinventory, int[] warehouse) {
         

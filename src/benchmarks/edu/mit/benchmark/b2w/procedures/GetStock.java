@@ -20,7 +20,7 @@ public class GetStock extends VoltProcedure {
         
     public final SQLStmt getStockStmt = new SQLStmt("SELECT * FROM STK_INVENTORY_STOCK WHERE sku = ? ");
         
-    public VoltTable[] run(Integer partition_key, long sku){
+    public VoltTable[] run(int partition_key, long sku){
         voltQueueSQL(getStockStmt, sku);
         
         return voltExecuteSQL(true);
