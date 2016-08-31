@@ -247,10 +247,10 @@ public class Controller extends Thread {
             t2 = System.currentTimeMillis();
             record("Time taken:" + (t2-t1));
                         
-            if (partitioner instanceof PartitionerAffinity){
-                ((PartitionerAffinity) partitioner).graphToFile(FileSystems.getDefault().getPath(".", "graph.log"));
-                ((PartitionerAffinity) partitioner).graphToCPLEXFile(FileSystems.getDefault().getPath(".", "graph-cplex.txt"));
-            }
+//            if (partitioner instanceof PartitionerAffinity){
+//                ((PartitionerAffinity) partitioner).graphToFile(FileSystems.getDefault().getPath(".", "graph.log"));
+//                ((PartitionerAffinity) partitioner).graphToCPLEXFile(FileSystems.getDefault().getPath(".", "graph-cplex.txt"));
+//            }
             
             record("======================== PARTITIONING GRAPH ========================");
             t1 = System.currentTimeMillis();
