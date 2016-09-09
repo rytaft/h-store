@@ -367,11 +367,7 @@ public abstract class VoltTableRow {
             m_wasNull = (value4 == VoltType.NULL_BIGINT);
             return value4;
         default:
-            throw new IllegalArgumentException("getLong() called on non-integral column:"
-                    + getColumnType(0) + ","
-                    + getColumnType(columnIndex - 1) + ","
-                    + type + ","
-                    + getColumnType(columnIndex + 1) + ",");
+            throw new IllegalArgumentException("getLong() called on non-integral column.");
         }
     }
 
