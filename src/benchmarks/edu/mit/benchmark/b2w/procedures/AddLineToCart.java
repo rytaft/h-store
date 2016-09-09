@@ -166,7 +166,7 @@ public class AddLineToCart extends VoltProcedure {
         
         if (cart_results[0].getRowCount() > 0) {
             final VoltTableRow cart = cart_results[0].fetchRow(0);
-            final int CART_ID = 0, TOTAL = 1, STATUS = 6;
+            final int CART_ID = 0 + 1, TOTAL = 1 + 1, STATUS = 6 + 1;
             assert cart_id.equals(cart.getString(CART_ID));
             total = cart.getDouble(TOTAL);
             status = cart.getString(STATUS);        

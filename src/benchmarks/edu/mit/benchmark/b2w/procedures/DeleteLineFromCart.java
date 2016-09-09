@@ -58,7 +58,7 @@ public class DeleteLineFromCart extends VoltProcedure {
 
         if (cart_results[0].getRowCount() > 0) {
             final VoltTableRow cart = cart_results[0].fetchRow(0);
-            final int TOTAL = 0;
+            final int TOTAL = 0 + 1;
             total = cart.getDouble(TOTAL);
         } else {
             return null;
@@ -66,7 +66,7 @@ public class DeleteLineFromCart extends VoltProcedure {
         
         if (cart_results[1].getRowCount() > 0) {
             final VoltTableRow cart_line = cart_results[1].fetchRow(0);
-            final int SALES_PRICE = 0;
+            final int SALES_PRICE = 0 + 1;
             salesPrice = cart_line.getDouble(SALES_PRICE);
         } else {
             return null;

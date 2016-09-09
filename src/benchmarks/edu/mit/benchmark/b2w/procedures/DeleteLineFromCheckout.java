@@ -50,7 +50,7 @@ public class DeleteLineFromCheckout extends VoltProcedure {
 
         if (checkout_results[0].getRowCount() > 0) {
             final VoltTableRow checkout = checkout_results[0].fetchRow(0);
-            final int AMOUNT_DUE = 0, TOTAL = 1, FREIGHT_PRICE = 2;
+            final int AMOUNT_DUE = 0 + 1, TOTAL = 1 + 1, FREIGHT_PRICE = 2 + 1;
             amountDue = checkout.getDouble(AMOUNT_DUE);
             total = checkout.getDouble(TOTAL);
             oldFreightPrice = checkout.getDouble(FREIGHT_PRICE);

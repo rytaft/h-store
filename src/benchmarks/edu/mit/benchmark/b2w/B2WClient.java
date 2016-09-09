@@ -312,7 +312,7 @@ public class B2WClient extends BenchmarkComponent {
         HashSet<String> stock_ids = new HashSet<>();
         for (int i = 0; i < getStockResponse.getResults()[0].getRowCount(); ++i) {
             final VoltTableRow stock = getStockResponse.getResults()[0].fetchRow(i);
-            final int STOCK_ID = 1;
+            final int STOCK_ID = 1 + 1;
             stock_ids.add(stock.getString(STOCK_ID));
         }
         
@@ -445,7 +445,7 @@ public class B2WClient extends BenchmarkComponent {
             
             for (int j = 0; j < getStockTxnResponse.getResults()[0].getRowCount(); ++j) {
                 final VoltTableRow stockTransaction = getStockTxnResponse.getResults()[0].fetchRow(j);
-                final int RESERVE_LINES = 8;
+                final int RESERVE_LINES = 8 + 1;
 
                 String reserve_lines = stockTransaction.getString(RESERVE_LINES);
                 JSONObject reserve_lines_obj = new JSONObject(reserve_lines);
@@ -586,7 +586,7 @@ public class B2WClient extends BenchmarkComponent {
                 }
                 
                 final VoltTableRow stockQty = stockQtyResponse.getResults()[0].fetchRow(0);
-                final int AVAILABLE = 1;
+                final int AVAILABLE = 1 + 1;
                 total_available += stockQty.getLong(AVAILABLE);
                 if (total_available >= requested_quantity) break;
             }
@@ -673,10 +673,10 @@ public class B2WClient extends BenchmarkComponent {
             }
             return false;        
         }
-        final int CART_LINES_RESULTS = 2;
+        final int CART_LINES_RESULTS = 2 + 1;
         
         VoltTableRow cartLine = null;
-        final int LINE_ID = 1, SALES_PRICE = 6, STOCK_TRANSACTION_ID = 11;
+        final int LINE_ID = 1 + 1, SALES_PRICE = 6 + 1, STOCK_TRANSACTION_ID = 11 + 1;
         for (int i = 0; i < cartResponse.getResults()[CART_LINES_RESULTS].getRowCount(); ++i) {
             cartLine = cartResponse.getResults()[CART_LINES_RESULTS].fetchRow(i);
             if (cartLine.getString(LINE_ID).equals(line_id)) {
@@ -774,7 +774,7 @@ public class B2WClient extends BenchmarkComponent {
             }
             return false;        
         }
-        final int CART_LINES_RESULTS = 2;
+        final int CART_LINES_RESULTS = 2 + 1;
         if (trace.val) {
             LOG.trace("CartLines of cart " + cart_id + ": " + cartResponse.getResults()[CART_LINES_RESULTS].toString());
         }
@@ -800,7 +800,7 @@ public class B2WClient extends BenchmarkComponent {
         // Create a new stock transaction.
         for (int i = 0; i < lines_count; ++i) {
             final VoltTableRow cartLine = cartResponse.getResults()[CART_LINES_RESULTS].fetchRow(i);
-            final int LINE_ID = 1, QUANTITY = 7;
+            final int LINE_ID = 1 + 1, QUANTITY = 7 + 1;
             String line_id = cartLine.getString(LINE_ID);
             if (!lines_map.containsKey(line_id)) {
                 LOG.info("No log info for line_id: " + line_id);
@@ -921,7 +921,7 @@ public class B2WClient extends BenchmarkComponent {
             }
             return false;        
         }
-        final int CHECKOUT_STOCK_TRANSACTIONS_RESULTS = 3;
+        final int CHECKOUT_STOCK_TRANSACTIONS_RESULTS = 3 + 1;
         if (trace.val) {
             LOG.trace("StockTransactions of checkout " + checkout_id + ": " + 
                     checkoutResponse.getResults()[CHECKOUT_STOCK_TRANSACTIONS_RESULTS].toString());
@@ -930,7 +930,7 @@ public class B2WClient extends BenchmarkComponent {
         TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
         for (int i = 0; i < checkoutResponse.getResults()[CHECKOUT_STOCK_TRANSACTIONS_RESULTS].getRowCount(); ++i) {
             final VoltTableRow checkoutStockTransaction = checkoutResponse.getResults()[CHECKOUT_STOCK_TRANSACTIONS_RESULTS].fetchRow(i);
-            final int TRANSACTION_ID = 1;
+            final int TRANSACTION_ID = 1 + 1;
             String transaction_id = checkoutStockTransaction.getString(TRANSACTION_ID);
             
             Object getStockTxnParams[] = { hashPartition(transaction_id), transaction_id };
@@ -949,7 +949,7 @@ public class B2WClient extends BenchmarkComponent {
             boolean purchased = false;
             for (int j = 0; j < getStockTxnResponse.getResults()[0].getRowCount(); ++j) {
                 final VoltTableRow stockTransaction = getStockTxnResponse.getResults()[0].fetchRow(j);
-                final int CURRENT_STATUS = 4, RESERVE_LINES = 8;
+                final int CURRENT_STATUS = 4 + 1, RESERVE_LINES = 8 + 1;
                 
                 String current_status = stockTransaction.getString(CURRENT_STATUS);                
                 if (current_status.equals(B2WConstants.STATUS_CANCELLED)) {
