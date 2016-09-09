@@ -24,6 +24,7 @@ public class B2WConfig {
     public String stock_quantity_data_file = null;
     public String stock_inventory_data_file = null;
     public String operations_file = null;
+    public Long speed_up = 0L;
     
     
     public B2WConfig(Map<String, String> m_extraParams) {
@@ -53,6 +54,9 @@ public class B2WConfig {
             }
             else if (key.equalsIgnoreCase("operations_file")) {
                 this.operations_file = String.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("speed_up")) {
+                this.speed_up = Long.valueOf(value);
             }
         } // FOR
             
