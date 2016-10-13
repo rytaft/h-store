@@ -1,6 +1,6 @@
 
 CREATE TABLE STK_INVENTORY_STOCK (
-        sku BIGINT NOT NULL,
+        sku VARCHAR(32) NOT NULL,
         id VARCHAR(128) NOT NULL,
         warehouse INTEGER,
         sub_inventory INTEGER,
@@ -30,10 +30,10 @@ CREATE TABLE STK_STOCK_TRANSACTION (
         requested_quantity INTEGER,
         reserve_lines VARCHAR(256),
         reserved_quantity INTEGER,
-        sku BIGINT, -- REFERENCES STK_INVENTORY_STOCK(sku)
+        sku VARCHAR(32), -- REFERENCES STK_INVENTORY_STOCK(sku)
         solr_query VARCHAR(128),
         status VARCHAR(256),
-        store_id BIGINT,
+        store_id VARCHAR(32),
         subinventory INTEGER,
         warehouse INTEGER,
         PRIMARY KEY (reserve_id)
@@ -63,9 +63,9 @@ CREATE INDEX IDX_CART_CUSTOMER ON CART_CUSTOMER(cartId);
 CREATE TABLE CART_LINES (
         cartId VARCHAR(128) NOT NULL REFERENCES CART(id),
         id VARCHAR(128), -- <productSku>-<storeId> 
-        productSku BIGINT, -- REFERENCES CART_LINE_PRODUCTS(sku)
+        productSku VARCHAR(32), -- REFERENCES CART_LINE_PRODUCTS(sku)
         productId BIGINT, -- REFERENCES CART_LINE_PRODUCTS(id)
-        storeId BIGINT, -- REFERENCES CART_LINE_PRODUCT_STORES(id)
+        storeId VARCHAR(32), -- REFERENCES CART_LINE_PRODUCT_STORES(id)
         unitSalesPrice FLOAT,
         salesPrice FLOAT,
         quantity INTEGER,
@@ -84,7 +84,7 @@ CREATE TABLE CART_LINE_PRODUCTS (
         cartId VARCHAR(128) NOT NULL REFERENCES CART(id),
         lineId VARCHAR(128), -- REFERENCES CART_LINES(id)
         id BIGINT,
-        sku BIGINT,
+        sku VARCHAR(32),
         image VARCHAR(256),
         name VARCHAR(128),
         isKit TINYINT,
@@ -114,7 +114,7 @@ CREATE INDEX IDX_CART_LINE_PROMOTIONS ON CART_LINE_PROMOTIONS(cartId);
 CREATE TABLE CART_LINE_PRODUCT_WARRANTIES (
         cartId VARCHAR(128) NOT NULL REFERENCES CART(id),
         lineId VARCHAR(128), -- REFERENCES CART_LINES(id)
-        sku BIGINT,
+        sku VARCHAR(32),
         productSku VARCHAR(128), -- REFERENCES CART_LINES(id)
         description VARCHAR(256)
 );
@@ -123,7 +123,7 @@ CREATE INDEX IDX_CART_LINE_PRODUCT_WARRANTIES ON CART_LINE_PRODUCT_WARRANTIES(ca
 CREATE TABLE CART_LINE_PRODUCT_STORES (
         cartId VARCHAR(128) NOT NULL REFERENCES CART(id),
         lineId VARCHAR(128), -- REFERENCES CART_LINES(id)
-        id BIGINT,
+        id VARCHAR(32),
         name VARCHAR(32),
         image VARCHAR(256),
         deliveryType VARCHAR(32)
