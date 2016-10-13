@@ -5,7 +5,7 @@ CREATE TABLE STK_INVENTORY_STOCK (
         warehouse INTEGER,
         sub_inventory INTEGER,
         stock_type INTEGER,
-        store_id BIGINT,
+        store_id VARCHAR(32),
         lead_time INTEGER,
         PRIMARY KEY (id)
 );
