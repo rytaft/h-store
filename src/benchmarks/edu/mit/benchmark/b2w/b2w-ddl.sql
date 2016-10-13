@@ -31,7 +31,6 @@ CREATE TABLE STK_STOCK_TRANSACTION (
         reserve_lines VARCHAR(256),
         reserved_quantity INTEGER,
         sku VARCHAR(32), -- REFERENCES STK_INVENTORY_STOCK(sku)
-        solr_query VARCHAR(128),
         status VARCHAR(256),
         store_id VARCHAR(32),
         subinventory INTEGER,

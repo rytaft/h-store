@@ -82,7 +82,6 @@ public class B2WLoader extends Loader {
             KEY_TYPE_VARCHAR,
             KEY_TYPE_VARCHAR,
             KEY_TYPE_VARCHAR,
-            KEY_TYPE_VARCHAR,
             KEY_TYPE_INTEGER,
             KEY_TYPE_INTEGER};
 

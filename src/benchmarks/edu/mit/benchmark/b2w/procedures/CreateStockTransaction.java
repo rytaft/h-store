@@ -39,7 +39,6 @@ public class CreateStockTransaction extends VoltProcedure {
                 "reserve_lines, " +
                 "reserved_quantity, " +
                 "sku, " +
-                "solr_query, " +
                 "status, " +
                 "store_id, " +
                 "subinventory, " +
@@ -56,7 +55,6 @@ public class CreateStockTransaction extends VoltProcedure {
                 "?, " +   // reserve_lines
                 "?, " +   // reserved_quantity
                 "?, " +   // sku
-                "?, " +   // solr_query
                 "?, " +   // status
                 "?, " +   // store_id
                 "?, " +   // subinventory
@@ -65,7 +63,7 @@ public class CreateStockTransaction extends VoltProcedure {
 
     public VoltTable[] run(String transaction_id, String[] reserve_id, String[] brand, TimestampType[] timestamp,
         TimestampType[] expiration_date, byte[] is_kit, int requested_quantity, String[] reserve_lines, int[] reserved_quantity, String[] sku, 
-        String[] solr_query, String[] store_id, int[] subinventory, int[] warehouse) {
+        String[] store_id, int[] subinventory, int[] warehouse) {
         
         String current_status = B2WConstants.STATUS_NEW;
         
@@ -97,7 +95,6 @@ public class CreateStockTransaction extends VoltProcedure {
                     reserve_lines[i],
                     reserved_quantity[i],
                     sku[i],
-                    solr_query[i],
                     status,
                     store_id[i],
                     subinventory[i],

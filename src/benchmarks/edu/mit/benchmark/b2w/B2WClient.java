@@ -337,7 +337,6 @@ public class B2WClient extends BenchmarkComponent {
         String[] reserve_lines = new String[reserve_count];
         int[] reserved_quantity = new int[reserve_count];
         String[] sku = new String[reserve_count];
-        String[] solr_query = new String[reserve_count];
         String[] store_id = new String[reserve_count];
         int[] subinventory = new int[reserve_count];
         int[] warehouse = new int[reserve_count];
@@ -387,7 +386,6 @@ public class B2WClient extends BenchmarkComponent {
                 is_kit[j] = getBoolean(reserve, B2WConstants.PARAMS_IS_KIT);
                 reserve_lines[j] = getString(reserve, B2WConstants.PARAMS_RESERVE_LINES);
                 sku[j] = getString(reserve, B2WConstants.PARAMS_SKU);
-                solr_query[j] = getString(reserve, B2WConstants.PARAMS_SOLR_QUERY);
                 store_id[j] = getString(reserve, B2WConstants.PARAMS_STORE_ID);
                 subinventory[j] = getInteger(reserve, B2WConstants.PARAMS_SUBINVENTORY);
                 warehouse[j] = getInteger(reserve, B2WConstants.PARAMS_WAREHOUSE);
@@ -399,7 +397,7 @@ public class B2WClient extends BenchmarkComponent {
         // Create the stock transaction
         Object createStockTxnParams[] = new Object[]{ transaction_id, reserve_id, brand, timestamp, 
                 expiration_date, is_kit, requested_quantity, reserve_lines, reserved_quantity, sku, 
-                solr_query, store_id, subinventory, warehouse };
+                store_id, subinventory, warehouse };
         /**** TRANSACTION ****/
         runAsynchTransaction(Transaction.CREATE_STOCK_TRANSACTION, createStockTxnParams);               
         
@@ -511,7 +509,6 @@ public class B2WClient extends BenchmarkComponent {
     //          "reserveLines": <reserve_lines>, 
     //          "reservedQuantity": <reserved_quantity>, 
     //          "sku": <sku>, 
-    //          "solrQuery": <solr_query>, 
     //          "storeId": <store_id>, 
     //          "subinventory": <subinventory>, 
     //          "warehouse": <warehouse>
@@ -747,7 +744,6 @@ public class B2WClient extends BenchmarkComponent {
     //          "reserveLines": <reserve_lines>, 
     //          "reservedQuantity": <reserved_quantity>, 
     //          "sku": <sku>, 
-    //          "solrQuery": <solr_query>, 
     //          "storeId": <store_id>, 
     //          "subinventory": <subinventory>, 
     //          "warehouse": <warehouse>
