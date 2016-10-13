@@ -95,7 +95,7 @@ public class B2WClient extends BenchmarkComponent {
 
     private B2WConfig config;
     private TransactionSelector txn_selector;
-    private ConcurrentHashMap<Long,StockIdCacheElement> stock_id_cache; // sku -> stock_ids
+    private ConcurrentHashMap<String,StockIdCacheElement> stock_id_cache; // sku -> stock_ids
     
     // Cache element to contain stock IDs. Cache elements expire after 5 minutes.
     private class StockIdCacheElement {
@@ -286,7 +286,7 @@ public class B2WClient extends BenchmarkComponent {
         return obj.getJSONArray(key);
     }
     
-    private HashSet<String> getStockIds(long sku) throws IOException {
+    private HashSet<String> getStockIds(String sku) throws IOException {
         // cache element expires after 5 minutes
         final int FIVE_MINUTES = 300000; // 1000 ms/s * 60 s/min * 5 min
         if (this.stock_id_cache.contains(sku) && 
@@ -323,7 +323,7 @@ public class B2WClient extends BenchmarkComponent {
     }
     
     // Reserve stock and create a stock transaction
-    private int reserveStock(JSONArray reserves, long product_sku, String transaction_id, int requested_quantity, TimestampType cartTimestamp) 
+    private int reserveStock(JSONArray reserves, String product_sku, String transaction_id, int requested_quantity, TimestampType cartTimestamp) 
             throws IOException, JSONException {
         
         int reserve_count = reserves.length();
@@ -336,9 +336,9 @@ public class B2WClient extends BenchmarkComponent {
         byte[] is_kit = new byte[reserve_count];
         String[] reserve_lines = new String[reserve_count];
         int[] reserved_quantity = new int[reserve_count];
-        long[] sku = new long[reserve_count];
+        String[] sku = new String[reserve_count];
         String[] solr_query = new String[reserve_count];
-        long[] store_id = new long[reserve_count];
+        String[] store_id = new String[reserve_count];
         int[] subinventory = new int[reserve_count];
         int[] warehouse = new int[reserve_count];
         
@@ -386,9 +386,9 @@ public class B2WClient extends BenchmarkComponent {
                 expiration_date[j] = new TimestampType(new Date(timestamp[j].getMSTime() + 30 * 60 * 1000)); // add 30 mins
                 is_kit[j] = getBoolean(reserve, B2WConstants.PARAMS_IS_KIT);
                 reserve_lines[j] = getString(reserve, B2WConstants.PARAMS_RESERVE_LINES);
-                sku[j] = getLong(reserve, B2WConstants.PARAMS_SKU);
+                sku[j] = getString(reserve, B2WConstants.PARAMS_SKU);
                 solr_query[j] = getString(reserve, B2WConstants.PARAMS_SOLR_QUERY);
-                store_id[j] = getLong(reserve, B2WConstants.PARAMS_STORE_ID);
+                store_id[j] = getString(reserve, B2WConstants.PARAMS_STORE_ID);
                 subinventory[j] = getInteger(reserve, B2WConstants.PARAMS_SUBINVENTORY);
                 warehouse[j] = getInteger(reserve, B2WConstants.PARAMS_WAREHOUSE);
 
@@ -524,9 +524,9 @@ public class B2WClient extends BenchmarkComponent {
         String cart_id = getString(params, B2WConstants.PARAMS_CART_ID);
         TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
         String line_id = getString(params, B2WConstants.PARAMS_LINE_ID);
-        long product_sku = getLong(params, B2WConstants.PARAMS_PRODUCT_SKU); 
+        String product_sku = getString(params, B2WConstants.PARAMS_PRODUCT_SKU); 
         long product_id = getLong(params, B2WConstants.PARAMS_PRODUCT_ID);
-        long store_id = getLong(params, B2WConstants.PARAMS_STORE_ID);
+        String store_id = getString(params, B2WConstants.PARAMS_STORE_ID);
         int quantity = getInteger(params, B2WConstants.PARAMS_QUANTITY);
         String salesChannel = getString(params, B2WConstants.PARAMS_SALES_CHANNEL);
         String opn = getString(params, B2WConstants.PARAMS_OPN);
@@ -812,7 +812,7 @@ public class B2WClient extends BenchmarkComponent {
                 if (debug.val) LOG.debug("No transaction_id for line_id: " + line_id);
             } else {
                 // reserve the stock
-                long sku = line.getLong(B2WConstants.PARAMS_PRODUCT_SKU);
+                String sku = line.getString(B2WConstants.PARAMS_PRODUCT_SKU);
                 JSONArray reserves = line.getJSONArray(B2WConstants.PARAMS_RESERVES);
                 total_reserved_quantity = reserveStock(reserves, sku, transaction_id, requested_quantity, cartTimestamp);                
             }           
@@ -1067,7 +1067,7 @@ public class B2WClient extends BenchmarkComponent {
     //   }
     // }
     private boolean runGetStock(JSONObject params) throws IOException, JSONException {
-        long sku = getLong(params, B2WConstants.PARAMS_SKU);
+        String sku = getString(params, B2WConstants.PARAMS_SKU);
         Object stockParams[] = { sku };
         return runAsynchTransaction(Transaction.GET_STOCK, stockParams);
     }

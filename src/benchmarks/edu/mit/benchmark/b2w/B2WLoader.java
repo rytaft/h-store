@@ -54,12 +54,12 @@ public class B2WLoader extends Loader {
     private final static byte TINY_INT_FALSE = 0;
 
     private final static int[] INVENTORY_STOCK_TYPES = {
-            KEY_TYPE_BIGINT,
+            KEY_TYPE_VARCHAR,
             KEY_TYPE_VARCHAR,
             KEY_TYPE_INTEGER,
             KEY_TYPE_INTEGER,
             KEY_TYPE_INTEGER,
-            KEY_TYPE_BIGINT,
+            KEY_TYPE_VARCHAR,
             KEY_TYPE_INTEGER};
 
     private final static int[] STOCK_QUANTITY_TYPES = {
@@ -79,10 +79,10 @@ public class B2WLoader extends Loader {
             KEY_TYPE_INTEGER,
             KEY_TYPE_VARCHAR,
             KEY_TYPE_INTEGER,
-            KEY_TYPE_BIGINT,
             KEY_TYPE_VARCHAR,
             KEY_TYPE_VARCHAR,
-            KEY_TYPE_BIGINT,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
             KEY_TYPE_INTEGER,
             KEY_TYPE_INTEGER};
 
@@ -324,11 +324,11 @@ public class B2WLoader extends Loader {
                         "id", "cart " + total + ":cart[id]");
                 row_lines[param++] = getDataByType(line, KEY_TYPE_VARCHAR,
                         "id", "cart " + total + ":line[id]");
-                row_lines[param++] = getDataByType(product, KEY_TYPE_BIGINT,
+                row_lines[param++] = getDataByType(product, KEY_TYPE_VARCHAR,
                         "sku", "cart " + total + ":product[sku]");
                 row_lines[param++] = getDataByType(product, KEY_TYPE_BIGINT,
                         "id", "cart " + total + ":product[id]");
-                row_lines[param++] = getDataByType(store, KEY_TYPE_BIGINT,
+                row_lines[param++] = getDataByType(store, KEY_TYPE_VARCHAR,
                         "id", "cart " + total + ":store[id]");
                 row_lines[param++] = getDataByType(line, KEY_TYPE_FLOAT,
                         "unitSalesPrice", "cart " + total + ":line[unitSalesPrice]");
@@ -364,7 +364,7 @@ public class B2WLoader extends Loader {
                             "id", "cart " + total + ":line[id]");
                     row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT,
                             "id", "cart " + total + ":product[id]");
-                    row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT,
+                    row_products[param++] = getDataByType(product, KEY_TYPE_VARCHAR,
                             "sku", "cart " + total + ":product[sku]");
                     row_products[param++] = getDataByType(product, KEY_TYPE_VARCHAR,
                             "image", "cart " + total + ":product[image]");
@@ -428,7 +428,7 @@ public class B2WLoader extends Loader {
                             "id", "cart " + total + ":cart[id]");
                     row_warranties[param++] = getDataByType(line, KEY_TYPE_VARCHAR,
                             "id", "cart " + total + ":line[id]");
-                    row_warranties[param++] = getDataByType(warranty, KEY_TYPE_BIGINT,
+                    row_warranties[param++] = getDataByType(warranty, KEY_TYPE_VARCHAR,
                             "sku", "cart " + total + ":warranty[sku]");
                     row_warranties[param++] = getDataByType(warranty, KEY_TYPE_VARCHAR,
                             "productSku", "cart " + total + ":warranty[productSku]");
@@ -446,7 +446,7 @@ public class B2WLoader extends Loader {
                             "id", "cart " + total + ":cart[id]");
                     row_stores[param++] = getDataByType(line, KEY_TYPE_VARCHAR,
                             "id", "cart " + total + ":line[id]");
-                    row_stores[param++] = getDataByType(store, KEY_TYPE_BIGINT,
+                    row_stores[param++] = getDataByType(store, KEY_TYPE_VARCHAR,
                             "id", "cart " + total + ":store[id]");
                     row_stores[param++] = getDataByType(store, KEY_TYPE_VARCHAR,
                             "name", "cart " + total + ":store[name]");
