@@ -670,7 +670,7 @@ public class B2WClient extends BenchmarkComponent {
             }
             return false;        
         }
-        final int CART_LINES_RESULTS = 2 + 1;
+        final int CART_LINES_RESULTS = 2;
         
         VoltTableRow cartLine = null;
         final int LINE_ID = 1 + 1, SALES_PRICE = 6 + 1, STOCK_TRANSACTION_ID = 11 + 1;
@@ -917,7 +917,7 @@ public class B2WClient extends BenchmarkComponent {
             }
             return false;        
         }
-        final int CHECKOUT_STOCK_TRANSACTIONS_RESULTS = 3 + 1;
+        final int CHECKOUT_STOCK_TRANSACTIONS_RESULTS = 3;
         if (trace.val) {
             LOG.trace("StockTransactions of checkout " + checkout_id + ": " + 
                     checkoutResponse.getResults()[CHECKOUT_STOCK_TRANSACTIONS_RESULTS].toString());
