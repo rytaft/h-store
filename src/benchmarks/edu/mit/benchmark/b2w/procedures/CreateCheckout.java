@@ -13,8 +13,10 @@ import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.mit.benchmark.b2w.B2WConstants;
 
+import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
+
 @ProcInfo(
-        partitionInfo = "CHECKOUT.ID: 0",
+        partitionInfo = "CHECKOUT.partition_key: 0",
         singlePartition = true
     )
 public class CreateCheckout extends VoltProcedure {
@@ -28,6 +30,7 @@ public class CreateCheckout extends VoltProcedure {
     
     public final SQLStmt createCheckoutStmt = new SQLStmt(
             "INSERT INTO CHECKOUT (" +
+                "partition_key, " +
                 "id, " +
                 "cartId, " +
                 "deliveryAddressId, " +
@@ -38,6 +41,7 @@ public class CreateCheckout extends VoltProcedure {
                 "freightPrice, " +
                 "freightStatus" +
             ") VALUES (" +
+                "?, " +   // partition_key
                 "?, " +   // id
                 "?, " +   // cartId
                 "?, " +   // deliveryAddressId
@@ -51,10 +55,12 @@ public class CreateCheckout extends VoltProcedure {
         
     public final SQLStmt createCheckoutFreightDeliveryTimeStmt = new SQLStmt(
             "INSERT INTO CHECKOUT_FREIGHT_DELIVERY_TIME (" +
+                "partition_key, " +
                 "checkoutId, " +
                 "lineId, " +
                 "deliveryTime" +
             ") VALUES (" +
+                "?, " +   // partition_key
                 "?, " +   // checkoutId
                 "?, " +   // lineId
                 "?"   +   // deliveryTime
@@ -62,16 +68,18 @@ public class CreateCheckout extends VoltProcedure {
 
     public final SQLStmt createCheckoutStockTxnStmt = new SQLStmt(
             "INSERT INTO CHECKOUT_STOCK_TRANSACTIONS (" +
+                "partition_key, " +
                 "checkoutId, " +
                 "id, " +
                 "lineId" +
             ") VALUES (" +
+                "?, " +   // partition_key
                 "?, " +   // checkoutId
                 "?, " +   // id
                 "?"   +   // lineId
             ");");
     
-    public VoltTable[] run(String checkout_id, String cart_id, String deliveryAddressId, String billingAddressId, 
+    public VoltTable[] run(int partition_key, String checkout_id, String cart_id, String deliveryAddressId, String billingAddressId,
             double amountDue, double total, String freightContract, double freightPrice, String freightStatus,
             String[] line_id, String[] transaction_id, int[] delivery_time) {
         if (trace.val) {
@@ -80,6 +88,7 @@ public class CreateCheckout extends VoltProcedure {
              Arrays.asList(line_id).toString() + ", " + Arrays.asList(transaction_id).toString() + ", " + Arrays.asList(delivery_time).toString());
         }
         voltQueueSQL(createCheckoutStmt,
+                hashPartition(checkout_id),
                 checkout_id,
                 cart_id,
                 deliveryAddressId,
@@ -98,6 +107,7 @@ public class CreateCheckout extends VoltProcedure {
             
             if(transaction_id[i] != null) {
                 voltQueueSQL(createCheckoutStockTxnStmt,
+                        hashPartition(checkout_id),
                         checkout_id,
                         transaction_id,
                         line_id);           
@@ -105,6 +115,7 @@ public class CreateCheckout extends VoltProcedure {
 
             if(delivery_time[i] != VoltType.NULL_INTEGER) {                
                 voltQueueSQL(createCheckoutFreightDeliveryTimeStmt,
+                        hashPartition(checkout_id),
                         checkout_id,
                         line_id,
                         delivery_time);

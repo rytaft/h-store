@@ -58,20 +58,20 @@ public class B2WProjectBuilder extends AbstractProjectBuilder{
     
     public static final String PARTITIONING[][] = new String[][] {
         // { "TABLE NAME", "PARTITIONING COLUMN NAME" }
-        {"STK_INVENTORY_STOCK", "sku"},
-        {"STK_INVENTORY_STOCK_QUANTITY", "id"},
-        {"STK_STOCK_TRANSACTION", "transaction_id"},
-        {"CART", "id"},
-        {"CART_CUSTOMER", "cartId"},
-        {"CART_LINES", "cartId"},
-        {"CART_LINE_PRODUCTS", "cartId"},
-        {"CART_LINE_PROMOTIONS", "cartId"},
-        {"CART_LINE_PRODUCT_WARRANTIES", "cartId"},
-        {"CART_LINE_PRODUCT_STORES", "cartId"},
-        {"CHECKOUT", "id"},
-        {"CHECKOUT_PAYMENTS", "checkoutId"},
-        {"CHECKOUT_FREIGHT_DELIVERY_TIME", "checkoutId"},
-        {"CHECKOUT_STOCK_TRANSACTIONS", "checkoutId"},
+        {"STK_INVENTORY_STOCK", "partition_key"},
+        {"STK_INVENTORY_STOCK_QUANTITY", "partition_key"},
+        {"STK_STOCK_TRANSACTION", "partition_key"},
+        {"CART", "partition_key"},
+        {"CART_CUSTOMER", "partition_key"},
+        {"CART_LINES", "partition_key"},
+        {"CART_LINE_PRODUCTS", "partition_key"},
+        {"CART_LINE_PROMOTIONS", "partition_key"},
+        {"CART_LINE_PRODUCT_WARRANTIES", "partition_key"},
+        {"CART_LINE_PRODUCT_STORES", "partition_key"},
+        {"CHECKOUT", "partition_key"},
+        {"CHECKOUT_PAYMENTS", "partition_key"},
+        {"CHECKOUT_FREIGHT_DELIVERY_TIME", "partition_key"},
+        {"CHECKOUT_STOCK_TRANSACTIONS", "partition_key"},
     };
     
     public B2WProjectBuilder() {

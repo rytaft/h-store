@@ -8,7 +8,7 @@ import org.voltdb.VoltTableRow;
 import org.voltdb.types.TimestampType;
 
 @ProcInfo(
-        partitionInfo = "CHECKOUT.ID: 0",
+        partitionInfo = "CHECKOUT.partition_key: 0",
         singlePartition = true
     )
 public class DeleteLineFromCheckout extends VoltProcedure {
@@ -39,7 +39,7 @@ public class DeleteLineFromCheckout extends VoltProcedure {
         ); //amountDue, total, freightContract, freightPrice, freightStatus, id
 
 
-    public VoltTable[] run(String checkout_id, String line_id, double salesPrice, String freightContract, double freightPrice, String freightStatus){
+    public VoltTable[] run(int partition_key, String checkout_id, String line_id, double salesPrice, String freightContract, double freightPrice, String freightStatus){
         voltQueueSQL(getCheckoutStmt, checkout_id);
         final VoltTable[] checkout_results = voltExecuteSQL();
         assert checkout_results.length == 2;
@@ -50,7 +50,7 @@ public class DeleteLineFromCheckout extends VoltProcedure {
 
         if (checkout_results[0].getRowCount() > 0) {
             final VoltTableRow checkout = checkout_results[0].fetchRow(0);
-            final int AMOUNT_DUE = 0, TOTAL = 1, FREIGHT_PRICE = 2;
+            final int AMOUNT_DUE = 0 + 1, TOTAL = 1 + 1, FREIGHT_PRICE = 2 + 1;
             amountDue = checkout.getDouble(AMOUNT_DUE);
             total = checkout.getDouble(TOTAL);
             oldFreightPrice = checkout.getDouble(FREIGHT_PRICE);

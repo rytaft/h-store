@@ -6,7 +6,7 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
 @ProcInfo(
-        partitionInfo = "STK_STOCK_TRANSACTION.TRANSACTION_ID: 0",
+        partitionInfo = "STK_STOCK_TRANSACTION.partition_key: 0",
         singlePartition = true
     )
 public class GetStockTransaction extends VoltProcedure {
@@ -20,7 +20,7 @@ public class GetStockTransaction extends VoltProcedure {
         
     public final SQLStmt getStockTxnStmt = new SQLStmt("SELECT * FROM STK_STOCK_TRANSACTION WHERE transaction_id = ? ");
         
-    public VoltTable[] run(String transaction_id){
+    public VoltTable[] run(int partition_key, String transaction_id){
         voltQueueSQL(getStockTxnStmt, transaction_id);
         
         return voltExecuteSQL(true);

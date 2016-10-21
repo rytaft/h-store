@@ -209,6 +209,14 @@ public class B2WLoader extends Loader {
     }
 
 
+    public static Integer hashPartition(Object o){
+        if (o == null)
+            return null;
+        else
+            return o.hashCode();
+    }
+
+
 
     private void loadCartData(Database catalog_db, String path) throws IOException, JSONException {
         BufferedReader in = new BufferedReader(new InputStreamReader(
@@ -259,15 +267,16 @@ public class B2WLoader extends Loader {
         int batchSize = 0;
         int total = 0;
         while (true){
-            total++;
             String cart_line = in.readLine();
             if (cart_line == null || cart_line.isEmpty())
                 break;
+            total++;
             JSONObject cart = new JSONObject(cart_line);
-
 //            load table CART
             Object row_cart[] = new Object[num_cols_cart];
             int param = 0;
+            row_cart[param++] = hashPartition(getDataByType(cart, KEY_TYPE_VARCHAR,
+                    "id", "cart " + total + ":cart[partition_key]"));
             row_cart[param++] = getDataByType(cart, KEY_TYPE_VARCHAR,
                     "id", "cart " + total + ":cart[id]");
             row_cart[param++] = getDataByType(cart, KEY_TYPE_FLOAT,
@@ -292,6 +301,8 @@ public class B2WLoader extends Loader {
             if (customer != null){
                 Object row_customer[] = new Object[num_cols_customer];
                 param = 0;
+                row_customer[param++] = hashPartition(getDataByType(cart, KEY_TYPE_VARCHAR,
+                        "id", "cart " + total + ":cart[partition_key]"));
                 row_customer[param++] = getDataByType(cart, KEY_TYPE_VARCHAR,
                         "id", "cart " + total + ":cart[id]");
                 row_customer[param++] = getDataByType(customer, KEY_TYPE_VARCHAR,
@@ -319,6 +330,8 @@ public class B2WLoader extends Loader {
 //                load table CART_LINES
                 Object row_lines[] = new Object[num_cols_lines];
                 param = 0;
+                row_lines[param++] = hashPartition(getDataByType(cart, KEY_TYPE_VARCHAR,
+                        "id", "cart " + total + ":cart[partition_key]"));
                 row_lines[param++] = getDataByType(cart, KEY_TYPE_VARCHAR,
                         "id", "cart " + total + ":cart[id]");
                 row_lines[param++] = getDataByType(line, KEY_TYPE_VARCHAR,
@@ -357,6 +370,8 @@ public class B2WLoader extends Loader {
                 if (product != null){
                     Object row_products[] = new Object[num_cols_products];
                     param = 0;
+                    row_products[param++] = hashPartition(getDataByType(cart, KEY_TYPE_VARCHAR,
+                            "id", "cart " + total + ":cart[partition_key]"));
                     row_products[param++] = getDataByType(cart, KEY_TYPE_VARCHAR,
                             "id", "cart " + total + ":cart[id]");
                     row_products[param++] = getDataByType(line, KEY_TYPE_VARCHAR,
@@ -396,6 +411,8 @@ public class B2WLoader extends Loader {
                     JSONObject promotion = promotions.getJSONObject(j);
                     Object row_promotions[] = new Object[num_cols_promotions];
                     param = 0;
+                    row_promotions[param++] = hashPartition(getDataByType(cart, KEY_TYPE_VARCHAR,
+                            "id", "cart " + total + ":cart[partition_key]"));
                     row_promotions[param++] = getDataByType(cart, KEY_TYPE_VARCHAR,
                             "id", "cart " + total + ":cart[id]");
                     row_promotions[param++] = getDataByType(line, KEY_TYPE_VARCHAR,
@@ -423,6 +440,8 @@ public class B2WLoader extends Loader {
                     JSONObject warranty = warranties.getJSONObject(j);
                     Object row_warranties[] = new Object[num_cols_warranties];
                     param = 0;
+                    row_warranties[param++] = hashPartition(getDataByType(cart, KEY_TYPE_VARCHAR,
+                            "id", "cart " + total + ":cart[partition_key]"));
                     row_warranties[param++] = getDataByType(cart, KEY_TYPE_VARCHAR,
                             "id", "cart " + total + ":cart[id]");
                     row_warranties[param++] = getDataByType(line, KEY_TYPE_VARCHAR,
@@ -441,6 +460,8 @@ public class B2WLoader extends Loader {
                 if (store != null){
                     Object row_stores[] = new Object[num_cols_stores];
                     param = 0;
+                    row_stores[param++] = hashPartition(getDataByType(cart, KEY_TYPE_VARCHAR,
+                            "id", "cart " + total + ":cart[partition_key]"));
                     row_stores[param++] = getDataByType(cart, KEY_TYPE_VARCHAR,
                             "id", "cart " + total + ":cart[id]");
                     row_stores[param++] = getDataByType(line, KEY_TYPE_VARCHAR,
@@ -539,7 +560,6 @@ public class B2WLoader extends Loader {
         int batchSize = 0;
         int total = 0;
         while (true) {
-            total++;
             String checkout_line = in.readLine();
             if (checkout_line == null || checkout_line.isEmpty())
                 break;
@@ -550,11 +570,14 @@ public class B2WLoader extends Loader {
                 LOG.error("Can't find checkout in checkout identity :" + checkout_line);
                 continue;
             }
+            total++;
 //            load table CHECKOUT
             JSONObject freight = (JSONObject)getDataByType(checkout, KEY_TYPE_OBJECT,
                     "freight", path + ":checkout[freight]");
             Object row_checkout[] = new Object[num_cols_checkout];
             int param = 0;
+            row_checkout[param++] = hashPartition(getDataByType(checkout, KEY_TYPE_VARCHAR,
+                    "id", path + ":checkout[partition_key]"));
             row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR,
                     "id", path + ":checkout[id]");
             row_checkout[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR,
@@ -583,6 +606,8 @@ public class B2WLoader extends Loader {
 
                 Object row_payments[] = new Object[num_cols_payments];
                 param = 0;
+                row_payments[param++] = hashPartition(getDataByType(checkout, KEY_TYPE_VARCHAR,
+                        "id", path + ":checkout[partition_key]"));
                 row_payments[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR,
                         "id", path + ":checkout[id]");
                 row_payments[param++] = getDataByType(payment, KEY_TYPE_VARCHAR,
@@ -623,6 +648,8 @@ public class B2WLoader extends Loader {
                 JSONObject deliverTime = (JSONObject) deliverTimes.get(i);
                 Object row_freight[] = new Object[num_cols_freight];
                 param = 0;
+                row_freight[param++] = hashPartition(getDataByType(checkout, KEY_TYPE_VARCHAR,
+                        "id", path + ":checkout[partition_key]"));
                 row_freight[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR,
                         "id", path + ":checkout[id]");
                 row_freight[param++] = getDataByType(deliverTime, KEY_TYPE_VARCHAR,
@@ -641,6 +668,8 @@ public class B2WLoader extends Loader {
                 JSONObject stockTransaction = (JSONObject) stockTransactions.get(i);
                 Object row_stock[] = new Object[num_cols_stock];
                 param = 0;
+                row_stock[param++] = hashPartition(getDataByType(checkout, KEY_TYPE_VARCHAR,
+                        "id", path + ":checkout[partition_key]"));
                 row_stock[param++] = getDataByType(checkout, KEY_TYPE_VARCHAR,
                         "id", path + ":checkout[id]");
                 row_stock[param++] = getDataByType(stockTransaction, KEY_TYPE_VARCHAR,
@@ -721,8 +750,9 @@ public class B2WLoader extends Loader {
 
             Object row_stock[] = new Object[num_cols_stock];
             int param;
-            for (param = 0; param < num_cols_stock; param++){
-                row_stock[param] = getDataByType(items[param], types[param]);
+            row_stock[0] = hashPartition(getDataByType(items[0], types[0]));
+            for (param = 0; param < num_cols_stock - 1; param++){
+                row_stock[param + 1] = getDataByType(items[param], types[param]);
             }
             vt_stock.addRow(row_stock);
 

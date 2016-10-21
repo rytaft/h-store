@@ -6,7 +6,7 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
 @ProcInfo(
-        partitionInfo = "CHECKOUT.ID: 0",
+        partitionInfo = "CHECKOUT.partition_key: 0",
         singlePartition = true
     )
 public class DeleteCheckout extends VoltProcedure {
@@ -30,7 +30,7 @@ public class DeleteCheckout extends VoltProcedure {
     public final SQLStmt deleteCheckoutStockTransactionsStmt = new SQLStmt(
             "DELETE FROM CHECKOUT_STOCK_TRANSACTIONS WHERE checkoutId = ? ");
 
-    public VoltTable[] run(String checkout_id){
+    public VoltTable[] run(int partition_key, String checkout_id){
         voltQueueSQL(deleteCheckoutPaymentsStmt, checkout_id);
         voltQueueSQL(deleteCheckoutFreightDeliveryTimeStmt, checkout_id);
         voltQueueSQL(deleteCheckoutStockTransactionsStmt, checkout_id);

@@ -5,8 +5,10 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
+import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
+
 @ProcInfo(
-        partitionInfo = "CART.ID: 0",
+        partitionInfo = "CART.partition_key: 0",
         singlePartition = true
     )
 public class CreateCheckoutPayment extends VoltProcedure {
@@ -20,6 +22,7 @@ public class CreateCheckoutPayment extends VoltProcedure {
     
     public final SQLStmt createCheckoutPaymentStmt = new SQLStmt(
             "INSERT INTO CHECKOUT_PAYMENTS (" +
+                "partition_key, " +
                 "checkoutId, " +
                 "paymentOptionId, " +
                 "paymentOptionType, " +
@@ -35,6 +38,7 @@ public class CreateCheckoutPayment extends VoltProcedure {
                 "securityCode, " +
                 "expirationDate" +
             ") VALUES (" +
+                "?, " +   // partition_key
                 "?, " +   // checkoutId
                 "?, " +   // paymentOptionId
                 "?, " +   // paymentOptionType
@@ -51,10 +55,11 @@ public class CreateCheckoutPayment extends VoltProcedure {
                 "?"   +   // expirationDate
             ");");
     
-    public VoltTable[] run(String checkout_id, String cart_id, String paymentOptionId, String paymentOptionType, int dueDays, double amount,
+    public VoltTable[] run(int partition_key, String checkout_id, String cart_id, String paymentOptionId, String paymentOptionType, int dueDays, double amount,
             int installmentQuantity, double interestAmount, int interestRate, int annualCET, String number, String criptoNumber, String holdersName, 
             String securityCode, String expirationDate){
         voltQueueSQL(createCheckoutPaymentStmt,
+                hashPartition(checkout_id),
                 checkout_id,
                 paymentOptionId,
                 paymentOptionType,

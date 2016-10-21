@@ -16,7 +16,7 @@ import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
-        partitionInfo = "STK_STOCK_TRANSACTION.TRANSACTION_ID: 0",
+        partitionInfo = "STK_STOCK_TRANSACTION.partition_key: 0",
         singlePartition = true
     )
 public class UpdateStockTransaction extends VoltProcedure {
@@ -38,7 +38,7 @@ public class UpdateStockTransaction extends VoltProcedure {
         ); // current_status, status, transaction_id
 
     
-    public VoltTable[] run(String transaction_id, TimestampType timestamp, String current_status){
+    public VoltTable[] run(int partition_key, String transaction_id, TimestampType timestamp, String current_status){
         voltQueueSQL(getStockTxnStmt, transaction_id);
         final VoltTable[] stock_txn_results = voltExecuteSQL();
         assert stock_txn_results.length == 1;
@@ -48,7 +48,7 @@ public class UpdateStockTransaction extends VoltProcedure {
         
         if (stock_txn_results[0].getRowCount() > 0) {
             final VoltTableRow stock_txn = stock_txn_results[0].fetchRow(0);
-            final int CURRENT_STATUS = 0, STATUS = 1;
+            final int CURRENT_STATUS = 0 + 1, STATUS = 1 + 1;
             previous_status = stock_txn.getString(CURRENT_STATUS);
             status = stock_txn.getString(STATUS);
         } else {

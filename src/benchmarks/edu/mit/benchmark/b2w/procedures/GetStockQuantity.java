@@ -6,7 +6,7 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
 @ProcInfo(
-        partitionInfo = "STK_INVENTORY_STOCK_QUANTITY.ID: 0",
+        partitionInfo = "STK_INVENTORY_STOCK_QUANTITY.partition_key: 0",
         singlePartition = true
     )
 public class GetStockQuantity extends VoltProcedure {
@@ -20,7 +20,7 @@ public class GetStockQuantity extends VoltProcedure {
         
     public final SQLStmt getStockQtyStmt = new SQLStmt("SELECT * FROM STK_INVENTORY_STOCK_QUANTITY WHERE id = ? ");
         
-    public VoltTable[] run(String stock_id){
+    public VoltTable[] run(int partition_key, String stock_id){
         voltQueueSQL(getStockQtyStmt, stock_id);
         
         return voltExecuteSQL(true);
