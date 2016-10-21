@@ -2,6 +2,7 @@ package edu.mit.benchmark.b2w;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -26,7 +27,6 @@ import edu.brown.api.ControlState;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.utils.ThreadUtil;
-
 import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
 
 public class B2WClient extends BenchmarkComponent {
@@ -1100,14 +1100,28 @@ public class B2WClient extends BenchmarkComponent {
         return runAsynchTransaction(Transaction.GET_STOCK_TRANSACTION, stockParams);
     }
 
+    private String paramsToString(Object params[]) {
+        ArrayList<String> paramsList = new ArrayList<>();
+        for(Object param : params) {
+            if(param == null) {
+                paramsList.add("null");
+            } else if(param instanceof Object[] || param instanceof int[] || param instanceof byte[]) {
+                paramsList.add(Arrays.asList(param).toString());
+            } else {
+                paramsList.add(param.toString());
+            }
+        }
+        return paramsList.toString();
+    }
+    
     private boolean runAsynchTransaction(Transaction target, Object params[]) throws IOException {
-        if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName + " params: " + Arrays.asList(params).toString());
+        if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName + " params: " + paramsToString(params));
         Callback callback = new Callback(target.ordinal());
         return this.getClientHandle().callProcedure(callback, target.callName, params);
     }
 
     private ClientResponse runSynchTransaction(Transaction target, Object params[]) throws IOException {
-        if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName + " params: " + Arrays.asList(params).toString());
+        if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName + " params: " + paramsToString(params));
         try {
             ClientResponse clientResponse = this.getClientHandle().callProcedure(target.callName, params);
             // Increment the BenchmarkComponent's internal counter on the
