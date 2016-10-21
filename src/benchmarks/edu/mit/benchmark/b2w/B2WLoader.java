@@ -800,12 +800,12 @@ public class B2WLoader extends Loader {
         try {
             this.loadCartData(catalogContext.database,config.cart_data_file);
             this.loadCheckOutData(catalogContext.database,config.checkout_data_file);
-            LOG.info("Load success!!");
         } catch (JSONException e) {
             LOG.error("JSON load failed");
             e.printStackTrace();
         }
         this.loadStockData(catalogContext.database);
+        LOG.info("Load success!!");
         debug.set(b);
     }
 
