@@ -172,7 +172,7 @@ public class B2WLoader extends Loader {
      * @return return the target object we want, if the value is null or the type is invalid, then return null.
      */
     private Object getDataByType(String value, int type){
-        if (value.equals("null"))
+        if (value.equals("null") || value.equals("<null>"))
             return null;
         switch (type){
             case KEY_TYPE_INTEGER:
@@ -718,9 +718,9 @@ public class B2WLoader extends Loader {
 
     /**
      * This function is used to read the file has the format like :
-     * sku    | id                                   | warehouse | sub_inventory | stock_type | store_id | lead_time
-     * -------+--------------------------------------+-----------+---------------+------------+----------+-----------
-     * 163213 | f9705d24-a125-4429-8626-16fc98cfe784 |        77 |          1001 |          1 |     null |         1
+     * sku;id;warehouse;sub_inventory;stock_type;store_id;lead_time
+     * e.g.:
+     * 163213;f9705d24-a125-4429-8626-16fc98cfe784;77;1001;1;B2W;1
      * and load it to the VoltTable.
      * @param name the name of the table we want to modified.
      * @param path the path of the file we want to read.
@@ -746,7 +746,7 @@ public class B2WLoader extends Loader {
             line = in.readLine();
             if (line == null || line.isEmpty())
                 break;
-            String[] items = line.trim().split("\\s*\\|\\s*");
+            String[] items = line.split(";");
 
             Object row_stock[] = new Object[num_cols_stock];
             int param;
