@@ -736,8 +736,6 @@ public class B2WLoader extends Loader {
         VoltTable vt_stock = CatalogUtil.getVoltTable(catalog_tbl_stock);
         int num_cols_stock = catalog_tbl_stock.getColumns().size();
 
-        in.readLine();
-        in.readLine();
         String line;
         int total = 0;
         int batchSize = 0;
