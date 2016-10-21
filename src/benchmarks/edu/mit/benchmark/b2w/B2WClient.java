@@ -851,7 +851,7 @@ public class B2WClient extends BenchmarkComponent {
         if (trace.val) {
             LOG.trace("Creating checkout with params: " + checkout_id + ", " + cart_id + ", " + deliveryAddressId + ", " + billingAddressId + ", " +
              amountDue + ", " + total + ", " + freightContract + ", " + freightPrice + ", " + freightStatus + ", " +
-             Arrays.asList(line_ids).toString() + ", " + Arrays.asList(transaction_ids).toString() + ", " + Arrays.asList(delivery_times).toString());
+             Arrays.toString(line_ids) + ", " + Arrays.toString(transaction_ids) + ", " + Arrays.toString(delivery_times));
         }
         
         /**** TRANSACTION ****/
@@ -1100,28 +1100,14 @@ public class B2WClient extends BenchmarkComponent {
         return runAsynchTransaction(Transaction.GET_STOCK_TRANSACTION, stockParams);
     }
 
-    private String paramsToString(Object params[]) {
-        ArrayList<String> paramsList = new ArrayList<>();
-        for(Object param : params) {
-            if(param == null) {
-                paramsList.add("null");
-            } else if(param instanceof Object[] || param instanceof int[] || param instanceof byte[]) {
-                paramsList.add(Arrays.asList(param).toString());
-            } else {
-                paramsList.add(param.toString());
-            }
-        }
-        return paramsList.toString();
-    }
-    
     private boolean runAsynchTransaction(Transaction target, Object params[]) throws IOException {
-        if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName + " params: " + paramsToString(params));
+        if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName + " params: " + Arrays.deepToString(params));
         Callback callback = new Callback(target.ordinal());
         return this.getClientHandle().callProcedure(callback, target.callName, params);
     }
 
     private ClientResponse runSynchTransaction(Transaction target, Object params[]) throws IOException {
-        if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName + " params: " + paramsToString(params));
+        if(debug.val) LOG.debug("calling : " + target +  " o:"+target.ordinal() + " : " + target.callName + " params: " + Arrays.deepToString(params));
         try {
             ClientResponse clientResponse = this.getClientHandle().callProcedure(target.callName, params);
             // Increment the BenchmarkComponent's internal counter on the
