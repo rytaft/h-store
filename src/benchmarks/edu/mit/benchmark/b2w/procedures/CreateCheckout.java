@@ -109,16 +109,16 @@ public class CreateCheckout extends VoltProcedure {
                 voltQueueSQL(createCheckoutStockTxnStmt,
                         hashPartition(checkout_id),
                         checkout_id,
-                        transaction_id,
-                        line_id);           
+                        transaction_id[i],
+                        line_id[i]);           
             }
 
             if(delivery_time[i] != VoltType.NULL_INTEGER) {                
                 voltQueueSQL(createCheckoutFreightDeliveryTimeStmt,
                         hashPartition(checkout_id),
                         checkout_id,
-                        line_id,
-                        delivery_time);
+                        line_id[i],
+                        delivery_time[i]);
             }        
         }
         
