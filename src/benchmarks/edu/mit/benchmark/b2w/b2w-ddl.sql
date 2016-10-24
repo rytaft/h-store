@@ -31,7 +31,7 @@ CREATE TABLE STK_STOCK_TRANSACTION (
         expiration_date TIMESTAMP,
         is_kit TINYINT,
         requested_quantity INTEGER,
-        reserve_lines VARCHAR(256),
+        reserve_lines VARCHAR(1024),
         reserved_quantity INTEGER,
         sku VARCHAR(32), -- REFERENCES STK_INVENTORY_STOCK(sku)
         status VARCHAR(256),

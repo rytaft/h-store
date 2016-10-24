@@ -953,7 +953,11 @@ public class B2WClient extends BenchmarkComponent {
                     LOG.info("Attempt to purchase stock transaction that has been cancelled: " + transaction_id);
                 } else {
                     String reserve_lines = stockTransaction.getString(RESERVE_LINES);
-                    JSONObject reserve_lines_obj = new JSONObject(reserve_lines);
+                    JSONArray reserve_lines_arr = new JSONArray(reserve_lines);
+                    if(debug.val && reserve_lines_arr.length() > 1) {
+                        LOG.debug("More than one reserve_line: " + reserve_lines);
+                    }
+                    JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(0);
                     String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
                     int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
                     Object purchaseStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity };
