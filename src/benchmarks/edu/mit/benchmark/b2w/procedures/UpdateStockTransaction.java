@@ -48,7 +48,7 @@ public class UpdateStockTransaction extends VoltProcedure {
         
         if (stock_txn_results[0].getRowCount() > 0) {
             final VoltTableRow stock_txn = stock_txn_results[0].fetchRow(0);
-            final int CURRENT_STATUS = 0 + 1, STATUS = 1 + 1;
+            final int CURRENT_STATUS = 0, STATUS = 1;
             previous_status = stock_txn.getString(CURRENT_STATUS);
             status = stock_txn.getString(STATUS);
         } else {

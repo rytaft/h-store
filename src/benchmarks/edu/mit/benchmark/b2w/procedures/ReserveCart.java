@@ -47,7 +47,7 @@ public class ReserveCart extends VoltProcedure {
             ");");
     
     
-    public final SQLStmt getCartLinesStmt = new SQLStmt("SELECT * FROM CART_LINES WHERE cartId = ? ");
+    public final SQLStmt getCartLinesStmt = new SQLStmt("SELECT line_id, quantity FROM CART_LINES WHERE cartId = ? ");
     
     public final SQLStmt updateCartLineStmt = new SQLStmt(
             "UPDATE CART_LINES " +
@@ -100,7 +100,7 @@ public class ReserveCart extends VoltProcedure {
         
         for (int i = 0; i < cart_results[0].getRowCount(); ++i) {
             final VoltTableRow cartLine = cart_results[0].fetchRow(i);
-            final int LINE_ID = 1 + 1, QUANTITY = 7 + 1;
+            final int LINE_ID = 0, QUANTITY = 1;
             String line_id = cartLine.getString(LINE_ID);
             int original_quantity = (int) cartLine.getLong(QUANTITY);
             

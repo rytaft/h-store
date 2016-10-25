@@ -20,7 +20,7 @@ public class ReserveStock extends VoltProcedure {
 //        LoggerUtil.attachObserver(LOG, debug, trace);
 //    }
     
-    public final SQLStmt getStockQtyStmt = new SQLStmt("SELECT * FROM STK_INVENTORY_STOCK_QUANTITY WHERE id = ? ");
+    public final SQLStmt getStockQtyStmt = new SQLStmt("SELECT stock_id, available, purchase, session FROM STK_INVENTORY_STOCK_QUANTITY WHERE id = ? ");
     
     public final SQLStmt updateStockQtyStmt = new SQLStmt(
             "UPDATE STK_INVENTORY_STOCK_QUANTITY " +
@@ -42,7 +42,7 @@ public class ReserveStock extends VoltProcedure {
         
         if (stock_results[0].getRowCount() > 0) {
             final VoltTableRow stock = stock_results[0].fetchRow(0);
-            final int STOCK_ID = 0 + 1, AVAILABLE = 1 + 1, PURCHASE = 2 + 1, SESSION = 3 + 1;
+            final int STOCK_ID = 0, AVAILABLE = 1, PURCHASE = 2, SESSION = 3;
             assert stock_id.equals(stock.getString(STOCK_ID));
             available = (int) stock.getLong(AVAILABLE);
             purchase = (int) stock.getLong(PURCHASE);
