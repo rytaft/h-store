@@ -141,7 +141,7 @@ public class AddLineToCart extends VoltProcedure {
             ");");
 
     
-    public final SQLStmt getCartStmt = new SQLStmt("SELECT cart_id, total, status FROM CART WHERE id = ? ");
+    public final SQLStmt getCartStmt = new SQLStmt("SELECT id, total, status FROM CART WHERE id = ? ");
     
     public final SQLStmt updateCartStmt = new SQLStmt(
             "UPDATE CART " +
