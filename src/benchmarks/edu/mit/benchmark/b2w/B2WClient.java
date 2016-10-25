@@ -79,6 +79,7 @@ public class B2WClient extends BenchmarkComponent {
         DELETE_CART,
         DELETE_CHECKOUT,
         DELETE_LINE_FROM_CART,
+        EXPIRE_STOCK_TRANSACTION,
         FINISH_STOCK_TRANSACTION,
         GET_CART,
         GET_CHECKOUT,
@@ -224,6 +225,8 @@ public class B2WClient extends BenchmarkComponent {
                 return runDeleteCheckout(params);
             case DELETE_LINE_FROM_CART:
                 return runDeleteLineFromCart(params);
+            case EXPIRE_STOCK_TRANSACTION:
+                return runExpireStockTransaction(params);
             case FINISH_STOCK_TRANSACTION:
                 return runFinishStockTransaction(params);
             case GET_CART:
@@ -352,7 +355,7 @@ public class B2WClient extends BenchmarkComponent {
             JSONObject reserve = reserves.getJSONObject(j);
             String stock_id = getString(reserve, B2WConstants.PARAMS_STOCK_ID); 
             if (!stock_ids.contains(stock_id)) {
-                LOG.info("Attempting to reserve stock_id " + stock_id + " which is not present in the cache for sku " + sku);
+                LOG.info("Attempting to reserve stock_id " + stock_id + " which is not present in the cache for sku " + product_sku);
             }
             if (requested_quantity != getInteger(reserve, B2WConstants.PARAMS_REQUESTED_QUANTITY)) {
                 LOG.info("Requested quantity in database <" + requested_quantity + "> doesn't match log <" + getInteger(reserve, B2WConstants.PARAMS_REQUESTED_QUANTITY) +">");
@@ -405,11 +408,63 @@ public class B2WClient extends BenchmarkComponent {
         
         return total_reserved_quantity;
     }
+
+    // Re-reserve stock
+    private int reserveExpiredStock(JSONArray reserves, String product_sku, String transaction_id, int requested_quantity, TimestampType cartTimestamp) 
+            throws IOException, JSONException {
+        
+        int reserve_count = reserves.length();
+        
+        int total_reserved_quantity = 0;
+        int[] reserved_quantity = new int[reserve_count];
+        
+        HashSet<String> stock_ids = getStockIds(product_sku);
+        // This code only tries to reserve stock_ids that we know succeeded from the input parameters.
+        // It may be more realistic to try some of the other stock_ids, but the priority depends on some complicated
+        // logic about where the warehouse is located relative to the customer, stock type, and total available....
+
+        for (int j = 0; j < reserve_count; ++j) {
+            JSONObject reserve = reserves.getJSONObject(j);
+            String stock_id = getString(reserve, B2WConstants.PARAMS_STOCK_ID); 
+            if (!stock_ids.contains(stock_id)) {
+                LOG.info("Attempting to reserve stock_id " + stock_id + " which is not present in the cache for sku " + product_sku);
+            }
+            if (requested_quantity != getInteger(reserve, B2WConstants.PARAMS_REQUESTED_QUANTITY)) {
+                LOG.info("Requested quantity in database <" + requested_quantity + "> doesn't match log <" + getInteger(reserve, B2WConstants.PARAMS_REQUESTED_QUANTITY) +">");
+            }
+         
+            // Attempt to reserve the stock
+            Object reserveStockParams[] = { hashPartition(stock_id), stock_id, requested_quantity };
+            /**** TRANSACTION ****/
+            ClientResponse reserveStockResponse = runSynchTransaction(Transaction.RESERVE_STOCK, reserveStockParams);
+            if (reserveStockResponse.getResults().length != 1 || 
+                    reserveStockResponse.getResults()[0].getRowCount() != 1) {
+                if (debug.val) {
+                    LOG.debug("ReserveStock response has incorrect number of results (" + reserveStockResponse.getResults().length 
+                            + ") or incorrect number of rows");
+                }
+                return total_reserved_quantity;
+            }
+            reserved_quantity[j] = (int) reserveStockResponse.getResults()[0].fetchRow(0).getLong(0);
+            if (trace.val) {
+                LOG.trace("Successfully reserved " + reserved_quantity[j] + " of stock ID " + stock_id + " (requested " + requested_quantity + ")");
+            } 
+            if (reserved_quantity[j] != getInteger(reserve, B2WConstants.PARAMS_RESERVED_QUANTITY)) {
+                LOG.info("Reserved quantity in database <" + reserved_quantity[j] + "> doesn't match log <" + getInteger(reserve, B2WConstants.PARAMS_RESERVED_QUANTITY) +">");
+            }
+
+            if (reserved_quantity[j] > 0) {
+                total_reserved_quantity += reserved_quantity[j];
+            }
+        }
+                
+        return total_reserved_quantity;
+    }
+
     
     // Cancel stock reservations and cancel the stock transaction
-    private boolean cancelStockTransaction(String stockTransactionId, TimestampType timestamp) throws IOException, JSONException {
+    private boolean cancelStockTransaction(String stockTransactionId, TimestampType timestamp, String current_status) throws IOException, JSONException {
         // cancel stock transaction
-        String current_status = B2WConstants.STATUS_CANCELLED;
         Object updateStockTxnParams[] = { hashPartition(stockTransactionId), stockTransactionId, timestamp, current_status };
         /**** TRANSACTION ****/
         ClientResponse cancelStockTransactionResponse = runSynchTransaction(Transaction.UPDATE_STOCK_TRANSACTION, updateStockTxnParams); 
@@ -636,9 +691,26 @@ public class B2WClient extends BenchmarkComponent {
     private boolean runCancelStockTransaction(JSONObject params) throws IOException, JSONException {
         TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
         String stockTransactionId = getString(params, B2WConstants.PARAMS_TRANSACTION_ID);
-        return cancelStockTransaction(stockTransactionId, timestamp);
+        String current_status = B2WConstants.STATUS_CANCELLED;
+        return cancelStockTransaction(stockTransactionId, timestamp, current_status);
     }
 
+    // Example JSON
+    //
+    // {
+    //   "operation": "EXPIRE_STOCK_TRANSACTION",
+    //   "offset": <milliseconds>,
+    //   "params": {
+    //      "transactionId": <transaction_id>,
+    //      "timestamp": <timestamp>, // microseconds since epoch
+    //   }
+    // }
+    private boolean runExpireStockTransaction(JSONObject params) throws IOException, JSONException {
+        TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
+        String stockTransactionId = getString(params, B2WConstants.PARAMS_TRANSACTION_ID);
+        String current_status = B2WConstants.STATUS_EXPIRED;
+        return cancelStockTransaction(stockTransactionId, timestamp, current_status);
+    }
     
     // Example JSON
     //
@@ -685,7 +757,7 @@ public class B2WClient extends BenchmarkComponent {
         // if necessary, cancel the stock transaction
         String stockTransactionId = cartLine.getString(STOCK_TRANSACTION_ID);
         if (!cartLine.wasNull() && stockTransactionId != null) {
-            boolean success = cancelStockTransaction(stockTransactionId, timestamp);
+            boolean success = cancelStockTransaction(stockTransactionId, timestamp, B2WConstants.STATUS_CANCELLED);
             if (!success) return false;
         }
         
@@ -945,28 +1017,31 @@ public class B2WClient extends BenchmarkComponent {
             boolean purchased = false;
             for (int j = 0; j < getStockTxnResponse.getResults()[0].getRowCount(); ++j) {
                 final VoltTableRow stockTransaction = getStockTxnResponse.getResults()[0].fetchRow(j);
-                final int CURRENT_STATUS = 4 + 1, RESERVE_LINES = 8 + 1;
+                final int CURRENT_STATUS = 4 + 1, REQUESTED_QTY = 7 + 1, RESERVE_LINES = 8 + 1, SKU = 10 + 1;
                 
                 String current_status = stockTransaction.getString(CURRENT_STATUS);                
                 if (current_status.equals(B2WConstants.STATUS_CANCELLED)) {
-                    // TODO: try to reserve stock again?
                     LOG.info("Attempt to purchase stock transaction that has been cancelled: " + transaction_id);
                 } else {
                     String reserve_lines = stockTransaction.getString(RESERVE_LINES);
                     JSONArray reserve_lines_arr = new JSONArray(reserve_lines);
-                    if(debug.val && reserve_lines_arr.length() > 1) {
-                        LOG.debug("More than one reserve_line: " + reserve_lines);
+                    if (current_status.equals(B2WConstants.STATUS_EXPIRED)) {
+                        String sku = stockTransaction.getString(SKU);
+                        int requested_quantity = (int) stockTransaction.getLong(REQUESTED_QTY);
+                        reserveExpiredStock(reserve_lines_arr, sku, transaction_id, requested_quantity, timestamp);
                     }
-                    JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(0);
-                    String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
-                    int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
-                    Object purchaseStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity };
-                    /**** TRANSACTION ****/
-                    success = runAsynchTransaction(Transaction.PURCHASE_STOCK, purchaseStockParams);
-                    purchased = true;
+                    for(int k = 0; k < reserve_lines_arr.length(); ++k) {
+                        // TODO: only purchase one of these?
+                        JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(k);
+                        String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
+                        int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
+                        Object purchaseStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity };
+                        /**** TRANSACTION ****/
+                        success = runAsynchTransaction(Transaction.PURCHASE_STOCK, purchaseStockParams);
+                        if (!success) return false;
+                        purchased = true;
+                    }
                 } 
-                
-                if (!success) return false;
             }
             
             if (purchased) {

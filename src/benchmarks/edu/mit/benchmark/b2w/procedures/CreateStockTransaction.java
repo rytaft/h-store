@@ -16,7 +16,7 @@ import edu.mit.benchmark.b2w.B2WConstants;
 import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
 
 @ProcInfo(
-        partitionInfo = "STK_INVENTORY_STOCK.partition_key: 0",
+        partitionInfo = "STK_STOCK_TRANSACTION.partition_key: 0",
         singlePartition = true
     )
 public class CreateStockTransaction extends VoltProcedure {

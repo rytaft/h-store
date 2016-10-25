@@ -13,7 +13,7 @@ import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
-        partitionInfo = "STK_INVENTORY_STOCK.partition_key: 0",
+        partitionInfo = "STK_INVENTORY_STOCK_QUANTITY.partition_key: 0",
         singlePartition = true
     )
 public class PurchaseStock extends VoltProcedure {

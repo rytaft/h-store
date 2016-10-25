@@ -9,6 +9,7 @@ public class B2WConstants {
     public static final String STATUS_PURCHASED = "PURCHASED";
     public static final String STATUS_FINISHED = "FINISHED";
     public static final String STATUS_CANCELLED = "CANCELLED";
+    public static final String STATUS_EXPIRED = "EXPIRED";
     public static final String STATUS_COMPLETE = "COMPLETE";
     public static final String STATUS_INCOMPLETE = "INCOMPLETE";
 

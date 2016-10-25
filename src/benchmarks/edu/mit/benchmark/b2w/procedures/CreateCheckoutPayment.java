@@ -8,7 +8,7 @@ import org.voltdb.VoltTable;
 import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
 
 @ProcInfo(
-        partitionInfo = "CART.partition_key: 0",
+        partitionInfo = "CHECKOUT_PAYMENTS.partition_key: 0",
         singlePartition = true
     )
 public class CreateCheckoutPayment extends VoltProcedure {
