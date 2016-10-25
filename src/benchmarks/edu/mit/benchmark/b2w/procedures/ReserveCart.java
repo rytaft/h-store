@@ -47,7 +47,7 @@ public class ReserveCart extends VoltProcedure {
             ");");
     
     
-    public final SQLStmt getCartLinesStmt = new SQLStmt("SELECT line_id, quantity FROM CART_LINES WHERE cartId = ? ");
+    public final SQLStmt getCartLinesStmt = new SQLStmt("SELECT id, quantity FROM CART_LINES WHERE cartId = ? ");
     
     public final SQLStmt updateCartLineStmt = new SQLStmt(
             "UPDATE CART_LINES " +
