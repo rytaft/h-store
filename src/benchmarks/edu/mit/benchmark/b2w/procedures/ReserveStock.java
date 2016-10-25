@@ -20,7 +20,7 @@ public class ReserveStock extends VoltProcedure {
 //        LoggerUtil.attachObserver(LOG, debug, trace);
 //    }
     
-    public final SQLStmt getStockQtyStmt = new SQLStmt("SELECT stock_id, available, purchase, session FROM STK_INVENTORY_STOCK_QUANTITY WHERE id = ? ");
+    public final SQLStmt getStockQtyStmt = new SQLStmt("SELECT id, available, purchase, session FROM STK_INVENTORY_STOCK_QUANTITY WHERE id = ? ");
     
     public final SQLStmt updateStockQtyStmt = new SQLStmt(
             "UPDATE STK_INVENTORY_STOCK_QUANTITY " +
