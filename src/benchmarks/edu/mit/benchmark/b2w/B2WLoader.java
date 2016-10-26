@@ -213,7 +213,7 @@ public class B2WLoader extends Loader {
         if (o == null)
             return null;
         else
-            return o.hashCode();
+            return Math.abs(o.hashCode()); // must be positive for Squall to work
     }
 
 
