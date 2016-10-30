@@ -34,7 +34,7 @@ CREATE TABLE STK_STOCK_TRANSACTION (
         reserve_lines VARCHAR(4096),
         reserved_quantity INTEGER,
         sku VARCHAR(32), -- REFERENCES STK_INVENTORY_STOCK(sku)
-        status VARCHAR(256),
+        status VARCHAR(2048),
         store_id VARCHAR(32),
         subinventory INTEGER,
         warehouse INTEGER,
