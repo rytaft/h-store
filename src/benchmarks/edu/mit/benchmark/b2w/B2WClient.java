@@ -499,15 +499,19 @@ public class B2WClient extends BenchmarkComponent {
             for (int j = 0; j < getStockTxnResponse.getResults()[0].getRowCount(); ++j) {
                 final VoltTableRow stockTransaction = getStockTxnResponse.getResults()[0].fetchRow(j);
                 final int RESERVE_LINES = 8 + 1;
-
+                
                 String reserve_lines = stockTransaction.getString(RESERVE_LINES);
-                JSONObject reserve_lines_obj = new JSONObject(reserve_lines);
-                String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
-                int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
-                Object cancelReserveStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity };
-                /**** TRANSACTION ****/
-                boolean success = runAsynchTransaction(Transaction.CANCEL_STOCK_RESERVATION, cancelReserveStockParams);
-                if (!success) return false;
+                JSONArray reserve_lines_arr = new JSONArray(reserve_lines);
+                for(int k = 0; k < reserve_lines_arr.length(); ++k) {
+                    // TODO: only cancel one of these?
+                    JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(k);
+                    String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
+                    int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
+                    Object cancelReserveStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity };
+                    /**** TRANSACTION ****/
+                    boolean success = runAsynchTransaction(Transaction.CANCEL_STOCK_RESERVATION, cancelReserveStockParams);
+                    if (!success) return false;
+                }
             }
         }
         
