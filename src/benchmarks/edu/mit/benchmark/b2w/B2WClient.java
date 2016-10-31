@@ -49,6 +49,7 @@ public class B2WClient extends BenchmarkComponent {
         DELETE_CHECKOUT("DeleteCheckout"),
         DELETE_LINE_FROM_CART("DeleteLineFromCart"),
         DELETE_LINE_FROM_CHECKOUT("DeleteLineFromCheckout"),
+        FINISH_STOCK_PURCHASE("FinishStockPurchase"),
         GET_CART("GetCart"),
         GET_CHECKOUT("GetCheckout"),
         GET_STOCK("GetStock"),
@@ -1072,7 +1073,57 @@ public class B2WClient extends BenchmarkComponent {
         String current_status = B2WConstants.STATUS_FINISHED;
         Object updateStockTxnParams[] = { hashPartition(transaction_id), transaction_id, timestamp, current_status };
         /**** TRANSACTION ****/
-        return runAsynchTransaction(Transaction.UPDATE_STOCK_TRANSACTION, updateStockTxnParams);
+        ClientResponse finishStockTransactionResponse = runSynchTransaction(Transaction.UPDATE_STOCK_TRANSACTION, updateStockTxnParams); 
+        if (finishStockTransactionResponse.getResults().length != 1 || 
+                finishStockTransactionResponse.getResults()[0].getRowCount() != 1) {
+            if (debug.val) {
+                LOG.debug("UpdateStockTransaction response has incorrect number of results (" + finishStockTransactionResponse.getResults().length 
+                        + ") or incorrect number of rows");
+            }
+            return false;
+        }
+        boolean status_changed = finishStockTransactionResponse.getResults()[0].fetchRow(0).getBoolean(0);
+        if (trace.val) {
+            LOG.trace("Txn ID " + transaction_id + (status_changed ? " successfully finished" : " was already finished"));
+        }       
+
+        // finish stock reservations
+        if (status_changed) { // if no change, someone else already finished the transaction and finished the reservations
+            Object getStockTxnParams[] = { hashPartition(transaction_id), transaction_id };
+            /**** TRANSACTION ****/
+            ClientResponse getStockTxnResponse = runSynchTransaction(Transaction.GET_STOCK_TRANSACTION, getStockTxnParams);
+            if (getStockTxnResponse.getResults().length != 1)  {
+                if (debug.val) {
+                    LOG.debug("GetStockTransaction response has incorrect number of results (" + getStockTxnResponse.getResults().length + " != 1)");
+                }
+                return false;
+            }
+            if (trace.val) {
+                LOG.trace("StockTransaction for txn ID " + transaction_id + ": " + getStockTxnResponse.getResults()[0].toString());
+            }
+            
+            for (int j = 0; j < getStockTxnResponse.getResults()[0].getRowCount(); ++j) {
+                final VoltTableRow stockTransaction = getStockTxnResponse.getResults()[0].fetchRow(j);
+                final int RESERVE_LINES = 8 + 1;
+                
+                String reserve_lines = stockTransaction.getString(RESERVE_LINES);
+                JSONArray reserve_lines_arr = new JSONArray(reserve_lines);
+                for(int k = 0; k < reserve_lines_arr.length(); ++k) {
+                    // TODO: only finish one of these?
+                    JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(k);
+                    String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
+                    int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
+                    Object finishPurchaseStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity };
+                    /**** TRANSACTION ****/
+                    boolean success = runAsynchTransaction(Transaction.FINISH_STOCK_PURCHASE, finishPurchaseStockParams);
+                    if (!success) return false;
+                }
+            }
+        }
+        
+        return true;
+    
+    
     }
     
     // Example JSON
