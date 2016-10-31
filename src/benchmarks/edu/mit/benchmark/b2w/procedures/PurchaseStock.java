@@ -6,11 +6,9 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
-import org.voltdb.types.TimestampType;
 
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
-import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
         partitionInfo = "STK_INVENTORY_STOCK_QUANTITY.partition_key: 0",
@@ -25,19 +23,19 @@ public class PurchaseStock extends VoltProcedure {
         LoggerUtil.attachObserver(LOG, debug, trace);
     }
         
-    public final SQLStmt getStockQtyStmt = new SQLStmt("SELECT id, available, purchase, session FROM STK_INVENTORY_STOCK_QUANTITY WHERE id = ? ");
+    public final SQLStmt getStockQtyStmt = new SQLStmt("SELECT id, available, purchase, session FROM STK_INVENTORY_STOCK_QUANTITY WHERE partition_key = ? AND id = ? ");
     
     public final SQLStmt updateStockQtyStmt = new SQLStmt(
             "UPDATE STK_INVENTORY_STOCK_QUANTITY " +
             "   SET available = ?, " +
             "       purchase = ?, " +
             "       session = ? " +
-            " WHERE id = ?;"
+            " WHERE partition_key = ? AND id = ?;"
         ); // available, purchase, session, id
 
     
     public VoltTable[] run(int partition_key, String stock_id, int reserved_quantity){
-        voltQueueSQL(getStockQtyStmt, stock_id);
+        voltQueueSQL(getStockQtyStmt, partition_key, stock_id);
         final VoltTable[] stock_results = voltExecuteSQL();
         assert stock_results.length == 1;
         
@@ -66,7 +64,7 @@ public class PurchaseStock extends VoltProcedure {
         session -= reserved_quantity;
         purchase += reserved_quantity;
         
-        voltQueueSQL(updateStockQtyStmt, available, purchase, session, stock_id);
+        voltQueueSQL(updateStockQtyStmt, available, purchase, session, partition_key, stock_id);
         
         return voltExecuteSQL(true);
     }

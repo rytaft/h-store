@@ -19,35 +19,35 @@ public class DeleteCart extends VoltProcedure {
 //    }
     
     public final SQLStmt deleteCartStmt = new SQLStmt(
-            "DELETE FROM CART WHERE id = ? ");
+            "DELETE FROM CART WHERE partition_key = ? AND id = ? ");
     
     public final SQLStmt deleteCartCustomerStmt = new SQLStmt(
-            "DELETE FROM CART_CUSTOMER WHERE cartId = ? ");
+            "DELETE FROM CART_CUSTOMER WHERE partition_key = ? AND cartId = ? ");
     
     public final SQLStmt deleteCartLinesStmt = new SQLStmt(
-            "DELETE FROM CART_LINES WHERE cartId = ? ");
+            "DELETE FROM CART_LINES WHERE partition_key = ? AND cartId = ? ");
     
     public final SQLStmt deleteCartLineProductsStmt = new SQLStmt(
-            "DELETE FROM CART_LINE_PRODUCTS WHERE cartId = ? ");
+            "DELETE FROM CART_LINE_PRODUCTS WHERE partition_key = ? AND cartId = ? ");
     
     public final SQLStmt deleteCartLinePromotionsStmt = new SQLStmt(
-            "DELETE FROM CART_LINE_PROMOTIONS WHERE cartId = ? ");
+            "DELETE FROM CART_LINE_PROMOTIONS WHERE partition_key = ? AND cartId = ? ");
     
     public final SQLStmt deleteCartLineProductWarrantiesStmt = new SQLStmt(
-            "DELETE FROM CART_LINE_PRODUCT_WARRANTIES WHERE cartId = ? ");
+            "DELETE FROM CART_LINE_PRODUCT_WARRANTIES WHERE partition_key = ? AND cartId = ? ");
     
     public final SQLStmt deleteCartLineProductStoresStmt = new SQLStmt(
-            "DELETE FROM CART_LINE_PRODUCT_STORES WHERE cartId = ? ");
+            "DELETE FROM CART_LINE_PRODUCT_STORES WHERE partition_key = ? AND cartId = ? ");
 
 
     public VoltTable[] run(int partition_key, String cart_id){
-        voltQueueSQL(deleteCartCustomerStmt, cart_id);
-        voltQueueSQL(deleteCartLinesStmt, cart_id);
-        voltQueueSQL(deleteCartLineProductsStmt, cart_id);
-        voltQueueSQL(deleteCartLinePromotionsStmt, cart_id);
-        voltQueueSQL(deleteCartLineProductWarrantiesStmt, cart_id);
-        voltQueueSQL(deleteCartLineProductStoresStmt, cart_id);
-        voltQueueSQL(deleteCartStmt, cart_id);
+        voltQueueSQL(deleteCartCustomerStmt, partition_key, cart_id);
+        voltQueueSQL(deleteCartLinesStmt, partition_key, cart_id);
+        voltQueueSQL(deleteCartLineProductsStmt, partition_key, cart_id);
+        voltQueueSQL(deleteCartLinePromotionsStmt, partition_key, cart_id);
+        voltQueueSQL(deleteCartLineProductWarrantiesStmt, partition_key, cart_id);
+        voltQueueSQL(deleteCartLineProductStoresStmt, partition_key, cart_id);
+        voltQueueSQL(deleteCartStmt, partition_key, cart_id);
         
         return voltExecuteSQL(true);
     }

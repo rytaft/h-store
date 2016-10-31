@@ -11,9 +11,6 @@ import org.voltdb.VoltType;
 
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
-import edu.mit.benchmark.b2w.B2WConstants;
-
-import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
 
 @ProcInfo(
         partitionInfo = "CHECKOUT.partition_key: 0",
@@ -88,7 +85,7 @@ public class CreateCheckout extends VoltProcedure {
              Arrays.asList(line_id).toString() + ", " + Arrays.asList(transaction_id).toString() + ", " + Arrays.asList(delivery_time).toString());
         }
         voltQueueSQL(createCheckoutStmt,
-                hashPartition(checkout_id),
+                partition_key,
                 checkout_id,
                 cart_id,
                 deliveryAddressId,
@@ -107,7 +104,7 @@ public class CreateCheckout extends VoltProcedure {
             
             if(transaction_id[i] != null) {
                 voltQueueSQL(createCheckoutStockTxnStmt,
-                        hashPartition(checkout_id),
+                        partition_key,
                         checkout_id,
                         transaction_id[i],
                         line_id[i]);           
@@ -115,7 +112,7 @@ public class CreateCheckout extends VoltProcedure {
 
             if(delivery_time[i] != VoltType.NULL_INTEGER) {                
                 voltQueueSQL(createCheckoutFreightDeliveryTimeStmt,
-                        hashPartition(checkout_id),
+                        partition_key,
                         checkout_id,
                         line_id[i],
                         delivery_time[i]);

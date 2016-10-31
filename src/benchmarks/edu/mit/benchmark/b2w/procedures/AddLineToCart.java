@@ -9,8 +9,6 @@ import org.voltdb.types.TimestampType;
 
 import edu.mit.benchmark.b2w.B2WConstants;
 
-import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
-
 @ProcInfo(
         partitionInfo = "CART.partition_key: 0",
         singlePartition = true
@@ -141,15 +139,15 @@ public class AddLineToCart extends VoltProcedure {
             ");");
 
     
-    public final SQLStmt getCartStmt = new SQLStmt("SELECT id, total, status FROM CART WHERE id = ? ");
+    public final SQLStmt getCartStmt = new SQLStmt("SELECT id, total, status FROM CART WHERE partition_key = ? AND id = ? ");
     
     public final SQLStmt updateCartStmt = new SQLStmt(
             "UPDATE CART " +
             "   SET total = ?, " +
             "       lastModified = ?, " +
             "       status = ? " +
-            " WHERE id = ?;"
-        ); //total, lastModified, status, id
+            " WHERE partition_key = ? AND id = ?;"
+        ); //total, lastModified, status, partition_key, id
 
 
     public VoltTable[] run(int partition_key, String cart_id, TimestampType timestamp, String line_id, 
@@ -157,7 +155,7 @@ public class AddLineToCart extends VoltProcedure {
             double unitSalesPrice, double salesPrice, int maxQuantity, String maximumQuantityReason, String type, String stockTransactionId,
             int requestedQuantity, String line_status, String stockType, String image, String name, byte isKit, double price, double originalPrice,
             byte isLarge, long department, long line, long subClass, double weight, long product_class){
-        voltQueueSQL(getCartStmt, cart_id);
+        voltQueueSQL(getCartStmt, partition_key, cart_id);
         final VoltTable[] cart_results = voltExecuteSQL();
         assert cart_results.length == 1;
         
@@ -171,11 +169,11 @@ public class AddLineToCart extends VoltProcedure {
             total = cart.getDouble(TOTAL);
             status = cart.getString(STATUS);        
         } else {
-            voltQueueSQL(createCartStmt, hashPartition(cart_id), cart_id, total, salesChannel, opn, epar, timestamp, status, autoMerge);
+            voltQueueSQL(createCartStmt, partition_key, cart_id, total, salesChannel, opn, epar, timestamp, status, autoMerge);
         }
         
         voltQueueSQL(createCartLineStmt, 
-                hashPartition(cart_id),
+                partition_key,
                 cart_id,
                 line_id,
                 product_sku,
@@ -194,7 +192,7 @@ public class AddLineToCart extends VoltProcedure {
                 timestamp);
         
         voltQueueSQL(createCartLineProductStmt,
-                hashPartition(cart_id),
+                partition_key,
                 cart_id,
                 line_id,
                 product_id,
@@ -213,7 +211,7 @@ public class AddLineToCart extends VoltProcedure {
         
         total += salesPrice;
         
-        voltQueueSQL(updateCartStmt, total, timestamp, status, cart_id);
+        voltQueueSQL(updateCartStmt, total, timestamp, status, partition_key, cart_id);
         
         return voltExecuteSQL(true);
     }

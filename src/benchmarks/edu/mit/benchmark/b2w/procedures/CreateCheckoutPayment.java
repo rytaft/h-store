@@ -5,8 +5,6 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
-import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
-
 @ProcInfo(
         partitionInfo = "CHECKOUT_PAYMENTS.partition_key: 0",
         singlePartition = true
@@ -59,7 +57,7 @@ public class CreateCheckoutPayment extends VoltProcedure {
             int installmentQuantity, double interestAmount, int interestRate, int annualCET, String number, String criptoNumber, String holdersName, 
             String securityCode, String expirationDate){
         voltQueueSQL(createCheckoutPaymentStmt,
-                hashPartition(checkout_id),
+                partition_key,
                 checkout_id,
                 paymentOptionId,
                 paymentOptionType,

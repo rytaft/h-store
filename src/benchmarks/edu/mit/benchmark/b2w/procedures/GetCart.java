@@ -19,35 +19,35 @@ public class GetCart extends VoltProcedure {
 //    }
     
     public final SQLStmt getCartStmt = new SQLStmt(
-            "SELECT * FROM CART WHERE id = ? ");
+            "SELECT * FROM CART WHERE partition_key = ? AND id = ? ");
     
     public final SQLStmt getCartCustomerStmt = new SQLStmt(
-            "SELECT * FROM CART_CUSTOMER WHERE cartId = ? ");
+            "SELECT * FROM CART_CUSTOMER WHERE partition_key = ? AND cartId = ? ");
     
     public final SQLStmt getCartLinesStmt = new SQLStmt(
-            "SELECT * FROM CART_LINES WHERE cartId = ? ");
+            "SELECT * FROM CART_LINES WHERE partition_key = ? AND cartId = ? ");
     
     public final SQLStmt getCartLineProductsStmt = new SQLStmt(
-            "SELECT * FROM CART_LINE_PRODUCTS WHERE cartId = ? ");
+            "SELECT * FROM CART_LINE_PRODUCTS WHERE partition_key = ? AND cartId = ? ");
     
     public final SQLStmt getCartLinePromotionsStmt = new SQLStmt(
-            "SELECT * FROM CART_LINE_PROMOTIONS WHERE cartId = ? ");
+            "SELECT * FROM CART_LINE_PROMOTIONS WHERE partition_key = ? AND cartId = ? ");
     
     public final SQLStmt getCartLineProductWarrantiesStmt = new SQLStmt(
-            "SELECT * FROM CART_LINE_PRODUCT_WARRANTIES WHERE cartId = ? ");
+            "SELECT * FROM CART_LINE_PRODUCT_WARRANTIES WHERE partition_key = ? AND cartId = ? ");
     
     public final SQLStmt getCartLineProductStoresStmt = new SQLStmt(
-            "SELECT * FROM CART_LINE_PRODUCT_STORES WHERE cartId = ? ");
+            "SELECT * FROM CART_LINE_PRODUCT_STORES WHERE partition_key = ? AND cartId = ? ");
 
 
     public VoltTable[] run(int partition_key, String cart_id){
-        voltQueueSQL(getCartStmt, cart_id);
-        voltQueueSQL(getCartCustomerStmt, cart_id);
-        voltQueueSQL(getCartLinesStmt, cart_id);
-        voltQueueSQL(getCartLineProductsStmt, cart_id);
-        voltQueueSQL(getCartLinePromotionsStmt, cart_id);
-        voltQueueSQL(getCartLineProductWarrantiesStmt, cart_id);
-        voltQueueSQL(getCartLineProductStoresStmt, cart_id);
+        voltQueueSQL(getCartStmt, partition_key, cart_id);
+        voltQueueSQL(getCartCustomerStmt, partition_key, cart_id);
+        voltQueueSQL(getCartLinesStmt, partition_key, cart_id);
+        voltQueueSQL(getCartLineProductsStmt, partition_key, cart_id);
+        voltQueueSQL(getCartLinePromotionsStmt, partition_key, cart_id);
+        voltQueueSQL(getCartLineProductWarrantiesStmt, partition_key, cart_id);
+        voltQueueSQL(getCartLineProductStoresStmt, partition_key, cart_id);
         
         return voltExecuteSQL(true);
     }
