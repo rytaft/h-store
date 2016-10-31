@@ -540,10 +540,10 @@ public class B2WClient extends BenchmarkComponent {
     //      "maxQuantity": <max_quantity>,
     //      "maximumQuantityReason": <maximum_quantity_reason>,
     //      "type": <type>,
-    //      "stockTransactionId": <stock_transaction_id>,
+    //      "stockTransactionId": <stock_transaction_id>, // optional
     //      "requestedQuantity": <requested_quantity>,
-    //      "lineStatus": <line_status>,
-    //      "stockType": <stock_type>,
+    //      "lineStatus": <line_status>, // optional
+    //      "stockType": <stock_type>, // optional
     //      "image": <stock_type>,
     //      "name": <name>,
     //      "isKit": <name>,
@@ -616,11 +616,7 @@ public class B2WClient extends BenchmarkComponent {
         if (reserves != null && transaction_id != null && !transaction_id.isEmpty()) {
             TimestampType cartTimestamp = new TimestampType(0);
             int total_reserved_quantity = reserveStock(reserves, product_sku, transaction_id, requested_quantity, cartTimestamp);
-            
-            String actual_line_status = (requested_quantity == total_reserved_quantity ? B2WConstants.STATUS_COMPLETE : B2WConstants.STATUS_INCOMPLETE);  
-            if (actual_line_status != line_status) {
-                LOG.info("Actual line status in database <" + actual_line_status + "> doesn't match log <" + line_status +">");
-            } 
+            line_status = (requested_quantity == total_reserved_quantity ? B2WConstants.STATUS_COMPLETE : B2WConstants.STATUS_INCOMPLETE);
         } 
         // otherwise check that the stock is available
         else {
