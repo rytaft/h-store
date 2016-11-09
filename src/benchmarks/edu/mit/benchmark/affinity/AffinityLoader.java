@@ -1,8 +1,10 @@
 package edu.mit.benchmark.affinity;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.log4j.Logger;
@@ -14,6 +16,7 @@ import edu.brown.api.BenchmarkComponent;
 import edu.brown.api.Loader;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import edu.brown.utils.ThreadUtil;
 
 public class AffinityLoader extends Loader {
     private static final Logger LOG = Logger.getLogger(AffinityLoader.class);
@@ -55,33 +58,39 @@ public class AffinityLoader extends Loader {
         final AtomicLong total_uses = new AtomicLong(0);
 
         // Multi-threaded loader
-        // final int rows_per_thread = (int)
-        // Math.ceil(Math.max(config.num_suppliers,
-        // Math.max(config.num_products, config.num_parts)) /
-        // (double) config.loadthreads);
-        // final List<Runnable> runnables = new ArrayList<Runnable>();
-        // for (int i = 0; i < config.loadthreads; i++) {
-        // final int thread_id = i;
-        // final int start = rows_per_thread * i;
-        // final int stop = start + rows_per_thread;
-        // runnables.add(new Runnable() {
-        // @Override
-        // public void run() {
-        // loadSuppliers(thread_id, start, stop, total_suppliers);
-        // loadProducts(thread_id, start, stop, total_products);
-        // loadParts(thread_id, start, stop, total_parts);
-        // loadSupplies(thread_id, start, stop, total_supplies);
-        // loadUses(thread_id, start, stop, total_uses);
-        // }
-        // });
-        // } // FOR
-        // ThreadUtil.runGlobalPool(runnables);
+        final int rows_per_thread_supp = (int) Math.ceil(config.num_suppliers /
+                (double) config.loadthreads);
+        final int rows_per_thread_prod = (int) Math.ceil(config.num_products /
+                (double) config.loadthreads);
+        final int rows_per_thread_part = (int) Math.ceil(config.num_parts /
+                (double) config.loadthreads);
+        final List<Runnable> runnables = new ArrayList<Runnable>();
+        for (int i = 0; i < config.loadthreads; i++) {
+            final int thread_id = i;
+            final int start_supp = rows_per_thread_supp * i;
+            final int stop_supp = start_supp + rows_per_thread_supp;
+            final int start_prod = rows_per_thread_prod * i;
+            final int stop_prod = start_prod + rows_per_thread_prod;
+            final int start_part = rows_per_thread_part * i;
+            final int stop_part = start_part + rows_per_thread_part;
+            runnables.add(new Runnable() {
+                @Override
+                public void run() {
+                    loadSuppliers(thread_id, start_supp, stop_supp, total_suppliers);
+                    loadProducts(thread_id, start_prod, stop_prod, total_products);
+                    loadParts(thread_id, start_part, stop_part, total_parts);
+                    loadSupplies(thread_id, start_supp, stop_supp, total_supplies);
+                    loadUses(thread_id, start_prod, stop_prod, total_uses);
+                }
+            });
+        } // FOR
+        ThreadUtil.runGlobalPool(runnables);
 
-        this.loadSuppliers(0, 0, this.config.num_suppliers, total_suppliers);
-        this.loadProducts(0, 0, this.config.num_products, total_products);
-        this.loadParts(0, 0, this.config.num_parts, total_parts);
-        this.loadSupplies(0, 0, this.config.num_suppliers, total_supplies);
-        this.loadUses(0, 0, this.config.num_products, total_uses);
+//        this.loadSuppliers(0, 0, this.config.num_suppliers, total_suppliers);
+//        this.loadProducts(0, 0, this.config.num_products, total_products);
+//        this.loadParts(0, 0, this.config.num_parts, total_parts);
+//        this.loadSupplies(0, 0, this.config.num_suppliers, total_supplies);
+//        this.loadUses(0, 0, this.config.num_products, total_uses);
 
     }
 

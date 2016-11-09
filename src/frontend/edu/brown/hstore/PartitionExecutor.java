@@ -951,12 +951,26 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 queueUtilityWork(STATS_WORK_MSG);
             }
         });
+        
+        // Monitoring hack for E-Store++
+        observable.addObserver(new EventObserver<HStoreSite>() {
+            @Override
+            public void update(EventObservable<HStoreSite> o, HStoreSite arg) {
+                monitor();
+            }
+        });
 
         // Reset our profiling information when we get the first non-sysproc
         this.profiler.resetOnEventObservable(observable);
         
         // Initialize speculative execution scheduler
         this.initSpecExecScheduler();
+    }
+    
+    private void monitor() {
+        // E-Store++ monitoring hack
+        Thread m = new Thread(new Monitoring(this.m_access_monitor));
+        m.start();
     }
     
     private void setSpecExecChecker(AbstractConflictChecker checker) {
@@ -1059,6 +1073,52 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     // MAIN EXECUTION LOOP
     // ----------------------------------------------------------------------------
 
+    
+    // E-Store++ monitoring hack
+    public class Monitoring implements Runnable {
+
+        Monitor m_access_monitor;
+        final int START_TIME = 20000;
+        final int MONITORING_TIME = 20000;
+        
+        public Monitoring(Monitor access_monitor) {
+            m_access_monitor = access_monitor;
+        }
+        
+        public void run() {
+            try {
+                Thread.sleep(START_TIME);
+            }
+            catch(Exception e) {
+                LOG.error(e);
+            }
+            
+            // EStore++ turn access monitoring on
+            LOG.warn("================== RUNNING MONITORING ======================");
+            // remove previous monitoring files
+            String hStoreDir = ShellTools.cmd("pwd");
+            hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
+            String command = "rm " + hStoreDir + "/transactions-partition-*.log";
+            String results = ShellTools.cmd(command);
+
+            // create new monitoring files
+            Path logFile = FileSystems.getDefault().getPath(".", "transactions-partition-" + partitionId + ".log");
+            Path intervalFile = FileSystems.getDefault().getPath(".", "interval-partition-" + partitionId + ".log");
+            this.m_access_monitor.openLog(logFile, intervalFile);
+            
+            try {
+                Thread.sleep(MONITORING_TIME);
+            }
+            catch(Exception e) {
+                LOG.error(e);
+            }
+            
+            LOG.warn("================== TURNING MONITORING OFF ======================");
+            
+            this.m_access_monitor.closeLog();
+        }
+    }
+    
     /**
      * Primary run method that is invoked a single time when the thread is
      * started. Has the opportunity to do startup config.
@@ -1072,7 +1132,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             String msg = String.format("Trying to restart %s for partition %d after it was already running", this.getClass().getSimpleName(), this.partitionId);
             throw new RuntimeException(msg);
         }
-
+        
         // Initialize all of our VoltProcedures handles
         // This needs to be done here so that the Workload trace handles can be 
         // set up properly

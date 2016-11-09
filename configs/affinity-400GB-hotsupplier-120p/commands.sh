@@ -1,10 +1,10 @@
 == PREPARE
 
-ant hstore-prepare -Dproject=affinity -Dhosts="istc2:0:0-24;istc3:1:25-49;istc6:2:50-74;istc13:3:75-99"
+ant hstore-prepare -Dproject=affinity -Dhosts="istc2:0:0-23;istc3:1:24-47;istc6:2:48-71;istc12:3:72-95;istc13:4:96-119"
 
 == LOAD
 
-ant hstore-benchmark -Dproject=affinity -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnoshutdown=true -Dnoexecute=true -Dsite.txn_restart_limit_sysproc=100 -Dsite.jvm_asserts=false -Dsite.commandlog_enable=false -Dsite.exec_db2_redirects=false -Dsite.exec_early_prepare=false -Dsite.exec_force_singlepartitioned=true -Dsite.markov_fixed=false -Dsite.planner_caching=false -Dsite.specexec_enable=true -Dsite.memory=256000 | tee out-load.log
+ant hstore-benchmark -Dproject=affinity -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnoshutdown=true -Dnoexecute=true -Dsite.txn_restart_limit_sysproc=1000 -Dsite.jvm_asserts=false -Dsite.commandlog_enable=false -Dsite.exec_db2_redirects=false -Dsite.exec_early_prepare=false -Dsite.exec_force_singlepartitioned=true -Dsite.markov_fixed=false -Dsite.planner_caching=false -Dsite.specexec_enable=true -Dsite.memory=256000 | tee out-load.log
 
 == RUN
 
@@ -25,4 +25,8 @@ ant hstore-benchmark -Dproject=affinity -Dglobal.hasher_plan=plan.json -Dglobal.
 
 == RECONFIGURE
 
-ant hstore-benchmark -Dproject=affinity -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnoshutdown=true -Dclient.duration=1200000 -Dclient.interval=1000 -Dclient.txnrate=1000 -Dclient.count=5 -Dclient.hosts="istc7;istc8;istc9;istc10;istc11" -Dclient.threads_per_host=16 -Dclient.blocking_concurrent=30 -Dclient.output_results_csv=results.csv -Dclient.output_interval=true -Dsite.planner_caching=false -Dclient.txn_hints=false -Dsite.exec_early_prepare=false -Dclient.output_basepartitions=true -Delastic.run_monitoring=false -Delastic.update_plan=false -Delastic.exec_reconf=true -Delastic.delay=600000 -Dclient.memory=4096 -Dsite.memory=256000 | tee out.log
+ant hstore-benchmark -Dproject=affinity -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnoshutdown=true -Dclient.duration=2400000 -Dclient.interval=1000 -Dclient.txnrate=1000 -Dclient.count=5 -Dclient.hosts="istc7;istc8;istc9;istc10;istc11" -Dclient.threads_per_host=16 -Dclient.blocking_concurrent=30 -Dclient.output_results_csv=results.csv -Dclient.output_interval=true -Dsite.planner_caching=false -Dclient.txn_hints=false -Dsite.exec_early_prepare=false -Dclient.output_basepartitions=true -Delastic.run_monitoring=false -Delastic.update_plan=false -Delastic.exec_reconf=true -Delastic.delay=1200000 -Dclient.memory=4096 -Dsite.memory=256000 | tee out.log
+
+== RECONFIGURE NO LOAD
+
+ant hstore-benchmark -Dproject=affinity -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnostart=true -Dnoloader=true -Dnoshutdown=true -Dclient.duration=600000 -Dclient.interval=1000 -Dclient.txnrate=1000 -Dclient.count=5 -Dclient.hosts="istc7;istc8;istc9;istc10;istc11" -Dclient.threads_per_host=16 -Dclient.blocking_concurrent=30 -Dclient.output_results_csv=results.csv -Dclient.output_interval=true -Dsite.planner_caching=false -Dclient.txn_hints=false -Dsite.exec_early_prepare=false -Dclient.output_basepartitions=true -Delastic.run_monitoring=false -Delastic.update_plan=false -Delastic.exec_reconf=true -Delastic.delay=300000 -Dclient.memory=4096 | tee out.log
