@@ -355,13 +355,7 @@ public class B2WClient extends BenchmarkComponent {
         for (int j = 0; j < reserve_count; ++j) {
             JSONObject reserve = reserves.getJSONObject(j);
             String stock_id = getString(reserve, B2WConstants.PARAMS_STOCK_ID); 
-            if (!stock_ids.contains(stock_id)) {
-                LOG.info("Attempting to reserve stock_id " + stock_id + " which is not present in the cache for sku " + product_sku);
-            }
-            if (requested_quantity != getInteger(reserve, B2WConstants.PARAMS_REQUESTED_QUANTITY)) {
-                LOG.info("Requested quantity in database <" + requested_quantity + "> doesn't match log <" + getInteger(reserve, B2WConstants.PARAMS_REQUESTED_QUANTITY) +">");
-            }
-         
+            
             // Attempt to reserve the stock
             Object reserveStockParams[] = { hashPartition(stock_id), stock_id, requested_quantity };
             /**** TRANSACTION ****/
@@ -427,13 +421,7 @@ public class B2WClient extends BenchmarkComponent {
         for (int j = 0; j < reserve_count; ++j) {
             JSONObject reserve = reserves.getJSONObject(j);
             String stock_id = getString(reserve, B2WConstants.PARAMS_STOCK_ID); 
-            if (!stock_ids.contains(stock_id)) {
-                LOG.info("Attempting to reserve stock_id " + stock_id + " which is not present in the cache for sku " + product_sku);
-            }
-            if (requested_quantity != getInteger(reserve, B2WConstants.PARAMS_REQUESTED_QUANTITY)) {
-                LOG.info("Requested quantity in database <" + requested_quantity + "> doesn't match log <" + getInteger(reserve, B2WConstants.PARAMS_REQUESTED_QUANTITY) +">");
-            }
-         
+                     
             // Attempt to reserve the stock
             Object reserveStockParams[] = { hashPartition(stock_id), stock_id, requested_quantity };
             /**** TRANSACTION ****/
@@ -504,7 +492,7 @@ public class B2WClient extends BenchmarkComponent {
                 String reserve_lines = stockTransaction.getString(RESERVE_LINES);
                 JSONArray reserve_lines_arr = new JSONArray(reserve_lines);
                 for(int k = 0; k < reserve_lines_arr.length(); ++k) {
-                    // TODO: only cancel one of these?
+                    // There may be multiple reserve lines if the item being canceled is a kit
                     JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(k);
                     String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
                     int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
@@ -1032,7 +1020,7 @@ public class B2WClient extends BenchmarkComponent {
                         reserveExpiredStock(reserve_lines_arr, sku, transaction_id, requested_quantity, timestamp);
                     }
                     for(int k = 0; k < reserve_lines_arr.length(); ++k) {
-                        // TODO: only purchase one of these?
+                        // There may be multiple reserve lines if the item being purchased is a kit
                         JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(k);
                         String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
                         int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
@@ -1109,7 +1097,7 @@ public class B2WClient extends BenchmarkComponent {
                 String reserve_lines = stockTransaction.getString(RESERVE_LINES);
                 JSONArray reserve_lines_arr = new JSONArray(reserve_lines);
                 for(int k = 0; k < reserve_lines_arr.length(); ++k) {
-                    // TODO: only finish one of these?
+                    // There may be multiple reserve lines if the item being purchased is a kit
                     JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(k);
                     String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
                     int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
