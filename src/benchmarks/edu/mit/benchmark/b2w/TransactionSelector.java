@@ -14,19 +14,15 @@ import org.json.JSONObject;
 
 public class TransactionSelector {
 
-    String filename;
-    BufferedReader br = null;
-    Random r = null;
-    int clientId;
-    int clientCount;
+	String filename;
+	BufferedReader br = null;
+	Random r = null;
 
     private static TransactionSelector singleInstant = null;
 
-    // All client threads on each host share the same file, called <filename>.  <clientId> and <clientCount>
-    // are used to make sure that each line of the file is selected by exactly one client.
-    public static TransactionSelector getTransactionSelector(String filename, int clientId, int clientCount) throws FileNotFoundException, IOException {
+    public static synchronized TransactionSelector getTransactionSelector(String filename) throws FileNotFoundException {
         if (singleInstant == null)
-            singleInstant = new TransactionSelector(filename, clientId, clientCount);
+            singleInstant = new TransactionSelector(filename);
         else if (!singleInstant.getFilename().equals(filename))
             throw new FileNotFoundException("All the filename passed to a TransactionSelector must be the same!");
         return singleInstant;
@@ -36,51 +32,42 @@ public class TransactionSelector {
         return filename;
     }
 
-    private TransactionSelector(String filename, int clientId, int clientCount) throws FileNotFoundException, IOException {
-        r = new Random();
-        this.filename = filename;
-        this.clientId = clientId;
-        this.clientCount = clientCount;
+	private TransactionSelector(String filename) throws FileNotFoundException {
+		r = new Random();
+		this.filename = filename;
 
-        if(filename==null || filename.isEmpty())
-            throw new FileNotFoundException("You must specify a filename to instantiate the TransactionSelector... (probably missing in your workload configuration?)");
+		if(filename==null || filename.isEmpty())
+			throw new FileNotFoundException("You must specify a filename to instantiate the TransactionSelector... (probably missing in your workload configuration?)");
 
         File file = new File(filename);
         FileReader fr = new FileReader(file);
         br = new BufferedReader(fr);
+	}
 
-        for(int i = 0; i < clientId; ++i) {
-            br.readLine();
-        }
-    }
+	public synchronized JSONObject nextTransaction() throws IOException, JSONException {
+		return readNextTransaction();
+	}
 
-    public synchronized JSONObject nextTransaction() throws IOException, JSONException {
-        return readNextTransaction();
-    }
+	private JSONObject readNextTransaction() throws IOException, JSONException {
+		String line = br.readLine();
+		if(line == null) return null;
+		return new JSONObject(line);
+	}
 
-    private JSONObject readNextTransaction() throws IOException, JSONException {
-        String line = br.readLine();
-        if(line == null) return null;
-        for(int i = 0; i < clientCount-1; ++i) {
-            br.readLine();
-        }
-        return new JSONObject(line);
-    }
+	public ArrayList<JSONObject> readAll() throws IOException, JSONException {
+		ArrayList<JSONObject> transactions = new ArrayList<JSONObject>();
 
-    public ArrayList<JSONObject> readAll() throws IOException, JSONException {
-        ArrayList<JSONObject> transactions = new ArrayList<JSONObject>();
+		while (true) {
+		    JSONObject txn = readNextTransaction();
+		    if(txn == null) break;
+			transactions.add(txn);
+		}
 
-        while (true) {
-            JSONObject txn = readNextTransaction();
-            if(txn == null) break;
-            transactions.add(txn);
-        }
+		return transactions;
+	}
 
-        return transactions;
-    }
-
-    public void close() throws IOException {
-        br.close();
-    }
+	public void close() throws IOException {
+		br.close();
+	}
 
 }

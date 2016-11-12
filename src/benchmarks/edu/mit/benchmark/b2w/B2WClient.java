@@ -103,22 +103,14 @@ public class B2WClient extends BenchmarkComponent {
      */
     private long startTime;
   
+
     public B2WClient(String[] args) {
         super(args);     
         this.config = new B2WConfig(m_extraParams);
         try {
-            int clientCount = this.getHStoreConf().client.threads_per_host;
-            // This clientId will be used to determine which lines of the operations_file this 
-            // particular client is going to read.  Assumes that clientIds for this host are monotonically
-            // increasing.
-            int clientId = this.getClientId() % clientCount;
-            LOG.info("Creating client " + clientId + " out of " + clientCount + " total on this host");
-            this.txn_selector = TransactionSelector.getTransactionSelector(this.config.operations_file, clientId, clientCount);
+            this.txn_selector = TransactionSelector.getTransactionSelector(this.config.operations_file);
         } catch (FileNotFoundException e) {
             LOG.error("File not found: " + this.config.operations_file + ". Stack trace: " + e.getStackTrace(), e);
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            LOG.error("IOException in file: " + this.config.operations_file + ". Stack trace: " + e.getStackTrace(), e);
             throw new RuntimeException(e);
         }
     }
