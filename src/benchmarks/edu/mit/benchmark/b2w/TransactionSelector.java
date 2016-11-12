@@ -59,7 +59,7 @@ public class TransactionSelector {
     private JSONObject readNextTransaction() throws IOException, JSONException {
         String line = br.readLine();
         if(line == null) return null;
-        for(int i = 0; i < clientCount; ++i) {
+        for(int i = 0; i < clientCount-1; ++i) {
             br.readLine();
         }
         return new JSONObject(line);
