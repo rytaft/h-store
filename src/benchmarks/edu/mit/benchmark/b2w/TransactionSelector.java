@@ -14,15 +14,17 @@ import org.json.JSONObject;
 
 public class TransactionSelector {
 
-	String filename;
-	BufferedReader br = null;
-	Random r = null;
+    String filename;
+    BufferedReader br = null;
+    Random r = null;
+    int clientId;
+    int clientCount;
 
     private static TransactionSelector singleInstant = null;
 
-    public static TransactionSelector getTransactionSelector(String filename) throws FileNotFoundException {
+    public static TransactionSelector getTransactionSelector(String filename, int clientId, int clientCount) throws FileNotFoundException, IOException {
         if (singleInstant == null)
-            singleInstant = new TransactionSelector(filename);
+            singleInstant = new TransactionSelector(filename, clientId, clientCount);
         else if (!singleInstant.getFilename().equals(filename))
             throw new FileNotFoundException("All the filename passed to a TransactionSelector must be the same!");
         return singleInstant;
@@ -32,42 +34,51 @@ public class TransactionSelector {
         return filename;
     }
 
-	private TransactionSelector(String filename) throws FileNotFoundException {
-		r = new Random();
-		this.filename = filename;
+    private TransactionSelector(String filename, int clientId, int clientCount) throws FileNotFoundException, IOException {
+        r = new Random();
+        this.filename = filename;
+        this.clientId = clientId;
+        this.clientCount = clientCount;
 
-		if(filename==null || filename.isEmpty())
-			throw new FileNotFoundException("You must specify a filename to instantiate the TransactionSelector... (probably missing in your workload configuration?)");
+        if(filename==null || filename.isEmpty())
+            throw new FileNotFoundException("You must specify a filename to instantiate the TransactionSelector... (probably missing in your workload configuration?)");
 
         File file = new File(filename);
         FileReader fr = new FileReader(file);
         br = new BufferedReader(fr);
-	}
 
-	public synchronized JSONObject nextTransaction() throws IOException, JSONException {
-		return readNextTransaction();
-	}
+        for(int i = 0; i < clientId; ++i) {
+            br.readLine();
+        }
+    }
 
-	private JSONObject readNextTransaction() throws IOException, JSONException {
-		String line = br.readLine();
-		if(line == null) return null;
-		return new JSONObject(line);
-	}
+    public synchronized JSONObject nextTransaction() throws IOException, JSONException {
+        return readNextTransaction();
+    }
 
-	public ArrayList<JSONObject> readAll() throws IOException, JSONException {
-		ArrayList<JSONObject> transactions = new ArrayList<JSONObject>();
+    private JSONObject readNextTransaction() throws IOException, JSONException {
+        String line = br.readLine();
+        if(line == null) return null;
+        for(int i = 0; i < clientCount; ++i) {
+            br.readLine();
+        }
+        return new JSONObject(line);
+    }
 
-		while (true) {
-		    JSONObject txn = readNextTransaction();
-		    if(txn == null) break;
-			transactions.add(txn);
-		}
+    public ArrayList<JSONObject> readAll() throws IOException, JSONException {
+        ArrayList<JSONObject> transactions = new ArrayList<JSONObject>();
 
-		return transactions;
-	}
+        while (true) {
+            JSONObject txn = readNextTransaction();
+            if(txn == null) break;
+            transactions.add(txn);
+        }
 
-	public void close() throws IOException {
-		br.close();
-	}
+        return transactions;
+    }
+
+    public void close() throws IOException {
+        br.close();
+    }
 
 }
