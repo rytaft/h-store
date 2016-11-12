@@ -22,6 +22,8 @@ public class TransactionSelector {
 
     private static TransactionSelector singleInstant = null;
 
+    // All client threads on each host share the same file, called <filename>.  <clientId> and <clientCount>
+    // are used to make sure that each line of the file is selected by exactly one client.
     public static TransactionSelector getTransactionSelector(String filename, int clientId, int clientCount) throws FileNotFoundException, IOException {
         if (singleInstant == null)
             singleInstant = new TransactionSelector(filename, clientId, clientCount);

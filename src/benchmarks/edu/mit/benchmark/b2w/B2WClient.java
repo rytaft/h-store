@@ -112,6 +112,7 @@ public class B2WClient extends BenchmarkComponent {
             // particular client is going to read.  Assumes that clientIds for this host are monotonically
             // increasing.
             int clientId = this.getClientId() % clientCount;
+            LOG.info("Creating client " + clientId + " out of " + clientCount + " total on this host");
             this.txn_selector = TransactionSelector.getTransactionSelector(this.config.operations_file, clientId, clientCount);
         } catch (FileNotFoundException e) {
             LOG.error("File not found: " + this.config.operations_file + ". Stack trace: " + e.getStackTrace(), e);
