@@ -46,7 +46,7 @@ CREATE TABLE CART (
         id VARCHAR(128) NOT NULL,
         total FLOAT,
         salesChannel VARCHAR(32),
-        opn VARCHAR(32),
+        opn VARCHAR(512),
         epar VARCHAR(128),
         lastModified TIMESTAMP,
         status VARCHAR(32),
