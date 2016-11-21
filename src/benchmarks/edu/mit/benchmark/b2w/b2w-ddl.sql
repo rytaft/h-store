@@ -47,7 +47,7 @@ CREATE TABLE CART (
         total FLOAT,
         salesChannel VARCHAR(32),
         opn VARCHAR(512),
-        epar VARCHAR(128),
+        epar VARCHAR(256),
         lastModified TIMESTAMP,
         status VARCHAR(32),
         autoMerge TINYINT,
