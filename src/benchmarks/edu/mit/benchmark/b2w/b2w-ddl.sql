@@ -92,7 +92,7 @@ CREATE TABLE CART_LINE_PRODUCTS (
         id BIGINT,
         sku VARCHAR(32),
         image VARCHAR(256),
-        name VARCHAR(128),
+        name VARCHAR(256),
         isKit TINYINT,
         price FLOAT,
         originalPrice FLOAT,
