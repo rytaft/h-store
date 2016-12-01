@@ -922,14 +922,12 @@ public class B2WLoader extends Loader {
                 config.CART_LINE_PRODUCT_STORES_DATA_FILE, CART_LINE_PRODUCT_STORES_TYPES, ",");
         this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CHECKOUT,
                 config.CHECKOUT_DATA_FILE, CHECKOUT_TYPES, ",");
-        // Question: This table is missing?
-//        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CHECKOUT_PAYMENTS,
-//                config, , , ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CHECKOUT_PAYMENTS,
+                config.CHECKOUT_PAYMENTS_DATA_FILE, CHECKOUT_PAYMENTS_TYPES, ",");
         this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CHECKOUT_FREIGHT_DELIVERY_TIME,
                 config.CHECKOUT_FREIGHT_DELIVERY_TIME_DATA_FILE, CHECKOUT_FREIGHT_DELIVERY_TIME_TYPES, ",");
         this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CHECKOUT_STOCK_TRANSACTIONS,
                 config.CHECKOUT_STOCK_TRANSACTIONS_DATA_FILE, CHECKOUT_STOCK_TRANSACTIONS_TYPES, ",");
-
     }
 
     @Override
@@ -947,7 +945,7 @@ public class B2WLoader extends Loader {
 //            LOG.error("JSON load failed");
 //            e.printStackTrace();
 //        }
-//        this.loadStockData(catalogContext.database);
+        this.loadStockData(catalogContext.database);
         this.loadCsvData(catalogContext.database);
         LOG.info("Load success!!");
         debug.set(b);
