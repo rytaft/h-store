@@ -24,6 +24,21 @@ public class B2WConfig {
     public String stock_quantity_data_file = null;
     public String stock_inventory_data_file = null;
     public String operations_file = null;
+    public String STK_INVENTORY_STOCK_DATA_FILE = null;
+    public String STK_INVENTORY_STOCK_QUANTITY_DATA_FILE = null;
+    public String STK_STOCK_TRANSACTION_DATA_FILE = null;
+    public String CART_DATA_FILE = null;
+    public String CART_CUSTOMER_DATA_FILE = null;
+    public String CART_LINES_DATA_FILE = null;
+    public String CART_LINE_PRODUCTS_DATA_FILE = null;
+    public String CART_LINE_PROMOTIONS_DATA_FILE = null;
+    public String CART_LINE_PRODUCT_WARRANTIES_DATA_FILE = null;
+    public String CART_LINE_PRODUCT_STORES_DATA_FILE = null;
+    public String CHECKOUT_DATA_FILE = null;
+    public String CHECKOUT_PAYMENTS_DATA_FILE = null;
+    public String CHECKOUT_FREIGHT_DELIVERY_TIME_DATA_FILE = null;
+    public String CHECKOUT_STOCK_TRANSACTIONS_DATA_FILE = null;
+
     public Long speed_up = 10L;
     
     
