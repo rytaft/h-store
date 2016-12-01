@@ -809,14 +809,14 @@ public class B2WClient extends BenchmarkComponent {
             JSONObject line = lines_map.get(line_id);
             int requested_quantity = (int) cartLine.getLong(QUANTITY);
             int total_reserved_quantity = 0;
-            String transaction_id = line.getString(B2WConstants.PARAMS_TRANSACTION_ID); 
+            String transaction_id = getString(line, B2WConstants.PARAMS_TRANSACTION_ID);
             if (transaction_id == null || transaction_id.isEmpty()) {
                 if (debug.val) LOG.debug("No transaction_id for line_id: " + line_id);
             } else {
                 // reserve the stock
-//                long sku = line.getLong(B2WConstants.PARAMS_PRODUCT_SKU);
-                long sku = line.getLong("productSKu");
-                JSONArray reserves = line.getJSONArray(B2WConstants.PARAMS_RESERVES);
+//                long sku = getLong(line, B2WConstants.PARAMS_PRODUCT_SKU);
+                long sku = getLong(line, "productSKu");
+                JSONArray reserves = getArray(line, B2WConstants.PARAMS_RESERVES);
                 total_reserved_quantity = reserveStock(reserves, sku, transaction_id, requested_quantity, cartTimestamp);                
             }           
             
@@ -825,9 +825,9 @@ public class B2WClient extends BenchmarkComponent {
             requested_quantities[i] = requested_quantity;
             reserved_quantities[i] = total_reserved_quantity;
             statuses[i] = (requested_quantity == total_reserved_quantity ? B2WConstants.STATUS_COMPLETE : B2WConstants.STATUS_INCOMPLETE);
-            stock_types[i] = line.getString(B2WConstants.PARAMS_STOCK_TYPE);
+            stock_types[i] = getString(line, B2WConstants.PARAMS_STOCK_TYPE);
             transaction_ids[i] = transaction_id;
-            delivery_times[i] = line.getInt(B2WConstants.PARAMS_DELIVERY_TIME);
+            delivery_times[i] = getInteger(line, B2WConstants.PARAMS_DELIVERY_TIME);
         }
         
         
