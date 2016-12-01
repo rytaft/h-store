@@ -13,7 +13,6 @@ import org.voltdb.types.TimestampType;
 
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
-import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
         partitionInfo = "STK_STOCK_TRANSACTION.partition_key: 0",
@@ -28,18 +27,18 @@ public class UpdateStockTransaction extends VoltProcedure {
         LoggerUtil.attachObserver(LOG, debug, trace);
     }
         
-    public final SQLStmt getStockTxnStmt = new SQLStmt("SELECT current_status, status FROM STK_STOCK_TRANSACTION WHERE transaction_id = ? ");
+    public final SQLStmt getStockTxnStmt = new SQLStmt("SELECT current_status, status FROM STK_STOCK_TRANSACTION WHERE partition_key = ? AND transaction_id = ? ");
 
     public final SQLStmt updateStockTxnStmt = new SQLStmt(
             "UPDATE STK_STOCK_TRANSACTION " +
             "   SET current_status = ?, " +
             "       status = ? " +
-            " WHERE transaction_id = ?;"
-        ); // current_status, status, transaction_id
+            " WHERE partition_key = ? AND transaction_id = ?;"
+        ); // current_status, status, partition_key, transaction_id
 
     
     public VoltTable[] run(int partition_key, String transaction_id, TimestampType timestamp, String current_status){
-        voltQueueSQL(getStockTxnStmt, transaction_id);
+        voltQueueSQL(getStockTxnStmt, partition_key, transaction_id);
         final VoltTable[] stock_txn_results = voltExecuteSQL();
         assert stock_txn_results.length == 1;
         
@@ -48,7 +47,7 @@ public class UpdateStockTransaction extends VoltProcedure {
         
         if (stock_txn_results[0].getRowCount() > 0) {
             final VoltTableRow stock_txn = stock_txn_results[0].fetchRow(0);
-            final int CURRENT_STATUS = 0 + 1, STATUS = 1 + 1;
+            final int CURRENT_STATUS = 0, STATUS = 1;
             previous_status = stock_txn.getString(CURRENT_STATUS);
             status = stock_txn.getString(STATUS);
         } else {
@@ -68,7 +67,7 @@ public class UpdateStockTransaction extends VoltProcedure {
                 LOG.info("Failed to parse status: " + status);
             }
 
-            voltQueueSQL(updateStockTxnStmt, current_status, status, transaction_id);
+            voltQueueSQL(updateStockTxnStmt, current_status, status, partition_key, transaction_id);
             voltExecuteSQL(true);
 
             result[0].addRow(true);

@@ -19,22 +19,22 @@ public class GetCheckout extends VoltProcedure {
 //    }
     
     public final SQLStmt getCheckoutStmt = new SQLStmt(
-            "SELECT * FROM CHECKOUT WHERE id = ? ");
+            "SELECT * FROM CHECKOUT WHERE partition_key = ? AND id = ? ");
     
     public final SQLStmt getCheckoutPaymentsStmt = new SQLStmt(
-            "SELECT * FROM CHECKOUT_PAYMENTS WHERE checkoutId = ? ");
+            "SELECT * FROM CHECKOUT_PAYMENTS WHERE partition_key = ? AND checkoutId = ? ");
     
     public final SQLStmt getCheckoutFreightDeliveryTimeStmt = new SQLStmt(
-            "SELECT * FROM CHECKOUT_FREIGHT_DELIVERY_TIME WHERE checkoutId = ? ");
+            "SELECT * FROM CHECKOUT_FREIGHT_DELIVERY_TIME WHERE partition_key = ? AND checkoutId = ? ");
     
     public final SQLStmt getCheckoutStockTransactionsStmt = new SQLStmt(
-            "SELECT * FROM CHECKOUT_STOCK_TRANSACTIONS WHERE checkoutId = ? ");
+            "SELECT * FROM CHECKOUT_STOCK_TRANSACTIONS WHERE partition_key = ? AND checkoutId = ? ");
 
     public VoltTable[] run(int partition_key, String checkout_id){
-        voltQueueSQL(getCheckoutStmt, checkout_id);
-        voltQueueSQL(getCheckoutPaymentsStmt, checkout_id);
-        voltQueueSQL(getCheckoutFreightDeliveryTimeStmt, checkout_id);
-        voltQueueSQL(getCheckoutStockTransactionsStmt, checkout_id);
+        voltQueueSQL(getCheckoutStmt, partition_key, checkout_id);
+        voltQueueSQL(getCheckoutPaymentsStmt, partition_key, checkout_id);
+        voltQueueSQL(getCheckoutFreightDeliveryTimeStmt, partition_key, checkout_id);
+        voltQueueSQL(getCheckoutStockTransactionsStmt, partition_key, checkout_id);
         
         return voltExecuteSQL(true);
     }

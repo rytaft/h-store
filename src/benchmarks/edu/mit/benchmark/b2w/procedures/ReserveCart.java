@@ -14,8 +14,6 @@ import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.mit.benchmark.b2w.B2WConstants;
 
-import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
-
 @ProcInfo(
         partitionInfo = "CART.partition_key: 0",
         singlePartition = true
@@ -47,7 +45,7 @@ public class ReserveCart extends VoltProcedure {
             ");");
     
     
-    public final SQLStmt getCartLinesStmt = new SQLStmt("SELECT * FROM CART_LINES WHERE cartId = ? ");
+    public final SQLStmt getCartLinesStmt = new SQLStmt("SELECT id, quantity FROM CART_LINES WHERE partition_key = ? AND cartId = ? ");
     
     public final SQLStmt updateCartLineStmt = new SQLStmt(
             "UPDATE CART_LINES " +
@@ -56,22 +54,22 @@ public class ReserveCart extends VoltProcedure {
             "       requestedQuantity = ?, " +
             "       status = ?, " +
             "       stockType = ? " +
-            " WHERE cartId = ? AND id = ?;"
-        ); // quantity, stockTransactionId, requestedQuantity, status, stockType, cartId, id
+            " WHERE partition_key = ? AND cartId = ? AND id = ?;"
+        ); // quantity, stockTransactionId, requestedQuantity, status, stockType, partition_key, cartId, id
 
     public final SQLStmt updateCartLineQtyStmt = new SQLStmt(
             "UPDATE CART_LINES " +
             "   SET quantity = ?, " +
             "       requestedQuantity = ? " +
-            " WHERE cartId = ? AND id = ?;"
-        ); // quantity, requestedQuantity, cartId, id
+            " WHERE partition_key = ? AND cartId = ? AND id = ?;"
+        ); // quantity, requestedQuantity, partition_key, cartId, id
     
     public final SQLStmt updateCartStmt = new SQLStmt(
             "UPDATE CART " +
             "   SET lastModified = ?, " +
             "       status = ? " +
-            " WHERE id = ?;"
-        ); // lastModified, status, id
+            " WHERE partition_key = ? AND id = ?;"
+        ); // lastModified, status, partition_key, id
 
 
     public VoltTable[] run(int partition_key, String cart_id, TimestampType timestamp, String customer_id,
@@ -88,7 +86,7 @@ public class ReserveCart extends VoltProcedure {
             line_id_index.put(line_ids[i], i);
         }
         
-        voltQueueSQL(getCartLinesStmt, cart_id);
+        voltQueueSQL(getCartLinesStmt, partition_key, cart_id);
         final VoltTable[] cart_results = voltExecuteSQL();
         assert cart_results.length == 1;
                 
@@ -100,24 +98,24 @@ public class ReserveCart extends VoltProcedure {
         
         for (int i = 0; i < cart_results[0].getRowCount(); ++i) {
             final VoltTableRow cartLine = cart_results[0].fetchRow(i);
-            final int LINE_ID = 1 + 1, QUANTITY = 7 + 1;
+            final int LINE_ID = 0, QUANTITY = 1;
             String line_id = cartLine.getString(LINE_ID);
             int original_quantity = (int) cartLine.getLong(QUANTITY);
             
             if (line_id_index.containsKey(line_id)) {
                 int index = line_id_index.get(line_id);
-                voltQueueSQL(updateCartLineStmt, reserved_quantity[index], transaction_id[index], requested_quantity[index], status[index], stock_type[index], cart_id, line_id);
+                voltQueueSQL(updateCartLineStmt, reserved_quantity[index], transaction_id[index], requested_quantity[index], status[index], stock_type[index], partition_key, cart_id, line_id);
             }
             else { // the cart line was not successfully reserved, so update the quantity to 0
-                voltQueueSQL(updateCartLineQtyStmt, 0, original_quantity, cart_id, line_id);
+                voltQueueSQL(updateCartLineQtyStmt, 0, original_quantity, partition_key, cart_id, line_id);
             }
             
         }
         
         String cart_status = B2WConstants.STATUS_RESERVED;
         
-        voltQueueSQL(createCartCustomerStmt, hashPartition(cart_id), cart_id, customer_id, token, guest, isGuest);
-        voltQueueSQL(updateCartStmt, timestamp, cart_status, cart_id);
+        voltQueueSQL(createCartCustomerStmt, partition_key, cart_id, customer_id, token, guest, isGuest);
+        voltQueueSQL(updateCartStmt, timestamp, cart_status, partition_key, cart_id);
         
         return voltExecuteSQL(true);
     }

@@ -20,7 +20,7 @@ public class TransactionSelector {
 
     private static TransactionSelector singleInstant = null;
 
-    public static TransactionSelector getTransactionSelector(String filename) throws FileNotFoundException {
+    public static synchronized TransactionSelector getTransactionSelector(String filename) throws FileNotFoundException {
         if (singleInstant == null)
             singleInstant = new TransactionSelector(filename);
         else if (!singleInstant.getFilename().equals(filename))

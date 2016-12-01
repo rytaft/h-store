@@ -19,22 +19,22 @@ public class DeleteCheckout extends VoltProcedure {
 //    }
     
     public final SQLStmt deleteCheckoutStmt = new SQLStmt(
-            "DELETE FROM CHECKOUT WHERE id = ? ");
+            "DELETE FROM CHECKOUT WHERE partition_key = ? AND id = ? ");
     
     public final SQLStmt deleteCheckoutPaymentsStmt = new SQLStmt(
-            "DELETE FROM CHECKOUT_PAYMENTS WHERE checkoutId = ? ");
+            "DELETE FROM CHECKOUT_PAYMENTS WHERE partition_key = ? AND checkoutId = ? ");
     
     public final SQLStmt deleteCheckoutFreightDeliveryTimeStmt = new SQLStmt(
-            "DELETE FROM CHECKOUT_FREIGHT_DELIVERY_TIME WHERE checkoutId = ? ");
+            "DELETE FROM CHECKOUT_FREIGHT_DELIVERY_TIME WHERE partition_key = ? AND checkoutId = ? ");
     
     public final SQLStmt deleteCheckoutStockTransactionsStmt = new SQLStmt(
-            "DELETE FROM CHECKOUT_STOCK_TRANSACTIONS WHERE checkoutId = ? ");
+            "DELETE FROM CHECKOUT_STOCK_TRANSACTIONS WHERE partition_key = ? AND checkoutId = ? ");
 
     public VoltTable[] run(int partition_key, String checkout_id){
-        voltQueueSQL(deleteCheckoutPaymentsStmt, checkout_id);
-        voltQueueSQL(deleteCheckoutFreightDeliveryTimeStmt, checkout_id);
-        voltQueueSQL(deleteCheckoutStockTransactionsStmt, checkout_id);
-        voltQueueSQL(deleteCheckoutStmt, checkout_id);
+        voltQueueSQL(deleteCheckoutPaymentsStmt, partition_key, checkout_id);
+        voltQueueSQL(deleteCheckoutFreightDeliveryTimeStmt, partition_key, checkout_id);
+        voltQueueSQL(deleteCheckoutStockTransactionsStmt, partition_key, checkout_id);
+        voltQueueSQL(deleteCheckoutStmt, partition_key, checkout_id);
         
         return voltExecuteSQL(true);
     }

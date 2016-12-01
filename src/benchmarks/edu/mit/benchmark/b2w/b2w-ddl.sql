@@ -1,12 +1,12 @@
 
 CREATE TABLE STK_INVENTORY_STOCK (
         partition_key INTEGER NOT NULL,
-        sku BIGINT NOT NULL,
+        sku VARCHAR(32) NOT NULL,
         id VARCHAR(128) NOT NULL,
         warehouse INTEGER,
         sub_inventory INTEGER,
         stock_type INTEGER,
-        store_id BIGINT,
+        store_id VARCHAR(32),
         lead_time INTEGER,
         PRIMARY KEY (id)
 );
@@ -31,12 +31,11 @@ CREATE TABLE STK_STOCK_TRANSACTION (
         expiration_date TIMESTAMP,
         is_kit TINYINT,
         requested_quantity INTEGER,
-        reserve_lines VARCHAR(256),
+        reserve_lines VARCHAR(4096),
         reserved_quantity INTEGER,
-        sku BIGINT, -- REFERENCES STK_INVENTORY_STOCK(sku)
-        solr_query VARCHAR(128),
-        status VARCHAR(256),
-        store_id BIGINT,
+        sku VARCHAR(32), -- REFERENCES STK_INVENTORY_STOCK(sku)
+        status VARCHAR(2048),
+        store_id VARCHAR(32),
         subinventory INTEGER,
         warehouse INTEGER,
         PRIMARY KEY (reserve_id)
@@ -47,8 +46,8 @@ CREATE TABLE CART (
         id VARCHAR(128) NOT NULL,
         total FLOAT,
         salesChannel VARCHAR(32),
-        opn VARCHAR(32),
-        epar VARCHAR(128),
+        opn VARCHAR(512),
+        epar VARCHAR(256),
         lastModified TIMESTAMP,
         status VARCHAR(32),
         autoMerge TINYINT,
@@ -69,9 +68,9 @@ CREATE TABLE CART_LINES (
         partition_key INTEGER NOT NULL,
         cartId VARCHAR(128) NOT NULL REFERENCES CART(id),
         id VARCHAR(128), -- <productSku>-<storeId> 
-        productSku BIGINT, -- REFERENCES CART_LINE_PRODUCTS(sku)
+        productSku VARCHAR(32), -- REFERENCES CART_LINE_PRODUCTS(sku)
         productId BIGINT, -- REFERENCES CART_LINE_PRODUCTS(id)
-        storeId BIGINT, -- REFERENCES CART_LINE_PRODUCT_STORES(id)
+        storeId VARCHAR(32), -- REFERENCES CART_LINE_PRODUCT_STORES(id)
         unitSalesPrice FLOAT,
         salesPrice FLOAT,
         quantity INTEGER,
@@ -91,9 +90,9 @@ CREATE TABLE CART_LINE_PRODUCTS (
         cartId VARCHAR(128) NOT NULL REFERENCES CART(id),
         lineId VARCHAR(128), -- REFERENCES CART_LINES(id)
         id BIGINT,
-        sku BIGINT,
+        sku VARCHAR(32),
         image VARCHAR(256),
-        name VARCHAR(128),
+        name VARCHAR(256),
         isKit TINYINT,
         price FLOAT,
         originalPrice FLOAT,
@@ -123,7 +122,7 @@ CREATE TABLE CART_LINE_PRODUCT_WARRANTIES (
         partition_key INTEGER NOT NULL,
         cartId VARCHAR(128) NOT NULL REFERENCES CART(id),
         lineId VARCHAR(128), -- REFERENCES CART_LINES(id)
-        sku BIGINT,
+        sku VARCHAR(32),
         productSku VARCHAR(128), -- REFERENCES CART_LINES(id)
         description VARCHAR(256)
 );
@@ -133,7 +132,7 @@ CREATE TABLE CART_LINE_PRODUCT_STORES (
         partition_key INTEGER NOT NULL,
         cartId VARCHAR(128) NOT NULL REFERENCES CART(id),
         lineId VARCHAR(128), -- REFERENCES CART_LINES(id)
-        id BIGINT,
+        id VARCHAR(32),
         name VARCHAR(32),
         image VARCHAR(256),
         deliveryType VARCHAR(32)

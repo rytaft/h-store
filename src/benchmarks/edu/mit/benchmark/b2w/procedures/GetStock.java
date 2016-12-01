@@ -18,10 +18,10 @@ public class GetStock extends VoltProcedure {
 //        LoggerUtil.attachObserver(LOG, debug, trace);
 //    }
         
-    public final SQLStmt getStockStmt = new SQLStmt("SELECT * FROM STK_INVENTORY_STOCK WHERE sku = ? ");
+    public final SQLStmt getStockStmt = new SQLStmt("SELECT * FROM STK_INVENTORY_STOCK WHERE partition_key = ? AND sku = ? ");
         
-    public VoltTable[] run(int partition_key, long sku){
-        voltQueueSQL(getStockStmt, sku);
+    public VoltTable[] run(int partition_key, String sku){
+        voltQueueSQL(getStockStmt, partition_key, sku);
         
         return voltExecuteSQL(true);
     }

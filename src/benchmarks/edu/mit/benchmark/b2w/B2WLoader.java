@@ -54,12 +54,12 @@ public class B2WLoader extends Loader {
     private final static byte TINY_INT_FALSE = 0;
 
     private final static int[] INVENTORY_STOCK_TYPES = {
-            KEY_TYPE_BIGINT,
+            KEY_TYPE_VARCHAR,
             KEY_TYPE_VARCHAR,
             KEY_TYPE_INTEGER,
             KEY_TYPE_INTEGER,
             KEY_TYPE_INTEGER,
-            KEY_TYPE_BIGINT,
+            KEY_TYPE_VARCHAR,
             KEY_TYPE_INTEGER};
 
     private final static int[] STOCK_QUANTITY_TYPES = {
@@ -79,10 +79,9 @@ public class B2WLoader extends Loader {
             KEY_TYPE_INTEGER,
             KEY_TYPE_VARCHAR,
             KEY_TYPE_INTEGER,
-            KEY_TYPE_BIGINT,
             KEY_TYPE_VARCHAR,
             KEY_TYPE_VARCHAR,
-            KEY_TYPE_BIGINT,
+            KEY_TYPE_VARCHAR,
             KEY_TYPE_INTEGER,
             KEY_TYPE_INTEGER};
 
@@ -173,7 +172,7 @@ public class B2WLoader extends Loader {
      * @return return the target object we want, if the value is null or the type is invalid, then return null.
      */
     private Object getDataByType(String value, int type){
-        if (value.equals("null"))
+        if (value.equals("null") || value.equals("<null>"))
             return null;
         switch (type){
             case KEY_TYPE_INTEGER:
@@ -214,7 +213,7 @@ public class B2WLoader extends Loader {
         if (o == null)
             return null;
         else
-            return o.hashCode();
+            return Math.abs(o.hashCode()); // must be positive for Squall to work
     }
 
 
@@ -337,11 +336,11 @@ public class B2WLoader extends Loader {
                         "id", "cart " + total + ":cart[id]");
                 row_lines[param++] = getDataByType(line, KEY_TYPE_VARCHAR,
                         "id", "cart " + total + ":line[id]");
-                row_lines[param++] = getDataByType(product, KEY_TYPE_BIGINT,
+                row_lines[param++] = getDataByType(product, KEY_TYPE_VARCHAR,
                         "sku", "cart " + total + ":product[sku]");
                 row_lines[param++] = getDataByType(product, KEY_TYPE_BIGINT,
                         "id", "cart " + total + ":product[id]");
-                row_lines[param++] = getDataByType(store, KEY_TYPE_BIGINT,
+                row_lines[param++] = getDataByType(store, KEY_TYPE_VARCHAR,
                         "id", "cart " + total + ":store[id]");
                 row_lines[param++] = getDataByType(line, KEY_TYPE_FLOAT,
                         "unitSalesPrice", "cart " + total + ":line[unitSalesPrice]");
@@ -379,7 +378,7 @@ public class B2WLoader extends Loader {
                             "id", "cart " + total + ":line[id]");
                     row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT,
                             "id", "cart " + total + ":product[id]");
-                    row_products[param++] = getDataByType(product, KEY_TYPE_BIGINT,
+                    row_products[param++] = getDataByType(product, KEY_TYPE_VARCHAR,
                             "sku", "cart " + total + ":product[sku]");
                     row_products[param++] = getDataByType(product, KEY_TYPE_VARCHAR,
                             "image", "cart " + total + ":product[image]");
@@ -447,7 +446,7 @@ public class B2WLoader extends Loader {
                             "id", "cart " + total + ":cart[id]");
                     row_warranties[param++] = getDataByType(line, KEY_TYPE_VARCHAR,
                             "id", "cart " + total + ":line[id]");
-                    row_warranties[param++] = getDataByType(warranty, KEY_TYPE_BIGINT,
+                    row_warranties[param++] = getDataByType(warranty, KEY_TYPE_VARCHAR,
                             "sku", "cart " + total + ":warranty[sku]");
                     row_warranties[param++] = getDataByType(warranty, KEY_TYPE_VARCHAR,
                             "productSku", "cart " + total + ":warranty[productSku]");
@@ -467,7 +466,7 @@ public class B2WLoader extends Loader {
                             "id", "cart " + total + ":cart[id]");
                     row_stores[param++] = getDataByType(line, KEY_TYPE_VARCHAR,
                             "id", "cart " + total + ":line[id]");
-                    row_stores[param++] = getDataByType(store, KEY_TYPE_BIGINT,
+                    row_stores[param++] = getDataByType(store, KEY_TYPE_VARCHAR,
                             "id", "cart " + total + ":store[id]");
                     row_stores[param++] = getDataByType(store, KEY_TYPE_VARCHAR,
                             "name", "cart " + total + ":store[name]");
@@ -719,9 +718,9 @@ public class B2WLoader extends Loader {
 
     /**
      * This function is used to read the file has the format like :
-     * sku    | id                                   | warehouse | sub_inventory | stock_type | store_id | lead_time
-     * -------+--------------------------------------+-----------+---------------+------------+----------+-----------
-     * 163213 | f9705d24-a125-4429-8626-16fc98cfe784 |        77 |          1001 |          1 |     null |         1
+     * sku;id;warehouse;sub_inventory;stock_type;store_id;lead_time
+     * e.g.:
+     * 163213;f9705d24-a125-4429-8626-16fc98cfe784;77;1001;1;B2W;1
      * and load it to the VoltTable.
      * @param name the name of the table we want to modified.
      * @param path the path of the file we want to read.
@@ -737,8 +736,6 @@ public class B2WLoader extends Loader {
         VoltTable vt_stock = CatalogUtil.getVoltTable(catalog_tbl_stock);
         int num_cols_stock = catalog_tbl_stock.getColumns().size();
 
-        in.readLine();
-        in.readLine();
         String line;
         int total = 0;
         int batchSize = 0;
@@ -747,7 +744,7 @@ public class B2WLoader extends Loader {
             line = in.readLine();
             if (line == null || line.isEmpty())
                 break;
-            String[] items = line.trim().split("\\s*\\|\\s*");
+            String[] items = line.split(";");
 
             Object row_stock[] = new Object[num_cols_stock];
             int param;
@@ -803,12 +800,12 @@ public class B2WLoader extends Loader {
         try {
             this.loadCartData(catalogContext.database,config.cart_data_file);
             this.loadCheckOutData(catalogContext.database,config.checkout_data_file);
-            LOG.info("Load success!!");
         } catch (JSONException e) {
             LOG.error("JSON load failed");
             e.printStackTrace();
         }
         this.loadStockData(catalogContext.database);
+        LOG.info("Load success!!");
         debug.set(b);
     }
 

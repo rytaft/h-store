@@ -21,35 +21,35 @@ public class DeleteLineFromCart extends VoltProcedure {
 //    }
     
     public final SQLStmt deleteCartLineStmt = new SQLStmt(
-            "DELETE FROM CART_LINES WHERE cartId = ? AND id = ?;");
+            "DELETE FROM CART_LINES WHERE partition_key = ? AND cartId = ? AND id = ?;");
 
     public final SQLStmt deleteCartLineProductStmt = new SQLStmt(
-            "DELETE FROM CART_LINE_PRODUCTS WHERE cartId = ? AND lineId = ?;");
+            "DELETE FROM CART_LINE_PRODUCTS WHERE partition_key = ? AND cartId = ? AND lineId = ?;");
 
     public final SQLStmt deleteCartLinePromotionsStmt = new SQLStmt(
-            "DELETE FROM CART_LINE_PROMOTIONS WHERE cartId = ? AND lineId = ?;");
+            "DELETE FROM CART_LINE_PROMOTIONS WHERE partition_key = ? AND cartId = ? AND lineId = ?;");
 
     public final SQLStmt deleteCartLineProductWarrantiesStmt = new SQLStmt(
-            "DELETE FROM CART_LINE_PRODUCT_WARRANTIES WHERE cartId = ? AND lineId = ?;");
+            "DELETE FROM CART_LINE_PRODUCT_WARRANTIES WHERE partition_key = ? AND cartId = ? AND lineId = ?;");
 
     public final SQLStmt deleteCartLineProductStoresStmt = new SQLStmt(
-            "DELETE FROM CART_LINE_PRODUCT_STORES WHERE cartId = ? AND lineId = ?;");
+            "DELETE FROM CART_LINE_PRODUCT_STORES WHERE partition_key = ? AND cartId = ? AND lineId = ?;");
 
-    public final SQLStmt getCartStmt = new SQLStmt("SELECT total FROM CART WHERE id = ?;");
+    public final SQLStmt getCartStmt = new SQLStmt("SELECT total FROM CART WHERE partition_key = ? AND id = ?;");
     public final SQLStmt getCartLineStmt = new SQLStmt(
-            "SELECT salesPrice FROM CART_LINES WHERE cartId = ? and id = ?;");
+            "SELECT salesPrice FROM CART_LINES WHERE partition_key = ? AND cartId = ? AND id = ?;");
     
     public final SQLStmt updateCartStmt = new SQLStmt(
             "UPDATE CART " +
             "   SET total = ?, " +
             "       lastModified = ? " +
-            " WHERE id = ?;"
-        ); //total, lastModified, id
+            " WHERE partition_key = ? AND id = ?;"
+        ); //total, lastModified, partition_key, id
 
 
     public VoltTable[] run(int partition_key, String cart_id, TimestampType timestamp, String line_id){
-        voltQueueSQL(getCartStmt, cart_id);
-        voltQueueSQL(getCartLineStmt, cart_id, line_id);
+        voltQueueSQL(getCartStmt, partition_key, cart_id);
+        voltQueueSQL(getCartLineStmt, partition_key, cart_id, line_id);
         final VoltTable[] cart_results = voltExecuteSQL();
         assert cart_results.length == 2;
         
@@ -58,7 +58,7 @@ public class DeleteLineFromCart extends VoltProcedure {
 
         if (cart_results[0].getRowCount() > 0) {
             final VoltTableRow cart = cart_results[0].fetchRow(0);
-            final int TOTAL = 0 + 1;
+            final int TOTAL = 0;
             total = cart.getDouble(TOTAL);
         } else {
             return null;
@@ -66,21 +66,21 @@ public class DeleteLineFromCart extends VoltProcedure {
         
         if (cart_results[1].getRowCount() > 0) {
             final VoltTableRow cart_line = cart_results[1].fetchRow(0);
-            final int SALES_PRICE = 0 + 1;
+            final int SALES_PRICE = 0;
             salesPrice = cart_line.getDouble(SALES_PRICE);
         } else {
             return null;
         }       
         
-        voltQueueSQL(deleteCartLineStmt, cart_id, line_id);        
-        voltQueueSQL(deleteCartLineProductStmt, cart_id, line_id);
-        voltQueueSQL(deleteCartLinePromotionsStmt, cart_id, line_id);
-        voltQueueSQL(deleteCartLineProductWarrantiesStmt, cart_id, line_id);
-        voltQueueSQL(deleteCartLineProductStoresStmt, cart_id, line_id);
+        voltQueueSQL(deleteCartLineStmt, partition_key, cart_id, line_id);        
+        voltQueueSQL(deleteCartLineProductStmt, partition_key, cart_id, line_id);
+        voltQueueSQL(deleteCartLinePromotionsStmt, partition_key, cart_id, line_id);
+        voltQueueSQL(deleteCartLineProductWarrantiesStmt, partition_key, cart_id, line_id);
+        voltQueueSQL(deleteCartLineProductStoresStmt, partition_key, cart_id, line_id);
         
         total -= salesPrice;
         
-        voltQueueSQL(updateCartStmt, total, timestamp, cart_id);
+        voltQueueSQL(updateCartStmt, total, timestamp, partition_key, cart_id);
         
         return voltExecuteSQL(true);
     }
