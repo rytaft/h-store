@@ -342,30 +342,21 @@ public class B2WClient extends BenchmarkComponent {
     }
 
     // Re-reserve stock
-    private boolean reserveExpiredStock(JSONArray reserves, String transaction_id) 
+    private boolean reserveExpiredStock(JSONArray reserve_lines_arr, String transaction_id) 
             throws IOException, JSONException {
         
-        int reserve_count = reserves.length();
-        
         boolean success = true;
-        for (int j = 0; j < reserve_count; ++j) {
-            JSONObject reserve = reserves.getJSONObject(j);
-            
-            // Attempt to reserve the stock
-            String reserve_lines = getString(reserve, B2WConstants.PARAMS_RESERVE_LINES); 
-            JSONArray reserve_lines_arr = new JSONArray(reserve_lines);
-            for(int k = 0; k < reserve_lines_arr.length(); ++k) {
-                // There may be multiple reserve lines if the item being reserved is a kit
-                JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(k);
-                String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
-                int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
-                Object reserveStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity };
-                /**** TRANSACTION ****/
-                success = runAsynchTransaction(Transaction.RESERVE_STOCK, reserveStockParams);
-                if (!success) return false;
-            }
-        }
-                
+        for(int k = 0; k < reserve_lines_arr.length(); ++k) {
+            // There may be multiple reserve lines if the item being reserved is a kit
+            JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(k);
+            String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
+            int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
+            Object reserveStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity };
+            /**** TRANSACTION ****/
+            success = runAsynchTransaction(Transaction.RESERVE_STOCK, reserveStockParams);
+            if (!success) return false;
+        }       
+
         return success;
     }
     
