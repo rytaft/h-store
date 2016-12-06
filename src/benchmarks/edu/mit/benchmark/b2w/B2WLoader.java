@@ -752,6 +752,11 @@ public class B2WLoader extends Loader {
             for (param = 0; param < num_cols_stock - 1; param++){
                 row_stock[param + 1] = getDataByType(items[param], types[param]);
             }
+	    // Hack to increase the amount of available product
+	    if (name.equals(B2WConstants.TABLENAME_INVENTORY_STOCK_QUANTITY)) {
+		final int AVAILABLE = 2;
+		row_stock[AVAILABLE] = (Integer) row_stock[AVAILABLE] * 1000;
+	    }
             vt_stock.addRow(row_stock);
 
             total++;

@@ -24,7 +24,7 @@ public class B2WConfig {
     public String stock_quantity_data_file = null;
     public String stock_inventory_data_file = null;
     public String operations_file = null;
-    public Long speed_up = 10L;
+    public Long speed_up = 200L;
     
     
     public B2WConfig(Map<String, String> m_extraParams) {
