@@ -731,13 +731,13 @@ public class B2WClient extends BenchmarkComponent {
         // Store the line id and transaction info to add to the cart and checkout
         for (int i = 0; i < lines_count; ++i) {
             JSONObject line = lines.getJSONObject(i);
-            line_ids[i] = line.getString(B2WConstants.PARAMS_LINE_ID);
-            requested_quantities[i] = line.getInt(B2WConstants.PARAMS_REQUESTED_QUANTITY);
-            reserved_quantities[i] = line.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
+            line_ids[i] = getString(line, B2WConstants.PARAMS_LINE_ID);
+            requested_quantities[i] = getInteger(line, B2WConstants.PARAMS_REQUESTED_QUANTITY);
+            reserved_quantities[i] = getInteger(line, B2WConstants.PARAMS_RESERVED_QUANTITY);
             statuses[i] = (requested_quantities[i] == reserved_quantities[i] ? B2WConstants.STATUS_COMPLETE : B2WConstants.STATUS_INCOMPLETE);
-            stock_types[i] = line.getString(B2WConstants.PARAMS_STOCK_TYPE);
-            transaction_ids[i] = line.getString(B2WConstants.PARAMS_TRANSACTION_ID);
-            delivery_times[i] = line.getInt(B2WConstants.PARAMS_DELIVERY_TIME);
+            stock_types[i] = getString(line, B2WConstants.PARAMS_STOCK_TYPE);
+            transaction_ids[i] = getString(line, B2WConstants.PARAMS_TRANSACTION_ID);
+            delivery_times[i] = getInteger(line, B2WConstants.PARAMS_DELIVERY_TIME);
         }       
         
         // Update the cart with the new transactions, customer, etc
