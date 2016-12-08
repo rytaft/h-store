@@ -413,6 +413,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             try {
                 Object[] keys = ids.toArray();
+                if (ReconfigurationUtil.useHashedKeys(keys)) {
+                    ReconfigurationUtil.hashPartition(keys);
+                }
                 PartitionRange range = new PartitionRange(this.catalog_table, this.key_schema, this.cmp, 0, keys, keys);
 
                 PartitionRange precedingRange = partitionRanges.floor(range);
@@ -447,6 +450,9 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
             Set<Integer> partitionIds = new HashSet<Integer>();
             Object[] keys = ids.toArray();
+            if (ReconfigurationUtil.useHashedKeys(keys)) {
+                ReconfigurationUtil.hashPartition(keys);
+            }
             PartitionRange range = new PartitionRange(this.catalog_table, this.key_schema, this.cmp, 0, keys, keys);
             PartitionRange precedingRange = partitionRanges.floor(range);
             if (precedingRange != null && precedingRange.overlapsRange(keys)) {
