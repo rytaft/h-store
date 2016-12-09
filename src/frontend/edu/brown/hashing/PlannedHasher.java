@@ -94,6 +94,15 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     }
 
     /**
+     * Update the current partition plan without calculating the delta
+     * 
+     * @param partition_json
+     */
+    public void changePartitionPhaseSimple(String partition_plan) {
+        planned_partitions.setPartitionPhaseSimple(partition_plan);
+    }
+
+    /**
      * @param catalog_db
      * @param num_partitions
      */
@@ -214,7 +223,7 @@ public class PlannedHasher extends DefaultHasher implements ExplicitHasher {
     }
 
     @Override
-    public ReconfigurationPlan changePartitionPlan(String partition_json_file) throws Exception {
+    public ReconfigurationPlan changePartitionPlan(JSONObject partition_json) {
         throw new NotImplementedException("TODO");
     }
     

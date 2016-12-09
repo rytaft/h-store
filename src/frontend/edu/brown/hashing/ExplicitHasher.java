@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import org.json.JSONObject;
 import org.voltdb.CatalogContext;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Database;
@@ -74,7 +75,7 @@ public interface ExplicitHasher {
     
     public ReconfigurationPlan changePartitionPhase(String partition_plan) throws Exception;
     
-    public ReconfigurationPlan changePartitionPlan(String partition_json_file) throws Exception;
+    public ReconfigurationPlan changePartitionPlan(JSONObject partition_json);
     
     public ExplicitPartitions getPartitions();
 

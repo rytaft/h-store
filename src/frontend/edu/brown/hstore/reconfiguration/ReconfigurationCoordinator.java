@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.jfree.util.Log;
+import org.json.JSONObject;
 import org.voltdb.VoltTable;
 import org.voltdb.catalog.CatalogType;
 import org.voltdb.catalog.Table;
@@ -337,14 +338,15 @@ public class ReconfigurationCoordinator implements Shutdownable {
             try {
                 // Find reconfig plan
                 if (absHasher instanceof TwoTieredRangeHasher) {
-                    reconfig_plan = hasher.changePartitionPlan(partitionPlan);
-                    for(PartitionExecutor executor : this.local_executors) {
-                    	((TwoTieredRangeHasher) executor.getPartitionEstimator().getHasher()).changePartitionPlan(partitionPlan);
+                    JSONObject partition_json = new JSONObject(partitionPlan);
+                    reconfig_plan = hasher.changePartitionPlan(partition_json);
+                    for(PartitionExecutor executor : this.local_executors) {    
+                    	((TwoTieredRangeHasher) executor.getPartitionEstimator().getHasher()).changePartitionPlanSimple(partition_json);
                     }
                 } else if (absHasher instanceof PlannedHasher) {
                     reconfig_plan = hasher.changePartitionPhase(partitionPlan);
                     for(PartitionExecutor executor : this.local_executors) {
-                    	((PlannedHasher) executor.getPartitionEstimator().getHasher()).changePartitionPhase(partitionPlan);
+                    	((PlannedHasher) executor.getPartitionEstimator().getHasher()).changePartitionPhaseSimple(partitionPlan);
                     }
                 } else {
                     throw new Exception("Unsupported hasher : " + absHasher.getClass());

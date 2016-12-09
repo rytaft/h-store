@@ -49,23 +49,20 @@ public class TwoTieredRangeHasher extends DefaultHasher implements ExplicitHashe
     /**
      * Update the current partition plan
      * 
-     * @param partition_plan - the new plan
+     * @param partition_json - the new plan json
      * @return The delta, or null if there was no change
-     * @throws Exception
      */
-    public ReconfigurationPlan changePartitionPlan(String partition_plan) throws Exception {
-    	try {
-            if(partition_plan != null) {
-            	JSONObject partition_json = new JSONObject(partition_plan);
-            	return partitions.setPartitionPlan(partition_json);
-            } else {
-                LOG.error("Attempt to change partition plan without plan file");
-            } 
-        } catch (Exception ex) {
-            LOG.error("Error changing partitions", ex);
-            throw new RuntimeException(ex);
-        }
-        return null;
+    public ReconfigurationPlan changePartitionPlan(JSONObject partition_json) {
+    	return partitions.setPartitionPlan(partition_json);
+    }
+    
+    /**
+     * Update the current partition plan without calculating the delta
+     * 
+     * @param partition_json - the new plan json
+     */
+    public void changePartitionPlanSimple(JSONObject partition_json) {
+        partitions.setPartitionPlanSimple(partition_json);
     }
 
     /**

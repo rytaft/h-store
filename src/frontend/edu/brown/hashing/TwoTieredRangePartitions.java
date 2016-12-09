@@ -262,6 +262,39 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
     }
     
     /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartition#setPartitionPlanSimple(org.json.JSONObject)
+     */
+    @Override
+    public void setPartitionPlanSimple(JSONObject partition_json) {
+        try {
+            // check that the new tables match the old tables
+            getExplicitPartitionedTables(partition_json);
+            
+            PartitionPhase new_plan = null;
+            PartitionPhase old_plan = null;
+            // update the partition plan
+            if (partition_json.has(PARTITION_PLAN)) {
+                JSONObject plan = partition_json.getJSONObject(PARTITION_PLAN);
+                new_plan = new PartitionPhase(catalog_context, plan, partitionedTablesByFK);
+                synchronized (this) {
+                    this.old_partition_plan = this.partition_plan;
+                    this.partition_plan = new_plan;
+                    old_plan = this.old_partition_plan;
+                    this.previousIncrementalPlan = old_plan;
+                    this.incrementalPlan = old_plan;            
+                }
+            } else {
+                throw new JSONException(String.format("JSON file is missing key \"%s\". ", PARTITION_PLAN));
+            }
+        } catch (Exception ex) {
+            LOG.error("Exception on setting partition plan", ex);
+            LOG.error(String.format("Old plan: %s  New plan: %s" , getPreviousPlan() ,getCurrentPlan()));
+            throw new RuntimeException("Exception setting new partition plan", ex);
+        }
+
+    }
+    
+    /* (non-Javadoc)
      * @see edu.brown.hashing.ExplicitPartition#getCurrentPlan()
      */
     @Override

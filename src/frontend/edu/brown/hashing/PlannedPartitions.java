@@ -780,6 +780,33 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
     }
 
     /**
+     * Update the current partition phase (plan/epoch/etc)
+     * 
+     * @param new_phase
+     */
+    public void setPartitionPhaseSimple(String new_phase) {
+        String old_phase = this.current_phase;
+        if (old_phase != null && old_phase.equals(new_phase)) {
+            return;
+        }
+        if (this.partition_phase_map.containsKey(new_phase) == false) {
+            throw new RuntimeException("Invalid Phase Name: " + new_phase + " phases: " + StringUtil.join(",", this.partition_phase_map.keySet()));
+        }
+        this.current_phase = new_phase;
+        this.previous_phase = old_phase;       
+
+        if (old_phase == null) {
+            return;
+        }
+        PartitionPhase old_plan = this.partition_phase_map.get(old_phase);
+        synchronized(this) {
+            this.incrementalPlan = old_plan;
+            this.previousIncrementalPlan = old_plan;
+        }
+    }
+
+    
+    /**
      * @return the current partition phase/epoch
      */
     public String getCurrent_phase() {
@@ -854,6 +881,11 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
     @Override
     public ReconfigurationPlan setPartitionPlan(JSONObject partition_json) {
+        throw new NotImplementedException();
+    }
+    
+    @Override
+    public void setPartitionPlanSimple(JSONObject partition_json) {
         throw new NotImplementedException();
     }
 

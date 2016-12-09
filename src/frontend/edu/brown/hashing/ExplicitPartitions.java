@@ -342,6 +342,13 @@ public abstract class ExplicitPartitions {
     public abstract ReconfigurationPlan setPartitionPlan(JSONObject partition_json);
 
     /**
+     * Update the current partition plan
+     * 
+     * @param partition_json
+     */
+    public abstract void setPartitionPlanSimple(JSONObject partition_json);
+
+    /**
      * @return the current partition plan
      */
     public abstract PartitionPhase getCurrentPlan();
