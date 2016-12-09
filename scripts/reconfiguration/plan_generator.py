@@ -84,7 +84,8 @@ def getPlanString(args):
     "ycsb": "usertable",
     "tpcc": "warehouse",
     "affinity" : "suppliers",
-    "twitter" : "user_profiles"
+    "twitter" : "user_profiles",
+    "b2w" : "cart"
   }
 
   aff_size = None 
@@ -111,6 +112,24 @@ def getPlanString(args):
   elif args["type"] == "twitter":
     raise Exception("Set to twt, but no twt sizes %s" % args["twitter"])
 
+  b2w_size = None 
+  if "type" in args and args["type"] == "b2w":
+    max_int = 2147483647
+    b2w_size = {}
+    b2w_size["stk_inventory_stock"] = max_int
+    b2w_size["stk_inventory_stock_quantity"] = max_int
+    b2w_size["stk_stock_transaction"] = max_int
+    b2w_size["cart"] = max_int
+    b2w_size["cart_customer"] = max_int
+    b2w_size["cart_lines"] = max_int
+    b2w_size["cart_line_products"] = max_int
+    b2w_size["cart_line_promotions"] = max_int
+    b2w_size["cart_line_product_warranties"] = max_int
+    b2w_size["cart_line_product_stores"] = max_int
+    b2w_size["checkout"] = max_int
+    b2w_size["checkout_payments"] = max_int
+    b2w_size["checkout_freight_delivery_time"] = max_int
+    b2w_size["checkout_stock_transactions"] = max_int
 
   if "change_type" in args and args["change_type"] == "scale-down":
     raise Exception("not implemented")
@@ -119,6 +138,8 @@ def getPlanString(args):
       tables =  aff_size
     elif args["type"] == "twitter":
       tables = twt_size 
+    elif args["type"] == "b2w":
+      tables = b2w_size 
     else:
       tables = { TABLE_MAP[args.type]: args["size"] }
     default_table = TABLE_MAP[args["type"]]
@@ -145,7 +166,7 @@ def getPlanString(args):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("-t","--type",dest="type", choices=["ycsb","tpcc", "affinity","twitter"], required=True, help="Generate this type")
+  parser.add_argument("-t","--type",dest="type", choices=["ycsb","tpcc", "affinity","twitter","b2w"], required=True, help="Generate this type")
   parser.add_argument("-c","--change-type", dest="change_type", choices=["scale-down", "scale-up"], help="How to  evolve")
   parser.add_argument("-n","--num-phases",dest="phases", type=int, default=4, help="How many phases")
   parser.add_argument("-s","--size",dest="size", type=int, required=True, help="Partition key size")
@@ -162,8 +183,9 @@ if __name__ == "__main__":
     "ycsb": "usertable",
     "tpcc": "warehouse",
     "twitter" : "user_profiles",
-    "affinity" : "suppliers"
-  }
+    "affinity" : "suppliers",
+    "b2w" : "cart" 
+ }
 
   aff_size = None 
   if args.affinity and ":" in args.affinity:
@@ -190,6 +212,24 @@ if __name__ == "__main__":
   elif args.type == "twitter":
     raise Exception("Set to twt, but no twt sizes %s" % args.twitter)
   
+  b2w_size = None 
+  if args.type == "b2w":
+    max_int = 2147483647
+    b2w_size = {}
+    b2w_size["stk_inventory_stock"] = max_int
+    b2w_size["stk_inventory_stock_quantity"] = max_int
+    b2w_size["stk_stock_transaction"] = max_int
+    b2w_size["cart"] = max_int
+    b2w_size["cart_customer"] = max_int
+    b2w_size["cart_lines"] = max_int
+    b2w_size["cart_line_products"] = max_int
+    b2w_size["cart_line_promotions"] = max_int
+    b2w_size["cart_line_product_warranties"] = max_int
+    b2w_size["cart_line_product_stores"] = max_int
+    b2w_size["checkout"] = max_int
+    b2w_size["checkout_payments"] = max_int
+    b2w_size["checkout_freight_delivery_time"] = max_int
+    b2w_size["checkout_stock_transactions"] = max_int
   
   if args.change_type == "scale-down":
     raise Exception("not implemented")
@@ -199,6 +239,8 @@ if __name__ == "__main__":
       tables =  aff_size
     elif args.type == "twitter":
       tables = twt_size 
+    elif args.type == "b2w":
+      tables = b2w_size
     else:
       tables = { TABLE_MAP[args.type]: args.size }
     default_table = TABLE_MAP[args.type]

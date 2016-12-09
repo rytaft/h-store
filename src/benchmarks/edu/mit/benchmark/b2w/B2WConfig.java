@@ -24,6 +24,7 @@ public class B2WConfig {
     public String stock_quantity_data_file = null;
     public String stock_inventory_data_file = null;
     public String operations_file = null;
+
     public String STK_INVENTORY_STOCK_DATA_FILE = null;
     public String STK_INVENTORY_STOCK_QUANTITY_DATA_FILE = null;
     public String STK_STOCK_TRANSACTION_DATA_FILE = null;
@@ -39,8 +40,8 @@ public class B2WConfig {
     public String CHECKOUT_FREIGHT_DELIVERY_TIME_DATA_FILE = null;
     public String CHECKOUT_STOCK_TRANSACTIONS_DATA_FILE = null;
 
-    public Long speed_up = 10L;
-    
+    public Long speed_up = 200L;
+
     
     public B2WConfig(Map<String, String> m_extraParams) {
         this.rand_gen = new Random(); 

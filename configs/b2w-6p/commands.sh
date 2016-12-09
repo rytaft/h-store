@@ -1,6 +1,6 @@
 == PREPARE
 
-ant hstore-prepare -Dproject=b2w -Dhosts="istc3:0:0-1"
+ant hstore-prepare -Dproject=b2w -Dhosts="istc3:0:0-5"
 
 == LOAD
 
