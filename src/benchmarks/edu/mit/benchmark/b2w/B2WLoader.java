@@ -906,6 +906,12 @@ public class B2WLoader extends Loader {
     }
 
     void loadCsvData(Database catalog_db) throws IOException {
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_INVENTORY_STOCK,
+                config.stock_inventory_data_file, STK_INVENTORY_STOCK_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_INVENTORY_STOCK_QUANTITY,
+                config.stock_quantity_data_file, STK_INVENTORY_STOCK_QUANTITY_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_STOCK_TRANSACTION,
+                config.stock_transaction_data_file, STK_STOCK_TRANSACTION_TYPES, ",");
         this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CART,
                 config.CART_DATA_FILE, CART_TYPES, ",");
         this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CART_CUSTOMER,
@@ -938,13 +944,6 @@ public class B2WLoader extends Loader {
             LOG.debug("Starting B2WLoader");
         }
         final CatalogContext catalogContext = this.getCatalogContext();
-//        try {
-//            this.loadCartData(catalogContext.database,config.cart_data_file);
-//            this.loadCheckOutData(catalogContext.database,config.checkout_data_file);
-//        } catch (JSONException e) {
-//            LOG.error("JSON load failed");
-//            e.printStackTrace();
-//        }
         this.loadStockData(catalogContext.database);
         this.loadCsvData(catalogContext.database);
         LOG.info("Load success!!");
