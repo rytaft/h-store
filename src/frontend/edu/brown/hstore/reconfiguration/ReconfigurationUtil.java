@@ -34,32 +34,6 @@ import edu.brown.utils.CollectionUtil;
 public class ReconfigurationUtil {
     private static final Logger LOG = Logger.getLogger(ReconfigurationUtil.class);
 
-    public static boolean useHashedKeys(Object[] keys) {
-        for (Object key : keys) {
-            if(key instanceof String) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    public static boolean useHashedKeys(Column[] cols) {
-        for (Column col : cols) {
-            if(VoltType.get((byte)col.getType()).equals(VoltType.STRING)) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    public static void hashPartition(Object[] keys) {
-        for (int i = 0; i < keys.length; ++i) {    
-            if (keys[i] != null) {
-                keys[i] = Math.abs(keys[i].hashCode()); // must be positive for Squall to work
-            }
-        }
-    }
-    
     public static class ReconfigurationPair implements Comparable<ReconfigurationPair> {
         public Integer from;
         public Integer to;
@@ -611,16 +585,6 @@ public class ReconfigurationUtil {
         } else {
             throw new RuntimeException("No partition columns provided for table " + table.getName());
         }
-        
-        if(useHashedKeys(cols)) {
-            VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[cols.length];
-            int i = 0;
-            for (Column catCol : cols) {
-                columns[i++] = new VoltTable.ColumnInfo(catCol.getTypeName(), VoltType.INTEGER);
-            }
-            return new VoltTable(columns);
-        }
-        
         return CatalogUtil.getVoltTable(Arrays.asList(cols));
     }
 
