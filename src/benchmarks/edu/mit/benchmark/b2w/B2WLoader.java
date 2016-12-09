@@ -53,22 +53,22 @@ public class B2WLoader extends Loader {
 
     private final static byte TINY_INT_FALSE = 0;
 
-    private final static int[] INVENTORY_STOCK_TYPES = {
+    private final static int[] STK_INVENTORY_STOCK_TYPES = {
             KEY_TYPE_VARCHAR,
             KEY_TYPE_VARCHAR,
             KEY_TYPE_INTEGER,
             KEY_TYPE_INTEGER,
             KEY_TYPE_INTEGER,
             KEY_TYPE_VARCHAR,
-            KEY_TYPE_INTEGER};
-
-    private final static int[] STOCK_QUANTITY_TYPES = {
+            KEY_TYPE_INTEGER,
+    };
+    private final static int[] STK_INVENTORY_STOCK_QUANTITY_TYPES = {
             KEY_TYPE_VARCHAR,
             KEY_TYPE_INTEGER,
             KEY_TYPE_INTEGER,
-            KEY_TYPE_INTEGER};
-
-    private final static int[] STOCK_TRANSACTION_TYPES = {
+            KEY_TYPE_INTEGER,
+    };
+    private final static int[] STK_STOCK_TRANSACTION_TYPES = {
             KEY_TYPE_VARCHAR,
             KEY_TYPE_VARCHAR,
             KEY_TYPE_VARCHAR,
@@ -83,7 +83,122 @@ public class B2WLoader extends Loader {
             KEY_TYPE_VARCHAR,
             KEY_TYPE_VARCHAR,
             KEY_TYPE_INTEGER,
-            KEY_TYPE_INTEGER};
+            KEY_TYPE_INTEGER,
+    };
+    private final static int[] CART_TYPES = {
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_FLOAT,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_TIMESTAMP,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_TINYINT,
+    };
+    private final static int[] CART_CUSTOMER_TYPES = {
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_TINYINT,
+            KEY_TYPE_TINYINT,
+    };
+    private final static int[] CART_LINES_TYPES = {
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_BIGINT,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_FLOAT,
+            KEY_TYPE_FLOAT,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_TIMESTAMP,
+    };
+    private final static int[] CART_LINE_PRODUCTS_TYPES = {
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_BIGINT,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_TINYINT,
+            KEY_TYPE_FLOAT,
+            KEY_TYPE_FLOAT,
+            KEY_TYPE_TINYINT,
+            KEY_TYPE_BIGINT,
+            KEY_TYPE_BIGINT,
+            KEY_TYPE_BIGINT,
+            KEY_TYPE_FLOAT,
+            KEY_TYPE_BIGINT,
+    };
+    private final static int[] CART_LINE_PROMOTIONS_TYPES = {
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_FLOAT,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_TINYINT,
+            KEY_TYPE_FLOAT,
+    };
+    private final static int[] CART_LINE_PRODUCT_WARRANTIES_TYPES = {
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+    };
+    private final static int[] CART_LINE_PRODUCT_STORES_TYPES = {
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+    };
+    private final static int[] CHECKOUT_TYPES = {
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_FLOAT,
+            KEY_TYPE_FLOAT,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_FLOAT,
+            KEY_TYPE_VARCHAR,
+    };
+    private final static int[] CHECKOUT_PAYMENTS_TYPES = {
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_FLOAT,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_FLOAT,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_INTEGER,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+    };
+    private final static int[] CHECKOUT_FREIGHT_DELIVERY_TIME_TYPES = {
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_INTEGER,
+    };
+    private final static int[] CHECKOUT_STOCK_TRANSACTIONS_TYPES = {
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+            KEY_TYPE_VARCHAR,
+    };
 
     private B2WConfig config;
 
@@ -725,8 +840,9 @@ public class B2WLoader extends Loader {
      * @param name the name of the table we want to modified.
      * @param path the path of the file we want to read.
      * @param types the types list of the table, an example is this.STOCK_TRANSACTION_TYPES
+     * @param separator the separator in each line. In the example the separator is ";"
      */
-    private void loadTableFormatData(Database catalog_db, String name, String path, int[] types)
+    private void loadTableFormatData(Database catalog_db, String name, String path, int[] types, String separator)
             throws IOException {
         BufferedReader in = new BufferedReader(new InputStreamReader(
                 new FileInputStream(path)));
@@ -787,11 +903,42 @@ public class B2WLoader extends Loader {
 
     void loadStockData(Database catalog_db) throws IOException {
         this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_INVENTORY_STOCK,
-                config.stock_inventory_data_file, INVENTORY_STOCK_TYPES);
+                config.stock_inventory_data_file, STK_INVENTORY_STOCK_TYPES, ";");
         this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_INVENTORY_STOCK_QUANTITY,
-                config.stock_quantity_data_file, STOCK_QUANTITY_TYPES);
+                config.stock_quantity_data_file, STK_INVENTORY_STOCK_QUANTITY_TYPES, ";");
         this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_STOCK_TRANSACTION,
-                config.stock_transaction_data_file, STOCK_TRANSACTION_TYPES);
+                config.stock_transaction_data_file, STK_STOCK_TRANSACTION_TYPES, ";");
+    }
+
+    void loadCsvData(Database catalog_db) throws IOException {
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_INVENTORY_STOCK,
+                config.stock_inventory_data_file, STK_INVENTORY_STOCK_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_INVENTORY_STOCK_QUANTITY,
+                config.stock_quantity_data_file, STK_INVENTORY_STOCK_QUANTITY_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_STOCK_TRANSACTION,
+                config.stock_transaction_data_file, STK_STOCK_TRANSACTION_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CART,
+                config.CART_DATA_FILE, CART_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CART_CUSTOMER,
+                config.CART_CUSTOMER_DATA_FILE, CART_CUSTOMER_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CART_LINES,
+                config.CART_LINES_DATA_FILE, CART_LINES_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CART_LINE_PRODUCTS,
+                config.CART_LINE_PRODUCTS_DATA_FILE, CART_LINE_PRODUCTS_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CART_LINE_PROMOTIONS,
+                config.CART_LINE_PROMOTIONS_DATA_FILE, CART_LINE_PROMOTIONS_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CART_LINE_PRODUCT_WARRANTIES,
+                config.CART_LINE_PRODUCT_WARRANTIES_DATA_FILE, CART_LINE_PRODUCT_WARRANTIES_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CART_LINE_PRODUCT_STORES,
+                config.CART_LINE_PRODUCT_STORES_DATA_FILE, CART_LINE_PRODUCT_STORES_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CHECKOUT,
+                config.CHECKOUT_DATA_FILE, CHECKOUT_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CHECKOUT_PAYMENTS,
+                config.CHECKOUT_PAYMENTS_DATA_FILE, CHECKOUT_PAYMENTS_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CHECKOUT_FREIGHT_DELIVERY_TIME,
+                config.CHECKOUT_FREIGHT_DELIVERY_TIME_DATA_FILE, CHECKOUT_FREIGHT_DELIVERY_TIME_TYPES, ",");
+        this.loadTableFormatData(catalog_db, B2WConstants.TABLENAME_CHECKOUT_STOCK_TRANSACTIONS,
+                config.CHECKOUT_STOCK_TRANSACTIONS_DATA_FILE, CHECKOUT_STOCK_TRANSACTIONS_TYPES, ",");
     }
 
     @Override
@@ -802,14 +949,8 @@ public class B2WLoader extends Loader {
             LOG.debug("Starting B2WLoader");
         }
         final CatalogContext catalogContext = this.getCatalogContext();
-        try {
-            this.loadCartData(catalogContext.database,config.cart_data_file);
-            this.loadCheckOutData(catalogContext.database,config.checkout_data_file);
-        } catch (JSONException e) {
-            LOG.error("JSON load failed");
-            e.printStackTrace();
-        }
         this.loadStockData(catalogContext.database);
+        this.loadCsvData(catalogContext.database);
         LOG.info("Load success!!");
         debug.set(b);
     }

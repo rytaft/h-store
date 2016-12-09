@@ -730,7 +730,7 @@ public class B2WClient extends BenchmarkComponent {
             transaction_ids[i] = getString(line, B2WConstants.PARAMS_TRANSACTION_ID);
             delivery_times[i] = getInteger(line, B2WConstants.PARAMS_DELIVERY_TIME);
         }       
-        
+
         // Update the cart with the new transactions, customer, etc
         TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
         String customer_id = getString(params, B2WConstants.PARAMS_CUSTOMER_ID);
