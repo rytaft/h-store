@@ -7,9 +7,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 
 import org.apache.log4j.Logger;
@@ -38,9 +40,12 @@ public class ReconfigurationPlan {
 
     // Helper map of partition ID and outgoing/incoming ranges for this
     // reconfiguration
+    protected Map<Integer, Map<String, TreeSet<ReconfigurationRange>>> outgoing_ranges_map;
+    protected Map<Integer, Map<String, TreeSet<ReconfigurationRange>>> incoming_ranges_map;
     protected Map<Integer, List<ReconfigurationRange>> outgoing_ranges;
     protected Map<Integer, List<ReconfigurationRange>> incoming_ranges;
     protected Map<String, TreeSet<ReconfigurationRange>> range_map;
+    protected Map<ReconfigurationRange, ReconfigurationRange> enclosing_range;
     public String planDebug = "";
     private CatalogContext catalogContext;
     protected Map<String, String> partitionedTablesByFK;
@@ -50,7 +55,10 @@ public class ReconfigurationPlan {
         this.catalogContext = catalogContext;
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
+        outgoing_ranges_map = new HashMap<>();
+        incoming_ranges_map = new HashMap<>();
         range_map = new HashMap<>();
+        enclosing_range = new HashMap<>();
         tables_map = new HashMap<>();
         this.partitionedTablesByFK = partitionedTablesByFK;
         this.cmp = new PartitionKeyComparator();
@@ -64,6 +72,18 @@ public class ReconfigurationPlan {
         if (!incoming_ranges.containsKey(range.new_partition)) {
             incoming_ranges.put(range.new_partition, new ArrayList<ReconfigurationRange>());
         }
+        if (!outgoing_ranges_map.containsKey(range.old_partition)) {
+            outgoing_ranges_map.put(range.old_partition, new HashMap<String, TreeSet<ReconfigurationRange>>());
+        }
+        if (!outgoing_ranges_map.get(range.old_partition).containsKey(range.table_name)) {
+            outgoing_ranges_map.get(range.old_partition).put(range.table_name, new TreeSet<ReconfigurationRange>());
+        }
+        if (!incoming_ranges_map.containsKey(range.new_partition)) {
+            incoming_ranges_map.put(range.new_partition, new HashMap<String, TreeSet<ReconfigurationRange>>());
+        }
+        if (!incoming_ranges_map.get(range.new_partition).containsKey(range.table_name)) {
+            incoming_ranges_map.get(range.new_partition).put(range.table_name, new TreeSet<ReconfigurationRange>());
+        }
         if (!range_map.containsKey(range.table_name)) {
             range_map.put(range.table_name, new TreeSet<ReconfigurationRange>());
         }
@@ -72,8 +92,12 @@ public class ReconfigurationPlan {
         for (int i = 0; i < range.getMinIncl().size() && i < range.getMaxExcl().size(); ++i) {
             // Every ReconfigurationRange in range_map should contain exactly one contiguous range (i.e. one min and one max value)
             // so that findReconfigurationRange and findAllReconfigurationRanges will be correct
-            range_map.get(range.table_name).add(new ReconfigurationRange(range.table_name, range.keySchema, 
-                    range.min_incl.get(i), range.max_excl.get(i), range.old_partition, range.new_partition));
+            ReconfigurationRange new_range = new ReconfigurationRange(range.table_name, range.keySchema, 
+                    range.min_incl.get(i), range.max_excl.get(i), range.old_partition, range.new_partition);
+            range_map.get(range.table_name).add(new_range);
+            outgoing_ranges_map.get(range.old_partition).get(range.table_name).add(new_range);
+            incoming_ranges_map.get(range.new_partition).get(range.table_name).add(new_range);
+            enclosing_range.put(new_range, range);
         }
     }
 
@@ -84,7 +108,10 @@ public class ReconfigurationPlan {
         this.catalogContext = catalogContext;
         outgoing_ranges = new HashMap<>();
         incoming_ranges = new HashMap<>();
+        outgoing_ranges_map = new HashMap<>();
+        incoming_ranges_map = new HashMap<>();
         range_map = new HashMap<>();
+        enclosing_range = new HashMap<>();
         partitionedTablesByFK = old_phase.partitionedTablesByFK;
         this.cmp = new PartitionKeyComparator();
         assert old_phase.tables_map.keySet().equals(new_phase.tables_map.keySet()) : "Partition plans have different tables";
@@ -112,9 +139,20 @@ public class ReconfigurationPlan {
      * @return the reconfiguration range or null if no match could be found
      */
     public ReconfigurationRange findReconfigurationRange(String table_name, List<Object> ids) throws Exception {
+        return findReconfigurationRange(table_name, ids, this.range_map, this.catalogContext, this.enclosing_range);
+    }
+    
+    /**
+     * Find the reconfiguration range for a key
+     * 
+     * @return the reconfiguration range or null if no match could be found
+     */
+    public static ReconfigurationRange findReconfigurationRange(String table_name, List<Object> ids, 
+            Map<String, TreeSet<ReconfigurationRange>> range_map, CatalogContext catalogContext,
+            Map<ReconfigurationRange, ReconfigurationRange> enclosing_range) throws Exception {
         try {
 
-            TreeSet<ReconfigurationRange> ranges = this.range_map.get(table_name);
+            TreeSet<ReconfigurationRange> ranges = range_map.get(table_name);
             if (ranges == null) {
                 return null;
             }
@@ -124,11 +162,17 @@ public class ReconfigurationPlan {
 
             ReconfigurationRange precedingRange = ranges.floor(range);
             if (precedingRange != null && precedingRange.inRange(keys)) {
+                if(enclosing_range.containsKey(precedingRange)) {
+                    return enclosing_range.get(precedingRange);
+                }
                 return precedingRange;
             }
 
             ReconfigurationRange followingRange = ranges.ceiling(range);
             if (followingRange != null && followingRange.inRange(keys)) {
+                if(enclosing_range.containsKey(followingRange)) {
+                    return enclosing_range.get(followingRange);
+                }
                 return followingRange;
             }
 
@@ -145,9 +189,20 @@ public class ReconfigurationPlan {
      * @param id
      * @return the matching reconfiguration ranges
      */
-    public List<ReconfigurationRange> findAllReconfigurationRanges(String table_name, List<Object> ids) throws Exception {
-        List<ReconfigurationRange> matchingRanges = new ArrayList<ReconfigurationRange>();
-        TreeSet<ReconfigurationRange> ranges = this.range_map.get(table_name);
+    public Set<ReconfigurationRange> findAllReconfigurationRanges(String table_name, List<Object> ids) throws Exception {
+        return findAllReconfigurationRanges(table_name, ids, this.range_map, this.catalogContext, this.enclosing_range);
+    }
+
+    /**
+     * Find all reconfiguration ranges that may contain a key
+     * 
+     * @return the matching reconfiguration ranges
+     */
+    public static Set<ReconfigurationRange> findAllReconfigurationRanges(String table_name, List<Object> ids,
+            Map<String, TreeSet<ReconfigurationRange>> range_map, CatalogContext catalogContext,
+            Map<ReconfigurationRange, ReconfigurationRange> enclosing_range) throws Exception {
+        Set<ReconfigurationRange> matchingRanges = new HashSet<ReconfigurationRange>();
+        TreeSet<ReconfigurationRange> ranges = range_map.get(table_name);
         if (ranges == null) {
             return matchingRanges;
         }
@@ -161,7 +216,11 @@ public class ReconfigurationPlan {
         for (ReconfigurationRange r : ranges.tailSet(range, false)) {
             try {
                 if (r.overlapsRange(keys)) {
-                    matchingRanges.add(r);
+                    if(enclosing_range.containsKey(r)) {
+                        matchingRanges.add(enclosing_range.get(r));
+                    } else {
+                        matchingRanges.add(r);
+                    }
                 }
                 else {
                     break;
@@ -845,12 +904,24 @@ public class ReconfigurationPlan {
 
     }
 
+    public Map<Integer, Map<String, TreeSet<ReconfigurationRange>>> getOutgoing_ranges_map() {
+        return outgoing_ranges_map;
+    }
+
+    public Map<Integer, Map<String, TreeSet<ReconfigurationRange>>> getIncoming_ranges_map() {
+        return incoming_ranges_map;
+    }
+    
     public Map<Integer, List<ReconfigurationRange>> getOutgoing_ranges() {
         return outgoing_ranges;
     }
 
     public Map<Integer, List<ReconfigurationRange>> getIncoming_ranges() {
         return incoming_ranges;
+    }
+    
+    public Map<ReconfigurationRange, ReconfigurationRange> getEnclosing_range_map() {
+        return enclosing_range;
     }
 
     public CatalogContext getCatalogContext() {
