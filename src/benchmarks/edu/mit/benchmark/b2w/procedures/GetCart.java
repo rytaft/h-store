@@ -5,6 +5,8 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
+import edu.mit.benchmark.b2w.B2WConfig;
+
 @ProcInfo(
         partitionInfo = "CART.partition_key: 0",
         singlePartition = true
@@ -41,6 +43,12 @@ public class GetCart extends VoltProcedure {
 
 
     public VoltTable[] run(int partition_key, String cart_id){
+        try {
+            Thread.sleep(B2WConfig.sleep_time);
+        } catch(InterruptedException e) {
+            // do nothing
+        }
+        
         voltQueueSQL(getCartStmt, partition_key, cart_id);
         voltQueueSQL(getCartCustomerStmt, partition_key, cart_id);
         voltQueueSQL(getCartLinesStmt, partition_key, cart_id);

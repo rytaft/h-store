@@ -7,6 +7,8 @@ import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
 import org.voltdb.types.TimestampType;
 
+import edu.mit.benchmark.b2w.B2WConfig;
+
 @ProcInfo(
         partitionInfo = "CART.partition_key: 0",
         singlePartition = true
@@ -48,6 +50,12 @@ public class DeleteLineFromCart extends VoltProcedure {
 
 
     public VoltTable[] run(int partition_key, String cart_id, TimestampType timestamp, String line_id){
+        try {
+            Thread.sleep(B2WConfig.sleep_time);
+        } catch(InterruptedException e) {
+            // do nothing
+        }
+        
         voltQueueSQL(getCartStmt, partition_key, cart_id);
         voltQueueSQL(getCartLineStmt, partition_key, cart_id, line_id);
         final VoltTable[] cart_results = voltExecuteSQL();

@@ -41,6 +41,7 @@ public class B2WConfig {
     public String CHECKOUT_STOCK_TRANSACTIONS_DATA_FILE = null;
 
     public Long speed_up = 200L;
+    public static Long sleep_time = 10L;
 
     
     public B2WConfig(Map<String, String> m_extraParams) {
@@ -73,6 +74,9 @@ public class B2WConfig {
             }
             else if (key.equalsIgnoreCase("speed_up")) {
                 this.speed_up = Long.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("sleep_time")) {
+                sleep_time = Long.valueOf(value);
             }
             else if (key.equalsIgnoreCase("STK_INVENTORY_STOCK_DATA_FILE")) {
                 this.STK_INVENTORY_STOCK_DATA_FILE = String.valueOf(value);

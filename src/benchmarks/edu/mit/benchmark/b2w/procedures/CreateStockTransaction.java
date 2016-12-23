@@ -11,6 +11,7 @@ import org.voltdb.types.TimestampType;
 
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import edu.mit.benchmark.b2w.B2WConfig;
 import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
@@ -64,9 +65,14 @@ public class CreateStockTransaction extends VoltProcedure {
             ");");
 
     public VoltTable[] run(int partition_key, String transaction_id, String[] reserve_id, String[] brand, TimestampType[] timestamp,
-        TimestampType[] expiration_date, byte[] is_kit, int[] requested_quantity, String[] reserve_lines, int[] reserved_quantity, String[] sku, 
-        String[] store_id, int[] subinventory, int[] warehouse) {
-        
+            TimestampType[] expiration_date, byte[] is_kit, int[] requested_quantity, String[] reserve_lines, int[] reserved_quantity, String[] sku, 
+            String[] store_id, int[] subinventory, int[] warehouse) {
+        try {
+            Thread.sleep(B2WConfig.sleep_time);
+        } catch(InterruptedException e) {
+            // do nothing
+        }
+                
         String current_status = B2WConstants.STATUS_NEW;
         
         for (int i = 0; i < reserve_id.length; ++i) { 

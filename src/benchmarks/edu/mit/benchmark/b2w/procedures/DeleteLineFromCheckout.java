@@ -6,6 +6,8 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
 
+import edu.mit.benchmark.b2w.B2WConfig;
+
 @ProcInfo(
         partitionInfo = "CHECKOUT.partition_key: 0",
         singlePartition = true
@@ -39,6 +41,12 @@ public class DeleteLineFromCheckout extends VoltProcedure {
 
 
     public VoltTable[] run(int partition_key, String checkout_id, String line_id, double salesPrice, String freightContract, double freightPrice, String freightStatus){
+        try {
+            Thread.sleep(B2WConfig.sleep_time);
+        } catch(InterruptedException e) {
+            // do nothing
+        }
+        
         voltQueueSQL(getCheckoutStmt, partition_key, checkout_id);
         final VoltTable[] checkout_results = voltExecuteSQL();
         assert checkout_results.length == 1;

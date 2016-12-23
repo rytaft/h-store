@@ -7,6 +7,7 @@ import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
 import org.voltdb.types.TimestampType;
 
+import edu.mit.benchmark.b2w.B2WConfig;
 import edu.mit.benchmark.b2w.B2WConstants;
 
 @ProcInfo(
@@ -155,6 +156,12 @@ public class AddLineToCart extends VoltProcedure {
             double unitSalesPrice, double salesPrice, int maxQuantity, String maximumQuantityReason, String type, String stockTransactionId,
             int requestedQuantity, String line_status, String stockType, String image, String name, byte isKit, double price, double originalPrice,
             byte isLarge, long department, long line, long subClass, double weight, long product_class){
+        try {
+            Thread.sleep(B2WConfig.sleep_time);
+        } catch(InterruptedException e) {
+            // do nothing
+        }
+        
         voltQueueSQL(getCartStmt, partition_key, cart_id);
         final VoltTable[] cart_results = voltExecuteSQL();
         assert cart_results.length == 1;
