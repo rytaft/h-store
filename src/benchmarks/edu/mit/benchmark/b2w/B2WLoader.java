@@ -949,7 +949,6 @@ public class B2WLoader extends Loader {
             LOG.debug("Starting B2WLoader");
         }
         final CatalogContext catalogContext = this.getCatalogContext();
-        this.loadStockData(catalogContext.database);
         this.loadCsvData(catalogContext.database);
         LOG.info("Load success!!");
         debug.set(b);
