@@ -1,5 +1,9 @@
 #!/bin/bash
 
-cp $1/plan.json plan.json
-cp $1/$2.jar $2.jar
-cp $1/$2.properties properties/benchmarks/$2.properties
+config_path=$1
+benchmark=$2
+
+cp $config_path/plan.json plan.json
+cp $config_path/$benchmark.properties properties/benchmarks/$benchmark.properties
+./$config_path/commands.sh prepare
+~/h-store/scripts/deploy.sh config
