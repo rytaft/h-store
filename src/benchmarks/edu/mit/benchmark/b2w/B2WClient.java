@@ -149,7 +149,7 @@ public class B2WClient extends BenchmarkComponent {
                     try {
                     next_txn = txn_selector.nextTransaction();
                     if (next_txn == null) return;
-                    offset = next_txn.getLong(B2WConstants.OPERATION_OFFSET) / config.speed_up;
+                    offset = (next_txn.getLong(B2WConstants.OPERATION_OFFSET) - config.start_offset) / config.speed_up;
                     } catch (JSONException e) {
                         LOG.error("Failed to parse transaction: " + e.getMessage(), e);
                         continue;
@@ -311,7 +311,7 @@ public class B2WClient extends BenchmarkComponent {
                 JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(k);
                 String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
                 int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
-                Object reserveStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity };
+                Object reserveStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity, config.sleep_time };
                 /**** TRANSACTION ****/
                 success = runAsynchTransaction(Transaction.RESERVE_STOCK, reserveStockParams);
                 if (!success) return false;
@@ -334,7 +334,7 @@ public class B2WClient extends BenchmarkComponent {
         // Create the stock transaction
         Object createStockTxnParams[] = { hashPartition(transaction_id), transaction_id, reserve_id, brand, timestamp, 
                 expiration_date, is_kit, requested_quantities, reserve_liness, reserved_quantities, sku, 
-                store_id, subinventory, warehouse };
+                store_id, subinventory, warehouse, config.sleep_time };
         /**** TRANSACTION ****/
         success = runAsynchTransaction(Transaction.CREATE_STOCK_TRANSACTION, createStockTxnParams);               
         
@@ -351,7 +351,7 @@ public class B2WClient extends BenchmarkComponent {
             JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(k);
             String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
             int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
-            Object reserveStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity };
+            Object reserveStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity, config.sleep_time };
             /**** TRANSACTION ****/
             success = runAsynchTransaction(Transaction.RESERVE_STOCK, reserveStockParams);
             if (!success) return false;
@@ -362,7 +362,7 @@ public class B2WClient extends BenchmarkComponent {
     
     // purchase stock reservations and update stock transaction
     private boolean purchaseStock(TimestampType timestamp, String transaction_id) throws IOException, JSONException {
-        Object getStockTxnParams[] = { hashPartition(transaction_id), transaction_id };
+        Object getStockTxnParams[] = { hashPartition(transaction_id), transaction_id, config.sleep_time };
         /**** TRANSACTION ****/
         ClientResponse getStockTxnResponse = runSynchTransaction(Transaction.GET_STOCK_TRANSACTION, getStockTxnParams);
         if (getStockTxnResponse.getResults().length != 1) {
@@ -395,7 +395,7 @@ public class B2WClient extends BenchmarkComponent {
                     JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(k);
                     String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
                     int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
-                    Object purchaseStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity };
+                    Object purchaseStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity, config.sleep_time };
                     /**** TRANSACTION ****/
                     success = runAsynchTransaction(Transaction.PURCHASE_STOCK, purchaseStockParams);
                     if (!success) return false;
@@ -406,7 +406,7 @@ public class B2WClient extends BenchmarkComponent {
         
         if (purchased) {
             String current_status = B2WConstants.STATUS_PURCHASED;
-            Object updateStockTxnParams[] = { hashPartition(transaction_id), transaction_id, timestamp, current_status };
+            Object updateStockTxnParams[] = { hashPartition(transaction_id), transaction_id, timestamp, current_status, config.sleep_time };
             /**** TRANSACTION ****/
             success = runAsynchTransaction(Transaction.UPDATE_STOCK_TRANSACTION, updateStockTxnParams);               
             if (!success) return false;
@@ -418,7 +418,7 @@ public class B2WClient extends BenchmarkComponent {
     // Cancel stock reservations and cancel the stock transaction
     private boolean cancelStockTransaction(String stockTransactionId, TimestampType timestamp, String current_status) throws IOException, JSONException {
         // cancel stock transaction
-        Object updateStockTxnParams[] = { hashPartition(stockTransactionId), stockTransactionId, timestamp, current_status };
+        Object updateStockTxnParams[] = { hashPartition(stockTransactionId), stockTransactionId, timestamp, current_status, config.sleep_time };
         /**** TRANSACTION ****/
         ClientResponse cancelStockTransactionResponse = runSynchTransaction(Transaction.UPDATE_STOCK_TRANSACTION, updateStockTxnParams); 
         if (cancelStockTransactionResponse.getResults().length != 1 || 
@@ -436,7 +436,7 @@ public class B2WClient extends BenchmarkComponent {
 
         // cancel stock reservations
         if (status_changed) { // if no change, someone else already cancelled the transaction and canceled the reservations
-            Object getStockTxnParams[] = { hashPartition(stockTransactionId), stockTransactionId };
+            Object getStockTxnParams[] = { hashPartition(stockTransactionId), stockTransactionId, config.sleep_time };
             /**** TRANSACTION ****/
             ClientResponse getStockTxnResponse = runSynchTransaction(Transaction.GET_STOCK_TRANSACTION, getStockTxnParams);
             if (getStockTxnResponse.getResults().length != 1)  {
@@ -460,7 +460,7 @@ public class B2WClient extends BenchmarkComponent {
                     JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(k);
                     String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
                     int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
-                    Object cancelReserveStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity };
+                    Object cancelReserveStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity, config.sleep_time };
                     /**** TRANSACTION ****/
                     boolean success = runAsynchTransaction(Transaction.CANCEL_STOCK_RESERVATION, cancelReserveStockParams);
                     if (!success) return false;
@@ -557,7 +557,7 @@ public class B2WClient extends BenchmarkComponent {
             int delivery_time = getInteger(params, B2WConstants.PARAMS_DELIVERY_TIME);
 
             Object addCheckoutLineParams[] = { hashPartition(checkout_id), checkout_id, line_id, salesPrice, transaction_id, delivery_time, 
-                    freightContract, freightPrice, freightStatus };
+                    freightContract, freightPrice, freightStatus, config.sleep_time };
             /**** TRANSACTION ****/
             boolean success = runAsynchTransaction(Transaction.ADD_LINE_TO_CHECKOUT, addCheckoutLineParams);
             if (!success) return false;
@@ -568,7 +568,7 @@ public class B2WClient extends BenchmarkComponent {
                 product_sku, product_id, store_id, quantity, salesChannel, opn, epar, autoMerge,
                 unitSalesPrice, salesPrice, maxQuantity, maximumQuantityReason, type, transaction_id,
                 requested_quantity, line_status, stockType, image, name, isKit, price, originalPrice,
-                isLarge, department, line, subClass, weight, product_class };
+                isLarge, department, line, subClass, weight, product_class, config.sleep_time };
         /**** TRANSACTION ****/
         return runAsynchTransaction(Transaction.ADD_LINE_TO_CART, addLineParams);   
     }    
@@ -627,7 +627,7 @@ public class B2WClient extends BenchmarkComponent {
         String cart_id = getString(params, B2WConstants.PARAMS_CART_ID);
         String line_id = getString(params, B2WConstants.PARAMS_LINE_ID);
         TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
-        Object cartParams[] = { hashPartition(cart_id), cart_id };
+        Object cartParams[] = { hashPartition(cart_id), cart_id, config.sleep_time };
         /**** TRANSACTION ****/
         ClientResponse cartResponse = runSynchTransaction(Transaction.GET_CART, cartParams);
         if (cartResponse.getResults().length != B2WConstants.CART_TABLE_COUNT) {
@@ -657,14 +657,15 @@ public class B2WClient extends BenchmarkComponent {
             double freightPrice = getDouble(params, B2WConstants.PARAMS_FREIGHT_PRICE);
             String freightStatus = getString(params, B2WConstants.PARAMS_FREIGHT_STATUS);
             
-            Object deleteCheckoutLineParams[] = { hashPartition(checkout_id), checkout_id, line_id, salesPrice, freightContract, freightPrice, freightStatus };
+            Object deleteCheckoutLineParams[] = { hashPartition(checkout_id), checkout_id, line_id, salesPrice, 
+                    freightContract, freightPrice, freightStatus, config.sleep_time };
             /**** TRANSACTION ****/
             boolean success = runAsynchTransaction(Transaction.DELETE_LINE_FROM_CHECKOUT, deleteCheckoutLineParams);
             if (!success) return false;
         }
         
         // Finally, delete lines from cart
-        Object deleteLineParams[] = { hashPartition(cart_id), cart_id, timestamp, line_id };
+        Object deleteLineParams[] = { hashPartition(cart_id), cart_id, timestamp, line_id, config.sleep_time };
         /**** TRANSACTION ****/
         return runAsynchTransaction(Transaction.DELETE_LINE_FROM_CART, deleteLineParams);   
     }
@@ -738,7 +739,7 @@ public class B2WClient extends BenchmarkComponent {
         byte guest = getBoolean(params, B2WConstants.PARAMS_GUEST);
         byte isGuest = getBoolean(params, B2WConstants.PARAMS_IS_GUEST);
         Object reserveCartParams[] = { hashPartition(cart_id), cart_id, timestamp, customer_id, token, guest, isGuest, 
-                line_ids, requested_quantities, reserved_quantities, statuses, stock_types, transaction_ids };
+                line_ids, requested_quantities, reserved_quantities, statuses, stock_types, transaction_ids, config.sleep_time };
         /**** TRANSACTION ****/
         boolean success = runAsynchTransaction(Transaction.RESERVE_CART, reserveCartParams);
         if (!success) return false;
@@ -753,7 +754,7 @@ public class B2WClient extends BenchmarkComponent {
         double freightPrice = getDouble(params, B2WConstants.PARAMS_FREIGHT_PRICE); 
         String freightStatus = getString(params, B2WConstants.PARAMS_FREIGHT_STATUS);
         Object checkoutParams[] = { hashPartition(checkout_id), checkout_id, cart_id, deliveryAddressId, billingAddressId, amountDue, total, 
-                freightContract, freightPrice, freightStatus, line_ids, transaction_ids, delivery_times };
+                freightContract, freightPrice, freightStatus, line_ids, transaction_ids, delivery_times, config.sleep_time };
         if (trace.val) {
             LOG.trace("Creating checkout with params: " + checkout_id + ", " + cart_id + ", " + deliveryAddressId + ", " + billingAddressId + ", " +
              amountDue + ", " + total + ", " + freightContract + ", " + freightPrice + ", " + freightStatus + ", " +
@@ -807,7 +808,7 @@ public class B2WClient extends BenchmarkComponent {
         String expirationDate = getString(params, B2WConstants.PARAMS_EXPIRATION_DATE);
 
         Object checkoutPaymentParams[] = { hashPartition(checkout_id), checkout_id, cart_id, paymentOptionId, paymentOptionType, dueDays, amount, installmentQuantity,
-                interestAmount, interestRate, annualCET, number, criptoNumber, holdersName, securityCode, expirationDate };
+                interestAmount, interestRate, annualCET, number, criptoNumber, holdersName, securityCode, expirationDate, config.sleep_time };
         /**** TRANSACTION ****/
         return runAsynchTransaction(Transaction.CREATE_CHECKOUT_PAYMENT, checkoutPaymentParams);
     }
@@ -875,7 +876,7 @@ public class B2WClient extends BenchmarkComponent {
         TimestampType timestamp = new TimestampType(getLong(params, B2WConstants.PARAMS_TIMESTAMP));
         String transaction_id = getString(params, B2WConstants.PARAMS_TRANSACTION_ID);
         String current_status = B2WConstants.STATUS_FINISHED;
-        Object updateStockTxnParams[] = { hashPartition(transaction_id), transaction_id, timestamp, current_status };
+        Object updateStockTxnParams[] = { hashPartition(transaction_id), transaction_id, timestamp, current_status, config.sleep_time };
         /**** TRANSACTION ****/
         ClientResponse finishStockTransactionResponse = runSynchTransaction(Transaction.UPDATE_STOCK_TRANSACTION, updateStockTxnParams); 
         if (finishStockTransactionResponse.getResults().length != 1 || 
@@ -893,7 +894,7 @@ public class B2WClient extends BenchmarkComponent {
 
         // finish stock reservations
         if (status_changed) { // if no change, someone else already finished the transaction and finished the reservations
-            Object getStockTxnParams[] = { hashPartition(transaction_id), transaction_id };
+            Object getStockTxnParams[] = { hashPartition(transaction_id), transaction_id, config.sleep_time };
             /**** TRANSACTION ****/
             ClientResponse getStockTxnResponse = runSynchTransaction(Transaction.GET_STOCK_TRANSACTION, getStockTxnParams);
             if (getStockTxnResponse.getResults().length != 1)  {
@@ -917,7 +918,7 @@ public class B2WClient extends BenchmarkComponent {
                     JSONObject reserve_lines_obj = reserve_lines_arr.getJSONObject(k);
                     String stock_id = reserve_lines_obj.getString(B2WConstants.PARAMS_STOCK_ID);
                     int reserved_quantity = reserve_lines_obj.getInt(B2WConstants.PARAMS_RESERVED_QUANTITY);
-                    Object finishPurchaseStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity };
+                    Object finishPurchaseStockParams[] = { hashPartition(stock_id), stock_id, reserved_quantity, config.sleep_time };
                     /**** TRANSACTION ****/
                     boolean success = runAsynchTransaction(Transaction.FINISH_STOCK_PURCHASE, finishPurchaseStockParams);
                     if (!success) return false;
@@ -941,7 +942,7 @@ public class B2WClient extends BenchmarkComponent {
     // }
     private boolean runGetCart(JSONObject params) throws IOException, JSONException {
         String cart_id = getString(params, B2WConstants.PARAMS_CART_ID);
-        Object cartParams[] = { hashPartition(cart_id), cart_id };
+        Object cartParams[] = { hashPartition(cart_id), cart_id, config.sleep_time };
         return runAsynchTransaction(Transaction.GET_CART, cartParams);      
     }
 
@@ -956,7 +957,7 @@ public class B2WClient extends BenchmarkComponent {
     // }
     private boolean runGetCheckout(JSONObject params) throws IOException, JSONException {
         String checkout_id = getString(params, B2WConstants.PARAMS_CHECKOUT_ID);
-        Object checkoutParams[] = { hashPartition(checkout_id), checkout_id };
+        Object checkoutParams[] = { hashPartition(checkout_id), checkout_id, config.sleep_time };
         return runAsynchTransaction(Transaction.GET_CHECKOUT, checkoutParams);
     }
 
@@ -971,7 +972,7 @@ public class B2WClient extends BenchmarkComponent {
     // }
     private boolean runDeleteCart(JSONObject params) throws IOException, JSONException {
         String cart_id = getString(params, B2WConstants.PARAMS_CART_ID);
-        Object cartParams[] = { hashPartition(cart_id), cart_id };
+        Object cartParams[] = { hashPartition(cart_id), cart_id, config.sleep_time };
         return runAsynchTransaction(Transaction.DELETE_CART, cartParams);      
     }
 
@@ -986,7 +987,7 @@ public class B2WClient extends BenchmarkComponent {
     // }
     private boolean runDeleteCheckout(JSONObject params) throws IOException, JSONException {
         String checkout_id = getString(params, B2WConstants.PARAMS_CHECKOUT_ID);
-        Object checkoutParams[] = { hashPartition(checkout_id), checkout_id };
+        Object checkoutParams[] = { hashPartition(checkout_id), checkout_id, config.sleep_time };
         return runAsynchTransaction(Transaction.DELETE_CHECKOUT, checkoutParams);
     }
     // Example JSON
@@ -1000,7 +1001,7 @@ public class B2WClient extends BenchmarkComponent {
     // }
     private boolean runGetStock(JSONObject params) throws IOException, JSONException {
         String sku = getString(params, B2WConstants.PARAMS_SKU);
-        Object stockParams[] = { hashPartition(sku), sku };
+        Object stockParams[] = { hashPartition(sku), sku, config.sleep_time };
         return runAsynchTransaction(Transaction.GET_STOCK, stockParams);
     }
 
@@ -1015,7 +1016,7 @@ public class B2WClient extends BenchmarkComponent {
     // }
     private boolean runGetStockQuantity(JSONObject params) throws IOException, JSONException {
         String stock_id = getString(params, B2WConstants.PARAMS_STOCK_ID);
-        Object stockParams[] = { hashPartition(stock_id), stock_id };
+        Object stockParams[] = { hashPartition(stock_id), stock_id, config.sleep_time };
         return runAsynchTransaction(Transaction.GET_STOCK_QUANTITY, stockParams);
     }
 
@@ -1030,7 +1031,7 @@ public class B2WClient extends BenchmarkComponent {
     // }
     private boolean runGetStockTransaction(JSONObject params) throws IOException, JSONException {
         String transaction_id = getString(params, B2WConstants.PARAMS_TRANSACTION_ID);
-        Object stockParams[] = { hashPartition(transaction_id), transaction_id };
+        Object stockParams[] = { hashPartition(transaction_id), transaction_id, config.sleep_time };
         return runAsynchTransaction(Transaction.GET_STOCK_TRANSACTION, stockParams);
     }
 

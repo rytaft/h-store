@@ -5,8 +5,6 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
-import edu.mit.benchmark.b2w.B2WConfig;
-
 @ProcInfo(
         partitionInfo = "STK_INVENTORY_STOCK.partition_key: 0",
         singlePartition = true
@@ -22,9 +20,9 @@ public class GetStock extends VoltProcedure {
         
     public final SQLStmt getStockStmt = new SQLStmt("SELECT * FROM STK_INVENTORY_STOCK WHERE partition_key = ? AND sku = ? ");
         
-    public VoltTable[] run(int partition_key, String sku){
+    public VoltTable[] run(int partition_key, String sku, long sleep_time){
         try {
-            Thread.sleep(B2WConfig.sleep_time);
+            Thread.sleep(sleep_time);
         } catch(InterruptedException e) {
             // do nothing
         }

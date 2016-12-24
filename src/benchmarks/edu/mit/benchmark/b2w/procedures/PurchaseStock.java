@@ -9,7 +9,6 @@ import org.voltdb.VoltTableRow;
 
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
-import edu.mit.benchmark.b2w.B2WConfig;
 
 @ProcInfo(
         partitionInfo = "STK_INVENTORY_STOCK_QUANTITY.partition_key: 0",
@@ -35,9 +34,9 @@ public class PurchaseStock extends VoltProcedure {
         ); // available, purchase, session, id
 
     
-    public VoltTable[] run(int partition_key, String stock_id, int reserved_quantity){
+    public VoltTable[] run(int partition_key, String stock_id, int reserved_quantity, long sleep_time){
         try {
-            Thread.sleep(B2WConfig.sleep_time);
+            Thread.sleep(sleep_time);
         } catch(InterruptedException e) {
             // do nothing
         }

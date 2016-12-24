@@ -5,8 +5,6 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
-import edu.mit.benchmark.b2w.B2WConfig;
-
 @ProcInfo(
         partitionInfo = "CHECKOUT.partition_key: 0",
         singlePartition = true
@@ -32,9 +30,9 @@ public class DeleteCheckout extends VoltProcedure {
     public final SQLStmt deleteCheckoutStockTransactionsStmt = new SQLStmt(
             "DELETE FROM CHECKOUT_STOCK_TRANSACTIONS WHERE partition_key = ? AND checkoutId = ? ");
 
-    public VoltTable[] run(int partition_key, String checkout_id){
+    public VoltTable[] run(int partition_key, String checkout_id, long sleep_time){
         try {
-            Thread.sleep(B2WConfig.sleep_time);
+            Thread.sleep(sleep_time);
         } catch(InterruptedException e) {
             // do nothing
         }
