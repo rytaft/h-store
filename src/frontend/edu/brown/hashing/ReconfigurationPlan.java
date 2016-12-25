@@ -153,7 +153,10 @@ public class ReconfigurationPlan {
             Map<String, TreeSet<ReconfigurationRange>> range_map, CatalogContext catalogContext,
             Map<ReconfigurationRange, ReconfigurationRange> enclosing_range) throws Exception {
         try {
-
+            if(range_map == null) {
+                return null;
+            }
+            
             TreeSet<ReconfigurationRange> ranges = range_map.get(table_name);
             if (ranges == null) {
                 return null;
@@ -204,6 +207,10 @@ public class ReconfigurationPlan {
             Map<String, TreeSet<ReconfigurationRange>> range_map, CatalogContext catalogContext,
             Map<ReconfigurationRange, ReconfigurationRange> enclosing_range) throws Exception {
         Set<ReconfigurationRange> matchingRanges = new HashSet<ReconfigurationRange>();
+        if(range_map == null) {
+            return matchingRanges;
+        }
+        
         TreeSet<ReconfigurationRange> ranges = range_map.get(table_name);
         if (ranges == null) {
             return matchingRanges;

@@ -78,11 +78,15 @@ public class ReconfigurationTracking implements ReconfigurationTrackingInterface
         this.outgoing_ranges_map = outgoing_ranges;
         this.incoming_ranges_map = incoming_ranges;
         this.enclosing_range = enclosing_range;
-        for(TreeSet<ReconfigurationRange> ranges : this.incoming_ranges_map.values()) {
-            incomingRangesCount += ranges.size();
+        if(this.incoming_ranges_map != null) {
+            for(TreeSet<ReconfigurationRange> ranges : this.incoming_ranges_map.values()) {
+                incomingRangesCount += ranges.size();
+            }
         }
-        for(TreeSet<ReconfigurationRange> ranges : this.outgoing_ranges_map.values()){
-            outgoingRangesCount += ranges.size();
+        if(this.outgoing_ranges_map != null) {
+            for(TreeSet<ReconfigurationRange> ranges : this.outgoing_ranges_map.values()){
+                outgoingRangesCount += ranges.size();
+            }
         }
         this.partition_id = partition_id;
         this.migratedKeyIn = new HashMap<String, Set<List<Object>>>();
