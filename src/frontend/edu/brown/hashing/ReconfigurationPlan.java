@@ -122,6 +122,8 @@ public class ReconfigurationPlan {
         registerReconfigurationRanges();
         planDebug = String.format("Reconfiguration plan generated \n Out: %s \n In: %s", outgoing_ranges.toString(), incoming_ranges.toString());
         LOG.info(planDebug);
+        LOG.debug(String.format("Range maps: \n Out: %s \n In: %s", outgoing_ranges_map.toString(), incoming_ranges_map.toString()));
+        LOG.debug(String.format("Enclosing range map: %s", enclosing_range.toString()));
     }
 
     protected void registerReconfigurationRanges() {
@@ -397,7 +399,7 @@ public class ReconfigurationPlan {
                 for (Map.Entry<String, ReconfigurationRange> rangeEntry : rangeMap.entrySet()) {
                     int num_ranges = rangeEntry.getValue().getMaxExcl().size();
                     if (num_ranges > 1) {
-                        LOG.debug(String.format("Merging %s ranges. Table:%s", num_ranges, table_name));
+                        LOG.info(String.format("Merging %s ranges. Table:%s", num_ranges, table_name));
                     }
 
                     res.add(rangeEntry.getValue());
