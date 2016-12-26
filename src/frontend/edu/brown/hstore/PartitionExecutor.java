@@ -4043,21 +4043,21 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         if (pullRequestsNeeded.size() > 0) {
             if (blockingNeeded) {
+                if (this.reconfiguration_coordinator == null){
+                    throw new RuntimeException("Null RC");
+                }
                 // block on the pull request
                 Semaphore pullBlockSemaphore = new Semaphore(pullRequestsNeeded.size());
                 int pullID =getNextRequestToken();
                 int queueSize = this.lockQueue.size();
                 long blockStartTime = ProfileMeasurement.getTime();
                 LOG.info(String.format("(%s) PullId:%s pulling number of ranges and then blocking: %s",partitionId, pullID, pullRequestsNeeded.size()));
-                if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.start();
-                //Issue the pull
-                if (this.reconfiguration_coordinator == null){
-                    throw new RuntimeException("Null RC");
-                }
-                this.reconfiguration_coordinator.pullRanges(pullID, this.currentTxnId, this.partitionId, pullRequestsNeeded, pullBlockSemaphore);
-                if (debug.val) LOG.debug("Blocking on ranges " + pullRequestsNeeded.size());
                 try {
-
+                    if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.start();
+                    //Issue the pull
+                    this.reconfiguration_coordinator.pullRanges(pullID, this.currentTxnId, this.partitionId, pullRequestsNeeded, pullBlockSemaphore);
+                    if (debug.val) LOG.debug("Blocking on ranges " + pullRequestsNeeded.size());
+                    
                     FileUtil.appendEventToFile(String.format("LIVE_PULL_REQUESTED, PULLID=%s, PULLS_NEEDED=%s, PARTITIONID=%s",pullID,pullRequestsNeeded.size(),partitionId)); 
                     //Block until pull is returned
                     pullBlockSemaphore.acquire(pullRequestsNeeded.size());
@@ -4095,6 +4095,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 } catch (InterruptedException ex) {
                     LOG.error("Waiting for pull was interuppted. ", ex);
                     // TODO ae restart txn?
+                } finally {
+                    if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].on_demand_pull_time.stopIfStarted();
                 }
             } else {
                 LOG.info("Issueing non blocking pull for ranges : " + pullRequestsNeeded.size());
