@@ -1,7 +1,7 @@
 #!/bin/bash
 
-servers="istc3:0:0-5;istc4:1:6-11;istc9:2:12-17;istc10:3:18-23;istc11:4:24-29"
-clients="istc3;istc4;istc9;istc10"
+servers="istc2:0:0-5;istc5:1:6-11;istc11:2:12-17;istc12:3:18-23;istc13:4:24-29"
+clients="istc2;istc4;istc5;istc11"
 client_count=4
 
 case $1 in 
@@ -36,7 +36,7 @@ case $1 in
 
 ## RECONFIGURE
     "reconfig")
-	ant hstore-benchmark -Dproject=b2w -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnoshutdown=true -Dclient.duration=1200000 -Dclient.interval=1000 -Dclient.txnrate=-1 -Dclient.count=$client_count -Dclient.hosts="$clients" -Dclient.threads_per_host=16 -Dclient.blocking_concurrent=30 -Dclient.output_results_csv=results.csv -Dclient.output_interval=true -Dsite.planner_caching=false -Dclient.txn_hints=false -Dsite.exec_early_prepare=false -Dclient.output_basepartitions=true -Delastic.run_monitoring=false -Delastic.update_plan=false -Delastic.exec_reconf=true -Delastic.delay=20000 | tee out.log
+	ant hstore-benchmark -Dproject=b2w -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnoshutdown=true -Dclient.duration=600000 -Dclient.interval=1000 -Dclient.txnrate=-1 -Dclient.count=$client_count -Dclient.hosts="$clients" -Dclient.threads_per_host=16 -Dclient.blocking_concurrent=30 -Dclient.output_results_csv=results.csv -Dclient.output_interval=true -Dsite.planner_caching=false -Dclient.txn_hints=false -Dsite.exec_early_prepare=false -Dclient.output_basepartitions=true -Delastic.run_monitoring=false -Delastic.update_plan=false -Delastic.exec_reconf=true -Delastic.delay=50000 -Dclient.warmup=0 | tee out.log
 	;;
 
 ## RECONFIGURE NO LOAD
