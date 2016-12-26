@@ -12,6 +12,7 @@ import org.voltdb.types.TimestampType;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.mit.benchmark.b2w.B2WConstants;
+import edu.mit.benchmark.b2w.B2WUtil;
 
 @ProcInfo(
         partitionInfo = "STK_STOCK_TRANSACTION.partition_key: 0",
@@ -66,11 +67,7 @@ public class CreateStockTransaction extends VoltProcedure {
     public VoltTable[] run(int partition_key, String transaction_id, String[] reserve_id, String[] brand, TimestampType[] timestamp,
             TimestampType[] expiration_date, byte[] is_kit, int[] requested_quantity, String[] reserve_lines, int[] reserved_quantity, String[] sku, 
             String[] store_id, int[] subinventory, int[] warehouse, long sleep_time) {
-        try {
-            Thread.sleep(sleep_time);
-        } catch(InterruptedException e) {
-            // do nothing
-        }
+        B2WUtil.sleep(sleep_time);
                 
         String current_status = B2WConstants.STATUS_NEW;
         

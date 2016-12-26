@@ -13,6 +13,7 @@ import org.voltdb.types.TimestampType;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.mit.benchmark.b2w.B2WConstants;
+import edu.mit.benchmark.b2w.B2WUtil;
 
 @ProcInfo(
         partitionInfo = "CART.partition_key: 0",
@@ -75,11 +76,7 @@ public class ReserveCart extends VoltProcedure {
     public VoltTable[] run(int partition_key, String cart_id, TimestampType timestamp, String customer_id,
             String token, byte guest, byte isGuest, String line_ids[], int requested_quantity[],
             int reserved_quantity[], String status[], String stock_type[], String transaction_id[], long sleep_time){
-        try {
-            Thread.sleep(sleep_time);
-        } catch(InterruptedException e) {
-            // do nothing
-        }
+        B2WUtil.sleep(sleep_time);
         
         assert(line_ids.length == transaction_id.length);
         assert(line_ids.length == requested_quantity.length);

@@ -5,6 +5,8 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
+import edu.mit.benchmark.b2w.B2WUtil;
+
 @ProcInfo(
         partitionInfo = "CART.partition_key: 0",
         singlePartition = true
@@ -41,11 +43,7 @@ public class DeleteCart extends VoltProcedure {
 
 
     public VoltTable[] run(int partition_key, String cart_id, long sleep_time){
-        try {
-            Thread.sleep(sleep_time);
-        } catch(InterruptedException e) {
-            // do nothing
-        }
+        B2WUtil.sleep(sleep_time);
         
         voltQueueSQL(deleteCartCustomerStmt, partition_key, cart_id);
         voltQueueSQL(deleteCartLinesStmt, partition_key, cart_id);

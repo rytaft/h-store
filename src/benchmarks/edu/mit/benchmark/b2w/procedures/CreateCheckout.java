@@ -11,6 +11,7 @@ import org.voltdb.VoltType;
 
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
+import edu.mit.benchmark.b2w.B2WUtil;
 
 @ProcInfo(
         partitionInfo = "CHECKOUT.partition_key: 0",
@@ -79,11 +80,7 @@ public class CreateCheckout extends VoltProcedure {
     public VoltTable[] run(int partition_key, String checkout_id, String cart_id, String deliveryAddressId, String billingAddressId,
             double amountDue, double total, String freightContract, double freightPrice, String freightStatus,
             String[] line_id, String[] transaction_id, int[] delivery_time, long sleep_time) {
-        try {
-            Thread.sleep(sleep_time);
-        } catch(InterruptedException e) {
-            // do nothing
-        }
+        B2WUtil.sleep(sleep_time);
         
         if (trace.val) {
             LOG.trace("Creating checkout with params: " + checkout_id + ", " + cart_id + ", " + deliveryAddressId + ", " + billingAddressId + ", " +

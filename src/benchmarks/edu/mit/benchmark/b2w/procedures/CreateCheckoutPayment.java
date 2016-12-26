@@ -5,6 +5,8 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
+import edu.mit.benchmark.b2w.B2WUtil;
+
 @ProcInfo(
         partitionInfo = "CHECKOUT_PAYMENTS.partition_key: 0",
         singlePartition = true
@@ -56,11 +58,7 @@ public class CreateCheckoutPayment extends VoltProcedure {
     public VoltTable[] run(int partition_key, String checkout_id, String cart_id, String paymentOptionId, String paymentOptionType, int dueDays, double amount,
             int installmentQuantity, double interestAmount, int interestRate, int annualCET, String number, String criptoNumber, String holdersName, 
             String securityCode, String expirationDate, long sleep_time){
-        try {
-            Thread.sleep(sleep_time);
-        } catch(InterruptedException e) {
-            // do nothing
-        }
+        B2WUtil.sleep(sleep_time);
         
         voltQueueSQL(createCheckoutPaymentStmt,
                 partition_key,
