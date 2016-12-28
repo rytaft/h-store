@@ -16,8 +16,7 @@ public class TransactionSelector {
 
 	String filename;
 	BufferedReader br = null;
-	Random r = null;
-
+	
     private static TransactionSelector singleInstant = null;
 
     public static synchronized TransactionSelector getTransactionSelector(String filename) throws FileNotFoundException {
@@ -33,7 +32,6 @@ public class TransactionSelector {
     }
 
 	private TransactionSelector(String filename) throws FileNotFoundException {
-		r = new Random();
 		this.filename = filename;
 
 		if(filename==null || filename.isEmpty())
