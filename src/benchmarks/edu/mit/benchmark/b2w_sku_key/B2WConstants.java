@@ -1,7 +1,5 @@
 package edu.mit.benchmark.b2w_sku_key;
 
-import org.voltdb.types.TimestampType;
-
 public class B2WConstants {
 
     public static final String STATUS_NEW = "NEW";
