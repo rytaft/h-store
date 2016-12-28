@@ -268,7 +268,7 @@ public class B2WLoader extends Loader {
         if (o == null)
             return null;
         else
-            return Math.abs(o.hashCode()); // must be positive for Squall to work
+            return Math.abs(o.hashCode() * 37489) % 1000003; // prime numbers
     }
 
 
