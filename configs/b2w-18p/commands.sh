@@ -1,7 +1,7 @@
 #!/bin/bash -x
 
-servers="istc2:0:0-5;istc12:1:6-11;istc13:2:12-17"
-clients="istc2;istc4;istc5;istc11"
+servers="istc11:0:0-5;istc12:1:6-11;istc13:2:12-17"
+clients="istc5;istc7;istc11;istc12"
 client_count=4
 extra_params=$2
 
