@@ -268,7 +268,7 @@ public class B2WLoader extends Loader {
         if (o == null)
             return null;
         else
-            return Math.abs(o.hashCode() * B2WConstants.PRIME_MULTIPLIER) % B2WConstants.DISTINCT_HASH_VALUES; 
+            return Math.abs(o.hashCode() * 37489) % 1000003; // prime numbers
     }
 
 

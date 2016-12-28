@@ -114,7 +114,7 @@ def getPlanString(args):
 
   b2w_size = None 
   if "type" in args and args["type"] == "b2w":
-    max_int = 2147483647
+    max_int = args.size #2147483647
     b2w_size = {}
     b2w_size["stk_inventory_stock"] = max_int
     b2w_size["stk_inventory_stock_quantity"] = max_int
@@ -214,7 +214,7 @@ if __name__ == "__main__":
   
   b2w_size = None 
   if args.type == "b2w":
-    max_int = 2147483647
+    max_int = args.size #2147483647
     b2w_size = {}
     b2w_size["stk_inventory_stock"] = max_int
     b2w_size["stk_inventory_stock_quantity"] = max_int
