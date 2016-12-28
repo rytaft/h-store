@@ -32,6 +32,8 @@ public class B2WConstants {
     
     public static final int BATCH_SIZE = 10000;
     public static final int TOKEN_LENGTH = 150;
+    public static final int PRIME_MULTIPLIER = 32869; // a big prime number
+    public static final int DISTINCT_HASH_VALUES = 15485863; // a bigger prime number
     
     public static final String OPERATION = "operation";
     public static final String OPERATION_OFFSET = "offset";
