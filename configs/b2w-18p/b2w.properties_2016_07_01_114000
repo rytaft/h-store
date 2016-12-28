@@ -17,6 +17,7 @@ stock_inventory_data_file = /data/rytaft/stock-data/stk_inventory_stock.csv
 operations_file = b2w_sample_operations.txt
 speed_up = 10
 sleep_time = 5
+start_offset = 42000000
 
 STK_INVENTORY_STOCK_DATA_FILE = data/empty.json
 STK_INVENTORY_STOCK_QUANTITY_DATA_FILE = data/empty.json
