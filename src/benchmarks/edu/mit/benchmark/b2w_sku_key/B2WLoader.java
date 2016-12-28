@@ -295,10 +295,10 @@ public class B2WLoader extends Loader {
         int num_cols = catalog_tbl.getColumns().size();
 
         String line;
-        LoadSelector load_selector;
+        LoaderSelector load_selector;
 
         try {
-            load_selector = LoadSelector.getLoadSelector(path, this.config);
+            load_selector = LoaderSelector.getLoaderSelector(path, this.config);
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }
@@ -409,7 +409,7 @@ public class B2WLoader extends Loader {
         } // FOR
         ThreadUtil.runGlobalPool(runnables);
         
-        LoadSelector.closeAll();
+        LoaderSelector.closeAll();
         LOG.info("Load success!");      
     }
 
