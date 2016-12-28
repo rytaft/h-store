@@ -32,6 +32,7 @@ public class B2WConstants {
     public static final int CART_TABLE_COUNT = 7;
     public static final int CHECKOUT_TABLE_COUNT = 4;
     
+    public static final int BATCH_SIZE = 10000;
     public static final int TOKEN_LENGTH = 150;
     
     public static final String OPERATION = "operation";
