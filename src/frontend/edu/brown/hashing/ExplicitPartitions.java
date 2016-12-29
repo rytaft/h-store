@@ -501,7 +501,7 @@ public abstract class ExplicitPartitions {
             }
         }
 
-        LOG.info("New incremental plan ranges: " + newRanges.toString());
+        LOG.debug("New incremental plan ranges: " + newRanges.toString());
 
         try {
             PartitionPhase new_plan = new PartitionPhase(this.catalog_context, newRanges, this.partitionedTablesByFK);

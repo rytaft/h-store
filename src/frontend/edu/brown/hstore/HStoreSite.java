@@ -927,7 +927,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                 try {
                     if (HStoreSite.this.reconfiguration_coordinator!= null &&  HStoreSite.this.reconfiguration_coordinator.reconfigurationInProgress.get()) {
                         for (PartitionExecutor e: HStoreSite.this.executors){
-                            LOG.info(e.getReconfigDebug());
+                            if (e != null) LOG.info(e.getReconfigDebug());
                         }
                     }
                 } catch (Throwable ex) {

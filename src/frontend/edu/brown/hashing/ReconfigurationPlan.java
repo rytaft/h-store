@@ -27,6 +27,8 @@ import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.PlannedPartitions.PartitionedTable;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
+import edu.brown.logging.LoggerUtil;
+import edu.brown.logging.LoggerUtil.LoggerBoolean;
 
 /**
  * The delta between two partition plans
@@ -36,6 +38,14 @@ import edu.brown.hstore.reconfiguration.ReconfigurationUtil;
 public class ReconfigurationPlan {
 
     private static final Logger LOG = Logger.getLogger(ReconfigurationPlan.class);
+    private static final LoggerBoolean debug = new LoggerBoolean(); 
+    private static final LoggerBoolean trace = new LoggerBoolean();
+    
+    static {
+        LoggerUtil.setupLogging();
+        LoggerUtil.attachObserver(LOG, debug, trace);
+    }
+    
     protected Map<String, ReconfigurationTable> tables_map;
 
     // Helper map of partition ID and outgoing/incoming ranges for this
@@ -120,10 +130,12 @@ public class ReconfigurationPlan {
             tables_map.put(table_name, new ReconfigurationTable(catalogContext, old_phase.getTable(table_name), new_phase.getTable(table_name)));
         }
         registerReconfigurationRanges();
-        planDebug = String.format("Reconfiguration plan generated \n Out: %s \n In: %s", outgoing_ranges.toString(), incoming_ranges.toString());
-        LOG.info(planDebug);
-        LOG.debug(String.format("Range maps: \n Out: %s \n In: %s", outgoing_ranges_map.toString(), incoming_ranges_map.toString()));
-        LOG.debug(String.format("Enclosing range map: %s", enclosing_range.toString()));
+        if (debug.val) {
+            planDebug = String.format("Reconfiguration plan generated \n Out: %s \n In: %s", outgoing_ranges.toString(), incoming_ranges.toString());
+            LOG.debug(planDebug);
+            LOG.debug(String.format("Range maps: \n Out: %s \n In: %s", outgoing_ranges_map.toString(), incoming_ranges_map.toString()));
+            LOG.debug(String.format("Enclosing range map: %s", enclosing_range.toString()));
+        }
     }
 
     protected void registerReconfigurationRanges() {
@@ -456,7 +468,7 @@ public class ReconfigurationPlan {
                         // We need to split up this range
                         while (keysRemaining > 0) {
                             new_max = Math.min(new_min + maxRows, orig_max);
-                            LOG.info(String.format("New range %s-%s", orig_min, new_max));
+                            LOG.info(String.format("New range %s-%s", new_min, new_max));
                             VoltTable max, min;
 
                             if (new_max == orig_max) {
