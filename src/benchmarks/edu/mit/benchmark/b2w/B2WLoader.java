@@ -241,14 +241,20 @@ public class B2WLoader extends Loader {
             case KEY_TYPE_FLOAT:
                 return Double.parseDouble(value);
             case KEY_TYPE_TIMESTAMP:
-                SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
+                SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+                SimpleDateFormat format2 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
                 Date date;
                 try {
-                    date = format.parse(value);
-                } catch (ParseException e) {
-                    LOG.error("invalid timestamp");
-                    date = new Date();
+                    date = format1.parse(value);
+                } catch (ParseException e1) {
+                    try {
+                        date = format2.parse(value);
+                    } catch (ParseException e2) {
+                        LOG.error("invalid timestamp " + value);
+                        date = new Date();
+                    }
                 }
+                
                 return new TimestampType(date);
             default:
                 return null;
@@ -381,7 +387,7 @@ public class B2WLoader extends Loader {
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_INVENTORY_STOCK_QUANTITY,
                             config.STK_INVENTORY_STOCK_QUANTITY_DATA_FILE, STK_INVENTORY_STOCK_QUANTITY_TYPES, ",", total_stk_inventory_stock_quantity);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_STOCK_TRANSACTION,
-                            config.STK_STOCK_TRANSACTION_DATA_FILE, STK_STOCK_TRANSACTION_TYPES, ",", total_stk_stock_transaction);
+                            config.STK_STOCK_TRANSACTION_DATA_FILE, STK_STOCK_TRANSACTION_TYPES, ";", total_stk_stock_transaction); // different separator
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART,
                             config.CART_DATA_FILE, CART_TYPES, ",", total_cart);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_CUSTOMER,
