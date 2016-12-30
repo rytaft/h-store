@@ -228,7 +228,7 @@ public class B2WLoader extends Loader {
      * @return return the target object we want, if the value is null or the type is invalid, then return null.
      */
     private Object getDataByType(String value, int type){
-        if (value.equals("null") || value.equals("<null>"))
+        if (value.equals("null") || value.equals("<null>") || value.equals(""))
             return null;
         switch (type){
             case KEY_TYPE_INTEGER:
