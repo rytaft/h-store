@@ -21,6 +21,7 @@ import edu.brown.api.Loader;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.utils.ThreadUtil;
+import edu.mit.benchmark.b2w.B2WConstants;
 
 import org.voltdb.client.ClientResponse;
 import org.voltdb.types.TimestampType;
@@ -377,11 +378,11 @@ public class B2WLoader extends Loader {
                 @Override
                 public void run() {
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_INVENTORY_STOCK,
-                            config.stock_inventory_data_file, STK_INVENTORY_STOCK_TYPES, ";", total_stk_inventory_stock);
+                            config.STK_INVENTORY_STOCK_DATA_FILE, STK_INVENTORY_STOCK_TYPES, ",", total_stk_inventory_stock);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_INVENTORY_STOCK_QUANTITY,
-                            config.stock_quantity_data_file, STK_INVENTORY_STOCK_QUANTITY_TYPES, ";", total_stk_inventory_stock_quantity);
+                            config.STK_INVENTORY_STOCK_QUANTITY_DATA_FILE, STK_INVENTORY_STOCK_QUANTITY_TYPES, ",", total_stk_inventory_stock_quantity);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_STOCK_TRANSACTION,
-                            config.stock_transaction_data_file, STK_STOCK_TRANSACTION_TYPES, ";", total_stk_stock_transaction);
+                            config.STK_STOCK_TRANSACTION_DATA_FILE, STK_STOCK_TRANSACTION_TYPES, ",", total_stk_stock_transaction);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART,
                             config.CART_DATA_FILE, CART_TYPES, ",", total_cart);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_CUSTOMER,
