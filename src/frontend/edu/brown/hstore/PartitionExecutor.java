@@ -6640,7 +6640,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         startTime = pullStartTime.remove(pullId);
                         if (isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
                             long timeTaken = System.currentTimeMillis() - startTime;
-                            FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%s",timeTaken, pullId, table_name));
+                            FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%s, EXTRACT=%s",timeTaken, pullId, table_name, Arrays.asList(minInclusiveList.getRowArray()).toString()));
                         }
                         this.reconfiguration_tracker.markKeyAsReceived(table_name, Arrays.asList(minInclusiveList.getRowArray()));
                     }               
@@ -6661,7 +6661,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             startTime = pullStartTime.remove(pullId);
                             if (isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
                                 long timeTaken = System.currentTimeMillis() - startTime;
-                                FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s, ",timeTaken, pullId,table_name, minInclusiveList.toString().replace("\n", " | "), maxExclusiveList));
+                                FileUtil.appendEventToFile(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%s, EXTRACT=%s - %s",timeTaken, pullId,table_name, Arrays.asList(minInclusiveList.getRowArray()).toString(), Arrays.asList(maxExclusiveList.getRowArray()).toString()));
                             }
                             this.reconfiguration_tracker.markRangeAsReceived(
                             		new ReconfigurationRange(catalog_tbl, minInclusiveList, maxExclusiveList, oldPartitionId, newPartitionId));
@@ -6692,7 +6692,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (!moreDataComing && isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
             long timeTaken = System.currentTimeMillis() - startTime;        
             this.reconfiguration_stats.trackAsyncReceived(this.partitionId, oldPartitionId, table_name, (vt.getRowSize()*vt.getRowCount())/1000, timeTaken, isAsyncRequest, moreDataComing);
-            reconfiguration_stats.addMessage(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s, ",timeTaken, pullId,table_name, minInclusiveList.toString().replace("\n", " | "), maxExclusiveList));
+            reconfiguration_stats.addMessage(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s - %s ",timeTaken, pullId,table_name, Arrays.asList(minInclusiveList.getRowArray()).toString(), Arrays.asList(maxExclusiveList.getRowArray()).toString()));
         }
         if(receivedAllTuples){
             LOG.error("skipping");

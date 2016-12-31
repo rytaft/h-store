@@ -241,7 +241,7 @@ public class B2WLoader extends Loader {
             case KEY_TYPE_FLOAT:
                 return Double.parseDouble(value);
             case KEY_TYPE_TIMESTAMP:
-                SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+                SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS z");
                 SimpleDateFormat format2 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
                 Date date;
                 try {
@@ -407,13 +407,13 @@ public class B2WLoader extends Loader {
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_LINE_PROMOTIONS,
                             config.CART_LINE_PROMOTIONS_DATA_FILE, CART_LINE_PROMOTIONS_TYPES, ",", total_cart_line_promotions);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_LINE_PRODUCT_WARRANTIES,
-                            config.CART_LINE_PRODUCT_WARRANTIES_DATA_FILE, CART_LINE_PRODUCT_WARRANTIES_TYPES, ",", total_cart_line_product_warranties);
+                            config.CART_LINE_PRODUCT_WARRANTIES_DATA_FILE, CART_LINE_PRODUCT_WARRANTIES_TYPES, ";", total_cart_line_product_warranties); // different separator
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_LINE_PRODUCT_STORES,
                             config.CART_LINE_PRODUCT_STORES_DATA_FILE, CART_LINE_PRODUCT_STORES_TYPES, ",", total_cart_line_product_stores);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CHECKOUT,
                             config.CHECKOUT_DATA_FILE, CHECKOUT_TYPES, ",", total_checkout);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CHECKOUT_PAYMENTS,
-                            config.CHECKOUT_PAYMENTS_DATA_FILE, CHECKOUT_PAYMENTS_TYPES, ",", total_checkout_payments);
+                            config.CHECKOUT_PAYMENTS_DATA_FILE, CHECKOUT_PAYMENTS_TYPES, ";", total_checkout_payments); // different separator
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CHECKOUT_FREIGHT_DELIVERY_TIME,
                             config.CHECKOUT_FREIGHT_DELIVERY_TIME_DATA_FILE, CHECKOUT_FREIGHT_DELIVERY_TIME_TYPES, ",", total_checkout_freight_delivery_time);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CHECKOUT_STOCK_TRANSACTIONS,
