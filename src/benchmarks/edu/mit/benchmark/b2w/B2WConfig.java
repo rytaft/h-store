@@ -1,7 +1,6 @@
 package edu.mit.benchmark.b2w;
 
 import java.util.Map;
-import java.util.Random;
 
 import org.apache.log4j.Logger;
 
