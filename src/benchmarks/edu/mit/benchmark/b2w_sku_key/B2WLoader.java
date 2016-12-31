@@ -317,7 +317,7 @@ public class B2WLoader extends Loader {
                 } catch(IOException e) {
                     throw new RuntimeException(e);
                 }
-                if (line == null || line.isEmpty())
+                if (line == null)
                     break;
                 String[] items = line.split(separator, -1);
                 if (items.length != num_cols-1) {
@@ -404,7 +404,7 @@ public class B2WLoader extends Loader {
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_LINES,
                             config.CART_LINES_DATA_FILE, CART_LINES_TYPES, ",", total_cart_lines);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_LINE_PRODUCTS,
-                            config.CART_LINE_PRODUCTS_DATA_FILE, CART_LINE_PRODUCTS_TYPES, ",", total_cart_line_products);
+                            config.CART_LINE_PRODUCTS_DATA_FILE, CART_LINE_PRODUCTS_TYPES, ";", total_cart_line_products); // different separator
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_LINE_PROMOTIONS,
                             config.CART_LINE_PROMOTIONS_DATA_FILE, CART_LINE_PROMOTIONS_TYPES, ",", total_cart_line_promotions);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_LINE_PRODUCT_WARRANTIES,
