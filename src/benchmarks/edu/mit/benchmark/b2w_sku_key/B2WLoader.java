@@ -319,7 +319,8 @@ public class B2WLoader extends Loader {
             if (line == null || line.isEmpty())
                 break;
             String[] items = line.split(separator);
-
+            if (items.length != num_cols) LOG.error(name + " line only has " + items.length + " items, expected " + num_cols + ": " + line);
+            
             Object row[] = new Object[num_cols];
             int param;
             row[0] = hashPartition(getDataByType(items[0], types[0]));
