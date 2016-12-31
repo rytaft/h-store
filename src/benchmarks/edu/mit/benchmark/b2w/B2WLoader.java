@@ -293,68 +293,75 @@ public class B2WLoader extends Loader {
      */
     private void loadTableFormatData(int thread_id, String name, String path, int[] types, 
             String separator, AtomicLong total) {
-        final CatalogContext catalogContext = this.getCatalogContext();
-        Database catalog_db = catalogContext.database;
-        Table catalog_tbl = catalog_db.getTables().getIgnoreCase(name);
-        assert(catalog_tbl != null);
-        VoltTable table = CatalogUtil.getVoltTable(catalog_tbl);
-        int num_cols = catalog_tbl.getColumns().size();
-
-        String line;
-        LoaderSelector load_selector;
-
         try {
-            load_selector = LoaderSelector.getLoaderSelector(path, this.config);
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-        
-        while (true){
+            final CatalogContext catalogContext = this.getCatalogContext();
+            Database catalog_db = catalogContext.database;
+            Table catalog_tbl = catalog_db.getTables().getIgnoreCase(name);
+            assert(catalog_tbl != null);
+            VoltTable table = CatalogUtil.getVoltTable(catalog_tbl);
+            int num_cols = catalog_tbl.getColumns().size();
+
+            String line;
+            LoaderSelector load_selector;
+
             try {
-                line = load_selector.nextLine();
-            } catch(IOException e) {
+                load_selector = LoaderSelector.getLoaderSelector(path, this.config);
+            } catch (FileNotFoundException e) {
                 throw new RuntimeException(e);
             }
-            if (line == null || line.isEmpty())
-                break;
-            String[] items = line.split(separator, -1);
-            if (items.length != num_cols-1) LOG.error(name + " line only has " + items.length + " items, expected " + (num_cols-1) + ": " + line);
-            
-            Object row[] = new Object[num_cols];
-            int param;
-            row[0] = hashPartition(getDataByType(items[0], types[0]));
-            for (param = 0; param < num_cols - 1; param++){
-                row[param + 1] = getDataByType(items[param], types[param]);
-            }
-            // Hack to increase the amount of available product
-            if (name.equals(B2WConstants.TABLENAME_INVENTORY_STOCK_QUANTITY)) {
-                final int AVAILABLE = 2;
-                row[AVAILABLE] = (Integer) row[AVAILABLE] * 1000;
-            }
-            table.addRow(row);
 
-            if (table.getRowCount() >= B2WConstants.BATCH_SIZE) {
-                this.loadVoltTable(catalog_tbl.getName(), table);
+            while (true){
+                try {
+                    line = load_selector.nextLine();
+                } catch(IOException e) {
+                    throw new RuntimeException(e);
+                }
+                if (line == null || line.isEmpty())
+                    break;
+                String[] items = line.split(separator, -1);
+                if (items.length != num_cols-1) {
+                    LOG.error(name + " line has " + items.length + " items, expected " + (num_cols-1) + ": " + line);
+                    continue;
+                }
 
-                long current_total = total.addAndGet(table.getRowCount());
-                table.clearRowData();
+                Object row[] = new Object[num_cols];
+                int param;
+                row[0] = hashPartition(getDataByType(items[0], types[0]));
+                for (param = 0; param < num_cols - 1; param++){
+                    row[param + 1] = getDataByType(items[param], types[param]);
+                }
+                // Hack to increase the amount of available product
+                if (name.equals(B2WConstants.TABLENAME_INVENTORY_STOCK_QUANTITY)) {
+                    final int AVAILABLE = 2;
+                    row[AVAILABLE] = (Integer) row[AVAILABLE] * 1000;
+                }
+                table.addRow(row);
 
-                if (debug.val)
-                    LOG.debug("[Worker " + thread_id + "] " + name + " records loaded: " + current_total);
-                else if ((current_total % 100000) == 0) {
-                    LOG.info("[Worker " + thread_id + "] " + name + " records loaded: " + current_total);
+                if (table.getRowCount() >= B2WConstants.BATCH_SIZE) {
+                    this.loadVoltTable(catalog_tbl.getName(), table);
+
+                    long current_total = total.addAndGet(table.getRowCount());
+                    table.clearRowData();
+
+                    if (debug.val)
+                        LOG.debug("[Worker " + thread_id + "] " + name + " records loaded: " + current_total);
+                    else if ((current_total % 100000) == 0) {
+                        LOG.info("[Worker " + thread_id + "] " + name + " records loaded: " + current_total);
+                    }
                 }
             }
-        }
 
-        if (table.getRowCount() > 0) {
-            this.loadVoltTable(catalog_tbl.getName(), table);
-            
-            total.addAndGet(table.getRowCount());
-            table.clearRowData();
-        }
+            if (table.getRowCount() > 0) {
+                this.loadVoltTable(catalog_tbl.getName(), table);
 
-        if (LOG.isDebugEnabled()) LOG.debug("[" + name + " Loaded] "+ total.get());
+                total.addAndGet(table.getRowCount());
+                table.clearRowData();
+            }
+
+            if (LOG.isDebugEnabled()) LOG.debug("[" + name + " Loaded] "+ total.get());
+        } catch(Exception e) {
+            LOG.error("Error loading table " + name + " from file " + path + ": " + e.getMessage());
+        }
     }
 
     @Override
@@ -390,7 +397,7 @@ public class B2WLoader extends Loader {
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_STOCK_TRANSACTION,
                             config.STK_STOCK_TRANSACTION_DATA_FILE, STK_STOCK_TRANSACTION_TYPES, ";", total_stk_stock_transaction); // different separator
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART,
-                            config.CART_DATA_FILE, CART_TYPES, ",", total_cart);
+                            config.CART_DATA_FILE, CART_TYPES, ";", total_cart); // different separator
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_CUSTOMER,
                             config.CART_CUSTOMER_DATA_FILE, CART_CUSTOMER_TYPES, ",", total_cart_customer);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_LINES,
