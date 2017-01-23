@@ -633,7 +633,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
             } else {
                 receiveNextReconfigurationPlanFromLeader();
             }
-            LOG.info("Sent reconfig end acknowledgement to site " + i);
+            LOG.info("Sent next plan to site " + i);
         }
     }
     

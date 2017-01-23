@@ -6692,7 +6692,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (!moreDataComing && isAsyncRequest && startTime!=null && ReconfigurationCoordinator.detailed_timing){
             long timeTaken = System.currentTimeMillis() - startTime;        
             this.reconfiguration_stats.trackAsyncReceived(this.partitionId, oldPartitionId, table_name, (vt.getRowSize()*vt.getRowCount())/1000, timeTaken, isAsyncRequest, moreDataComing);
-            reconfiguration_stats.addMessage(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s - %s ",timeTaken, pullId,table_name, Arrays.asList(minInclusiveList.getRowArray()).toString(), Arrays.asList(maxExclusiveList.getRowArray()).toString()));
+            reconfiguration_stats.addMessage(String.format("ASYNC_PULL_COMPLETED, MS=%s, PULL_ID=%s, TABLE=%S, EXTRACT=%s - %s ",timeTaken, pullId,table_name, minInclusiveList.toString().replace("\n", " | "), maxExclusiveList.toString().replace("\n", " | ")));
         }
         if(receivedAllTuples){
             LOG.error("skipping");
