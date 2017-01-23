@@ -1,7 +1,7 @@
 #!/bin/bash
 
-servers="istc5:0:0-5;istc7:1:6-11;istc11:2:12-17;istc12:3:18-23;istc13:4:24-29;istc4:30-35"
-clients="istc5;istc7;istc11;istc12"
+servers="istc5:0:0-5;istc7:1:6-11;istc11:2:12-17;istc12:3:18-23;istc13:4:24-29;istc1:5:30-35"
+clients="istc5;istc1;istc11;istc12"
 client_count=4
 
 case $1 in 
@@ -41,6 +41,6 @@ case $1 in
 
 ## RECONFIGURE NO LOAD
     "reconfig_no_load")
-	ant hstore-benchmark -Dproject=b2w -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnostart=true -Dnoloader=true -Dnoshutdown=true -Dclient.duration=600000 -Dclient.interval=1000 -Dclient.txnrate=-1 -Dclient.count=$client_count -Dclient.hosts="$clients" -Dclient.threads_per_host=16 -Dclient.blocking_concurrent=30 -Dclient.output_results_csv=results.csv -Dclient.output_interval=true -Dsite.planner_caching=false -Dclient.txn_hints=false -Dsite.exec_early_prepare=false -Dclient.output_basepartitions=true -Delastic.run_monitoring=false -Delastic.update_plan=false -Delastic.exec_reconf=true -Delastic.delay=170000  -Dclient.warmup=0 | tee out.log
+	ant hstore-benchmark -Dproject=b2w -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnostart=true -Dnoloader=true -Dnoshutdown=true -Dclient.duration=600000 -Dclient.interval=1000 -Dclient.txnrate=-1 -Dclient.count=$client_count -Dclient.hosts="$clients" -Dclient.threads_per_host=16 -Dclient.blocking_concurrent=30 -Dclient.output_results_csv=results.csv -Dclient.output_interval=true -Dsite.planner_caching=false -Dclient.txn_hints=false -Dsite.exec_early_prepare=false -Dclient.output_basepartitions=true -Delastic.run_monitoring=false -Delastic.update_plan=false -Delastic.exec_reconf=true -Delastic.delay=20000  -Dclient.warmup=0 | tee out.log
 	;;
 esac
