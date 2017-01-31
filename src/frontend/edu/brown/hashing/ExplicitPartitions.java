@@ -180,54 +180,55 @@ public abstract class ExplicitPartitions {
             if (partitionedTables.contains(tableName) == false) {
 
                 Column[] partitionCols = this.table_partition_cols_map.get(tableName);
-                if (partitionCols == null) {
-                    LOG.info(tableName + " is not partitioned and has no partition column. skipping");
-                    continue;
-                } else {
-                    LOG.info(tableName + " is not explicitly partitioned.");
-                }
-
-                List<Column> depCols = dependUtil.getAncestors(partitionCols[0]);
                 List<Table> parentCandidates = new ArrayList<>();
                 List<Table> prevParentCandidates = new ArrayList<>();
-                for (Column c : depCols) {
-                    CatalogType p = c.getParent();
-                    if (p instanceof Table) {
-                        // if in table then map to it
-                        String relatedTblName = p.getName().toLowerCase();
-                        Table relatedTbl = (Table) p;
-                        LOG.info(String.format("Table %s is related to %s", tableName, relatedTblName));
-                        if (partitionedTables.contains(relatedTblName) && this.table_partition_cols_map.get(relatedTblName) != null && this.table_partition_cols_map.get(relatedTblName)[0].equals(c)) {
-                            parentCandidates.add(relatedTbl);
-                        }
-                    }
-                }
-
-                // find the parent with the greatest number of partition columns
-                // in common
-                for (int i = 1; i < partitionCols.length; i++) {
-                    if (parentCandidates.size() != 0) {
-                        prevParentCandidates = parentCandidates;
-                        parentCandidates = new ArrayList<>();
+                
+                if (!this.catalog_context.jarPath.getName().contains("b2w")) {
+                    if (partitionCols == null) {
+                        LOG.info(tableName + " is not partitioned and has no partition column. skipping");
+                        continue;
                     } else {
-                        break;
+                        LOG.info(tableName + " is not explicitly partitioned.");
                     }
 
-                    depCols = dependUtil.getAncestors(partitionCols[i]);
+                    List<Column> depCols = dependUtil.getAncestors(partitionCols[0]);
                     for (Column c : depCols) {
                         CatalogType p = c.getParent();
                         if (p instanceof Table) {
+                            // if in table then map to it
                             String relatedTblName = p.getName().toLowerCase();
                             Table relatedTbl = (Table) p;
-                            if (prevParentCandidates.contains(relatedTbl) && this.table_partition_cols_map.get(relatedTblName) != null
-                                    && this.table_partition_cols_map.get(relatedTblName)[i].equals(c)) {
+                            LOG.info(String.format("Table %s is related to %s", tableName, relatedTblName));
+                            if (partitionedTables.contains(relatedTblName) && this.table_partition_cols_map.get(relatedTblName) != null && this.table_partition_cols_map.get(relatedTblName)[0].equals(c)) {
                                 parentCandidates.add(relatedTbl);
                             }
                         }
                     }
-                }
-                
-                if (this.catalog_context.jarPath.getName().contains("b2w"))  {
+
+                    // find the parent with the greatest number of partition columns
+                    // in common
+                    for (int i = 1; i < partitionCols.length; i++) {
+                        if (parentCandidates.size() != 0) {
+                            prevParentCandidates = parentCandidates;
+                            parentCandidates = new ArrayList<>();
+                        } else {
+                            break;
+                        }
+
+                        depCols = dependUtil.getAncestors(partitionCols[i]);
+                        for (Column c : depCols) {
+                            CatalogType p = c.getParent();
+                            if (p instanceof Table) {
+                                String relatedTblName = p.getName().toLowerCase();
+                                Table relatedTbl = (Table) p;
+                                if (prevParentCandidates.contains(relatedTbl) && this.table_partition_cols_map.get(relatedTblName) != null
+                                        && this.table_partition_cols_map.get(relatedTblName)[i].equals(c)) {
+                                    parentCandidates.add(relatedTbl);
+                                }
+                            }
+                        }
+                    }
+                } else {
                     if (tableName.equalsIgnoreCase("cart_customer") || 
                             tableName.equalsIgnoreCase("cart_lines") ||
                             tableName.equalsIgnoreCase("cart_line_products") ||
