@@ -226,6 +226,22 @@ public abstract class ExplicitPartitions {
                         }
                     }
                 }
+                
+                if (this.catalog_context.jarPath.getName().contains("b2w"))  {
+                    if (tableName.equalsIgnoreCase("cart_customer") || 
+                            tableName.equalsIgnoreCase("cart_lines") ||
+                            tableName.equalsIgnoreCase("cart_line_products") ||
+                            tableName.equalsIgnoreCase("cart_line_promotions") ||
+                            tableName.equalsIgnoreCase("cart_line_product_warranties") ||
+                            tableName.equalsIgnoreCase("cart_line_product_stores")) {
+                        parentCandidates.add(this.catalog_context.getTableByName("cart"));
+                    }
+                    else if (tableName.equalsIgnoreCase("checkout_payments") || 
+                            tableName.equalsIgnoreCase("checkout_freight_delivery_time") ||
+                            tableName.equalsIgnoreCase("checkout_stock_transactions")) {
+                        parentCandidates.add(this.catalog_context.getTableByName("checkout"));
+                    }
+                }
 
                 Table parentTbl = null;
                 if (parentCandidates.size() != 0) {
