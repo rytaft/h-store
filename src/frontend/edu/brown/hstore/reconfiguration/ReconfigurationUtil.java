@@ -325,39 +325,23 @@ public class ReconfigurationUtil {
             return Arrays.asList(plan);
         }
 
-        List<ReconfigurationRange> allRanges = new ArrayList<>();
-        for (List<ReconfigurationRange> ranges : plan.getIncoming_ranges().values()) {
-            allRanges.addAll(ranges);
-        }
-
-        List<ReconfigurationPlan> splitPlans = new ArrayList<>();
-
-        int numRanges = 0;
-        for (ReconfigurationRange range : allRanges) {
-            if (plan.getPartitionedTablesByFK().get(range.getTableName()) == null) {
-                numRanges++;
-            }
-        }
-
-        // find the splits for explicitly partitioned tables
+        // Find the explicitly partitioned tables and their ranges
         HashMap<String, List<String>> explicitPartitionedTables = new HashMap<>();
-        List<ReconfigurationRange> explicitPartitionedTablesSplitRanges = new ArrayList<>();
-        long splitsPerRange = numberOfSplits / numRanges;
-        long splitsRemainder = numberOfSplits % numRanges;
-        for (ReconfigurationRange range : allRanges) {
-            if (plan.getPartitionedTablesByFK().get(range.getTableName()) == null) {
-                int extra = (splitsRemainder > 0 ? 2 : 1);
-                List<ReconfigurationRange> splitRanges = splitReconfigurationRangeOnPartitionKeys(range, range.getTableName(), getSubKeyMinMax(range.getTableName(), plan.getPartitionedTablesByFK()),
-                        splitsPerRange + extra);
-                splitsRemainder--;
-
-                if (explicitPartitionedTables.get(range.getTableName()) == null) {
-                    explicitPartitionedTables.put(range.getTableName(), new ArrayList<String>());
+        List<ReconfigurationRange> explicitPartitionedTablesRanges = new ArrayList<>();
+        for (List<ReconfigurationRange> ranges : plan.getIncoming_ranges().values()) {
+            for (ReconfigurationRange range : ranges) {
+                String table = range.getTableName();
+                if (!plan.getPartitionedTablesByFK().containsKey(table)) {
+                    explicitPartitionedTablesRanges.add(range);
+                    if (!explicitPartitionedTables.containsKey(table)) {
+                        explicitPartitionedTables.put(table, new ArrayList<String>());
+                    }
                 }
-                explicitPartitionedTablesSplitRanges.addAll(splitRanges);
             }
         }
 
+        int numRanges = explicitPartitionedTablesRanges.size();        
+        
         // find reverse map of fk partitioning
         for (Entry<String, String> entry : plan.getPartitionedTablesByFK().entrySet()) {
             List<String> table = explicitPartitionedTables.get(entry.getValue());
@@ -365,20 +349,63 @@ public class ReconfigurationUtil {
                 table.add(entry.getKey());
             }
         }
-
-        // sort the ranges
-        Collections.sort(explicitPartitionedTablesSplitRanges, numericReconfigurationRangeComparator);
-
-        // combine ranges from related tables
-        for (ReconfigurationRange range : explicitPartitionedTablesSplitRanges) {
-            ReconfigurationPlan newPlan = new ReconfigurationPlan(plan.getCatalogContext(), plan.getPartitionedTablesByFK());
-
-            newPlan.addRange(range);
-            for (String table_name : explicitPartitionedTables.get(range.getTableName())) {
-                newPlan.addRange(range.clone(plan.getCatalogContext().getTableByName(table_name)));
+        
+        List<ReconfigurationPlan> splitPlans = new ArrayList<>();
+        
+        // If more ranges than splits, no need to split up the ranges
+        if (numRanges > numberOfSplits) {
+            for (int i = 0; i < numberOfSplits; i++) {
+                splitPlans.add(new ReconfigurationPlan(plan.getCatalogContext(), plan.getPartitionedTablesByFK()));
             }
 
-            splitPlans.add(newPlan);
+            // sort the ranges
+            Collections.sort(explicitPartitionedTablesRanges, numericReconfigurationRangeComparator);
+            
+            // combine ranges from related tables
+            int rangeIndex = 0;
+            for (ReconfigurationRange range : explicitPartitionedTablesRanges) {
+                
+                int splitIndex = numberOfSplits * rangeIndex / numRanges;
+                ReconfigurationPlan newPlan = splitPlans.get(splitIndex);
+
+                newPlan.addRange(range);
+                for (String table_name : explicitPartitionedTables.get(range.getTableName())) {
+                    newPlan.addRange(range.clone(plan.getCatalogContext().getTableByName(table_name)));
+                }
+
+                splitPlans.add(newPlan);
+                rangeIndex++;
+            }
+            
+        }
+        else {
+            // find the splits for explicitly partitioned tables
+            List<ReconfigurationRange> explicitPartitionedTablesSplitRanges = new ArrayList<>();
+            long splitsPerRange = numberOfSplits / numRanges;
+            long splitsRemainder = numberOfSplits % numRanges;
+            for (ReconfigurationRange range : explicitPartitionedTablesRanges) {
+                int extra = (splitsRemainder > 0 ? 2 : 1);
+                List<ReconfigurationRange> splitRanges = splitReconfigurationRangeOnPartitionKeys(range, range.getTableName(), getSubKeyMinMax(range.getTableName(), plan.getPartitionedTablesByFK()),
+                        splitsPerRange + extra);
+                splitsRemainder--;
+
+                explicitPartitionedTablesSplitRanges.addAll(splitRanges);
+            }
+
+            // sort the ranges
+            Collections.sort(explicitPartitionedTablesSplitRanges, numericReconfigurationRangeComparator);
+
+            // combine ranges from related tables
+            for (ReconfigurationRange range : explicitPartitionedTablesSplitRanges) {
+                ReconfigurationPlan newPlan = new ReconfigurationPlan(plan.getCatalogContext(), plan.getPartitionedTablesByFK());
+
+                newPlan.addRange(range);
+                for (String table_name : explicitPartitionedTables.get(range.getTableName())) {
+                    newPlan.addRange(range.clone(plan.getCatalogContext().getTableByName(table_name)));
+                }
+
+                splitPlans.add(newPlan);
+            }
         }
 
         return splitPlans;
