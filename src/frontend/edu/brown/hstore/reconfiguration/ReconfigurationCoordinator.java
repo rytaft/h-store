@@ -443,9 +443,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         if(this.reconfig_split  > 1 && reconfig_plan.getIncoming_ranges().size() > 0){
                             // split plan & put into queue
                             reconfigPlanQueue = ReconfigurationUtil.naiveSplitReconfigurationPlan(reconfig_plan, this.reconfig_split);
-                            if (debug.val) {
-                                LOG.debug(reconfigPlanQueue.toString());
-                            }
                             // set reconfig_plan = 1st split
                             reconfig_plan = reconfigPlanQueue.remove(0);
                         }

@@ -321,6 +321,9 @@ public class ReconfigurationUtil {
 
     public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(ReconfigurationPlan plan, int numberOfSplits) {
 
+        LOG.debug("splitting into " + numberOfSplits + " plans starting with plan: \n Out: " + 
+                plan.getOutgoing_ranges().toString() + " \n In: " + plan.getIncoming_ranges().toString());
+        
         if (numberOfSplits <= 1) {
             return Arrays.asList(plan);
         }
@@ -372,6 +375,8 @@ public class ReconfigurationUtil {
                 for (String table_name : explicitPartitionedTables.get(range.getTableName())) {
                     newPlan.addRange(range.clone(plan.getCatalogContext().getTableByName(table_name)));
                 }
+                
+                LOG.debug("New plan: \n Out: " + newPlan.getOutgoing_ranges().toString() + " \n In: " + newPlan.getIncoming_ranges().toString());
 
                 splitPlans.add(newPlan);
                 rangeIndex++;
@@ -403,6 +408,8 @@ public class ReconfigurationUtil {
                 for (String table_name : explicitPartitionedTables.get(range.getTableName())) {
                     newPlan.addRange(range.clone(plan.getCatalogContext().getTableByName(table_name)));
                 }
+                
+                LOG.debug("New plan: \n Out: " + newPlan.getOutgoing_ranges().toString() + " \n In: " + newPlan.getIncoming_ranges().toString());
 
                 splitPlans.add(newPlan);
             }
