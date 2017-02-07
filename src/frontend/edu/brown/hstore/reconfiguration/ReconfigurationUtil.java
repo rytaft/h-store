@@ -29,11 +29,19 @@ import edu.brown.catalog.CatalogUtil;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationTable;
+import edu.brown.logging.LoggerUtil;
+import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.utils.CollectionUtil;
 
 public class ReconfigurationUtil {
     private static final Logger LOG = Logger.getLogger(ReconfigurationUtil.class);
-
+    private static final LoggerBoolean debug = new LoggerBoolean();
+    private static final LoggerBoolean trace = new LoggerBoolean();
+    static {
+        LoggerUtil.setupLogging();
+        LoggerUtil.attachObserver(LOG, debug, trace);
+    }
+    
     public static class ReconfigurationPair implements Comparable<ReconfigurationPair> {
         public Integer from;
         public Integer to;
@@ -376,9 +384,6 @@ public class ReconfigurationUtil {
                     newPlan.addRange(range.clone(plan.getCatalogContext().getTableByName(table_name)));
                 }
                 
-                LOG.debug("New plan: \n Out: " + newPlan.getOutgoing_ranges().toString() + " \n In: " + newPlan.getIncoming_ranges().toString());
-
-                splitPlans.add(newPlan);
                 rangeIndex++;
             }
             
@@ -409,9 +414,13 @@ public class ReconfigurationUtil {
                     newPlan.addRange(range.clone(plan.getCatalogContext().getTableByName(table_name)));
                 }
                 
-                LOG.debug("New plan: \n Out: " + newPlan.getOutgoing_ranges().toString() + " \n In: " + newPlan.getIncoming_ranges().toString());
-
                 splitPlans.add(newPlan);
+            }
+        }
+        
+        if (debug.val) {
+            for (ReconfigurationPlan newPlan : splitPlans) {
+                LOG.debug("New plan: \n Out: " + newPlan.getOutgoing_ranges().toString() + " \n In: " + newPlan.getIncoming_ranges().toString());
             }
         }
 
