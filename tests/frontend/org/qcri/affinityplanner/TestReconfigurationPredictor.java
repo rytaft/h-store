@@ -164,7 +164,7 @@ public class TestReconfigurationPredictor extends BaseTestCase {
             load -= 200;
         }
         
-        ReconfigurationPredictor predictor = new ReconfigurationPredictor(100, load_predictions, 2, 2);
+        ReconfigurationPredictor predictor = new ReconfigurationPredictor(100, load_predictions, 2, 10);
         
         ArrayList<Move> moves = predictor.bestMoves();
         double load_predictions_arr[] = new double[load_predictions.size()];
