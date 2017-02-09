@@ -106,15 +106,15 @@ public class ReconfigurationPredictor {
         if (t < 0 || predicted_load.get(t) > capacity(nodes) || (t == 0 && nodes != this.nodes_start)) { // constraints
             return Double.POSITIVE_INFINITY;
         }
-        else if (min_cost[t][nodes] != null) {
-            return min_cost[t][nodes].cost;
+        else if (min_cost[t][nodes-1] != null) {
+            return min_cost[t][nodes-1].cost;
         }
         else if (t == 0) { // base case
-            min_cost[t][nodes] = new CostPath();
-            min_cost[t][nodes].cost = nodes; // equals this.nodes_start
+            min_cost[t][nodes-1] = new CostPath();
+            min_cost[t][nodes-1].cost = nodes; // equals this.nodes_start
         }
         else { // recursive step           
-            min_cost[t][nodes] = new CostPath();
+            min_cost[t][nodes-1] = new CostPath();
             
             for (int nodes_before = 1; nodes_before <= this.max_nodes; ++nodes_before) {
                 int reconfig_time = reconfigTime(nodes_before, nodes);
@@ -123,17 +123,17 @@ public class ReconfigurationPredictor {
                 }
                 
                 double cost = subCost(t, reconfig_time, nodes_before, nodes);
-                if (nodes_before == 1 || cost < min_cost[t][nodes].cost) {
-                    min_cost[t][nodes].cost = cost;
-                    min_cost[t][nodes].nodes_before = nodes_before;
-                    min_cost[t][nodes].t_before = t - reconfig_time;
+                if (nodes_before == 1 || cost < min_cost[t][nodes-1].cost) {
+                    min_cost[t][nodes-1].cost = cost;
+                    min_cost[t][nodes-1].nodes_before = nodes_before;
+                    min_cost[t][nodes-1].t_before = t - reconfig_time;
                 }
             }
             
-            LOG.debug("At time " + t + " with " + nodes + " nodes: " + min_cost[t][nodes].toString());
+            LOG.debug("At time " + t + " with " + nodes + " nodes: " + min_cost[t][nodes-1].toString());
         }
 
-        return min_cost[t][nodes].cost;
+        return min_cost[t][nodes-1].cost;
     }
          
     // Calculate the best series of moves
@@ -147,7 +147,7 @@ public class ReconfigurationPredictor {
                 int nodes = end_nodes;
                 while (t > 0) {
                     moves.add(new Move(t, nodes));
-                    CostPath cp = min_cost[t][nodes];
+                    CostPath cp = min_cost[t][nodes-1];
                     t = cp.t_before;
                     nodes = cp.nodes_before;
                 }
