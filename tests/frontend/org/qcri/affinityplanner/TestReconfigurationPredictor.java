@@ -113,43 +113,43 @@ public class TestReconfigurationPredictor extends BaseTestCase {
         ArrayList<Double> load_predictions = new ArrayList<>();
         double load = 100;
         // first hump
-        for (int i = 0; i < 1000; ++i) {
+        for (int i = 0; i < 500; ++i) {
             load_predictions.add(load);
             load += 50;
         }
-        for (int i = 0; i < 1000; ++i) {
+        for (int i = 0; i < 500; ++i) {
             load_predictions.add(load);
             load += 10;
         }
-        for (int i = 0; i < 2000; ++i) {
+        for (int i = 0; i < 1000; ++i) {
             load_predictions.add(load);
         }
-        for (int i = 0; i < 1000; ++i) {
+        for (int i = 0; i < 500; ++i) {
             load_predictions.add(load);
             load -= 10;
         }
-        for (int i = 0; i < 1000; ++i) {
+        for (int i = 0; i < 500; ++i) {
             load_predictions.add(load);
             load -= 50;
         }
         
         // second hump
-        for (int i = 0; i < 1000; ++i) {
+        for (int i = 0; i < 500; ++i) {
             load_predictions.add(load);
             load += 50;
         }
-        for (int i = 0; i < 1000; ++i) {
+        for (int i = 0; i < 500; ++i) {
             load_predictions.add(load);
             load += 10;
         }
-        for (int i = 0; i < 2000; ++i) {
+        for (int i = 0; i < 1000; ++i) {
             load_predictions.add(load);
         }
-        for (int i = 0; i < 1000; ++i) {
+        for (int i = 0; i < 500; ++i) {
             load_predictions.add(load);
             load -= 10;
         }
-        for (int i = 0; i < 1000; ++i) {
+        for (int i = 0; i < 500; ++i) {
             load_predictions.add(load);
             load -= 50;
         }
