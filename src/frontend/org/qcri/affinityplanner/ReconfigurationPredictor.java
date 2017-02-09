@@ -71,7 +71,7 @@ public class ReconfigurationPredictor {
             return (int) Math.ceil((1.0/nodes_before - 1.0/nodes_after) * this.db_migration_time * nodes_before);
         }
         else { // scale in
-            return (int) Math.ceil((1.0/nodes_after - 1.0/nodes_before) * this.db_migration_time * nodes_before);
+            return (int) Math.ceil((1.0/nodes_after - 1.0/nodes_before) * this.db_migration_time * nodes_after);
         }
     }
     
