@@ -166,6 +166,48 @@ public class ReconfigurationCoordinator implements Shutdownable {
     		sendNextPlanToAllSites();
     	}
     }
+    
+    public class InitReconfiguration extends Thread {
+        
+        private int reconfig_split;
+        private ExplicitPartitions partitions;
+        
+        public InitReconfiguration(int reconfig_split, ExplicitPartitions partitions) { 
+            super("InitReconfiguration");
+            this.reconfig_split = reconfig_split;
+            this.partitions = partitions;
+        }
+        
+        public void run() {
+            
+            try {   
+                ReconfigurationPlan reconfig_plan = this.partitions.getReconfigurationPlan();
+
+                if (reconfig_plan != null) {
+                    FileUtil.appendEventToFile(reconfig_plan.planDebug);
+                    if(this.reconfig_split > 1 && reconfig_plan.getIncoming_ranges().size() > 0){
+                        // split plan & put into queue
+                        reconfigPlanQueue = ReconfigurationUtil.naiveSplitReconfigurationPlan(reconfig_plan, this.reconfig_split);
+                    }
+                    else {
+                        reconfigPlanQueue.add(reconfig_plan);
+                    }
+
+                    receiveNextReconfigurationPlanFromLeader();
+                    
+                } else {
+                    FileUtil.appendEventToFile("Null Reconfig plan");
+                    LOG.info("No reconfig plan, nothing to do");
+                }
+
+            } catch (Exception e) {
+                LOG.error("Exception converting plan", e);
+                throw new RuntimeException(e);
+            }
+
+            LOG.info("Init reconfiguraiton complete");
+        }
+    }
 
     // -------------------------------------------
     //  INITIALIZATION FUNCTIONS 
@@ -295,7 +337,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
         if (reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
         } else if (reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL) {
-
+            return initReconfigurationLivePull(leaderId, partitionPlan, partitionId);
         } else {
             throw new NotImplementedException();
         }
@@ -491,6 +533,72 @@ public class ReconfigurationCoordinator implements Shutdownable {
             return this.currentReconfigurationPlan;
         }
     }
+    
+    
+    public ReconfigurationPlan initReconfigurationLivePull(Integer leaderId, String partitionPlan, int partitionId) {
+
+        // We may have reconfiguration initialized by PEs so need to ensure
+        // atomic
+        if (this.reconfigurationInProgress.compareAndSet(false, true)) {
+
+            LOG.info("Initializing reconfiguration. New reconfig plan.");
+            this.setInReconfiguration(true);
+            livePullKBMap = new HashMap<>();
+            for (PartitionExecutor executor : this.local_executors) {
+                livePullKBMap.put(executor.getPartitionId(),new Integer(0));
+            }
+            if (this.hstore_site.getSiteId() == leaderId) {
+                FileUtil.appendEventToFile("LEADER_RECONFIG_INIT, siteId="+this.hstore_site.getSiteId());
+                if (debug.val) {
+                    LOG.debug("Setting site as reconfig leader");
+                }
+            } else {
+                FileUtil.appendEventToFile("RECONFIG_INIT, siteId="+this.hstore_site.getSiteId());
+            }
+            this.reconfigurationLeader = leaderId;
+            this.reconfigurationProtocol = ReconfigurationProtocols.LIVEPULL;
+            this.currentPartitionPlan = partitionPlan;
+            AbstractHasher absHasher = this.hstore_site.getHasher();
+            this.planned_partitions = ((ExplicitHasher) absHasher).getPartitions();
+            
+            //Used by the leader to track the reconfiguration state of each partition and each site respectively 
+            this.reconfigurationDonePartitionIds.clear();
+            reconfigurationDoneSites.clear();
+            
+            try {
+                // Set partition plan
+                if (absHasher instanceof TwoTieredRangeHasher) {
+                    JSONObject partition_json = new JSONObject(partitionPlan);
+                    ((TwoTieredRangeHasher) absHasher).changePartitionPlanSimple(partition_json);
+                    for(PartitionExecutor executor : this.local_executors) {    
+                        ((TwoTieredRangeHasher) executor.getPartitionEstimator().getHasher()).changePartitionPlanSimple(partition_json);
+                    }
+                } else if (absHasher instanceof PlannedHasher) {
+                    ((PlannedHasher) absHasher).changePartitionPhaseSimple(partitionPlan);
+                    for(PartitionExecutor executor : this.local_executors) {
+                        ((PlannedHasher) executor.getPartitionEstimator().getHasher()).changePartitionPhaseSimple(partitionPlan);
+                    }
+                } else {
+                    throw new Exception("Unsupported hasher : " + absHasher.getClass());
+                }
+                
+                if (this.hstore_site.getSiteId() == leaderId) {
+                    this.num_sites_complete = 0;
+                    this.sites_complete = new HashSet<Integer>();
+                }
+                
+                InitReconfiguration init = new InitReconfiguration(this.reconfig_split, this.planned_partitions);
+                init.start();
+                
+            } catch (Exception e) {
+                LOG.error("Exception converting plan", e);
+                throw new RuntimeException(e);
+            }
+        }
+        
+        return null;
+    }
+
     
     public void reconfigurationSysProcTerminate(){
         LOG.info(" ## ** ReconfigurationSysProcTerminate");

@@ -744,6 +744,24 @@ public class PlannedPartitions extends ExplicitPartitions implements JSONSeriali
 
     // ********End Containers **************************************/
 
+    /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartitions#getReconfigurationPlan()
+     */
+    @Override
+    public ReconfigurationPlan getReconfigurationPlan() {
+        try {
+            if (this.previous_phase == null) {
+                return null;
+            }
+            PartitionPhase old_plan = this.partition_phase_map.get(this.previous_phase);
+            return new ReconfigurationPlan(this.catalog_context, old_plan, this.partition_phase_map.get(this.current_phase));
+        } catch (Exception ex) {
+            LOG.error("Exception on setting partition phase", ex);
+            LOG.error(String.format("Old phase: %s  New Phase: %s", this.previous_phase, this.current_phase));
+            throw new RuntimeException("Exception building Reconfiguration plan", ex);
+        }
+    }
+
     /**
      * Update the current partition phase (plan/epoch/etc)
      * 

@@ -224,6 +224,26 @@ public class TwoTieredRangePartitions extends ExplicitPartitions implements JSON
     }
 
     /* (non-Javadoc)
+     * @see edu.brown.hashing.ExplicitPartitions#getReconfigurationPlan()
+     */
+    @Override
+    public ReconfigurationPlan getReconfigurationPlan() {
+        try {
+            PartitionPhase new_plan = getCurrentPlan();
+            PartitionPhase old_plan = getPreviousPlan();
+
+            if (old_plan == null) {
+                return null;
+            }
+            return new ReconfigurationPlan(this.catalog_context, old_plan, new_plan);
+        } catch (Exception ex) {
+            LOG.error("Exception on setting partition plan", ex);
+            LOG.error(String.format("Old plan: %s  New plan: %s" , getPreviousPlan() ,getCurrentPlan()));
+            throw new RuntimeException("Exception building Reconfiguration plan", ex);
+        }
+    }
+
+    /* (non-Javadoc)
      * @see edu.brown.hashing.ExplicitPartition#setPartitionPlan(org.json.JSONObject)
      */
     @Override

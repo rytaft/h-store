@@ -350,6 +350,8 @@ public abstract class ExplicitPartitions {
 
     public abstract ReconfigurationPlan setPartitionPhase(String new_phase);
 
+    public abstract ReconfigurationPlan getReconfigurationPlan();
+    
     /**
      * Update the current partition plan
      * 
