@@ -58,12 +58,12 @@ public class ReconfigurationPredictor {
     }
     
     // The maximum number of transactions the given number of nodes can serve
-    private double capacity(double nodes) {
+    double capacity(double nodes) {
         return nodes * capacity_per_node;
     }
     
     // Number of time steps needed to scale from nodes_before to nodes_after
-    private int reconfigTime(int nodes_before, int nodes_after) {
+    int reconfigTime(int nodes_before, int nodes_after) {
         if (nodes_before == nodes_after) {
             return 0;
         }
@@ -77,7 +77,7 @@ public class ReconfigurationPredictor {
     
     // Calculates the effective capacity at time step i (out of reconfig_time steps total) 
     // during the move from nodes_before to nodes_after
-    private double effectiveCapacity(int i, int reconfig_time, int nodes_before, int nodes_after) {
+    double effectiveCapacity(int i, int reconfig_time, int nodes_before, int nodes_after) {
         if (nodes_before == nodes_after) {
             return capacity(nodes_before);
         }
