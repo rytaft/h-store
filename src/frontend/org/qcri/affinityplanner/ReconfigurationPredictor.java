@@ -92,6 +92,10 @@ public class ReconfigurationPredictor {
     // Calculates the minimum total cost of ending at time t, with the last move 
     // moving from nodes_before to nodes_after (which takes reconfig_time steps total)
     private double subCost(int t, int reconfig_time, int nodes_before, int nodes_after) {
+        if (t - reconfig_time < 0) {
+            return Double.POSITIVE_INFINITY; // this reconfiguration would need to start in the past 
+        }
+        
         for (int i = 1; i <= reconfig_time; ++i) {
             double load = predicted_load.get(t - reconfig_time + i);
             if (load > effectiveCapacity(i, reconfig_time, nodes_before, nodes_after)) {
