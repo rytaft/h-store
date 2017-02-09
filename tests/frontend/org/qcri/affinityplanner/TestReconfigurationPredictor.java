@@ -38,7 +38,7 @@ public class TestReconfigurationPredictor extends BaseTestCase {
                 int reconfig_time = predictor.reconfigTime(prev_move.nodes, move.nodes);
                 for (int i = 1; i < move.time - prev_move.time; ++i) {
                     double effectiveCap = predictor.effectiveCapacity(i, reconfig_time, prev_move.nodes, move.nodes);
-                    assertTrue(effectiveCap >= load_predictions_arr[move.time+i]);
+                    assertTrue(effectiveCap >= load_predictions_arr[prev_move.time+i]);
                 }
             }
             prev_move = move;
