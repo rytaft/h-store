@@ -106,7 +106,7 @@ public class TestReconfigurationPredictor extends BaseTestCase {
         predictor = new ReconfigurationPredictor(capacity_per_node_2, 
                 load_predictions, nodes_start_2, 3);
         moves = predictor.bestMoves();
-        assertTrue(moves == null);
+        checkCorrect(predictor, moves, load_predictions_arr_2, true);
     }
     
     public void testBestMoves3() throws Exception {
