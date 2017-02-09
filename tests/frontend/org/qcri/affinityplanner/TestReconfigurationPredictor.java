@@ -113,53 +113,53 @@ public class TestReconfigurationPredictor extends BaseTestCase {
         ArrayList<Double> load_predictions = new ArrayList<>();
         double load = 100;
         // first hump
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 1000; ++i) {
             load_predictions.add(load);
             load += 50;
         }
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 1000; ++i) {
             load_predictions.add(load);
             load += 10;
         }
-        for (int i = 0; i < 200; ++i) {
+        for (int i = 0; i < 2000; ++i) {
             load_predictions.add(load);
         }
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 1000; ++i) {
             load_predictions.add(load);
             load -= 10;
         }
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 1000; ++i) {
             load_predictions.add(load);
             load -= 50;
         }
         
         // second hump
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 1000; ++i) {
             load_predictions.add(load);
             load += 50;
         }
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 1000; ++i) {
             load_predictions.add(load);
             load += 10;
         }
-        for (int i = 0; i < 200; ++i) {
+        for (int i = 0; i < 2000; ++i) {
             load_predictions.add(load);
         }
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 1000; ++i) {
             load_predictions.add(load);
             load -= 10;
         }
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 1000; ++i) {
             load_predictions.add(load);
             load -= 50;
         }
         
         // spike
-        for (int i = 0; i < 50; ++i) {
+        for (int i = 0; i < 500; ++i) {
             load_predictions.add(load);
             load += 200;
         }
-        for (int i = 0; i < 50; ++i) {
+        for (int i = 0; i < 500; ++i) {
             load_predictions.add(load);
             load -= 200;
         }
@@ -169,7 +169,9 @@ public class TestReconfigurationPredictor extends BaseTestCase {
         ArrayList<Move> moves = predictor.bestMoves();
         double load_predictions_arr[] = new double[load_predictions.size()];
         for (int i = 0; i < load_predictions_arr.length; ++i) load_predictions_arr[i] = load_predictions.get(i);
-        checkCorrect(predictor, moves, load_predictions_arr, true);
+        checkCorrect(predictor, moves, load_predictions_arr, false);
+        
+        System.out.println("Max machines: " + predictor.getMaxNodes() + ", Time steps: " + load_predictions_arr.length);
     }
     
 }
