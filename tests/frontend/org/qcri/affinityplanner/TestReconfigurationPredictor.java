@@ -113,58 +113,62 @@ public class TestReconfigurationPredictor extends BaseTestCase {
         ArrayList<Double> load_predictions = new ArrayList<>();
         double load = 100;
         // first hump
-        for (int i = 0; i < 500; ++i) {
+        for (int i = 0; i < 2000; ++i) {
             load_predictions.add(load);
             load += 50;
         }
-        for (int i = 0; i < 500; ++i) {
+        for (int i = 0; i < 2000; ++i) {
             load_predictions.add(load);
             load += 10;
         }
-        for (int i = 0; i < 1000; ++i) {
+        for (int i = 0; i < 4000; ++i) {
             load_predictions.add(load);
         }
-        for (int i = 0; i < 500; ++i) {
+        for (int i = 0; i < 2000; ++i) {
             load_predictions.add(load);
             load -= 10;
         }
-        for (int i = 0; i < 500; ++i) {
+        for (int i = 0; i < 2000; ++i) {
             load_predictions.add(load);
             load -= 50;
         }
         
         // second hump
-        for (int i = 0; i < 500; ++i) {
+        for (int i = 0; i < 2000; ++i) {
             load_predictions.add(load);
             load += 50;
         }
-        for (int i = 0; i < 500; ++i) {
+        for (int i = 0; i < 2000; ++i) {
             load_predictions.add(load);
             load += 10;
         }
-        for (int i = 0; i < 1000; ++i) {
+        for (int i = 0; i < 4000; ++i) {
             load_predictions.add(load);
         }
-        for (int i = 0; i < 500; ++i) {
+        for (int i = 0; i < 2000; ++i) {
             load_predictions.add(load);
             load -= 10;
         }
-        for (int i = 0; i < 500; ++i) {
+        for (int i = 0; i < 2000; ++i) {
             load_predictions.add(load);
             load -= 50;
         }
         
         // spike
-        for (int i = 0; i < 500; ++i) {
+        for (int i = 0; i < 2000; ++i) {
             load_predictions.add(load);
             load += 200;
         }
-        for (int i = 0; i < 500; ++i) {
+        for (int i = 0; i < 2000; ++i) {
             load_predictions.add(load);
             load -= 200;
         }
+	for (int i = 0; i < 2000; ++i) {
+            load_predictions.add(load);
+            load += 200;
+        }
         
-        ReconfigurationPredictor predictor = new ReconfigurationPredictor(200, load_predictions, 2, 10);
+        ReconfigurationPredictor predictor = new ReconfigurationPredictor(8000, load_predictions, 2, 500);
         
         ArrayList<Move> moves = predictor.bestMoves();
         double load_predictions_arr[] = new double[load_predictions.size()];
