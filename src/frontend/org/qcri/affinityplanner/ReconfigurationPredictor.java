@@ -16,6 +16,10 @@ public class ReconfigurationPredictor {
     private int max_nodes;
     private CostPath[][] min_cost;
     
+    int getMaxNodes() {
+        return max_nodes;
+    }
+    
     public class Move {
         public int nodes;
         public int time;
