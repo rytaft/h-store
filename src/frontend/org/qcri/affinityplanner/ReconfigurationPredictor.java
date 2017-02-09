@@ -53,7 +53,7 @@ public class ReconfigurationPredictor {
         this.predicted_load = predicted_load;
         this.nodes_start = nodes_start;
         this.db_migration_time = db_migration_time;
-        this.max_nodes = (int) Math.ceil(Collections.max(predicted_load) / capacity_per_node);
+        this.max_nodes = Math.max((int) Math.ceil(Collections.max(predicted_load) / capacity_per_node), nodes_start);
         this.min_cost = new CostPath[this.predicted_load.size()][this.max_nodes];
     }
     
