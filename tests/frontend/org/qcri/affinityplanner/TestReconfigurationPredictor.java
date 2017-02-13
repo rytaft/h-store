@@ -41,7 +41,7 @@ public class TestReconfigurationPredictor extends BaseTestCase {
     private void checkCorrect(ReconfigurationPredictor predictor, ArrayList<Move> moves, 
             double[] load_predictions_arr, boolean print) {
         Move prev_move = null;
-        if (print) System.out.println("   Capacity \tLoad");
+        if (print) System.out.println("   Machines \tCapacity \tLoad");
         for (Move move : moves) {
             assertTrue(predictor.capacity(move.nodes) >= load_predictions_arr[move.time]);
             if (prev_move != null) {
@@ -49,10 +49,10 @@ public class TestReconfigurationPredictor extends BaseTestCase {
                 for (int i = 1; i < move.time - prev_move.time; ++i) {
                     double effectiveCap = predictor.effectiveCapacity(i, reconfig_time, prev_move.nodes, move.nodes);
                     assertTrue(effectiveCap >= load_predictions_arr[prev_move.time+i]);
-                    if (print) System.out.println(prev_move.time+i + ": " + effectiveCap + " \t" + load_predictions_arr[prev_move.time+i]);
+                    if (print) System.out.println(prev_move.time+i + ":   \t" + effectiveCap + " \t" + load_predictions_arr[prev_move.time+i]);
                 }
             }
-            if (print) System.out.println(move.time + ": " + predictor.capacity(move.nodes) + " \t" + load_predictions_arr[move.time]);
+            if (print) System.out.println(move.time + ": " + move.nodes + " \t" + predictor.capacity(move.nodes) + " \t" + load_predictions_arr[move.time]);
             prev_move = move;
 
         }
@@ -143,6 +143,12 @@ public class TestReconfigurationPredictor extends BaseTestCase {
                 load_predictions, nodes_start_3, 6);
         moves = predictor.bestMoves();
         checkCorrect(predictor, moves, load_predictions_arr_3, true);
+        
+        // increased time to move data
+        predictor = new ReconfigurationPredictor(capacity_per_node_3, 
+                load_predictions, nodes_start_3, 7);
+        moves = predictor.bestMoves();
+        assertTrue(moves == null);
     }
 
     public void testBestMoves4() throws Exception {
