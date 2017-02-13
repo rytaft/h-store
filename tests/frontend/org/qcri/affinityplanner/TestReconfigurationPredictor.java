@@ -142,7 +142,7 @@ public class TestReconfigurationPredictor extends BaseTestCase {
         predictor = new ReconfigurationPredictor(capacity_per_node_3, 
                 load_predictions, nodes_start_3, 6);
         moves = predictor.bestMoves();
-        assertTrue(moves == null);
+        checkCorrect(predictor, moves, load_predictions_arr_3, true);
     }
 
     public void testBestMoves4() throws Exception {
