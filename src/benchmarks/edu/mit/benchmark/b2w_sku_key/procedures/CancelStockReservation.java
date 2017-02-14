@@ -59,8 +59,7 @@ public class CancelStockReservation extends VoltProcedure {
         
         // check if the item is available
         if(session < reserved_quantity) {
-            // this should never happen
-            LOG.error("Uh oh... session <" + session + "> less than reserved_quantity <" + reserved_quantity + ">");
+            LOG.debug("Uh oh... session <" + session + "> less than reserved_quantity <" + reserved_quantity + ">");
             return null;
         }
         

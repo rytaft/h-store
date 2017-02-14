@@ -59,8 +59,7 @@ public class FinishStockPurchase extends VoltProcedure {
         
         // check if the item has been purchased
         if(purchase < purchased_quantity) {
-            // this should never happen
-            LOG.error("Uh oh... purchase <" + purchase + "> less than purchased_quantity <" + purchased_quantity + ">");
+            LOG.debug("Uh oh... purchase <" + purchase + "> less than purchased_quantity <" + purchased_quantity + ">");
             return null;
         }
         
