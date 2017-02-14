@@ -1040,7 +1040,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
      * @param blockingSemaphore
      */
     public void pullRanges(int livePullId, 
-            long txnId, int callingPartition, Collection<ReconfigurationRange> pullRequests, Semaphore blockingSemaphore){
+            Long txnId, int callingPartition, Collection<ReconfigurationRange> pullRequests, Semaphore blockingSemaphore){
         try {
             blockingSemaphore.acquire(pullRequests.size());
         } catch (InterruptedException e) {
@@ -1092,7 +1092,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
             throw new RuntimeException("Unexpected error when serializing Volt Table", ex);
         }
         
-        LivePullRequest livePullRequest = LivePullRequest.newBuilder().setLivePullIdentifier(livePullId).setSenderSite(this.localSiteId).setTransactionID(txnId).setOldPartition(oldPartitionId)
+        long livePullTxnId = (txnId == null ? -1L : txnId.longValue());
+        LivePullRequest livePullRequest = LivePullRequest.newBuilder().setLivePullIdentifier(livePullId).setSenderSite(this.localSiteId).setTransactionID(livePullTxnId).setOldPartition(oldPartitionId)
                 .setNewPartition(newPartitionId).setVoltTableName(table_name).setMinInclusive(minInclBytes).setMaxExclusive(maxExclBytes).setT0S(System.currentTimeMillis()).build();
 
         if (sourceID == localSiteId) {

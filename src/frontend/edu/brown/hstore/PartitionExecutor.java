@@ -3542,7 +3542,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // Calling the RC to generates a Live Pull Request for a range and blocking. When the reply comes back the RC will unblock the semaphore
         if(hstore_conf.site.reconfig_profiling) this.reconfiguration_coordinator.profilers[this.partitionId].async_pull_time.start();
 
-        this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), -1, this.partitionId, pullRequests, pullBlockSemaphore);
+        this.reconfiguration_coordinator.pullRanges(getNextRequestToken(), null, this.partitionId, pullRequests, pullBlockSemaphore);
         LOG.info("("+ this.partitionId + ") Blocking PE for ASYNC dataPullRequest: " + requestSize + " : " + pullRange.toString());
         try {
             boolean acquired = pullBlockSemaphore.tryAcquire(requestSize,30, TimeUnit.SECONDS);
@@ -4043,9 +4043,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         if (pullRequestsNeeded.size() > 0) {
             if (blockingNeeded) {
-                if (this.reconfiguration_coordinator == null){
-                    throw new RuntimeException("Null RC");
-                }
                 // block on the pull request
                 Semaphore pullBlockSemaphore = new Semaphore(pullRequestsNeeded.size());
                 int pullID =getNextRequestToken();
@@ -6759,16 +6756,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
 
         VoltTable extractTable = ReconfigurationUtil.getExtractVoltTable(range);
-        if (currentTxnId == null) {
-            if (debug.val) LOG.debug("Casting currentTxn to -1");
-            currentTxnId = -1L;
-        }
+        long txnId = (currentTxnId == null ? -1L : currentTxnId.longValue());
         long start = System.currentTimeMillis();
         int extractSize = hstore_conf.site.reconfig_async_chunk_size_kb*1024; 
         if (isLive){
             extractSize = hstore_conf.site.reconfig_chunk_size_kb*1024;
         }
-        Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table, table_id, extractTable, currentTxnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId, extractSize);
+        Pair<VoltTable,Boolean> res = this.getExecutionEngine().extractTable(table, table_id, extractTable, txnId, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), chunkId, extractSize);
         long diff  = System.currentTimeMillis() - start;
 
         if (res != null) {
