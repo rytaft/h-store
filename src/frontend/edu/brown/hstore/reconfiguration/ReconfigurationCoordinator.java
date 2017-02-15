@@ -1609,7 +1609,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 return expectedPartition;
             }
         } else {
-            return expectedPartition;
+            return previousPartition; // was expectedPartition - trying to limit number of live pulls
         }    
     }
 
@@ -1645,7 +1645,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 return expectedPartition;
             }
         } else {
-            return expectedPartition;
+            return previousPartition; // was expectedPartition - trying to limit number of live pulls
         }    
     }
 
