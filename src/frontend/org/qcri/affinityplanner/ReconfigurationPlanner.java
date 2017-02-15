@@ -50,6 +50,9 @@ public class ReconfigurationPlanner implements Partitioner {
                 long data_moving_out_per_partition = (long) (keysPerTable(table) * (1.0/this.partitions_before - 1.0/this.partitions_after));
                 int num_new_partitions = this.partitions_after - this.partitions_before;
                 long sliceWidth = (long) Math.ceil((double) data_moving_out_per_partition / num_new_partitions);
+                for (int new_part = this.partitions_before; new_part < this.partitions_after; ++new_part) {
+                    plan.addPartition(table, new_part);
+                }
                 
                 // each old partition will be giving data to each new partition
                 for (int old_part = 0; old_part < this.partitions_before; ++old_part) {
@@ -79,7 +82,11 @@ public class ReconfigurationPlanner implements Partitioner {
                             plan.moveColdRange(table, movedRange, old_part, new_part);
                         }
                     }
-                }            
+                }  
+                
+                for (int old_part = this.partitions_after; old_part < this.partitions_before; ++old_part) {
+                    plan.removePartition(table, old_part);
+                }
             }
         }
         
