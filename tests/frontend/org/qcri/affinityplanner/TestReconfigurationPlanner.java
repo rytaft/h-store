@@ -26,7 +26,7 @@ public class TestReconfigurationPlanner extends BaseTestCase {
         for(String table : plan.table_names) {
             Map<Integer,List<Range>> rangeMap = plan.getAllRanges(table);
             for (int i = 0; i < 18; ++i) {
-                assertTrue(rangeMap.get(i).size() == 19);
+                assertEquals(19,rangeMap.get(i).size());
             }
         }
     }
@@ -39,10 +39,10 @@ public class TestReconfigurationPlanner extends BaseTestCase {
         for(String table : plan.table_names) {
             Map<Integer,List<Range>> rangeMap = plan.getAllRanges(table);
             for (int i = 0; i < 18; ++i) {
-                assertTrue(rangeMap.get(i).size() == 1);
+                assertEquals(1,rangeMap.get(i).size());
             }
             for (int i = 18; i < 36; ++i) {
-                assertTrue(rangeMap.get(i).size() == 18);
+                assertEquals(18,rangeMap.get(i).size());
             }
         }
     }
