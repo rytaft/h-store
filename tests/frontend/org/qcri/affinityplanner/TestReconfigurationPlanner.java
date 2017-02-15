@@ -40,8 +40,8 @@ public class TestReconfigurationPlanner extends BaseTestCase {
             Map<Integer,List<Range>> rangeMap = plan.getAllRanges(table);
             Long keys_per_part = new Long(1000003/36);
             for (int i = 0; i < 36; ++i) {
-                System.out.println("i: " + i + ", num_keys: " + Plan.getRangeListWidth(rangeMap.get(i)));
-                assertEquals(keys_per_part,Plan.getRangeListWidth(rangeMap.get(i)));
+                long num_keys = Plan.getRangeListWidth(rangeMap.get(i));
+                assertTrue(num_keys < keys_per_part + 18 && num_keys > keys_per_part - 18);
             }
         }
     }
