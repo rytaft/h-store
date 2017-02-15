@@ -1,5 +1,10 @@
 package org.qcri.affinityplanner;
 
+import java.util.List;
+import java.util.Map;
+
+import org.qcri.affinityplanner.Plan.Range;
+
 import edu.brown.BaseTestCase;
 import edu.brown.utils.ProjectType;
 
@@ -16,13 +21,30 @@ public class TestReconfigurationPlanner extends BaseTestCase {
     public void testPlanner1() throws Exception {
         ReconfigurationPlanner planner = new ReconfigurationPlanner (plan1, 18);
         planner.repartition();
-        System.out.println(planner.getPlan());
+        System.out.println(planner.getPlanString());
+        Plan plan = planner.getPlan();
+        for(String table : plan.table_names) {
+            Map<Integer,List<Range>> rangeMap = plan.getAllRanges(table);
+            for (int i = 0; i < 18; ++i) {
+                assertTrue(rangeMap.get(i).size() == 19);
+            }
+        }
     }
     
     public void testPlanner2() throws Exception {
         ReconfigurationPlanner planner = new ReconfigurationPlanner (plan2, 36);
         planner.repartition();
-        System.out.println(planner.getPlan());
+        System.out.println(planner.getPlanString());
+        Plan plan = planner.getPlan();
+        for(String table : plan.table_names) {
+            Map<Integer,List<Range>> rangeMap = plan.getAllRanges(table);
+            for (int i = 0; i < 18; ++i) {
+                assertTrue(rangeMap.get(i).size() == 1);
+            }
+            for (int i = 18; i < 36; ++i) {
+                assertTrue(rangeMap.get(i).size() == 18);
+            }
+        }
     }
 
     String plan1 = 

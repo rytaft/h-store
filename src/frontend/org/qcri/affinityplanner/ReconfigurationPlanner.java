@@ -40,8 +40,12 @@ public class ReconfigurationPlanner implements Partitioner {
         plan.toJSON(plan_out);
     }
     
-    public String getPlan() throws JSONException {
+    public String getPlanString() throws JSONException {
         return plan.toJSONObject().toString(2);
+    }
+    
+    public Plan getPlan() {
+        return plan;
     }
     
     public boolean repartition() {
