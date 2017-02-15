@@ -76,7 +76,14 @@ public class Plan {
     }
 
     public Plan (String filename){
-        loadFromJSON(filename);
+        loadFromJSONFile(filename);
+    }
+    
+    // Used for testing.  
+    // In this version of the constructor, filename is only used for debugging purposes.
+    // the actual JSON data is contained in inputData
+    public Plan (String inputData, String filename){
+        loadFromJSON(inputData, filename);
     }
     
     public void addPartition(String table, Integer partitionId) {
@@ -663,10 +670,9 @@ public class Plan {
 
     }
 
-    public void toJSON (String newPlanFile)  {
+    public JSONObject toJSONObject() {
         JSONObject dstData = new JSONObject();
-        System.out.println("Planner writing to " + newPlanFile);
-
+     
         // begin JSON block
         try {
             JSONObject jsonPlan = new JSONObject();
@@ -694,6 +700,17 @@ public class Plan {
 
         } catch(JSONException f) {
             System.out.println("Convertion of the plan into a JSONObject failed!");
+            return null;
+        }
+        
+        return dstData;
+    }
+    
+    public void toJSON (String newPlanFile)  {
+        System.out.println("Planner writing to " + newPlanFile);
+
+        JSONObject dstData = toJSONObject();
+        if (dstData == null) {
             return;
         }
 
@@ -742,13 +759,16 @@ public class Plan {
     }
 
     // read in the last plan
-    private void loadFromJSON(String filename) {
+    private void loadFromJSONFile(String filename) {
+        loadFromJSON(FileUtil.readFile(filename), filename);
+    }
+    
+    private void loadFromJSON(String inputData, String filename) {
+        //		System.out.println("Working from " + inputData);
         tableToPartitionsToRanges.clear();
         JSONObject firstLevel;
         JSONObject srcData;
-        String inputData = FileUtil.readFile(filename);
-
-        //		System.out.println("Working from " + inputData);
+        
         try {
             firstLevel = new JSONObject(inputData);	
         } catch(JSONException e) {
