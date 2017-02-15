@@ -38,11 +38,10 @@ public class TestReconfigurationPlanner extends BaseTestCase {
         Plan plan = planner.getPlan();
         for(String table : plan.table_names) {
             Map<Integer,List<Range>> rangeMap = plan.getAllRanges(table);
-            for (int i = 0; i < 18; ++i) {
-                assertEquals(1,rangeMap.get(i).size());
-            }
-            for (int i = 18; i < 36; ++i) {
-                assertEquals(18,rangeMap.get(i).size());
+            Long keys_per_part = new Long(1000003/36);
+            for (int i = 0; i < 36; ++i) {
+                System.out.println("i: " + i + ", num_keys: " + Plan.getRangeListWidth(rangeMap.get(i)));
+                assertEquals(keys_per_part,Plan.getRangeListWidth(rangeMap.get(i)));
             }
         }
     }
