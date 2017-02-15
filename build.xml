@@ -2697,6 +2697,32 @@ UTILITIES
     </java>
 </target>
 
+<target name='predictive'
+        description="H-Store Affinity Controller">
+  <java fork="yes" failonerror="true" classname="org.qcri.affinityplanner.PredictiveController">
+        <jvmarg value="-client" />
+        <jvmarg value="-Xms256m" />
+        <jvmarg value="-Xmx${client.memory}m" />
+        <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
+        <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
+        <arg value="catalog.jar=${benchmark.jar}" />
+	<arg value="elastic.monitoring_time=${elastic.monitoring_time}" />
+	<arg value="elastic.min_load=${elastic.min_load}" />
+    	<arg value="elastic.max_load=${elastic.max_load}" />
+    	<arg value="elastic.imbalance_load=${elastic.imbalance_load}" />
+    	<arg value="elastic.max_tuples_move=${elastic.max_tuples_move}" />
+	<arg value="elastic.run_monitoring=${elastic.run_monitoring}" />
+	<arg value="elastic.update_plan=${elastic.update_plan}" />
+	<arg value="elastic.exec_reconf=${elastic.exec_reconf}" />
+	<arg value="elastic.plan_in=${elastic.plan_in}" />
+	<arg value="elastic.plan_out=${elastic.plan_out}" />
+        <arg value="elastic.algo=${elastic.algo}" />
+	&common;
+        <classpath refid='project.classpath' />
+    <assertions><enable/></assertions>
+    </java>
+</target>
+
 <!-- END PROJECT -->
 
 </project>

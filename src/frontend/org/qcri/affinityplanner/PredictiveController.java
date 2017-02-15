@@ -10,6 +10,8 @@ import edu.brown.utils.FileUtil;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import org.voltdb.CatalogContext;
+import org.voltdb.VoltTable;
+import org.voltdb.VoltTableRow;
 import org.voltdb.catalog.Catalog;
 import org.voltdb.catalog.Partition;
 import org.voltdb.catalog.Site;
@@ -42,6 +44,8 @@ public class PredictiveController {
     private CatalogContext m_catalog_context;
     private String m_connectedHost;
     private ReconfigurationPredictor m_planner;
+    private long[] m_previousLoads;
+    private Predictor m_predictor = new Predictor();
 
     public static boolean EXEC_MONITORING = true;
     public static boolean EXEC_UPDATE_PLAN = true;
@@ -57,13 +61,14 @@ public class PredictiveController {
 
     public static int MONITORING_TIME = 1000;
 
-    public void PredictiveController(Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
+    public PredictiveController(Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
         if(EXEC_MONITORING || EXEC_RECONF){
             m_client = ClientFactory.createClient();
             m_client.configureBlocking(false);
         }
         m_sites = CatalogUtil.getAllSites(catalog);
         m_catalog_context = catalog_context;
+        m_previousLoads = new long[m_sites.size()];
 
         TreeSet<Integer> partitionIds = new TreeSet<>();
         MAX_PARTITIONS = -1;
@@ -87,7 +92,7 @@ public class PredictiveController {
         }
         MAX_PARTITIONS++;
 
-        m_planner = new ReconfigurationPredictor(MAX_CAPACITY_PER_PART, PARTITIONS_PER_SITE, DB_MIGRATION_TIME);
+        m_planner = new ReconfigurationPredictor(MAX_CAPACITY_PER_PART, DB_MIGRATION_TIME);
 
         if (hstore_conf.global.hasher_plan != null) {
             PLAN_IN = hstore_conf.global.hasher_plan;
@@ -115,9 +120,7 @@ public class PredictiveController {
     }
 
     public void run () {
-        if(EXEC_MONITORING || EXEC_RECONF) {
-            connectToHost();
-        }
+        connectToHost();
 
         File planFile = new File (PLAN_IN);
         Path[] logFiles = new Path[MAX_PARTITIONS];
@@ -127,70 +130,79 @@ public class PredictiveController {
             intervalFiles[i] = FileSystems.getDefault().getPath(".", "interval-partition-" + i + ".log");
         }
 
-        if(EXEC_MONITORING) {
-            String[] confNames = {"site.txn_counters"};
-            String[] confValues = {"true"};
-            @SuppressWarnings("unused")
-            ClientResponse cresponse;
+        String[] confNames = {"site.txn_counters"};
+        String[] confValues = {"true"};
+        @SuppressWarnings("unused")
+        ClientResponse cresponse = null;
+        try {
+            cresponse = m_client.callProcedure("@SetConfiguration", confNames, confValues);
+        } catch (IOException | ProcCallException e) {
+            record("Problem while turning on monitoring");
+            record(stackTraceToString(e));
+            System.exit(1);
+        }
+
+        while (true){
             try {
-                cresponse = m_client.callProcedure("@SetConfiguration", confNames, confValues);
+                cresponse = m_client.callProcedure("@Statistics", "TXNCOUNTER", 0);
             } catch (IOException | ProcCallException e) {
                 record("Problem while turning on monitoring");
                 record(stackTraceToString(e));
                 System.exit(1);
             }
 
-            while (true){
-                try {
-                    cresponse = m_client.callProcedure("@Statistics", "TXNCOUNTER", 0);
-                } catch (IOException | ProcCallException e) {
-                    record("Problem while turning on monitoring");
-                    record(stackTraceToString(e));
-                    System.exit(1);
+            // extract transaction times per partition and pass it to the predictor
+            // for the moment just print these times
+
+            long[] currLoads = new long[m_sites.size()];
+            int activeSites = 0;
+            VoltTable result = cresponse.getResults()[0];
+            for(int i = 0; i < result.getRowCount(); i++){
+                VoltTableRow row = result.fetchRow(i);
+                String procedure = row.getString(3);
+                if (procedure.charAt(0) == '@'){
+                    // don't count invocactions to system procedures
+                    continue;
                 }
 
-                // TODO it should be possible to run monitoring, planning and reconfigurations separately
-                // TODO the inputs and outputs of these steps should be serialized to a file
+                int hostId = (int) row.getLong(1);
+                long load = row.getLong(4);
 
-                // extract transaction times per partition and pass it to the predictor
-                // for the moment just print these times
-
-                ArrayList<Long> loads = new ArrayList<>();
-                // TODO ArrayList<Long> loads = predictor (latest_data);
-
-                // launch predictor
-
-                ArrayList<Double> predicted_load = new ArrayList<>();
-                // TODO ArrayList<Double> predicted_load = predictor(loads);
-
-                // detect active partitions
-                IntList activePartitions = new IntArrayList(Controller.MAX_PARTITIONS);
-                System.out.println("Load per partition before reconfiguration");
-                for(int i = 0; i < Controller.MAX_PARTITIONS; i++){
-                    long load = loads.get(i);
-                    if(load > 0){
-                        activePartitions.add(i);
-                        System.out.println(i + ": " + load);
-                    }
+                currLoads[hostId] = currLoads[hostId] + load;
+                if(hostId > activeSites && load > 0){
+                    activeSites = hostId;
                 }
+            }
+            activeSites++;
 
-                // launch planner and get the moves
-                ArrayList<Move> moves = m_planner.bestMoves(predicted_load, activePartitions.size());
+            long totalLoad = 0;
+            for (int i = 0; i < m_sites.size(); i++){
+                totalLoad += (currLoads[i] - m_previousLoads[i]);
+            }
+            m_previousLoads = currLoads;
+            
+            // TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
+            // TODO the inputs and outputs of these steps should be serialized to a file
 
-                // invoke squall at the right times according to the moves
-                for (Move move : moves){
-                    // TODO convert move.time into a sleep time
-                    // TODO obtain a plan that uses move.partitions
-                    // TODO sleep
-                    reconfig();
-                }
+            // launch predictor
+            ArrayList<Long> predictedLoad = m_predictor.predictLoad(totalLoad);
 
-                try {
-                    Thread.sleep(MONITORING_TIME);
-                } catch (InterruptedException e) {
-                    record("sleeping interrupted while monitoring");
-                    System.exit(1);
-                }
+            // launch planner and get the moves
+            ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
+
+            // invoke squall at the right times according to the moves
+            for (Move move : moves){
+            // TODO convert move.time into a sleep time
+            // TODO obtain a plan that uses move.partitions
+            // TODO sleep
+                reconfig();
+            }
+
+            try {
+                Thread.sleep(MONITORING_TIME);
+            } catch (InterruptedException e) {
+                record("sleeping interrupted while monitoring");
+                System.exit(1);
             }
         }
     }
@@ -252,6 +264,8 @@ public class PredictiveController {
      */
     public static void main(String[] vargs){
 
+        record("Running the predictive controller");
+
         if(vargs.length == 0){
             record("Must specify server hostname");
             return;
@@ -273,7 +287,7 @@ public class PredictiveController {
 
         record("vargs.length: "+vargs.length);
 
-        Controller c = new Controller(args.catalog, hstore_conf, args.catalogContext);
+        PredictiveController c = new PredictiveController(args.catalog, hstore_conf, args.catalogContext);
         try {
             c.run();
         } catch (Exception e) {
