@@ -55,7 +55,7 @@ public class PredictiveController {
     public static int PARTITIONS_PER_SITE;
     public static String PLAN_IN = "plan_affinity.json";
 
-    public static double MAX_CAPACITY_PER_PART = Double.MAX_VALUE;
+    public static long MAX_CAPACITY_PER_PART = Long.MAX_VALUE;
     public static int DB_MIGRATION_TIME = Integer.MAX_VALUE;
 
     public static int MONITORING_TIME = 1000;
