@@ -134,12 +134,6 @@ public class PredictiveController {
 
         // TODO use currnt plan file for conversion of moves
         File planFile = new File (PLAN_IN);
-        Path[] logFiles = new Path[MAX_PARTITIONS];
-        Path[] intervalFiles = new Path[MAX_PARTITIONS];
-        for (int i = 0; i < MAX_PARTITIONS; i++){
-            logFiles[i] = FileSystems.getDefault().getPath(".", "transactions-partition-" + i + ".log");
-            intervalFiles[i] = FileSystems.getDefault().getPath(".", "interval-partition-" + i + ".log");
-        }
 
         String[] confNames = {"site.txn_counters"};
         String[] confValues = {"true"};
