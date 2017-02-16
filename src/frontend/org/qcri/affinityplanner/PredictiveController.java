@@ -292,6 +292,7 @@ public class PredictiveController {
                 plan = planner.getPlanString();                
             } catch (JSONException e) {
                 record("ERROR: Failed to convert plan to string " + e.getMessage());
+                continue;
             }
             squallMoves.add(new SquallMove(plan, move.time));
         }
