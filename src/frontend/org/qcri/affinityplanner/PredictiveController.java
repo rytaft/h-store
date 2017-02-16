@@ -2,12 +2,14 @@ package org.qcri.affinityplanner;
 
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.HStoreConstants;
+import edu.brown.hstore.HStoreThreadManager;
 import edu.brown.hstore.Hstoreservice;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.ArgumentsParser;
 import edu.brown.utils.CollectionUtil;
 import edu.brown.utils.FileUtil;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntBigLists;
 import it.unimi.dsi.fastutil.ints.IntList;
 import org.voltdb.CatalogContext;
 import org.voltdb.VoltTable;
@@ -29,10 +31,7 @@ import java.io.StringWriter;
 import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.TreeSet;
+import java.util.*;
 
 
 /**
@@ -46,6 +45,7 @@ public class PredictiveController {
     private ReconfigurationPredictor m_planner;
     private long[] m_previousLoads;
     private Predictor m_predictor = new Predictor();
+    private LinkedList<SquallMove> m_next_moves;
 
     public static boolean EXEC_MONITORING = true;
     public static boolean EXEC_UPDATE_PLAN = true;
@@ -54,12 +54,21 @@ public class PredictiveController {
     public static int MAX_PARTITIONS;
     public static int PARTITIONS_PER_SITE;
     public static String PLAN_IN = "plan_affinity.json";
-    public static String PLAN_OUT = "plan_out.json";
 
     public static double MAX_CAPACITY_PER_PART = Double.MAX_VALUE;
     public static int DB_MIGRATION_TIME = Integer.MAX_VALUE;
 
     public static int MONITORING_TIME = 1000;
+
+    public class SquallMove {
+        public String new_plan;
+        public long start_time;
+
+        public SquallMove(String new_plan, long start_time){
+            this.new_plan = new_plan;
+            this.start_time = start_time;
+        }
+    }
 
     public PredictiveController(Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
         if(EXEC_MONITORING || EXEC_RECONF){
@@ -120,8 +129,10 @@ public class PredictiveController {
     }
 
     public void run () {
+
         connectToHost();
 
+        // TODO use currnt plan file for conversion of moves
         File planFile = new File (PLAN_IN);
         Path[] logFiles = new Path[MAX_PARTITIONS];
         Path[] intervalFiles = new Path[MAX_PARTITIONS];
@@ -143,66 +154,83 @@ public class PredictiveController {
         }
 
         while (true){
-            try {
-                cresponse = m_client.callProcedure("@Statistics", "TXNCOUNTER", 0);
-            } catch (IOException | ProcCallException e) {
-                record("Problem while turning on monitoring");
-                record(stackTraceToString(e));
-                System.exit(1);
+            if(false /*if reconfiguration is ongoing*/){ // TODO detect that reconfig is ongoing
+                continue;
             }
-
-            // extract transaction times per partition and pass it to the predictor
-            // for the moment just print these times
-
-            long[] currLoads = new long[m_sites.size()];
-            int activeSites = 0;
-            VoltTable result = cresponse.getResults()[0];
-            for(int i = 0; i < result.getRowCount(); i++){
-                VoltTableRow row = result.fetchRow(i);
-                String procedure = row.getString(3);
-                if (procedure.charAt(0) == '@'){
-                    // don't count invocactions to system procedures
-                    continue;
+            else if (!m_next_moves.isEmpty()){
+                SquallMove next_move = m_next_moves.pop();
+                long sleep_time = next_move.start_time - System.currentTimeMillis();
+                if (sleep_time > 0){
+                    try {
+                        Thread.sleep(sleep_time);
+                    } catch (InterruptedException e) {
+                        record("sleeping interrupted while waiting for next move");
+                        System.exit(1);
+                    }
                 }
 
-                int hostId = (int) row.getLong(1);
-                long load = row.getLong(4);
-
-                currLoads[hostId] = currLoads[hostId] + load;
-                if(hostId > activeSites && load > 0){
-                    activeSites = hostId;
+                reconfig(next_move.new_plan);
+            }
+            else {
+                try {
+                    cresponse = m_client.callProcedure("@Statistics", "TXNCOUNTER", 0);
+                } catch (IOException | ProcCallException e) {
+                    record("Problem while turning on monitoring");
+                    record(stackTraceToString(e));
+                    System.exit(1);
                 }
-            }
-            activeSites++;
 
-            long totalLoad = 0;
-            for (int i = 0; i < m_sites.size(); i++){
-                totalLoad += (currLoads[i] - m_previousLoads[i]);
-            }
-            m_previousLoads = currLoads;
-            
-            // TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
-            // TODO the inputs and outputs of these steps should be serialized to a file
+                // extract total load and count active sites
+                // TODO we might want to count active sites differently?
+                long[] currLoads = new long[m_sites.size()];
+                int activeSites = 0;
+                VoltTable result = cresponse.getResults()[0];
+                for (int i = 0; i < result.getRowCount(); i++) {
+                    VoltTableRow row = result.fetchRow(i);
+                    String procedure = row.getString(3);
+                    if (procedure.charAt(0) == '@') {
+                        // don't count invocactions to system procedures
+                        continue;
+                    }
 
-            // launch predictor
-            ArrayList<Long> predictedLoad = m_predictor.predictLoad(totalLoad);
+                    int hostId = (int) row.getLong(1);
+                    long load = row.getLong(4);
 
-            // launch planner and get the moves
-            ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
+                    currLoads[hostId] = currLoads[hostId] + load;
+                    if (hostId > activeSites && load > 0) {
+                        activeSites = hostId;
+                    }
+                }
+                activeSites++;
 
-            // invoke squall at the right times according to the moves
-            for (Move move : moves){
-            // TODO convert move.time into a sleep time
-            // TODO obtain a plan that uses move.partitions
-            // TODO sleep
-                reconfig();
-            }
+                long totalLoad = 0;
+                for (int i = 0; i < m_sites.size(); i++) {
+                    totalLoad += (currLoads[i] - m_previousLoads[i]);
+                }
+                m_previousLoads = currLoads;
 
-            try {
-                Thread.sleep(MONITORING_TIME);
-            } catch (InterruptedException e) {
-                record("sleeping interrupted while monitoring");
-                System.exit(1);
+                // TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
+                // TODO the inputs and outputs of these steps should be serialized to a file
+
+                // launch predictor
+                // TODO implement this method
+                ArrayList<Long> predictedLoad = m_predictor.predictLoad(totalLoad);
+
+                // launch planner and get the moves
+                ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
+
+                if(moves.isEmpty()){
+                    try {
+                        Thread.sleep(MONITORING_TIME);
+                    } catch (InterruptedException e) {
+                        record("sleeping interrupted while monitoring");
+                        System.exit(1);
+                    }
+                }
+
+                else {
+                    m_next_moves = convert(moves); // TODO implement this method
+                }
             }
         }
     }
@@ -230,11 +258,11 @@ public class PredictiveController {
         record("Connected to host " + m_connectedHost);
     }
 
-    private void reconfig() {
+    private void reconfig(String new_plan) {
         ClientResponse cresponse = null;
         try {
             // TODO should compare with PLAN_IN before reconfiguring
-            String outputPlan = FileUtil.readFile(PLAN_OUT);
+            String outputPlan = FileUtil.readFile(new_plan);
             cresponse = m_client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
             //cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
             record("Controller: received response: " + cresponse);
@@ -256,6 +284,10 @@ public class PredictiveController {
             record("@Reconfiguration transaction aborted");
             System.exit(1);
         }
+    }
+
+    private LinkedList<SquallMove> convert(ArrayList<Move> moves){
+        return new LinkedList<>();
     }
 
 
