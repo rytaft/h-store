@@ -11,6 +11,7 @@ import edu.brown.utils.FileUtil;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntBigLists;
 import it.unimi.dsi.fastutil.ints.IntList;
+
 import org.voltdb.CatalogContext;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
@@ -22,6 +23,7 @@ import org.voltdb.client.ClientResponse;
 import org.voltdb.client.NoConnectionsException;
 import org.voltdb.client.ProcCallException;
 import org.voltdb.sysprocs.Reconfiguration;
+import org.json.JSONException;
 import org.qcri.affinityplanner.ReconfigurationPredictor.Move;
 
 import java.io.File;
@@ -223,7 +225,7 @@ public class PredictiveController {
                 }
 
                 else {
-                    m_next_moves = convert(moves); // TODO implement this method
+                    m_next_moves = convert(planFile, moves);
                 }
             }
         }
@@ -280,8 +282,20 @@ public class PredictiveController {
         }
     }
 
-    private LinkedList<SquallMove> convert(ArrayList<Move> moves){
-        return new LinkedList<>();
+    private LinkedList<SquallMove> convert(File planFile, ArrayList<Move> moves){
+        LinkedList<SquallMove> squallMoves = new LinkedList<>();
+        String plan = FileUtil.readFile(planFile);
+        for (Move move : moves) {
+            ReconfigurationPlanner planner = new ReconfigurationPlanner(plan, move.nodes * PARTITIONS_PER_SITE);
+            planner.repartition();
+            try {
+                plan = planner.getPlanString();                
+            } catch (JSONException e) {
+                record("ERROR: Failed to convert plan to string " + e.getMessage());
+            }
+            squallMoves.add(new SquallMove(plan, move.time));
+        }
+        return squallMoves;
     }
 
 
