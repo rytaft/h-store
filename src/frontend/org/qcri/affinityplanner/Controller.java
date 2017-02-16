@@ -83,7 +83,7 @@ public class Controller extends Thread {
     public static int TOPK = Integer.MAX_VALUE;
     
     public static String ROOT_TABLE = null;
-   
+
     public Controller (Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
         
         if(EXEC_MONITORING || EXEC_RECONF){
@@ -255,7 +255,7 @@ public class Controller extends Thread {
             record("======================== PARTITIONING GRAPH ========================");
             t1 = System.currentTimeMillis();
             
-            // detect overloaded and active partitions
+            // detect active partitions
             IntList activePartitions = new IntArrayList(Controller.MAX_PARTITIONS);
 
             System.out.println("Load per partition before reconfiguration");
@@ -366,7 +366,7 @@ public class Controller extends Thread {
     }
     
     /**
-     * @param args
+     * @param vargs
      */
     public static void main(String[] vargs){
         

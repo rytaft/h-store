@@ -9,8 +9,8 @@ import org.apache.log4j.Logger;
 public class ReconfigurationPredictor {
 
     private static final Logger LOG = Logger.getLogger(ReconfigurationPredictor.class);
-    private double capacity_per_node;
-    private ArrayList<Double> predicted_load;
+    private long capacity_per_node;
+    private ArrayList<Long> predicted_load;
     private int nodes_start;
     private int db_migration_time;
     private int max_nodes;
@@ -52,16 +52,13 @@ public class ReconfigurationPredictor {
     //                         Assumes predictions are evenly spaced in time (e.g., one prediction for each second)
     // @param nodes_start - the number of nodes at time t = 0
     // @param db_migration_time - the number of time steps required to migrate all the data in the database once
-    public ReconfigurationPredictor (double capacity_per_node, ArrayList<Double> predicted_load, int nodes_start, int db_migration_time) {
+    public ReconfigurationPredictor (long capacity_per_node, int db_migration_time) {
         this.capacity_per_node = capacity_per_node;
-        this.predicted_load = predicted_load;
-        this.nodes_start = nodes_start;
         this.db_migration_time = db_migration_time;
-        this.max_nodes = Math.max((int) Math.ceil(Collections.max(predicted_load) / capacity_per_node), nodes_start);
-        this.min_cost = new CostPath[this.predicted_load.size()][this.max_nodes];
     }
     
     // The maximum number of transactions the given number of nodes can serve
+    // Number of nodes may be a non-integer since this function is called by effectiveCapacity()
     double capacity(double nodes) {
         return nodes * capacity_per_node;
     }
@@ -97,11 +94,11 @@ public class ReconfigurationPredictor {
     // moving from nodes_before to nodes_after (which takes reconfig_time steps total)
     private double subCost(int t, int reconfig_time, int nodes_before, int nodes_after) {
         if (t - reconfig_time < 0) {
-            return Double.POSITIVE_INFINITY; // this reconfiguration would need to start in the past 
+            return Double.POSITIVE_INFINITY; // this reconfiguration would need to start in the past
         }
         
         for (int i = 1; i <= reconfig_time; ++i) {
-            double load = predicted_load.get(t - reconfig_time + i);
+            long load = predicted_load.get(t - reconfig_time + i);
             if (load > effectiveCapacity(i, reconfig_time, nodes_before, nodes_after)) {
                 return Double.POSITIVE_INFINITY; // penalty for not enough capacity during the move
             }
@@ -129,7 +126,7 @@ public class ReconfigurationPredictor {
                 if (nodes_before == nodes) {
                     reconfig_time = 1; // special case for no data movement - a "move" must last at least one time slice
                 }
-                
+
                 double cost = subCost(t, reconfig_time, nodes_before, nodes);
                 if (nodes_before == 1 || cost < min_cost[t][nodes-1].cost) {
                     min_cost[t][nodes-1].cost = cost;
@@ -145,11 +142,16 @@ public class ReconfigurationPredictor {
     }
          
     // Calculate the best series of moves
-    public ArrayList<Move> bestMoves() {
+    public ArrayList<Move> bestMoves(ArrayList<Long> predicted_load, int nodes_start) {
+        this.predicted_load = predicted_load;
+        this.nodes_start = nodes_start;
+        this.max_nodes = Math.max((int) Math.ceil((double) Collections.max(predicted_load) / capacity_per_node), nodes_start);
+        this.min_cost = new CostPath[this.predicted_load.size()][this.max_nodes];
+
         ArrayList<Move> moves = new ArrayList<>();
         int end_time = this.predicted_load.size() - 1;
         for (int end_nodes = 1; end_nodes <= this.max_nodes; ++end_nodes) {
-            double cost = cost(end_time, end_nodes); 
+            double cost = cost(end_time, end_nodes);
             if (cost != Double.POSITIVE_INFINITY) {
                 int t = end_time;
                 int nodes = end_nodes;
