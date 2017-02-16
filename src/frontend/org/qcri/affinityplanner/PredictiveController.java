@@ -148,7 +148,7 @@ public class PredictiveController {
         }
 
         while (true){
-            if(false /*if reconfiguration is ongoing*/){ // TODO detect that reconfig is ongoing
+            if(true /*if reconfiguration is ongoing*/){ // TODO detect that reconfig is ongoing
                 continue;
             }
             else if (!m_next_moves.isEmpty()){

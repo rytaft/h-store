@@ -9,7 +9,7 @@ import org.apache.log4j.Logger;
 public class ReconfigurationPredictor {
 
     private static final Logger LOG = Logger.getLogger(ReconfigurationPredictor.class);
-    private double capacity_per_node;
+    private long capacity_per_node;
     private ArrayList<Long> predicted_load;
     private int nodes_start;
     private int db_migration_time;
@@ -52,13 +52,13 @@ public class ReconfigurationPredictor {
     //                         Assumes predictions are evenly spaced in time (e.g., one prediction for each second)
     // @param nodes_start - the number of nodes at time t = 0
     // @param db_migration_time - the number of time steps required to migrate all the data in the database once
-    public ReconfigurationPredictor (double capacity_per_node, int db_migration_time) {
+    public ReconfigurationPredictor (long capacity_per_node, int db_migration_time) {
         this.capacity_per_node = capacity_per_node;
         this.db_migration_time = db_migration_time;
     }
     
     // The maximum number of transactions the given number of nodes can serve
-    double capacity(double nodes) {
+    long capacity(long nodes) {
         return nodes * capacity_per_node;
     }
     
@@ -77,15 +77,15 @@ public class ReconfigurationPredictor {
     
     // Calculates the effective capacity at time step i (out of reconfig_time steps total) 
     // during the move from nodes_before to nodes_after
-    double effectiveCapacity(int i, int reconfig_time, int nodes_before, int nodes_after) {
+    long effectiveCapacity(int i, int reconfig_time, int nodes_before, int nodes_after) {
         if (nodes_before == nodes_after) {
             return capacity(nodes_before);
         }
         else if (nodes_after > nodes_before) { // scale out
-            return capacity(1.0/(1.0/nodes_before - ((double) i/reconfig_time) * (1.0/nodes_before - 1.0/nodes_after)));
+            return capacity((long) (1.0/(1.0/nodes_before - ((double) i/reconfig_time) * (1.0/nodes_before - 1.0/nodes_after))));
         }
         else { // scale in
-            return capacity(1.0/(1.0/nodes_before + ((double) i/reconfig_time) * (1.0/nodes_after - 1.0/nodes_before)));
+            return capacity((long) (1.0/(1.0/nodes_before + ((double) i/reconfig_time) * (1.0/nodes_after - 1.0/nodes_before))));
         }
     }
 
@@ -93,11 +93,11 @@ public class ReconfigurationPredictor {
     // moving from nodes_before to nodes_after (which takes reconfig_time steps total)
     private double subCost(int t, int reconfig_time, int nodes_before, int nodes_after) {
         if (t - reconfig_time < 0) {
-            return Double.POSITIVE_INFINITY; // this reconfiguration would need to start in the past 
+            return Double.POSITIVE_INFINITY; // this reconfiguration would need to start in the past
         }
         
         for (int i = 1; i <= reconfig_time; ++i) {
-            double load = predicted_load.get(t - reconfig_time + i);
+            long load = predicted_load.get(t - reconfig_time + i);
             if (load > effectiveCapacity(i, reconfig_time, nodes_before, nodes_after)) {
                 return Double.POSITIVE_INFINITY; // penalty for not enough capacity during the move
             }
@@ -125,7 +125,7 @@ public class ReconfigurationPredictor {
                 if (nodes_before == nodes) {
                     reconfig_time = 1; // special case for no data movement - a "move" must last at least one time slice
                 }
-                
+
                 double cost = subCost(t, reconfig_time, nodes_before, nodes);
                 if (nodes_before == 1 || cost < min_cost[t][nodes-1].cost) {
                     min_cost[t][nodes-1].cost = cost;
