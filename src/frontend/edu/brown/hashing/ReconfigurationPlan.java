@@ -127,7 +127,15 @@ public class ReconfigurationPlan {
         assert old_phase.tables_map.keySet().equals(new_phase.tables_map.keySet()) : "Partition plans have different tables";
         tables_map = new HashMap<String, ReconfigurationPlan.ReconfigurationTable>();
         for (String table_name : old_phase.tables_map.keySet()) {
-            tables_map.put(table_name, new ReconfigurationTable(catalogContext, old_phase.getTable(table_name), new_phase.getTable(table_name)));
+            if (!partitionedTablesByFK.containsKey(table_name)) {
+                tables_map.put(table_name, new ReconfigurationTable(catalogContext, old_phase.getTable(table_name), new_phase.getTable(table_name)));
+            }
+        }
+        // add ReconfigurationTables for the tables partitioned by FK second so they get the same range splits as their parents
+        for (Map.Entry<String,String> entry : partitionedTablesByFK.entrySet()) {
+            String table_name = entry.getKey();
+            ReconfigurationTable parent_table = tables_map.get(entry.getValue());
+            tables_map.put(table_name, new ReconfigurationTable(table_name, parent_table));
         }
         registerReconfigurationRanges();
         if (debug.val) {
@@ -259,6 +267,16 @@ public class ReconfigurationPlan {
         String table_name;
         HStoreConf conf = null;
         CatalogContext catalogContext;
+        
+        public ReconfigurationTable(String table_name, ReconfigurationTable parent) {
+            this.catalogContext = parent.catalogContext;
+            this.table_name = table_name;
+            this.conf = HStoreConf.singleton(false);
+            setReconfigurations(new ArrayList<ReconfigurationRange>());
+            for (ReconfigurationRange range : parent.getReconfigurations()) {
+                getReconfigurations().add(range.clone(catalogContext.getTableByName(table_name)));
+            }
+        }
         
         public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table) throws Exception {
             this.catalogContext = catalogContext;
