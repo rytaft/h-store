@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for s in istc1 istc5 istc7 istc11 istc12 
+for s in istc7 istc8 istc9 istc10 istc12 istc13
 do
 	echo "deleting from $s"
         if [[ "$s" != "$HOSTNAME" ]]
@@ -12,5 +12,7 @@ do
 			echo "Failed to delete $1 from $s"
 			echo "$?"
 		fi 
+	else
+	    rm $1
 	fi
 done
