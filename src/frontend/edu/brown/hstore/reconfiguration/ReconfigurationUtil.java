@@ -522,7 +522,7 @@ public class ReconfigurationUtil {
         }
     };
 
-    private static Comparator<ReconfigurationRange> numericReconfigurationRangeComparator = new Comparator<ReconfigurationRange>() {
+    public static Comparator<ReconfigurationRange> numericReconfigurationRangeComparator = new Comparator<ReconfigurationRange>() {
         public int compare(ReconfigurationRange r1, ReconfigurationRange r2) {
             if (numericVoltTableComparator.compare(r1.getMinIncl().get(0), r2.getMinIncl().get(0)) < 0) {
                 return -1;

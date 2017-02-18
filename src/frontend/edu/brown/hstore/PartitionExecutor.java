@@ -49,6 +49,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -6816,7 +6817,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public boolean scheduleInitialAsyncPullRequests(List<ReconfigurationRange> incomingRanges) {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info(String.format("(%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
-            boolean res = true;            
+            boolean res = true;  
+            Collections.sort(incomingRanges, ReconfigurationUtil.numericReconfigurationRangeComparator);
             for (ReconfigurationRange range : incomingRanges) {
                 ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
                 boolean success = this.work_queue.offer(scheduleAsyncPull); // ,
@@ -6880,6 +6882,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     public boolean queueInitialAsyncPullRequests(List<ReconfigurationRange> incomingRanges) {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info(String.format(" ### (%s) Scheduling async pull requests : %s", this.partitionId, incomingRanges.size()));
+            Collections.sort(incomingRanges, ReconfigurationUtil.numericReconfigurationRangeComparator);
             for (ReconfigurationRange range : incomingRanges) {
                 ScheduleAsyncPullRequestMessage scheduleAsyncPull = new ScheduleAsyncPullRequestMessage(range);
                 scheduleAsyncPullQueue.add(scheduleAsyncPull);
@@ -6903,6 +6906,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (incomingRanges != null && !incomingRanges.isEmpty()) {
             LOG.info("Scheduling async pull requests : " + incomingRanges.size());
             boolean res = true;
+            Collections.sort(incomingRanges, ReconfigurationUtil.numericReconfigurationRangeComparator);
             for (ReconfigurationRange range : incomingRanges) {
                 AsyncNonChunkPullRequestMessage pullMessage = new AsyncNonChunkPullRequestMessage(range);
                 boolean success = this.work_queue.offer(pullMessage); // ,
@@ -6926,6 +6930,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         if (outgoingRanges != null && !outgoingRanges.isEmpty()) {
             LOG.info("Scheduling async push requests : " + outgoingRanges.size());
             boolean res = true;
+            Collections.sort(outgoingRanges, ReconfigurationUtil.numericReconfigurationRangeComparator);
             for (ReconfigurationRange range : outgoingRanges) {
                 AsyncNonChunkPushRequestMessage pushMessage = new AsyncNonChunkPushRequestMessage(range);
                 boolean success = this.work_queue.offer(pushMessage); // ,
