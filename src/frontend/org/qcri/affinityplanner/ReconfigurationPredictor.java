@@ -103,7 +103,7 @@ public class ReconfigurationPredictor {
                 return Double.POSITIVE_INFINITY; // penalty for not enough capacity during the move
             }
         }
-        return cost(t - reconfig_time, nodes_before) + reconfig_time * (int) Math.ceil((nodes_after + nodes_before)/2.0);
+        return cost(t - reconfig_time, nodes_before) + reconfig_time * (nodes_after + nodes_before + 1)/2.0;
     }
 
     // Calculates the minimum total cost to end up with the given number of nodes at time t
