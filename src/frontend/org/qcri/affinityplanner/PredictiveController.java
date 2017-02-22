@@ -286,7 +286,7 @@ public class PredictiveController {
         LinkedList<SquallMove> squallMoves = new LinkedList<>();
         String plan = FileUtil.readFile(planFile);
         for (Move move : moves) {
-            ReconfigurationPlanner planner = new ReconfigurationPlanner(plan, move.nodes * PARTITIONS_PER_SITE);
+            ReconfigurationPlanner planner = new ReconfigurationPlanner(plan, move.nodes * PARTITIONS_PER_SITE, PARTITIONS_PER_SITE);
             planner.repartition();
             try {
                 plan = planner.getPlanString();                

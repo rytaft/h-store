@@ -13,26 +13,28 @@ import edu.brown.utils.ProjectType;
  */
 public class TestReconfigurationPlanner extends BaseTestCase {
 
+    final int PARTITIONS_PER_SITE = 6;
+    
     @Override
     protected void setUp() throws Exception {
         super.setUp(ProjectType.B2W);
     }
 
     public void testPlanner1() throws Exception {
-        ReconfigurationPlanner planner = new ReconfigurationPlanner (plan1, 18);
+        ReconfigurationPlanner planner = new ReconfigurationPlanner (plan1, 18, PARTITIONS_PER_SITE);
         planner.repartition();
         System.out.println(planner.getPlanString());
         Plan plan = planner.getPlan();
         for(String table : plan.table_names) {
             Map<Integer,List<Range>> rangeMap = plan.getAllRanges(table);
             for (int i = 0; i < 18; ++i) {
-                assertEquals(19,rangeMap.get(i).size());
+                assertEquals(4,rangeMap.get(i).size());
             }
         }
     }
     
     public void testPlanner2() throws Exception {
-        ReconfigurationPlanner planner = new ReconfigurationPlanner (plan2, 36);
+        ReconfigurationPlanner planner = new ReconfigurationPlanner (plan2, 36, PARTITIONS_PER_SITE);
         planner.repartition();
         System.out.println(planner.getPlanString());
         Plan plan = planner.getPlan();
@@ -41,7 +43,7 @@ public class TestReconfigurationPlanner extends BaseTestCase {
             Long keys_per_part = new Long(1000003/36);
             for (int i = 0; i < 36; ++i) {
                 long num_keys = Plan.getRangeListWidth(rangeMap.get(i));
-                assertTrue(num_keys < keys_per_part + 18 && num_keys > keys_per_part - 18);
+                assertTrue(num_keys < keys_per_part + 3 && num_keys > keys_per_part - 3);
             }
         }
     }
