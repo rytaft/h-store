@@ -186,7 +186,7 @@ public class Plan {
                     lowerBound = Math.min(from, precedingFrom.getKey());
                 }
 
-                if(precedingTo.getKey() <= toTest) {
+                if(precedingTo.getKey() < toTest) {
                     upperBound = Math.max(to, precedingTo.getValue());
                 }
 
@@ -410,7 +410,7 @@ public class Plan {
 
         List<Range> returnedRanges = new ArrayList<Range>();
         for(Range range : ranges) {
-            if(range.from <= to && range.to >= from) {
+            if(range.from < to && range.to >= from) {
                 returnedRanges.add(range);
             }
         }
@@ -427,8 +427,8 @@ public class Plan {
 
         List<Range> returnedRanges = new ArrayList<Range>();
         for(Range range : ranges) {
-            if(from <= range.from && range.from <= to 
-                    || from <= range.from && range.to <= to) {
+            if(from <= range.from && range.from < to 
+                    || from <= range.from && range.to < to) {
                 returnedRanges.add(range);
             }
         }
@@ -761,7 +761,7 @@ public class Plan {
                 for(Integer part : ranges.keySet()) {
                     List<Plan.Range> partitionRanges = ranges.get(part);
                     for(Plan.Range range : partitionRanges) {
-                        if (t >= range.from && t <= range.to){
+                        if (t >= range.from && t < range.to){
                             if (foundInPart >= 0){
                                 System.out.println("Tuple " + t + " of table " + table + " was found in partitions " + foundInPart + " and " + part);
                                 return false;
