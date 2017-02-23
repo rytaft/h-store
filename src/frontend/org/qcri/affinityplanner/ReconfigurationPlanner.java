@@ -54,7 +54,7 @@ public class ReconfigurationPlanner implements Partitioner {
     public boolean repartition() {
         if (this.partitions_before < this.partitions_after) { // scale out
             for(String table : plan.table_names){
-                long data_moving_out_per_partition = (long) (keysPerTable(table) * (1.0/this.partitions_before - 1.0/this.partitions_after));
+                long data_moving_out_per_partition = (long) Math.ceil((keysPerTable(table) * (1.0/this.partitions_before - 1.0/this.partitions_after)));
                 int num_new_machines = (this.partitions_after - this.partitions_before) / this.partitions_per_site;
                 long sliceWidth = (long) Math.ceil((double) data_moving_out_per_partition / num_new_machines);
                 for (int new_part = this.partitions_before; new_part < this.partitions_after; ++new_part) {
@@ -75,7 +75,7 @@ public class ReconfigurationPlanner implements Partitioner {
         }
         else if (this.partitions_before > this.partitions_after) { // scale in
             for(String table : plan.table_names){
-                long data_moving_out_per_partition = (long) (keysPerTable(table) * (1.0/this.partitions_before));
+                long data_moving_out_per_partition = (long) Math.ceil((keysPerTable(table) * (1.0/this.partitions_before)));
                 int machines_after = this.partitions_after / this.partitions_per_site;
                 long sliceWidth = (long) Math.ceil((double) data_moving_out_per_partition / machines_after);
                 

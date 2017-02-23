@@ -755,9 +755,9 @@ public class Plan {
                 System.out.println("Size of table " + table + " not specified for verification");
                 return false;
             }
+            Map<Integer, List<Plan.Range>> ranges = getAllRanges(table);
             for(int t = 0; t < maxTuple; t++){
                 int foundInPart = -1;
-                Map<Integer, List<Plan.Range>> ranges = getAllRanges(table);
                 for(Integer part : ranges.keySet()) {
                     List<Plan.Range> partitionRanges = ranges.get(part);
                     for(Plan.Range range : partitionRanges) {
