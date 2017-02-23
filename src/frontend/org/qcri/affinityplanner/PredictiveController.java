@@ -24,9 +24,7 @@ import org.voltdb.client.NoConnectionsException;
 import org.voltdb.client.ProcCallException;
 import org.voltdb.sysprocs.Reconfiguration;
 import org.json.JSONException;
-import org.qcri.affinityplanner.ReconfigurationPredictor.Migration;
 import org.qcri.affinityplanner.ReconfigurationPredictor.Move;
-import org.qcri.affinityplanner.ReconfigurationPredictor.SingleThreadedMigration;
 
 import java.io.File;
 import java.io.IOException;
