@@ -44,12 +44,12 @@ public class ParallelMigration implements Migration {
         // ============================================== 
         // Case 1: All machines added or removed at once 
         // ============================================== 
-        if (s >= delta) return l;
+        if (s >= delta) return reconfig_time * l;
         
         // ============================================== 
         // Case 2: delta is multiple of smaller cluster
         // ============================================== 
-        if (r == 0) return (2*s + l) / 2.0;
+        if (r == 0) return reconfig_time * (2*s + l) / 2.0;
         
         // ==============================================
         // Case 3:  Machines added or removed in 3 phases
