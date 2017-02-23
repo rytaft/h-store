@@ -35,7 +35,7 @@ public class Plan {
 
         public String toString() {
             String rangeStr = new String();
-            rangeStr = from.toString() + "-" + (to.toString() + 1);
+            rangeStr = from.toString() + "-" + to.toString();
             return rangeStr;
         }
 
@@ -129,78 +129,6 @@ public class Plan {
         return false;
     }
 
-    /*public void addRange(Integer partition, Long from, Long to){
-
-		boolean suspect = false;
-
-		if(from != to) {
-			System.out.println("Adding range " + from + "-" + to + " to " + partition);
-		}
-		else {
-			System.out.println("Adding range " + to + " to " + partition);
-		}
-
-		if(from == 2001) {
-			suspect = true;
-		}
-
-
-		TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
-		// find plans that intersect or are adjacent to the new range
-		Map.Entry<Long, Long> precedingFrom = ranges.floorEntry(from - 1);
-		Map.Entry<Long, Long> precedingTo = ranges.floorEntry(to + 1);
-
-		if(suspect) {
-			System.out.println("Suspect has neighbors " + precedingFrom.toString() + " and " + precedingTo.toString());
-		}
-
-
-
-		if (precedingFrom == null){
-			// from is smaller than any previous range
-			if (precedingTo == null){
-				// no range intersecting with this range, create a new range
-				ranges.put(from,to);
-			}
-			else{
-				// merge the two ranges
-				// first remove all ranges before precedingTo
-				removeRange(partition, precedingTo.getKey());
-				ranges.put(from, Math.max(to,precedingTo.getValue()));
-
-			}
-		}
-		else{
-			if(precedingTo.equals(precedingFrom) && from > precedingFrom.getValue()){
-				// no range intersecting with this range, create a new range
-				ranges.put(from,to);
-			}
-			// if rhs linked with a range, lhs untouched
-			else if(from > precedingFrom.getValue() && precedingTo.getKey() < to){
-				ranges.subMap(precedingFrom.getKey(),false,precedingTo.getValue(),false).clear();
-
-				Long lowerBound = from;
-				Long upperBound = Math.max(precedingTo.getValue(), to);
-				ranges.put(lowerBound, upperBound);
-
-			}
-			// lhs linked w/range, rhs not
-			else if(precedingFrom.getValue() > from){
-
-
-			}
-			// intersects on both sides
-			else {
-				ranges.subMap(precedingFrom.getKey(),true,precedingTo.getKey(),true).clear();
-				Long lowerBound = precedingFrom.getKey();
-				Long upperBound = Math.max(precedingTo.getValue(), to);
-				ranges.put(lowerBound, upperBound);
-
-			}
-
-		} 
-	} */
-
     /**
      * Returns false if it is impossible to add the range
      * 
@@ -219,7 +147,7 @@ public class Plan {
 
         // temporarily expand bounds s.t. it merges with adjacent ranges
         Long fromTest = from - 1;
-        Long toTest = to + 1;
+        Long toTest = to;
 
         TreeMap<Long, Long> ranges = partitionToRanges.get(partition);		
         if(ranges == null){
@@ -323,8 +251,8 @@ public class Plan {
             Long upperBound = precedingRange.getValue();
             Long lowerBound = precedingRange.getKey();
             partitionToRanges.get(partition).remove(lowerBound);
-            partitionToRanges.get(partition).put(lowerBound, tupleId - 1);
-            partitionToRanges.get(partition).put(tupleId + 1, upperBound);
+            partitionToRanges.get(partition).put(lowerBound, tupleId);
+            partitionToRanges.get(partition).put(tupleId, upperBound);
         }
         // range of one
         else if(precedingRange.getKey().equals(precedingRange.getValue())) {
@@ -333,13 +261,13 @@ public class Plan {
         else if(precedingRange.getValue().equals(tupleId)) {
             Long lowerBound = precedingRange.getKey();
             partitionToRanges.get(partition).remove(lowerBound);
-            partitionToRanges.get(partition).put(lowerBound, tupleId - 1);
+            partitionToRanges.get(partition).put(lowerBound, tupleId);
 
         }
         else if(precedingRange.getKey().equals(tupleId)) {
             Long upperBound = precedingRange.getValue();
             partitionToRanges.get(partition).remove(tupleId);
-            partitionToRanges.get(partition).put(tupleId + 1, upperBound);
+            partitionToRanges.get(partition).put(tupleId, upperBound);
         }
 
         return true;
@@ -379,7 +307,7 @@ public class Plan {
 
         TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
         for(Map.Entry<Long, Long> range : ranges.entrySet()){
-            rangeStr = range.getKey() + "-" + (range.getValue() + 1);
+            rangeStr = range.getKey() + "-" + range.getValue();
 
             if(!first) {
                 output = output + ",";
@@ -406,9 +334,6 @@ public class Plan {
             String rhs = inner.nextToken();
             parsed.from = Long.parseLong(lhs);
             parsed.to = Long.parseLong(rhs);
-            if(parsed.to > parsed.from) {
-                parsed.to--; // assuming we are passed non-inclusive ranges
-            }
         }
         else {
             value = Long.parseLong(src);
@@ -555,13 +480,13 @@ public class Plan {
         TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
         Long sum = 0L;
         for(Long k : ranges.keySet()) {
-            sum += ranges.get(k) - k + 1; // inclusive
+            sum += ranges.get(k) - k;
         }
         return sum;
     }
 
     static Long getRangeWidth(Range r) {
-        return r.to - r.from + 1; // inclusive
+        return r.to - r.from;
     }
 
     static String rangeSliceToString(List<Range> slice) {
@@ -608,7 +533,7 @@ public class Plan {
         long rangeLength = 0L;
 
         for(Long i : ranges.keySet()) {
-            rangeLength = ranges.get(i) - i + 1; // inclusive
+            rangeLength = ranges.get(i) - i;
             if(accumulatedSum + rangeLength < sliceWidth) {
                 Range tmp = new Range();
                 tmp.from = i;
@@ -618,6 +543,10 @@ public class Plan {
             }
             else if(accumulatedSum + rangeLength == sliceWidth) {
                 // emit
+                Range tmp = new Range();
+                tmp.from = i;
+                tmp.to = ranges.get(i);
+                partialList.add(tmp);
                 slices.add(partialList);
                 partialList = new ArrayList<Range>();
                 accumulatedSum = 0L;
@@ -626,29 +555,24 @@ public class Plan {
             else {
                 Range tmp1 = new Range();
                 tmp1.from = i;
-                tmp1.to = i + sliceWidth - accumulatedSum - 1; // fill in the remainder
-
+                tmp1.to = i + sliceWidth - accumulatedSum; // fill in the remainder
                 partialList.add(tmp1);
                 slices.add(partialList);
-
-
                 partialList = new ArrayList<Range>();
                 accumulatedSum = 0L;
 
                 Range tmp2 = new Range();
-                tmp2.from = tmp1.to + 1;
+                tmp2.from = tmp1.to;
                 tmp2.to = ranges.get(i);
                 // if it spans multiple slices, unwind it
                 while(getRangeWidth(tmp2) > sliceWidth) {
                     tmp1 = new Range();
                     tmp1.from = tmp2.from;
-                    tmp1.to = tmp2.from + sliceWidth - 1;
+                    tmp1.to = tmp2.from + sliceWidth;
                     partialList.add(tmp1);
-
                     slices.add(partialList);
-
                     partialList = new ArrayList<Range>();
-                    tmp2.from = tmp1.to + 1;
+                    tmp2.from = tmp1.to;
                 }
 
                 if(getRangeWidth(tmp2) == sliceWidth) {
@@ -823,37 +747,37 @@ public class Plan {
         }
     }
 
-//    public boolean verifyPlan (Map<String,Integer> tableSizes){
-//
-//        for(String table : table_names){
-//            Integer maxTuple  = tableSizes.get(table);
-//            if (maxTuple == null){
-//                System.out.println("Size of table " + table + " not specified for verification");
-//                return false;
-//            }
-//            for(int t = 0; t < maxTuple; t++){
-//                int foundInPart = -1;
-//                Map<Integer, List<Plan.Range>> ranges = getAllRanges(table);
-//                for(Integer part : ranges.keySet()) {
-//                    List<Plan.Range> partitionRanges = ranges.get(part);
-//                    for(Plan.Range range : partitionRanges) {
-//                        if (t >= range.from && t <= range.to){
-//                            if (foundInPart >= 0){
-//                                System.out.println("Tuple " + t + " of table " + table + " was found in partitions " + foundInPart + " and " + part);
-//                                return false;
-//                            }
-//                            foundInPart = -1;
-//                        }
-//                    }
-//                }
-//                if (foundInPart == -1){
-//                    System.out.println("Tuple " + t + " of table " + table + " was not found");
-//                    return false;
-//                }
-//            }
-//        }
-//        return true;
-//    }
+    public boolean verifyPlan (Map<String,Integer> tableSizes){
+
+        for(String table : table_names){
+            Integer maxTuple  = tableSizes.get(table);
+            if (maxTuple == null){
+                System.out.println("Size of table " + table + " not specified for verification");
+                return false;
+            }
+            for(int t = 0; t < maxTuple; t++){
+                int foundInPart = -1;
+                Map<Integer, List<Plan.Range>> ranges = getAllRanges(table);
+                for(Integer part : ranges.keySet()) {
+                    List<Plan.Range> partitionRanges = ranges.get(part);
+                    for(Plan.Range range : partitionRanges) {
+                        if (t >= range.from && t <= range.to){
+                            if (foundInPart >= 0){
+                                System.out.println("Tuple " + t + " of table " + table + " was found in partitions " + foundInPart + " and " + part);
+                                return false;
+                            }
+                            foundInPart = -1;
+                        }
+                    }
+                }
+                if (foundInPart == -1){
+                    System.out.println("Tuple " + t + " of table " + table + " was not found");
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 
     public void moveColdRange(String table, Plan.Range movedRange, int fromPart, int toPart){
 
@@ -872,10 +796,10 @@ public class Plan {
 
             // add back range minus chunk to overloaded partition
             if(oldRange.from < movedRange.from) {
-                addRange(table, fromPart, oldRange.from, movedRange.from - 1);
+                addRange(table, fromPart, oldRange.from, movedRange.from);
             }
             if(movedRange.to < oldRange.to) {
-                addRange(table, fromPart, movedRange.to + 1, oldRange.to);
+                addRange(table, fromPart, movedRange.to, oldRange.to);
             }
         }
     }

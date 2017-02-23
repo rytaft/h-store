@@ -1,5 +1,6 @@
 package org.qcri.affinityplanner;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -14,10 +15,17 @@ import edu.brown.utils.ProjectType;
 public class TestReconfigurationPlanner extends BaseTestCase {
 
     final int PARTITIONS_PER_SITE = 6;
+    Map<String,Integer> tableSizes;
     
     @Override
     protected void setUp() throws Exception {
         super.setUp(ProjectType.B2W);
+        this.tableSizes = new HashMap<>();
+        tableSizes.put("stk_inventory_stock_quantity", 1000003);
+        tableSizes.put("stk_stock_transaction", 1000003);
+        tableSizes.put("stk_inventory_stock", 1000003);
+        tableSizes.put("cart", 1000003);
+        tableSizes.put("checkout", 1000003);
     }
 
     public void testPlanner1() throws Exception {
@@ -31,6 +39,8 @@ public class TestReconfigurationPlanner extends BaseTestCase {
                 assertEquals(4,rangeMap.get(i).size());
             }
         }
+        
+        assertTrue(plan.verifyPlan(tableSizes));
     }
     
     public void testPlanner2() throws Exception {
@@ -46,6 +56,8 @@ public class TestReconfigurationPlanner extends BaseTestCase {
                 assertTrue(num_keys < keys_per_part + 3 && num_keys > keys_per_part - 3);
             }
         }
+        
+        assertTrue(plan.verifyPlan(tableSizes));
     }
 
     String plan1 = 
