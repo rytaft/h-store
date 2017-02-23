@@ -53,7 +53,7 @@ public class TestReconfigurationPlanner extends BaseTestCase {
             Long keys_per_part = new Long(1000003/36);
             for (int i = 0; i < 36; ++i) {
                 long num_keys = Plan.getRangeListWidth(rangeMap.get(i));
-                assertTrue(num_keys < keys_per_part + 3 && num_keys > keys_per_part - 3);
+                assertTrue(num_keys <= keys_per_part + 3 && num_keys >= keys_per_part - 3);
             }
         }
         
