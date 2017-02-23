@@ -48,8 +48,8 @@ public class ReconfigurationPredictor {
     
     // Create a new instance of the ReconfigurationPredictor
     // @param capacity_per_node - The maximum number of transactions per second a single node can serve
-    // @param migration - specifies whether the migrations will be run in parallel
-    // @param db_migration_time - the number of time steps required to migrate all the data in the database once
+    // @param migration - specifies whether the migrations will be run in parallel or not,
+    //                    and the corresponding functions to determine cost and time of the migration
     public ReconfigurationPredictor (long capacity_per_node, Migration migration) {
         this.capacity_per_node = capacity_per_node;
         this.migration = migration;

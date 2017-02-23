@@ -12,6 +12,10 @@ public class ParallelMigration implements Migration {
         this.db_migration_time = db_migration_time;
     }
     
+    public void setDbMigrationTime(int db_migration_time) {
+        this.db_migration_time = db_migration_time;
+    }
+    
     // Number of time steps needed to scale from nodes_before to nodes_after
     // with maximum parallel migration
     public int reconfigTime(int nodes_before, int nodes_after) {
