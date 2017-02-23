@@ -12,9 +12,9 @@ public class ReconfigurationPredictor {
     private long capacity_per_node;
     private ArrayList<Long> predicted_load;
     private int nodes_start;
-    private int db_migration_time;
     private int max_nodes;
     private CostPath[][] min_cost;
+    Migration migration;
     
     int getMaxNodes() {
         return max_nodes;
@@ -48,13 +48,11 @@ public class ReconfigurationPredictor {
     
     // Create a new instance of the ReconfigurationPredictor
     // @param capacity_per_node - The maximum number of transactions per second a single node can serve
-    // @param predicted_load - An array of predicted aggregate load on the database (transactions per second).  
-    //                         Assumes predictions are evenly spaced in time (e.g., one prediction for each second)
-    // @param nodes_start - the number of nodes at time t = 0
+    // @param migration - specifies whether the migrations will be run in parallel
     // @param db_migration_time - the number of time steps required to migrate all the data in the database once
-    public ReconfigurationPredictor (long capacity_per_node, int db_migration_time) {
+    public ReconfigurationPredictor (long capacity_per_node, Migration migration) {
         this.capacity_per_node = capacity_per_node;
-        this.db_migration_time = db_migration_time;
+        this.migration = migration;
     }
     
     // The maximum number of transactions the given number of nodes can serve
@@ -63,19 +61,7 @@ public class ReconfigurationPredictor {
         return nodes * capacity_per_node;
     }
     
-    // Number of time steps needed to scale from nodes_before to nodes_after
-    int reconfigTime(int nodes_before, int nodes_after) {
-        if (nodes_before == nodes_after) {
-            return 0;
-        }
-        else if (nodes_before < nodes_after) { // scale out
-            return (int) Math.ceil((1.0/nodes_before - 1.0/nodes_after) * this.db_migration_time * nodes_before);
-        }
-        else { // scale in
-            return (int) Math.ceil((1.0/nodes_after - 1.0/nodes_before) * this.db_migration_time * nodes_after);
-        }
-    }
-    
+  
     // Calculates the effective capacity at time step i (out of reconfig_time steps total) 
     // during the move from nodes_before to nodes_after
     double effectiveCapacity(int i, int reconfig_time, int nodes_before, int nodes_after) {
@@ -103,7 +89,7 @@ public class ReconfigurationPredictor {
                 return Double.POSITIVE_INFINITY; // penalty for not enough capacity during the move
             }
         }
-        return cost(t - reconfig_time, nodes_before) + reconfig_time * (nodes_after + nodes_before + 1)/2.0;
+        return cost(t - reconfig_time, nodes_before) + migration.moveCost(reconfig_time, nodes_before, nodes_after);
     }
 
     // Calculates the minimum total cost to end up with the given number of nodes at time t
@@ -122,7 +108,7 @@ public class ReconfigurationPredictor {
             min_cost[t][nodes-1] = new CostPath();
             
             for (int nodes_before = 1; nodes_before <= this.max_nodes; ++nodes_before) {
-                int reconfig_time = reconfigTime(nodes_before, nodes);
+                int reconfig_time = migration.reconfigTime(nodes_before, nodes);
                 if (nodes_before == nodes) {
                     reconfig_time = 1; // special case for no data movement - a "move" must last at least one time slice
                 }
@@ -142,6 +128,9 @@ public class ReconfigurationPredictor {
     }
          
     // Calculate the best series of moves
+    // @param predicted_load - An array of predicted aggregate load on the database (transactions per second).  
+    //                         Assumes predictions are evenly spaced in time (e.g., one prediction for each second)
+    // @param nodes_start - the number of nodes at time t = 0
     public ArrayList<Move> bestMoves(ArrayList<Long> predicted_load, int nodes_start) {
         this.predicted_load = predicted_load;
         this.nodes_start = nodes_start;

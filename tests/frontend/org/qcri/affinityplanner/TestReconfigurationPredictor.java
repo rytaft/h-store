@@ -45,7 +45,7 @@ public class TestReconfigurationPredictor extends BaseTestCase {
         for (Move move : moves) {
             assertTrue(predictor.capacity(move.nodes) >= load_predictions_arr[move.time]);
             if (prev_move != null) {
-                int reconfig_time = predictor.reconfigTime(prev_move.nodes, move.nodes);
+                int reconfig_time = predictor.migration.reconfigTime(prev_move.nodes, move.nodes);
                 for (int i = 1; i < move.time - prev_move.time; ++i) {
                     double effectiveCap = predictor.effectiveCapacity(i, reconfig_time, prev_move.nodes, move.nodes);
                     assertTrue(effectiveCap >= load_predictions_arr[prev_move.time+i]);
@@ -63,22 +63,22 @@ public class TestReconfigurationPredictor extends BaseTestCase {
         for (long prediction : load_predictions_arr_1) load_predictions.add(prediction);
 
         // defaults
-        ReconfigurationPredictor predictor = new ReconfigurationPredictor(capacity_per_node_1, db_migration_time_1);
+        ReconfigurationPredictor predictor = new ReconfigurationPredictor(capacity_per_node_1, new SingleThreadedMigration(db_migration_time_1));
         ArrayList<Move> moves = predictor.bestMoves(load_predictions, nodes_start_1);
         checkCorrect(predictor, moves, load_predictions_arr_1, true);
 
         // increased capacity
-        predictor = new ReconfigurationPredictor(capacity_per_node_1 + 10, db_migration_time_1);
+        predictor = new ReconfigurationPredictor(capacity_per_node_1 + 10, new SingleThreadedMigration(db_migration_time_1));
         moves = predictor.bestMoves(load_predictions, nodes_start_1);
         checkCorrect(predictor, moves, load_predictions_arr_1, true);
 
         // increased starting partitions
-        predictor = new ReconfigurationPredictor(capacity_per_node_1, db_migration_time_1);
+        predictor = new ReconfigurationPredictor(capacity_per_node_1, new SingleThreadedMigration(db_migration_time_1));
         moves = predictor.bestMoves(load_predictions, nodes_start_1 + 1);
         checkCorrect(predictor, moves, load_predictions_arr_1, true);
 
         // increased time to move data
-        predictor = new ReconfigurationPredictor(capacity_per_node_1, 3);
+        predictor = new ReconfigurationPredictor(capacity_per_node_1, new SingleThreadedMigration(3));
         moves = predictor.bestMoves(load_predictions, nodes_start_1);
         assertTrue(moves == null);
     }
@@ -88,22 +88,22 @@ public class TestReconfigurationPredictor extends BaseTestCase {
         for (long prediction : load_predictions_arr_2) load_predictions.add(prediction);
 
         // defaults
-        ReconfigurationPredictor predictor = new ReconfigurationPredictor(capacity_per_node_2, db_migration_time_2);
+        ReconfigurationPredictor predictor = new ReconfigurationPredictor(capacity_per_node_2, new SingleThreadedMigration(db_migration_time_2));
         ArrayList<Move> moves = predictor.bestMoves(load_predictions, nodes_start_2);
         checkCorrect(predictor, moves, load_predictions_arr_2, true);
 
         // increased capacity
-        predictor = new ReconfigurationPredictor(capacity_per_node_2 + 10, db_migration_time_2);
+        predictor = new ReconfigurationPredictor(capacity_per_node_2 + 10, new SingleThreadedMigration(db_migration_time_2));
         moves = predictor.bestMoves(load_predictions, nodes_start_2);
         checkCorrect(predictor, moves, load_predictions_arr_2, true);
 
         // increased starting partitions
-        predictor = new ReconfigurationPredictor(capacity_per_node_2, db_migration_time_2);
+        predictor = new ReconfigurationPredictor(capacity_per_node_2, new SingleThreadedMigration(db_migration_time_2));
         moves = predictor.bestMoves(load_predictions, nodes_start_2 + 1);
         checkCorrect(predictor, moves, load_predictions_arr_2, true);
 
         // increased time to move data
-        predictor = new ReconfigurationPredictor(capacity_per_node_2, 3);
+        predictor = new ReconfigurationPredictor(capacity_per_node_2, new SingleThreadedMigration(3));
         moves = predictor.bestMoves(load_predictions, nodes_start_2);
         checkCorrect(predictor, moves, load_predictions_arr_2, true);
     }
@@ -113,27 +113,27 @@ public class TestReconfigurationPredictor extends BaseTestCase {
         for (long prediction : load_predictions_arr_3) load_predictions.add(prediction);
 
         // defaults
-        ReconfigurationPredictor predictor = new ReconfigurationPredictor(capacity_per_node_3, db_migration_time_3);
+        ReconfigurationPredictor predictor = new ReconfigurationPredictor(capacity_per_node_3, new SingleThreadedMigration(db_migration_time_3));
         ArrayList<Move> moves = predictor.bestMoves(load_predictions, nodes_start_3);
         checkCorrect(predictor, moves, load_predictions_arr_3, true);
 
         // increased capacity
-        predictor = new ReconfigurationPredictor(capacity_per_node_3 + 10, db_migration_time_3);
+        predictor = new ReconfigurationPredictor(capacity_per_node_3 + 10, new SingleThreadedMigration(db_migration_time_3));
         moves = predictor.bestMoves(load_predictions, nodes_start_3);
         checkCorrect(predictor, moves, load_predictions_arr_3, true);
 
         // increased starting partitions
-        predictor = new ReconfigurationPredictor(capacity_per_node_3, db_migration_time_3);
+        predictor = new ReconfigurationPredictor(capacity_per_node_3, new SingleThreadedMigration(db_migration_time_3));
         moves = predictor.bestMoves(load_predictions, nodes_start_3 + 1);
         checkCorrect(predictor, moves, load_predictions_arr_3, true);
 
         // increased time to move data
-        predictor = new ReconfigurationPredictor(capacity_per_node_3, 6);
+        predictor = new ReconfigurationPredictor(capacity_per_node_3, new SingleThreadedMigration(6));
         moves = predictor.bestMoves(load_predictions, nodes_start_3);
         checkCorrect(predictor, moves, load_predictions_arr_3, true);
         
         // increased time to move data
-        predictor = new ReconfigurationPredictor(capacity_per_node_3, 7);
+        predictor = new ReconfigurationPredictor(capacity_per_node_3, new SingleThreadedMigration(7));
         moves = predictor.bestMoves(load_predictions, nodes_start_3);
         assertTrue(moves == null);
     }
@@ -197,7 +197,7 @@ public class TestReconfigurationPredictor extends BaseTestCase {
             load += 200;
         }
 
-        ReconfigurationPredictor predictor = new ReconfigurationPredictor(8000, 500);
+        ReconfigurationPredictor predictor = new ReconfigurationPredictor(8000, new SingleThreadedMigration(500));
 
         ArrayList<Move> moves = predictor.bestMoves(load_predictions, 2);
         long load_predictions_arr[] = new long[load_predictions.size()];

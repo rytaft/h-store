@@ -24,7 +24,9 @@ import org.voltdb.client.NoConnectionsException;
 import org.voltdb.client.ProcCallException;
 import org.voltdb.sysprocs.Reconfiguration;
 import org.json.JSONException;
+import org.qcri.affinityplanner.ReconfigurationPredictor.Migration;
 import org.qcri.affinityplanner.ReconfigurationPredictor.Move;
+import org.qcri.affinityplanner.ReconfigurationPredictor.SingleThreadedMigration;
 
 import java.io.File;
 import java.io.IOException;
@@ -103,7 +105,7 @@ public class PredictiveController {
         }
         MAX_PARTITIONS++;
 
-        m_planner = new ReconfigurationPredictor(MAX_CAPACITY_PER_PART, DB_MIGRATION_TIME);
+        m_planner = new ReconfigurationPredictor(MAX_CAPACITY_PER_PART, new SingleThreadedMigration(DB_MIGRATION_TIME));
 
         if (hstore_conf.global.hasher_plan != null) {
             PLAN_IN = hstore_conf.global.hasher_plan;
