@@ -410,7 +410,7 @@ public class Plan {
 
         List<Range> returnedRanges = new ArrayList<Range>();
         for(Range range : ranges) {
-            if(range.from < to && range.to >= from) {
+            if(range.from < to && range.to > from) {
                 returnedRanges.add(range);
             }
         }
@@ -428,7 +428,7 @@ public class Plan {
         List<Range> returnedRanges = new ArrayList<Range>();
         for(Range range : ranges) {
             if(from <= range.from && range.from < to 
-                    || from <= range.from && range.to < to) {
+                    || from <= range.from && range.to <= to) {
                 returnedRanges.add(range);
             }
         }
