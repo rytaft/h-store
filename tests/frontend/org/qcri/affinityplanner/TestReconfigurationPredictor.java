@@ -106,7 +106,9 @@ public class TestReconfigurationPredictor extends BaseTestCase {
         migration.setDbMigrationTime(3);
         predictor = new ReconfigurationPredictor(capacity_per_node_1, migration);
         moves = predictor.bestMoves(load_predictions, nodes_start_1);
-        assertTrue(moves == null);
+        if (migration instanceof SingleThreadedMigration) {
+            assertTrue(moves == null);
+        }
     }
 
     public void testBestMoves2() throws Exception {
@@ -182,7 +184,9 @@ public class TestReconfigurationPredictor extends BaseTestCase {
         migration.setDbMigrationTime(7);
         predictor = new ReconfigurationPredictor(capacity_per_node_3, migration);
         moves = predictor.bestMoves(load_predictions, nodes_start_3);
-        assertTrue(moves == null);
+        if (migration instanceof SingleThreadedMigration) {
+            assertTrue(moves == null);
+        }
     }
 
     public void testBestMoves4() throws Exception {
