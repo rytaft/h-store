@@ -171,11 +171,15 @@ public class ReconfigurationCoordinator implements Shutdownable {
     public class InitReconfiguration extends Thread {
         
         private int reconfig_split;
+        private boolean auto_split;
+        private int partitions_per_site;
         private ExplicitPartitions partitions;
         
-        public InitReconfiguration(int reconfig_split, ExplicitPartitions partitions) { 
+        public InitReconfiguration(int reconfig_split, boolean auto_split, int partitions_per_site, ExplicitPartitions partitions) { 
             super("InitReconfiguration");
             this.reconfig_split = reconfig_split;
+            this.auto_split = auto_split;
+            this.partitions_per_site = partitions_per_site;
             this.partitions = partitions;
         }
         
@@ -188,7 +192,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     FileUtil.appendEventToFile(reconfig_plan.planDebug);
                     if(this.reconfig_split > 1 && reconfig_plan.getIncoming_ranges().size() > 0){
                         // split plan & put into queue
-                        reconfigPlanQueue = ReconfigurationUtil.naiveSplitReconfigurationPlan(reconfig_plan, this.reconfig_split);
+                        reconfigPlanQueue = ReconfigurationUtil.naiveSplitReconfigurationPlan(reconfig_plan, this.reconfig_split, this.auto_split, this.partitions_per_site);
                     }
                     else {
                         reconfigPlanQueue.add(reconfig_plan);
@@ -589,7 +593,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     this.sites_complete = new HashSet<Integer>();
                 }
                 
-                InitReconfiguration init = new InitReconfiguration(this.reconfig_split, this.planned_partitions);
+                InitReconfiguration init = new InitReconfiguration(this.reconfig_split, this.auto_split, this.local_executors.size(), this.planned_partitions);
                 init.start();
                 
             } catch (Exception e) {
