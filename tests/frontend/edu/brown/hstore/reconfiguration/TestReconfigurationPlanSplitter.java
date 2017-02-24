@@ -4,6 +4,7 @@
 package edu.brown.hstore.reconfiguration;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
@@ -14,6 +15,7 @@ import org.voltdb.utils.Pair;
 import edu.brown.BaseTestCase;
 import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
+import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hashing.TwoTieredRangePartitions;
 import edu.brown.hstore.reconfiguration.ReconfigurationUtil.ReconfigurationPair;
 import edu.brown.utils.FileUtil;
@@ -60,7 +62,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         p.setPartitionPlan(json_path1);    
         ReconfigurationPlan plan = p.setPartitionPlan(json_path2);
         
-        ReconfigurationUtil.naiveSplitReconfigurationPlan(plan, 5);
+        ReconfigurationUtil.naiveSplitReconfigurationPlan(plan, 5, false, 1);
     }
     
     /**
@@ -80,7 +82,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         migrationPairs.add(new ReconfigurationPair(3,11));
         
         Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = 
-                ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs);
+                ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, false);
         System.out.println(pairToSplitMapping.toString());
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(0,4)).equals(new Integer(0)));
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(1,5)).equals(new Integer(0)));
@@ -109,7 +111,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         migrationPairs.add(new ReconfigurationPair(11,3));
         
         Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = 
-                ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs);
+                ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, false);
         System.out.println(pairToSplitMapping.toString());
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(4,0)).equals(new Integer(4)));
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(5,1)).equals(new Integer(3)));
@@ -119,6 +121,90 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(9,1)).equals(new Integer(1)));
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(10,2)).equals(new Integer(0)));
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(11,3)).equals(new Integer(0)));
+    }
+    
+    @Test
+    public void testGetNumberOfSplitsCase1() throws Exception{
+        ReconfigurationPlan plan = new ReconfigurationPlan(catalogContext, new HashMap<String, String>());
+        Integer[] range = new Integer[]{ 0 };
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 3));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 4));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 3));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 4));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 3));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 4));
+        int partitionsPerSite = 1;
+        int numberOfSplits = 10;
+        assertEquals(33, ReconfigurationUtil.getNumberOfSplits(plan, partitionsPerSite, numberOfSplits));
+    }
+    
+    @Test
+    public void testGetNumberOfSplitsCase2() throws Exception{
+        ReconfigurationPlan plan = new ReconfigurationPlan(catalogContext, new HashMap<String, String>());
+        Integer[] range = new Integer[]{ 0 };
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 3));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 4));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 5));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 6));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 7));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 8));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 3));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 4));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 5));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 6));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 7));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 8));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 3));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 4));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 5));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 6));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 7));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 8));
+        int partitionsPerSite = 1;
+        int numberOfSplits = 10;
+        assertEquals(6, ReconfigurationUtil.getNumberOfSplits(plan, partitionsPerSite, numberOfSplits));
+    }
+    
+    @Test
+    public void testGetNumberOfSplitsCase3() throws Exception{
+        ReconfigurationPlan plan = new ReconfigurationPlan(catalogContext, new HashMap<String, String>());
+        Integer[] range = new Integer[]{ 0 };
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 3));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 4));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 5));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 6));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 7));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 8));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 9));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 10));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 11));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 12));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 0, 13));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 3));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 4));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 5));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 6));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 7));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 8));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 9));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 10));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 11));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 12));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 1, 13));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 3));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 4));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 5));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 6));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 7));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 8));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 9));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 10));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 11));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 12));
+        plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("cart"), range, range, 2, 13));
+        int partitionsPerSite = 1;
+        int numberOfSplits = 10;
+        assertEquals(11, ReconfigurationUtil.getNumberOfSplits(plan, partitionsPerSite, numberOfSplits));
     }
     
     @Override

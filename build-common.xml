@@ -170,6 +170,7 @@
 <arg value="site.reconfig_chunk_size_kb=${site.reconfig_chunk_size_kb}" />
 <arg value="site.reconfig_async_chunk_size_kb=${site.reconfig_async_chunk_size_kb}" />
 <arg value="site.reconfig_subplan_split=${site.reconfig_subplan_split}" />
+<arg value="site.reconfig_auto_subplan_split=${site.reconfig_auto_subplan_split}" />
 <arg value="site.reconfig_min_transfer_bytes=${site.reconfig_min_transfer_bytes}" />
 <arg value="site.reconfig_max_transfer_bytes=${site.reconfig_max_transfer_bytes}" />
 <arg value="site.storage_mmap=${site.storage_mmap}" />

@@ -826,6 +826,13 @@ public final class HStoreConf {
         public int reconfig_subplan_split;
         
         @ConfigProperty(
+                description="Whether Squall should decide the number of subplans automatically.",
+                defaultBoolean=true,
+                experimental=true
+        )
+        public boolean reconfig_auto_subplan_split;
+
+        @ConfigProperty(
                 description="Min transfer size for reconfiguration (used to merge chunks/ranges). To disable merging, set to <= 1",
                 defaultInt=0,
                 experimental=true

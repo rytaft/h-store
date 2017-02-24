@@ -144,6 +144,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     
     private List<ReconfigurationPlan> reconfigPlanQueue;
     private int reconfig_split = 1;
+    private boolean auto_split = true;
     private TransactionQueueManager queueManager;
     
     public static long STOP_COPY_TXNID = -2L;
@@ -259,6 +260,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
         //Default reconfig plan split
         this.reconfig_split = hstore_conf.site.reconfig_subplan_split;
+        this.auto_split = hstore_conf.site.reconfig_auto_subplan_split;
         
         if (hstore_conf.site.reconfig_async == true){
             LOG.debug("Updating transfer bytes");
@@ -289,11 +291,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
         
         String debugConfig = String.format("Reconfig configuration. Site:%s DetailedTiming: %s AsyncPush:%s AysncPull:%s "
                 + "AsyncQueuePulls:%s LivePulls:%s AsyncPullSizeKB:%s LivePullSizeKB:%s ForceDestination:%s "
-                + "AsyncDelay:%s PlanSplit:%s PlanDelay:%s", 
+                + "AsyncDelay:%s AutoPlanSplit:%s PlanSplit:%s PlanDelay:%s", 
                 this.hstore_site.getSiteId(), detailed_timing, async_nonchunk_push, async_nonchunk_pull, async_queue_pulls, 
                 live_pull, hstore_conf.site.reconfig_async_chunk_size_kb, hstore_conf.site.reconfig_chunk_size_kb, 
-                FORCE_DESTINATION, hstore_conf.site.reconfig_async_delay_ms, hstore_conf.site.reconfig_subplan_split,
-                hstore_conf.site.reconfig_plan_delay);
+                FORCE_DESTINATION, hstore_conf.site.reconfig_async_delay_ms, hstore_conf.site.reconfig_auto_subplan_split, 
+                hstore_conf.site.reconfig_subplan_split, hstore_conf.site.reconfig_plan_delay);
         LOG.info(debugConfig);
         FileUtil.appendEventToFile(debugConfig);
         if(FORCE_DESTINATION){
@@ -482,9 +484,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
                 } else if (reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL) {
                     if (reconfig_plan != null) {
-                        if(this.reconfig_split  > 1 && reconfig_plan.getIncoming_ranges().size() > 0){
+                        if((this.reconfig_split  > 1 || this.auto_split) && reconfig_plan.getIncoming_ranges().size() > 0){
                             // split plan & put into queue
-                            reconfigPlanQueue = ReconfigurationUtil.naiveSplitReconfigurationPlan(reconfig_plan, this.reconfig_split);
+                            reconfigPlanQueue = ReconfigurationUtil.naiveSplitReconfigurationPlan(reconfig_plan, this.reconfig_split, this.auto_split, this.local_executors.size());
                             // set reconfig_plan = 1st split
                             reconfig_plan = reconfigPlanQueue.remove(0);
                         }
