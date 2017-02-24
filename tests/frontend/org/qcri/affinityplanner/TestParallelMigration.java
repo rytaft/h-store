@@ -34,7 +34,7 @@ public class TestParallelMigration extends BaseTestCase {
     public void testCase3() throws Exception {
         Migration migration = new ParallelMigration(PARTITIONS_PER_SITE, 30 * 14 - 1);
         assertEquals(11, migration.reconfigTime(3, 14));
-        assertEquals(3*6 + 3*9 + 2*12 + 3*14, (int) Math.ceil(migration.moveCost(11, 3, 9)));
+        assertEquals(3*6 + 3*9 + 2*12 + 3*14, (int) Math.ceil(migration.moveCost(11, 3, 14)));
         assertEquals(11, migration.reconfigTime(14, 3));
         assertEquals(3*6 + 3*9 + 2*12 + 3*14, (int) Math.ceil(migration.moveCost(11, 14, 3)));
     }
