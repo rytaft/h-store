@@ -78,7 +78,7 @@ public class TestReconfigurationPredictor extends BaseTestCase {
     public void testBestMoves1() throws Exception {
         testBestMoves1(new SingleThreadedMigration(db_migration_time_1), "Single Threaded Migration: ");
         testBestMoves1(new ParallelMigration(partitions_per_site, db_migration_time_1), "Parallel Migration: ");
-        testBestMoves1(new ParallelMigration(partitions_per_site, db_migration_time_1 * 10), "Parallel Migration: ");
+        testBestMoves1(new ParallelMigration(partitions_per_site, db_migration_time_1 * 6), "Parallel Migration: ");
     }
        
     private void testBestMoves1(Migration migration, String debug) throws Exception {
@@ -115,7 +115,7 @@ public class TestReconfigurationPredictor extends BaseTestCase {
     public void testBestMoves2() throws Exception {
         testBestMoves2(new SingleThreadedMigration(db_migration_time_2), "Single Threaded Migration: ");
         testBestMoves2(new ParallelMigration(partitions_per_site, db_migration_time_2), "Parallel Migration: ");
-        testBestMoves2(new ParallelMigration(partitions_per_site, db_migration_time_2 * 10), "Parallel Migration: ");
+        testBestMoves2(new ParallelMigration(partitions_per_site, db_migration_time_2 * 20), "Parallel Migration: ");
     }
         
     private void testBestMoves2(Migration migration, String debug) throws Exception {
