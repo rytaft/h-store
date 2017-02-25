@@ -121,81 +121,131 @@ public class ReconfigurationUtil {
 
     // Split the migration pairs into a series of splits, to be executed as sub-reconfigurations
     public static Map<Pair<Integer, Integer>, Integer> splitMigrationPairs(int numberOfSplits, 
-            Set<ReconfigurationPair> migrationPairs, boolean autoSplit) {
+            Set<ReconfigurationPair> migrationPairs, AutoSplit autoSplit) {
         Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = new HashMap<>();
         
         // Sort the migration pairs to make sure we get the same set of splits
         // each time
         ArrayList<ReconfigurationPair> migrationPairsList = new ArrayList<>();
         migrationPairsList.addAll(migrationPairs);
-        Collections.sort(migrationPairsList);
-        
-        // Split pairs into groups based on numberOfSplits param
-        // desirable properties: 
-        // - a partition should only be involved in one migration per split
-        //    (e.g., if partition 1 sends to 2 and 3, <1,2> and <1,3> should be in different splits)           
-        // - The migration pairs should be distributed evenly between the splits
-        HashMap<Integer,Set<Integer>> splitPartitions = new HashMap<>();
-        for (int i = 0; i < numberOfSplits; ++i) splitPartitions.put(i, new HashSet<Integer>());
-        int[] pairsPerSplit = new int[numberOfSplits];
-        
-        int minPairsPerSplit = migrationPairsList.size() / numberOfSplits;
-        for (ReconfigurationPair mPair : migrationPairsList) {
-            int split = 0;
-            while (splitPartitions.get(split).contains(mPair.from) || 
-                    splitPartitions.get(split).contains(mPair.to) ||
-                    pairsPerSplit[split] >= minPairsPerSplit + (split < migrationPairsList.size() % numberOfSplits ? 1 : 0)) {
-                split++;
-                if (split >= numberOfSplits) {
-                    LOG.info("Not possible to split pairs optimally");
-                    int min_pairs = migrationPairsList.size();
-                    for (int i = 0; i < numberOfSplits; ++i) {
-                        if (pairsPerSplit[i] < min_pairs) {
-                            min_pairs = pairsPerSplit[i];
-                            split = i;
-                        }
+        if (autoSplit != null) {
+            int stepSize = autoSplit.s;
+            int parallel = Math.min(autoSplit.s, autoSplit.delta);
+            int index = 0;
+            int nMigrations = migrationPairsList.size() / parallel;
+            if (autoSplit.s >= autoSplit.delta) { // Case 1
+                for (ReconfigurationPair mPair : migrationPairsList) {
+                    int min = Math.min(mPair.from, mPair.to);
+                    int max = Math.max(mPair.from, mPair.to);
+                    index = (min * parallel + max) % stepSize;
+                    pairToSplitMapping.put(new Pair<Integer, Integer>(mPair.from, mPair.to), index);
+                }
+            } else if (autoSplit.r == 0) { // Case 2                
+                for (ReconfigurationPair mPair : migrationPairsList) {
+                    int min = Math.min(mPair.from, mPair.to);
+                    int max = Math.max(mPair.from, mPair.to);
+                    index = (min * parallel + max) % stepSize + stepSize * ((max-stepSize) / stepSize);  
+                    if (mPair.from > mPair.to) { // scale in
+                        index = nMigrations - index - 1;
                     }
-                    break;
+                    pairToSplitMapping.put(new Pair<Integer, Integer>(mPair.from, mPair.to), index);
+                }
+            } else { // Case 3              
+                for (ReconfigurationPair mPair : migrationPairsList) {
+                    int min = Math.min(mPair.from, mPair.to);
+                    int max = Math.max(mPair.from, mPair.to);
+                    index = (min * parallel + max) % stepSize + stepSize * ((max-stepSize) / stepSize); 
+                    if (index >= nMigrations - autoSplit.s) {
+                        index = (min * parallel + Math.max(max, nMigrations)) % stepSize + nMigrations - 1;
+                    }
+                    if (mPair.from > mPair.to) { // scale in
+                        index = nMigrations - index - 1;
+                    }
+                    pairToSplitMapping.put(new Pair<Integer, Integer>(mPair.from, mPair.to), index);
                 }
             }
-            splitPartitions.get(split).add(mPair.from);
-            splitPartitions.get(split).add(mPair.to);
-            pairsPerSplit[split]++;
-            pairToSplitMapping.put(new Pair<Integer, Integer>(mPair.from, mPair.to), split);
+            
+        }
+        else {
+            Collections.sort(migrationPairsList);
+
+            // Split pairs into groups based on numberOfSplits param
+            // desirable properties: 
+            // - a partition should only be involved in one migration per split
+            //    (e.g., if partition 1 sends to 2 and 3, <1,2> and <1,3> should be in different splits)           
+            // - The migration pairs should be distributed evenly between the splits
+            HashMap<Integer,Set<Integer>> splitPartitions = new HashMap<>();
+            for (int i = 0; i < numberOfSplits; ++i) splitPartitions.put(i, new HashSet<Integer>());
+            int[] pairsPerSplit = new int[numberOfSplits];
+
+            int minPairsPerSplit = migrationPairsList.size() / numberOfSplits;
+            for (ReconfigurationPair mPair : migrationPairsList) {
+                int split = 0;
+                while (splitPartitions.get(split).contains(mPair.from) || 
+                        splitPartitions.get(split).contains(mPair.to) ||
+                        pairsPerSplit[split] >= minPairsPerSplit + (split < migrationPairsList.size() % numberOfSplits ? 1 : 0)) {
+                    split++;
+                    if (split >= numberOfSplits) {
+                        LOG.info("Not possible to split pairs optimally");
+                        int min_pairs = migrationPairsList.size();
+                        for (int i = 0; i < numberOfSplits; ++i) {
+                            if (pairsPerSplit[i] < min_pairs) {
+                                min_pairs = pairsPerSplit[i];
+                                split = i;
+                            }
+                        }
+                        break;
+                    }
+                }
+                splitPartitions.get(split).add(mPair.from);
+                splitPartitions.get(split).add(mPair.to);
+                pairsPerSplit[split]++;
+                pairToSplitMapping.put(new Pair<Integer, Integer>(mPair.from, mPair.to), split);
+            }
         }
 
         return pairToSplitMapping;
     }
     
-    public static int getNumberOfSplits(ReconfigurationPlan plan, int partitionsPerSite, int numberOfSplits) {
+    public static class AutoSplit {
+        int s = 0;
+        int r = 0;
+        int delta = 0;        
+        int numberOfSplits = 0;
+    }
+    
+    public static AutoSplit getAutoSplit(ReconfigurationPlan plan, int partitionsPerSite, int numberOfSplits) {
         Set<Integer> incoming_partitions = plan.getIncoming_ranges().keySet();
         Set<Integer> outgoing_partitions = plan.getOutgoing_ranges().keySet();
         Iterator<Integer> incoming_iter = incoming_partitions.iterator();
         Iterator<Integer> outgoing_iter = outgoing_partitions.iterator();
+        AutoSplit as = new AutoSplit();
         
-        if (!incoming_iter.hasNext() || !outgoing_iter.hasNext()) return 0;
+        if (!incoming_iter.hasNext() || !outgoing_iter.hasNext()) return as;
             
-        int s, delta;
         if(incoming_iter.next() < outgoing_iter.next()) { // scale in
-            s = incoming_partitions.size() / partitionsPerSite;
-            delta = outgoing_partitions.size() / partitionsPerSite;
+            as.s = incoming_partitions.size() / partitionsPerSite;
+            as.delta = outgoing_partitions.size() / partitionsPerSite;
         }
         else { // scale out
-            s = outgoing_partitions.size() / partitionsPerSite;
-            delta = incoming_partitions.size() / partitionsPerSite;
+            as.s = outgoing_partitions.size() / partitionsPerSite;
+            as.delta = incoming_partitions.size() / partitionsPerSite;
         }
         
-        int r = delta % s;
-        if (s >= delta) { // case 1
+        as.r = as.delta % as.s;
+        if (as.s >= as.delta) { // case 1
             // in this case we want to interleave many reconfigurations to achieve 
             // theoretical effective capacity
-            return s * (1 + numberOfSplits);
+            as.numberOfSplits = as.s * (1 + numberOfSplits);
+            return as;
         }
-        if (r == 0) { // case 2
-            return s * (delta / s);
+        if (as.r == 0) { // case 2
+            as.numberOfSplits = as.s * (as.delta / as.s);
+            return as;
         }       
         // case 3
-        return s * (delta / s - 1) + r + s;
+        as.numberOfSplits = as.s * (as.delta / as.s - 1) + as.r + as.s;
+        return as;
     }
     
     public static List<ReconfigurationPlan> interleavePlans(List<ReconfigurationPlan> plans, int interleave) {
@@ -228,7 +278,11 @@ public class ReconfigurationUtil {
         }
         LOG.info(String.format("Pairs(%s): %s ", migrationPairs.size(), StringUtils.join(migrationPairs, ",")));
 
-        if (autoSplit) numberOfSplits = getNumberOfSplits(plan, partitionsPerSite, numberOfSplits);
+        AutoSplit as = null;
+        if (autoSplit) {
+            as = getAutoSplit(plan, partitionsPerSite, numberOfSplits);
+            numberOfSplits = as.numberOfSplits;
+        }
         
         // Limit the number of splits to number of pairs
         int extraSplits = 0;
@@ -239,7 +293,7 @@ public class ReconfigurationUtil {
         }
 
         // Now split up the pairs
-        Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = splitMigrationPairs(numberOfSplits, migrationPairs, autoSplit);
+        Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = splitMigrationPairs(numberOfSplits, migrationPairs, as);
         
         List<ReconfigurationPlan> splitPlans = new ArrayList<>();
         for (int i = 0; i < numberOfSplits; i++) {
