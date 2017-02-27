@@ -4,7 +4,9 @@
 package edu.brown.hstore.reconfiguration;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
@@ -64,6 +66,30 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         ReconfigurationPlan plan = p.setPartitionPlan(json_path2);
 
         ReconfigurationUtil.naiveSplitReconfigurationPlan(plan, 5, false, 1);
+    }
+    
+    @Test
+    public void testInterleavePlans() throws Exception {
+        List<ReconfigurationPlan> plans = new ArrayList<>();
+        for (int i = 0; i < 30; ++i) {
+            plans.add(new ReconfigurationPlan(catalogContext, new HashMap<String, String>()));
+        }
+        
+        Integer[] range = new Integer[]{ 0 };
+        for (int i = 0; i < 5; ++i) {
+            plans.get(i).addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 0, 3));
+            plans.get(5 + i).addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 1, 4));
+
+            plans.get(10 + i).addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 0, 4));
+            plans.get(15 + i).addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 2, 3));
+
+            plans.get(20 + i).addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 1, 3));        
+            plans.get(25 + i).addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 2, 4));
+        }
+        int interleave = 6;
+        List<ReconfigurationPlan> interleavedPlans = ReconfigurationUtil.interleavePlans(plans, interleave);
+        assertEquals(plans.size(), interleavedPlans.size());
+        System.out.println(interleavedPlans.toString());
     }
 
     @Test
