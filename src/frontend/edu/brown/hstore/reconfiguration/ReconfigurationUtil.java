@@ -263,7 +263,7 @@ public class ReconfigurationUtil {
     public static List<ReconfigurationPlan> interleavePlans(List<ReconfigurationPlan> plans, int interleave) {
         List<ReconfigurationPlan> interleavedPlans = new ArrayList<>();
         int skip = plans.size() / interleave;
-        for (int i = 0; i < interleave; ++i) {
+        for (int i = 0; i < skip; ++i) {
             for (int j = 0; j < interleave; ++j) {
                 interleavedPlans.add(plans.get(i + j * skip));
             }
