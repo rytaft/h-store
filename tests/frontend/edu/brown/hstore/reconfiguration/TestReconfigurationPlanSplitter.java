@@ -444,7 +444,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 3, 2));
         plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 4, 2));
         as = ReconfigurationUtil.getAutoSplit(plan, partitionsPerSite, numberOfSplits);
-        assertEquals(33, as);
+        assertEquals(33, as.numberOfSplits);
     }
     
     @Test
@@ -472,7 +472,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         int partitionsPerSite = 1;
         int numberOfSplits = 10;
         AutoSplit as = ReconfigurationUtil.getAutoSplit(plan, partitionsPerSite, numberOfSplits);
-        assertEquals(6, as);
+        assertEquals(6, as.numberOfSplits);
 
         plan = new ReconfigurationPlan(catalogContext, new HashMap<String, String>());
         plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 3, 0));
@@ -494,7 +494,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 7, 2));
         plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 8, 2));
         as = ReconfigurationUtil.getAutoSplit(plan, partitionsPerSite, numberOfSplits);
-        assertEquals(6, as);
+        assertEquals(6, as.numberOfSplits);
     }
     
     @Test
@@ -537,7 +537,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         int partitionsPerSite = 1;
         int numberOfSplits = 10;
         AutoSplit as = ReconfigurationUtil.getAutoSplit(plan, partitionsPerSite, numberOfSplits);
-        assertEquals(11, as);
+        assertEquals(11, as.numberOfSplits);
 
         plan = new ReconfigurationPlan(catalogContext, new HashMap<String, String>());
         plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 3, 0));
@@ -574,7 +574,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 12, 2));
         plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 13, 2));
         as = ReconfigurationUtil.getAutoSplit(plan, partitionsPerSite, numberOfSplits);
-        assertEquals(11, as);
+        assertEquals(11, as.numberOfSplits);
 }
     
     @Override
