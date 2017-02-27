@@ -89,7 +89,9 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         int interleave = 6;
         List<ReconfigurationPlan> interleavedPlans = ReconfigurationUtil.interleavePlans(plans, interleave);
         assertEquals(plans.size(), interleavedPlans.size());
-        System.out.println(interleavedPlans.toString());
+        for (ReconfigurationPlan plan : interleavedPlans) {
+            System.out.println(plan.getIncoming_ranges().toString());
+        }
     }
 
     @Test
