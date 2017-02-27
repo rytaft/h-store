@@ -52,21 +52,10 @@ public class ReconfigurationUtil {
             this.to = to;
         }
 
-        // order the pairs so that the highest partition sends to another high partition (if scaling in)
-        // or a low partition sends to the lowest partition first (if scaling out)
+        // order the pairs by the smaller partition first, and then by the larger partition
         @Override
         public int compareTo(ReconfigurationPair other) {
             if (this.from > this.to && other.from > other.to) { // scaling in
-                if (this.from > other.from) {
-                    return -1;
-                } else if (this.from < other.from) {
-                    return 1;
-                } else if (this.to > other.to) {
-                    return -1;
-                } else if (this.to < other.to) {
-                    return 1;
-                }
-            } else { // scaling out
                 if (this.to < other.to) {
                     return -1;
                 } else if (this.to > other.to) {
@@ -75,7 +64,17 @@ public class ReconfigurationUtil {
                     return -1;
                 } else if (this.from > other.from) {
                     return 1;
-                }
+                } 
+            } else { // scaling out
+                if (this.from < other.from) {
+                    return -1;
+                } else if (this.from > other.from) {
+                    return 1;
+                } else if (this.to < other.to) {
+                    return -1;
+                } else if (this.to > other.to) {
+                    return 1;
+                } 
             }
             return 0;
         }
@@ -150,22 +149,34 @@ public class ReconfigurationUtil {
                     }
                     pairToSplitMapping.put(new Pair<Integer, Integer>(mPair.from, mPair.to), index);
                 }
-            } else { // Case 3              
+            } else { // Case 3      
+                ArrayList<ReconfigurationPair> finalPhase = new ArrayList<>();
                 for (ReconfigurationPair mPair : migrationPairsList) {
                     int min = Math.min(mPair.from, mPair.to)/partitionsPerSite;
                     int max = Math.max(mPair.from, mPair.to)/partitionsPerSite;
                     index = (min * (stepSize-1) + max) % stepSize + stepSize * ((max-stepSize) / stepSize); 
                     if (index >= nMigrations - stepSize) {
-			max = (max <= nMigrations - autoSplit.r + min ? max + autoSplit.r - (min+1) % autoSplit.r : max);
-                        index = (min * (stepSize-1) + max - autoSplit.r) % stepSize + nMigrations - stepSize;
+                        finalPhase.add(mPair);
+                        continue;
                     }
                     if (mPair.from > mPair.to) { // scale in
                         index = nMigrations - index - 1;
                     }
                     pairToSplitMapping.put(new Pair<Integer, Integer>(mPair.from, mPair.to), index);
                 }
+                Collections.sort(finalPhase);
+                int max = 0;
+                for (ReconfigurationPair mPair : finalPhase) {
+                    int min = Math.min(mPair.from, mPair.to)/partitionsPerSite;
+                    index = (min * (stepSize-1) + max) % stepSize + nMigrations - stepSize;
+                    if (mPair.from > mPair.to) { // scale in
+                        index = nMigrations - index - 1;
+                    }
+                    pairToSplitMapping.put(new Pair<Integer, Integer>(mPair.from, mPair.to), index);
+                    max = (max + 1) % stepSize;
+                }
             }
-            
+
         }
         else {
             Collections.sort(migrationPairsList);
