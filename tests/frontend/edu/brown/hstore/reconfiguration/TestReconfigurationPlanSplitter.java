@@ -28,7 +28,7 @@ import edu.brown.utils.ProjectType;
  */
 public class TestReconfigurationPlanSplitter extends BaseTestCase {
 
-    
+
     private File json_path1;
 
     private File json_path2;
@@ -45,15 +45,15 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertTrue(pair1.equals(pair4));
         assertFalse(pair2.equals(pair3));
 
-	Set<ReconfigurationPair> reconfigPairs = new HashSet<>();
-	reconfigPairs.add(pair1);
-	reconfigPairs.add(pair2);
-	reconfigPairs.add(pair3);
-	reconfigPairs.add(pair4);
-	assertTrue(reconfigPairs.size() == 3);
+        Set<ReconfigurationPair> reconfigPairs = new HashSet<>();
+        reconfigPairs.add(pair1);
+        reconfigPairs.add(pair2);
+        reconfigPairs.add(pair3);
+        reconfigPairs.add(pair4);
+        assertTrue(reconfigPairs.size() == 3);
 
     }
-    
+
     /**
      * 
      */
@@ -62,17 +62,17 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         ExplicitPartitions p = new TwoTieredRangePartitions(catalogContext, json_path1);
         p.setPartitionPlan(json_path1);    
         ReconfigurationPlan plan = p.setPartitionPlan(json_path2);
-        
+
         ReconfigurationUtil.naiveSplitReconfigurationPlan(plan, 5, false, 1);
     }
-    
+
     /**
      * 
      */
     @Test
     public void testSplitMigrationPairs1() throws Exception{
         int numberOfSplits = 5;
-	int partitionsPerSite = 1;
+        int partitionsPerSite = 1;
         Set<ReconfigurationPair> migrationPairs = new HashSet<>();
         migrationPairs.add(new ReconfigurationPair(0,4));
         migrationPairs.add(new ReconfigurationPair(0,8));
@@ -82,9 +82,9 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         migrationPairs.add(new ReconfigurationPair(2,10));
         migrationPairs.add(new ReconfigurationPair(3,7));
         migrationPairs.add(new ReconfigurationPair(3,11));
-        
+
         Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = 
-	    ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, null, partitionsPerSite);
+                ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, null, partitionsPerSite);
         System.out.println(pairToSplitMapping.toString());
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(0,4)).equals(new Integer(0)));
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(1,5)).equals(new Integer(0)));
@@ -95,14 +95,14 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(2,10)).equals(new Integer(3)));
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(3,11)).equals(new Integer(4)));
     }
-    
+
     /**
      * 
      */
     @Test
     public void testSplitMigrationPairs2() throws Exception{
         int numberOfSplits = 5;
-	int partitionsPerSite = 1;
+        int partitionsPerSite = 1;
         Set<ReconfigurationPair> migrationPairs = new HashSet<>();
         migrationPairs.add(new ReconfigurationPair(4,0));
         migrationPairs.add(new ReconfigurationPair(8,0));
@@ -112,9 +112,9 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         migrationPairs.add(new ReconfigurationPair(10,2));
         migrationPairs.add(new ReconfigurationPair(7,3));
         migrationPairs.add(new ReconfigurationPair(11,3));
-        
+
         Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = 
-	    ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, null, partitionsPerSite);
+                ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, null, partitionsPerSite);
         System.out.println(pairToSplitMapping.toString());
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(4,0)).equals(new Integer(4)));
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(5,1)).equals(new Integer(3)));
@@ -125,15 +125,15 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(10,2)).equals(new Integer(0)));
         assertTrue(pairToSplitMapping.get(new Pair<Integer, Integer>(11,3)).equals(new Integer(0)));
     }
-    
+
     @Test
-	public void testSplitMigrationPairsCase1() throws Exception{
+    public void testSplitMigrationPairsCase1() throws Exception{
         AutoSplit as = new AutoSplit();
         as.s = 3;
         as.delta = 2;
         as.r = 2;
         as.numberOfSplits = 33;
-	int partitionsPerSite = 1;
+        int partitionsPerSite = 1;
 
         int numberOfSplits = 33;
         Set<ReconfigurationPair> migrationPairs = new HashSet<>();
@@ -143,9 +143,9 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         migrationPairs.add(new ReconfigurationPair(1, 4));
         migrationPairs.add(new ReconfigurationPair(2, 3));
         migrationPairs.add(new ReconfigurationPair(2, 4));       
-        
+
         Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = 
-	    ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
+                ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
         System.out.println(pairToSplitMapping.toString());
         assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 3)));
         assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 4)));
@@ -153,7 +153,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(1, 4)));
         assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 3)));
         assertEquals(new Integer(2), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 4)));    
-        
+
         // scale in
         migrationPairs = new HashSet<>();
         migrationPairs.add(new ReconfigurationPair(3, 0));
@@ -162,9 +162,9 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         migrationPairs.add(new ReconfigurationPair(4, 1));
         migrationPairs.add(new ReconfigurationPair(3, 2));
         migrationPairs.add(new ReconfigurationPair(4, 2));
-        
+
         pairToSplitMapping = 
-	    ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
+                ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
         System.out.println(pairToSplitMapping.toString());
         assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 0)));
         assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(4, 0)));
@@ -173,15 +173,15 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 2)));
         assertEquals(new Integer(2), pairToSplitMapping.get(new Pair<Integer, Integer>(4, 2)));
     }
-    
+
     @Test
-	public void testSplitMigrationPairsCase2() throws Exception{
+    public void testSplitMigrationPairsCase2() throws Exception{
         AutoSplit as = new AutoSplit();
         as.s = 3;
         as.delta = 6;
         as.r = 0;
         as.numberOfSplits = 6;
-	int partitionsPerSite = 1;
+        int partitionsPerSite = 1;
 
         int numberOfSplits = 6;
         Set<ReconfigurationPair> migrationPairs = new HashSet<>();
@@ -203,9 +203,9 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         migrationPairs.add(new ReconfigurationPair(2, 6));
         migrationPairs.add(new ReconfigurationPair(2, 7));
         migrationPairs.add(new ReconfigurationPair(2, 8));
-                
+
         Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = 
-	    ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
+                ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
         System.out.println(pairToSplitMapping.toString());
         assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 3)));
         assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 4)));
@@ -225,7 +225,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertEquals(new Integer(4), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 6)));
         assertEquals(new Integer(5), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 7)));
         assertEquals(new Integer(3), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 8)));  
-        
+
         // scale in
         migrationPairs = new HashSet<>();
         migrationPairs.add(new ReconfigurationPair(3, 0));
@@ -246,9 +246,9 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         migrationPairs.add(new ReconfigurationPair(6, 2));
         migrationPairs.add(new ReconfigurationPair(7, 2));
         migrationPairs.add(new ReconfigurationPair(8, 2));
-        
+
         pairToSplitMapping = 
-	    ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
+                ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
         System.out.println(pairToSplitMapping.toString());
         assertEquals(new Integer(5), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 0)));
         assertEquals(new Integer(4), pairToSplitMapping.get(new Pair<Integer, Integer>(4, 0)));
@@ -269,15 +269,15 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(7, 2)));
         assertEquals(new Integer(2), pairToSplitMapping.get(new Pair<Integer, Integer>(8, 2)));
     }
-    
+
     @Test
-	public void testSplitMigrationPairsCase3() throws Exception{
+    public void testSplitMigrationPairsCase3() throws Exception{
         AutoSplit as = new AutoSplit();
         as.s = 3;
         as.delta = 11;
         as.r = 2;
         as.numberOfSplits = 11;
-	int partitionsPerSite = 1;
+        int partitionsPerSite = 1;
 
         int numberOfSplits = 11;
         Set<ReconfigurationPair> migrationPairs = new HashSet<>();
@@ -316,7 +316,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         migrationPairs.add(new ReconfigurationPair(2, 13));
 
         Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = 
-	    ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
+                ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
         System.out.println(pairToSplitMapping.toString());
         assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 3)));
         assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 4)));
@@ -351,7 +351,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertEquals(new Integer(6), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 11)));
         assertEquals(new Integer(10), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 12)));
         assertEquals(new Integer(8), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 13)));    
-        
+
         // scale in
         migrationPairs = new HashSet<>();
         migrationPairs.add(new ReconfigurationPair(3, 0));
@@ -387,9 +387,9 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         migrationPairs.add(new ReconfigurationPair(11, 2));
         migrationPairs.add(new ReconfigurationPair(12, 2));
         migrationPairs.add(new ReconfigurationPair(13, 2));
-        
+
         pairToSplitMapping = 
-	    ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
+                ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
         System.out.println(pairToSplitMapping.toString());        
         assertEquals(new Integer(10), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 0)));
         assertEquals(new Integer(9), pairToSplitMapping.get(new Pair<Integer, Integer>(4, 0)));
@@ -425,9 +425,9 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(12, 2)));
         assertEquals(new Integer(2), pairToSplitMapping.get(new Pair<Integer, Integer>(13, 2)));
     }
-    
+
     @Test
-	public void testGetNumberOfSplitsCase1() throws Exception{
+    public void testGetNumberOfSplitsCase1() throws Exception{
         ReconfigurationPlan plan = new ReconfigurationPlan(catalogContext, new HashMap<String, String>());
         Integer[] range = new Integer[]{ 0 };
         plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 0, 3));
@@ -451,9 +451,9 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         as = ReconfigurationUtil.getAutoSplit(plan, partitionsPerSite, numberOfSplits);
         assertEquals(33, as.numberOfSplits);
     }
-    
+
     @Test
-	public void testGetNumberOfSplitsCase2() throws Exception{
+    public void testGetNumberOfSplitsCase2() throws Exception{
         ReconfigurationPlan plan = new ReconfigurationPlan(catalogContext, new HashMap<String, String>());
         Integer[] range = new Integer[]{ 0 };
         plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 0, 3));
@@ -501,9 +501,9 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         as = ReconfigurationUtil.getAutoSplit(plan, partitionsPerSite, numberOfSplits);
         assertEquals(6, as.numberOfSplits);
     }
-    
+
     @Test
-	public void testGetNumberOfSplitsCase3() throws Exception{
+    public void testGetNumberOfSplitsCase3() throws Exception{
         ReconfigurationPlan plan = new ReconfigurationPlan(catalogContext, new HashMap<String, String>());
         Integer[] range = new Integer[]{ 0 };
         plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 0, 3));
@@ -589,35 +589,35 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         as.delta = 1;
         as.r = 1;
         as.numberOfSplits = 33;
-	int partitionsPerSite = 1;
-        
+        int partitionsPerSite = 1;
+
         int numberOfSplits = 33;
         Set<ReconfigurationPair> migrationPairs = new HashSet<>();
         migrationPairs.add(new ReconfigurationPair(0, 3));
         migrationPairs.add(new ReconfigurationPair(1, 3));
         migrationPairs.add(new ReconfigurationPair(2, 3));
-        
+
         Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = 
                 ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
         System.out.println(pairToSplitMapping.toString());
         assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 3)));
         assertEquals(new Integer(2), pairToSplitMapping.get(new Pair<Integer, Integer>(1, 3)));
         assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 3)));
-        
+
         // scale in
         migrationPairs = new HashSet<>();
         migrationPairs.add(new ReconfigurationPair(3, 0));
         migrationPairs.add(new ReconfigurationPair(3, 1));
         migrationPairs.add(new ReconfigurationPair(3, 2));
-        
+
         pairToSplitMapping = 
                 ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
         System.out.println(pairToSplitMapping.toString());
         assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 0)));
         assertEquals(new Integer(2), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 1)));
         assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 2)));
-   }
-    
+    }
+
     @Test
     public void testSplitMigrationPairsCase2_2() throws Exception{
         AutoSplit as = new AutoSplit();
@@ -625,8 +625,8 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         as.delta = 2;
         as.r = 0;
         as.numberOfSplits = 2;
-	int partitionsPerSite = 3;
-        
+        int partitionsPerSite = 3;
+
         int numberOfSplits = 2;
         Set<ReconfigurationPair> migrationPairs = new HashSet<>();
         migrationPairs.add(new ReconfigurationPair(0, 3));
@@ -635,7 +635,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         migrationPairs.add(new ReconfigurationPair(1, 7));
         migrationPairs.add(new ReconfigurationPair(2, 5));
         migrationPairs.add(new ReconfigurationPair(2, 8));
-                
+
         Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = 
                 ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
         System.out.println(pairToSplitMapping.toString());
@@ -645,7 +645,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(1, 7)));
         assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 5)));
         assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 8)));  
-        
+
         // scale in
         migrationPairs = new HashSet<>();
         migrationPairs.add(new ReconfigurationPair(3, 0));
@@ -654,7 +654,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         migrationPairs.add(new ReconfigurationPair(7, 1));
         migrationPairs.add(new ReconfigurationPair(5, 2));
         migrationPairs.add(new ReconfigurationPair(8, 2));
-        
+
         pairToSplitMapping = 
                 ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
         System.out.println(pairToSplitMapping.toString());
@@ -665,7 +665,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(5, 2)));
         assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(8, 2)));
     }
-    
+
     @Test
     public void testSplitMigrationPairsCase3_2() throws Exception{
         AutoSplit as = new AutoSplit();
@@ -673,7 +673,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         as.delta = 10;
         as.r = 1;
         as.numberOfSplits = 10;
-	int partitionsPerSite = 1;        
+        int partitionsPerSite = 1;        
 
         int numberOfSplits = 10;
         Set<ReconfigurationPair> migrationPairs = new HashSet<>();
@@ -741,7 +741,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertEquals(new Integer(9), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 10)));
         assertEquals(new Integer(6), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 11)));
         assertEquals(new Integer(7), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 12)));
-        
+
         // scale in
         migrationPairs = new HashSet<>();
         migrationPairs.add(new ReconfigurationPair(3, 0));
@@ -774,7 +774,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         migrationPairs.add(new ReconfigurationPair(10, 2));
         migrationPairs.add(new ReconfigurationPair(11, 2));
         migrationPairs.add(new ReconfigurationPair(12, 2));
-        
+
         pairToSplitMapping = 
                 ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
         System.out.println(pairToSplitMapping.toString());        
@@ -809,7 +809,106 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         assertEquals(new Integer(3), pairToSplitMapping.get(new Pair<Integer, Integer>(11, 2)));
         assertEquals(new Integer(2), pairToSplitMapping.get(new Pair<Integer, Integer>(12, 2)));
     }
-    
+
+    @Test
+    public void testSplitMigrationPairsCase3_3() throws Exception{
+        AutoSplit as = new AutoSplit();
+        as.s = 5;
+        as.delta = 8;
+        as.r = 3;
+        as.numberOfSplits = 8;
+        int partitionsPerSite = 1;        
+
+        int numberOfSplits = 8;
+        Set<ReconfigurationPair> migrationPairs = new HashSet<>();
+        migrationPairs.add(new ReconfigurationPair(0, 5));
+        migrationPairs.add(new ReconfigurationPair(0, 6));
+        migrationPairs.add(new ReconfigurationPair(0, 7));
+        migrationPairs.add(new ReconfigurationPair(0, 8));
+        migrationPairs.add(new ReconfigurationPair(0, 9));
+        migrationPairs.add(new ReconfigurationPair(0, 10));
+        migrationPairs.add(new ReconfigurationPair(0, 11));
+        migrationPairs.add(new ReconfigurationPair(0, 12));
+        migrationPairs.add(new ReconfigurationPair(1, 5));
+        migrationPairs.add(new ReconfigurationPair(1, 6));
+        migrationPairs.add(new ReconfigurationPair(1, 7));
+        migrationPairs.add(new ReconfigurationPair(1, 8));
+        migrationPairs.add(new ReconfigurationPair(1, 9));
+        migrationPairs.add(new ReconfigurationPair(1, 10));
+        migrationPairs.add(new ReconfigurationPair(1, 11));
+        migrationPairs.add(new ReconfigurationPair(1, 12));
+        migrationPairs.add(new ReconfigurationPair(2, 5));
+        migrationPairs.add(new ReconfigurationPair(2, 6));
+        migrationPairs.add(new ReconfigurationPair(2, 7));
+        migrationPairs.add(new ReconfigurationPair(2, 8));
+        migrationPairs.add(new ReconfigurationPair(2, 9));
+        migrationPairs.add(new ReconfigurationPair(2, 10));
+        migrationPairs.add(new ReconfigurationPair(2, 11));
+        migrationPairs.add(new ReconfigurationPair(2, 12));
+        migrationPairs.add(new ReconfigurationPair(3, 5));
+        migrationPairs.add(new ReconfigurationPair(3, 6));
+        migrationPairs.add(new ReconfigurationPair(3, 7));
+        migrationPairs.add(new ReconfigurationPair(3, 8));
+        migrationPairs.add(new ReconfigurationPair(3, 9));
+        migrationPairs.add(new ReconfigurationPair(3, 10));
+        migrationPairs.add(new ReconfigurationPair(3, 11));
+        migrationPairs.add(new ReconfigurationPair(3, 12));
+        migrationPairs.add(new ReconfigurationPair(4, 5));
+        migrationPairs.add(new ReconfigurationPair(4, 6));
+        migrationPairs.add(new ReconfigurationPair(4, 7));
+        migrationPairs.add(new ReconfigurationPair(4, 8));
+        migrationPairs.add(new ReconfigurationPair(4, 9));
+        migrationPairs.add(new ReconfigurationPair(4, 10));
+        migrationPairs.add(new ReconfigurationPair(4, 11));
+        migrationPairs.add(new ReconfigurationPair(4, 12));
+
+        Map<Pair<Integer, Integer>, Integer> pairToSplitMapping = 
+                ReconfigurationUtil.splitMigrationPairs(numberOfSplits, migrationPairs, as, partitionsPerSite);
+        System.out.println(pairToSplitMapping.toString());
+        assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 5)));
+        assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 6)));
+        assertEquals(new Integer(2), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 7)));
+        assertEquals(new Integer(3), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 8)));
+        assertEquals(new Integer(4), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 9)));
+        assertEquals(new Integer(5), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 10)));
+        assertEquals(new Integer(6), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 11)));
+        assertEquals(new Integer(7), pairToSplitMapping.get(new Pair<Integer, Integer>(0, 12)));
+        assertEquals(new Integer(7), pairToSplitMapping.get(new Pair<Integer, Integer>(1, 5)));
+        assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(1, 6)));
+        assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(1, 7)));
+        assertEquals(new Integer(2), pairToSplitMapping.get(new Pair<Integer, Integer>(1, 8)));
+        assertEquals(new Integer(3), pairToSplitMapping.get(new Pair<Integer, Integer>(1, 9)));
+        assertEquals(new Integer(4), pairToSplitMapping.get(new Pair<Integer, Integer>(1, 10)));
+        assertEquals(new Integer(5), pairToSplitMapping.get(new Pair<Integer, Integer>(1, 11)));
+        assertEquals(new Integer(6), pairToSplitMapping.get(new Pair<Integer, Integer>(1, 12)));
+        assertEquals(new Integer(6), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 5)));
+        assertEquals(new Integer(7), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 6)));
+        assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 7)));
+        assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 8)));
+        assertEquals(new Integer(2), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 9)));
+        assertEquals(new Integer(3), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 10)));
+        assertEquals(new Integer(4), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 11)));
+        assertEquals(new Integer(5), pairToSplitMapping.get(new Pair<Integer, Integer>(2, 12)));
+        assertEquals(new Integer(2), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 5)));
+        assertEquals(new Integer(5), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 6)));
+        assertEquals(new Integer(6), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 7)));
+        assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 8)));
+        assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 9)));
+        assertEquals(new Integer(7), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 10)));
+        assertEquals(new Integer(3), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 11)));
+        assertEquals(new Integer(4), pairToSplitMapping.get(new Pair<Integer, Integer>(3, 12)));
+        assertEquals(new Integer(1), pairToSplitMapping.get(new Pair<Integer, Integer>(4, 5)));
+        assertEquals(new Integer(2), pairToSplitMapping.get(new Pair<Integer, Integer>(4, 6)));
+        assertEquals(new Integer(4), pairToSplitMapping.get(new Pair<Integer, Integer>(4, 7)));
+        assertEquals(new Integer(5), pairToSplitMapping.get(new Pair<Integer, Integer>(4, 8)));
+        assertEquals(new Integer(0), pairToSplitMapping.get(new Pair<Integer, Integer>(4, 9)));
+        assertEquals(new Integer(6), pairToSplitMapping.get(new Pair<Integer, Integer>(4, 10)));
+        assertEquals(new Integer(7), pairToSplitMapping.get(new Pair<Integer, Integer>(4, 11)));
+        assertEquals(new Integer(3), pairToSplitMapping.get(new Pair<Integer, Integer>(4, 12)));
+
+    }
+
+
     @Test
     public void testGetNumberOfSplitsCase1_2() throws Exception{
         ReconfigurationPlan plan = new ReconfigurationPlan(catalogContext, new HashMap<String, String>());
@@ -829,7 +928,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         as = ReconfigurationUtil.getAutoSplit(plan, partitionsPerSite, numberOfSplits);
         assertEquals(33, as.numberOfSplits);
     }
-    
+
     @Test
     public void testGetNumberOfSplitsCase2_2() throws Exception{
         ReconfigurationPlan plan = new ReconfigurationPlan(catalogContext, new HashMap<String, String>());
@@ -855,7 +954,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         as = ReconfigurationUtil.getAutoSplit(plan, partitionsPerSite, numberOfSplits);
         assertEquals(2, as.numberOfSplits);
     }
-    
+
     @Test
     public void testGetNumberOfSplitsCase3_2() throws Exception{
         ReconfigurationPlan plan = new ReconfigurationPlan(catalogContext, new HashMap<String, String>());
@@ -928,20 +1027,20 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
         plan.addRange(new ReconfigurationRange(catalogContext.getTableByName("usertable"), range, range, 12, 2));
         as = ReconfigurationUtil.getAutoSplit(plan, partitionsPerSite, numberOfSplits);
         assertEquals(10, as.numberOfSplits);
-}
-    
+    }
+
     @Override
     protected void setUp() throws Exception {
-      super.setUp(ProjectType.YCSB);
-      
+        super.setUp(ProjectType.YCSB);
 
-      String tmp_dir = System.getProperty("java.io.tmpdir");
-      json_path1 = FileUtil.join(tmp_dir, "test1.json");
-      FileUtil.writeStringToFile(json_path1, plan1);
-      json_path2 = FileUtil.join(tmp_dir, "test2.json");
-      FileUtil.writeStringToFile(json_path2, plan2);
+
+        String tmp_dir = System.getProperty("java.io.tmpdir");
+        json_path1 = FileUtil.join(tmp_dir, "test1.json");
+        FileUtil.writeStringToFile(json_path1, plan1);
+        json_path2 = FileUtil.join(tmp_dir, "test2.json");
+        FileUtil.writeStringToFile(json_path2, plan2);
     }
-    
+
     String plan1 = "{" 
             + "\"partition_plan\": {" 
             + "    \"tables\": {" 
@@ -983,7 +1082,7 @@ public class TestReconfigurationPlanSplitter extends BaseTestCase {
             + "  }, " 
             + "  \"default_table\": \"usertable\"" 
             + "}";
-    
+
     String plan2 = "{" 
             + "\"partition_plan\": {" 
             + "\"tables\":{" 
