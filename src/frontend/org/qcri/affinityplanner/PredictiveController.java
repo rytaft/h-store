@@ -69,9 +69,9 @@ public class PredictiveController {
 
     // The following 3 parameters need to be consistent with each other:
     // (1) Time in milliseconds for collecting historical load data and making a prediction:
-    public static int MONITORING_TIME = 6000;  //(e.g. 3000 ms = 3 sec = 30 sec B2W-time)
+    public static int MONITORING_TIME = 3000;  //(e.g. 3000 ms = 3 sec = 30 sec B2W-time)
     // (2) Number of data points to predict into the future 
-    public static int NUM_PREDS_AHEAD = 120;  // (e.g. for MONITORING_TIME=3000, to predict 1hour => NUM_PREDS_AHEAD = 120 pts)
+    public static int NUM_PREDS_AHEAD = 240;  // (e.g. for MONITORING_TIME=3000, to predict 1hour => NUM_PREDS_AHEAD = 120 pts)
     // (3) Fitted model coefficients, based on (1) rate [Temporarily hard-coded] 
     public static String MODEL_COEFFS_FILE = "/home/nosayba/h-store/src/frontend/org/qcri/affinityplanner/prediction_model_coeffs.txt";
 
