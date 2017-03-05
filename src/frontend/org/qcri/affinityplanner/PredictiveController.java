@@ -60,7 +60,23 @@ public class PredictiveController {
     public static long MAX_CAPACITY_PER_PART = Long.MAX_VALUE;
     public static int DB_MIGRATION_TIME = Integer.MAX_VALUE;
 
-    public static int MONITORING_TIME = 1000;
+   	
+	// Prediction variables
+    public static String LOAD_HIST = "agg_load_hist_preds.csv";
+    public static int N_HISTORICAL_OBS = 30;
+    public ArrayList<Long> historyNLoads = new  ArrayList<>();
+    public static boolean firstPrediction = true;
+
+    // The following 3 parameters need to be consistent with each other:
+    // (1) Time in milliseconds for collecting historical load data and making a prediction:
+    public static int MONITORING_TIME = 6000;  //(e.g. 3000 ms = 3 sec = 30 sec B2W-time)
+    // (2) Number of data points to predict into the future 
+    public static int NUM_PREDS_AHEAD = 120;  // (e.g. for MONITORING_TIME=3000, to predict 1hour => NUM_PREDS_AHEAD = 120 pts)
+    // (3) Fitted model coefficients, based on (1) rate [Temporarily hard-coded] 
+    public static String MODEL_COEFFS_FILE = "/home/nosayba/h-store/src/frontend/org/qcri/affinityplanner/prediction_model_coeffs.txt";
+
+
+
 
     public class SquallMove {
         public String new_plan;
@@ -136,6 +152,7 @@ public class PredictiveController {
 
         // TODO use currnt plan file for conversion of moves
         File planFile = new File (PLAN_IN);
+        File loadHistFile = new File(LOAD_HIST);
 
         String[] confNames = {"site.txn_counters"};
         String[] confValues = {"true"};
@@ -150,23 +167,30 @@ public class PredictiveController {
         }
 
         while (true){
-            if(true /*if reconfiguration is ongoing*/){ // TODO detect that reconfig is ongoing
+            try {
+              Thread.sleep(MONITORING_TIME);
+            } catch (InterruptedException e) {
+              record("sleeping interrupted while monitoring");
+              System.exit(1);
+            }
+
+            if(false /*if reconfiguration is ongoing*/){ // TODO detect that reconfig is ongoing
                 continue;
             }
-            else if (!m_next_moves.isEmpty()){
-                SquallMove next_move = m_next_moves.pop();
-                long sleep_time = next_move.start_time - System.currentTimeMillis();
-                if (sleep_time > 0){
-                    try {
-                        Thread.sleep(sleep_time);
-                    } catch (InterruptedException e) {
-                        record("sleeping interrupted while waiting for next move");
-                        System.exit(1);
-                    }
-                }
-
-                reconfig(next_move.new_plan);
-            }
+            // else if (!m_next_moves.isEmpty()){
+            //     SquallMove next_move = m_next_moves.pop();
+            //     long sleep_time = next_move.start_time - System.currentTimeMillis();
+            //     if (sleep_time > 0){
+            //         try {
+            //             Thread.sleep(sleep_time);
+            //         } catch (InterruptedException e) {
+            //             record("sleeping interrupted while waiting for next move");
+            //             System.exit(1);
+            //         }
+            //     }
+            //
+            //     reconfig(next_move.new_plan);
+            // }
             else {
                 try {
                     cresponse = m_client.callProcedure("@Statistics", "TXNCOUNTER", 0);
@@ -184,18 +208,22 @@ public class PredictiveController {
                 for (int i = 0; i < result.getRowCount(); i++) {
                     VoltTableRow row = result.fetchRow(i);
                     String procedure = row.getString(3);
+
                     if (procedure.charAt(0) == '@') {
-                        // don't count invocactions to system procedures
+                        // don't count invocations to system procedures
                         continue;
                     }
 
                     int hostId = (int) row.getLong(1);
+
+                    // { 4=RECEIVED | 5=REJECTED | 6=REDIRECTED | 7=EXECUTED | 8=COMPLETED }
                     long load = row.getLong(4);
 
                     currLoads[hostId] = currLoads[hostId] + load;
                     if (hostId > activeSites && load > 0) {
                         activeSites = hostId;
                     }
+                    //record("hostid=" + hostId + " -- procedure=" + procedure + " -- load=" + load);
                 }
                 activeSites++;
 
@@ -205,28 +233,61 @@ public class PredictiveController {
                 }
                 m_previousLoads = currLoads;
 
-                // TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
-                // TODO the inputs and outputs of these steps should be serialized to a file
-
-                // launch predictor
-                // TODO implement this method
-                ArrayList<Long> predictedLoad = m_predictor.predictLoad(totalLoad);
-
+                // For debugging purposes
+                record(" >> totalLoad =" + totalLoad );
+                
+                if( firstPrediction ){
+                	firstPrediction = false;
+                }
+                else{
+                	historyNLoads.add( (long) totalLoad );
+                  
+					// TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
+					// TODO the inputs and outputs of these steps should be serialized to a file
+					
+					// launch predictor
+					// TODO implement this method
+					ArrayList<Long> predictedLoad = m_predictor.predictLoad(historyNLoads, NUM_PREDS_AHEAD, MODEL_COEFFS_FILE);
+					
+					if(predictedLoad != null){
+					     	System.out.println(">> Predictions: ");
+					     	//System.out.println(predictedLoad.toString());
+					     	//System.out.println();
+					     	
+					     	//System.out.print(totalLoad + ",");
+					     	for (int i = 0; i < predictedLoad.size(); i++) {
+					     		if( i != predictedLoad.size() - 1){ System.out.print(predictedLoad.get(i) + ",");}
+					     		else{ System.out.println(predictedLoad.get(i)); }
+							}
+					     	
+					        try {
+					            FileUtil.appendStringToFile(loadHistFile, totalLoad+",");
+					            for (int i = 0; i < predictedLoad.size(); i++) {
+					         		if( i != predictedLoad.size() - 1){ FileUtil.appendStringToFile(loadHistFile,predictedLoad.get(i) + ",");}
+					         		else{ FileUtil.appendStringToFile(loadHistFile,predictedLoad.get(i) + "\n"); }
+								}
+					  		} catch (IOException e) {
+								record("Problem logging load/predictions");
+								e.printStackTrace();
+							}
+                 }
+                
+                
                 // launch planner and get the moves
-                ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
+                // ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
+                // if(moves.isEmpty()){
+                //     try {
+                //         Thread.sleep(MONITORING_TIME);
+                //     } catch (InterruptedException e) {
+                //         record("sleeping interrupted while monitoring");
+                //         System.exit(1);
+                //     }
+                // }
+                // else {
+                //     m_next_moves = convert(planFile, moves);
+                // }
+              }
 
-                if(moves.isEmpty()){
-                    try {
-                        Thread.sleep(MONITORING_TIME);
-                    } catch (InterruptedException e) {
-                        record("sleeping interrupted while monitoring");
-                        System.exit(1);
-                    }
-                }
-
-                else {
-                    m_next_moves = convert(planFile, moves);
-                }
             }
         }
     }
@@ -289,7 +350,7 @@ public class PredictiveController {
             ReconfigurationPlanner planner = new ReconfigurationPlanner(plan, move.nodes * PARTITIONS_PER_SITE, PARTITIONS_PER_SITE);
             planner.repartition();
             try {
-                plan = planner.getPlanString();                
+                plan = planner.getPlanString();
             } catch (JSONException e) {
                 record("ERROR: Failed to convert plan to string " + e.getMessage());
                 continue;
