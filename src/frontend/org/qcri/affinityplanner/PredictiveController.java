@@ -348,6 +348,10 @@ public class PredictiveController {
         LinkedList<SquallMove> squallMoves = new LinkedList<>();
         String plan = FileUtil.readFile(planFile);
         for (Move move : moves) {
+            if (move.nodes > m_sites.size()) {
+                record("ERROR: required number of nodes (" + move.nodes + ") exceeds number of sites (" + m_sites.size() + ")");
+                move.nodes = m_sites.size();
+            }
             ReconfigurationPlanner planner = new ReconfigurationPlanner(plan, move.nodes * PARTITIONS_PER_SITE, PARTITIONS_PER_SITE);
             planner.repartition();
             try {
@@ -364,6 +368,10 @@ public class PredictiveController {
     private LinkedList<SquallMove> convert(File planFile, int nodes){
         LinkedList<SquallMove> squallMoves = new LinkedList<>();
         String plan = FileUtil.readFile(planFile);
+        if (nodes > m_sites.size()) {
+            record("ERROR: required number of nodes (" + nodes + ") exceeds number of sites (" + m_sites.size() + ")");
+            nodes = m_sites.size();
+        }
         ReconfigurationPlanner planner = new ReconfigurationPlanner(plan, nodes * PARTITIONS_PER_SITE, PARTITIONS_PER_SITE);
         planner.repartition();
         try {
