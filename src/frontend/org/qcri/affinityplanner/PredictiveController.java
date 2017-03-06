@@ -60,8 +60,8 @@ public class PredictiveController {
     public static long MAX_CAPACITY_PER_PART = 2222L; //Long.MAX_VALUE;
     public static int DB_MIGRATION_TIME = 1000; //Integer.MAX_VALUE;
 
-   	
-	// Prediction variables
+
+    // Prediction variables
     public static String LOAD_HIST = "agg_load_hist_preds.csv";
     public static int N_HISTORICAL_OBS = 30;
     public ArrayList<Long> historyNLoads = new  ArrayList<>();
@@ -123,7 +123,7 @@ public class PredictiveController {
 
         if (hstore_conf.global.hasher_plan != null) {
             PLAN_IN = hstore_conf.global.hasher_plan;
-//            LOG.info("Updating plan_in to be " + PLAN_IN);
+            //            LOG.info("Updating plan_in to be " + PLAN_IN);
         }
         else{
             System.out.println("No plan specified. Exiting");
@@ -168,29 +168,30 @@ public class PredictiveController {
 
         while (true){
             try {
-		Thread.sleep(MONITORING_TIME);
+                Thread.sleep(MONITORING_TIME);
             } catch (InterruptedException e) {
-		record("sleeping interrupted while monitoring");
-		System.exit(1);
+                record("sleeping interrupted while monitoring");
+                System.exit(1);
             }
 
             if(false /*if reconfiguration is ongoing*/){ // TODO detect that reconfig is ongoing
                 continue;
             }
-	    else if (m_next_moves != null && !m_next_moves.isEmpty()){
-		SquallMove next_move = m_next_moves.pop();
-		long sleep_time = next_move.start_time - System.currentTimeMillis();
-		if (sleep_time > 0){
-		    try {
-			Thread.sleep(sleep_time);
-		    } catch (InterruptedException e) {
-			record("sleeping interrupted while waiting for next move");
-			System.exit(1);
-		    }
-		}
-		
-		reconfig(next_move.new_plan);
-	    }
+            else if (m_next_moves != null && !m_next_moves.isEmpty()){
+                SquallMove next_move = m_next_moves.pop();
+                long sleep_time = next_move.start_time * MONITORING_TIME - System.currentTimeMillis();
+                if (sleep_time > 0){
+                    try {
+                        Thread.sleep(sleep_time);
+                    } catch (InterruptedException e) {
+                        record("sleeping interrupted while waiting for next move");
+                        System.exit(1);
+                    }
+                }
+
+                record("Moving to plan: " + next_move.new_plan);
+                reconfig(next_move.new_plan);
+            }
             else {
                 try {
                     cresponse = m_client.callProcedure("@Statistics", "TXNCOUNTER", 0);
@@ -235,65 +236,62 @@ public class PredictiveController {
 
                 // For debugging purposes
                 record(" >> totalLoad =" + totalLoad );
-                
+
                 if( firstPrediction ){
-		    firstPrediction = false;
+                    firstPrediction = false;
                 }
                 else{
-		    historyNLoads.add( (long) totalLoad );
-			
-		    // TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
-		    // TODO the inputs and outputs of these steps should be serialized to a file
-		    
-		    // launch predictor
-		    // TODO implement this method
-		    ArrayList<Long> predictedLoad = m_predictor.predictLoad(historyNLoads, NUM_PREDS_AHEAD, MODEL_COEFFS_FILE);
-		    
-		    if(predictedLoad != null){
-			System.out.println(">> Predictions: ");
-			//System.out.println(predictedLoad.toString());
-			//System.out.println();
-			
-			//System.out.print(totalLoad + ",");
-			for (int i = 0; i < predictedLoad.size(); i++) {
-			    if( i != predictedLoad.size() - 1){ System.out.print(predictedLoad.get(i) + ",");}
-			    else{ System.out.println(predictedLoad.get(i)); }
-			}
-			
-			try {
-			    FileUtil.appendStringToFile(loadHistFile, totalLoad+",");
-			    for (int i = 0; i < predictedLoad.size(); i++) {
-				if( i != predictedLoad.size() - 1){ FileUtil.appendStringToFile(loadHistFile,predictedLoad.get(i) + ",");}
-				else{ FileUtil.appendStringToFile(loadHistFile,predictedLoad.get(i) + "\n"); }
-			    }
-			} catch (IOException e) {
-			    record("Problem logging load/predictions");
-			    e.printStackTrace();
-			}
+                    historyNLoads.add( (long) totalLoad );
 
-			// launch planner and get the moves
-			ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
-			if(moves == null || moves.isEmpty()){
-			    try {
-				Thread.sleep(MONITORING_TIME);
-			    } catch (InterruptedException e) {
-				record("sleeping interrupted while monitoring");
-				System.exit(1);
-			    }
-			}
-			else {
-			    record("Moves: " + moves.toString());
-			    m_next_moves = convert(planFile, moves);
-			}
-			
-		    }
-		    
-		}
-		
+                    // TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
+                    // TODO the inputs and outputs of these steps should be serialized to a file
+
+                    // launch predictor
+                    // TODO implement this method
+                    ArrayList<Long> predictedLoad = m_predictor.predictLoad(historyNLoads, NUM_PREDS_AHEAD, MODEL_COEFFS_FILE);
+
+                    if(predictedLoad != null){
+                        System.out.println(">> Predictions: ");
+                        //System.out.println(predictedLoad.toString());
+                        //System.out.println();
+
+                        //System.out.print(totalLoad + ",");
+                        for (int i = 0; i < predictedLoad.size(); i++) {
+                            if( i != predictedLoad.size() - 1){ System.out.print(predictedLoad.get(i) + ",");}
+                            else{ System.out.println(predictedLoad.get(i)); }
+                        }
+
+                        try {
+                            FileUtil.appendStringToFile(loadHistFile, totalLoad+",");
+                            for (int i = 0; i < predictedLoad.size(); i++) {
+                                if( i != predictedLoad.size() - 1){ FileUtil.appendStringToFile(loadHistFile,predictedLoad.get(i) + ",");}
+                                else{ FileUtil.appendStringToFile(loadHistFile,predictedLoad.get(i) + "\n"); }
+                            }
+                        } catch (IOException e) {
+                            record("Problem logging load/predictions");
+                            e.printStackTrace();
+                        }
+
+                        // launch planner and get the moves
+                        ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
+                        if(moves == null || moves.isEmpty()){
+                            // reactive migration
+                            record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
+                            m_next_moves = convert(planFile, m_planner.getMaxNodes());
+                        }
+                        else {
+                            record("Moves: " + moves.toString());
+                            m_next_moves = convert(planFile, moves);
+                        }
+
+                    }
+
+                }
+
             }
         }
     }
-    
+
     public static void record(String s){
         System.out.println(s);
         FileUtil.appendEventToFile(s);
@@ -321,8 +319,8 @@ public class PredictiveController {
         ClientResponse cresponse = null;
         try {
             // TODO should compare with PLAN_IN before reconfiguring
-	    //            String outputPlan = FileUtil.readFile(new_plan);
-	    //            cresponse = m_client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
+            //            String outputPlan = FileUtil.readFile(new_plan);
+            //            cresponse = m_client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "livepull");
             cresponse = m_client.callProcedure("@ReconfigurationRemote", 0, new_plan, "livepull");
             //cresponse = client.callProcedure("@ReconfigurationRemote", 0, outputPlan, "stopcopy");
             record("Controller: received response: " + cresponse);
@@ -360,6 +358,21 @@ public class PredictiveController {
             }
             squallMoves.add(new SquallMove(plan, move.time));
         }
+        return squallMoves;
+    }
+    
+    private LinkedList<SquallMove> convert(File planFile, int nodes){
+        LinkedList<SquallMove> squallMoves = new LinkedList<>();
+        String plan = FileUtil.readFile(planFile);
+        ReconfigurationPlanner planner = new ReconfigurationPlanner(plan, nodes * PARTITIONS_PER_SITE, PARTITIONS_PER_SITE);
+        planner.repartition();
+        try {
+            plan = planner.getPlanString();
+        } catch (JSONException e) {
+            record("ERROR: Failed to convert plan to string " + e.getMessage());
+            return squallMoves;
+        }
+        squallMoves.add(new SquallMove(plan, 0));
         return squallMoves;
     }
 

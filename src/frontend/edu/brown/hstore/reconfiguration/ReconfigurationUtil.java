@@ -224,6 +224,12 @@ public class ReconfigurationUtil {
         int r = 0;
         int delta = 0;        
         int numberOfSplits = 0;
+        
+        @Override
+        public String toString() {
+            return "Small cluster size (s): " + s + ", Remainder (r): " + r 
+                    + ", Delta: " + delta + ", Number of splits: " + numberOfSplits;
+        }
     }
     
     public static AutoSplit getAutoSplit(ReconfigurationPlan plan, int partitionsPerSite, int numberOfSplits) {
@@ -257,6 +263,7 @@ public class ReconfigurationUtil {
         }       
         // case 3
         as.numberOfSplits = as.s * (as.delta / as.s - 1) + as.r + as.s;
+        LOG.info("AutoSplit: " + as.toString());
         return as;
     }
     
@@ -272,8 +279,27 @@ public class ReconfigurationUtil {
         for (int i = interleavedPlans.size(); i < plans.size(); ++i) {
             interleavedPlans.add(plans.get(i));
         }
+        
+        debugSplits(interleavedPlans);
         return interleavedPlans;
     }
+    
+    // Print the migration pairs in each split (source and destination partitions)
+    private static void debugSplits(List<ReconfigurationPlan> plans) {
+        int j = 0;
+        for (ReconfigurationPlan plan : plans) {
+
+            Set<Pair<Integer, Integer>> debugSendingData = new HashSet<>();
+            for (Entry<Integer, List<ReconfigurationRange>> entry : plan.getIncoming_ranges().entrySet()) {
+                for (ReconfigurationRange range : entry.getValue()) {
+                    debugSendingData.add(new Pair<Integer, Integer>(range.getOldPartition(), range.getNewPartition()));
+                }
+            }
+            LOG.info(String.format("PlanSplit:%s has the pairs(%s): %s", j, debugSendingData.size(), StringUtils.join(debugSendingData, ",")));
+            ++j;
+        }
+    }
+    
     
     public static List<ReconfigurationPlan> naiveSplitReconfigurationPlan(ReconfigurationPlan plan, int numberOfSplits, boolean autoSplit, int partitionsPerSite) {
         // The list of partition pairs that exchange data
@@ -322,17 +348,7 @@ public class ReconfigurationUtil {
             }
         }
 
-        // DEBUG
-        for (int j = 0; j < numberOfSplits; j++) {
-
-            Set<Pair<Integer, Integer>> debugSendingData = new HashSet<>();
-            for (Entry<Integer, List<ReconfigurationRange>> entry : splitPlans.get(j).getIncoming_ranges().entrySet()) {
-                for (ReconfigurationRange range : entry.getValue()) {
-                    debugSendingData.add(new Pair<Integer, Integer>(range.getOldPartition(), range.getNewPartition()));
-                }
-            }
-            LOG.info(String.format("PlanSplit:%s has the pairs(%s): %s", j, debugSendingData.size(), StringUtils.join(debugSendingData, ",")));
-        }
+        debugSplits(splitPlans);
 
         if (splitPlans.size() > 0 && extraSplits > 0) {
             int extraSplitsPerPlan = extraSplits / splitPlans.size();
