@@ -223,12 +223,19 @@ public class ReconfigurationUtil {
         int s = 0;
         int r = 0;
         int delta = 0;        
-        int numberOfSplits = 0;
+     
+        // the number of splits needed to accommodate all migration pairs 
+        // with maximum parallel migration
+        int numberOfSplits = 0; 
+        
+        // extra splits for case 1 (delta <= s)
+        int extraSplits = 0;
         
         @Override
         public String toString() {
             return "Small cluster size (s): " + s + ", Remainder (r): " + r 
-                    + ", Delta: " + delta + ", Number of splits: " + numberOfSplits;
+                    + ", Delta: " + delta + ", Number of splits: " + numberOfSplits
+                    + ", Extra splits: " + extraSplits;
         }
     }
     
@@ -254,7 +261,8 @@ public class ReconfigurationUtil {
         if (as.s >= as.delta) { // case 1
             // in this case we want to interleave many reconfigurations to achieve 
             // theoretical effective capacity
-            as.numberOfSplits = as.s * (1 + numberOfSplits);
+            as.numberOfSplits = as.s;
+            as.extraSplits = as.s * numberOfSplits;
             return as;
         }
         if (as.r == 0) { // case 2
@@ -317,17 +325,18 @@ public class ReconfigurationUtil {
         LOG.info(String.format("Pairs(%s): %s ", migrationPairs.size(), StringUtils.join(migrationPairs, ",")));
 
         AutoSplit as = null;
+        int extraSplits = 0;
         if (autoSplit) {
             as = getAutoSplit(plan, partitionsPerSite, numberOfSplits);
             numberOfSplits = as.numberOfSplits;
-        }
-        
-        // Limit the number of splits to number of pairs
-        int extraSplits = 0;
-        if (numberOfSplits > migrationPairs.size()) {
-            extraSplits = numberOfSplits - migrationPairs.size();
-            numberOfSplits = migrationPairs.size();
-            LOG.info("Limiting number of pair splits to " + numberOfSplits);
+            extraSplits = as.extraSplits;
+        } else {        
+            // Limit the number of splits to number of pairs
+            if (numberOfSplits > migrationPairs.size()) {
+                extraSplits = numberOfSplits - migrationPairs.size();
+                numberOfSplits = migrationPairs.size();
+                LOG.info("Limiting number of pair splits to " + numberOfSplits);
+            }
         }
 
         // Now split up the pairs
@@ -554,7 +563,7 @@ public class ReconfigurationUtil {
             int rangeIndex = 0;
             for (ReconfigurationRange range : explicitPartitionedTablesRanges) {
                 
-                int splitIndex = numberOfSplits * rangeIndex / numRanges;
+                int splitIndex = rangeIndex % numberOfSplits;
                 ReconfigurationPlan newPlan = splitPlans.get(splitIndex);
 
                 newPlan.addRange(range);
