@@ -363,11 +363,10 @@ public class PredictiveController {
                 planner.repartition();
                 try {
                     plan = planner.getPlanString();
+                    squallMoves.add(new SquallMove(plan, moveStart));
                 } catch (JSONException e) {
                     record("ERROR: Failed to convert plan to string " + e.getMessage());
-                    continue;
-                }
-                squallMoves.add(new SquallMove(plan, moveStart));
+                }               
             }
             
             // calculate the start time for the next move, and save current number of nodes
