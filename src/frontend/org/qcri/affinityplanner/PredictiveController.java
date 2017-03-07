@@ -179,7 +179,7 @@ public class PredictiveController {
             }
             else if (m_next_moves != null && !m_next_moves.isEmpty()){
                 SquallMove next_move = m_next_moves.pop();
-                long sleep_time = next_move.start_time * MONITORING_TIME - System.currentTimeMillis();
+                long sleep_time = next_move.start_time - System.currentTimeMillis();
                 if (sleep_time > 0){
                     try {
                         Thread.sleep(sleep_time);
@@ -347,6 +347,8 @@ public class PredictiveController {
     private LinkedList<SquallMove> convert(File planFile, ArrayList<Move> moves){
         LinkedList<SquallMove> squallMoves = new LinkedList<>();
         String plan = FileUtil.readFile(planFile);
+        long currentTime = System.currentTimeMillis();
+        long moveStart = currentTime;
         for (Move move : moves) {
             // skip the first "move" since this represents the current state
             if (move.time == 0) continue;         
@@ -363,7 +365,10 @@ public class PredictiveController {
                 record("ERROR: Failed to convert plan to string " + e.getMessage());
                 continue;
             }
-            squallMoves.add(new SquallMove(plan, move.time));
+            squallMoves.add(new SquallMove(plan, moveStart));
+            
+            // calculate the start time for the next move
+            moveStart = move.time * MONITORING_TIME + currentTime;
         }
         return squallMoves;
     }
@@ -383,7 +388,7 @@ public class PredictiveController {
             record("ERROR: Failed to convert plan to string " + e.getMessage());
             return squallMoves;
         }
-        squallMoves.add(new SquallMove(plan, 0));
+        squallMoves.add(new SquallMove(plan, System.currentTimeMillis()));
         return squallMoves;
     }
 
