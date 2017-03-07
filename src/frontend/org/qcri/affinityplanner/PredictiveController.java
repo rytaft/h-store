@@ -348,6 +348,9 @@ public class PredictiveController {
         LinkedList<SquallMove> squallMoves = new LinkedList<>();
         String plan = FileUtil.readFile(planFile);
         for (Move move : moves) {
+            // skip the first "move" since this represents the current state
+            if (move.time == 0) continue;         
+            
             if (move.nodes > m_sites.size()) {
                 record("ERROR: required number of nodes (" + move.nodes + ") exceeds number of sites (" + m_sites.size() + ")");
                 move.nodes = m_sites.size();
