@@ -240,8 +240,15 @@ public class ReconfigurationUtil {
     }
     
     public static AutoSplit getAutoSplit(ReconfigurationPlan plan, int partitionsPerSite, int numberOfSplits) {
-        Set<Integer> incoming_partitions = plan.getIncoming_ranges().keySet();
-        Set<Integer> outgoing_partitions = plan.getOutgoing_ranges().keySet();
+        Set<Integer> incoming_partitions = new HashSet<>();
+        for (Entry<Integer, List<ReconfigurationRange>> entry : plan.getIncoming_ranges().entrySet()) {
+            if (!entry.getValue().isEmpty()) incoming_partitions.add(entry.getKey());
+        }                   
+        Set<Integer> outgoing_partitions = new HashSet<>();
+        for (Entry<Integer, List<ReconfigurationRange>> entry : plan.getOutgoing_ranges().entrySet()) {
+            if (!entry.getValue().isEmpty()) outgoing_partitions.add(entry.getKey());
+        }
+        
         Iterator<Integer> incoming_iter = incoming_partitions.iterator();
         Iterator<Integer> outgoing_iter = outgoing_partitions.iterator();
         AutoSplit as = new AutoSplit();
