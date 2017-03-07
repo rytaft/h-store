@@ -228,7 +228,7 @@ public class ReconfigurationUtil {
         // with maximum parallel migration
         int numberOfSplits = 0; 
         
-        // extra splits for case 1 (delta <= s)
+        // extra splits for case 1 (delta < s)
         int extraSplits = 0;
         
         @Override
@@ -258,7 +258,7 @@ public class ReconfigurationUtil {
         }
         
         as.r = as.delta % as.s;
-        if (as.s >= as.delta) { // case 1
+        if (as.s > as.delta) { // case 1
             // in this case we want to interleave many reconfigurations to achieve 
             // theoretical effective capacity
             as.numberOfSplits = as.s;
