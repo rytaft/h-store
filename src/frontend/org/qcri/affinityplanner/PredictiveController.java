@@ -119,7 +119,7 @@ public class PredictiveController {
         }
         MAX_PARTITIONS++;
 
-        m_planner = new ReconfigurationPredictor(MAX_CAPACITY_PER_PART, new SingleThreadedMigration(DB_MIGRATION_TIME));
+        m_planner = new ReconfigurationPredictor(MAX_CAPACITY_PER_PART, new ParallelMigration(PARTITIONS_PER_SITE, DB_MIGRATION_TIME));
 
         if (hstore_conf.global.hasher_plan != null) {
             PLAN_IN = hstore_conf.global.hasher_plan;
