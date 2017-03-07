@@ -263,14 +263,11 @@ public class ReconfigurationUtil {
             // theoretical effective capacity
             as.numberOfSplits = as.s;
             as.extraSplits = as.s * numberOfSplits;
-            return as;
         }
-        if (as.r == 0) { // case 2
-            as.numberOfSplits = as.s * (as.delta / as.s);
-            return as;
-        }       
-        // case 3
-        as.numberOfSplits = as.s * (as.delta / as.s - 1) + as.r + as.s;
+        else { // cases 2 and 3           
+            as.numberOfSplits = as.s * (as.delta / as.s) + as.r;
+        }
+        
         LOG.info("AutoSplit: " + as.toString());
         return as;
     }
@@ -368,7 +365,7 @@ public class ReconfigurationUtil {
                 splitPlansAgain.addAll(fineGrainedSplitReconfigurationPlan(splitPlan, extraSplitsPerPlan + extra));
                 extraSplitsRemainder--;
             }
-            if (autoSplit) splitPlansAgain = interleavePlans(splitPlansAgain, migrationPairs.size());
+            if (autoSplit) splitPlansAgain = interleavePlans(splitPlansAgain, numberOfSplits);
             return splitPlansAgain;
         }
 

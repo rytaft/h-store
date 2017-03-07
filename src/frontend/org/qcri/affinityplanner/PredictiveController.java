@@ -281,7 +281,7 @@ public class PredictiveController {
                         }
                         else {
                             record("Moves: " + moves.toString());
-                            m_next_moves = convert(planFile, moves);
+                            m_next_moves = convert(planFile, moves, activeSites);
                         }
 
                     }
@@ -344,31 +344,35 @@ public class PredictiveController {
         }
     }
 
-    private LinkedList<SquallMove> convert(File planFile, ArrayList<Move> moves){
+    private LinkedList<SquallMove> convert(File planFile, ArrayList<Move> moves, int activeSites){
         LinkedList<SquallMove> squallMoves = new LinkedList<>();
         String plan = FileUtil.readFile(planFile);
         long currentTime = System.currentTimeMillis();
         long moveStart = currentTime;
+        int prevNodes = activeSites;
         for (Move move : moves) {
-            // skip the first "move" since this represents the current state
-            if (move.time == 0) continue;         
-            
             if (move.nodes > m_sites.size()) {
                 record("ERROR: required number of nodes (" + move.nodes + ") exceeds number of sites (" + m_sites.size() + ")");
                 move.nodes = m_sites.size();
             }
-            ReconfigurationPlanner planner = new ReconfigurationPlanner(plan, move.nodes * PARTITIONS_PER_SITE, PARTITIONS_PER_SITE);
-            planner.repartition();
-            try {
-                plan = planner.getPlanString();
-            } catch (JSONException e) {
-                record("ERROR: Failed to convert plan to string " + e.getMessage());
-                continue;
-            }
-            squallMoves.add(new SquallMove(plan, moveStart));
             
-            // calculate the start time for the next move
+            // skip no-op moves
+            if (move.nodes != prevNodes)  {
+                ReconfigurationPlanner planner = new ReconfigurationPlanner(plan, move.nodes * PARTITIONS_PER_SITE, PARTITIONS_PER_SITE);
+
+                planner.repartition();
+                try {
+                    plan = planner.getPlanString();
+                } catch (JSONException e) {
+                    record("ERROR: Failed to convert plan to string " + e.getMessage());
+                    continue;
+                }
+                squallMoves.add(new SquallMove(plan, moveStart));
+            }
+            
+            // calculate the start time for the next move, and save current number of nodes
             moveStart = move.time * MONITORING_TIME + currentTime;
+            prevNodes = move.nodes;
         }
         return squallMoves;
     }
