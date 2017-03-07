@@ -181,6 +181,7 @@ public class PredictiveController {
                 SquallMove next_move = m_next_moves.pop();
                 long sleep_time = next_move.start_time - System.currentTimeMillis();
                 if (sleep_time > 0){
+                    record("Sleeping for " + sleep_time + " ms");
                     try {
                         Thread.sleep(sleep_time);
                     } catch (InterruptedException e) {
