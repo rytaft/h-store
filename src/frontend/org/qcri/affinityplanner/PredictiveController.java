@@ -192,6 +192,14 @@ public class PredictiveController {
 
                 record("Moving to plan: " + next_move.new_plan);
                 reconfig(next_move.new_plan);
+
+                try {
+                    FileUtil.writeStringToFile(planFile, next_move.new_plan);
+                } catch (IOException e) {
+                    record("Unable to write new plan file");
+                    record(stackTraceToString(e));
+                    System.exit(1);
+                }
             }
             else {
                 try {
