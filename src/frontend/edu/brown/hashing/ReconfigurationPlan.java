@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.apache.log4j.Logger;
 import org.voltdb.CatalogContext;
@@ -163,6 +164,39 @@ public class ReconfigurationPlan {
     public ReconfigurationRange findReconfigurationRange(String table_name, List<Object> ids) throws Exception {
         return findReconfigurationRange(table_name, ids, this.range_map, this.catalogContext, this.enclosing_range);
     }
+    
+    /**
+     * Find the reconfiguration range for a key
+     * 
+     * @return the reconfiguration range or null if no match could be found
+     */
+    public static ReconfigurationRange findReconfigurationRangeConcurrent(String table_name, List<Object> ids, 
+            ConcurrentSkipListMap<ReconfigurationRange,String> range_map, CatalogContext catalogContext) {
+        try {
+            if(range_map == null) {
+                return null;
+            }
+            
+            Object[] keys = ids.toArray();
+            ReconfigurationRange range = new ReconfigurationRange(catalogContext.getTableByName(table_name), keys, keys, 0, 0);
+
+            ReconfigurationRange precedingRange = range_map.floorKey(range);
+            if (precedingRange != null && precedingRange.table_name.equalsIgnoreCase(table_name) && precedingRange.inRange(keys)) {
+                return precedingRange;
+            }
+
+            ReconfigurationRange followingRange = range_map.ceilingKey(range);
+            if (followingRange != null && followingRange.table_name.equalsIgnoreCase(table_name) && followingRange.inRange(keys)) {
+                return followingRange;
+            }
+
+        } catch (Exception e) {
+            LOG.error(String.format("Error looking up reconfiguration range. Table:%s Ids:%s", table_name, ids), e);
+        }
+
+        return null;
+    }
+
     
     /**
      * Find the reconfiguration range for a key
@@ -663,6 +697,10 @@ public class ReconfigurationPlan {
 
         @Override
         public int compareTo(ReconfigurationRange o) {
+            if (table_name != null && !table_name.equals(o.table_name)) {
+                return table_name.compareTo(o.table_name);
+            }
+            
             int min_incl_cmp = cmp.compare(this.smallest_min_incl, o.smallest_min_incl);
             if (min_incl_cmp < 0) {
                 return -1;
