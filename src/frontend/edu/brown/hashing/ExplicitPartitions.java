@@ -422,40 +422,33 @@ public abstract class ExplicitPartitions {
     public CatalogContext getCatalogContext() {
         return this.catalog_context;
     }
-
-    public void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan) {
+    
+    public List<PartitionRange> getNewRanges(ReconfigurationPlan reconfigurationPlan) {
         if (reconfigurationPlan == null) {
-            this.reconfigurationPlan = null;
-            synchronized(this) {
-                this.previousIncrementalPlan = null;
-                this.incrementalPlan = null;
-            }
-            return;
+            return null;
         }
-
+        
         if (this.reconfigurationPlan != null && reconfigurationPlan.equals(this.reconfigurationPlan)) {
             LOG.debug("plan already set");
-            return;
+            return null;
         }
-
-        this.reconfigurationPlan = reconfigurationPlan;
+        assert (reconfigurationPlan.range_map != null) : "Null reconfiguration range map";
+        
         Map<String, PartitionedTable> tables_map;
+        tables_map = this.getPreviousPlan().tables_map;
         synchronized(this) {
-            if (this.incrementalPlan == null) {
-                this.previousIncrementalPlan = this.getPreviousPlan();
-                this.incrementalPlan = this.getPreviousPlan();
+            if (this.incrementalPlan != null) {
+                tables_map = this.incrementalPlan.tables_map;
             }
-            tables_map = this.incrementalPlan.tables_map;
         }
-        assert (this.reconfigurationPlan.range_map != null) : "Null reconfiguration range map";
-
+              
         List<PartitionRange> newRanges = new ArrayList<PartitionRange>();
         for (Map.Entry<String, PartitionedTable> tables : tables_map.entrySet()) {
             String table_name = tables.getKey();
             Iterator<PartitionRange> partitionRanges = tables.getValue().getRanges().iterator();
             Iterator<ReconfigurationRange> reconfigRanges;
-            if (this.reconfigurationPlan.range_map.get(table_name) != null) {
-                reconfigRanges = this.reconfigurationPlan.range_map.get(table_name).iterator();
+            if (reconfigurationPlan.range_map.get(table_name) != null) {
+                reconfigRanges = reconfigurationPlan.range_map.get(table_name).iterator();
             } else {
                 newRanges.addAll(tables.getValue().getRanges());
                 continue;
@@ -521,7 +514,32 @@ public abstract class ExplicitPartitions {
         }
 
         LOG.debug("New incremental plan ranges: " + newRanges.toString());
+        return newRanges;
+    }
 
+    public void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan, List<PartitionRange> newRanges) {
+        if (reconfigurationPlan == null) {
+            this.reconfigurationPlan = null;
+            synchronized(this) {
+                this.previousIncrementalPlan = null;
+                this.incrementalPlan = null;
+            }
+            return;
+        }
+
+        if (this.reconfigurationPlan != null && reconfigurationPlan.equals(this.reconfigurationPlan)) {
+            LOG.debug("plan already set");
+            return;
+        }
+
+        this.reconfigurationPlan = reconfigurationPlan;
+        synchronized(this) {
+            if (this.incrementalPlan == null) {
+                this.previousIncrementalPlan = this.getPreviousPlan();
+                this.incrementalPlan = this.getPreviousPlan();
+            }
+        }     
+        
         try {
             PartitionPhase new_plan = new PartitionPhase(this.catalog_context, newRanges, this.partitionedTablesByFK);
             synchronized(this) {

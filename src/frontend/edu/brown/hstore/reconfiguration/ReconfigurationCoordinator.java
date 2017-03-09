@@ -34,6 +34,7 @@ import edu.brown.hashing.ExplicitHasher;
 import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.PlannedHasher;
 import edu.brown.hashing.ReconfigurationPlan;
+import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hashing.TwoTieredRangeHasher;
 import edu.brown.hstore.HStoreSite;
@@ -413,9 +414,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         long siteStart = System.currentTimeMillis();
                         int siteKBSent = 0;
                         //turn off local executions
+                        List<PartitionRange> newRanges = this.planned_partitions.getNewRanges(reconfig_plan);
                         for (PartitionExecutor executor : this.local_executors) {
                             //TODO hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId())
-                            executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
+                            executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions, newRanges);
                             this.partitionStates.put(partitionId, ReconfigurationState.PREPARE);
                         }
                         //push outgoing ranges for all local PEs
@@ -499,9 +501,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             this.num_sites_complete = 0;
                             this.sites_complete = new HashSet<Integer>();
                         }
-                        hasher.getPartitions().setReconfigurationPlan(reconfig_plan);
+                        List<PartitionRange> newRanges = hasher.getPartitions().getNewRanges(reconfig_plan);
+                        hasher.getPartitions().setReconfigurationPlan(reconfig_plan, newRanges);
                         for (PartitionExecutor executor : this.local_executors) {
-                            executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
+                            executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions, newRanges);
                             this.partitionStates.put(partitionId, ReconfigurationState.PREPARE);
                         }
 
@@ -796,9 +799,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
             if(rplan != null) {
 
                 this.reconfigurationDonePartitionIds.clear();
-                this.planned_partitions.setReconfigurationPlan(rplan);
+                List<PartitionRange> newRanges = this.planned_partitions.getNewRanges(rplan);
+                this.planned_partitions.setReconfigurationPlan(rplan, newRanges);
                 ReconfigUtilRequestMessage reconfigUtilMsg = new ReconfigUtilRequestMessage(RequestType.INIT_RECONFIGURATION, rplan, 
-            			reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions);
+            			reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions, newRanges);
                 
             	for (PartitionExecutor executor : this.local_executors) {
                 	executor.queueReconfigUtilRequest(reconfigUtilMsg);                 
@@ -821,7 +825,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     	showReconfigurationProfiler(true);
     	this.setInReconfiguration(false);
         LOG.info("Clearing the reconfiguration state for each partition at the site");
-        this.planned_partitions.setReconfigurationPlan(null);
+        this.planned_partitions.setReconfigurationPlan(null,null);
         ReconfigUtilRequestMessage reconfigUtilMsg = new ReconfigUtilRequestMessage(RequestType.END_RECONFIGURATION);
     	for (PartitionExecutor executor : this.local_executors) {
         	executor.queueReconfigUtilRequest(reconfigUtilMsg);

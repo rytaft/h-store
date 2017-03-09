@@ -132,6 +132,7 @@ import edu.brown.catalog.special.CountedStatement;
 import edu.brown.hashing.ExplicitHasher;
 import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.PlannedPartitions.PartitionKeyComparator;
+import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
 import edu.brown.hstore.Hstoreservice.AsyncPullRequest;
@@ -3431,7 +3432,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     	case INIT_RECONFIGURATION:
     		try {
     			initReconfiguration(reconfigUtilMsg.getReconfigPlan(), reconfigUtilMsg.getReconfigProtocol(), 
-    					reconfigUtilMsg.getReconfigState(), reconfigUtilMsg.getExplicitPartitions());
+    					reconfigUtilMsg.getReconfigState(), reconfigUtilMsg.getExplicitPartitions(),
+    					reconfigUtilMsg.getNewRanges());
     		} catch(Exception ex) {
     			throw new RuntimeException("Unexpected error when initializing reconfiguration", ex);
     		}
@@ -6458,7 +6460,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     public void initReconfiguration(ReconfigurationPlan reconfig_plan, ReconfigurationProtocols reconfig_protocol, 
-            ReconfigurationState reconfig_state, ExplicitPartitions planned_partitions)
+            ReconfigurationState reconfig_state, ExplicitPartitions planned_partitions, List<PartitionRange> newRanges)
             throws Exception {
         // FIXME (ae) We need to check with Andy about concurrency issues here
         LOG.info(String.format("PE %s InitReconfiguration plan  %s %s", this.partitionId, reconfig_protocol, reconfig_state));
@@ -6478,7 +6480,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.incoming_ranges = reconfig_plan.getIncoming_ranges().get(this.partitionId);
         this.reconfiguration_tracker = new ReconfigurationTracking(planned_partitions, reconfig_plan, this.partitionId);
         if(this.p_estimator.getHasher() instanceof ExplicitHasher) {
-        	((ExplicitHasher) this.p_estimator.getHasher()).getPartitions().setReconfigurationPlan(reconfig_plan);
+        	((ExplicitHasher) this.p_estimator.getHasher()).getPartitions().setReconfigurationPlan(reconfig_plan, newRanges);
         }
         this.queue_async_pulls = false;
         if (asyncOutstanding.getAndSet(false)){
@@ -6566,7 +6568,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.inReconfiguration = false;
 
         if(this.p_estimator.getHasher() instanceof ExplicitHasher) {
-        	((ExplicitHasher) this.p_estimator.getHasher()).getPartitions().setReconfigurationPlan(null);
+        	((ExplicitHasher) this.p_estimator.getHasher()).getPartitions().setReconfigurationPlan(null,null);
         }
 
         if (this.currentDtxn != null){

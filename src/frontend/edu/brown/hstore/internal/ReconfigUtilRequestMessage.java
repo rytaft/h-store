@@ -1,7 +1,10 @@
 package edu.brown.hstore.internal;
 
+import java.util.List;
+
 import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.ReconfigurationPlan;
+import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
 import edu.brown.hstore.reconfiguration.ReconfigurationCoordinator.ReconfigurationState;
 import edu.brown.profilers.ProfileMeasurement;
@@ -17,6 +20,7 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
 	private ReconfigurationProtocols reconfig_protocol;
 	private ReconfigurationState reconfig_state;
 	private ExplicitPartitions planned_partitions;
+	private List<PartitionRange> newRanges;
 	public long createTime;
     
     
@@ -25,7 +29,8 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
     		ReconfigurationPlan reconfig_plan, 
     		ReconfigurationProtocols reconfig_protocol, 
             ReconfigurationState reconfig_state, 
-            ExplicitPartitions planned_partitions) {
+            ExplicitPartitions planned_partitions,
+            List<PartitionRange> newRanges) {
         super();
         this.createTime = ProfileMeasurement.getTime();
         this.requestType = requestType;
@@ -33,6 +38,7 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
         this.reconfig_protocol = reconfig_protocol;
         this.reconfig_state = reconfig_state;
         this.planned_partitions = planned_partitions;
+        this.newRanges = newRanges;
     }
     
     public ReconfigUtilRequestMessage(RequestType requestType) {
@@ -43,6 +49,7 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
         this.reconfig_protocol = null;
         this.reconfig_state = null;
         this.planned_partitions = null;
+        this.newRanges = null;
     }
 
     public long getQueueTime(){
@@ -67,6 +74,10 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
     
     public ExplicitPartitions getExplicitPartitions() {
     	return planned_partitions;
+    }
+    
+    public List<PartitionRange> getNewRanges() {
+        return newRanges;
     }
     
 }
