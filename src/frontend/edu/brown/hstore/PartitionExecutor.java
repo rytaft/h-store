@@ -1429,6 +1429,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @param work
      */
     private final void processInternalMessage(InternalMessage work) {
+        long startTime = System.currentTimeMillis();
         
         // -------------------------------
         // UTILITY WORK
@@ -1707,6 +1708,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             String msg = "Unexpected work message in queue: " + work;
             throw new ServerFaultException(msg, this.currentTxnId);
         }
+        
+        LOG.info("Completed " + work.getClass().getSimpleName() + " work in " + (System.currentTimeMillis() - startTime) + " ms");
     }
 
     /**
