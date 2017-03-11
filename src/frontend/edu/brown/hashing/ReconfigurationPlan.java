@@ -327,6 +327,10 @@ public class ReconfigurationPlan {
             }
         }
         
+        public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table) throws Exception {
+            this(catalogContext, old_table, new_table, null);
+        }
+         
         public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table, List<String> relatedTables) throws Exception {
             this.catalogContext = catalogContext;
             table_name = old_table.table_name;
