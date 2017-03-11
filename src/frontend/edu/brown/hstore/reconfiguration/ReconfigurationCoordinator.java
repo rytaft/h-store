@@ -144,6 +144,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private Map<Integer,Integer>  livePullKBMap;
     
     private List<ReconfigurationPlan> reconfigPlanQueue;
+    private ReconfigurationPlan nextPlan;
+    private List<PartitionRange> newRanges;
+    private Object nextPlanLock = new Object();
     private int reconfig_split = 1;
     private boolean auto_split = true;
     private TransactionQueueManager queueManager;
@@ -152,14 +155,22 @@ public class ReconfigurationCoordinator implements Shutdownable {
     
     public class SendNextPlan extends Thread {
         private long sleep_time;
+        private ReconfigurationPlan next_plan;
+        private ExplicitPartitions partitions;
 
-        public SendNextPlan(long sleep_time) { 
+        public SendNextPlan(long sleep_time, ReconfigurationPlan next_plan, ExplicitPartitions partitions) { 
             super("SendNext");
             this.sleep_time = sleep_time;
+            this.next_plan = next_plan;
+            this.partitions = partitions;
         }
         
     	public void run() {
     		try {
+                List<PartitionRange> new_ranges = this.partitions.getNewRanges(next_plan);                    
+                setNextPlan(next_plan);
+                setNewRanges(new_ranges);                    
+
                 Thread.sleep(sleep_time);
             } catch (InterruptedException e) {
                 LOG.error("Error sleeping", e);
@@ -215,6 +226,39 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
     }
 
+    public class NextPlanCalculator extends Thread {
+        
+        private ReconfigurationPlan next_plan;
+        private ExplicitPartitions partitions;
+        
+        public NextPlanCalculator(ReconfigurationPlan next_plan, ExplicitPartitions partitions) { 
+            super("NextPlanCalculator");
+            this.next_plan = next_plan;
+            this.partitions = partitions;
+        }
+        
+        public void run() {
+            
+            try {   
+                if (next_plan != null) {                    
+                    List<PartitionRange> new_ranges = this.partitions.getNewRanges(next_plan);                    
+                    setNextPlan(next_plan);
+                    setNewRanges(new_ranges);                    
+                } else {
+                    FileUtil.appendEventToFile("Null Reconfig plan");
+                    LOG.info("No reconfig plan, nothing to do");
+                }
+
+            } catch (Exception e) {
+                LOG.error("Exception converting plan", e);
+                throw new RuntimeException(e);
+            }
+
+            LOG.info("Next plan calculator complete");
+        }
+    }
+
+    
     // -------------------------------------------
     //  INITIALIZATION FUNCTIONS 
     // -------------------------------------------
@@ -251,6 +295,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.rcRequestId = 1;
         this.reconfigurationDonePartitionIds = new HashSet<Integer>();
         this.reconfigPlanQueue = new ArrayList<>();
+        this.nextPlan = null;
+        this.newRanges = null;
         this.reconfigurationDoneSites = new HashSet<Integer>();
         
         dataPullResponseTimes = new HashMap<>(); 
@@ -613,27 +659,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
         LOG.info(" ## ** ReconfigurationSysProcTerminate");
     }
    
-    /**
-     * For live pull protocol move the state to Data Transfer Mode For Stop and
-     * Copy, move reconfiguration into Prepare Mode
-     */
-    public void prepareReconfiguration() {
-        if (this.reconfigurationInProgress.get()) {
-            if (this.reconfigurationProtocol == ReconfigurationProtocols.LIVEPULL) {
-                // Move the reconfiguration state to data transfer and data will
-                // be
-                // pulled based on
-                // demand form the destination
-                this.reconfigurationState = ReconfigurationState.DATA_TRANSFER;
-            } else if (this.reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
-                // First set the state to send control messages
-                LOG.info("Preparing STOPCOPY reconfiguration");
-                this.reconfigurationState = ReconfigurationState.PREPARE;
-                this.sendPrepare(this.findDestinationSites());
-            }
-        }
-    }
-
     // -------------------------------------------
     //  TERMINATION / CLEANUP / NEXT PHASE FUNCTIONS 
     // -------------------------------------------
@@ -697,7 +722,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
         	} else{
         		this.channels[destinationId].reconfigurationControlMsg(controller, leaderCallback, null);
         		FileUtil.appendEventToFile("RECONFIGURATION_SITE_DONE, siteId="+this.hstore_site.getSiteId());
-                
+    
+        		if (this.reconfigurationInProgress.compareAndSet(true, false)) {
+        		    if (hasNextReconfigPlan()) {
+        		        NextPlanCalculator nextPlanCalculator = new NextPlanCalculator(checkForAdditionalReconfigs(), this.planned_partitions);
+        		        nextPlanCalculator.start();
+        		    }
+        		}
         	}
         }
     }
@@ -774,9 +805,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     this.reconfigurationDoneSites.clear();
                 }
                 //sendNextPlanToAllSites();
-                this.setInReconfiguration(false);
-                SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
-                send.start();
+                if (this.reconfigurationInProgress.compareAndSet(true, false)) {
+                    this.setInReconfiguration(false);
+                    SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay, checkForAdditionalReconfigs(), this.planned_partitions);
+                    send.start();
+                }
             } else { 
                 LOG.info("All sites have reported that reconfiguration is complete "); 
                 LOG.info("Sending a message to notify all sites that reconfiguration has ended");
@@ -797,15 +830,17 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
     
     public void receiveNextReconfigurationPlanFromLeader() {
-        ReconfigurationPlan rplan = checkForAdditionalReconfigs();
+        ReconfigurationPlan rplan = getNextPlan(true);
+        List<PartitionRange> ranges = getNewRanges(true);
+        setNextPlan(null);
+        setNewRanges(null);
         try {            
             if(rplan != null) {
 
                 this.reconfigurationDonePartitionIds.clear();
-                List<PartitionRange> newRanges = this.planned_partitions.getNewRanges(rplan);
-                this.planned_partitions.setReconfigurationPlan(rplan, newRanges);
+                this.planned_partitions.setReconfigurationPlan(rplan, ranges);
                 ReconfigUtilRequestMessage reconfigUtilMsg = new ReconfigUtilRequestMessage(RequestType.INIT_RECONFIGURATION, rplan, 
-            			reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions, newRanges);
+            			reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions, ranges);
                 
             	for (PartitionExecutor executor : this.local_executors) {
                 	executor.queueReconfigUtilRequest(reconfigUtilMsg);                 
@@ -864,9 +899,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 }
                 //FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
                 //sendNextPlanToAllSites();
-                this.setInReconfiguration(false);
-                SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay);
-                send.start();
+                if (this.reconfigurationInProgress.compareAndSet(true, false)) {
+                    this.setInReconfiguration(false);
+                    SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay, checkForAdditionalReconfigs(), this.planned_partitions);
+                    send.start();
+                }
             } else { 
                 LOG.info("All sites have reported reconfiguration is complete. " +
                         "Sending a message to notify all sites that reconfiguration has ended");
@@ -1355,54 +1392,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
         return destinationSites;
     }
 
-    /**
-     * Send prepare messages to all destination sites for Stop and Copy
-     * 
-     * @param destinationHostNames
-     */
-    public void sendPrepare(ArrayList<Integer> destinationSites) {
-        if (this.reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
-            LOG.info("Send prepare for STOPCOPY");
-            for (Integer destinationId : destinationSites) {
-                // Send a control message to start the reconfiguration
-
-                ProtoRpcController controller = new ProtoRpcController();
-                ReconfigurationRequest reconfigurationRequest = ReconfigurationRequest.newBuilder().setSenderSite
-                        (this.localSiteId).setT0S(System.currentTimeMillis()).build();
-
-                this.channels[destinationId].reconfiguration(controller, reconfigurationRequest, this.reconfigurationRequestCallback);
-            }
-        }
-    }
-
-
-    /**
-     * used for bulk transfer during stop and copy
-     */
-    public void bulkDataTransfer() {
-        if (this.reconfigurationProtocol == ReconfigurationProtocols.STOPCOPY) {
-            LOG.error("Empty bulk data transfer for STOPCOPY");
-            // bulk transfer the table data
-            // by calling on transfer for each partition of the site
-        }
-    }
-
-
-    private final RpcCallback<ReconfigurationResponse> reconfigurationRequestCallback = new RpcCallback<ReconfigurationResponse>() {
-        @Override
-        public void run(ReconfigurationResponse msg) {
-            int senderId = msg.getSenderSite();
-            ReconfigurationCoordinator.this.destinationsReady.add(senderId);
-            if (ReconfigurationCoordinator.this.reconfigurationInProgress.get() && ReconfigurationCoordinator.this.reconfigurationState == ReconfigurationState.PREPARE
-                    && ReconfigurationCoordinator.this.destinationsReady.size() == ReconfigurationCoordinator.this.destinationSize) {
-                ReconfigurationCoordinator.this.reconfigurationState = ReconfigurationState.DATA_TRANSFER;
-                // bulk data transfer for stop and copy after each destination
-                // is ready
-                ReconfigurationCoordinator.this.bulkDataTransfer();
-            }
-        }
-    };
-
     private final RpcCallback<DataTransferResponse> dataTransferRequestCallback = new RpcCallback<DataTransferResponse>() {
         @Override
         public void run(DataTransferResponse msg) {
@@ -1585,6 +1574,75 @@ public class ReconfigurationCoordinator implements Shutdownable {
         return live_pull;
     }
     
+    public ReconfigurationPlan getNextPlan(boolean blocking) {
+        if (blocking) {
+            ReconfigurationPlan plan = null;
+            synchronized(nextPlanLock) {
+                plan = this.nextPlan;
+            }
+            int tries = 0;
+            int max_tries = 20;
+            long sleep_time = 50;
+            while (plan == null && tries < max_tries) {
+                try {
+                    Thread.sleep(sleep_time);
+                    synchronized(nextPlanLock) {
+                        plan = this.nextPlan;
+                    }
+                    tries++;
+                } catch (InterruptedException e) {
+                    LOG.error("Error sleeping", e);
+                }
+            }
+            return plan;
+        }
+        else {
+            synchronized(nextPlanLock) {
+                return this.nextPlan;
+            }
+        }
+    }
+    
+    public void setNextPlan(ReconfigurationPlan next_plan) {
+        synchronized(nextPlanLock) {            
+            this.nextPlan = next_plan;
+        }
+    }
+
+    public List<PartitionRange> getNewRanges(boolean blocking) {
+        if (blocking) {
+            List<PartitionRange> ranges = null;
+            synchronized(nextPlanLock) {
+                ranges = this.newRanges;
+            }
+            int tries = 0;
+            int max_tries = 20;
+            long sleep_time = 50;
+            while (ranges == null && tries < max_tries) {
+                try {
+                    Thread.sleep(sleep_time);
+                    synchronized(nextPlanLock) {
+                        ranges = this.newRanges;
+                    }
+                    tries++;
+                } catch (InterruptedException e) {
+                    LOG.error("Error sleeping", e);
+                }
+            }
+            return ranges;
+        }
+        else {
+            synchronized(nextPlanLock) {
+                return this.newRanges;
+            }
+        }
+    }
+    
+    public void setNewRanges(List<PartitionRange> ranges) {
+        synchronized(nextPlanLock) {            
+            this.newRanges = ranges;
+        }
+    }
 
     
     public boolean areAbortsEnabledForStopCopy(){
