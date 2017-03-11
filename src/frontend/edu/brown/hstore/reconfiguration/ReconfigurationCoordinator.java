@@ -210,6 +210,13 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         reconfigPlanQueue.add(reconfig_plan);
                     }
 
+                    if (hasNextReconfigPlan()){
+                        ReconfigurationPlan next_plan = checkForAdditionalReconfigs();
+                        List<PartitionRange> new_ranges = this.partitions.getNewRanges(next_plan);                    
+                        setNextPlan(next_plan);
+                        setNewRanges(new_ranges);                        
+                    }
+                    
                     receiveNextReconfigurationPlanFromLeader();
                     
                 } else {
