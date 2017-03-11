@@ -731,6 +731,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         		FileUtil.appendEventToFile("RECONFIGURATION_SITE_DONE, siteId="+this.hstore_site.getSiteId());
     
         		if (this.reconfigurationInProgress.compareAndSet(true, false)) {
+        		    this.setInReconfiguration(false);
         		    if (hasNextReconfigPlan()) {
         		        NextPlanCalculator nextPlanCalculator = new NextPlanCalculator(checkForAdditionalReconfigs(), this.planned_partitions);
         		        nextPlanCalculator.start();
@@ -770,7 +771,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
     
     private void sendNextPlanToAllSites(){
-        setInReconfiguration(true);
         //Reconfiguration leader sends ack that reconfiguration has been done
         FileUtil.appendEventToFile("RECONFIGURATION_SEND_NEXT_PLAN, siteId="+this.hstore_site.getSiteId() + " plansRemaining=" + this.reconfigPlanQueue.size());
         for(int i = 0;i < num_of_sites;i++){
@@ -785,14 +785,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     .setMessageIdentifier(-1).build();
             if(i != localSiteId) {
                 this.channels[i].reconfigurationControlMsg(controller, reconfigEndAck, null);
-                LOG.info("Sent next plan to site " + i);
-            } else {
-                //receiveNextReconfigurationPlanFromLeader();
+             } else {
+                receiveNextReconfigurationPlanFromLeader();
             }
-            //LOG.info("Sent next plan to site " + i);
+            LOG.info("Sent next plan to site " + i);
         }
-        receiveNextReconfigurationPlanFromLeader();
-        LOG.info("Sent next plan to site " + localSiteId);
     }
     
     private void leaderLocalSiteReconfigurationComplete(int siteId){
@@ -837,6 +834,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
     
     public void receiveNextReconfigurationPlanFromLeader() {
+        setInReconfiguration(true);
         ReconfigurationPlan rplan = getNextPlan(true);
         List<PartitionRange> ranges = getNewRanges(true);
         setNextPlan(null);
