@@ -237,24 +237,34 @@ public class ReconfigurationCoordinator implements Shutdownable {
         
         private ReconfigurationPlan next_plan;
         private ExplicitPartitions partitions;
+        private int siteId;
+        private int callingPartition;
+        private int destinationId;
         
-        public NextPlanCalculator(ReconfigurationPlan next_plan, ExplicitPartitions partitions) { 
+        public NextPlanCalculator(ReconfigurationPlan next_plan, ExplicitPartitions partitions,
+                int siteId, int callingPartition, int destinationId) { 
             super("NextPlanCalculator");
             this.next_plan = next_plan;
             this.partitions = partitions;
+            this.siteId = siteId;
+            this.callingPartition = callingPartition;
+            this.destinationId = destinationId;
         }
         
         public void run() {
+            LOG.info("Starting to run NextPlanCalculator");
             
             try {   
                 if (next_plan != null) {                    
                     List<PartitionRange> new_ranges = this.partitions.getNewRanges(next_plan);                    
                     setNextPlan(next_plan);
-                    setNewRanges(new_ranges);                    
+                    setNewRanges(new_ranges);  
                 } else {
                     FileUtil.appendEventToFile("Null Reconfig plan");
                     LOG.info("No reconfig plan, nothing to do");
                 }
+
+                signalEndReconfigurationToRemoteLeader(siteId, callingPartition, destinationId);
 
             } catch (Exception e) {
                 LOG.error("Exception converting plan", e);
@@ -699,11 +709,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
 
     }
     
-    /**
-     * Signal the end of reconfiguration for a siteId to the leader
-     * @param siteId
-     */
-    public void signalEndReconfigurationToLeader(int siteId, int callingPartition) {
+    private void signalEndReconfigurationToRemoteLeader(int siteId, int callingPartition, int destinationId) {
         LOG.info("Signalling endReconfigToLeader : " + siteId );
         ReconfigurationControlRequest leaderCallback = ReconfigurationControlRequest.newBuilder().setSrcPartition(callingPartition)
                 .setDestPartition(this.reconfigurationLeader)
@@ -715,28 +721,39 @@ public class ReconfigurationCoordinator implements Shutdownable {
        
         //TODO : Can we get away with creating an instance each time
         ProtoRpcController controller = new ProtoRpcController();
-        int destinationId = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(this.reconfigurationLeader);
-
+        
         if (this.channels == null){
-        	LOG.error("Communication Channels are null. Can't send "+ReconfigurationControlType.RECONFIGURATION_DONE +" message");
+            LOG.error("Communication Channels are null. Can't send "+ReconfigurationControlType.RECONFIGURATION_DONE +" message");
         }
       
+        this.channels[destinationId].reconfigurationControlMsg(controller, leaderCallback, null);
+        FileUtil.appendEventToFile("RECONFIGURATION_SITE_DONE, siteId="+this.hstore_site.getSiteId());
+    }
+    
+    /**
+     * Signal the end of reconfiguration for a siteId to the leader
+     * @param siteId
+     */
+    public void signalEndReconfigurationToLeader(int siteId, int callingPartition) {
+        int destinationId = this.hstore_site.getCatalogContext().getSiteIdForPartitionId(this.reconfigurationLeader);
+
         if (destinationId == this.localSiteId){
             leaderLocalSiteReconfigurationComplete(this.localSiteId);
         } else{
         	if (this.channels[destinationId] == null){
         		  LOG.error("Reconfig Leader Channel is null. " +  destinationId + " : " + this.channels);
         	} else{
-        		this.channels[destinationId].reconfigurationControlMsg(controller, leaderCallback, null);
-        		FileUtil.appendEventToFile("RECONFIGURATION_SITE_DONE, siteId="+this.hstore_site.getSiteId());
-    
         		if (this.reconfigurationInProgress.compareAndSet(true, false)) {
         		    this.setInReconfiguration(false);
         		    if (hasNextReconfigPlan()) {
-        		        NextPlanCalculator nextPlanCalculator = new NextPlanCalculator(checkForAdditionalReconfigs(), this.planned_partitions);
+        		        NextPlanCalculator nextPlanCalculator = new NextPlanCalculator(
+        		                checkForAdditionalReconfigs(), this.planned_partitions, siteId, callingPartition, destinationId);
         		        nextPlanCalculator.start();
+        		    } else {
+        		        signalEndReconfigurationToRemoteLeader(siteId, callingPartition, destinationId);
         		    }
         		}
+        		
         	}
         }
     }
