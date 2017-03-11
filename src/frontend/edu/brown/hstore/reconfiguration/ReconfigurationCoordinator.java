@@ -810,7 +810,6 @@ public class ReconfigurationCoordinator implements Shutdownable {
             	for (PartitionExecutor executor : this.local_executors) {
                 	executor.queueReconfigUtilRequest(reconfigUtilMsg);                 
                     this.partitionStates.put(executor.getPartitionId(), ReconfigurationState.PREPARE);
-                    Thread.sleep(10);
                 }
                 //FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId() + " plansRemaining=" + this.reconfigPlanQueue.size());
             } else {

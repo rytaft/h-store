@@ -794,6 +794,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.reconfig_state = ReconfigurationState.NORMAL;
         this.pullStartTime = new HashMap<>();
         this.inReconfiguration = false;
+        this.queuedReconfigUtilMessage.set(false);
     }
 
     /**
@@ -823,6 +824,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.p_estimator = p_estimator;
         this.localTxnEstimator = t_estimator;
         this.inReconfiguration = false;
+        this.queuedReconfigUtilMessage.set(false);
         this.reconfig_state = ReconfigurationState.NORMAL;
         this.specExecComparator = new TransactionUndoTokenComparator(this.partitionId);
         
@@ -1319,7 +1321,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 }
             }
             
-            if (this.currentDtxn != null) {
+            if (this.currentDtxn != null || this.queuedReconfigUtilMessage.get()) {
                 return processQueuedLiveReconfigWork(true);
             }          
         }
@@ -1531,6 +1533,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         else if (work instanceof ReconfigUtilRequestMessage) {
         	LOG.info(String.format("(%s) Reconfig util request. Work Queue Size: %s", this.partitionId, this.work_queue.size()));
         	processReconfigUtilRequestMessage((ReconfigUtilRequestMessage)work);
+        	this.queuedReconfigUtilMessage.set(false);
         } 
         else if (work instanceof AsyncDataPullResponseMessage) {
             //We have received and are processing a data pull response
@@ -3207,7 +3210,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             work = iter.next();
             //LOG.info(work);
             long startTime = System.currentTimeMillis();
-            if(work instanceof MultiDataPullResponseMessage){
+            if (work instanceof ReconfigUtilRequestMessage) {
+                LOG.info(String.format("(%s) Reconfig util request. Work Queue Size: %s", this.partitionId, this.work_queue.size()));
+                processReconfigUtilRequestMessage((ReconfigUtilRequestMessage)work);
+                this.queuedReconfigUtilMessage.set(false);
+                this.work_queue.remove(work);
+                workDone = true;
+            } 
+            else if(work instanceof MultiDataPullResponseMessage){
             	// Check if the work is for 
             	MultiDataPullResponseMessage multiDataPullResponseMessage = (MultiDataPullResponseMessage)work;
             	MultiPullReplyRequest multiPullReplyRequest = multiDataPullResponseMessage.getMultiPullReplyRequest();
@@ -6459,6 +6469,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private long currentLiveDataLoaded = 0;
     private long currentLiveRows = 0;
     private boolean inReconfiguration;
+    private AtomicBoolean queuedReconfigUtilMessage = new AtomicBoolean(false);
     private boolean queue_async_pulls;
     private static int MAX_PULL_ASYNC_EVERY_CLICKS=700000;
 
@@ -6817,6 +6828,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     
     public void queueReconfigUtilRequest(ReconfigUtilRequestMessage reconfigUtilMsg){
         this.work_queue.offer(reconfigUtilMsg);
+        this.queuedReconfigUtilMessage.set(true);
     }
     
     /**
