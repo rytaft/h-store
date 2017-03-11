@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.apache.log4j.Logger;
@@ -60,8 +61,20 @@ public class ReconfigurationPlan {
     public String planDebug = "";
     private CatalogContext catalogContext;
     protected Map<String, String> partitionedTablesByFK;
+    protected Map<String, List<String>> relatedTablesMap;
     protected PartitionKeyComparator cmp;
-
+    
+    private void getRelatedTables() {
+        // find reverse map of fk partitioning
+        relatedTablesMap = new HashMap<>();
+        for (Entry<String, String> entry : partitionedTablesByFK.entrySet()) {
+            if (!relatedTablesMap.containsKey(entry.getValue())) {
+                relatedTablesMap.put(entry.getValue(), new ArrayList<String>());
+            }
+            relatedTablesMap.get(entry.getValue()).add(entry.getKey());
+        }
+    }
+    
     public ReconfigurationPlan(CatalogContext catalogContext, Map<String, String> partitionedTablesByFK) {
         this.catalogContext = catalogContext;
         outgoing_ranges = new HashMap<>();
@@ -72,6 +85,7 @@ public class ReconfigurationPlan {
         enclosing_range = new HashMap<>();
         tables_map = new HashMap<>();
         this.partitionedTablesByFK = partitionedTablesByFK;
+        getRelatedTables();
         this.cmp = new PartitionKeyComparator();
     }
 
@@ -124,12 +138,13 @@ public class ReconfigurationPlan {
         range_map = new HashMap<>();
         enclosing_range = new HashMap<>();
         partitionedTablesByFK = old_phase.partitionedTablesByFK;
+        getRelatedTables();
         this.cmp = new PartitionKeyComparator();
         assert old_phase.tables_map.keySet().equals(new_phase.tables_map.keySet()) : "Partition plans have different tables";
         tables_map = new HashMap<String, ReconfigurationPlan.ReconfigurationTable>();
         for (String table_name : old_phase.tables_map.keySet()) {
             if (!partitionedTablesByFK.containsKey(table_name)) {
-                tables_map.put(table_name, new ReconfigurationTable(catalogContext, old_phase.getTable(table_name), new_phase.getTable(table_name)));
+                tables_map.put(table_name, new ReconfigurationTable(catalogContext, old_phase.getTable(table_name), new_phase.getTable(table_name), relatedTablesMap.get(table_name)));
             }
         }
         // add ReconfigurationTables for the tables partitioned by FK second so they get the same range splits as their parents
@@ -312,7 +327,7 @@ public class ReconfigurationPlan {
             }
         }
         
-        public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table) throws Exception {
+        public ReconfigurationTable(CatalogContext catalogContext, PartitionedTable old_table, PartitionedTable new_table, List<String> relatedTables) throws Exception {
             this.catalogContext = catalogContext;
             table_name = old_table.table_name;
             this.conf = HStoreConf.singleton(false);
@@ -396,7 +411,7 @@ public class ReconfigurationPlan {
                 }
             }
             if (!this.catalogContext.jarPath.getName().contains("tpcc")) {
-                setReconfigurations(mergeReconfigurations(splitReconfigurations(getReconfigurations(), new_table.getCatalog_table()), new_table.getCatalog_table()));
+                setReconfigurations(mergeReconfigurations(splitReconfigurations(getReconfigurations(), new_table.getCatalog_table(), relatedTables), new_table.getCatalog_table()));
             } else {
                 LOG.info("skipping merging");
             }
@@ -484,7 +499,7 @@ public class ReconfigurationPlan {
             return res;
         }
 
-        private List<ReconfigurationRange> splitReconfigurations(List<ReconfigurationRange> reconfiguration_range, Table catalog_table) {
+        private List<ReconfigurationRange> splitReconfigurations(List<ReconfigurationRange> reconfiguration_range, Table catalog_table, List<String> relatedTables) {
             if (catalog_table == null) {
                 LOG.info("Catalog table is null. Not splitting reconfigurations");
                 return reconfiguration_range;
@@ -501,6 +516,12 @@ public class ReconfigurationPlan {
             try {
 
                 long tupleBytes = MemoryEstimator.estimateTupleSize(catalog_table);
+                if (relatedTables != null) {
+                    for (String relatedTable : relatedTables) {
+                        Table relatedCatalogTable = this.catalogContext.getTableByName(relatedTable);
+                        tupleBytes += MemoryEstimator.estimateTupleSize(relatedCatalogTable);
+                    }
+                }
 
                 long maxRows = currentMax / tupleBytes;
                 LOG.info(String.format("Trying to split on table:%s  TupleBytes:%s  CurrentMax:%s  MaxRows:%s MaxTransferBytes:%s", catalog_table.fullName(), tupleBytes, currentMax, maxRows,

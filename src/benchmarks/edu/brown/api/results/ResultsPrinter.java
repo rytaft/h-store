@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
+import org.voltdb.types.TimestampType;
 import org.voltdb.utils.Pair;
 
 import edu.brown.api.BenchmarkInterest;
@@ -268,6 +269,8 @@ public class ResultsPrinter implements BenchmarkInterest {
         sb.append(String.format("Completed %d txns at a rate of " + RESULT_FORMAT + " txns/s",
                                 totalTxnCount, totalTxnCount / (double)(pollIndex * results.getIntervalDuration()) * 1000d));
         sb.append(String.format(" with " + RESULT_FORMAT + " ms avg latency", totalLatency));
+        sb.append("\n" + SPACER);
+        sb.append(String.format("Current Time: %d", (new TimestampType(System.currentTimeMillis() * 1000)).toString()));
         
         System.out.println();
         if (LOG.isDebugEnabled()) LOG.debug("Printing result information for poll index " + pollIndex);

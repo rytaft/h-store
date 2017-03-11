@@ -3206,6 +3206,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         while (iter.hasNext()){
             work = iter.next();
             //LOG.info(work);
+            long startTime = System.currentTimeMillis();
             if(work instanceof MultiDataPullResponseMessage){
             	// Check if the work is for 
             	MultiDataPullResponseMessage multiDataPullResponseMessage = (MultiDataPullResponseMessage)work;
@@ -3314,7 +3315,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             	this.work_queue.remove(work);
             	workDone = true;
             }
+            
+            if (workDone) LOG.info("Completed " + work.getClass().getSimpleName() + " work in " + (System.currentTimeMillis() - startTime) + " ms");
         }
+        
+        
         return workDone;
     }
     
