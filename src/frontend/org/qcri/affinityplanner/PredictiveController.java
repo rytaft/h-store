@@ -26,7 +26,9 @@ import org.voltdb.sysprocs.Reconfiguration;
 import org.json.JSONException;
 import org.qcri.affinityplanner.ReconfigurationPredictor.Move;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -58,7 +60,7 @@ public class PredictiveController {
     public static String PLAN_IN = "plan_affinity.json";
 
     public static long MAX_CAPACITY_PER_PART = 2222L; //Long.MAX_VALUE;
-    public static int DB_MIGRATION_TIME = 1000; //Integer.MAX_VALUE;
+    public static int DB_MIGRATION_TIME = 68400; //Integer.MAX_VALUE;
 
 
     // Prediction variables
@@ -75,8 +77,8 @@ public class PredictiveController {
     // (3) Fitted model coefficients, based on (1) rate [Temporarily hard-coded] 
     public static String MODEL_COEFFS_FILE = "/home/nosayba/h-store/src/frontend/org/qcri/affinityplanner/prediction_model_coeffs.txt";
 
-
-
+    public static String ORACLE_PREDICTION_FILE = "/data/rytaft/oracle_prediction_2016_07_01.txt";
+    public static boolean USE_ORACLE_PREDICTION = false;
 
     public class SquallMove {
         public String new_plan;
@@ -200,6 +202,40 @@ public class PredictiveController {
                     record(stackTraceToString(e));
                     System.exit(1);
                 }
+            }
+            else if (USE_ORACLE_PREDICTION) {
+                ArrayList<Long> predictedLoad = new ArrayList<>();
+                try {
+                    File file = new File(ORACLE_PREDICTION_FILE);
+                    FileReader fr = new FileReader(file);
+                    BufferedReader br = new BufferedReader(fr);
+
+                    String line = br.readLine();
+                    while (line != null) {
+                        predictedLoad.add(Long.parseLong(line));
+                        line = br.readLine();
+                    } 
+                    
+                    br.close();
+                } catch (IOException e) {
+                    record("Unable to read predicted load");
+                    record(stackTraceToString(e));
+                    System.exit(1);
+                }
+                
+                // launch planner and get the moves
+                int activeSites = this.m_sites.size(); // TODO get the actual number of active sites
+                ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
+                if(moves == null || moves.isEmpty()){
+                    // reactive migration
+                    record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
+                    m_next_moves = convert(planFile, m_planner.getMaxNodes());
+                }
+                else {
+                    record("Moves: " + moves.toString());
+                    m_next_moves = convert(planFile, moves, activeSites);
+                }
+
             }
             else {
                 try {
