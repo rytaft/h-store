@@ -266,14 +266,14 @@ public class ReconfigurationUtil {
         
         as.r = as.delta % as.s;
         if (as.s > as.delta) { // case 1
-            // in this case we want to interleave many reconfigurations to achieve 
-            // theoretical effective capacity
             as.numberOfSplits = as.s;
-            as.extraSplits = as.s * numberOfSplits;
         }
         else { // cases 2 and 3           
             as.numberOfSplits = as.s * (as.delta / as.s) + as.r;
         }
+
+        // interleave many reconfigurations to achieve theoretical effective capacity
+        as.extraSplits = as.numberOfSplits * numberOfSplits;
         
         LOG.info("AutoSplit: " + as.toString());
         return as;
@@ -372,7 +372,8 @@ public class ReconfigurationUtil {
                 splitPlansAgain.addAll(fineGrainedSplitReconfigurationPlan(splitPlan, extraSplitsPerPlan + extra));
                 extraSplitsRemainder--;
             }
-            if (autoSplit) splitPlansAgain = interleavePlans(splitPlansAgain, numberOfSplits);
+            // For case 1, interleave plans
+            if (autoSplit && as.s > as.delta) splitPlansAgain = interleavePlans(splitPlansAgain, numberOfSplits);
             return splitPlansAgain;
         }
 
