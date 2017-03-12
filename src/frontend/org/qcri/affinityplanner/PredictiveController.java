@@ -154,6 +154,8 @@ public class PredictiveController {
 
         // TODO use currnt plan file for conversion of moves
         File planFile = new File (PLAN_IN);
+        String currentPlan = FileUtil.readFile(planFile);
+
         File loadHistFile = new File(LOAD_HIST);
 
         String[] confNames = {"site.txn_counters"};
@@ -167,6 +169,8 @@ public class PredictiveController {
             record(stackTraceToString(e));
             System.exit(1);
         }
+        
+        boolean oraclePredictionComplete = false;
 
         while (true){
             try {
@@ -192,11 +196,12 @@ public class PredictiveController {
                     }
                 }
 
-                record("Moving to plan: " + next_move.new_plan);
-                reconfig(next_move.new_plan);
+                currentPlan = next_move.new_plan;
+                record("Moving to plan: " + currentPlan);
+                reconfig(currentPlan);
 
                 try {
-                    FileUtil.writeStringToFile(planFile, next_move.new_plan);
+                    FileUtil.writeStringToFile(planFile, currentPlan);
                 } catch (IOException e) {
                     record("Unable to write new plan file");
                     record(stackTraceToString(e));
@@ -204,6 +209,11 @@ public class PredictiveController {
                 }
             }
             else if (USE_ORACLE_PREDICTION) {
+                if (oraclePredictionComplete) {
+                    record("Oracle Prediction Complete");
+                    System.exit(0);
+                }
+                
                 ArrayList<Long> predictedLoad = new ArrayList<>();
                 try {
                     File file = new File(ORACLE_PREDICTION_FILE);
@@ -229,13 +239,14 @@ public class PredictiveController {
                 if(moves == null || moves.isEmpty()){
                     // reactive migration
                     record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
-                    m_next_moves = convert(planFile, m_planner.getMaxNodes());
+                    m_next_moves = convert(currentPlan, m_planner.getMaxNodes());
                 }
                 else {
                     record("Moves: " + moves.toString());
-                    m_next_moves = convert(planFile, moves, activeSites);
+                    m_next_moves = convert(currentPlan, moves, activeSites);
                 }
-
+                
+                oraclePredictionComplete = true;
             }
             else {
                 try {
@@ -322,11 +333,11 @@ public class PredictiveController {
                         if(moves == null || moves.isEmpty()){
                             // reactive migration
                             record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
-                            m_next_moves = convert(planFile, m_planner.getMaxNodes());
+                            m_next_moves = convert(currentPlan, m_planner.getMaxNodes());
                         }
                         else {
                             record("Moves: " + moves.toString());
-                            m_next_moves = convert(planFile, moves, activeSites);
+                            m_next_moves = convert(currentPlan, moves, activeSites);
                         }
 
                     }
@@ -389,9 +400,8 @@ public class PredictiveController {
         }
     }
 
-    private LinkedList<SquallMove> convert(File planFile, ArrayList<Move> moves, int activeSites){
+    private LinkedList<SquallMove> convert(String plan, ArrayList<Move> moves, int activeSites){
         LinkedList<SquallMove> squallMoves = new LinkedList<>();
-        String plan = FileUtil.readFile(planFile);
         long currentTime = System.currentTimeMillis();
         long moveStart = currentTime;
         int prevNodes = activeSites;
@@ -421,9 +431,8 @@ public class PredictiveController {
         return squallMoves;
     }
     
-    private LinkedList<SquallMove> convert(File planFile, int nodes){
+    private LinkedList<SquallMove> convert(String plan, int nodes){
         LinkedList<SquallMove> squallMoves = new LinkedList<>();
-        String plan = FileUtil.readFile(planFile);
         if (nodes > m_sites.size()) {
             record("ERROR: required number of nodes (" + nodes + ") exceeds number of sites (" + m_sites.size() + ")");
             nodes = m_sites.size();
