@@ -276,8 +276,9 @@ public class TestReconfigurationPredictor extends BaseTestCase {
     }
 
     public void testBestMovesRealLoad() throws Exception {
-        testBestMovesRealLoad(new SingleThreadedMigration(6000), "Single Threaded Migration: ");
-        testBestMovesRealLoad(new ParallelMigration(partitions_per_site, 6000), "Parallel Migration: ");
+        int DB_MIGRATION_TIME = 20000;
+        testBestMovesRealLoad(new SingleThreadedMigration(DB_MIGRATION_TIME), "Single Threaded Migration: ");
+        testBestMovesRealLoad(new ParallelMigration(partitions_per_site, DB_MIGRATION_TIME), "Parallel Migration: ");
     }
     
     private void testBestMovesRealLoad(Migration migration, String debug) throws Exception {
