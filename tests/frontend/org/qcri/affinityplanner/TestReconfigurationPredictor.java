@@ -1,5 +1,9 @@
 package org.qcri.affinityplanner;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 
 import org.qcri.affinityplanner.ReconfigurationPredictor.Move;
@@ -271,4 +275,41 @@ public class TestReconfigurationPredictor extends BaseTestCase {
         System.out.println("Max machines: " + predictor.getMaxNodes() + ", Time steps: " + load_predictions_arr.length);
     }
 
+    public void testBestMovesRealLoad() throws Exception {
+        testBestMovesRealLoad(new SingleThreadedMigration(6000), "Single Threaded Migration: ");
+        testBestMovesRealLoad(new ParallelMigration(partitions_per_site, 6000), "Parallel Migration: ");
+    }
+    
+    private void testBestMovesRealLoad(Migration migration, String debug) throws Exception {
+        String ORACLE_PREDICTION_FILE = "/data/rytaft/oracle_prediction_2016_07_01.txt";
+        
+        ArrayList<Long> predictedLoad = new ArrayList<>();
+        try {
+            File file = new File(ORACLE_PREDICTION_FILE);
+            FileReader fr = new FileReader(file);
+            BufferedReader br = new BufferedReader(fr);
+
+            String line = br.readLine();
+            while (line != null) {
+                predictedLoad.add(Long.parseLong(line));
+                line = br.readLine();
+            } 
+            
+            br.close();
+        } catch (IOException e) {
+            System.out.println("Unable to read predicted load");
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+        long MAX_CAPACITY_PER_NODE = 3110L;
+        ReconfigurationPredictor predictor = new ReconfigurationPredictor(MAX_CAPACITY_PER_NODE, migration);
+
+        ArrayList<Move> moves = predictor.bestMoves(predictedLoad, 6);
+        long load_predictions_arr[] = new long[predictedLoad.size()];
+        for (int i = 0; i < load_predictions_arr.length; ++i) load_predictions_arr[i] = predictedLoad.get(i);
+        totalCost(predictor, moves, true, debug);
+        checkCorrect(predictor, moves, load_predictions_arr, true);
+    }
+    
 }
