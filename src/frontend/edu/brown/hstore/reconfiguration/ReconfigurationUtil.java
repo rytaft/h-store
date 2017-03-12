@@ -542,8 +542,6 @@ public class ReconfigurationUtil {
                 }
             }
         }
-
-        int numRanges = explicitPartitionedTablesRanges.size();        
         
         // find reverse map of fk partitioning
         for (Entry<String, String> entry : plan.getPartitionedTablesByFK().entrySet()) {
@@ -553,7 +551,9 @@ public class ReconfigurationUtil {
             }
         }
         
+        int numRanges = explicitPartitionedTablesRanges.size();        
         List<ReconfigurationPlan> splitPlans = new ArrayList<>();
+        if (numRanges == 0) return splitPlans;
         
         // If more ranges than splits, no need to split up the ranges
         if (numRanges > numberOfSplits) {

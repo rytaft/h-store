@@ -111,6 +111,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     // Hostname of the reconfiguration leader site
     private Integer reconfigurationLeader;
     public AtomicBoolean reconfigurationInProgress;
+    public AtomicBoolean subplanInProgress;
     private ReconfigurationPlan currentReconfigurationPlan;
     private ReconfigurationProtocols reconfigurationProtocol;
     private String currentPartitionPlan;
@@ -286,6 +287,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
         this.reconfigurationLeader = -1;
         this.reconfigurationInProgress = new AtomicBoolean(false);
+        this.subplanInProgress = new AtomicBoolean(false);
         this.currentReconfigurationPlan = null;
         this.reconfigurationState = ReconfigurationState.NORMAL;
         this.hstore_site = hstore_site;
@@ -743,8 +745,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         	if (this.channels[destinationId] == null){
         		  LOG.error("Reconfig Leader Channel is null. " +  destinationId + " : " + this.channels);
         	} else{
-        		if (this.reconfigurationInProgress.compareAndSet(true, false)) {
-        		    this.setInReconfiguration(false);
+        		if (this.subplanInProgress.compareAndSet(true, false)) {
         		    if (hasNextReconfigPlan()) {
         		        NextPlanCalculator nextPlanCalculator = new NextPlanCalculator(
         		                checkForAdditionalReconfigs(), this.planned_partitions, siteId, callingPartition, destinationId);
@@ -826,8 +827,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     this.reconfigurationDoneSites.clear();
                 }
                 //sendNextPlanToAllSites();
-                if (this.reconfigurationInProgress.compareAndSet(true, false)) {
-                    this.setInReconfiguration(false);
+                if (this.subplanInProgress.compareAndSet(true, false)) {
                     SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay, checkForAdditionalReconfigs(), this.planned_partitions);
                     send.start();
                 }
@@ -851,7 +851,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     }
     
     public void receiveNextReconfigurationPlanFromLeader() {
-        setInReconfiguration(true);
+        this.subplanInProgress.set(true);
         ReconfigurationPlan rplan = getNextPlan(true);
         List<PartitionRange> ranges = getNewRanges(true);
         setNextPlan(null);
@@ -921,8 +921,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 }
                 //FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId());
                 //sendNextPlanToAllSites();
-                if (this.reconfigurationInProgress.compareAndSet(true, false)) {
-                    this.setInReconfiguration(false);
+                if (this.subplanInProgress.compareAndSet(true, false)) {
                     SendNextPlan send = new SendNextPlan(hstore_conf.site.reconfig_plan_delay, checkForAdditionalReconfigs(), this.planned_partitions);
                     send.start();
                 }
