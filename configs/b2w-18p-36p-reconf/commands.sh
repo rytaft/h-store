@@ -1,7 +1,7 @@
 #!/bin/bash
 
-servers="istc13:0:0-5;istc7:1:6-11;istc8:2:12-17;istc9:3:18-23;istc10:4:24-29;istc12:5:30-35"
-clients="istc7;istc8;istc9;istc10"
+servers="istc13:0:0-5;istc5:1:6-11;istc6:2:12-17;istc7:3:18-23;istc8:4:24-29;istc12:5:30-35"
+clients="istc5;istc6;istc7;istc8"
 client_count=4
 
 case $1 in 

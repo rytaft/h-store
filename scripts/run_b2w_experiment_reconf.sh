@@ -7,7 +7,7 @@
 # $ ./scripts/run_b2w_experiment.sh
 
 # DEFAULTS:
-clients="istc7 istc8 istc9 istc10"
+clients="istc5 istc6 istc7 istc8"
 config=b2w-18p-36p-reconf
 YYYY=2016
 MM=07

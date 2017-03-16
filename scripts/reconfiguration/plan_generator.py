@@ -120,16 +120,7 @@ def getPlanString(args):
     b2w_size["stk_inventory_stock_quantity"] = max_int
     b2w_size["stk_stock_transaction"] = max_int
     b2w_size["cart"] = max_int
-    b2w_size["cart_customer"] = max_int
-    b2w_size["cart_lines"] = max_int
-    b2w_size["cart_line_products"] = max_int
-    b2w_size["cart_line_promotions"] = max_int
-    b2w_size["cart_line_product_warranties"] = max_int
-    b2w_size["cart_line_product_stores"] = max_int
     b2w_size["checkout"] = max_int
-    b2w_size["checkout_payments"] = max_int
-    b2w_size["checkout_freight_delivery_time"] = max_int
-    b2w_size["checkout_stock_transactions"] = max_int
 
   if "change_type" in args and args["change_type"] == "scale-down":
     raise Exception("not implemented")
@@ -220,16 +211,7 @@ if __name__ == "__main__":
     b2w_size["stk_inventory_stock_quantity"] = max_int
     b2w_size["stk_stock_transaction"] = max_int
     b2w_size["cart"] = max_int
-    b2w_size["cart_customer"] = max_int
-    b2w_size["cart_lines"] = max_int
-    b2w_size["cart_line_products"] = max_int
-    b2w_size["cart_line_promotions"] = max_int
-    b2w_size["cart_line_product_warranties"] = max_int
-    b2w_size["cart_line_product_stores"] = max_int
     b2w_size["checkout"] = max_int
-    b2w_size["checkout_payments"] = max_int
-    b2w_size["checkout_freight_delivery_time"] = max_int
-    b2w_size["checkout_stock_transactions"] = max_int
   
   if args.change_type == "scale-down":
     raise Exception("not implemented")

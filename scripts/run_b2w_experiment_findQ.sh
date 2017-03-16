@@ -8,7 +8,7 @@
 
 # DEFAULTS:
 clients="istc5 istc6 istc7 istc8"
-config=b2w-30p
+config=b2w-6p
 YYYY=2016
 MM=07
 DD=01
@@ -73,7 +73,7 @@ do
     cp configs/${config}/b2w.properties properties/benchmarks/b2w.properties
     echo "start_offset = $offset" >> properties/benchmarks/b2w.properties
     ./scripts/deploy-file.sh properties/benchmarks/b2w.properties
-    data_path=/data/rytaft/client_ops_${date}_4m
+    data_path=/data/rytaft/client_ops_${date}_4m_findQ
     ./scripts/load_client_operations.sh $data_path "$clients"
     ./configs/${config}/commands.sh run
     ./scripts/save_results.sh results/${config}_${date}

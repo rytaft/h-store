@@ -1,6 +1,6 @@
 #!/bin/bash
 
-servers="istc13:0:0-5"
+servers="istc13:0:0-5;istc12:1:6-11"
 clients="istc5;istc6;istc7;istc8"
 client_count=4
 
