@@ -33,7 +33,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.UnknownHostException;
+import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -148,7 +150,7 @@ public class PredictiveController {
 
     }
 
-    public void run () {
+    public void run () throws Exception {
 
         connectToHost();
 
@@ -180,7 +182,7 @@ public class PredictiveController {
                 System.exit(1);
             }
 
-            if(false /*if reconfiguration is ongoing*/){ // TODO detect that reconfig is ongoing
+            if(isReconfigurationRunning()){
                 continue;
             }
             else if (m_next_moves != null && !m_next_moves.isEmpty()){
@@ -447,6 +449,50 @@ public class PredictiveController {
         }
         squallMoves.add(new SquallMove(plan, System.currentTimeMillis()));
         return squallMoves;
+    }
+
+    private boolean isReconfigurationRunning() throws Exception {
+        Path logFile = FileSystems.getDefault().getPath(".", "hevent.log"); // TODO works only if controller is launched from site0
+        BufferedReader reader;
+        try {
+            reader = Files.newBufferedReader(logFile, Charset.forName("US-ASCII"));
+        } catch (IOException e) {
+            Controller.record("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+            throw e;
+        }
+
+        String line;
+        try {
+            line = reader.readLine();
+        } catch (IOException e) {
+            Controller.record("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+            throw e;
+        }
+        if (line == null){
+            Controller.record("File " + logFile.toString() + " is empty");
+            throw new Exception();
+        }
+
+        boolean reconfiguring = false;
+        String startReconf = "RECONFIG_INIT";
+        String endReconf = "RECONFIGURATION_SITE_DONE";
+
+        while(line != null){
+            if (line.contains(startReconf)){
+                reconfiguring = true;
+            }
+            else if (line.contains(endReconf)){
+                reconfiguring = false;
+            }
+            try {
+                line = reader.readLine();
+            } catch (IOException e) {
+                Controller.record("Error while reading file " + logFile.toString() + "\n Stack trace:\n" + Controller.stackTraceToString(e));
+                throw e;
+            }
+        }
+
+        return reconfiguring;
     }
 
 
