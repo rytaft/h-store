@@ -22,6 +22,7 @@ import org.voltdb.client.ClientFactory;
 import org.voltdb.client.ClientResponse;
 import org.voltdb.client.NoConnectionsException;
 import org.voltdb.client.ProcCallException;
+import org.voltdb.processtools.ShellTools;
 import org.voltdb.sysprocs.Reconfiguration;
 import org.json.JSONException;
 import org.qcri.affinityplanner.ReconfigurationPredictor.Move;
@@ -56,6 +57,8 @@ public class PredictiveController {
     public static boolean EXEC_MONITORING = true;
     public static boolean EXEC_UPDATE_PLAN = true;
     public static boolean EXEC_RECONF = true;
+
+    public static int RECONFIG_LEADER_SITEID = 0;
 
     public static int MAX_PARTITIONS;
     public static int PARTITIONS_PER_SITE;
@@ -452,7 +455,21 @@ public class PredictiveController {
     }
 
     private boolean isReconfigurationRunning() throws Exception {
-        Path logFile = FileSystems.getDefault().getPath(".", "hevent.log"); // TODO works only if controller is launched from site0
+        String reconfLeaderIp = null;
+
+        String hStoreDir = ShellTools.cmd("pwd");
+        hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
+        String command = "python scripts/partitioning/fetch_hevent.py " + hStoreDir;
+        for(Site site: m_sites){
+            command = command + " " + site.getHost().getIpaddr();
+            if(site.getId() == RECONFIG_LEADER_SITEID){
+                reconfLeaderIp = site.getHost().getIpaddr();
+            }
+        }
+        @SuppressWarnings("unused")
+        String results = ShellTools.cmd(command);
+
+        Path logFile = FileSystems.getDefault().getPath(".", "hevent-" + reconfLeaderIp + ".log"); // TODO works only if controller is launched from site0
         BufferedReader reader;
         try {
             reader = Files.newBufferedReader(logFile, Charset.forName("US-ASCII"));
