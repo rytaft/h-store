@@ -2,15 +2,11 @@ package org.qcri.affinityplanner;
 
 import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.HStoreConstants;
-import edu.brown.hstore.HStoreThreadManager;
 import edu.brown.hstore.Hstoreservice;
 import edu.brown.hstore.conf.HStoreConf;
 import edu.brown.utils.ArgumentsParser;
 import edu.brown.utils.CollectionUtil;
 import edu.brown.utils.FileUtil;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntBigLists;
-import it.unimi.dsi.fastutil.ints.IntList;
 
 import org.voltdb.CatalogContext;
 import org.voltdb.VoltTable;
@@ -23,7 +19,6 @@ import org.voltdb.client.ClientResponse;
 import org.voltdb.client.NoConnectionsException;
 import org.voltdb.client.ProcCallException;
 import org.voltdb.processtools.ShellTools;
-import org.voltdb.sysprocs.Reconfiguration;
 import org.json.JSONException;
 import org.qcri.affinityplanner.ReconfigurationPredictor.Move;
 
@@ -53,6 +48,7 @@ public class PredictiveController {
     private long[] m_previousLoads;
     private Predictor m_predictor = new Predictor();
     private LinkedList<SquallMove> m_next_moves;
+    private long m_next_moves_time = 0;
 
     public static boolean EXEC_MONITORING = true;
     public static boolean EXEC_UPDATE_PLAN = true;
@@ -66,7 +62,7 @@ public class PredictiveController {
 
     public static long MAX_CAPACITY_PER_PART = 3110L; //Long.MAX_VALUE;
     public static int DB_MIGRATION_TIME = 20000; //Integer.MAX_VALUE;
-
+    public static int MAX_MOVES_STALENESS = 1000; // time in milliseconds before moves are considered invalid
 
     // Prediction variables
     public static String LOAD_HIST = "agg_load_hist_preds.csv";
@@ -157,6 +153,8 @@ public class PredictiveController {
 
         connectToHost();
 
+        resetLogs(); // necessary to detect ongoing reconfigurations
+
         // TODO use currnt plan file for conversion of moves
         File planFile = new File (PLAN_IN);
         String currentPlan = FileUtil.readFile(planFile);
@@ -188,7 +186,8 @@ public class PredictiveController {
             if(isReconfigurationRunning()){
                 continue;
             }
-            else if (m_next_moves != null && !m_next_moves.isEmpty()){
+            else if (m_next_moves != null && !m_next_moves.isEmpty()
+                    && System.currentTimeMillis() - m_next_moves_time < MAX_MOVES_STALENESS){
                 SquallMove next_move = m_next_moves.pop();
                 long sleep_time = next_move.start_time - System.currentTimeMillis();
                 if (sleep_time > 0){
@@ -250,6 +249,7 @@ public class PredictiveController {
                     record("Moves: " + moves.toString());
                     m_next_moves = convert(currentPlan, moves, activeSites);
                 }
+                m_next_moves_time = System.currentTimeMillis();
                 
                 oraclePredictionComplete = true;
             }
@@ -344,7 +344,7 @@ public class PredictiveController {
                             record("Moves: " + moves.toString());
                             m_next_moves = convert(currentPlan, moves, activeSites);
                         }
-
+                        m_next_moves_time = System.currentTimeMillis();
                     }
 
                 }
@@ -452,6 +452,17 @@ public class PredictiveController {
         }
         squallMoves.add(new SquallMove(plan, System.currentTimeMillis()));
         return squallMoves;
+    }
+
+    private void resetLogs(){
+        String hStoreDir = ShellTools.cmd("pwd");
+        hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
+        String command = "python scripts/partitioning/reset_hevent.py " + hStoreDir;
+        for(Site site: m_sites){
+            command = command + " " + site.getHost().getIpaddr();
+        }
+        @SuppressWarnings("unused")
+        String results = ShellTools.cmd(command);
     }
 
     private boolean isReconfigurationRunning() throws Exception {
