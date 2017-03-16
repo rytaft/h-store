@@ -238,7 +238,7 @@ public class PredictiveController {
                 }
                 
                 // launch planner and get the moves
-                int activeSites = this.m_sites.size(); // TODO get the actual number of active sites
+                int activeSites = countActiveSites(planFile.toString()); // TODO get the actual number of active sites
                 ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
                 if(moves == null || moves.isEmpty()){
                     // reactive migration
@@ -263,9 +263,9 @@ public class PredictiveController {
                 }
 
                 // extract total load and count active sites
-                // TODO we might want to count active sites differently?
                 long[] currLoads = new long[m_sites.size()];
-                int activeSites = 0;
+                int activeSites = countActiveSites(planFile.toString());
+
                 VoltTable result = cresponse.getResults()[0];
                 for (int i = 0; i < result.getRowCount(); i++) {
                     VoltTableRow row = result.fetchRow(i);
@@ -282,12 +282,8 @@ public class PredictiveController {
                     long load = row.getLong(4);
 
                     currLoads[hostId] = currLoads[hostId] + load;
-                    if (hostId > activeSites && load > 0) {
-                        activeSites = hostId;
-                    }
                     //record("hostid=" + hostId + " -- procedure=" + procedure + " -- load=" + load);
                 }
-                activeSites++;
 
                 long totalLoad = 0;
                 for (int i = 0; i < m_sites.size(); i++) {
@@ -521,6 +517,12 @@ public class PredictiveController {
         }
 
         return reconfiguring;
+    }
+
+    private int countActiveSites(String currentPlanFile){
+        Plan plan = new Plan(currentPlanFile);
+        int maxActivePartitionCount = plan.getMaxActivePartition() + 1;
+        return (int) Math.ceil((double) maxActivePartitionCount / (double) PARTITIONS_PER_SITE);
     }
 
 

@@ -1,12 +1,7 @@
 package org.qcri.affinityplanner;
 
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 
 import org.apache.log4j.Logger;
 import org.json.JSONException;
@@ -14,7 +9,6 @@ import org.json.JSONObject;
 
 import edu.brown.utils.FileUtil;
 
-import java.util.StringTokenizer;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 
@@ -118,6 +112,25 @@ public class Plan {
             return partitionToRanges.keySet();
         }
         return null;
+    }
+
+    public int getMaxActivePartition(){
+        int maxActivePartition = -1;
+
+        for (String table : tableToPartitionsToRanges.keySet()) {
+            HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table);
+            if (partitionToRanges == null) {
+                continue;
+            }
+            for (Map.Entry<Integer, TreeMap<Long, Long>> partitionToRangesElem : partitionToRanges.entrySet()) {
+                int partition = partitionToRangesElem.getKey();
+                TreeMap<Long, Long> ranges = partitionToRangesElem.getValue();
+                if (ranges != null && !ranges.isEmpty() && partition > maxActivePartition) {
+                    maxActivePartition = partition;
+                }
+            }
+        }
+        return maxActivePartition;
     }
 
     public boolean hasPartition(Integer partitionId) {
