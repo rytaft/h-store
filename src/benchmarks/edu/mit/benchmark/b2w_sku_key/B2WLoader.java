@@ -22,6 +22,8 @@ import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.utils.ThreadUtil;
 import edu.mit.benchmark.b2w.B2WConstants;
+import edu.mit.benchmark.b2w.B2WLoader.KeyType;
+import static edu.mit.benchmark.b2w.B2WLoader.hashPartition;
 
 import org.voltdb.client.ClientResponse;
 import org.voltdb.types.TimestampType;
@@ -270,15 +272,6 @@ public class B2WLoader extends Loader {
             return super.loadVoltTable(tableName, vt);
     }
 
-
-    public static Integer hashPartition(Object o){
-        if (o == null)
-            return null;
-        else
-            return Math.abs(o.hashCode() * 37489) % 1000003; // prime numbers
-    }
-
-
     /**
      * This function is used to read the file has the format like :
      * sku;id;warehouse;sub_inventory;stock_type;store_id;lead_time
@@ -293,7 +286,7 @@ public class B2WLoader extends Loader {
      * @param total the total number of records loaded for this table by all threads 
      */
     private void loadTableFormatData(int thread_id, String name, String path, int[] types, 
-            String separator, AtomicLong total) {
+            String separator, AtomicLong total, KeyType keyType) {
         try {
             final CatalogContext catalogContext = this.getCatalogContext();
             Database catalog_db = catalogContext.database;
@@ -327,7 +320,7 @@ public class B2WLoader extends Loader {
 
                 Object row[] = new Object[num_cols];
                 int param;
-                row[0] = hashPartition(getDataByType(items[0], types[0]));
+                row[0] = hashPartition((String) getDataByType(items[0], types[0]), keyType);
                 for (param = 0; param < num_cols - 1; param++){
                     row[param + 1] = getDataByType(items[param], types[param]);
                 }
@@ -392,33 +385,33 @@ public class B2WLoader extends Loader {
                 @Override
                 public void run() {
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_INVENTORY_STOCK,
-                            config.STK_INVENTORY_STOCK_DATA_FILE, STK_INVENTORY_STOCK_TYPES, ",", total_stk_inventory_stock);
+                            config.STK_INVENTORY_STOCK_DATA_FILE, STK_INVENTORY_STOCK_TYPES, ",", total_stk_inventory_stock, KeyType.SKU);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_INVENTORY_STOCK_QUANTITY,
-                            config.STK_INVENTORY_STOCK_QUANTITY_DATA_FILE, STK_INVENTORY_STOCK_QUANTITY_TYPES, ",", total_stk_inventory_stock_quantity);
+                            config.STK_INVENTORY_STOCK_QUANTITY_DATA_FILE, STK_INVENTORY_STOCK_QUANTITY_TYPES, ",", total_stk_inventory_stock_quantity, KeyType.STOCK_ID);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_STOCK_TRANSACTION,
-                            config.STK_STOCK_TRANSACTION_DATA_FILE, STK_STOCK_TRANSACTION_TYPES, ";", total_stk_stock_transaction); // different separator
+                            config.STK_STOCK_TRANSACTION_DATA_FILE, STK_STOCK_TRANSACTION_TYPES, ";", total_stk_stock_transaction, KeyType.TRANSACTION_ID); // different separator
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART,
-                            config.CART_DATA_FILE, CART_TYPES, ";", total_cart); // different separator
+                            config.CART_DATA_FILE, CART_TYPES, ";", total_cart, KeyType.CART_ID); // different separator
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_CUSTOMER,
-                            config.CART_CUSTOMER_DATA_FILE, CART_CUSTOMER_TYPES, ",", total_cart_customer);
+                            config.CART_CUSTOMER_DATA_FILE, CART_CUSTOMER_TYPES, ",", total_cart_customer, KeyType.CART_ID);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_LINES,
-                            config.CART_LINES_DATA_FILE, CART_LINES_TYPES, ",", total_cart_lines);
+                            config.CART_LINES_DATA_FILE, CART_LINES_TYPES, ",", total_cart_lines, KeyType.CART_ID);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_LINE_PRODUCTS,
-                            config.CART_LINE_PRODUCTS_DATA_FILE, CART_LINE_PRODUCTS_TYPES, ";", total_cart_line_products); // different separator
+                            config.CART_LINE_PRODUCTS_DATA_FILE, CART_LINE_PRODUCTS_TYPES, ";", total_cart_line_products, KeyType.CART_ID); // different separator
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_LINE_PROMOTIONS,
-                            config.CART_LINE_PROMOTIONS_DATA_FILE, CART_LINE_PROMOTIONS_TYPES, ",", total_cart_line_promotions);
+                            config.CART_LINE_PROMOTIONS_DATA_FILE, CART_LINE_PROMOTIONS_TYPES, ",", total_cart_line_promotions, KeyType.CART_ID);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_LINE_PRODUCT_WARRANTIES,
-                            config.CART_LINE_PRODUCT_WARRANTIES_DATA_FILE, CART_LINE_PRODUCT_WARRANTIES_TYPES, ";", total_cart_line_product_warranties); // different separator
+                            config.CART_LINE_PRODUCT_WARRANTIES_DATA_FILE, CART_LINE_PRODUCT_WARRANTIES_TYPES, ";", total_cart_line_product_warranties, KeyType.CART_ID); // different separator
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CART_LINE_PRODUCT_STORES,
-                            config.CART_LINE_PRODUCT_STORES_DATA_FILE, CART_LINE_PRODUCT_STORES_TYPES, ",", total_cart_line_product_stores);
+                            config.CART_LINE_PRODUCT_STORES_DATA_FILE, CART_LINE_PRODUCT_STORES_TYPES, ",", total_cart_line_product_stores, KeyType.CART_ID);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CHECKOUT,
-                            config.CHECKOUT_DATA_FILE, CHECKOUT_TYPES, ",", total_checkout);
+                            config.CHECKOUT_DATA_FILE, CHECKOUT_TYPES, ",", total_checkout, KeyType.CHECKOUT_ID);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CHECKOUT_PAYMENTS,
-                            config.CHECKOUT_PAYMENTS_DATA_FILE, CHECKOUT_PAYMENTS_TYPES, ";", total_checkout_payments); // different separator
+                            config.CHECKOUT_PAYMENTS_DATA_FILE, CHECKOUT_PAYMENTS_TYPES, ";", total_checkout_payments, KeyType.CHECKOUT_ID); // different separator
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CHECKOUT_FREIGHT_DELIVERY_TIME,
-                            config.CHECKOUT_FREIGHT_DELIVERY_TIME_DATA_FILE, CHECKOUT_FREIGHT_DELIVERY_TIME_TYPES, ",", total_checkout_freight_delivery_time);
+                            config.CHECKOUT_FREIGHT_DELIVERY_TIME_DATA_FILE, CHECKOUT_FREIGHT_DELIVERY_TIME_TYPES, ",", total_checkout_freight_delivery_time, KeyType.CHECKOUT_ID);
                     loadTableFormatData(thread_id, B2WConstants.TABLENAME_CHECKOUT_STOCK_TRANSACTIONS,
-                            config.CHECKOUT_STOCK_TRANSACTIONS_DATA_FILE, CHECKOUT_STOCK_TRANSACTIONS_TYPES, ",", total_checkout_stock_transactions);
+                            config.CHECKOUT_STOCK_TRANSACTIONS_DATA_FILE, CHECKOUT_STOCK_TRANSACTIONS_TYPES, ",", total_checkout_stock_transactions, KeyType.CHECKOUT_ID);
                 }
             });
         } // FOR

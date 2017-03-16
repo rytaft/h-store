@@ -89,6 +89,18 @@ public final class MurmurHash {
     }
 
     /** 
+     * Generates 32 bit hash from a string.
+     * 
+     * @param text string to hash
+     * @param seed initial seed value
+     * @return 32 bit hash of the given string
+     */
+    public static int hash32(final String text, int seed) {
+        final byte[] bytes = text.getBytes(); 
+        return hash32(bytes, bytes.length, seed);
+    }
+    
+    /** 
      * Generates 32 bit hash from a substring.
      * 
      * @param text string to hash
