@@ -58,8 +58,8 @@ echo "date     = ${YYYY}_${MM}_${DD}"
 echo "offset   = ${offset}"
 echo "end_iter = ${end_iter}"
 
-# 6000000 ms = 100 minutes
-INTERVAL=6000000
+# 3000000 ms = 50 minutes
+INTERVAL=3000000
 for i in $(seq 0 ${end_iter})
 do
     hr=`expr \( $offset % 86400000 \) / 3600000`
