@@ -305,7 +305,7 @@ public class B2WLoader extends Loader {
         if (s == null)
             return null;
         else {
-            return MurmurHash.hash32(s, 3292) % B2WConstants.NUM_KEYS;
+            return (MurmurHash.hash32(s, 3292) % B2WConstants.NUM_KEYS + B2WConstants.NUM_KEYS) % B2WConstants.NUM_KEYS;
         }        
     }
 
@@ -313,7 +313,7 @@ public class B2WLoader extends Loader {
         if (s == null)
             return null;
         else {
-            return MurmurHash.hash32(s, 977) % B2WConstants.NUM_KEYS;
+            return (MurmurHash.hash32(s, 977) % B2WConstants.NUM_KEYS + B2WConstants.NUM_KEYS) % B2WConstants.NUM_KEYS;
         }        
     }
 
@@ -321,7 +321,7 @@ public class B2WLoader extends Loader {
         if (s == null)
             return null;
         else {
-            return MurmurHash.hash32(s, 2444) % B2WConstants.NUM_KEYS;
+            return (MurmurHash.hash32(s, 2444) % B2WConstants.NUM_KEYS + B2WConstants.NUM_KEYS) % B2WConstants.NUM_KEYS;
         }        
     }
 
@@ -329,7 +329,7 @@ public class B2WLoader extends Loader {
         if (s == null)
             return null;
         else {
-            return MurmurHash.hash32(s, 3837) % B2WConstants.NUM_KEYS;
+            return (MurmurHash.hash32(s, 3837) % B2WConstants.NUM_KEYS + B2WConstants.NUM_KEYS) % B2WConstants.NUM_KEYS;
         }        
     }
 
@@ -337,7 +337,7 @@ public class B2WLoader extends Loader {
         if (s == null)
             return null;
         else {
-            return MurmurHash.hash32(s, 3837) % B2WConstants.NUM_KEYS;
+            return (MurmurHash.hash32(s, 3837) % B2WConstants.NUM_KEYS + B2WConstants.NUM_KEYS) % B2WConstants.NUM_KEYS;
         }        
     }
 
