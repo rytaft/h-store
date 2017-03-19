@@ -54,7 +54,7 @@ public class PredictiveController {
     public static boolean EXEC_UPDATE_PLAN = true;
     public static boolean EXEC_RECONF = true;
 
-    public static String RECONFIG_LEADER_SITE = "istc5";
+    public static int RECONFIG_LEADER_SITEID = 0;
 
     public static int MAX_PARTITIONS;
     public static int PARTITIONS_PER_SITE;
@@ -464,16 +464,21 @@ public class PredictiveController {
     }
 
     private boolean isReconfigurationRunning() throws Exception {
+        String reconfLeaderIp = null;
+
         String hStoreDir = ShellTools.cmd("pwd");
         hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
         String command = "python scripts/partitioning/fetch_hevent.py " + hStoreDir;
         for(Site site: m_sites){
             command = command + " " + site.getHost().getIpaddr();
+            if(site.getId() == RECONFIG_LEADER_SITEID){
+                reconfLeaderIp = site.getHost().getIpaddr();
+            }
         }
         @SuppressWarnings("unused")
         String results = ShellTools.cmd(command);
 
-        Path logFile = FileSystems.getDefault().getPath(".", "hevent-" + RECONFIG_LEADER_SITE + ".log"); // TODO works only if controller is launched from site0
+        Path logFile = FileSystems.getDefault().getPath(".", "hevent-" + reconfLeaderIp + ".log"); // TODO works only if controller is launched from site0
         BufferedReader reader;
         try {
             reader = Files.newBufferedReader(logFile, Charset.forName("US-ASCII"));
