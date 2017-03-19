@@ -195,6 +195,16 @@ public class B2WClient extends BenchmarkComponent {
 
     }
     
+    @Override
+    protected boolean runOnce()  throws IOException {
+        try {
+            JSONObject next_txn = txn_selector.nextTransaction();
+            return runOnce(next_txn);
+        } catch(JSONException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
     protected boolean runOnce(JSONObject txn) throws IOException, JSONException {
         Operation operation = Operation.valueOf(txn.getString(B2WConstants.OPERATION));
         JSONObject params = txn.getJSONObject(B2WConstants.OPERATION_PARAMS);
