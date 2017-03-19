@@ -8,16 +8,14 @@ import edu.brown.utils.ArgumentsParser;
 import edu.brown.utils.CollectionUtil;
 import edu.brown.utils.FileUtil;
 
+import org.hsqldb.lib.*;
 import org.voltdb.CatalogContext;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
 import org.voltdb.catalog.Catalog;
 import org.voltdb.catalog.Partition;
 import org.voltdb.catalog.Site;
-import org.voltdb.client.ClientFactory;
-import org.voltdb.client.ClientResponse;
-import org.voltdb.client.NoConnectionsException;
-import org.voltdb.client.ProcCallException;
+import org.voltdb.client.*;
 import org.voltdb.processtools.ShellTools;
 import org.json.JSONException;
 import org.qcri.affinityplanner.ReconfigurationPredictor.Move;
@@ -34,6 +32,9 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 /**
@@ -42,17 +43,10 @@ import java.util.*;
 public class PredictiveController {
     private org.voltdb.client.Client m_client;
     private Collection<Site> m_sites;
-    private CatalogContext m_catalog_context;
-    private String m_connectedHost;
     private ReconfigurationPredictor m_planner;
-    private long[] m_previousLoads;
     private Predictor m_predictor = new Predictor();
     private LinkedList<SquallMove> m_next_moves;
     private long m_next_moves_time = 0;
-
-    public static boolean EXEC_MONITORING = true;
-    public static boolean EXEC_UPDATE_PLAN = true;
-    public static boolean EXEC_RECONF = true;
 
     public static int RECONFIG_LEADER_SITEID = 0;
 
@@ -67,7 +61,7 @@ public class PredictiveController {
     // Prediction variables
     public static String LOAD_HIST = "agg_load_hist_preds.csv";
     public static int N_HISTORICAL_OBS = 30;
-    public ArrayList<Long> historyNLoads = new  ArrayList<>();
+    public ConcurrentLinkedQueue<Long> m_historyNLoads = new ConcurrentLinkedQueue<>();
     public static boolean firstPrediction = true;
 
     // The following 3 parameters need to be consistent with each other:
@@ -81,6 +75,84 @@ public class PredictiveController {
     public static String ORACLE_PREDICTION_FILE = "/data/rytaft/oracle_prediction_2016_07_01.txt";
     public static boolean USE_ORACLE_PREDICTION = false;
 
+    private class MonitorThread implements Runnable {
+
+        private org.voltdb.client.Client client;
+        private long[] previousLoads;
+        private long[] currLoads;
+        ConcurrentLinkedQueue<Long> historyNLoads;
+
+        public MonitorThread(ConcurrentLinkedQueue<Long> historyNLoads, Collection<Site> sites) {
+            client = ClientFactory.createClient();
+            client.configureBlocking(false);
+            connectToHost(client,sites);
+
+            previousLoads = new long[sites.size()];
+            currLoads = new long[sites.size()];
+            this.historyNLoads = historyNLoads;
+        }
+
+        @Override
+        public void run() {
+            while(true) {
+                try {
+                    Thread.sleep(MONITORING_TIME);
+                } catch (InterruptedException e) {
+                    record("sleeping interrupted while monitoring");
+                    System.exit(1);
+                }
+
+                ClientResponse cresponse = null;
+                try {
+                    cresponse = client.callProcedure("@Statistics", "TXNCOUNTER", 0);
+                } catch (IOException | ProcCallException e) {
+                    record("Problem while turning on monitoring");
+                    record(stackTraceToString(e));
+                    System.exit(1);
+                }
+
+                // extract total load and count active sites
+                for (int i = 0; i < currLoads.length; i++){
+                    currLoads[i] = 0;
+                }
+
+                VoltTable result = cresponse.getResults()[0];
+                for (int i = 0; i < result.getRowCount(); i++) {
+                    VoltTableRow row = result.fetchRow(i);
+                    String procedure = row.getString(3);
+
+                    if (procedure.charAt(0) == '@') {
+                        // don't count invocations to system procedures
+                        continue;
+                    }
+
+                    int hostId = (int) row.getLong(1);
+
+                    // { 4=RECEIVED | 5=REJECTED | 6=REDIRECTED | 7=EXECUTED | 8=COMPLETED }
+                    long load = row.getLong(4);
+
+                    currLoads[hostId] = currLoads[hostId] + load;
+                    //record("hostid=" + hostId + " -- procedure=" + procedure + " -- load=" + load);
+                }
+
+                long totalLoad = 0;
+                for (int i = 0; i < currLoads.length; i++) {
+                    totalLoad += (currLoads[i] - previousLoads[i]);
+                }
+                previousLoads = currLoads;
+
+                // For debugging purposes
+                record(" >> totalLoad =" + totalLoad);
+
+                if (firstPrediction) {
+                    firstPrediction = false;
+                } else {
+                    historyNLoads.add(totalLoad);
+                }
+            }
+        }
+    }
+
     public class SquallMove {
         public String new_plan;
         public long start_time;
@@ -91,14 +163,11 @@ public class PredictiveController {
         }
     }
 
-    public PredictiveController(Catalog catalog, HStoreConf hstore_conf, CatalogContext catalog_context) {
-        if(EXEC_MONITORING || EXEC_RECONF){
-            m_client = ClientFactory.createClient();
-            m_client.configureBlocking(false);
-        }
+    public PredictiveController(Catalog catalog, HStoreConf hstore_conf) {
+        m_client = ClientFactory.createClient();
+        m_client.configureBlocking(false);
         m_sites = CatalogUtil.getAllSites(catalog);
-        m_catalog_context = catalog_context;
-        m_previousLoads = new long[m_sites.size()];
+        m_historyNLoads = new ConcurrentLinkedQueue<>();
 
         TreeSet<Integer> partitionIds = new TreeSet<>();
         MAX_PARTITIONS = -1;
@@ -151,7 +220,7 @@ public class PredictiveController {
 
     public void run () throws Exception {
 
-        connectToHost();
+        connectToHost(m_client, m_sites);
 
         resetLogs(); // necessary to detect ongoing reconfigurations
 
@@ -174,6 +243,11 @@ public class PredictiveController {
         }
         
         boolean oraclePredictionComplete = false;
+
+        Thread monitor = new Thread(new MonitorThread(m_historyNLoads, m_sites));
+        if(!USE_ORACLE_PREDICTION) {
+            monitor.start();
+        }
 
         while (true){
             try {
@@ -254,97 +328,50 @@ public class PredictiveController {
                 oraclePredictionComplete = true;
             }
             else {
-                try {
-                    cresponse = m_client.callProcedure("@Statistics", "TXNCOUNTER", 0);
-                } catch (IOException | ProcCallException e) {
-                    record("Problem while turning on monitoring");
-                    record(stackTraceToString(e));
-                    System.exit(1);
-                }
 
-                // extract total load and count active sites
-                long[] currLoads = new long[m_sites.size()];
-                int activeSites = countActiveSites(planFile.toString());
+                // TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
+                // TODO the inputs and outputs of these steps should be serialized to a file
 
-                VoltTable result = cresponse.getResults()[0];
-                for (int i = 0; i < result.getRowCount(); i++) {
-                    VoltTableRow row = result.fetchRow(i);
-                    String procedure = row.getString(3);
+                // launch predictor
 
-                    if (procedure.charAt(0) == '@') {
-                        // don't count invocations to system procedures
-                        continue;
+                ArrayList<Long> predictedLoad = m_predictor.predictLoad(m_historyNLoads, NUM_PREDS_AHEAD, MODEL_COEFFS_FILE);
+
+                if(predictedLoad != null){
+                    System.out.println(">> Predictions: ");
+                    //System.out.println(predictedLoad.toString());
+                    //System.out.println();
+
+                    //System.out.print(totalLoad + ",");
+                    for (int i = 0; i < predictedLoad.size(); i++) {
+                        if( i != predictedLoad.size() - 1){ System.out.print(predictedLoad.get(i) + ",");}
+                        else{ System.out.println(predictedLoad.get(i)); }
                     }
 
-                    int hostId = (int) row.getLong(1);
-
-                    // { 4=RECEIVED | 5=REJECTED | 6=REDIRECTED | 7=EXECUTED | 8=COMPLETED }
-                    long load = row.getLong(4);
-
-                    currLoads[hostId] = currLoads[hostId] + load;
-                    //record("hostid=" + hostId + " -- procedure=" + procedure + " -- load=" + load);
-                }
-
-                long totalLoad = 0;
-                for (int i = 0; i < m_sites.size(); i++) {
-                    totalLoad += (currLoads[i] - m_previousLoads[i]);
-                }
-                m_previousLoads = currLoads;
-
-                // For debugging purposes
-                record(" >> totalLoad =" + totalLoad );
-
-                if( firstPrediction ){
-                    firstPrediction = false;
-                }
-                else{
-                    historyNLoads.add( (long) totalLoad );
-
-                    // TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
-                    // TODO the inputs and outputs of these steps should be serialized to a file
-
-                    // launch predictor
-                    // TODO implement this method
-                    ArrayList<Long> predictedLoad = m_predictor.predictLoad(historyNLoads, NUM_PREDS_AHEAD, MODEL_COEFFS_FILE);
-
-                    if(predictedLoad != null){
-                        System.out.println(">> Predictions: ");
-                        //System.out.println(predictedLoad.toString());
-                        //System.out.println();
-
-                        //System.out.print(totalLoad + ",");
+                    try {
+                        FileUtil.appendStringToFile(loadHistFile, m_predictor.lastTotalLoad + ",");
                         for (int i = 0; i < predictedLoad.size(); i++) {
-                            if( i != predictedLoad.size() - 1){ System.out.print(predictedLoad.get(i) + ",");}
-                            else{ System.out.println(predictedLoad.get(i)); }
+                            if( i != predictedLoad.size() - 1){ FileUtil.appendStringToFile(loadHistFile,predictedLoad.get(i) + ",");}
+                            else{ FileUtil.appendStringToFile(loadHistFile,predictedLoad.get(i) + "\n"); }
                         }
-
-                        try {
-                            FileUtil.appendStringToFile(loadHistFile, totalLoad+",");
-                            for (int i = 0; i < predictedLoad.size(); i++) {
-                                if( i != predictedLoad.size() - 1){ FileUtil.appendStringToFile(loadHistFile,predictedLoad.get(i) + ",");}
-                                else{ FileUtil.appendStringToFile(loadHistFile,predictedLoad.get(i) + "\n"); }
-                            }
-                        } catch (IOException e) {
-                            record("Problem logging load/predictions");
-                            e.printStackTrace();
-                        }
-
-                        // launch planner and get the moves
-                        ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
-                        if(moves == null || moves.isEmpty()){
-                            // reactive migration
-                            record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
-                            m_next_moves = convert(currentPlan, m_planner.getMaxNodes());
-                        }
-                        else {
-                            record("Moves: " + moves.toString());
-                            m_next_moves = convert(currentPlan, moves, activeSites);
-                        }
-                        m_next_moves_time = System.currentTimeMillis();
+                    } catch (IOException e) {
+                        record("Problem logging load/predictions");
+                        e.printStackTrace();
                     }
 
+                    // launch planner and get the moves
+                    int activeSites = countActiveSites(planFile.toString());
+                    ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
+                    if(moves == null || moves.isEmpty()){
+                        // reactive migration
+                        record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
+                        m_next_moves = convert(currentPlan, m_planner.getMaxNodes());
+                    }
+                    else {
+                        record("Moves: " + moves.toString());
+                        m_next_moves = convert(currentPlan, moves, activeSites);
+                    }
+                    m_next_moves_time = System.currentTimeMillis();
                 }
-
             }
         }
     }
@@ -354,12 +381,12 @@ public class PredictiveController {
         FileUtil.appendEventToFile(s);
     }
 
-    private void connectToHost(){
-        Site catalog_site = CollectionUtil.random(m_sites);
-        m_connectedHost= catalog_site.getHost().getIpaddr();
+    private void connectToHost(Client client, Collection<Site> sites){
+        Site catalog_site = CollectionUtil.random(sites);
+        String connectedHost= catalog_site.getHost().getIpaddr();
 
         try {
-            m_client.createConnection(null, m_connectedHost, HStoreConstants.DEFAULT_PORT, "user", "password");
+            client.createConnection(null, connectedHost, HStoreConstants.DEFAULT_PORT, "user", "password");
         } catch (UnknownHostException e) {
             record("Controller: tried to connect to unknown host");
             e.printStackTrace();
@@ -369,7 +396,7 @@ public class PredictiveController {
             e.printStackTrace();
             System.exit(1);
         }
-        record("Connected to host " + m_connectedHost);
+        record("Connected to host " + connectedHost);
     }
 
     private void reconfig(String new_plan) {
@@ -555,7 +582,7 @@ public class PredictiveController {
 
         record("vargs.length: "+vargs.length);
 
-        PredictiveController c = new PredictiveController(args.catalog, hstore_conf, args.catalogContext);
+        PredictiveController c = new PredictiveController(args.catalog, hstore_conf);
         try {
             c.run();
         } catch (Exception e) {
