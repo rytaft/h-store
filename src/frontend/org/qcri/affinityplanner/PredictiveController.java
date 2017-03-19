@@ -202,7 +202,7 @@ public class PredictiveController {
 
                 currentPlan = next_move.new_plan;
                 record("Moving to plan: " + currentPlan);
-                reconfig(currentPlan);
+                //reconfig(currentPlan);
 
                 try {
                     FileUtil.writeStringToFile(planFile, currentPlan);
@@ -451,6 +451,7 @@ public class PredictiveController {
     }
 
     private void resetLogs(){
+        System.out.println("Resetting logs");
         String hStoreDir = ShellTools.cmd("pwd");
         hStoreDir = hStoreDir.replaceAll("(\\r|\\n)", "");
         String command = "python scripts/partitioning/reset_hevent.py " + hStoreDir;
@@ -459,6 +460,7 @@ public class PredictiveController {
         }
         @SuppressWarnings("unused")
         String results = ShellTools.cmd(command);
+        System.out.println("Done resetting logs");
     }
 
     private boolean isReconfigurationRunning() throws Exception {
