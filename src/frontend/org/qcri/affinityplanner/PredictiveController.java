@@ -496,7 +496,6 @@ public class PredictiveController {
         }
         if (line == null){
             Controller.record("File " + logFile.toString() + " is empty");
-            throw new Exception();
         }
 
         boolean reconfiguring = false;
