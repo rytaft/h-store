@@ -32,6 +32,7 @@ public class B2WConstants {
     
     public static final int BATCH_SIZE = 10000;
     public static final int TOKEN_LENGTH = 150;
+    public static final int NUM_KEYS = 1000020;
     
     public static final String OPERATION = "operation";
     public static final String OPERATION_OFFSET = "offset";

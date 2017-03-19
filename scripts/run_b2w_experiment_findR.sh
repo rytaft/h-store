@@ -7,7 +7,7 @@
 # $ ./scripts/run_b2w_experiment.sh
 
 # DEFAULTS:
-clients="istc5 istc6 istc7 istc8"
+clients="istc1 istc2 istc3 istc4"
 config=b2w-12p
 YYYY=2016
 MM=07
@@ -58,8 +58,8 @@ echo "date     = ${YYYY}_${MM}_${DD}"
 echo "offset   = ${offset}"
 echo "end_iter = ${end_iter}"
 
-# 6000000 ms = 100 minutes
-INTERVAL=6000000
+# 3000000 ms = 50 minutes
+INTERVAL=3000000
 for i in $(seq 0 ${end_iter})
 do
     hr=`expr \( $offset % 86400000 \) / 3600000`
@@ -75,7 +75,18 @@ do
     ./scripts/deploy-file.sh properties/benchmarks/b2w.properties
     data_path=/data/rytaft/client_ops_${date}_4m_findR
     ./scripts/load_client_operations.sh $data_path "$clients"
-    ./configs/${config}/commands.sh run
+
+     if [[ i -eq 0 ]]
+     then
+	 cp configs/${config}/plan_out.json plan_out.json
+	 ./scripts/deploy-file.sh plan_out.json
+	 ./configs/${config}/commands.sh reconfig_no_load 
+	 cp configs/${config}/plan_out.json plan.json
+	 ./scripts/deploy-file.sh plan.json
+     else
+	 ./configs/${config}/commands.sh run
+     fi
+
     ./scripts/save_results.sh results/${config}_${date}
 
     offset=`expr $offset + $INTERVAL`
