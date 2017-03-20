@@ -60,7 +60,10 @@ echo "end_iter = ${end_iter}"
 
 # 3000000 ms = 50 minutes
 INTERVAL=3000000
-for i in $(seq 0 ${end_iter})
+#for i in $(seq 0 ${end_iter})
+
+## Skip intervals 0,1,2 thereby fast forwarding the first 30 minutes of benchmark time 
+for i in $(seq 3 ${end_iter})
 do
     hr=`expr \( $offset % 86400000 \) / 3600000`
     if [ $hr -lt 10 ]; then hr=0${hr}; fi
