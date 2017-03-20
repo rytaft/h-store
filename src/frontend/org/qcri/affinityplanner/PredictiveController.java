@@ -72,7 +72,7 @@ public class PredictiveController {
     public static long MAX_CAPACITY_PER_SERVER = 225 * FUDGE_FACTOR * MONITORING_TIME/1000; // Q=225 txns/s
     public static int DB_MIGRATION_TIME = 5220 * 1000/MONITORING_TIME; // D=5220 seconds
     public static int MAX_MOVES_STALENESS = 1000; // time in milliseconds before moves are considered invalid
-
+    public static int POLL_TIME = 1000;
 
     public static String ORACLE_PREDICTION_FILE = "/data/rytaft/oracle_prediction_2016_07_01.txt";
     public static boolean USE_ORACLE_PREDICTION = false;
@@ -254,14 +254,13 @@ public class PredictiveController {
         }
 
         while (true){
-            try {
-                Thread.sleep(MONITORING_TIME);
-            } catch (InterruptedException e) {
-                record("sleeping interrupted while monitoring");
-                System.exit(1);
-            }
-
             if(isReconfigurationRunning()){
+                try {
+                    Thread.sleep(POLL_TIME);
+                } catch (InterruptedException e) {
+                    record("sleeping interrupted while waiting for reconfiguration");
+                    System.exit(1);
+                }
                 continue;
             }
             else if (m_next_moves != null && !m_next_moves.isEmpty()
@@ -281,7 +280,7 @@ public class PredictiveController {
 
                 currentPlan = next_move.new_plan;
                 record("Moving to plan: " + currentPlan);
-//                reconfig(currentPlan);
+                reconfig(currentPlan);
 
                 try {
                     FileUtil.writeStringToFile(planFile, currentPlan);
