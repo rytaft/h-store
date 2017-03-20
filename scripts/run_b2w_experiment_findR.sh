@@ -13,7 +13,7 @@ YYYY=2016
 MM=07
 DD=01
 offset=0
-end_iter=9
+end_iter=0
 
 for i in "$@"
 do
