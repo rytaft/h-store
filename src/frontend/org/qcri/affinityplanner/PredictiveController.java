@@ -263,7 +263,8 @@ public class PredictiveController {
                 continue;
             }
             else if (m_next_moves != null && !m_next_moves.isEmpty()
-                    && System.currentTimeMillis() - m_next_moves_time < MAX_MOVES_STALENESS){
+                    && (System.currentTimeMillis() - m_next_moves_time < MAX_MOVES_STALENESS
+                            || USE_ORACLE_PREDICTION)){
                 SquallMove next_move = m_next_moves.pop();
                 long sleep_time = next_move.start_time - System.currentTimeMillis();
                 if (sleep_time > 0){
@@ -528,8 +529,8 @@ public class PredictiveController {
         }
 
         boolean reconfiguring = false;
-        String startReconf = "RECONFIG_INIT";
-        String endReconf = "RECONFIGURATION_SITE_DONE";
+        String startReconf = "LEADER_RECONFIG_INIT";
+        String endReconf = "RECONFIGURATION_END";
 
         while(line != null){
             if (line.contains(startReconf)){
