@@ -278,7 +278,7 @@ public class PredictiveController {
 
                 currentPlan = next_move.new_plan;
                 record("Moving to plan: " + currentPlan);
-                reconfig(currentPlan);
+//                reconfig(currentPlan);
 
                 try {
                     FileUtil.writeStringToFile(planFile, currentPlan);
