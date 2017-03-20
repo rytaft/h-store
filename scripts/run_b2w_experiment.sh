@@ -12,7 +12,9 @@ config=b2w-30p
 YYYY=2016
 MM=07
 DD=01
-offset=0
+
+## Skip intervals 0,1,2 thereby fast forwarding the first 30 minutes of benchmark time   
+offset=9000000
 end_iter=9
 
 for i in "$@"
