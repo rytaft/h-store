@@ -54,10 +54,6 @@ public class PredictiveController {
     public static int PARTITIONS_PER_SITE;
     public static String PLAN_IN = "plan_affinity.json";
 
-    public static long MAX_CAPACITY_PER_PART = 3110L; //Long.MAX_VALUE;
-    public static int DB_MIGRATION_TIME = 20000; //Integer.MAX_VALUE;
-    public static int MAX_MOVES_STALENESS = 1000; // time in milliseconds before moves are considered invalid
-
     // Prediction variables
     public static String LOAD_HIST = "agg_load_hist_preds.csv";
     public static int N_HISTORICAL_OBS = 30;
@@ -66,11 +62,17 @@ public class PredictiveController {
 
     // The following 3 parameters need to be consistent with each other:
     // (1) Time in milliseconds for collecting historical load data and making a prediction:
-    public static int MONITORING_TIME = 3000;  //(e.g. 3000 ms = 3 sec = 30 sec B2W-time)
+    public static int MONITORING_TIME = 60000;  //(e.g. 3000 ms = 3 sec = 30 sec B2W-time)
     // (2) Number of data points to predict into the future 
-    public static int NUM_PREDS_AHEAD = 2400;  // (e.g. for MONITORING_TIME=3000, to predict 1hour => NUM_PREDS_AHEAD = 120 pts)
+    public static int NUM_PREDS_AHEAD = 30;  // (e.g. for MONITORING_TIME=3000, to predict 1hour => NUM_PREDS_AHEAD = 120 pts)
     // (3) Fitted model coefficients, based on (1) rate [Temporarily hard-coded] 
     public static String MODEL_COEFFS_FILE = "/home/nosayba/h-store/src/frontend/org/qcri/affinityplanner/prediction_model_coeffs.txt";
+
+    public static int FUDGE_FACTOR = 2;
+    public static long MAX_CAPACITY_PER_SERVER = 225 * FUDGE_FACTOR * MONITORING_TIME/1000; // Q=225 txns/s
+    public static int DB_MIGRATION_TIME = 5220 * 1000/MONITORING_TIME; // D=5220 seconds
+    public static int MAX_MOVES_STALENESS = 1000; // time in milliseconds before moves are considered invalid
+
 
     public static String ORACLE_PREDICTION_FILE = "/data/rytaft/oracle_prediction_2016_07_01.txt";
     public static boolean USE_ORACLE_PREDICTION = false;
@@ -191,7 +193,7 @@ public class PredictiveController {
         }
         MAX_PARTITIONS++;
 
-        m_planner = new ReconfigurationPredictor(MAX_CAPACITY_PER_PART, new ParallelMigration(PARTITIONS_PER_SITE, DB_MIGRATION_TIME));
+        m_planner = new ReconfigurationPredictor(MAX_CAPACITY_PER_SERVER, new ParallelMigration(PARTITIONS_PER_SITE, DB_MIGRATION_TIME));
 
         if (hstore_conf.global.hasher_plan != null) {
             PLAN_IN = hstore_conf.global.hasher_plan;
