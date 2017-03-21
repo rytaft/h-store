@@ -13,7 +13,7 @@ YYYY=2016
 MM=07
 DD=01
 
-## Skip intervals 0,1,2 thereby fast forwarding the first 30 minutes of benchmark time   
+## Skip ahead, fast forwarding the first 15 minutes of benchmark time   
 offset=9000000
 end_iter=9
 
@@ -60,13 +60,12 @@ echo "date     = ${YYYY}_${MM}_${DD}"
 echo "offset   = ${offset}"
 echo "end_iter = ${end_iter}"
 
-# 3000000 ms = 50 minutes
-INTERVAL=3000000
-#for i in $(seq 0 ${end_iter})
-
-## Skip intervals 0,1,2 thereby fast forwarding the first 30 minutes of benchmark time 
-for i in $(seq 3 ${end_iter})
+# 6000000 ms = 100 minutes
+INTERVAL=6000000
+for i in $(seq 0 ${end_iter})
 do
+    DD=`expr \( $offset / 86400000 \) + 1`
+    if [ $DD -lt 10 ]; then DD=0${DD}; fi
     hr=`expr \( $offset % 86400000 \) / 3600000`
     if [ $hr -lt 10 ]; then hr=0${hr}; fi
     mm=`expr \( $offset % 3600000 \) / 60000`
