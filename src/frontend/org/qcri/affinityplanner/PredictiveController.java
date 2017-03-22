@@ -386,12 +386,22 @@ public class PredictiveController {
                     }
                     else {
                         record("Moves: " + moves.toString());
+                        insertDelay(moves);
+                        record("Moves with delay: " + moves.toString());
                         m_next_moves = convert(currentPlan, moves, activeSites);
                     }
                     m_next_moves_time = System.currentTimeMillis();
                 }
             }
         }
+    }
+    
+    // HACK to handle 3.9 minute delay between 10 minute runs of the benchmark
+    private void insertDelay(ArrayList<Move> moves) {
+        for(Move move : moves) {
+            int fast_forward = (int) Math.round((move.time / (600000/MONITORING_TIME)) * (3.9125 * 60000/MONITORING_TIME));
+            move.time += fast_forward;
+        }       
     }
 
     public static void record(String s){
