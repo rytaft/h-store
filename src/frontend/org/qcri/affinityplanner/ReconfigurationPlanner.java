@@ -64,9 +64,10 @@ public class ReconfigurationPlanner implements Partitioner {
                 // each old machine will be giving data to each new machine
                 for (int old_part = 0; old_part < this.partitions_before; ++old_part) {
                     List<List<Range>> chunks = plan.getRangeChunks(table, old_part, sliceWidth);
-                    for (int new_mach = 0; new_mach < num_new_machines && new_mach < chunks.size(); ++new_mach) {
+                    // send from the end of the list of chunks so higher keys go to higher partitions
+                    for (int new_mach = 0, chunk = Math.max(chunks.size() - num_new_machines, 0); new_mach < num_new_machines && chunk < chunks.size(); ++new_mach, ++chunk) {
                         int new_part = this.partitions_before + new_mach * this.partitions_per_site + old_part % this.partitions_per_site;
-                        for(Range movedRange : chunks.get(new_mach)) {
+                        for(Range movedRange : chunks.get(chunk)) {
                             plan.moveColdRange(table, movedRange, old_part, new_part);
                         }
                     }
