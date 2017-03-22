@@ -39,10 +39,14 @@ public class Predictor {
 
         ArrayList<Long> preds = new ArrayList<>();
         if( currentLoad.size() < modelOrder ){
-            System.out.println("Not enough historical data points to make a prediction!");
+            //System.out.println("Not enough historical data points to make a prediction! - "+ currentLoad.size());
             return null;
         }
         else{
+        	System.out.println("Current load: ");
+        	System.out.print( currentLoad.toString() );
+        	System.out.println();
+        	
             //System.out.print("predModelCoeffs: ");
             int idX = 0;
             for (int i = 3; i < contents.length; i++) {

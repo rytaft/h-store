@@ -62,12 +62,15 @@ public class PredictiveController {
 
     // The following 3 parameters need to be consistent with each other:
     // (1) Time in milliseconds for collecting historical load data and making a prediction:
-    public static int MONITORING_TIME = 60000;  //(e.g. 3000 ms = 3 sec = 30 sec B2W-time)
+    public static int MONITORING_TIME = 30000;  //(e.g. 3000 ms = 3 sec = 30 sec B2W-time)
     // (2) Number of data points to predict into the future 
-    public static int NUM_PREDS_AHEAD = 30;  //2400;  // (e.g. for MONITORING_TIME=3000, to predict 1hour => NUM_PREDS_AHEAD = 120 pts)
+    public static int NUM_PREDS_AHEAD = 90;  //2400;  // (e.g. for MONITORING_TIME=3000, to predict 1hour => NUM_PREDS_AHEAD = 120 pts)
     // (3) Fitted model coefficients, based on (1) rate [Temporarily hard-coded] 
-    public static String MODEL_COEFFS_FILE = "/home/nosayba/h-store/src/frontend/org/qcri/affinityplanner/prediction_model_coeffs.txt";
-
+    //public static String MODEL_COEFFS_FILE = "/home/nosayba/h-store/src/frontend/org/qcri/affinityplanner/prediction_model_coeffs.txt";
+    public static String MODEL_COEFFS_FILE = "/data/nosayba/prediction_model_coeffs.txt";
+    public static String FASTFWD_FILE = "/data/nosayba/fastforward_load_60samples.txt";
+    public static boolean USE_FAST_FORWARD = false;
+    
     public static int FUDGE_FACTOR = 2;
     public static long MAX_CAPACITY_PER_SERVER = 225 * FUDGE_FACTOR * MONITORING_TIME/1000; // Q=225 txns/s
     public static int DB_MIGRATION_TIME = 5220 * 1000/MONITORING_TIME; // D=5220 seconds
@@ -150,8 +153,19 @@ public class PredictiveController {
 
                 if (firstPrediction) {
                     firstPrediction = false;
+                    
+                    if(USE_FAST_FORWARD){
+	                    // Add fast-forwarded sample points to history log 
+	                    String fastFwdSamples = FileUtil.readFile(FASTFWD_FILE);
+	                    String[] fwdSamples = fastFwdSamples.split("\n");
+	                    for (int i = 0; i < fwdSamples.length; i++) {
+	                    	historyNLoads.add(Long.valueOf( fwdSamples[i] ));
+						}
+                    }
                 } else {
-                    historyNLoads.add(totalLoad);
+                	if(totalLoad != 0 ){
+                		historyNLoads.add(totalLoad);
+                	}
                 }
             }
         }
