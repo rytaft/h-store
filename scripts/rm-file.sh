@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for s in istc5 istc6 istc7 istc8 istc12 istc13
+for s in istc1 istc2 istc3 istc4 istc5 istc6 istc7 istc8 istc12 istc13
 do
 	echo "deleting from $s"
         if [[ "$s" != "$HOSTNAME" ]]
