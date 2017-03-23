@@ -539,7 +539,7 @@ public class GreedyExtended implements Partitioner {
 
         double coldIncrement = 1.0 / m_intervalsInSecs[fromPartition] / Controller.COLD_TUPLE_FRACTION_ACCESSES;
 
-        List<List<Plan.Range>> partitionChunks = oldPlan.getRangeChunks(table, fromPartition,  (long) Controller.COLD_CHUNK_SIZE);
+        List<List<Plan.Range>> partitionChunks = oldPlan.getRangeChunks(table, fromPartition,  (double) Controller.COLD_CHUNK_SIZE);
         if(partitionChunks.size() > 0) {
 
             for(List<Plan.Range> chunk : partitionChunks) {  // a chunk can consist of multiple ranges if hot tuples are taken away

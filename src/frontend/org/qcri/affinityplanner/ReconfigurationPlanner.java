@@ -54,9 +54,8 @@ public class ReconfigurationPlanner implements Partitioner {
     public boolean repartition() {
         if (this.partitions_before < this.partitions_after) { // scale out
             for(String table : plan.table_names){
-                long data_moving_out_per_partition = (long) Math.ceil((keysPerTable(table) * (1.0/this.partitions_before - 1.0/this.partitions_after)));
                 int num_new_machines = (this.partitions_after - this.partitions_before) / this.partitions_per_site;
-                long sliceWidth = (long) Math.ceil((double) data_moving_out_per_partition / num_new_machines);
+                double sliceWidth = keysPerTable(table) * (1.0/this.partitions_before - 1.0/this.partitions_after) / num_new_machines;
                 for (int new_part = this.partitions_before; new_part < this.partitions_after; ++new_part) {
                     plan.addPartition(table, new_part);
                 }
@@ -76,12 +75,12 @@ public class ReconfigurationPlanner implements Partitioner {
         }
         else if (this.partitions_before > this.partitions_after) { // scale in
             for(String table : plan.table_names){
-                long data_moving_out_per_partition = (long) Math.ceil((keysPerTable(table) * (1.0/this.partitions_before)));
                 int machines_after = this.partitions_after / this.partitions_per_site;
-                long sliceWidth = (long) Math.ceil((double) data_moving_out_per_partition / machines_after);
+                double sliceWidth = keysPerTable(table) * (1.0/this.partitions_before) / machines_after;
                 
                 // each old machine that is going away will be giving data to each machine that is staying
                 for (int old_part = this.partitions_after; old_part < this.partitions_before; ++old_part) {
+                    
                     List<List<Range>> chunks = plan.getRangeChunks(table, old_part, sliceWidth);
                     for (int new_mach = 0; new_mach < machines_after && new_mach < chunks.size(); ++new_mach) {
                         int new_part = new_mach * this.partitions_per_site + old_part % this.partitions_per_site;
