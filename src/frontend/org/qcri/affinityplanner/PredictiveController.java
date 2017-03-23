@@ -339,6 +339,8 @@ public class PredictiveController {
                 }
                 else {
                     record("Moves: " + moves.toString());
+                    insertDelay(moves);
+                    record("Moves with delay: " + moves.toString());
                     m_next_moves = convert(currentPlan, moves, activeSites);
                 }
                 m_next_moves_time = System.currentTimeMillis();
@@ -386,8 +388,6 @@ public class PredictiveController {
                     }
                     else {
                         record("Moves: " + moves.toString());
-                        insertDelay(moves);
-                        record("Moves with delay: " + moves.toString());
                         m_next_moves = convert(currentPlan, moves, activeSites);
                     }
                     m_next_moves_time = System.currentTimeMillis();
