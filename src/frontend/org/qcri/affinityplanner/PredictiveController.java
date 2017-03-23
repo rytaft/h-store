@@ -72,8 +72,8 @@ public class PredictiveController {
     public static boolean USE_FAST_FORWARD = false;
     
     public static int FUDGE_FACTOR = 2;
-    public static long MAX_CAPACITY_PER_SERVER = 225 * FUDGE_FACTOR * MONITORING_TIME/1000; // Q=225 txns/s
-    public static int DB_MIGRATION_TIME = 5220 * 1000/MONITORING_TIME; // D=5220 seconds
+    public static long MAX_CAPACITY_PER_SERVER = 350 * FUDGE_FACTOR * MONITORING_TIME/1000; // Q=350 txns/s
+    public static int DB_MIGRATION_TIME = 4646 * 1000/MONITORING_TIME; // D=4224 seconds + 10% buffer
     public static int MAX_MOVES_STALENESS = 1000; // time in milliseconds before moves are considered invalid
     public static int POLL_TIME = 1000;
 
