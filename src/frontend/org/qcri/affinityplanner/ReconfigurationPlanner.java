@@ -54,6 +54,7 @@ public class ReconfigurationPlanner implements Partitioner {
     public boolean repartition() {
         if (this.partitions_before < this.partitions_after) { // scale out
             for(String table : plan.table_names){
+                int machines_after = this.partitions_after / this.partitions_per_site;
                 int num_new_machines = (this.partitions_after - this.partitions_before) / this.partitions_per_site;
                 for (int new_part = this.partitions_before; new_part < this.partitions_after; ++new_part) {
                     plan.addPartition(table, new_part);
@@ -61,7 +62,7 @@ public class ReconfigurationPlanner implements Partitioner {
                 
                 // each old machine will be giving data to each new machine
                 for (int old_part = 0; old_part < this.partitions_before; ++old_part) {
-                    double sliceWidth = Plan.getRangeListWidth(plan.getAllRanges(table, old_part)) * (1.0/this.partitions_before - 1.0/this.partitions_after) / num_new_machines;
+                    double sliceWidth = (double) Plan.getRangeListWidth(plan.getAllRanges(table, old_part)) / machines_after;
                     List<List<Range>> chunks = plan.getRangeChunks(table, old_part, sliceWidth);
                     // send from the end of the list of chunks so higher keys go to higher partitions
                     for (int new_mach = 0, chunk = Math.max(chunks.size() - num_new_machines, 0); new_mach < num_new_machines && chunk < chunks.size(); ++new_mach, ++chunk) {
@@ -79,7 +80,7 @@ public class ReconfigurationPlanner implements Partitioner {
                 
                 // each old machine that is going away will be giving data to each machine that is staying
                 for (int old_part = this.partitions_after; old_part < this.partitions_before; ++old_part) {              
-                    double sliceWidth = Plan.getRangeListWidth(plan.getAllRanges(table, old_part)) * (1.0/this.partitions_before) / machines_after;
+                    double sliceWidth = (double) Plan.getRangeListWidth(plan.getAllRanges(table, old_part)) / machines_after;
                     List<List<Range>> chunks = plan.getRangeChunks(table, old_part, sliceWidth);
                     for (int new_mach = 0; new_mach < machines_after && new_mach < chunks.size(); ++new_mach) {
                         int new_part = new_mach * this.partitions_per_site + old_part % this.partitions_per_site;
