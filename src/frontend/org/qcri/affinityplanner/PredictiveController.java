@@ -47,6 +47,7 @@ public class PredictiveController {
     private Predictor m_predictor = new Predictor();
     private LinkedList<SquallMove> m_next_moves;
     private long m_next_moves_time = 0;
+    private boolean m_stop = false;
 
     public static int RECONFIG_LEADER_SITEID = 0;
 
@@ -99,7 +100,7 @@ public class PredictiveController {
 
         @Override
         public void run() {
-            while(true) {
+            while(!m_stop) {
                 try {
                     Thread.sleep(MONITORING_TIME);
                 } catch (InterruptedException e) {
@@ -267,7 +268,7 @@ public class PredictiveController {
             monitor.start();
         }
 
-        while (true){
+        while (!m_stop){
             if(isReconfigurationRunning()){
                 try {
                     Thread.sleep(POLL_TIME);
@@ -394,6 +395,10 @@ public class PredictiveController {
                 }
             }
         }
+    }
+
+    public void stop(){
+        m_stop = true;
     }
     
     // HACK to handle 3.9 minute delay between 10 minute runs of the benchmark
