@@ -564,7 +564,7 @@ public class Plan {
                 tmp.to = ranges.get(i);
                 partialList.add(tmp);
                 slices.add(partialList);
-                if (slices.size()/expectedSliceCount > sliceWidthRemainder) sliceWidth = (long) Math.ceil(sliceWidthExact);
+                if (slices.size()/expectedSliceCount > 1 - sliceWidthRemainder) sliceWidth = (long) Math.ceil(sliceWidthExact);
                 partialList = new ArrayList<Range>();
                 accumulatedSum = 0L;
             }
@@ -575,7 +575,7 @@ public class Plan {
                 tmp1.to = i + sliceWidth - accumulatedSum; // fill in the remainder
                 partialList.add(tmp1);
                 slices.add(partialList);
-                if (slices.size()/expectedSliceCount > sliceWidthRemainder) sliceWidth = (long) Math.ceil(sliceWidthExact);
+                if (slices.size()/expectedSliceCount > 1 - sliceWidthRemainder) sliceWidth = (long) Math.ceil(sliceWidthExact);
                 partialList = new ArrayList<Range>();
                 accumulatedSum = 0L;
 
@@ -589,14 +589,14 @@ public class Plan {
                     tmp1.to = tmp2.from + sliceWidth;
                     partialList.add(tmp1);
                     slices.add(partialList);
-                    if (slices.size()/expectedSliceCount > sliceWidthRemainder) sliceWidth = (long) Math.ceil(sliceWidthExact);
+                    if (slices.size()/expectedSliceCount > 1 - sliceWidthRemainder) sliceWidth = (long) Math.ceil(sliceWidthExact);
                     partialList = new ArrayList<Range>();
                     tmp2.from = tmp1.to;
                 }
 
                 if(getRangeWidth(tmp2) == sliceWidth) {
                     slices.add(partialList);
-                    if (slices.size()/expectedSliceCount > sliceWidthRemainder) sliceWidth = (long) Math.ceil(sliceWidthExact);
+                    if (slices.size()/expectedSliceCount > 1 - sliceWidthRemainder) sliceWidth = (long) Math.ceil(sliceWidthExact);
                     partialList = new ArrayList<Range>();					
                 }
                 else {
