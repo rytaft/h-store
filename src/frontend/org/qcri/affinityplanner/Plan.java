@@ -170,8 +170,6 @@ public class Plan {
         Map.Entry<Long, Long> precedingFrom = ranges.floorEntry(fromTest);
         Map.Entry<Long, Long> precedingTo = ranges.floorEntry(toTest);
 
-
-
         if (precedingFrom == null){
             // from is smaller than any previous range
             if (precedingTo == null){
@@ -199,7 +197,7 @@ public class Plan {
                     lowerBound = Math.min(from, precedingFrom.getKey());
                 }
 
-                if(precedingTo.getKey() < toTest) {
+                if(precedingTo.getKey() <= toTest) {
                     upperBound = Math.max(to, precedingTo.getValue());
                 }
 
