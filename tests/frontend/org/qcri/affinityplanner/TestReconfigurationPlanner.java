@@ -74,14 +74,6 @@ public class TestReconfigurationPlanner extends BaseTestCase {
         planner.repartition();
         System.out.println(planner.getPlanString());
         Plan plan = planner.getPlan();
-        for(String table : plan.table_names) {
-            Map<Integer,List<Range>> rangeMap = plan.getAllRanges(table);
-            Long keys_per_part = new Long(1000020/30);
-            for (int i = 0; i < 30; ++i) {
-                long num_keys = Plan.getRangeListWidth(rangeMap.get(i));
-                assertTrue(num_keys <= keys_per_part + 3 && num_keys >= keys_per_part - 3);
-            }
-        }
         
         assertTrue(plan.verifyPlan(tableSizesBug));
     }
