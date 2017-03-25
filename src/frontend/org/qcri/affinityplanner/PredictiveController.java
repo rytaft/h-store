@@ -75,7 +75,7 @@ public class PredictiveController {
     public static int FUDGE_FACTOR = 2;
     public static long MAX_CAPACITY_PER_SERVER = 285 * FUDGE_FACTOR * MONITORING_TIME/1000; // Q=350 txns/s
     public static int DB_MIGRATION_TIME = 4646 * 1000/MONITORING_TIME; // D=4224 seconds + 10% buffer
-    public static int MAX_MOVES_STALENESS = 1000; // time in milliseconds before moves are considered invalid
+    public static int MAX_MOVES_STALENESS = 5000; // time in milliseconds before moves are considered invalid
     public static int POLL_TIME = 1000;
     public static double PREDICTION_INFLATION = 1.1; // inflate predictions by 10%
 
@@ -281,7 +281,7 @@ public class PredictiveController {
             }
             else if (m_next_moves != null && !m_next_moves.isEmpty()
                     && (System.currentTimeMillis() - m_next_moves_time < MAX_MOVES_STALENESS
-                            || USE_ORACLE_PREDICTION)){
+                            || USE_ORACLE_PREDICTION || REACTIVE_ONLY)){
                 SquallMove next_move = m_next_moves.pop();
                 long sleep_time = next_move.start_time - System.currentTimeMillis();
                 if (sleep_time > 0){
