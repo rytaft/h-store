@@ -38,9 +38,9 @@ public class TransactionRTStats extends StatsSource {
 
 	/**
 	 * Creates profiler with four default buckets:
-	 * - less than 16 ms
-	 * - between 16 ms and 27 ms
-	 * - more than 27 ms
+	 * - less than 20 ms
+	 * - between 20 ms and 50 ms
+	 * - more than 50 ms
 	 * 
 	 * @param nanosecond_latencies latencies are in nanoseconds if true, in milliseconds if false
 	 */
@@ -50,8 +50,8 @@ public class TransactionRTStats extends StatsSource {
 		long multiplier = 1;
 		if (nanosecond_latencies) multiplier = 1000000;
 		this.boundaries = new long [2];
-		this.boundaries[0] = 16 * multiplier;
-		this.boundaries[1] = 27 * multiplier;
+		this.boundaries[0] = 20 * multiplier;
+		this.boundaries[1] = 50 * multiplier;
 	}
 		
 	private class Buckets{
@@ -95,9 +95,9 @@ public class TransactionRTStats extends StatsSource {
         this.column_offset = columns.size();
 
 		columns.add(new VoltTable.ColumnInfo("PROCEDURE", VoltType.STRING));
-		columns.add(new VoltTable.ColumnInfo("COUNT-16", VoltType.BIGINT));
-		columns.add(new VoltTable.ColumnInfo("COUNT-27", VoltType.BIGINT));
-		columns.add(new VoltTable.ColumnInfo("COUNT>27", VoltType.BIGINT));
+		columns.add(new VoltTable.ColumnInfo("COUNT-20", VoltType.BIGINT));
+		columns.add(new VoltTable.ColumnInfo("COUNT-50", VoltType.BIGINT));
+		columns.add(new VoltTable.ColumnInfo("COUNT>50", VoltType.BIGINT));
     }
 	
     @Override
