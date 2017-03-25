@@ -123,41 +123,42 @@ public class PredictiveController {
                     System.exit(1);
                 }
                 
-                if(REACTIVE_ONLY) {
-                    // first check if there is need for reactive reconf
-                    ClientResponse cresponse = null;
-                    try {
-                        cresponse = m_client.callProcedure("@Statistics", "TXNRESPONSETIME", 0);
-                    } catch (IOException | ProcCallException e) {
-                        record("Problem while turning on monitoring");
-                        record(stackTraceToString(e));
-                        System.exit(1);
-                    }
-
-                    // process running times to decide if there is need for a reconfiguration
-                    VoltTable result = cresponse.getResults()[0];
-                    record(result.toString());
-                    long count_lt_20 = 0, count_lt_50 = 0, count_gt_50 = 0;
-                    for (int i = 0; i < result.getRowCount(); i++) {
-                        VoltTableRow row = result.fetchRow(i);
-                        String procedure = row.getString(3);
-
-                        if (procedure.charAt(0) == '@') {
-                            // don't count invocations to system procedures
-                            continue;
-                        }
-
-                        // { 4=COUNT-10 | 5=COUNT-20 | 6=COUNT-50 | 7=COUNT>50 }
-                        count_lt_20 += row.getLong(4) + row.getLong(5);
-                        count_lt_50 += row.getLong(6);
-                        count_gt_50 += row.getLong(7);
-                    }
-                    
-                    m_count_lt_20.set(count_lt_20);
-                    m_count_lt_50.set(count_lt_50);
-                    m_count_gt_50.set(count_gt_50);
-                    
-                } else {                   
+                // This stuff doesn't really work...
+//                if(REACTIVE_ONLY) {
+//                    // first check if there is need for reactive reconf
+//                    ClientResponse cresponse = null;
+//                    try {
+//                        cresponse = m_client.callProcedure("@Statistics", "TXNRESPONSETIME", 0);
+//                    } catch (IOException | ProcCallException e) {
+//                        record("Problem while turning on monitoring");
+//                        record(stackTraceToString(e));
+//                        System.exit(1);
+//                    }
+//
+//                    // process running times to decide if there is need for a reconfiguration
+//                    VoltTable result = cresponse.getResults()[0];
+//                    record(result.toString());
+//                    long count_lt_20 = 0, count_lt_50 = 0, count_gt_50 = 0;
+//                    for (int i = 0; i < result.getRowCount(); i++) {
+//                        VoltTableRow row = result.fetchRow(i);
+//                        String procedure = row.getString(3);
+//
+//                        if (procedure.charAt(0) == '@') {
+//                            // don't count invocations to system procedures
+//                            continue;
+//                        }
+//
+//                        // { 4=COUNT-10 | 5=COUNT-20 | 6=COUNT-50 | 7=COUNT>50 }
+//                        count_lt_20 += row.getLong(4) + row.getLong(5);
+//                        count_lt_50 += row.getLong(6);
+//                        count_gt_50 += row.getLong(7);
+//                    }
+//                    
+//                    m_count_lt_20.set(count_lt_20);
+//                    m_count_lt_50.set(count_lt_50);
+//                    m_count_gt_50.set(count_gt_50);
+//                    
+//                } else {                   
                     ClientResponse cresponse = null;
                     try {
                         cresponse = client.callProcedure("@Statistics", "TXNCOUNTER", 0);
@@ -213,14 +214,13 @@ public class PredictiveController {
                                 historyNLoads.add(Long.valueOf( fwdSamples[i] ));
                             }
                         }
-                    } else {
-                        if(totalLoad != 0 ){
-                            historyNLoads.add(totalLoad);
-                        }
+                    } 
+                    
+                    if(totalLoad != 0 ){
+                        historyNLoads.add(totalLoad);
                     }
                 }
             }
-        }
     }
 
     public class SquallMove {
@@ -405,25 +405,33 @@ public class PredictiveController {
             else if (REACTIVE_ONLY){
                 
                 // prepare a plan that increases or reduces the number of servers if needed
-                long count_lt_20 = m_count_lt_20.get();
-                long count_lt_50 = m_count_lt_50.get();
-                long count_gt_50 = m_count_gt_50.get();
-                long total = count_lt_20 + count_lt_50 + count_gt_50;
-                if (total > 0 && (double) count_lt_20 / total > 0.95) {
-                    int activeSites = countActiveSites(planFile.toString());
-                    if (activeSites > 1) {
-                        record("Initiating reactive migration to " + (activeSites - 1) + " nodes");
-                        m_next_moves = convert(currentPlan, activeSites - 1);
-                    } else {
-                        try {
-                            Thread.sleep(POLL_TIME);
-                        } catch (InterruptedException e) {
-                            record("sleeping interrupted");
-                            System.exit(1);
-                        }
-                    }
-                } else if (total > 0 && (double) count_gt_50 / total > 0.10) {
-                    int activeSites = countActiveSites(planFile.toString());
+                // Latency stuff doesnt really work...
+//                long count_lt_20 = m_count_lt_20.get();
+//                long count_lt_50 = m_count_lt_50.get();
+//                long count_gt_50 = m_count_gt_50.get();
+//                long total = count_lt_20 + count_lt_50 + count_gt_50;
+//                if (total > 0 && (double) count_lt_20 / total > 0.95) {
+                Long[] historyNLoads = m_historyNLoads.toArray(new Long[]{});
+                int activeSites = countActiveSites(planFile.toString());
+                long load1 = 0;
+                long load2 = 0;
+                long load3 = 0;
+                
+                if(historyNLoads.length > 0) load1 = historyNLoads[historyNLoads.length-1];
+                if(historyNLoads.length > 1) load2 = historyNLoads[historyNLoads.length-2];
+                if(historyNLoads.length > 2) load3 = historyNLoads[historyNLoads.length-3];
+                
+                if (load1 == 0 && load2 == 0 && load3 == 0) continue;
+                
+                if(activeSites > 1 && load1 < MAX_CAPACITY_PER_SERVER * (activeSites - 1) &&
+                        load2 < MAX_CAPACITY_PER_SERVER * (activeSites - 1) &&
+                        load3 < MAX_CAPACITY_PER_SERVER * (activeSites - 1)) {
+                    record("Initiating reactive migration to " + (activeSites - 1) + " nodes");
+                    m_next_moves = convert(currentPlan, activeSites - 1);
+//                } else if (total > 0 && (double) count_gt_50 / total > 0.10) {
+                } else if (load1 > MAX_CAPACITY_PER_SERVER * activeSites &&
+                        load2 > MAX_CAPACITY_PER_SERVER * activeSites &&
+                        load3 > MAX_CAPACITY_PER_SERVER * activeSites) {
                     record("Initiating reactive migration to " + (activeSites + 1) + " nodes");
                     m_next_moves = convert(currentPlan, activeSites + 1);
                 } else {
