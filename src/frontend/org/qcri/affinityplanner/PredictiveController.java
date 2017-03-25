@@ -318,7 +318,7 @@ public class PredictiveController {
 
         Thread monitor = new Thread(new MonitorThread(m_historyNLoads, m_sites, 
                 m_count_lt_20, m_count_lt_50, m_count_gt_50));
-        if(!USE_ORACLE_PREDICTION && !REACTIVE_ONLY) {
+        if(!USE_ORACLE_PREDICTION) {
             monitor.start();
         }
 
