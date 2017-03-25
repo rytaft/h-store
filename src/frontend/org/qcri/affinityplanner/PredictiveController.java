@@ -35,6 +35,7 @@ import java.util.*;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 
 /**
@@ -60,6 +61,11 @@ public class PredictiveController {
     public static int N_HISTORICAL_OBS = 30;
     public ConcurrentLinkedQueue<Long> m_historyNLoads = new ConcurrentLinkedQueue<>();
     public static boolean firstPrediction = true;
+    
+    // Reaction variables
+    public AtomicLong m_count_lt_20 = new AtomicLong();
+    public AtomicLong m_count_lt_50 = new AtomicLong();
+    public AtomicLong m_count_gt_50 = new AtomicLong();
 
     // The following 3 parameters need to be consistent with each other:
     // (1) Time in milliseconds for collecting historical load data and making a prediction:
@@ -89,8 +95,12 @@ public class PredictiveController {
         private long[] previousLoads;
         private long[] currLoads;
         ConcurrentLinkedQueue<Long> historyNLoads;
+        AtomicLong m_count_lt_20;
+        AtomicLong m_count_lt_50;
+        AtomicLong m_count_gt_50;
 
-        public MonitorThread(ConcurrentLinkedQueue<Long> historyNLoads, Collection<Site> sites) {
+        public MonitorThread(ConcurrentLinkedQueue<Long> historyNLoads, Collection<Site> sites,
+                AtomicLong count_lt_20, AtomicLong count_lt_50, AtomicLong count_gt_50) {
             client = ClientFactory.createClient();
             client.configureBlocking(false);
             connectToHost(client,sites);
@@ -98,6 +108,9 @@ public class PredictiveController {
             previousLoads = new long[sites.size()];
             currLoads = new long[sites.size()];
             this.historyNLoads = historyNLoads;
+            this.m_count_lt_20 = count_lt_20;
+            this.m_count_lt_50 = count_lt_50;
+            this.m_count_gt_50 = count_gt_50;
         }
 
         @Override
@@ -109,66 +122,102 @@ public class PredictiveController {
                     record("sleeping interrupted while monitoring");
                     System.exit(1);
                 }
-
-                ClientResponse cresponse = null;
-                try {
-                    cresponse = client.callProcedure("@Statistics", "TXNCOUNTER", 0);
-                } catch (IOException | ProcCallException e) {
-                    record("Problem while turning on monitoring");
-                    record(stackTraceToString(e));
-                    System.exit(1);
-                }
-
-                // extract total load and count active sites
-                VoltTable result = cresponse.getResults()[0];
-                for (int i = 0; i < result.getRowCount(); i++) {
-                    VoltTableRow row = result.fetchRow(i);
-                    String procedure = row.getString(3);
-
-                    if (procedure.charAt(0) == '@') {
-                        // don't count invocations to system procedures
-                        continue;
-                    }
-
-                    int hostId = (int) row.getLong(1);
-
-                    // { 4=RECEIVED | 5=REJECTED | 6=REDIRECTED | 7=EXECUTED | 8=COMPLETED }
-                    long load = row.getLong(4);
-
-                    currLoads[hostId] = currLoads[hostId] + load;
-                    //record("hostid=" + hostId + " -- procedure=" + procedure + " -- load=" + load);
-                }
-
-                long totalLoad = 0;
-                for (int i = 0; i < currLoads.length; i++) {
-                    totalLoad += (currLoads[i] - previousLoads[i]);
-                }
                 
-                long [] swap = previousLoads;
-                previousLoads = currLoads;
-                currLoads = swap;
-                for (int i = 0; i < currLoads.length; i++){
-                    currLoads[i] = 0;
-                }                
-
-                // For debugging purposes
-                record(" >> totalLoad =" + totalLoad);
-
-                if (firstPrediction) {
-                    firstPrediction = false;
-                    
-                    if(USE_FAST_FORWARD){
-	                    // Add fast-forwarded sample points to history log 
-	                    String fastFwdSamples = FileUtil.readFile(FASTFWD_FILE);
-	                    String[] fwdSamples = fastFwdSamples.split("\n");
-	                    for (int i = 0; i < fwdSamples.length; i++) {
-	                    	historyNLoads.add(Long.valueOf( fwdSamples[i] ));
-						}
+                if(REACTIVE_ONLY) {
+                    // first check if there is need for reactive reconf
+                    ClientResponse cresponse = null;
+                    try {
+                        cresponse = m_client.callProcedure("@Statistics", "TXNRESPONSETIME", 0);
+                    } catch (IOException | ProcCallException e) {
+                        record("Problem while turning on monitoring");
+                        record(stackTraceToString(e));
+                        System.exit(1);
                     }
-                } else {
-                	if(totalLoad != 0 ){
-                		historyNLoads.add(totalLoad);
-                	}
+
+                    // process running times to decide if there is need for a reconfiguration
+                    VoltTable result = cresponse.getResults()[0];
+                    record(result.toString());
+                    long count_lt_20 = 0, count_lt_50 = 0, count_gt_50 = 0;
+                    for (int i = 0; i < result.getRowCount(); i++) {
+                        VoltTableRow row = result.fetchRow(i);
+                        String procedure = row.getString(3);
+
+                        if (procedure.charAt(0) == '@') {
+                            // don't count invocations to system procedures
+                            continue;
+                        }
+
+                        // { 4=COUNT-10 | 5=COUNT-20 | 6=COUNT-50 | 7=COUNT>50 }
+                        count_lt_20 += row.getLong(4) + row.getLong(5);
+                        count_lt_50 += row.getLong(6);
+                        count_gt_50 += row.getLong(7);
+                    }
+                    
+                    m_count_lt_20.set(count_lt_20);
+                    m_count_lt_50.set(count_lt_50);
+                    m_count_gt_50.set(count_gt_50);
+                    
+                } else {                   
+                    ClientResponse cresponse = null;
+                    try {
+                        cresponse = client.callProcedure("@Statistics", "TXNCOUNTER", 0);
+                    } catch (IOException | ProcCallException e) {
+                        record("Problem while turning on monitoring");
+                        record(stackTraceToString(e));
+                        System.exit(1);
+                    }
+
+                    // extract total load and count active sites
+                    VoltTable result = cresponse.getResults()[0];
+                    for (int i = 0; i < result.getRowCount(); i++) {
+                        VoltTableRow row = result.fetchRow(i);
+                        String procedure = row.getString(3);
+
+                        if (procedure.charAt(0) == '@') {
+                            // don't count invocations to system procedures
+                            continue;
+                        }
+
+                        int hostId = (int) row.getLong(1);
+
+                        // { 4=RECEIVED | 5=REJECTED | 6=REDIRECTED | 7=EXECUTED | 8=COMPLETED }
+                        long load = row.getLong(4);
+
+                        currLoads[hostId] = currLoads[hostId] + load;
+                        //record("hostid=" + hostId + " -- procedure=" + procedure + " -- load=" + load);
+                    }
+
+                    long totalLoad = 0;
+                    for (int i = 0; i < currLoads.length; i++) {
+                        totalLoad += (currLoads[i] - previousLoads[i]);
+                    }
+
+                    long [] swap = previousLoads;
+                    previousLoads = currLoads;
+                    currLoads = swap;
+                    for (int i = 0; i < currLoads.length; i++){
+                        currLoads[i] = 0;
+                    }                
+
+                    // For debugging purposes
+                    record(" >> totalLoad =" + totalLoad);
+
+                    if (firstPrediction) {
+                        firstPrediction = false;
+
+                        if(USE_FAST_FORWARD){
+                            // Add fast-forwarded sample points to history log 
+                            String fastFwdSamples = FileUtil.readFile(FASTFWD_FILE);
+                            String[] fwdSamples = fastFwdSamples.split("\n");
+                            for (int i = 0; i < fwdSamples.length; i++) {
+                                historyNLoads.add(Long.valueOf( fwdSamples[i] ));
+                            }
+                        }
+                    } else {
+                        if(totalLoad != 0 ){
+                            historyNLoads.add(totalLoad);
+                        }
+                    }
                 }
             }
         }
@@ -189,7 +238,10 @@ public class PredictiveController {
         m_client.configureBlocking(false);
         m_sites = CatalogUtil.getAllSites(catalog);
         m_historyNLoads = new ConcurrentLinkedQueue<>();
-
+        m_count_lt_20 = new AtomicLong();
+        m_count_lt_50 = new AtomicLong();
+        m_count_gt_50 = new AtomicLong();
+        
         TreeSet<Integer> partitionIds = new TreeSet<>();
         MAX_PARTITIONS = -1;
         PARTITIONS_PER_SITE = -1;
@@ -264,7 +316,8 @@ public class PredictiveController {
         
         boolean oraclePredictionComplete = false;
 
-        Thread monitor = new Thread(new MonitorThread(m_historyNLoads, m_sites));
+        Thread monitor = new Thread(new MonitorThread(m_historyNLoads, m_sites, 
+                m_count_lt_20, m_count_lt_50, m_count_gt_50));
         if(!USE_ORACLE_PREDICTION && !REACTIVE_ONLY) {
             monitor.start();
         }
@@ -350,36 +403,12 @@ public class PredictiveController {
                 oraclePredictionComplete = true;
             }
             else if (REACTIVE_ONLY){
-                // first check if there is need for reactive reconf
-                try {
-                    cresponse = m_client.callProcedure("@Statistics", "TXNRESPONSETIME", 0);
-                } catch (IOException | ProcCallException e) {
-                    record("Problem while turning on monitoring");
-                    record(stackTraceToString(e));
-                    System.exit(1);
-                }
-
-                // process running times and decide if there is need for a reconfiguration
-                VoltTable result = cresponse.getResults()[0];
-                record(result.toString());
-                long count_lt_20 = 0, count_lt_50 = 0, count_gt_50 = 0;
-                for (int i = 0; i < result.getRowCount(); i++) {
-                    VoltTableRow row = result.fetchRow(i);
-                    String procedure = row.getString(3);
-
-                    if (procedure.charAt(0) == '@') {
-                        // don't count invocations to system procedures
-                        continue;
-                    }
-
-                    // { 4=COUNT-20 | 5=COUNT-50 | 6=COUNT>50 }
-                    count_lt_20 += row.getLong(4);
-                    count_lt_50 += row.getLong(5);
-                    count_gt_50 += row.getLong(6);
-                }
-                long total = count_lt_20 + count_lt_50 + count_gt_50;
-
+                
                 // prepare a plan that increases or reduces the number of servers if needed
+                long count_lt_20 = m_count_lt_20.get();
+                long count_lt_50 = m_count_lt_50.get();
+                long count_gt_50 = m_count_gt_50.get();
+                long total = count_lt_20 + count_lt_50 + count_gt_50;
                 if (total > 0 && (double) count_lt_20 / total > 0.95) {
                     int activeSites = countActiveSites(planFile.toString());
                     if (activeSites > 1) {
