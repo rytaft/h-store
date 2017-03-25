@@ -361,6 +361,7 @@ public class PredictiveController {
 
                 // process running times and decide if there is need for a reconfiguration
                 VoltTable result = cresponse.getResults()[0];
+                record(result.toString());
                 long count_lt_20 = 0, count_lt_50 = 0, count_gt_50 = 0;
                 for (int i = 0; i < result.getRowCount(); i++) {
                     VoltTableRow row = result.fetchRow(i);
@@ -387,6 +388,13 @@ public class PredictiveController {
                     int activeSites = countActiveSites(planFile.toString());
                     record("Initiating reactive migration to " + (activeSites + 1) + " nodes");
                     m_next_moves = convert(currentPlan, activeSites + 1);
+                } else {
+                    try {
+                        Thread.sleep(POLL_TIME);
+                    } catch (InterruptedException e) {
+                        record("sleeping interrupted");
+                        System.exit(1);
+                    }
                 }
             }
             else {
