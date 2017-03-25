@@ -72,10 +72,11 @@ public class PredictiveController {
     public static boolean USE_FAST_FORWARD = false;
     
     public static int FUDGE_FACTOR = 2;
-    public static long MAX_CAPACITY_PER_SERVER = 350 * FUDGE_FACTOR * MONITORING_TIME/1000; // Q=350 txns/s
+    public static long MAX_CAPACITY_PER_SERVER = 285 * FUDGE_FACTOR * MONITORING_TIME/1000; // Q=350 txns/s
     public static int DB_MIGRATION_TIME = 4646 * 1000/MONITORING_TIME; // D=4224 seconds + 10% buffer
     public static int MAX_MOVES_STALENESS = 1000; // time in milliseconds before moves are considered invalid
     public static int POLL_TIME = 1000;
+    public static double PREDICTION_INFLATION = 1.1; // inflate predictions by 10%
 
     public static String ORACLE_PREDICTION_FILE = "/data/rytaft/oracle_prediction_2016_07_01.txt";
     public static boolean USE_ORACLE_PREDICTION = false;
@@ -318,7 +319,7 @@ public class PredictiveController {
 
                     String line = br.readLine();
                     while (line != null) {
-                        predictedLoad.add(Long.parseLong(line));
+                        predictedLoad.add((long) (Long.parseLong(line) * PREDICTION_INFLATION));
                         line = br.readLine();
                     } 
                     
@@ -365,6 +366,7 @@ public class PredictiveController {
                     for (int i = 0; i < predictedLoad.size(); i++) {
                         if( i != predictedLoad.size() - 1){ System.out.print(predictedLoad.get(i) + ",");}
                         else{ System.out.println(predictedLoad.get(i)); }
+                        predictedLoad.set(i, (long) (predictedLoad.get(i) * PREDICTION_INFLATION));
                     }
 
                     try {
