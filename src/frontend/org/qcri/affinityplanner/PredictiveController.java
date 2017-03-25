@@ -461,6 +461,7 @@ public class PredictiveController {
         long currentTime = System.currentTimeMillis();
         long moveStart = currentTime;
         int prevNodes = activeSites;
+        String debug = "";
         for (Move move : moves) {
             if (move.nodes > m_sites.size()) {
                 record("ERROR: required number of nodes (" + move.nodes + ") exceeds number of sites (" + m_sites.size() + ")");
@@ -475,6 +476,7 @@ public class PredictiveController {
                 try {
                     plan = planner.getPlanString();
                     squallMoves.add(new SquallMove(plan, moveStart));
+                    debug += "<Nodes: " + move.nodes + ", Time: " + moveStart + ">;";
                 } catch (JSONException e) {
                     record("ERROR: Failed to convert plan to string " + e.getMessage());
                 }               
@@ -484,6 +486,7 @@ public class PredictiveController {
             moveStart = move.time * MONITORING_TIME + currentTime;
             prevNodes = move.nodes;
         }
+        record("Squall moves: " + debug);
         return squallMoves;
     }
     
