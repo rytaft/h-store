@@ -13,9 +13,9 @@ YYYY=2016
 MM=07
 DD=01
 
-## Skip ahead, fast forwarding the first 15 minutes of benchmark time   
-offset=9000000
-end_iter=9
+## Skip ahead, fast forwarding the first 30 minutes of benchmark time   
+offset=18000000
+end_iter=43
 
 for i in "$@"
 do
@@ -84,3 +84,5 @@ do
 
     offset=`expr $offset + $INTERVAL`
 done
+
+./scripts/save_results_and_logs.sh results/${config}_${date}

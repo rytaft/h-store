@@ -2703,6 +2703,7 @@ UTILITIES
   <java fork="yes" failonerror="true" classname="org.qcri.affinityplanner.PredictiveController">
         <jvmarg value="-client" />
         <jvmarg value="-Xms256m" />
+	<jvmarg value="-Xss4m"/>
         <jvmarg value="-Xmx${client.memory}m" />
         <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
         <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
