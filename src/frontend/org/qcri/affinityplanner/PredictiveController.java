@@ -47,6 +47,7 @@ public class PredictiveController {
     private Predictor m_predictor = new Predictor();
     private LinkedList<SquallMove> m_next_moves;
     private long m_next_moves_time = 0;
+    private boolean m_stop = false;
 
     public static int RECONFIG_LEADER_SITEID = 0;
 
@@ -100,7 +101,7 @@ public class PredictiveController {
 
         @Override
         public void run() {
-            while(true) {
+            while(!m_stop) {
                 try {
                     Thread.sleep(MONITORING_TIME);
                 } catch (InterruptedException e) {
@@ -234,7 +235,6 @@ public class PredictiveController {
                 System.exit(1);
             }
         }
-
     }
 
     public void run () throws Exception {
@@ -268,7 +268,7 @@ public class PredictiveController {
             monitor.start();
         }
 
-        while (true){
+        while (!m_stop){
             if(isReconfigurationRunning()){
                 try {
                     Thread.sleep(POLL_TIME);
@@ -350,52 +350,81 @@ public class PredictiveController {
             }
             else {
 
-                // TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
-                // TODO the inputs and outputs of these steps should be serialized to a file
+                // first check if there is need for reactive reconf
+                try {
+                    cresponse = m_client.callProcedure("@Statistics", "TXNRESPONSETIME", 0);
+                } catch (IOException | ProcCallException e) {
+                    record("Problem while turning on monitoring");
+                    record(stackTraceToString(e));
+                    System.exit(1);
+                }
 
-                // launch predictor
+                // TODO process running times and decide if there is need for a reconfiguration
 
-                ArrayList<Long> predictedLoad = m_predictor.predictLoad(m_historyNLoads, NUM_PREDS_AHEAD, MODEL_COEFFS_FILE);
+                if (false){
+                    // TODO prepare a plan that increases or reduces the number of servers if needed
+                }
+                else {
 
-                if(predictedLoad != null){
-                    System.out.println(">> Predictions: ");
-                    //System.out.println(predictedLoad.toString());
-                    //System.out.println();
-
-                    //System.out.print(totalLoad + ",");
+                    // TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
+                    // TODO the inputs and outputs of these steps should be serialized to a file
                     for (int i = 0; i < predictedLoad.size(); i++) {
-                        if( i != predictedLoad.size() - 1){ System.out.print(predictedLoad.get(i) + ",");}
-                        else{ System.out.println(predictedLoad.get(i)); }
                         predictedLoad.set(i, (long) (predictedLoad.get(i) * PREDICTION_INFLATION));
                     }
 
-                    try {
-                        FileUtil.appendStringToFile(loadHistFile, m_predictor.lastTotalLoad + ",");
-                        for (int i = 0; i < predictedLoad.size(); i++) {
-                            if( i != predictedLoad.size() - 1){ FileUtil.appendStringToFile(loadHistFile,predictedLoad.get(i) + ",");}
-                            else{ FileUtil.appendStringToFile(loadHistFile,predictedLoad.get(i) + "\n"); }
-                        }
-                    } catch (IOException e) {
-                        record("Problem logging load/predictions");
-                        e.printStackTrace();
-                    }
+                    // no need for reactive reconf
+                    // launch predictor
 
-                    // launch planner and get the moves
-                    int activeSites = countActiveSites(planFile.toString());
-                    ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
-                    if(moves == null || moves.isEmpty()){
-                        // reactive migration
-                        record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
-                        m_next_moves = convert(currentPlan, m_planner.getMaxNodes());
+                    ArrayList<Long> predictedLoad = m_predictor.predictLoad(m_historyNLoads, NUM_PREDS_AHEAD, MODEL_COEFFS_FILE);
+
+                    if (predictedLoad != null) {
+                        System.out.println(">> Predictions: ");
+                        //System.out.println(predictedLoad.toString());
+                        //System.out.println();
+
+                        //System.out.print(totalLoad + ",");
+                        for (int i = 0; i < predictedLoad.size(); i++) {
+                            if (i != predictedLoad.size() - 1) {
+                                System.out.print(predictedLoad.get(i) + ",");
+                            } else {
+                                System.out.println(predictedLoad.get(i));
+                            }
+                        }
+
+                        try {
+                            FileUtil.appendStringToFile(loadHistFile, m_predictor.lastTotalLoad + ",");
+                            for (int i = 0; i < predictedLoad.size(); i++) {
+                                if (i != predictedLoad.size() - 1) {
+                                    FileUtil.appendStringToFile(loadHistFile, predictedLoad.get(i) + ",");
+                                } else {
+                                    FileUtil.appendStringToFile(loadHistFile, predictedLoad.get(i) + "\n");
+                                }
+                            }
+                        } catch (IOException e) {
+                            record("Problem logging load/predictions");
+                            e.printStackTrace();
+                        }
+
+                        // launch planner and get the moves
+                        int activeSites = countActiveSites(planFile.toString());
+                        ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
+                        if (moves == null || moves.isEmpty()) {
+                            // reactive migration
+                            record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
+                            m_next_moves = convert(currentPlan, m_planner.getMaxNodes());
+                        } else {
+                            record("Moves: " + moves.toString());
+                            m_next_moves = convert(currentPlan, moves, activeSites);
+                        }
+                        m_next_moves_time = System.currentTimeMillis();
                     }
-                    else {
-                        record("Moves: " + moves.toString());
-                        m_next_moves = convert(currentPlan, moves, activeSites);
-                    }
-                    m_next_moves_time = System.currentTimeMillis();
                 }
             }
         }
+    }
+
+    public void stop(){
+        m_stop = true;
     }
     
     // HACK to handle 3.9 minute delay between 10 minute runs of the benchmark

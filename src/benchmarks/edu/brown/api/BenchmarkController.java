@@ -78,6 +78,8 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.qcri.affinityplanner.Controller;
 import org.qcri.affinityplanner.ControllerThread;
+import org.qcri.affinityplanner.PredictiveController;
+import org.qcri.affinityplanner.PredictiveControllerThread;
 import org.voltdb.CatalogContext;
 import org.voltdb.SysProcSelector;
 import org.voltdb.VoltSystemProcedure;
@@ -193,7 +195,11 @@ public class BenchmarkController {
     final List<ClientStatusThread> m_statusThreads = new ArrayList<ClientStatusThread>();
     final AtomicBoolean m_statusThreadShouldContinue = new AtomicBoolean(true);
 
-    
+    // ----------------------------------------------------------------------------
+    // ELASTIC CONTROLLER
+    // ----------------------------------------------------------------------------
+    PredictiveControllerThread m_predController;
+
     /**
      * BenchmarkResults Processing
      */
@@ -1256,7 +1262,7 @@ public class BenchmarkController {
         
         if(m_config.elastic_run){
             System.out.println("Starting elastic controller thread in " + m_config.elastic_delay/1000 + " seconds");
-            ControllerThread elastic = new ControllerThread (m_config.elastic_delay, m_config.hstore_conf, catalogContext);
+            m_predController = new PredictiveControllerThread(m_config.elastic_delay, m_config.hstore_conf, catalogContext);
         }
         
         // 
@@ -1304,7 +1310,11 @@ public class BenchmarkController {
                 nextIntervalTime = hstore_conf.client.interval * (m_pollIndex + 1) + startTime;
             }
         } // WHILE
-        
+
+        if(m_config.elastic_run) {
+            m_predController.stop();
+        }
+
         if (this.stop == false) {
             this.postProcessBenchmark(local_client);
         }
