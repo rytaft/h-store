@@ -368,14 +368,14 @@ public class PredictiveController {
 
                     // TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
                     // TODO the inputs and outputs of these steps should be serialized to a file
-                    for (int i = 0; i < predictedLoad.size(); i++) {
-                        predictedLoad.set(i, (long) (predictedLoad.get(i) * PREDICTION_INFLATION));
-                    }
 
                     // no need for reactive reconf
                     // launch predictor
 
                     ArrayList<Long> predictedLoad = m_predictor.predictLoad(m_historyNLoads, NUM_PREDS_AHEAD, MODEL_COEFFS_FILE);
+                    for (int i = 0; i < predictedLoad.size(); i++) {
+                        predictedLoad.set(i, (long) (predictedLoad.get(i) * PREDICTION_INFLATION));
+                    }
 
                     if (predictedLoad != null) {
                         System.out.println(">> Predictions: ");
