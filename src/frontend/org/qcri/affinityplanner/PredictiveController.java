@@ -81,6 +81,7 @@ public class PredictiveController {
 
     public static String ORACLE_PREDICTION_FILE = "/data/rytaft/oracle_prediction_2016_07_01.txt";
     public static boolean USE_ORACLE_PREDICTION = false;
+    public static boolean REACTIVE_ONLY = false;
 
     private class MonitorThread implements Runnable {
 
@@ -345,11 +346,10 @@ public class PredictiveController {
                     m_next_moves = convert(currentPlan, moves, activeSites);
                 }
                 m_next_moves_time = System.currentTimeMillis();
-                
+
                 oraclePredictionComplete = true;
             }
-            else {
-
+            else if (REACTIVE_ONLY){
                 // first check if there is need for reactive reconf
                 try {
                     cresponse = m_client.callProcedure("@Statistics", "TXNRESPONSETIME", 0);
@@ -359,69 +359,92 @@ public class PredictiveController {
                     System.exit(1);
                 }
 
-                // TODO process running times and decide if there is need for a reconfiguration
+                // process running times and decide if there is need for a reconfiguration
+                VoltTable result = cresponse.getResults()[0];
+                long count_lt_20 = 0, count_lt_50 = 0, count_gt_50 = 0;
+                for (int i = 0; i < result.getRowCount(); i++) {
+                    VoltTableRow row = result.fetchRow(i);
+                    String procedure = row.getString(3);
 
-                if (false){
-                    // TODO prepare a plan that increases or reduces the number of servers if needed
-                }
-                else {
-
-                    // TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
-                    // TODO the inputs and outputs of these steps should be serialized to a file
-
-                    // no need for reactive reconf
-                    // launch predictor
-
-                    ArrayList<Long> predictedLoad = m_predictor.predictLoad(m_historyNLoads, NUM_PREDS_AHEAD, MODEL_COEFFS_FILE);
-                    for (int i = 0; i < predictedLoad.size(); i++) {
-                        predictedLoad.set(i, (long) (predictedLoad.get(i) * PREDICTION_INFLATION));
+                    if (procedure.charAt(0) == '@') {
+                        // don't count invocations to system procedures
+                        continue;
                     }
 
-                    if (predictedLoad != null) {
-                        System.out.println(">> Predictions: ");
-                        //System.out.println(predictedLoad.toString());
-                        //System.out.println();
+                    // { 4=COUNT-20 | 5=COUNT-50 | 6=COUNT>50 }
+                    count_lt_20 += row.getLong(4);
+                    count_lt_50 += row.getLong(5);
+                    count_gt_50 += row.getLong(6);
+                }
+                long total = count_lt_20 + count_lt_50 + count_gt_50;
 
-                        //System.out.print(totalLoad + ",");
+                // prepare a plan that increases or reduces the number of servers if needed
+                if ((double) count_lt_20 / total > 0.95) {
+                    int activeSites = countActiveSites(planFile.toString());
+                    record("Initiating reactive migration to " + (activeSites - 1) + " nodes");
+                    m_next_moves = convert(currentPlan, activeSites - 1);
+                } else if ((double) count_gt_50 / total > 0.10) {
+                    int activeSites = countActiveSites(planFile.toString());
+                    record("Initiating reactive migration to " + (activeSites + 1) + " nodes");
+                    m_next_moves = convert(currentPlan, activeSites + 1);
+                }
+            }
+            else {
+
+                // TODO for debugging, it should be possible to run monitoring, planning and reconfigurations separately
+                // TODO the inputs and outputs of these steps should be serialized to a file
+
+                // launch predictor
+                ArrayList<Long> predictedLoad = m_predictor.predictLoad(m_historyNLoads, NUM_PREDS_AHEAD, MODEL_COEFFS_FILE);
+                for (int i = 0; i < predictedLoad.size(); i++) {
+                    predictedLoad.set(i, (long) (predictedLoad.get(i) * PREDICTION_INFLATION));
+                }
+
+                if (predictedLoad != null) {
+                    System.out.println(">> Predictions: ");
+                    //System.out.println(predictedLoad.toString());
+                    //System.out.println();
+
+                    //System.out.print(totalLoad + ",");
+                    for (int i = 0; i < predictedLoad.size(); i++) {
+                        if (i != predictedLoad.size() - 1) {
+                            System.out.print(predictedLoad.get(i) + ",");
+                        } else {
+                            System.out.println(predictedLoad.get(i));
+                        }
+                    }
+
+                    try {
+                        FileUtil.appendStringToFile(loadHistFile, m_predictor.lastTotalLoad + ",");
                         for (int i = 0; i < predictedLoad.size(); i++) {
                             if (i != predictedLoad.size() - 1) {
-                                System.out.print(predictedLoad.get(i) + ",");
+                                FileUtil.appendStringToFile(loadHistFile, predictedLoad.get(i) + ",");
                             } else {
-                                System.out.println(predictedLoad.get(i));
+                                FileUtil.appendStringToFile(loadHistFile, predictedLoad.get(i) + "\n");
                             }
                         }
-
-                        try {
-                            FileUtil.appendStringToFile(loadHistFile, m_predictor.lastTotalLoad + ",");
-                            for (int i = 0; i < predictedLoad.size(); i++) {
-                                if (i != predictedLoad.size() - 1) {
-                                    FileUtil.appendStringToFile(loadHistFile, predictedLoad.get(i) + ",");
-                                } else {
-                                    FileUtil.appendStringToFile(loadHistFile, predictedLoad.get(i) + "\n");
-                                }
-                            }
-                        } catch (IOException e) {
-                            record("Problem logging load/predictions");
-                            e.printStackTrace();
-                        }
-
-                        // launch planner and get the moves
-                        int activeSites = countActiveSites(planFile.toString());
-                        ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
-                        if (moves == null || moves.isEmpty()) {
-                            // reactive migration
-                            record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
-                            m_next_moves = convert(currentPlan, m_planner.getMaxNodes());
-                        } else {
-                            record("Moves: " + moves.toString());
-                            m_next_moves = convert(currentPlan, moves, activeSites);
-                        }
-                        m_next_moves_time = System.currentTimeMillis();
+                    } catch (IOException e) {
+                        record("Problem logging load/predictions");
+                        e.printStackTrace();
                     }
+
+                    // launch planner and get the moves
+                    int activeSites = countActiveSites(planFile.toString());
+                    ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
+                    if (moves == null || moves.isEmpty()) {
+                        // reactive migration
+                        record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
+                        m_next_moves = convert(currentPlan, m_planner.getMaxNodes());
+                    } else {
+                        record("Moves: " + moves.toString());
+                        m_next_moves = convert(currentPlan, moves, activeSites);
+                    }
+                    m_next_moves_time = System.currentTimeMillis();
                 }
             }
         }
     }
+
 
     public void stop(){
         m_stop = true;
