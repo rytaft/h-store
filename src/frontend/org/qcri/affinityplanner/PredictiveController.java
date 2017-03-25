@@ -265,7 +265,7 @@ public class PredictiveController {
         boolean oraclePredictionComplete = false;
 
         Thread monitor = new Thread(new MonitorThread(m_historyNLoads, m_sites));
-        if(!USE_ORACLE_PREDICTION) {
+        if(!USE_ORACLE_PREDICTION && !REACTIVE_ONLY) {
             monitor.start();
         }
 
@@ -382,8 +382,17 @@ public class PredictiveController {
                 // prepare a plan that increases or reduces the number of servers if needed
                 if (total > 0 && (double) count_lt_20 / total > 0.95) {
                     int activeSites = countActiveSites(planFile.toString());
-                    record("Initiating reactive migration to " + (activeSites - 1) + " nodes");
-                    m_next_moves = convert(currentPlan, activeSites - 1);
+                    if (activeSites > 1) {
+                        record("Initiating reactive migration to " + (activeSites - 1) + " nodes");
+                        m_next_moves = convert(currentPlan, activeSites - 1);
+                    } else {
+                        try {
+                            Thread.sleep(POLL_TIME);
+                        } catch (InterruptedException e) {
+                            record("sleeping interrupted");
+                            System.exit(1);
+                        }
+                    }
                 } else if (total > 0 && (double) count_gt_50 / total > 0.10) {
                     int activeSites = countActiveSites(planFile.toString());
                     record("Initiating reactive migration to " + (activeSites + 1) + " nodes");
