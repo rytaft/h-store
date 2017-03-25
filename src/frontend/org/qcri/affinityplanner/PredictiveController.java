@@ -577,6 +577,7 @@ public class PredictiveController {
             }
         }
 
+        reader.close();
         return reconfiguring;
     }
 
