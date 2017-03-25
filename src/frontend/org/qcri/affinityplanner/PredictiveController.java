@@ -380,11 +380,11 @@ public class PredictiveController {
                 long total = count_lt_20 + count_lt_50 + count_gt_50;
 
                 // prepare a plan that increases or reduces the number of servers if needed
-                if ((double) count_lt_20 / total > 0.95) {
+                if (total > 0 && (double) count_lt_20 / total > 0.95) {
                     int activeSites = countActiveSites(planFile.toString());
                     record("Initiating reactive migration to " + (activeSites - 1) + " nodes");
                     m_next_moves = convert(currentPlan, activeSites - 1);
-                } else if ((double) count_gt_50 / total > 0.10) {
+                } else if (total > 0 && (double) count_gt_50 / total > 0.10) {
                     int activeSites = countActiveSites(planFile.toString());
                     record("Initiating reactive migration to " + (activeSites + 1) + " nodes");
                     m_next_moves = convert(currentPlan, activeSites + 1);
