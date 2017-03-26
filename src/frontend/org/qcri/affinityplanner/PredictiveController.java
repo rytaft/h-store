@@ -88,6 +88,7 @@ public class PredictiveController {
     public static String ORACLE_PREDICTION_FILE = "/data/rytaft/oracle_prediction_2016_07_01.txt";
     public static boolean USE_ORACLE_PREDICTION = false;
     public static boolean REACTIVE_ONLY = false;
+    public static boolean REMOVE_TINY_RECONFS = true;
 
     private class MonitorThread implements Runnable {
 
@@ -563,6 +564,26 @@ public class PredictiveController {
             System.exit(1);
         }
     }
+    
+    private ArrayList<Move> removeTinyReconfs(ArrayList<Move> moves) {
+        ArrayList<Move> filteredMoves = new ArrayList<>();
+        Move prevMove = null;
+        Move prevPrevMove = null;
+        for(Move move : moves) {
+            if (prevMove != null) {
+                if (prevPrevMove == null) {
+                    filteredMoves.add(prevMove);
+                } else if (move.nodes != prevPrevMove.nodes || move.nodes <= prevMove.nodes) {
+                    filteredMoves.add(prevMove);
+                }
+            }
+            
+            prevPrevMove = prevMove;
+            prevMove = move;
+        }
+        filteredMoves.add(prevMove);
+        return filteredMoves;
+    }
 
     private LinkedList<SquallMove> convert(String plan, ArrayList<Move> moves, int activeSites){
         LinkedList<SquallMove> squallMoves = new LinkedList<>();
@@ -570,6 +591,10 @@ public class PredictiveController {
         long moveStart = currentTime;
         int prevNodes = activeSites;
         String debug = "";
+        if (REMOVE_TINY_RECONFS) {
+            moves = removeTinyReconfs(moves);
+        }
+        
         for (Move move : moves) {
             if (move.nodes > m_sites.size()) {
                 record("ERROR: required number of nodes (" + move.nodes + ") exceeds number of sites (" + m_sites.size() + ")");
