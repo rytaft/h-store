@@ -507,20 +507,20 @@ public class ReconfigurationPlan {
             double tuples_per_key = 1;
             
             ////// HACK for B2W ///////           
-            if (name.equalsIgnoreCase("CART")) tuples_per_key = 0.24;
-            else if (name.equalsIgnoreCase("CART_CUSTOMER")) tuples_per_key = 0.15;
-            else if (name.equalsIgnoreCase("CART_LINE_PRODUCTS")) tuples_per_key = 0.01;
-            else if (name.equalsIgnoreCase("CART_LINE_PRODUCT_STORES")) tuples_per_key = 0.003;
-            else if (name.equalsIgnoreCase("CART_LINE_PRODUCT_WARRANTIES")) tuples_per_key = 0.01;
-            else if (name.equalsIgnoreCase("CART_LINE_PROMOTIONS")) tuples_per_key = 0.006;
-            else if (name.equalsIgnoreCase("CART_LINES")) tuples_per_key = 0.13;
-            else if (name.equalsIgnoreCase("CHECKOUT")) tuples_per_key = 0.01;
-            else if (name.equalsIgnoreCase("CHECKOUT_FREIGHT_DELIVERY_TIME")) tuples_per_key = 0.01;
-            else if (name.equalsIgnoreCase("CHECKOUT_PAYMENTS")) tuples_per_key = 0;
-            else if (name.equalsIgnoreCase("CHECKOUT_STOCK_TRANSACTIONS")) tuples_per_key = 0;
-            else if (name.equalsIgnoreCase("STK_INVENTORY_STOCK")) tuples_per_key = 4.3;
-            else if (name.equalsIgnoreCase("STK_INVENTORY_STOCK_QUANTITY")) tuples_per_key = 4.3;
-            else if (name.equalsIgnoreCase("STK_STOCK_TRANSACTION")) tuples_per_key = 6.08;
+//            if (name.equalsIgnoreCase("CART")) tuples_per_key = 1;
+//            else if (name.equalsIgnoreCase("CART_CUSTOMER")) tuples_per_key = 1;
+//            else if (name.equalsIgnoreCase("CART_LINE_PRODUCTS")) tuples_per_key = 1;
+//            else if (name.equalsIgnoreCase("CART_LINE_PRODUCT_STORES")) tuples_per_key = 1;
+//            else if (name.equalsIgnoreCase("CART_LINE_PRODUCT_WARRANTIES")) tuples_per_key = 1;
+//            else if (name.equalsIgnoreCase("CART_LINE_PROMOTIONS")) tuples_per_key = 1;
+//            else if (name.equalsIgnoreCase("CART_LINES")) tuples_per_key = 1;
+//            else if (name.equalsIgnoreCase("CHECKOUT")) tuples_per_key = 1;
+//            else if (name.equalsIgnoreCase("CHECKOUT_FREIGHT_DELIVERY_TIME")) tuples_per_key = 1;
+//            else if (name.equalsIgnoreCase("CHECKOUT_PAYMENTS")) tuples_per_key = 1;
+//            else if (name.equalsIgnoreCase("CHECKOUT_STOCK_TRANSACTIONS")) tuples_per_key = 1;
+            if (name.equalsIgnoreCase("STK_INVENTORY_STOCK")) tuples_per_key = 0;
+            else if (name.equalsIgnoreCase("STK_INVENTORY_STOCK_QUANTITY")) tuples_per_key = 0;
+            else if (name.equalsIgnoreCase("STK_STOCK_TRANSACTION")) tuples_per_key = 0;
             return tuples_per_key;
         }
         
@@ -550,7 +550,10 @@ public class ReconfigurationPlan {
                     }
                 }
 
-                long maxRows = (long) (currentMax / tupleBytes);
+                long maxRows = currentMax;
+                if (tupleBytes != 0) {
+                    maxRows = (long) (currentMax / tupleBytes);
+                } 
                 LOG.info(String.format("Trying to split on table:%s  TupleBytes:%s  CurrentMax:%s  MaxRows:%s MaxTransferBytes:%s", catalog_table.fullName(), tupleBytes, currentMax, maxRows,
                         currentMax));
 

@@ -38,10 +38,10 @@ public class TransactionRTStats extends StatsSource {
 
 	/**
 	 * Creates profiler with four default buckets:
-	 * - less than 100 ms
-	 * - between 100 ms and 500 ms
-	 * - between 500 ms and 1 sec
-	 * - more than 1 sec
+	 * - less than 10 ms
+     * - between 10 ms and 20 ms
+	 * - between 20 ms and 50 ms
+	 * - more than 50 ms
 	 * 
 	 * @param nanosecond_latencies latencies are in nanoseconds if true, in milliseconds if false
 	 */
@@ -51,10 +51,10 @@ public class TransactionRTStats extends StatsSource {
 		long multiplier = 1;
 		if (nanosecond_latencies) multiplier = 1000000;
 		this.boundaries = new long [3];
-		this.boundaries[0] = 100 * multiplier;		
-		this.boundaries[1] = 500 * multiplier;
-		this.boundaries[2] = 1000 * multiplier;
-	}	
+        this.boundaries[0] = 10 * multiplier;
+		this.boundaries[1] = 20 * multiplier;
+		this.boundaries[2] = 50 * multiplier;
+	}
 		
 	private class Buckets{
 		long[] buckets = new long[boundaries.length + 1];
@@ -97,10 +97,10 @@ public class TransactionRTStats extends StatsSource {
         this.column_offset = columns.size();
 
 		columns.add(new VoltTable.ColumnInfo("PROCEDURE", VoltType.STRING));
-		columns.add(new VoltTable.ColumnInfo("COUNT-100", VoltType.BIGINT));
-		columns.add(new VoltTable.ColumnInfo("COUNT-500", VoltType.BIGINT));
-		columns.add(new VoltTable.ColumnInfo("COUNT-1000", VoltType.BIGINT));
-		columns.add(new VoltTable.ColumnInfo("COUNT>1000", VoltType.BIGINT));
+        columns.add(new VoltTable.ColumnInfo("COUNT-10", VoltType.BIGINT));
+		columns.add(new VoltTable.ColumnInfo("COUNT-20", VoltType.BIGINT));
+		columns.add(new VoltTable.ColumnInfo("COUNT-50", VoltType.BIGINT));
+		columns.add(new VoltTable.ColumnInfo("COUNT>50", VoltType.BIGINT));
     }
 	
     @Override

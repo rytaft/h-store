@@ -170,8 +170,6 @@ public class Plan {
         Map.Entry<Long, Long> precedingFrom = ranges.floorEntry(fromTest);
         Map.Entry<Long, Long> precedingTo = ranges.floorEntry(toTest);
 
-
-
         if (precedingFrom == null){
             // from is smaller than any previous range
             if (precedingTo == null){
@@ -199,7 +197,7 @@ public class Plan {
                     lowerBound = Math.min(from, precedingFrom.getKey());
                 }
 
-                if(precedingTo.getKey() < toTest) {
+                if(precedingTo.getKey() <= toTest) {
                     upperBound = Math.max(to, precedingTo.getValue());
                 }
 
@@ -531,7 +529,7 @@ public class Plan {
 
     // for algos such as the first fit, bin packer, subdivide cold tuples
     // into sets of equal size from pre-existing ranges
-    List<List<Range>> getRangeChunks(String table, Integer partition, Long sliceWidth) {
+    List<List<Range>> getRangeChunks(String table, Integer partition, Double sliceWidthExact) {
 
         HashMap<Integer, TreeMap<Long, Long>> partitionToRanges = tableToPartitionsToRanges.get(table.toLowerCase());
         if (partitionToRanges == null){
@@ -540,6 +538,9 @@ public class Plan {
 
         TreeMap<Long, Long> ranges = partitionToRanges.get(partition);
         List<List<Range>> slices = new ArrayList<List<Range>>();
+        Long sliceWidth = (long) Math.ceil(sliceWidthExact);
+        Double expectedSliceCount = Plan.getRangeListWidth(this.getAllRanges(table, partition)) / sliceWidthExact;
+        Long sliceWidthRemainder = (long) Math.round((sliceWidthExact - Math.floor(sliceWidthExact)) * expectedSliceCount);
 
         long accumulatedSum = 0L;
         List<Range> partialList = new ArrayList<Range>();
@@ -561,6 +562,7 @@ public class Plan {
                 tmp.to = ranges.get(i);
                 partialList.add(tmp);
                 slices.add(partialList);
+                if (slices.size() == sliceWidthRemainder) sliceWidth = (long) Math.floor(sliceWidthExact);
                 partialList = new ArrayList<Range>();
                 accumulatedSum = 0L;
             }
@@ -571,6 +573,7 @@ public class Plan {
                 tmp1.to = i + sliceWidth - accumulatedSum; // fill in the remainder
                 partialList.add(tmp1);
                 slices.add(partialList);
+                if (slices.size() == sliceWidthRemainder) sliceWidth = (long) Math.floor(sliceWidthExact);
                 partialList = new ArrayList<Range>();
                 accumulatedSum = 0L;
 
@@ -584,12 +587,14 @@ public class Plan {
                     tmp1.to = tmp2.from + sliceWidth;
                     partialList.add(tmp1);
                     slices.add(partialList);
+                    if (slices.size() == sliceWidthRemainder) sliceWidth = (long) Math.floor(sliceWidthExact);
                     partialList = new ArrayList<Range>();
                     tmp2.from = tmp1.to;
                 }
 
                 if(getRangeWidth(tmp2) == sliceWidth) {
                     slices.add(partialList);
+                    if (slices.size() == sliceWidthRemainder) sliceWidth = (long) Math.floor(sliceWidthExact);
                     partialList = new ArrayList<Range>();					
                 }
                 else {

@@ -585,7 +585,7 @@ public abstract class PartitionerAffinity implements Partitioner {
 
         double coldIncrement = m_graph.getColdIncrement(fromPartition);
 
-        List<List<Plan.Range>> partitionChunks = oldPlan.getRangeChunks(table, fromPartition,  (long) Controller.COLD_CHUNK_SIZE);
+        List<List<Plan.Range>> partitionChunks = oldPlan.getRangeChunks(table, fromPartition,  (double) Controller.COLD_CHUNK_SIZE);
         if(partitionChunks.size() > 0) {
 
             for(List<Plan.Range> chunk : partitionChunks) {  // a chunk can consist of multiple ranges if hot tuples are taken away
