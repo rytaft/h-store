@@ -473,6 +473,16 @@ public class PredictiveController {
 
                 // launch predictor
                 ArrayList<Long> predictedLoad = m_predictor.predictLoad(m_historyNLoads, NUM_PREDS_AHEAD, MODEL_COEFFS_FILE);
+                if (predictedLoad == null) {
+                    try {
+                        Thread.sleep(POLL_TIME);
+                    } catch (InterruptedException e) {
+                        record("sleeping interrupted while waiting for predictions");
+                        System.exit(1);
+                    }
+                    continue;
+                }
+                
                 for (int i = 0; i < predictedLoad.size(); i++) {
                     predictedLoad.set(i, (long) (predictedLoad.get(i) * PREDICTION_INFLATION));
                 }

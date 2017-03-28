@@ -29,9 +29,9 @@ public class PredictiveControllerThread {
 
         @Override
         public void run(){
-            PredictiveController c = new PredictiveController(catalog_context.catalog, hstore_conf);
+            controller = new PredictiveController(catalog_context.catalog, hstore_conf);
             try {
-                c.run();
+                controller.run();
             } catch (Exception e) {
                 e.printStackTrace();
                 System.out.println("Controller got exception, exiting");
