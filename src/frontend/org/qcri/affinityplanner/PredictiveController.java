@@ -100,7 +100,6 @@ public class PredictiveController {
         AtomicLong m_count_lt_50;
         AtomicLong m_count_gt_50;
         File loadHistoryFile;
-        boolean firstPrediction;
 
         public MonitorThread(ConcurrentLinkedQueue<Long> historyNLoads, Collection<Site> sites,
                 AtomicLong count_lt_20, AtomicLong count_lt_50, AtomicLong count_gt_50) {
@@ -116,17 +115,50 @@ public class PredictiveController {
             this.m_count_gt_50 = count_gt_50;
             
             loadHistoryFile = new File(LOAD_HIST);
-            firstPrediction = true;
         }
 
         @Override
         public void run() {
+
+            if(USE_FAST_FORWARD){
+                String fastFwdSamples = FileUtil.readFile(LOAD_HIST);
+                // First check that there aren't existing historical predictions
+                if (fastFwdSamples.isEmpty()) {
+                    // Else read from fastfwd file
+                    record("Reading load from " + FASTFWD_FILE);
+                    fastFwdSamples = FileUtil.readFile(FASTFWD_FILE);
+                    try {
+                        FileUtil.appendStringToFile(loadHistoryFile, fastFwdSamples);
+                    } catch (IOException e) {
+                        record("Problem logging historical load");
+                        e.printStackTrace();
+                    }
+                } else {
+                    record("Reading load from " + LOAD_HIST);
+                }                               
+
+                // Add fast-forwarded sample points to history log  
+                String[] fwdSamples = fastFwdSamples.split("\n");
+                for (int i = 0; i < fwdSamples.length; i++) {
+                    historyNLoads.add(Long.valueOf( fwdSamples[i] ));
+                } 
+            }
+            
             String[] confNames = {"site.txn_counters"};
             String[] confValues = {"true"};
             @SuppressWarnings("unused")
             ClientResponse cresponse = null;
             try {
                 cresponse = m_client.callProcedure("@SetConfiguration", confNames, confValues);
+            } catch (IOException | ProcCallException e) {
+                record("Problem while turning on monitoring");
+                record(stackTraceToString(e));
+                System.exit(1);
+            }
+            
+            // Run @Statistics once since the first load value is really high
+            try {
+                cresponse = client.callProcedure("@Statistics", "TXNCOUNTER", 0);
             } catch (IOException | ProcCallException e) {
                 record("Problem while turning on monitoring");
                 record(stackTraceToString(e));
@@ -220,34 +252,6 @@ public class PredictiveController {
 
                     // For debugging purposes
                     record(" >> totalLoad =" + totalLoad);
-
-                    if (firstPrediction) {
-                        firstPrediction = false;
-
-                        if(USE_FAST_FORWARD){
-                            String fastFwdSamples = FileUtil.readFile(LOAD_HIST);
-                            // First check that there aren't existing historical predictions
-                            if (fastFwdSamples.isEmpty()) {
-                                // Else read from fastfwd file
-                                record("Reading load from " + FASTFWD_FILE);
-                                fastFwdSamples = FileUtil.readFile(FASTFWD_FILE);
-                                try {
-                                    FileUtil.appendStringToFile(loadHistoryFile, fastFwdSamples);
-                                } catch (IOException e) {
-                                    record("Problem logging historical load");
-                                    e.printStackTrace();
-                                }
-                            } else {
-                                record("Reading load from " + LOAD_HIST);
-                            }                               
-                            
-                            // Add fast-forwarded sample points to history log  
-                            String[] fwdSamples = fastFwdSamples.split("\n");
-                            for (int i = 0; i < fwdSamples.length; i++) {
-                                historyNLoads.add(Long.valueOf( fwdSamples[i] ));
-                            } 
-                        }
-                    } 
                     
                     if(totalLoad != 0 ){
                         historyNLoads.add(totalLoad);
