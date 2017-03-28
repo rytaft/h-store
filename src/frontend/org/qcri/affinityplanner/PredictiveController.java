@@ -403,6 +403,7 @@ public class PredictiveController {
                     record("Moves with delay: " + moves.toString());
                     m_next_moves = convert(currentPlan, moves, activeSites);
                 }
+                next_move = null;
                 m_next_moves_time = System.currentTimeMillis();
 
                 oraclePredictionComplete = true;
@@ -433,12 +434,14 @@ public class PredictiveController {
                         load3 < MAX_CAPACITY_PER_SERVER * (activeSites - 1)) {
                     record("Initiating reactive migration to " + (activeSites - 1) + " nodes");
                     m_next_moves = convert(currentPlan, activeSites - 1);
+                    next_move = null;
 //                } else if (total > 0 && (double) count_gt_50 / total > 0.10) {
                 } else if (load1 > MAX_CAPACITY_PER_SERVER * activeSites &&
                         load2 > MAX_CAPACITY_PER_SERVER * activeSites &&
                         load3 > MAX_CAPACITY_PER_SERVER * activeSites) {
                     record("Initiating reactive migration to " + (activeSites + 1) + " nodes");
                     m_next_moves = convert(currentPlan, activeSites + 1);
+                    next_move = null;
                 } else {
                     try {
                         Thread.sleep(POLL_TIME);
@@ -508,6 +511,7 @@ public class PredictiveController {
                         record("Moves: " + moves.toString());
                         m_next_moves = convert(currentPlan, moves, activeSites);
                     }
+                    next_move = null;
                     m_next_moves_time = System.currentTimeMillis();
                 }
             }
