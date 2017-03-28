@@ -57,7 +57,8 @@ public class PredictiveController {
     public static String PLAN_IN = "plan_affinity.json";
 
     // Prediction variables
-    public static String LOAD_HIST = "agg_load_hist_preds.csv";
+    public static String LOAD_HIST_PRED = "agg_load_hist_preds.csv";
+    public static String LOAD_HIST = "agg_load_hist.csv";
     public static int N_HISTORICAL_OBS = 30;
     public ConcurrentLinkedQueue<Long> m_historyNLoads = new ConcurrentLinkedQueue<>();
     public static boolean firstPrediction = true;
@@ -99,6 +100,7 @@ public class PredictiveController {
         AtomicLong m_count_lt_20;
         AtomicLong m_count_lt_50;
         AtomicLong m_count_gt_50;
+        File loadHistoryFile;
 
         public MonitorThread(ConcurrentLinkedQueue<Long> historyNLoads, Collection<Site> sites,
                 AtomicLong count_lt_20, AtomicLong count_lt_50, AtomicLong count_gt_50) {
@@ -112,6 +114,8 @@ public class PredictiveController {
             this.m_count_lt_20 = count_lt_20;
             this.m_count_lt_50 = count_lt_50;
             this.m_count_gt_50 = count_gt_50;
+            
+            loadHistoryFile = new File(LOAD_HIST);
         }
 
         @Override
@@ -208,17 +212,35 @@ public class PredictiveController {
                         firstPrediction = false;
 
                         if(USE_FAST_FORWARD){
-                            // Add fast-forwarded sample points to history log 
-                            String fastFwdSamples = FileUtil.readFile(FASTFWD_FILE);
+                            String fastFwdSamples = FileUtil.readFile(LOAD_HIST);
+                            // First check that there aren't existing historical predictions
+                            if (fastFwdSamples.isEmpty()) {
+                                // Else read from fastfwd file
+                                fastFwdSamples = FileUtil.readFile(FASTFWD_FILE);
+                                try {
+                                    FileUtil.appendStringToFile(loadHistoryFile, fastFwdSamples);
+                                } catch (IOException e) {
+                                    record("Problem logging historical load");
+                                    e.printStackTrace();
+                                }
+                            }
+                            
+                            // Add fast-forwarded sample points to history log  
                             String[] fwdSamples = fastFwdSamples.split("\n");
                             for (int i = 0; i < fwdSamples.length; i++) {
                                 historyNLoads.add(Long.valueOf( fwdSamples[i] ));
-                            }
+                            } 
                         }
                     } 
                     
                     if(totalLoad != 0 ){
                         historyNLoads.add(totalLoad);
+                        try {
+                            FileUtil.appendStringToFile(loadHistoryFile, new String(totalLoad + "\n"));
+                        } catch (IOException e) {
+                            record("Problem logging historical load");
+                            e.printStackTrace();
+                        }
                     }
                 }
             }
@@ -301,7 +323,7 @@ public class PredictiveController {
         File planFile = new File (PLAN_IN);
         String currentPlan = FileUtil.readFile(planFile);
 
-        File loadHistFile = new File(LOAD_HIST);
+        File loadHistFile = new File(LOAD_HIST_PRED);
 
         String[] confNames = {"site.txn_counters"};
         String[] confValues = {"true"};
