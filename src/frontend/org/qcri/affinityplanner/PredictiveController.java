@@ -119,6 +119,54 @@ public class PredictiveController {
             loadHistoryFile = new File(LOAD_HIST);
             loadStatsFile = new File(LOAD_STATS);
         }
+        
+        private long extractLoad() {
+            ClientResponse cresponse = null;
+            try {
+                cresponse = client.callProcedure("@Statistics", "TXNCOUNTER", 0);
+            } catch (IOException | ProcCallException e) {
+                record("Problem while turning on monitoring");
+                record(stackTraceToString(e));
+                System.exit(1);
+            }
+
+            // extract total load
+            VoltTable result = cresponse.getResults()[0];
+            for (int i = 0; i < result.getRowCount(); i++) {
+                VoltTableRow row = result.fetchRow(i);
+                String procedure = row.getString(3);
+
+                if (procedure.charAt(0) == '@') {
+                    // don't count invocations to system procedures
+                    continue;
+                }
+
+                int hostId = (int) row.getLong(1);
+
+                // { 4=RECEIVED | 5=REJECTED | 6=REDIRECTED | 7=EXECUTED | 8=COMPLETED }
+                long load = row.getLong(4);
+
+                currLoads[hostId] = currLoads[hostId] + load;
+                //record("hostid=" + hostId + " -- procedure=" + procedure + " -- load=" + load);
+            }
+
+            long totalLoad = 0;
+            for (int i = 0; i < currLoads.length; i++) {
+                totalLoad += (currLoads[i] - previousLoads[i]);
+            }
+
+            long [] swap = previousLoads;
+            previousLoads = currLoads;
+            currLoads = swap;
+            for (int i = 0; i < currLoads.length; i++){
+                currLoads[i] = 0;
+            }                
+
+            // For debugging purposes
+            record(" >> totalLoad =" + totalLoad);
+            
+            return totalLoad;
+        }
 
         @Override
         public void run() {
@@ -169,15 +217,9 @@ public class PredictiveController {
                 System.exit(1);
             }
             
-            // Run @Statistics once since the first load value is really high
-            try {
-                cresponse = client.callProcedure("@Statistics", "TXNCOUNTER", 0);
-            } catch (IOException | ProcCallException e) {
-                record("Problem while turning on monitoring");
-                record(stackTraceToString(e));
-                System.exit(1);
-            }
-
+            // Run extractLoad once since the first load value is really high
+            extractLoad();
+            
             while(!m_stop) {
                 try {
                     Thread.sleep(MONITORING_TIME);
@@ -185,107 +227,20 @@ public class PredictiveController {
                     record("sleeping interrupted while monitoring");
                     System.exit(1);
                 }
+
+                long totalLoad = extractLoad();
                 
-                // This stuff doesn't really work...
-//                if(REACTIVE_ONLY) {
-//                    // first check if there is need for reactive reconf
-//                    ClientResponse cresponse = null;
-//                    try {
-//                        cresponse = m_client.callProcedure("@Statistics", "TXNRESPONSETIME", 0);
-//                    } catch (IOException | ProcCallException e) {
-//                        record("Problem while turning on monitoring");
-//                        record(stackTraceToString(e));
-//                        System.exit(1);
-//                    }
-//
-//                    // process running times to decide if there is need for a reconfiguration
-//                    VoltTable result = cresponse.getResults()[0];
-//                    record(result.toString());
-//                    long count_lt_20 = 0, count_lt_50 = 0, count_gt_50 = 0;
-//                    for (int i = 0; i < result.getRowCount(); i++) {
-//                        VoltTableRow row = result.fetchRow(i);
-//                        String procedure = row.getString(3);
-//
-//                        if (procedure.charAt(0) == '@') {
-//                            // don't count invocations to system procedures
-//                            continue;
-//                        }
-//
-//                        // { 4=COUNT-10 | 5=COUNT-20 | 6=COUNT-50 | 7=COUNT>50 }
-//                        count_lt_20 += row.getLong(4) + row.getLong(5);
-//                        count_lt_50 += row.getLong(6);
-//                        count_gt_50 += row.getLong(7);
-//                    }
-//                    
-//                    m_count_lt_20.set(count_lt_20);
-//                    m_count_lt_50.set(count_lt_50);
-//                    m_count_gt_50.set(count_gt_50);
-//                    
-//                } else {                   
-                    cresponse = null;
+                if(totalLoad != 0 ){
+                    historyNLoads.add(totalLoad);
                     try {
-                        cresponse = client.callProcedure("@Statistics", "TXNCOUNTER", 0);
-                    } catch (IOException | ProcCallException e) {
-                        record("Problem while turning on monitoring");
-                        record(stackTraceToString(e));
-                        System.exit(1);
-                    }
-
-                    // extract total load and count active sites
-                    VoltTable result = cresponse.getResults()[0];
-                    for (int i = 0; i < result.getRowCount(); i++) {
-                        VoltTableRow row = result.fetchRow(i);
-                        String procedure = row.getString(3);
-
-                        if (procedure.charAt(0) == '@') {
-                            // don't count invocations to system procedures
-                            continue;
-                        }
-
-                        int hostId = (int) row.getLong(1);
-
-                        // { 4=RECEIVED | 5=REJECTED | 6=REDIRECTED | 7=EXECUTED | 8=COMPLETED }
-                        long load = row.getLong(4);
-
-                        currLoads[hostId] = currLoads[hostId] + load;
-                        //record("hostid=" + hostId + " -- procedure=" + procedure + " -- load=" + load);
-                    }
-
-                    long totalLoad = 0;
-                    String previousLoadsString = "";
-                    for (int i = 0; i < currLoads.length; i++) {
-                        totalLoad += (currLoads[i] - previousLoads[i]);
-                        previousLoadsString += previousLoads[i] + "\n";
-                    }
-
-                    long [] swap = previousLoads;
-                    previousLoads = currLoads;
-                    currLoads = swap;
-                    for (int i = 0; i < currLoads.length; i++){
-                        currLoads[i] = 0;
-                    }                
-
-                    try {
-                        FileUtil.writeStringToFile(loadStatsFile, previousLoadsString);
+                        FileUtil.appendStringToFile(loadHistoryFile, new String(totalLoad + "\n"));
                     } catch (IOException e) {
                         record("Problem logging historical load");
                         e.printStackTrace();
                     }
-                    
-                    // For debugging purposes
-                    record(" >> totalLoad =" + totalLoad);
-                    
-                    if(totalLoad != 0 ){
-                        historyNLoads.add(totalLoad);
-                        try {
-                            FileUtil.appendStringToFile(loadHistoryFile, new String(totalLoad + "\n"));
-                        } catch (IOException e) {
-                            record("Problem logging historical load");
-                            e.printStackTrace();
-                        }
-                    }
                 }
             }
+        }
     }
 
     public class SquallMove {
