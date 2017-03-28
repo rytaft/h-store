@@ -121,6 +121,18 @@ public class PredictiveController {
 
         @Override
         public void run() {
+            String[] confNames = {"site.txn_counters"};
+            String[] confValues = {"true"};
+            @SuppressWarnings("unused")
+            ClientResponse cresponse = null;
+            try {
+                cresponse = m_client.callProcedure("@SetConfiguration", confNames, confValues);
+            } catch (IOException | ProcCallException e) {
+                record("Problem while turning on monitoring");
+                record(stackTraceToString(e));
+                System.exit(1);
+            }
+
             while(!m_stop) {
                 try {
                     Thread.sleep(MONITORING_TIME);
@@ -165,7 +177,7 @@ public class PredictiveController {
 //                    m_count_gt_50.set(count_gt_50);
 //                    
 //                } else {                   
-                    ClientResponse cresponse = null;
+                    cresponse = null;
                     try {
                         cresponse = client.callProcedure("@Statistics", "TXNCOUNTER", 0);
                     } catch (IOException | ProcCallException e) {
@@ -328,18 +340,6 @@ public class PredictiveController {
         String currentPlan = FileUtil.readFile(planFile);
 
         File loadHistFile = new File(LOAD_HIST_PRED);
-
-        String[] confNames = {"site.txn_counters"};
-        String[] confValues = {"true"};
-        @SuppressWarnings("unused")
-        ClientResponse cresponse = null;
-        try {
-            cresponse = m_client.callProcedure("@SetConfiguration", confNames, confValues);
-        } catch (IOException | ProcCallException e) {
-            record("Problem while turning on monitoring");
-            record(stackTraceToString(e));
-            System.exit(1);
-        }
         
         boolean oraclePredictionComplete = false;
         SquallMove next_move = null;
