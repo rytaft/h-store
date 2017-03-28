@@ -59,7 +59,6 @@ public class PredictiveController {
     // Prediction variables
     public static String LOAD_HIST_PRED = "agg_load_hist_preds.csv";
     public static String LOAD_HIST = "agg_load_hist.csv";
-    public static String LOAD_STATS = "agg_load_stats.csv";
     public static int N_HISTORICAL_OBS = 30;
     public ConcurrentLinkedQueue<Long> m_historyNLoads = new ConcurrentLinkedQueue<>();
     
@@ -101,7 +100,6 @@ public class PredictiveController {
         AtomicLong m_count_lt_50;
         AtomicLong m_count_gt_50;
         File loadHistoryFile;
-        File loadStatsFile;
 
         public MonitorThread(ConcurrentLinkedQueue<Long> historyNLoads, Collection<Site> sites,
                 AtomicLong count_lt_20, AtomicLong count_lt_50, AtomicLong count_gt_50) {
@@ -117,7 +115,6 @@ public class PredictiveController {
             this.m_count_gt_50 = count_gt_50;
             
             loadHistoryFile = new File(LOAD_HIST);
-            loadStatsFile = new File(LOAD_STATS);
         }
         
         private long extractLoad() {
@@ -185,17 +182,7 @@ public class PredictiveController {
                         e.printStackTrace();
                     }
                 } else {
-                    record("Reading load from " + LOAD_HIST + " and " + LOAD_STATS);
-                    String loadStats = FileUtil.readFile(LOAD_STATS);
-                    String[] loadStatsArr = loadStats.split("\n");
-                    if (loadStatsArr.length != previousLoads.length) {
-                        record("Load stats length (" + loadStatsArr.length + ") != " + 
-                                "previous loads length (" + previousLoads.length + ")");
-                        System.exit(1);
-                    }
-                    for (int i = 0; i < loadStatsArr.length; i++) {
-                        previousLoads[i] = Long.valueOf( loadStatsArr[i] );
-                    } 
+                    record("Reading load from " + LOAD_HIST);
                 }                               
 
                 // Add fast-forwarded sample points to history log  
