@@ -61,7 +61,6 @@ public class PredictiveController {
     public static String LOAD_HIST = "agg_load_hist.csv";
     public static int N_HISTORICAL_OBS = 30;
     public ConcurrentLinkedQueue<Long> m_historyNLoads = new ConcurrentLinkedQueue<>();
-    public static boolean firstPrediction = true;
     
     // Reaction variables
     public AtomicLong m_count_lt_20 = new AtomicLong();
@@ -101,6 +100,7 @@ public class PredictiveController {
         AtomicLong m_count_lt_50;
         AtomicLong m_count_gt_50;
         File loadHistoryFile;
+        boolean firstPrediction;
 
         public MonitorThread(ConcurrentLinkedQueue<Long> historyNLoads, Collection<Site> sites,
                 AtomicLong count_lt_20, AtomicLong count_lt_50, AtomicLong count_gt_50) {
@@ -116,6 +116,7 @@ public class PredictiveController {
             this.m_count_gt_50 = count_gt_50;
             
             loadHistoryFile = new File(LOAD_HIST);
+            firstPrediction = true;
         }
 
         @Override
@@ -216,6 +217,7 @@ public class PredictiveController {
                             // First check that there aren't existing historical predictions
                             if (fastFwdSamples.isEmpty()) {
                                 // Else read from fastfwd file
+                                record("Reading load from " + FASTFWD_FILE);
                                 fastFwdSamples = FileUtil.readFile(FASTFWD_FILE);
                                 try {
                                     FileUtil.appendStringToFile(loadHistoryFile, fastFwdSamples);
@@ -223,7 +225,9 @@ public class PredictiveController {
                                     record("Problem logging historical load");
                                     e.printStackTrace();
                                 }
-                            }
+                            } else {
+                                record("Reading load from " + LOAD_HIST);
+                            }                               
                             
                             // Add fast-forwarded sample points to history log  
                             String[] fwdSamples = fastFwdSamples.split("\n");
@@ -338,6 +342,7 @@ public class PredictiveController {
         }
         
         boolean oraclePredictionComplete = false;
+        SquallMove next_move = null;
 
         Thread monitor = new Thread(new MonitorThread(m_historyNLoads, m_sites, 
                 m_count_lt_20, m_count_lt_50, m_count_gt_50));
@@ -358,21 +363,30 @@ public class PredictiveController {
             else if (m_next_moves != null && !m_next_moves.isEmpty()
                     && (System.currentTimeMillis() - m_next_moves_time < MAX_MOVES_STALENESS
                             || USE_ORACLE_PREDICTION || REACTIVE_ONLY)){
-                SquallMove next_move = m_next_moves.pop();
+                if (next_move == null) {
+                    next_move = m_next_moves.pop();
+                }
                 long sleep_time = next_move.start_time - System.currentTimeMillis();
                 if (sleep_time > 0){
-                    record("Sleeping for " + sleep_time + " ms");
                     try {
-                        Thread.sleep(sleep_time);
+                        if (sleep_time > POLL_TIME) {
+                            record("Sleeping for " + POLL_TIME + " ms");
+                            Thread.sleep(POLL_TIME);
+                            continue;
+                        } else {
+                            record("Sleeping for " + sleep_time + " ms");
+                            Thread.sleep(sleep_time);
+                        }
                     } catch (InterruptedException e) {
                         record("sleeping interrupted while waiting for next move");
                         System.exit(1);
-                    }
+                    }                    
                 }
 
                 currentPlan = next_move.new_plan;
                 record("Moving to plan: " + currentPlan);
                 reconfig(currentPlan);
+                next_move = null;
 
                 try {
                     FileUtil.writeStringToFile(planFile, currentPlan);
