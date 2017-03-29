@@ -17,6 +17,9 @@ DD=01
 offset=18000000
 end_iter=43
 
+# truncate file
+: > agg_load_hist.csv 
+
 for i in "$@"
 do
 case $i in
