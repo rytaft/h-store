@@ -76,7 +76,7 @@ public class PredictiveController {
     //public static String MODEL_COEFFS_FILE = "/home/nosayba/h-store/src/frontend/org/qcri/affinityplanner/prediction_model_coeffs.txt";
     public static String MODEL_COEFFS_FILE = "/data/nosayba/prediction_model_coeffs.txt";
     public static String FASTFWD_FILE = "/data/nosayba/fastforward_load_60samples.txt";
-    public static boolean USE_FAST_FORWARD = false;
+    public static boolean USE_FAST_FORWARD = true;
     
     public static int FUDGE_FACTOR = 2;
     public static long MAX_CAPACITY_PER_SERVER = (long) Math.ceil(285 * FUDGE_FACTOR * MONITORING_TIME/1000.0); // Q=350 txns/s
@@ -311,7 +311,7 @@ public class PredictiveController {
 
         connectToHost(m_client, m_sites);
 
-        resetLogs(); // necessary to detect ongoing reconfigurations
+	//        resetLogs(); // necessary to detect ongoing reconfigurations
 
         // TODO use currnt plan file for conversion of moves
         File planFile = new File (PLAN_IN);
