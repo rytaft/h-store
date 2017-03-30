@@ -83,7 +83,7 @@ public class PredictiveController {
     public static int DB_MIGRATION_TIME = (int) Math.ceil(4646 * 1000.0/MONITORING_TIME); // D=4224 seconds + 10% buffer
     public static int MAX_MOVES_STALENESS = 5000; // time in milliseconds before moves are considered invalid
     public static int POLL_TIME = 1000;
-    public static double PREDICTION_INFLATION = 1.1; // inflate predictions by 10%
+    public static double PREDICTION_INFLATION = 1.15; // inflate predictions by 15%
 
     public static String ORACLE_PREDICTION_FILE = "/data/rytaft/oracle_prediction_2016_07_01.txt";
     public static boolean USE_ORACLE_PREDICTION = false;
