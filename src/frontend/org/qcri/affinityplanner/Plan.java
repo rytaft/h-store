@@ -158,17 +158,13 @@ public class Plan {
             return false;
         }
 
-        // temporarily expand bounds s.t. it merges with adjacent ranges
-        Long fromTest = from - 1;
-        Long toTest = to;
-
         TreeMap<Long, Long> ranges = partitionToRanges.get(partition);		
         if(ranges == null){
             return false;
         }
 
-        Map.Entry<Long, Long> precedingFrom = ranges.floorEntry(fromTest);
-        Map.Entry<Long, Long> precedingTo = ranges.floorEntry(toTest);
+        Map.Entry<Long, Long> precedingFrom = ranges.floorEntry(from);
+        Map.Entry<Long, Long> precedingTo = ranges.floorEntry(to);
 
         if (precedingFrom == null){
             // from is smaller than any previous range
@@ -184,7 +180,7 @@ public class Plan {
             }
         }
         else{
-            if(precedingTo.equals(precedingFrom) && fromTest > precedingFrom.getValue()){
+            if(precedingTo.equals(precedingFrom) && from > precedingFrom.getValue()){
                 // no range intersecting with this range, create a new range
                 ranges.put(from,to);
             }
@@ -193,11 +189,11 @@ public class Plan {
                 Long lowerBound = from;
                 Long upperBound = to;
 
-                if(precedingFrom.getValue() >= fromTest) {
+                if(precedingFrom.getValue() >= from) {
                     lowerBound = Math.min(from, precedingFrom.getKey());
                 }
 
-                if(precedingTo.getKey() <= toTest) {
+                if(precedingTo.getKey() <= to) {
                     upperBound = Math.max(to, precedingTo.getValue());
                 }
 
