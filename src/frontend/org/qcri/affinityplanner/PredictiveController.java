@@ -71,7 +71,7 @@ public class PredictiveController {
     // (1) Time in milliseconds for collecting historical load data and making a prediction:
     public static int MONITORING_TIME = 30000;  //(e.g. 3000 ms = 3 sec = 30 sec B2W-time)
     // (2) Number of data points to predict into the future 
-    public static int NUM_PREDS_AHEAD = 90;  //2400;  // (e.g. for MONITORING_TIME=3000, to predict 1hour => NUM_PREDS_AHEAD = 120 pts)
+    public static int NUM_PREDS_AHEAD = 52;  // (e.g. for MONITORING_TIME=3000, to predict 1hour => NUM_PREDS_AHEAD = 120 pts)
     // (3) Fitted model coefficients, based on (1) rate [Temporarily hard-coded] 
     //public static String MODEL_COEFFS_FILE = "/home/nosayba/h-store/src/frontend/org/qcri/affinityplanner/prediction_model_coeffs.txt";
     public static String MODEL_COEFFS_FILE = "/data/nosayba/prediction_model_coeffs.txt";
@@ -79,8 +79,8 @@ public class PredictiveController {
     public static boolean USE_FAST_FORWARD = false;
     
     public static int FUDGE_FACTOR = 2;
-    public static long MAX_CAPACITY_PER_SERVER = 285 * FUDGE_FACTOR * MONITORING_TIME/1000; // Q=350 txns/s
-    public static int DB_MIGRATION_TIME = 4646 * 1000/MONITORING_TIME; // D=4224 seconds + 10% buffer
+    public static long MAX_CAPACITY_PER_SERVER = (long) Math.ceil(285 * FUDGE_FACTOR * MONITORING_TIME/1000.0); // Q=350 txns/s
+    public static int DB_MIGRATION_TIME = (int) Math.ceil(4646 * 1000.0/MONITORING_TIME); // D=4224 seconds + 10% buffer
     public static int MAX_MOVES_STALENESS = 5000; // time in milliseconds before moves are considered invalid
     public static int POLL_TIME = 1000;
     public static double PREDICTION_INFLATION = 1.1; // inflate predictions by 10%
@@ -363,6 +363,8 @@ public class PredictiveController {
                     record(stackTraceToString(e));
                     System.exit(1);
                 }
+                
+                record("Started reconfiguration to " + countActiveSites(planFile.toString()) + " nodes");
             }
             else if (USE_ORACLE_PREDICTION) {
                 if (oraclePredictionComplete) {
