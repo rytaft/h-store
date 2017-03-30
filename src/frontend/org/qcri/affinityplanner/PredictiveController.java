@@ -89,6 +89,7 @@ public class PredictiveController {
     public static boolean USE_ORACLE_PREDICTION = false;
     public static boolean REACTIVE_ONLY = false;
     public static boolean REMOVE_TINY_RECONFS = true;
+    public static long SCALE_IN_WAIT = 2 * MONITORING_TIME;
 
     private class MonitorThread implements Runnable {
 
@@ -233,10 +234,19 @@ public class PredictiveController {
     public class SquallMove {
         public String new_plan;
         public long start_time;
+        public int nodes;
+        public int time_interval;
 
-        public SquallMove(String new_plan, long start_time){
+        public SquallMove(String new_plan, long start_time, int nodes, int time_interval){
             this.new_plan = new_plan;
             this.start_time = start_time;
+            this.nodes = nodes;
+            this.time_interval = time_interval;
+        }
+        
+        @Override
+        public String toString() {
+            return "<Nodes: " + nodes + ", Time Interval: " + time_interval + ", Start Time: " + start_time + ">;";
         }
     }
 
@@ -311,6 +321,8 @@ public class PredictiveController {
         
         boolean oraclePredictionComplete = false;
         SquallMove next_move = null;
+        int activeSites = countActiveSites(planFile.toString());
+        Long scalein_requested_time = null;
 
         Thread monitor = new Thread(new MonitorThread(m_historyNLoads, m_sites, 
                 m_count_lt_20, m_count_lt_50, m_count_gt_50));
@@ -350,8 +362,28 @@ public class PredictiveController {
                         System.exit(1);
                     }                    
                 }
+                
+                // Don't scale in too quickly or you might need to scale out again right away
+                if (next_move.nodes < activeSites) { 
+                    if (scalein_requested_time == null) {
+                        scalein_requested_time = System.currentTimeMillis();
+                    } 
+                    if (System.currentTimeMillis() - scalein_requested_time < SCALE_IN_WAIT ) {
+                        try {
+                            Thread.sleep(POLL_TIME);
+                        } catch (InterruptedException e) {
+                            record("sleeping interrupted while waiting for reconfiguration");
+                            System.exit(1);
+                        }
+                        continue;
+                    } else {
+                        scalein_requested_time = null;
+                    }
+                }
 
                 currentPlan = next_move.new_plan;
+                activeSites = next_move.nodes;
+                record("Starting reconfiguration to " + activeSites + " nodes");
                 record("Moving to plan: " + currentPlan);
                 reconfig(currentPlan);
                 next_move = null;
@@ -363,8 +395,6 @@ public class PredictiveController {
                     record(stackTraceToString(e));
                     System.exit(1);
                 }
-                
-                record("Started reconfiguration to " + countActiveSites(planFile.toString()) + " nodes");
             }
             else if (USE_ORACLE_PREDICTION) {
                 if (oraclePredictionComplete) {
@@ -392,7 +422,6 @@ public class PredictiveController {
                 }
                 
                 // launch planner and get the moves
-                int activeSites = countActiveSites(planFile.toString()); // TODO get the actual number of active sites
                 ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
                 if(moves == null || moves.isEmpty()){
                     // reactive migration
@@ -420,7 +449,6 @@ public class PredictiveController {
 //                long total = count_lt_20 + count_lt_50 + count_gt_50;
 //                if (total > 0 && (double) count_lt_20 / total > 0.95) {
                 Long[] historyNLoads = m_historyNLoads.toArray(new Long[]{});
-                int activeSites = countActiveSites(planFile.toString());
                 long load1 = 0;
                 long load2 = 0;
                 long load3 = 0;
@@ -503,7 +531,6 @@ public class PredictiveController {
                     }
 
                     // launch planner and get the moves
-                    int activeSites = countActiveSites(planFile.toString());
                     ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
                     if (moves == null || moves.isEmpty()) {
                         // reactive migration
@@ -628,8 +655,9 @@ public class PredictiveController {
                 planner.repartition();
                 try {
                     plan = planner.getPlanString();
-                    squallMoves.add(new SquallMove(plan, moveStart));
-                    debug += "<Nodes: " + move.nodes + ", Time: " + moveStart + ">;";
+                    SquallMove squallMove = new SquallMove(plan, moveStart, move.nodes, move.time);
+                    squallMoves.add(squallMove);
+                    debug += squallMove.toString();
                 } catch (JSONException e) {
                     record("ERROR: Failed to convert plan to string " + e.getMessage());
                 }               
@@ -657,7 +685,7 @@ public class PredictiveController {
             record("ERROR: Failed to convert plan to string " + e.getMessage());
             return squallMoves;
         }
-        squallMoves.add(new SquallMove(plan, System.currentTimeMillis()));
+        squallMoves.add(new SquallMove(plan, System.currentTimeMillis(), nodes, -1));
         return squallMoves;
     }
 
