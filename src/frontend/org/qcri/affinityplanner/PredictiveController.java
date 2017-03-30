@@ -376,11 +376,10 @@ public class PredictiveController {
                             System.exit(1);
                         }
                         continue;
-                    } else {
-                        scalein_requested_time = null;
                     }
                 }
-
+                
+                scalein_requested_time = null;
                 currentPlan = next_move.new_plan;
                 activeSites = next_move.nodes;
                 record("Starting reconfiguration to " + activeSites + " nodes");
