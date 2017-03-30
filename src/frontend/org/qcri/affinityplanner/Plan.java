@@ -784,7 +784,7 @@ public class Plan {
                                 System.out.println("Tuple " + t + " of table " + table + " was found in partitions " + foundInPart + " and " + part);
                                 return false;
                             }
-                            foundInPart = 1;
+                            foundInPart = part;
                         }
                     }
                 }
