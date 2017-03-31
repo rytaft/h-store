@@ -75,7 +75,7 @@ public class PredictiveController {
     // (3) Fitted model coefficients, based on (1) rate [Temporarily hard-coded] 
     //public static String MODEL_COEFFS_FILE = "/home/nosayba/h-store/src/frontend/org/qcri/affinityplanner/prediction_model_coeffs.txt";
     public static String MODEL_COEFFS_FILE = "/data/nosayba/prediction_model_coeffs.txt";
-    public static String FASTFWD_FILE = "/data/nosayba/fastforward_load_60samples.txt";
+    public static String FASTFWD_FILE = "/data/rytaft/fastforward_load_60samples.txt";
     public static boolean USE_FAST_FORWARD = true;
     
     public static int FUDGE_FACTOR = 2;
