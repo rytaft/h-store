@@ -125,7 +125,7 @@ public class PredictiveController {
             } catch (IOException | ProcCallException e) {
                 record("Problem while turning on monitoring");
                 record(stackTraceToString(e));
-                System.exit(1);
+                //System.exit(1);
             }
 
             // extract total load
@@ -202,7 +202,7 @@ public class PredictiveController {
             } catch (IOException | ProcCallException e) {
                 record("Problem while turning on monitoring");
                 record(stackTraceToString(e));
-                System.exit(1);
+                //System.exit(1);
             }
             
             // Run extractLoad once since the first load value is really high
@@ -213,7 +213,7 @@ public class PredictiveController {
                     Thread.sleep(MONITORING_TIME);
                 } catch (InterruptedException e) {
                     record("sleeping interrupted while monitoring");
-                    System.exit(1);
+                    //System.exit(1);
                 }
 
                 long totalLoad = extractLoad();
@@ -276,7 +276,7 @@ public class PredictiveController {
             }
             else if (PARTITIONS_PER_SITE != site.getPartitions().size()){
                 record("Not all sites have the same number of partitions. Exiting");
-                System.exit(1);
+                //System.exit(1);
             }
         }
         MAX_PARTITIONS++;
@@ -289,7 +289,7 @@ public class PredictiveController {
         }
         else{
             System.out.println("No plan specified. Exiting");
-            System.exit(1);
+            //System.exit(1);
         }
 
         // verify that all partition ids are contiguous
@@ -302,7 +302,7 @@ public class PredictiveController {
             }
             else{
                 record("Gap in partition ids. Exiting");
-                System.exit(1);
+                //System.exit(1);
             }
         }
     }
@@ -336,7 +336,7 @@ public class PredictiveController {
                     Thread.sleep(POLL_TIME);
                 } catch (InterruptedException e) {
                     record("sleeping interrupted while waiting for reconfiguration");
-                    System.exit(1);
+                    //System.exit(1);
                 }
                 continue;
             }
@@ -359,7 +359,7 @@ public class PredictiveController {
                         }
                     } catch (InterruptedException e) {
                         record("sleeping interrupted while waiting for next move");
-                        System.exit(1);
+                        //System.exit(1);
                     }                    
                 }
                 
@@ -373,7 +373,7 @@ public class PredictiveController {
                             Thread.sleep(POLL_TIME);
                         } catch (InterruptedException e) {
                             record("sleeping interrupted while waiting for reconfiguration");
-                            System.exit(1);
+                            //System.exit(1);
                         }
                         continue;
                     }
@@ -392,7 +392,7 @@ public class PredictiveController {
                 } catch (IOException e) {
                     record("Unable to write new plan file");
                     record(stackTraceToString(e));
-                    System.exit(1);
+                    //System.exit(1);
                 }
             }
             else if (USE_ORACLE_PREDICTION) {
@@ -417,7 +417,7 @@ public class PredictiveController {
                 } catch (IOException e) {
                     record("Unable to read predicted load");
                     record(stackTraceToString(e));
-                    System.exit(1);
+                    //System.exit(1);
                 }
                 
                 // launch planner and get the moves
@@ -476,7 +476,7 @@ public class PredictiveController {
                         Thread.sleep(POLL_TIME);
                     } catch (InterruptedException e) {
                         record("sleeping interrupted");
-                        System.exit(1);
+                        //System.exit(1);
                     }
                 }
             }
@@ -492,7 +492,7 @@ public class PredictiveController {
                         Thread.sleep(POLL_TIME);
                     } catch (InterruptedException e) {
                         record("sleeping interrupted while waiting for predictions");
-                        System.exit(1);
+                        //System.exit(1);
                     }
                     continue;
                 }
@@ -573,11 +573,11 @@ public class PredictiveController {
         } catch (UnknownHostException e) {
             record("Controller: tried to connect to unknown host");
             e.printStackTrace();
-            System.exit(1);
+            //System.exit(1);
         } catch (IOException e) {
             record("Controller: IO Exception while connecting to host");
             e.printStackTrace();
-            System.exit(1);
+            //System.exit(1);
         }
         record("Connected to host " + connectedHost);
     }
@@ -594,20 +594,20 @@ public class PredictiveController {
         } catch (NoConnectionsException e) {
             record("Controller: lost connection");
             e.printStackTrace();
-            System.exit(1);
+            //System.exit(1);
         } catch (IOException e) {
             record("Controller: IO Exception while connecting to host");
             e.printStackTrace();
-            System.exit(1);
+            //System.exit(1);
         } catch (ProcCallException e) {
             System.out.println("Controller: @Reconfiguration transaction rejected (backpressure?)");
             e.printStackTrace();
-            System.exit(1);
+            //System.exit(1);
         }
 
         if (cresponse.getStatus() != Hstoreservice.Status.OK) {
             record("@Reconfiguration transaction aborted");
-            System.exit(1);
+            //System.exit(1);
         }
     }
     

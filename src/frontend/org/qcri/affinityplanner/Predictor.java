@@ -43,7 +43,7 @@ public class Predictor {
             return null;
         }
         else{
-        	System.out.println("Current load: ");
+//        	System.out.println("Current load: ");
         	System.out.print( currentLoad.toString() );
         	System.out.println();
         	
