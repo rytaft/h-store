@@ -89,7 +89,7 @@ public class PredictiveController {
     public static boolean USE_ORACLE_PREDICTION = false;
     public static boolean REACTIVE_ONLY = false;
     public static boolean REMOVE_TINY_RECONFS = true;
-    public static long SCALE_IN_WAIT = 2 * MONITORING_TIME;
+    public static long SCALE_IN_WAIT = 3 * MONITORING_TIME;
 
     private class MonitorThread implements Runnable {
 
