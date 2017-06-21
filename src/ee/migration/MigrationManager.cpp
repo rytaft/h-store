@@ -431,8 +431,8 @@ TableIndex* MigrationManager::getPartitionColumnsIndex() {
 	if(index->getScheme().type == BALANCED_TREE_INDEX) { // tree index
 	  for(int i = 0; i < index->getColumnIndices().size() && i < m_partitionColumns.size(); i++) {
 	     if (index->getColumnIndices()[i] == m_partitionColumns[i]){
-	       if(i >= bestMatchingIndexCols) {
-		 VOLT_DEBUG("Index matches");
+	       if(i+1 >= bestMatchingIndexCols) {
+		 VOLT_DEBUG("Index %s matches", index->getName().c_str());
 		 bestMatchingIndexCols = i+1;
 		 bestIndex = index;
 	       }
@@ -447,7 +447,7 @@ TableIndex* MigrationManager::getPartitionColumnsIndex() {
 	  // then we know we'll always have the value for every one of the partitionColumns, so 
 	  // the column count doesn't have to be 1
 	  if (bestIndex == NULL && index->getColumnIndices()[0] == m_partitionColumns[0]){
-	    VOLT_DEBUG("Index matches");
+	    VOLT_DEBUG("Index %s matches", index->getName().c_str());
 	    bestMatchingIndexCols = 1;
 	    bestIndex = index;
 	  }	  
