@@ -58,15 +58,15 @@ public class PartitionMessageQueue extends PriorityBlockingQueue<InternalMessage
         private final Class<? extends InternalMessage> compareOrder[] = (Class<? extends InternalMessage>[])new Class<?>[]{
             ReconfigUtilRequestMessage.class,
             LivePullRequestMessage.class,
-            SetDistributedTxnMessage.class,
-            PrepareTxnMessage.class,
-            FinishTxnMessage.class,
-            WorkFragmentMessage.class,
             AsyncDataPullResponseMessage.class,
             AsyncDataPullRequestMessage.class,
             AsyncNonChunkPushRequestMessage.class,
             AsyncNonChunkPullRequestMessage.class,
             MultiDataPullResponseMessage.class,
+            SetDistributedTxnMessage.class,
+            PrepareTxnMessage.class,
+            FinishTxnMessage.class,
+            WorkFragmentMessage.class,
             ScheduleAsyncPullRequestMessage.class
         };
         
