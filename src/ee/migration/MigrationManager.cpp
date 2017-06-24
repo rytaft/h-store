@@ -207,8 +207,8 @@ bool MigrationManager::extractTuple(TableTuple& tuple) {
   } 
   
   //m_table->deleteTuple(tuple, true);
-  
-  
+  m_extractedList.push(m_table->getTupleID(tuple.address()));
+
   //Count if we have taken the max tuples
   if (++m_tuplesExtracted >= m_extractTupleLimit) {
     VOLT_DEBUG("tuple limit reached: %d", m_tuplesExtracted);
@@ -216,6 +216,25 @@ bool MigrationManager::extractTuple(TableTuple& tuple) {
   }
 
   return false;
+}
+
+// Deletes tuples that have been migrated.  
+// Important for ensuring correctness with repeated reconfigurations, especially when there are unique indexes.
+void MigrationManager::cleanUp() {
+  TableTuple tuple(m_table->schema());
+  size_t sizeBefore = m_extractedList.size();
+  int totalDeleted = 0;
+
+  while (!m_extractedList.empty()) {
+    tuple.move(m_table->dataPtrForTuple(m_extractedList.front()));
+    if (tuple.isMigrated()) {
+      m_table->deleteTuple(tuple, true);
+      ++totalDeleted;
+    }
+    m_extractedList.pop();
+  }
+
+  VOLT_INFO("Finished cleaning up.  Deleted %d of %d extracted tuples", totalDeleted, sizeBefore);
 }
 
 bool MigrationManager::searchBTree(const RangeMap& rangeMap) {
@@ -268,8 +287,8 @@ bool MigrationManager::scanTable(const RangeMap& rangeMap) {
   
   TableTuple tuple(m_table->schema());
   TupleList tupleList;
-  if (tableCache.count(tableRange)){
-      tupleList = tableCache[tableRange];
+  if (m_tableCache.count(tableRange)){
+      tupleList = m_tableCache[tableRange];
   }
 
   if (!tupleList.empty()) {
@@ -291,7 +310,7 @@ bool MigrationManager::scanTable(const RangeMap& rangeMap) {
         if(extractTuple(tuple)){
             //VOLT_INFO("extracted cached tuple and stopping due to limit"); 
             //update tuple cahce
-            tableCache[tableRange] = tupleList;
+            m_tableCache[tableRange] = tupleList;
             return true;
         } else{
           //Remove tuple from cahce if we extracted
@@ -330,7 +349,7 @@ bool MigrationManager::scanTable(const RangeMap& rangeMap) {
   } //end while
   
   //check if keepExtracting and tupleList is empty() might be able to return moreData = false
-  tableCache[tableRange] = tupleList;  
+  m_tableCache[tableRange] = tupleList;  
   return moreData; 
 }
 
@@ -397,6 +416,9 @@ Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& in
   } catch (SerializableEEException &e) {
     return NULL; // failed to insert into output table
   } 
+
+  // delete migrated tuples
+  cleanUp();
   
   VOLT_DEBUG("Tuples extracted: %d, Output Table %s",m_tuplesExtracted, m_outputTable->debug().c_str());
   m_extractedTables[requestToken] = m_outputTable;
