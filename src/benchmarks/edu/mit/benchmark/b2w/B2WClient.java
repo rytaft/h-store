@@ -199,7 +199,10 @@ public class B2WClient extends BenchmarkComponent {
     protected boolean runOnce()  throws IOException {
         try {
             JSONObject next_txn = txn_selector.nextTransaction();
-            return runOnce(next_txn);
+            for (int i = 0; i < config.scale_up; ++i) {
+                if (!runOnce(next_txn)) return false;
+            }
+            return true;
         } catch(JSONException e) {
             throw new RuntimeException(e);
         }

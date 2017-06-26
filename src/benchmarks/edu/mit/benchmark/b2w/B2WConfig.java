@@ -36,6 +36,7 @@ public class B2WConfig {
     public Long speed_up = 200L;
     public Long sleep_time = 10L;
     public Long start_offset = 0L;
+    public Long scale_up = 1L;
 
     
     public B2WConfig(Map<String, String> m_extraParams) {
@@ -57,6 +58,9 @@ public class B2WConfig {
             }
             else if (key.equalsIgnoreCase("start_offset")) {
                 this.start_offset = Long.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("scale_up")) {
+                this.scale_up = Long.valueOf(value);
             }
             else if (key.equalsIgnoreCase("STK_INVENTORY_STOCK_DATA_FILE")) {
                 this.STK_INVENTORY_STOCK_DATA_FILE = String.valueOf(value);
@@ -127,7 +131,8 @@ public class B2WConfig {
                 + ", CHECKOUT_STOCK_TRANSACTIONS_DATA_FILE=" + CHECKOUT_STOCK_TRANSACTIONS_DATA_FILE
                 + ", speed_up=" + speed_up
                 + ", sleep_time=" + sleep_time
-                + ", start_offset=" + start_offset + "]";
+                + ", start_offset=" + start_offset 
+                + ", scale_up=" + scale_up + "]";
     }
 
 }

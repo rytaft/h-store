@@ -142,6 +142,9 @@ public class AddLineToCart extends VoltProcedure {
     
     public final SQLStmt getCartStmt = new SQLStmt("SELECT id, total, status FROM CART WHERE partition_key = ? AND id = ? ");
     
+    public final SQLStmt getCartLineStmt = new SQLStmt("SELECT * FROM CART_LINES " + 
+                                                       " WHERE partition_key = ? AND cartId = ? AND id = ? ");
+    
     public final SQLStmt updateCartStmt = new SQLStmt(
             "UPDATE CART " +
             "   SET total = ?, " +
@@ -149,8 +152,7 @@ public class AddLineToCart extends VoltProcedure {
             "       status = ? " +
             " WHERE partition_key = ? AND id = ?;"
         ); //total, lastModified, status, partition_key, id
-
-
+    
     public VoltTable[] run(int partition_key, String cart_id, TimestampType timestamp, String line_id, 
             String product_sku, long product_id, String store_id, int quantity, String salesChannel, String opn, String epar, byte autoMerge,
             double unitSalesPrice, double salesPrice, int maxQuantity, String maximumQuantityReason, String type, String stockTransactionId,
@@ -159,12 +161,13 @@ public class AddLineToCart extends VoltProcedure {
         B2WUtil.sleep(sleep_time);
         
         voltQueueSQL(getCartStmt, partition_key, cart_id);
+        voltQueueSQL(getCartLineStmt, partition_key, cart_id, line_id);
         final VoltTable[] cart_results = voltExecuteSQL();
-        assert cart_results.length == 1;
-        
+        assert cart_results.length == 2;
+
         double total = 0;
         String status = B2WConstants.STATUS_NEW;       
-        
+
         if (cart_results[0].getRowCount() > 0) {
             final VoltTableRow cart = cart_results[0].fetchRow(0);
             final int CART_ID = 0, TOTAL = 1, STATUS = 2;
@@ -174,7 +177,11 @@ public class AddLineToCart extends VoltProcedure {
         } else {
             voltQueueSQL(createCartStmt, partition_key, cart_id, total, salesChannel, opn, epar, timestamp, status, autoMerge);
         }
-        
+
+        if (cart_results[1].getRowCount() > 0) {
+            return null; // line already added
+        }
+
         voltQueueSQL(createCartLineStmt, 
                 partition_key,
                 cart_id,
@@ -193,7 +200,7 @@ public class AddLineToCart extends VoltProcedure {
                 line_status,
                 stockType,
                 timestamp);
-        
+
         voltQueueSQL(createCartLineProductStmt,
                 partition_key,
                 cart_id,
@@ -211,9 +218,9 @@ public class AddLineToCart extends VoltProcedure {
                 subClass,
                 weight,
                 product_class);
-        
+
         total += salesPrice;
-        
+
         voltQueueSQL(updateCartStmt, total, timestamp, status, partition_key, cart_id);
         
         return voltExecuteSQL(true);

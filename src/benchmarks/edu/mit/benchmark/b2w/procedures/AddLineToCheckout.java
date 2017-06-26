@@ -50,6 +50,10 @@ public class AddLineToCheckout extends VoltProcedure {
 
     public final SQLStmt getCheckoutStmt = new SQLStmt("SELECT amountDue, total, freightPrice FROM CHECKOUT WHERE partition_key = ? AND id = ?;");
     
+    public final SQLStmt getCheckoutStockTxnStmt = new SQLStmt("SELECT * FROM CHECKOUT_STOCK_TRANSACTIONS " +
+                                                               " WHERE partition_key = ? AND checkoutId = ? AND lineId = ? AND id = ?;");
+
+    
     public final SQLStmt updateCheckoutStmt = new SQLStmt(
             "UPDATE CHECKOUT " +
             "   SET amountDue = ?, " +
@@ -65,8 +69,9 @@ public class AddLineToCheckout extends VoltProcedure {
         B2WUtil.sleep(sleep_time);
         
         voltQueueSQL(getCheckoutStmt, partition_key, checkout_id);
+        voltQueueSQL(getCheckoutStockTxnStmt, partition_key, checkout_id, line_id, transaction_id);
         final VoltTable[] checkout_results = voltExecuteSQL();
-        assert checkout_results.length == 1;
+        assert checkout_results.length == 2;
         
         double amountDue = 0;
         double total = 0;        
@@ -82,6 +87,10 @@ public class AddLineToCheckout extends VoltProcedure {
             return null;
         }      
 
+        if (checkout_results[1].getRowCount() > 0) {
+            return null; // line already added
+        } 
+
         voltQueueSQL(createCheckoutStockTxnStmt,
                 partition_key,
                 checkout_id,
@@ -95,10 +104,10 @@ public class AddLineToCheckout extends VoltProcedure {
                     line_id,
                     delivery_time);
         }
-        
+
         amountDue = amountDue + salesPrice - oldFreightPrice + freightPrice; // TODO: When would amountDue be different from total? Do we always add salesPrice here?
         total = total + salesPrice - oldFreightPrice + freightPrice;
-        
+
         voltQueueSQL(updateCheckoutStmt, amountDue, total, freightContract, freightPrice, freightStatus, partition_key, checkout_id);
         
         return voltExecuteSQL(true);

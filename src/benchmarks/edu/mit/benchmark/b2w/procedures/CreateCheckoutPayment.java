@@ -55,11 +55,21 @@ public class CreateCheckoutPayment extends VoltProcedure {
                 "?"   +   // expirationDate
             ");");
     
+    public final SQLStmt getCheckoutPaymentStmt = new SQLStmt("SELECT * FROM CHECKOUT_PAYMENTS WHERE partition_key = ? AND checkoutId = ?;");
+    
     public VoltTable[] run(int partition_key, String checkout_id, String cart_id, String paymentOptionId, String paymentOptionType, int dueDays, double amount,
             int installmentQuantity, double interestAmount, int interestRate, int annualCET, String number, String criptoNumber, String holdersName, 
             String securityCode, String expirationDate, long sleep_time){
         B2WUtil.sleep(sleep_time);
         
+        voltQueueSQL(getCheckoutPaymentStmt, partition_key, checkout_id);
+        final VoltTable[] checkout_payment_results = voltExecuteSQL();
+        assert checkout_payment_results.length == 1;
+        
+        if (checkout_payment_results[0].getRowCount() > 0) {
+            return null; // checkout payment already exists
+        } 
+
         voltQueueSQL(createCheckoutPaymentStmt,
                 partition_key,
                 checkout_id,
@@ -76,7 +86,7 @@ public class CreateCheckoutPayment extends VoltProcedure {
                 holdersName,
                 securityCode,
                 expirationDate);
-        
+            
         return voltExecuteSQL(true);
     }
 

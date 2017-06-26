@@ -77,15 +77,25 @@ public class CreateCheckout extends VoltProcedure {
                 "?"   +   // lineId
             ");");
     
+    public final SQLStmt getCheckoutStmt = new SQLStmt("SELECT * FROM CHECKOUT WHERE partition_key = ? AND id = ?;");
+    
     public VoltTable[] run(int partition_key, String checkout_id, String cart_id, String deliveryAddressId, String billingAddressId,
             double amountDue, double total, String freightContract, double freightPrice, String freightStatus,
             String[] line_id, String[] transaction_id, int[] delivery_time, long sleep_time) {
         B2WUtil.sleep(sleep_time);
         
+        voltQueueSQL(getCheckoutStmt, partition_key, checkout_id);
+        final VoltTable[] checkout_results = voltExecuteSQL();
+        assert checkout_results.length == 1;
+
+        if (checkout_results[0].getRowCount() > 0) {
+            return null; // checkout already exists
+        } 
+
         if (trace.val) {
             LOG.trace("Creating checkout with params: " + checkout_id + ", " + cart_id + ", " + deliveryAddressId + ", " + billingAddressId + ", " +
-             amountDue + ", " + total + ", " + freightContract + ", " + freightPrice + ", " + freightStatus + ", " +
-             Arrays.asList(line_id).toString() + ", " + Arrays.asList(transaction_id).toString() + ", " + Arrays.asList(delivery_time).toString());
+                    amountDue + ", " + total + ", " + freightContract + ", " + freightPrice + ", " + freightStatus + ", " +
+                    Arrays.asList(line_id).toString() + ", " + Arrays.asList(transaction_id).toString() + ", " + Arrays.asList(delivery_time).toString());
         }
         voltQueueSQL(createCheckoutStmt,
                 partition_key,
@@ -98,13 +108,13 @@ public class CreateCheckout extends VoltProcedure {
                 freightContract,
                 freightPrice,
                 freightStatus);
-        
+
         assert(line_id.length == transaction_id.length);
         assert(line_id.length == delivery_time.length);
-        
+
         for (int i = 0; i < line_id.length; ++i) {
             if(line_id[i] == null) continue;
-            
+
             if(transaction_id[i] != null) {
                 voltQueueSQL(createCheckoutStockTxnStmt,
                         partition_key,
