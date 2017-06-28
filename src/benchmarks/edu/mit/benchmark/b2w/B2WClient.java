@@ -200,7 +200,10 @@ public class B2WClient extends BenchmarkComponent {
         try {
             JSONObject next_txn = txn_selector.nextTransaction();
             for (int i = 0; i < config.scale_up; ++i) {
-                if (!runOnce(next_txn)) return false;
+                if (!runOnce(next_txn)) {
+                    LOG.debug("transaction " + next_txn.toString() + " not successful");
+                    return false;
+                }
             }
             return true;
         } catch(JSONException e) {
