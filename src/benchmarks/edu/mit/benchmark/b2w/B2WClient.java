@@ -165,7 +165,13 @@ public class B2WClient extends BenchmarkComponent {
                 final long delta = now - startTime;
                 if (delta >= offset) {
                     try {
-                        bp = !this.runOnce(next_txn);
+                        for (int i = 0; i < config.scale_up; ++i) {
+                            bp = !this.runOnce(next_txn);
+                            if (bp) {
+                                LOG.debug("transaction " + next_txn.toString() + " not successful");
+                                break;
+                            }
+                        }
                         next_txn = null; // indicates that we are ready for the next txn
 
                         if (doSingle) {
