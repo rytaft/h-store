@@ -418,11 +418,11 @@ Table* MigrationManager::extractRanges(PersistentTable *table, TableIterator& in
   } 
 
   // delete migrated tuples
-  cleanUp();
+  //cleanUp();
   
   VOLT_DEBUG("Tuples extracted: %d, Output Table %s",m_tuplesExtracted, m_outputTable->debug().c_str());
-  m_extractedTables[requestToken] = m_outputTable;
-  m_extractedTableNames[requestToken] = m_table->name();
+  //m_extractedTables[requestToken] = m_outputTable;
+  //m_extractedTableNames[requestToken] = m_table->name();
 
 #ifdef EXTRACT_STAT_ENABLED
   TableTuple globalMin = rangeMap.begin()->second;
@@ -507,6 +507,26 @@ bool MigrationManager::undoExtractDelete(int32_t requestTokenId) {
     throwFatalException("Undo delete not implemented yet");
     return false;
 }
+
+bool MigrationManager::cleanUp(int32_t maxTuples) {
+  TableTuple tuple(m_table->schema());
+  size_t sizeBefore = m_extractedList.size();
+  int totalDeleted = 0;
+
+  while (!m_extractedList.empty() && totalDeleted < maxTuples) {
+    tuple.move(m_table->dataPtrForTuple(m_extractedList.front()));
+    if (tuple.isMigrated()) {
+      m_table->deleteTuple(tuple, true);
+      ++totalDeleted;
+    }
+    m_extractedList.pop();
+  }
+
+  VOLT_INFO("Finished cleaning up.  Deleted %d of %d extracted tuples", totalDeleted, sizeBefore);
+
+  return !m_extractedList.empty(); // is there more data?
+}
+
 
 
 }

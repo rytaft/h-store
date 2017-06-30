@@ -165,6 +165,7 @@ import edu.brown.hstore.internal.AsyncDataPullResponseMessage;
 import edu.brown.hstore.internal.AsyncNonChunkPullRequestMessage;
 import edu.brown.hstore.internal.AsyncNonChunkPushRequestMessage;
 import edu.brown.hstore.internal.DeferredQueryMessage;
+import edu.brown.hstore.internal.DeleteMigratedTuplesMessage;
 import edu.brown.hstore.internal.FinishTxnMessage;
 import edu.brown.hstore.internal.InternalMessage;
 import edu.brown.hstore.internal.InternalTxnMessage;
@@ -1270,7 +1271,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 append(",idleClicks:").append(idle_click_count>MAX_PULL_ASYNC_EVERY_CLICKS).
                 append(",aysncPullQ:").append(this.asyncRequestPullQueue.size()).append(",scheduleAsncPullQ:").append(scheduleAsyncPullQueue.size()).append(",workQueue:").append(this.work_queue.size()).toString();
     }
-
+    
     /**
      * Special function that allows us to do some utility work while we are
      * waiting for a response or something real to do. Note: this tracks how
@@ -1325,6 +1326,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 return processQueuedLiveReconfigWork(true);
             }          
         }
+        
         // -------------------------------
         // Poll Lock Queue
         // -------------------------------
@@ -1481,6 +1483,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         // -------------------------------
         // RECONFIGURATION PUSH WORK
         // -------------------------------
+        else if (work instanceof DeleteMigratedTuplesMessage) {
+            LOG.info(String.format("(%s) Delete Migrated Tuples. Work Queue Size: %s", this.partitionId, this.work_queue.size()));
+            processDeleteMigratedTuplesMessage((DeleteMigratedTuplesMessage) work);
+        }  
         else if (work instanceof AsyncNonChunkPushRequestMessage) {
             ReconfigurationRange pushRange = ((AsyncNonChunkPushRequestMessage) work).getPushRange();
             LOG.info("Asynch push message scheduled " + pushRange.toString());
@@ -3661,6 +3667,31 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         return (result);
     }
+    
+    public void processDeleteMigratedTuplesMessage(DeleteMigratedTuplesMessage deleteMsg){
+        
+        LOG.info("Deleting migrated tuples at partition " + this.partitionId);
+        try {                
+            String tableName = deleteMsg.getTableName();
+            Table catalog_tbl = this.catalogContext.getTableByName(tableName);
+            int table_id = catalog_tbl.getRelativeIndex();
+            
+            long start = System.currentTimeMillis();
+            boolean moreData = this.ee.deleteMigratedTuples(catalog_tbl, table_id, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), hstore_conf.site.reconfig_async_chunk_size_kb*1024);
+            long timeTaken = System.currentTimeMillis() - start;
+                                
+            if(moreData){
+                LOG.info(String.format("We have more tuples to delete from table %s", tableName));
+                this.work_queue.offer(deleteMsg);
+            }
+            
+            LOG.info(String.format("Deleted tuples from table %s in %s ms", tableName, timeTaken));     
+            
+        } catch (Exception e) {
+            LOG.error("Exception when processing delete migrated tuples message", e);
+        }
+    }
+
 
     /**
      * Execute a BatchPlan directly on this PartitionExecutor without having to
@@ -6576,6 +6607,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             LOG.info("Ending S&C");
             this.currentExecMode = ExecutionMode.COMMIT_ALL;
             haltProcessing();
+        }
+        
+        for (String tableName : this.reconfig_plan.getOutgoing_ranges_map().get(this.partitionId).keySet()) {
+            this.work_queue.offer(new DeleteMigratedTuplesMessage(tableName));
         }
         
         LOG.info("Clearing up reconfiguration state for p_id " + this.getReconfigDebug());

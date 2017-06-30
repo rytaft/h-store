@@ -539,6 +539,18 @@ public class ExecutionEngineJNI extends ExecutionEngine {
     }
     
     @Override
+    public boolean deleteMigratedTuples(Table targetTable, int tableId, long lastCommittedTxnId, long undoToken, int requestToken, int maxSizeBytes) throws EEException {
+        if (debug.val) LOG.debug("Delete migrated tuples");
+        long tupleBytes = MemoryEstimator.estimateTupleSize(targetTable);
+        int tupleExtractLimit = (int)(maxSizeBytes/tupleBytes);
+        final int errorCode = nativeDeleteMigratedTuples(this.pointer, tableId, lastCommittedTxnId, undoToken, requestToken, tupleExtractLimit);
+        if (debug.val) LOG.debug("Done with deleting tuples");
+        checkErrorCode(errorCode);
+        boolean moreData = checkIfMoreDataOrError(errorCode);
+        return moreData;
+    }
+    
+    @Override
     public boolean updateExtractRequest(int requestToken, boolean deleteRequestedData)
     {
         if (debug.val) LOG.debug("updateExtractRequest table");

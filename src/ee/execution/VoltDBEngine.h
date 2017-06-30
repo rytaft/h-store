@@ -289,6 +289,8 @@ class __attribute__((visibility("default"))) VoltDBEngine {
 
         bool updateExtractRequest(int32_t requestToken, bool confirmDelete);
 
+	bool deleteMigratedTuples(int32_t maxTuples);
+
         // -------------------------------------------------
         // Debug functions
         // -------------------------------------------------

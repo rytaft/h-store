@@ -438,6 +438,33 @@ Java_org_voltdb_jni_ExecutionEngine_nativeUpdateExtractRequest(JNIEnv *env,
 }
 
 SHAREDLIB_JNIEXPORT jint JNICALL
+Java_org_voltdb_jni_ExecutionEngine_nativeDeleteMigratedTuples(JNIEnv *env,
+    jobject obj,
+    jlong engine_ptr,
+    jint max_tuples)
+{
+    VOLT_DEBUG("Calling ee delete migrated tuples");
+    int maxTuples = max_tuples;
+    VoltDBEngine *engine = castToEngine(engine_ptr);
+    Topend *topend = static_cast<JNITopend*>(engine->getTopend())->updateJNIEnv(env);
+    if (engine == NULL) {
+            return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
+    }
+
+    try{
+            updateJNILogProxy(engine);
+            bool success = engine->deleteMigratedTuples(maxTuples);
+            if (success)
+                    return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
+
+    } catch (FatalException e) {
+            topend->crashVoltDB(e);
+    }
+    // deserialize dependency.
+    return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
+}
+
+SHAREDLIB_JNIEXPORT jint JNICALL
 Java_org_voltdb_jni_ExecutionEngine_nativeExtractTable(JNIEnv *env, 
     jobject obj,
     jlong engine_ptr,

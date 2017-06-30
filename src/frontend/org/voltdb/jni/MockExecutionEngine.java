@@ -244,4 +244,10 @@ public class MockExecutionEngine extends ExecutionEngine {
         // TODO Auto-generated method stub
         return false;
     }
+    
+    @Override
+    public boolean deleteMigratedTuples(Table targetTable, int tableId, long lastCommittedTxnId, long undoToken, int requestToken, int maxSizeBytes)
+    {
+        return false;
+    }
 }

@@ -1517,4 +1517,10 @@ public class ExecutionEngineIPC extends ExecutionEngine {
     {
         throw new NotImplementedException("Reconfiguration is disabled for IPC EE");      
     }
+    
+    @Override
+    public boolean deleteMigratedTuples(Table targetTable, int tableId, long lastCommittedTxnId, long undoToken, int requestToken, int maxSizeBytes) 
+    {
+        throw new NotImplementedException("Reconfiguration is disabled for IPC EE"); 
+    }
 }

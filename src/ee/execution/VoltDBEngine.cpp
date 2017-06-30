@@ -1476,6 +1476,11 @@ bool VoltDBEngine::updateExtractRequest(int32_t requestToken, bool confirmDelete
         return m_migrationManager->undoExtractDelete(requestToken);            
 }
 
+bool VoltDBEngine::deleteMigratedTuples(int32_t maxTuples){
+    VOLT_DEBUG("deleteMigratedTuples. maxTuples: %d", (int) maxTuples);
+    return m_migrationManager->cleanUp(maxTuples);
+}
+
 int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken, int32_t extractTupleLimit){
     VOLT_DEBUG("VDBEngine export table %d",(int) tableId);
     m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
