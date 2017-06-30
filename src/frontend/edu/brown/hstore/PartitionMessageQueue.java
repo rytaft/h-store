@@ -105,10 +105,16 @@ public class PartitionMessageQueue extends PriorityBlockingQueue<InternalMessage
                     } // FOR
                 }
             }
-            else if (isTxn0) {
-                return (-1); 
-            } else if (isTxn1) {
-                return (1);
+            else {
+                // Rank them based on their message type 
+                if (class0.equals(class1) == false) {
+                    for (Class<? extends InternalMessage> clazz : compareOrder) {
+                        boolean isMatch0 = class0.equals(clazz);
+                        boolean isMatch1 = class1.equals(clazz);
+                        if (isMatch0 && !isMatch1) return (-1);
+                        else if (!isMatch0 && isMatch1) return (1);                    
+                    } // FOR
+                }
             }
 
             // Last Resort: Just use hashCode
