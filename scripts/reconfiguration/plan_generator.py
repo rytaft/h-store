@@ -85,7 +85,8 @@ def getPlanString(args):
     "tpcc": "warehouse",
     "affinity" : "suppliers",
     "twitter" : "user_profiles",
-    "b2w" : "cart"
+    "b2w" : "cart",
+    "wikipedia" : "page"
   }
 
   aff_size = None 
@@ -122,6 +123,23 @@ def getPlanString(args):
     b2w_size["cart"] = max_int
     b2w_size["checkout"] = max_int
 
+  wikipedia_size = None 
+  if "type" in args and args["type"] == "wikipedia":
+    scale_factor = args.size
+    users = 2000
+    pages = 10000
+    wikipedia_size = {}
+    wikipedia_size["IPBLOCKS"] = scale_factor * users
+    wikipedia_size["LOGGING"] = scale_factor * pages
+    wikipedia_size["PAGE"] = scale_factor * pages
+    wikipedia_size["PAGE_RESTRICTIONS"] = scale_factor * pages
+    wikipedia_size["RECENTCHANGES"] = scale_factor * pages
+    wikipedia_size["REVISION"] = scale_factor * pages
+    wikipedia_size["TEXT"] = scale_factor * pages
+    wikipedia_size["USERACCT"] = scale_factor * users
+    wikipedia_size["USER_GROUPS"] = scale_factor * users
+    wikipedia_size["WATCHLIST"] = scale_factor * users
+
   if "change_type" in args and args["change_type"] == "scale-down":
     raise Exception("not implemented")
   if "," in args["partitions"] or args["partitions"] != None:  
@@ -131,6 +149,8 @@ def getPlanString(args):
       tables = twt_size 
     elif args["type"] == "b2w":
       tables = b2w_size 
+    elif args["type"] == "wikipedia":
+      tables = wikipedia_size 
     else:
       tables = { TABLE_MAP[args.type]: args["size"] }
     default_table = TABLE_MAP[args["type"]]
@@ -157,7 +177,7 @@ def getPlanString(args):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("-t","--type",dest="type", choices=["ycsb","tpcc", "affinity","twitter","b2w"], required=True, help="Generate this type")
+  parser.add_argument("-t","--type",dest="type", choices=["ycsb","tpcc", "affinity","twitter","b2w","wikipedia"], required=True, help="Generate this type")
   parser.add_argument("-c","--change-type", dest="change_type", choices=["scale-down", "scale-up"], help="How to  evolve")
   parser.add_argument("-n","--num-phases",dest="phases", type=int, default=4, help="How many phases")
   parser.add_argument("-s","--size",dest="size", type=int, required=True, help="Partition key size")
@@ -175,7 +195,8 @@ if __name__ == "__main__":
     "tpcc": "warehouse",
     "twitter" : "user_profiles",
     "affinity" : "suppliers",
-    "b2w" : "cart" 
+    "b2w" : "cart",
+    "wikipedia" : "page"
  }
 
   aff_size = None 
@@ -213,6 +234,23 @@ if __name__ == "__main__":
     b2w_size["cart"] = max_int
     b2w_size["checkout"] = max_int
   
+  wikipedia_size = None 
+  if args.type == "wikipedia":
+    scale_factor = args.size
+    users = 2000
+    pages = 10000
+    wikipedia_size = {}
+    wikipedia_size["IPBLOCKS"] = scale_factor * users
+    wikipedia_size["LOGGING"] = scale_factor * pages
+    wikipedia_size["PAGE"] = scale_factor * pages
+    wikipedia_size["PAGE_RESTRICTIONS"] = scale_factor * pages
+    wikipedia_size["RECENTCHANGES"] = scale_factor * pages
+    wikipedia_size["REVISION"] = scale_factor * pages
+    wikipedia_size["TEXT"] = scale_factor * pages
+    wikipedia_size["USERACCT"] = scale_factor * users
+    wikipedia_size["USER_GROUPS"] = scale_factor * users
+    wikipedia_size["WATCHLIST"] = scale_factor * users
+
   if args.change_type == "scale-down":
     raise Exception("not implemented")
   if "," in args.partitions or args.partitions != None:  
@@ -223,6 +261,8 @@ if __name__ == "__main__":
       tables = twt_size 
     elif args.type == "b2w":
       tables = b2w_size
+    elif args.type == "wikipedia":
+      tables = wikipedia_size
     else:
       tables = { TABLE_MAP[args.type]: args.size }
     default_table = TABLE_MAP[args.type]

@@ -223,9 +223,7 @@ public class B2WLoader extends Loader {
             LOG.debug("CONSTRUCTOR: " + B2WLoader.class.getName());
         }
         this.config = new B2WConfig(this.m_extraParams);
-        if (debug.val) {
-            LOG.debug(this.config.toString());
-        }
+        LOG.info(this.config.toString());
     }
 
 

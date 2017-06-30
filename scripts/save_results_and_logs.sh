@@ -7,7 +7,7 @@ cp results.csv $1
 cp out.log $1
 cp hevent.log $1
 
-for s in istc1 istc2 istc3 istc4 istc5 istc6 istc7 istc8 istc12 istc13
+for s in istc1 istc2 istc4 istc5 istc6 istc7 istc8 istc9 istc10 istc11 istc12 istc13 
 do
         echo "copying hevent.log from $s"
         if [[ "$s" != "$HOSTNAME" ]]

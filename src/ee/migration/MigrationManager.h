@@ -136,7 +136,8 @@ private:
     int m_outTableSizeInBytes;
     const TupleSchema* m_partitionKeySchema;
     const TupleSchema* m_matchingIndexColsSchema;
-    TableCache tableCache;
+    TableCache m_tableCache;
+    TupleList m_extractedList;
 
 #ifdef EXTRACT_STAT_ENABLED
     boost::timer m_timer;
@@ -150,6 +151,7 @@ private:
     bool inIndexRange(const TableTuple& tuple, const TableTuple& maxKeys);
     bool inRange(const TableTuple& tuple, const RangeMap& rangeMap);
     bool extractTuple(TableTuple& tuple);
+    void cleanUp();
     bool searchBTree(const RangeMap& rangeMap);
     bool scanTable(const RangeMap& rangeMap);
     void getRangeMap(RangeMap& rangeMap, TableIterator& inputIterator, TableTuple& extractTuple);

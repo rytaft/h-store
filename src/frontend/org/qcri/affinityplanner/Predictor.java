@@ -43,9 +43,9 @@ public class Predictor {
             return null;
         }
         else{
-        	System.out.println("Current load: ");
-        	System.out.print( currentLoad.toString() );
-        	System.out.println();
+//        	System.out.println("Current load: ");
+//        	System.out.print( currentLoad.toString() );
+//        	System.out.println();
         	
             //System.out.print("predModelCoeffs: ");
             int idX = 0;

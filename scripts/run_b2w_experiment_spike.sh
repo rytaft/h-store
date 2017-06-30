@@ -10,15 +10,18 @@
 clients="istc11 istc6 istc7 istc8"
 config=b2w-30p
 YYYY=2016
-MM=07
-DD=01
+MM=09
+DD=15
 
-## Skip ahead, fast forwarding the first 30 minutes of benchmark time   
-offset=18000000
-end_iter=43
+## Start at the day of the spike
+#offset=6566400000
+#end_iter=12
+
+offset=6608400000
+end_iter=5
 
 # truncate file
-: > agg_load_hist.csv 
+#: > agg_load_hist.csv 
 
 for i in "$@"
 do
@@ -67,7 +70,7 @@ echo "end_iter = ${end_iter}"
 INTERVAL=6000000
 for i in $(seq 0 ${end_iter})
 do
-    DD=`expr \( $offset / 86400000 \) + 1`
+    DD=`expr \( \( $offset - 5356800000 \) / 86400000 \) + 1`
     if [ $DD -lt 10 ]; then DD=0${DD}; fi
     hr=`expr \( $offset % 86400000 \) / 3600000`
     if [ $hr -lt 10 ]; then hr=0${hr}; fi

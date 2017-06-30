@@ -47,6 +47,7 @@ public class ReserveCart extends VoltProcedure {
     
     
     public final SQLStmt getCartLinesStmt = new SQLStmt("SELECT id, quantity FROM CART_LINES WHERE partition_key = ? AND cartId = ? ");
+    public final SQLStmt getCartCustomerStmt = new SQLStmt("SELECT * FROM CART_CUSTOMER WHERE partition_key = ? AND cartId = ? AND id = ? ");
     
     public final SQLStmt updateCartLineStmt = new SQLStmt(
             "UPDATE CART_LINES " +
@@ -90,8 +91,9 @@ public class ReserveCart extends VoltProcedure {
         }
         
         voltQueueSQL(getCartLinesStmt, partition_key, cart_id);
+        voltQueueSQL(getCartCustomerStmt, partition_key, cart_id, customer_id);
         final VoltTable[] cart_results = voltExecuteSQL();
-        assert cart_results.length == 1;
+        assert cart_results.length == 2;
                 
         if (cart_results[0].getRowCount() <= 0) {
             if(debug.val) 
@@ -117,7 +119,9 @@ public class ReserveCart extends VoltProcedure {
         
         String cart_status = B2WConstants.STATUS_RESERVED;
         
-        voltQueueSQL(createCartCustomerStmt, partition_key, cart_id, customer_id, token, guest, isGuest);
+        if (cart_results[1].getRowCount() <= 0) {
+            voltQueueSQL(createCartCustomerStmt, partition_key, cart_id, customer_id, token, guest, isGuest);
+        }
         voltQueueSQL(updateCartStmt, timestamp, cart_status, partition_key, cart_id);
         
         return voltExecuteSQL(true);

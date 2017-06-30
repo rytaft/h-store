@@ -57,10 +57,10 @@ public class PredictiveController {
     public static String PLAN_IN = "plan_affinity.json";
 
     // Prediction variables
-    public static String LOAD_HIST = "agg_load_hist_preds.csv";
+    public static String LOAD_HIST_PRED = "agg_load_hist_preds.csv";
+    public static String LOAD_HIST = "agg_load_hist.csv";
     public static int N_HISTORICAL_OBS = 30;
     public ConcurrentLinkedQueue<Long> m_historyNLoads = new ConcurrentLinkedQueue<>();
-    public static boolean firstPrediction = true;
     
     // Reaction variables
     public AtomicLong m_count_lt_20 = new AtomicLong();
@@ -71,24 +71,25 @@ public class PredictiveController {
     // (1) Time in milliseconds for collecting historical load data and making a prediction:
     public static int MONITORING_TIME = 30000;  //(e.g. 3000 ms = 3 sec = 30 sec B2W-time)
     // (2) Number of data points to predict into the future 
-    public static int NUM_PREDS_AHEAD = 90;  //2400;  // (e.g. for MONITORING_TIME=3000, to predict 1hour => NUM_PREDS_AHEAD = 120 pts)
+    public static int NUM_PREDS_AHEAD = 26;  // (e.g. for MONITORING_TIME=3000, to predict 1hour => NUM_PREDS_AHEAD = 120 pts)
     // (3) Fitted model coefficients, based on (1) rate [Temporarily hard-coded] 
     //public static String MODEL_COEFFS_FILE = "/home/nosayba/h-store/src/frontend/org/qcri/affinityplanner/prediction_model_coeffs.txt";
     public static String MODEL_COEFFS_FILE = "/data/nosayba/prediction_model_coeffs.txt";
-    public static String FASTFWD_FILE = "/data/nosayba/fastforward_load_60samples.txt";
-    public static boolean USE_FAST_FORWARD = false;
+    public static String FASTFWD_FILE = "/data/rytaft/fastforward_load_60samples.txt";
+    public static boolean USE_FAST_FORWARD = true;
     
     public static int FUDGE_FACTOR = 2;
-    public static long MAX_CAPACITY_PER_SERVER = 285 * FUDGE_FACTOR * MONITORING_TIME/1000; // Q=350 txns/s
-    public static int DB_MIGRATION_TIME = 4646 * 1000/MONITORING_TIME; // D=4224 seconds + 10% buffer
+    public static long MAX_CAPACITY_PER_SERVER = (long) Math.ceil(285 * FUDGE_FACTOR * MONITORING_TIME/1000.0); // Q=350 txns/s
+    public static int DB_MIGRATION_TIME = (int) Math.ceil(4646 * 1000.0/MONITORING_TIME); // D=4224 seconds + 10% buffer
     public static int MAX_MOVES_STALENESS = 5000; // time in milliseconds before moves are considered invalid
     public static int POLL_TIME = 1000;
-    public static double PREDICTION_INFLATION = 1.1; // inflate predictions by 10%
+    public static double PREDICTION_INFLATION = 1.15; // inflate predictions by 15%
 
     public static String ORACLE_PREDICTION_FILE = "/data/rytaft/oracle_prediction_2016_07_01.txt";
     public static boolean USE_ORACLE_PREDICTION = false;
     public static boolean REACTIVE_ONLY = false;
     public static boolean REMOVE_TINY_RECONFS = true;
+    public static long SCALE_IN_WAIT = 3 * MONITORING_TIME;
 
     private class MonitorThread implements Runnable {
 
@@ -99,6 +100,7 @@ public class PredictiveController {
         AtomicLong m_count_lt_20;
         AtomicLong m_count_lt_50;
         AtomicLong m_count_gt_50;
+        File loadHistoryFile;
 
         public MonitorThread(ConcurrentLinkedQueue<Long> historyNLoads, Collection<Site> sites,
                 AtomicLong count_lt_20, AtomicLong count_lt_50, AtomicLong count_gt_50) {
@@ -112,125 +114,139 @@ public class PredictiveController {
             this.m_count_lt_20 = count_lt_20;
             this.m_count_lt_50 = count_lt_50;
             this.m_count_gt_50 = count_gt_50;
+            
+            loadHistoryFile = new File(LOAD_HIST);
+        }
+        
+        private long extractLoad() {
+            ClientResponse cresponse = null;
+            try {
+                cresponse = client.callProcedure("@Statistics", "TXNCOUNTER", 0);
+            } catch (IOException | ProcCallException e) {
+                record("Problem while turning on monitoring");
+                record(stackTraceToString(e));
+                //System.exit(1);
+            }
+
+            // extract total load
+            VoltTable result = cresponse.getResults()[0];
+            for (int i = 0; i < result.getRowCount(); i++) {
+                VoltTableRow row = result.fetchRow(i);
+                String procedure = row.getString(3);
+
+                if (procedure.charAt(0) == '@') {
+                    // don't count invocations to system procedures
+                    continue;
+                }
+
+                int hostId = (int) row.getLong(1);
+
+                // { 4=RECEIVED | 5=REJECTED | 6=REDIRECTED | 7=EXECUTED | 8=COMPLETED }
+                long load = row.getLong(4);
+
+                currLoads[hostId] = currLoads[hostId] + load;
+                //record("hostid=" + hostId + " -- procedure=" + procedure + " -- load=" + load);
+            }
+
+            long totalLoad = 0;
+            for (int i = 0; i < currLoads.length; i++) {
+                totalLoad += (currLoads[i] - previousLoads[i]);
+            }
+
+            long [] swap = previousLoads;
+            previousLoads = currLoads;
+            currLoads = swap;
+            for (int i = 0; i < currLoads.length; i++){
+                currLoads[i] = 0;
+            }                
+
+            // For debugging purposes
+            record(" >> totalLoad =" + totalLoad);
+            
+            return totalLoad;
         }
 
         @Override
         public void run() {
+
+            if(USE_FAST_FORWARD){
+                String fastFwdSamples = FileUtil.readFile(LOAD_HIST);
+                // First check that there aren't existing historical predictions
+                if (fastFwdSamples.isEmpty()) {
+                    // Else read from fastfwd file
+                    record("Reading load from " + FASTFWD_FILE);
+                    fastFwdSamples = FileUtil.readFile(FASTFWD_FILE);
+                    try {
+                        FileUtil.appendStringToFile(loadHistoryFile, fastFwdSamples);
+                    } catch (IOException e) {
+                        record("Problem logging historical load");
+                        e.printStackTrace();
+                    }
+                } else {
+                    record("Reading load from " + LOAD_HIST);
+                }                               
+
+                // Add fast-forwarded sample points to history log  
+                String[] fwdSamples = fastFwdSamples.split("\n");
+                for (int i = 0; i < fwdSamples.length; i++) {
+                    historyNLoads.add(Long.valueOf( fwdSamples[i] ));
+                } 
+            }
+            
+            String[] confNames = {"site.txn_counters"};
+            String[] confValues = {"true"};
+            @SuppressWarnings("unused")
+            ClientResponse cresponse = null;
+            try {
+                cresponse = m_client.callProcedure("@SetConfiguration", confNames, confValues);
+            } catch (IOException | ProcCallException e) {
+                record("Problem while turning on monitoring");
+                record(stackTraceToString(e));
+                //System.exit(1);
+            }
+            
+            // Run extractLoad once since the first load value is really high
+            extractLoad();
+            
             while(!m_stop) {
                 try {
                     Thread.sleep(MONITORING_TIME);
                 } catch (InterruptedException e) {
                     record("sleeping interrupted while monitoring");
-                    System.exit(1);
+                    //System.exit(1);
                 }
+
+                long totalLoad = extractLoad();
                 
-                // This stuff doesn't really work...
-//                if(REACTIVE_ONLY) {
-//                    // first check if there is need for reactive reconf
-//                    ClientResponse cresponse = null;
-//                    try {
-//                        cresponse = m_client.callProcedure("@Statistics", "TXNRESPONSETIME", 0);
-//                    } catch (IOException | ProcCallException e) {
-//                        record("Problem while turning on monitoring");
-//                        record(stackTraceToString(e));
-//                        System.exit(1);
-//                    }
-//
-//                    // process running times to decide if there is need for a reconfiguration
-//                    VoltTable result = cresponse.getResults()[0];
-//                    record(result.toString());
-//                    long count_lt_20 = 0, count_lt_50 = 0, count_gt_50 = 0;
-//                    for (int i = 0; i < result.getRowCount(); i++) {
-//                        VoltTableRow row = result.fetchRow(i);
-//                        String procedure = row.getString(3);
-//
-//                        if (procedure.charAt(0) == '@') {
-//                            // don't count invocations to system procedures
-//                            continue;
-//                        }
-//
-//                        // { 4=COUNT-10 | 5=COUNT-20 | 6=COUNT-50 | 7=COUNT>50 }
-//                        count_lt_20 += row.getLong(4) + row.getLong(5);
-//                        count_lt_50 += row.getLong(6);
-//                        count_gt_50 += row.getLong(7);
-//                    }
-//                    
-//                    m_count_lt_20.set(count_lt_20);
-//                    m_count_lt_50.set(count_lt_50);
-//                    m_count_gt_50.set(count_gt_50);
-//                    
-//                } else {                   
-                    ClientResponse cresponse = null;
+                if(totalLoad != 0 ){
+                    historyNLoads.add(totalLoad);
                     try {
-                        cresponse = client.callProcedure("@Statistics", "TXNCOUNTER", 0);
-                    } catch (IOException | ProcCallException e) {
-                        record("Problem while turning on monitoring");
-                        record(stackTraceToString(e));
-                        System.exit(1);
-                    }
-
-                    // extract total load and count active sites
-                    VoltTable result = cresponse.getResults()[0];
-                    for (int i = 0; i < result.getRowCount(); i++) {
-                        VoltTableRow row = result.fetchRow(i);
-                        String procedure = row.getString(3);
-
-                        if (procedure.charAt(0) == '@') {
-                            // don't count invocations to system procedures
-                            continue;
-                        }
-
-                        int hostId = (int) row.getLong(1);
-
-                        // { 4=RECEIVED | 5=REJECTED | 6=REDIRECTED | 7=EXECUTED | 8=COMPLETED }
-                        long load = row.getLong(4);
-
-                        currLoads[hostId] = currLoads[hostId] + load;
-                        //record("hostid=" + hostId + " -- procedure=" + procedure + " -- load=" + load);
-                    }
-
-                    long totalLoad = 0;
-                    for (int i = 0; i < currLoads.length; i++) {
-                        totalLoad += (currLoads[i] - previousLoads[i]);
-                    }
-
-                    long [] swap = previousLoads;
-                    previousLoads = currLoads;
-                    currLoads = swap;
-                    for (int i = 0; i < currLoads.length; i++){
-                        currLoads[i] = 0;
-                    }                
-
-                    // For debugging purposes
-                    record(" >> totalLoad =" + totalLoad);
-
-                    if (firstPrediction) {
-                        firstPrediction = false;
-
-                        if(USE_FAST_FORWARD){
-                            // Add fast-forwarded sample points to history log 
-                            String fastFwdSamples = FileUtil.readFile(FASTFWD_FILE);
-                            String[] fwdSamples = fastFwdSamples.split("\n");
-                            for (int i = 0; i < fwdSamples.length; i++) {
-                                historyNLoads.add(Long.valueOf( fwdSamples[i] ));
-                            }
-                        }
-                    } 
-                    
-                    if(totalLoad != 0 ){
-                        historyNLoads.add(totalLoad);
+                        FileUtil.appendStringToFile(loadHistoryFile, new String(totalLoad + "\n"));
+                    } catch (IOException e) {
+                        record("Problem logging historical load");
+                        e.printStackTrace();
                     }
                 }
             }
+        }
     }
 
     public class SquallMove {
         public String new_plan;
         public long start_time;
+        public int nodes;
+        public int time_interval;
 
-        public SquallMove(String new_plan, long start_time){
+        public SquallMove(String new_plan, long start_time, int nodes, int time_interval){
             this.new_plan = new_plan;
             this.start_time = start_time;
+            this.nodes = nodes;
+            this.time_interval = time_interval;
+        }
+        
+        @Override
+        public String toString() {
+            return "<Nodes: " + nodes + ", Time Interval: " + time_interval + ", Start Time: " + start_time + ">;";
         }
     }
 
@@ -260,7 +276,7 @@ public class PredictiveController {
             }
             else if (PARTITIONS_PER_SITE != site.getPartitions().size()){
                 record("Not all sites have the same number of partitions. Exiting");
-                System.exit(1);
+                //System.exit(1);
             }
         }
         MAX_PARTITIONS++;
@@ -273,7 +289,7 @@ public class PredictiveController {
         }
         else{
             System.out.println("No plan specified. Exiting");
-            System.exit(1);
+            //System.exit(1);
         }
 
         // verify that all partition ids are contiguous
@@ -286,7 +302,7 @@ public class PredictiveController {
             }
             else{
                 record("Gap in partition ids. Exiting");
-                System.exit(1);
+                //System.exit(1);
             }
         }
     }
@@ -295,27 +311,18 @@ public class PredictiveController {
 
         connectToHost(m_client, m_sites);
 
-        resetLogs(); // necessary to detect ongoing reconfigurations
+	//        resetLogs(); // necessary to detect ongoing reconfigurations
 
         // TODO use currnt plan file for conversion of moves
         File planFile = new File (PLAN_IN);
         String currentPlan = FileUtil.readFile(planFile);
 
-        File loadHistFile = new File(LOAD_HIST);
-
-        String[] confNames = {"site.txn_counters"};
-        String[] confValues = {"true"};
-        @SuppressWarnings("unused")
-        ClientResponse cresponse = null;
-        try {
-            cresponse = m_client.callProcedure("@SetConfiguration", confNames, confValues);
-        } catch (IOException | ProcCallException e) {
-            record("Problem while turning on monitoring");
-            record(stackTraceToString(e));
-            System.exit(1);
-        }
+        File loadHistFile = new File(LOAD_HIST_PRED);
         
         boolean oraclePredictionComplete = false;
+        SquallMove next_move = null;
+        int activeSites = countActiveSites(planFile.toString());
+        Long scalein_requested_time = null;
 
         Thread monitor = new Thread(new MonitorThread(m_historyNLoads, m_sites, 
                 m_count_lt_20, m_count_lt_50, m_count_gt_50));
@@ -329,35 +336,63 @@ public class PredictiveController {
                     Thread.sleep(POLL_TIME);
                 } catch (InterruptedException e) {
                     record("sleeping interrupted while waiting for reconfiguration");
-                    System.exit(1);
+                    //System.exit(1);
                 }
                 continue;
             }
             else if (m_next_moves != null && !m_next_moves.isEmpty()
                     && (System.currentTimeMillis() - m_next_moves_time < MAX_MOVES_STALENESS
                             || USE_ORACLE_PREDICTION || REACTIVE_ONLY)){
-                SquallMove next_move = m_next_moves.pop();
+                if (next_move == null) {
+                    next_move = m_next_moves.pop();
+                }
                 long sleep_time = next_move.start_time - System.currentTimeMillis();
                 if (sleep_time > 0){
-                    record("Sleeping for " + sleep_time + " ms");
                     try {
-                        Thread.sleep(sleep_time);
+                        if (sleep_time > POLL_TIME) {
+                            record("Sleeping for " + POLL_TIME + " ms");
+                            Thread.sleep(POLL_TIME);
+                            continue;
+                        } else {
+                            record("Sleeping for " + sleep_time + " ms");
+                            Thread.sleep(sleep_time);
+                        }
                     } catch (InterruptedException e) {
                         record("sleeping interrupted while waiting for next move");
-                        System.exit(1);
+                        //System.exit(1);
+                    }                    
+                }
+                
+                // Don't scale in too quickly or you might need to scale out again right away
+                if (next_move.nodes < activeSites) { 
+                    if (scalein_requested_time == null) {
+                        scalein_requested_time = System.currentTimeMillis();
+                    } 
+                    if (System.currentTimeMillis() - scalein_requested_time < SCALE_IN_WAIT ) {
+                        try {
+                            Thread.sleep(POLL_TIME);
+                        } catch (InterruptedException e) {
+                            record("sleeping interrupted while waiting for reconfiguration");
+                            //System.exit(1);
+                        }
+                        continue;
                     }
                 }
-
+                
+                scalein_requested_time = null;
                 currentPlan = next_move.new_plan;
+                activeSites = next_move.nodes;
+                record("Starting reconfiguration to " + activeSites + " nodes");
                 record("Moving to plan: " + currentPlan);
                 reconfig(currentPlan);
+                next_move = null;
 
                 try {
                     FileUtil.writeStringToFile(planFile, currentPlan);
                 } catch (IOException e) {
                     record("Unable to write new plan file");
                     record(stackTraceToString(e));
-                    System.exit(1);
+                    //System.exit(1);
                 }
             }
             else if (USE_ORACLE_PREDICTION) {
@@ -382,11 +417,10 @@ public class PredictiveController {
                 } catch (IOException e) {
                     record("Unable to read predicted load");
                     record(stackTraceToString(e));
-                    System.exit(1);
+                    //System.exit(1);
                 }
                 
                 // launch planner and get the moves
-                int activeSites = countActiveSites(planFile.toString()); // TODO get the actual number of active sites
                 ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
                 if(moves == null || moves.isEmpty()){
                     // reactive migration
@@ -399,6 +433,7 @@ public class PredictiveController {
                     record("Moves with delay: " + moves.toString());
                     m_next_moves = convert(currentPlan, moves, activeSites);
                 }
+                next_move = null;
                 m_next_moves_time = System.currentTimeMillis();
 
                 oraclePredictionComplete = true;
@@ -413,7 +448,6 @@ public class PredictiveController {
 //                long total = count_lt_20 + count_lt_50 + count_gt_50;
 //                if (total > 0 && (double) count_lt_20 / total > 0.95) {
                 Long[] historyNLoads = m_historyNLoads.toArray(new Long[]{});
-                int activeSites = countActiveSites(planFile.toString());
                 long load1 = 0;
                 long load2 = 0;
                 long load3 = 0;
@@ -429,18 +463,20 @@ public class PredictiveController {
                         load3 < MAX_CAPACITY_PER_SERVER * (activeSites - 1)) {
                     record("Initiating reactive migration to " + (activeSites - 1) + " nodes");
                     m_next_moves = convert(currentPlan, activeSites - 1);
+                    next_move = null;
 //                } else if (total > 0 && (double) count_gt_50 / total > 0.10) {
                 } else if (load1 > MAX_CAPACITY_PER_SERVER * activeSites &&
                         load2 > MAX_CAPACITY_PER_SERVER * activeSites &&
                         load3 > MAX_CAPACITY_PER_SERVER * activeSites) {
                     record("Initiating reactive migration to " + (activeSites + 1) + " nodes");
                     m_next_moves = convert(currentPlan, activeSites + 1);
+                    next_move = null;
                 } else {
                     try {
                         Thread.sleep(POLL_TIME);
                     } catch (InterruptedException e) {
                         record("sleeping interrupted");
-                        System.exit(1);
+                        //System.exit(1);
                     }
                 }
             }
@@ -451,6 +487,16 @@ public class PredictiveController {
 
                 // launch predictor
                 ArrayList<Long> predictedLoad = m_predictor.predictLoad(m_historyNLoads, NUM_PREDS_AHEAD, MODEL_COEFFS_FILE);
+                if (predictedLoad == null) {
+                    try {
+                        Thread.sleep(POLL_TIME);
+                    } catch (InterruptedException e) {
+                        record("sleeping interrupted while waiting for predictions");
+                        //System.exit(1);
+                    }
+                    continue;
+                }
+                
                 for (int i = 0; i < predictedLoad.size(); i++) {
                     predictedLoad.set(i, (long) (predictedLoad.get(i) * PREDICTION_INFLATION));
                 }
@@ -484,7 +530,6 @@ public class PredictiveController {
                     }
 
                     // launch planner and get the moves
-                    int activeSites = countActiveSites(planFile.toString());
                     ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
                     if (moves == null || moves.isEmpty()) {
                         // reactive migration
@@ -494,6 +539,7 @@ public class PredictiveController {
                         record("Moves: " + moves.toString());
                         m_next_moves = convert(currentPlan, moves, activeSites);
                     }
+                    next_move = null;
                     m_next_moves_time = System.currentTimeMillis();
                 }
             }
@@ -527,11 +573,11 @@ public class PredictiveController {
         } catch (UnknownHostException e) {
             record("Controller: tried to connect to unknown host");
             e.printStackTrace();
-            System.exit(1);
+            //System.exit(1);
         } catch (IOException e) {
             record("Controller: IO Exception while connecting to host");
             e.printStackTrace();
-            System.exit(1);
+            //System.exit(1);
         }
         record("Connected to host " + connectedHost);
     }
@@ -548,20 +594,20 @@ public class PredictiveController {
         } catch (NoConnectionsException e) {
             record("Controller: lost connection");
             e.printStackTrace();
-            System.exit(1);
+            //System.exit(1);
         } catch (IOException e) {
             record("Controller: IO Exception while connecting to host");
             e.printStackTrace();
-            System.exit(1);
+            //System.exit(1);
         } catch (ProcCallException e) {
             System.out.println("Controller: @Reconfiguration transaction rejected (backpressure?)");
             e.printStackTrace();
-            System.exit(1);
+            //System.exit(1);
         }
 
         if (cresponse.getStatus() != Hstoreservice.Status.OK) {
             record("@Reconfiguration transaction aborted");
-            System.exit(1);
+            //System.exit(1);
         }
     }
     
@@ -608,8 +654,9 @@ public class PredictiveController {
                 planner.repartition();
                 try {
                     plan = planner.getPlanString();
-                    squallMoves.add(new SquallMove(plan, moveStart));
-                    debug += "<Nodes: " + move.nodes + ", Time: " + moveStart + ">;";
+                    SquallMove squallMove = new SquallMove(plan, moveStart, move.nodes, move.time);
+                    squallMoves.add(squallMove);
+                    debug += squallMove.toString();
                 } catch (JSONException e) {
                     record("ERROR: Failed to convert plan to string " + e.getMessage());
                 }               
@@ -637,7 +684,7 @@ public class PredictiveController {
             record("ERROR: Failed to convert plan to string " + e.getMessage());
             return squallMoves;
         }
-        squallMoves.add(new SquallMove(plan, System.currentTimeMillis()));
+        squallMoves.add(new SquallMove(plan, System.currentTimeMillis(), nodes, -1));
         return squallMoves;
     }
 

@@ -64,6 +64,50 @@ def linear(steps, max_factor):
 	
 ####
 
+def eff_cap(steps, Q, B, A, warmup):
+	"""
+	Produces vertical skew to match the effective capacity of the system as it reconfigures. Parameters:
+	- number of steps
+	- Q: max throughput per node
+	- B: nodes before reconfiguration
+	- A: nodes after reconfiguration
+	- warmup: number of warmup steps
+	"""
+	res = []
+	steps = int(steps)
+	Q = int(Q)
+	B = int(B)
+	A = int(A)
+	warmup = int(warmup)
+	if steps < 1:
+		print "ERROR: steps must be greater than one"
+		exit(1)
+	if Q < 1:
+		print "ERROR: Q must be greater than one"
+		exit(1)
+	if B < 1:
+		print "ERROR: B must be greater than one"
+		exit(1)
+	if A < 1:
+		print "ERROR: A must be greater than one"
+		exit(1)
+
+	lastRate = 1.0
+	for i in range(warmup):
+		currentRate = Q * B
+		res.append(currentRate / lastRate);
+		lastRate = currentRate
+
+	for current in range(1, steps+1):
+		f = float(current)/steps
+		currentRate = Q/((1.0/B) - f * ((1.0/B) - (1.0/A)))
+		res.append(currentRate / lastRate);
+		lastRate = currentRate	
+		
+	return res
+	
+####
+
 def spike(steps, max_factor, period, duration):
 	"""
 	Produces spike vertical skew. Parameters:
@@ -111,7 +155,7 @@ def spike(steps, max_factor, period, duration):
 if __name__ == "__main__":
 	import sys
 	
-	algos = ["sinewave", "spike", "linear", "linear+sinewave", "linear+spike"]
+	algos = ["sinewave", "spike", "linear", "linear+sinewave", "linear+spike", "eff_cap"]
 	if (len(sys.argv) <= 1):
 		print "\nPossible vertical skews:",
 		for a in algos:
@@ -133,6 +177,12 @@ if __name__ == "__main__":
 			print linear.__doc__
 			exit(0)
 		list_inc=linear(int(sys.argv[2]), float(sys.argv[3]))
+
+	elif (sys.argv[1] == "eff_cap"):
+		if (len(sys.argv) <= 6):
+			print eff_cap.__doc__
+			exit(0)
+		list_inc=eff_cap(int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5]), int(sys.argv[6]))
 		
 	elif (sys.argv[1] == "spike"):
 		if (len(sys.argv) <= 3):
