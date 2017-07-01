@@ -218,12 +218,6 @@ public class ReconfigCoordinator implements Shutdownable {
         if (debug.val) LOG.debug("Starting listener thread");
         this.listener_thread.start();
         
-        // If we're at site zero, then we'll announce our instanceId
-        // to everyone in the cluster
-        if (this.local_site_id == 0) {
-            this.initCluster();
-        }
-        
         this.ready_observable.notifyObservers(this);
     }
 
@@ -366,42 +360,6 @@ public class ReconfigCoordinator implements Shutdownable {
             } // FOR
             
             if (debug.val) LOG.debug("Site #" + this.getLocalSiteId() + " is fully connected to all sites");
-        }
-    }
-    
-    protected void initCluster() {
-        long instanceId = EstTime.currentTimeMillis();
-        hstore_site.setInstanceId(instanceId);
-        InitializeRequest request = InitializeRequest.newBuilder()
-                                            .setSenderSite(0)
-                                            .setInstanceId(instanceId)
-                                            .build();
-        final CountDownLatch latch = new CountDownLatch(this.num_sites-1); 
-        RpcCallback<InitializeResponse> callback = new RpcCallback<InitializeResponse>() {
-            @Override
-            public void run(InitializeResponse parameter) {
-                if (debug.val) LOG.debug(String.format("Initialization Response: %s / %s",
-                                       HStoreThreadManager.formatSiteName(parameter.getSenderSite()),
-                                       parameter.getStatus()));
-                latch.countDown();
-            }
-        };
-        for (int site_id = 0; site_id < this.num_sites; site_id++) {
-            if (site_id == this.local_site_id) continue;
-            ProtoRpcController controller = new ProtoRpcController();
-            this.channels[site_id].initialize(controller, request, callback);
-        } // FOR
-        
-        if (latch.getCount() > 0) {
-            if (debug.val)
-                LOG.debug(String.format("Waiting for %s initialization responses", latch.getCount()));
-            boolean finished = false;
-            try {
-                finished = latch.await(10, TimeUnit.SECONDS);
-            } catch (InterruptedException ex) {
-                throw new ServerFaultException("Unexpected interruption", ex);
-            }
-            assert(finished);
         }
     }
     
