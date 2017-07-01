@@ -797,6 +797,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.inReconfiguration = false;
         this.queuedReconfigUtilMessage.set(false);
         this.lastTxnReconfig = false;
+        this.nonReconfigTxns = 0;
     }
 
     /**
@@ -828,6 +829,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.inReconfiguration = false;
         this.queuedReconfigUtilMessage.set(false);
         this.lastTxnReconfig = false;
+        this.nonReconfigTxns = 0;
         this.reconfig_state = ReconfigurationState.NORMAL;
         this.specExecComparator = new TransactionUndoTokenComparator(this.partitionId);
         
@@ -1213,10 +1215,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                             nextWork instanceof AsyncDataPullRequestMessage || 
                             nextWork instanceof MultiDataPullResponseMessage || 
                             nextWork instanceof LivePullRequestMessage) {
-                        this.lastTxnReconfig = true;                        
-                    } else if (this.lastTxnReconfig) {
-                        LOG.info("First txn after a reconfig chunk: " + nextWork.toString());
-                        this.lastTxnReconfig = false;  
+                        if (!this.lastTxnReconfig) {
+                            LOG.info("Executed " + this.nonReconfigTxns + " before this work: " + nextWork.toString());
+                        }
+                        this.lastTxnReconfig = true; 
+                        this.nonReconfigTxns = 0;
+                    } else {
+                        if (this.lastTxnReconfig) {
+                            LOG.info("First txn after a reconfig chunk: " + nextWork.toString());
+                            this.lastTxnReconfig = false; 
+                        }
+                        this.nonReconfigTxns++;
                     }
                     
                     if (hstore_conf.site.exec_profiling) {
@@ -6522,6 +6531,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private boolean queue_async_pulls;
     private static int MAX_PULL_ASYNC_EVERY_CLICKS=700000;
     private boolean lastTxnReconfig = false;
+    private int nonReconfigTxns = 0;
 
     public void setReconfigurationCoordinator(ReconfigurationCoordinator rc) {
         this.reconfiguration_coordinator = rc;
