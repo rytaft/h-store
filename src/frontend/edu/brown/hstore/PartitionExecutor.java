@@ -6609,8 +6609,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             haltProcessing();
         }
         
-        for (String tableName : this.reconfig_plan.getOutgoing_ranges_map().get(this.partitionId).keySet()) {
-            this.work_queue.offer(new DeleteMigratedTuplesMessage(tableName));
+        if (this.reconfig_plan.getOutgoing_ranges_map().containsKey(this.partitionId)) {
+            Set<String> tables = this.reconfig_plan.getOutgoing_ranges_map().get(this.partitionId).keySet();
+            for (String tableName : tables) {
+                this.work_queue.offer(new DeleteMigratedTuplesMessage(tableName));
+            }
         }
         
         LOG.info("Clearing up reconfiguration state for p_id " + this.getReconfigDebug());
