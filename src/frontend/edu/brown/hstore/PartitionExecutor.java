@@ -796,6 +796,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.pullStartTime = new HashMap<>();
         this.inReconfiguration = false;
         this.queuedReconfigUtilMessage.set(false);
+        this.lastTxnReconfig = false;
     }
 
     /**
@@ -826,6 +827,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.localTxnEstimator = t_estimator;
         this.inReconfiguration = false;
         this.queuedReconfigUtilMessage.set(false);
+        this.lastTxnReconfig = false;
         this.reconfig_state = ReconfigurationState.NORMAL;
         this.specExecComparator = new TransactionUndoTokenComparator(this.partitionId);
         
@@ -1201,6 +1203,22 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 if (nextWork != null) {
                     if (trace.val)
                         LOG.trace("Next Work: " + nextWork);
+                    
+                    if (nextWork instanceof DeleteMigratedTuplesMessage ||
+                            nextWork instanceof AsyncNonChunkPushRequestMessage ||
+                            nextWork instanceof AsyncNonChunkPullRequestMessage ||
+                            nextWork instanceof ScheduleAsyncPullRequestMessage ||
+                            nextWork instanceof ReconfigUtilRequestMessage || 
+                            nextWork instanceof AsyncDataPullResponseMessage ||
+                            nextWork instanceof AsyncDataPullRequestMessage || 
+                            nextWork instanceof MultiDataPullResponseMessage || 
+                            nextWork instanceof LivePullRequestMessage) {
+                        this.lastTxnReconfig = true;                        
+                    } else if (this.lastTxnReconfig) {
+                        LOG.info("First txn after a reconfig chunk: " + nextWork.toString());
+                        this.lastTxnReconfig = false;  
+                    }
+                    
                     if (hstore_conf.site.exec_profiling) {
                         profiler.numMessages.put(nextWork.getClass().getSimpleName());
                         profiler.exec_time.start();
@@ -6503,7 +6521,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     private AtomicBoolean queuedReconfigUtilMessage = new AtomicBoolean(false);
     private boolean queue_async_pulls;
     private static int MAX_PULL_ASYNC_EVERY_CLICKS=700000;
-
+    private boolean lastTxnReconfig = false;
 
     public void setReconfigurationCoordinator(ReconfigurationCoordinator rc) {
         this.reconfiguration_coordinator = rc;
