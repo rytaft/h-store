@@ -187,13 +187,15 @@ public class ReconfigurationCoordinator implements Shutdownable {
         private boolean auto_split;
         private int partitions_per_site;
         private ExplicitPartitions partitions;
+        private int site_id;
         
-        public InitReconfiguration(int reconfig_split, boolean auto_split, int partitions_per_site, ExplicitPartitions partitions) { 
+        public InitReconfiguration(int reconfig_split, boolean auto_split, int partitions_per_site, ExplicitPartitions partitions, int site_id) { 
             super("InitReconfiguration");
             this.reconfig_split = reconfig_split;
             this.auto_split = auto_split;
             this.partitions_per_site = partitions_per_site;
             this.partitions = partitions;
+            this.site_id = site_id;
         }
         
         public void run() {
@@ -211,14 +213,16 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         reconfigPlanQueue.add(reconfig_plan);
                     }
 
-                    if (hasNextReconfigPlan()){
-                        ReconfigurationPlan next_plan = checkForAdditionalReconfigs();
-                        List<PartitionRange> new_ranges = this.partitions.getNewRanges(next_plan);                    
-                        setNextPlan(next_plan);
-                        setNewRanges(new_ranges);                        
-                    }
+                    //if (hasNextReconfigPlan()){
+                    //    ReconfigurationPlan next_plan = checkForAdditionalReconfigs();
+                    //    List<PartitionRange> new_ranges = this.partitions.getNewRanges(next_plan);                    
+                    //    setNextPlan(next_plan);
+                    //    setNewRanges(new_ranges);                        
+                    //}
                     
-                    receiveNextReconfigurationPlanFromLeader();
+                    //receiveNextReconfigurationPlanFromLeader();
+                    
+                    signalEndReconfigurationToLeader(site_id, -1); // calling partition set to -1
                     
                 } else {
                     FileUtil.appendEventToFile("Null Reconfig plan");
@@ -661,7 +665,9 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     this.sites_complete = new HashSet<Integer>();
                 }
                 
-                InitReconfiguration init = new InitReconfiguration(this.reconfig_split, this.auto_split, this.local_executors.size(), this.planned_partitions);
+                this.subplanInProgress.set(true); // hack to allow init reconfiguration to take advantage
+                                                  // of the code to send the next plan after finishing a sub-plan
+                InitReconfiguration init = new InitReconfiguration(this.reconfig_split, this.auto_split, this.local_executors.size(), this.planned_partitions, this.localSiteId);
                 init.start();
                 
             } catch (Exception e) {
