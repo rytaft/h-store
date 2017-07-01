@@ -37,6 +37,7 @@ begin Site             "A physical execution context for the system"
    Partition* partitions "Which logical data partition does this host process?"
    bool isUp            "Is the site up?"
    int messenger_port   "Port used by HStoreCoordinator"
+   int reconfig_messenger_port   "Port used by ReconfigCoordinator"
    int proc_port        "Port used by VoltProcedureListener"
 end
 

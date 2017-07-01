@@ -306,6 +306,11 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
      * testing code as needed.
      */
     private HStoreCoordinator hstore_coordinator;
+    
+    /**
+     * The ReconfigCoordinator is responsible for sending reconfiguration messages
+     */
+    private ReconfigCoordinator reconfig_coordinator;
 
     /**
      * TransactionPreProcessor Threads
@@ -650,14 +655,19 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         this.hstore_coordinator = this.initHStoreCoordinator();
         
         if(hstore_conf.global.reconfiguration_enable){
+            this.reconfig_coordinator = this.initReconfigCoordinator();
+            
             LOG.info("Initializing Reconfiguration Coordinator");
-            this.reconfiguration_coordinator = this.initReconfigCoordinator();
+            this.reconfiguration_coordinator = this.initReconfigurationCoordinator();
             if(this.hasher instanceof PlannedHasher){
                 ((PlannedHasher)this.hasher).setReconfigCoord(this.reconfiguration_coordinator);
             }
             else if(this.hasher instanceof TwoTieredRangeHasher){
                 ((TwoTieredRangeHasher)this.hasher).setReconfigCoord(this.reconfiguration_coordinator);
             }
+            
+            LOG.info("Starting ReconfigCoordinator for " + this.getSiteName());
+            this.reconfig_coordinator.start();
         }
         
         // First we need to tell the HStoreCoordinator to start-up and initialize its connections
@@ -1030,7 +1040,12 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         return new HStoreCoordinator(this);        
     }
     
-    protected ReconfigurationCoordinator initReconfigCoordinator() {
+    protected ReconfigCoordinator initReconfigCoordinator() {
+        assert(this.shutdown_state != ShutdownState.STARTED);
+        return new ReconfigCoordinator(this);
+    }
+    
+    protected ReconfigurationCoordinator initReconfigurationCoordinator() {
         assert(this.shutdown_state != ShutdownState.STARTED);
         return new ReconfigurationCoordinator(this, hstore_conf);
     }
@@ -1186,6 +1201,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
      */
     public HStoreCoordinator getCoordinator() {
         return (this.hstore_coordinator);
+    }
+    public ReconfigCoordinator getReconfigCoordinator() {
+        return (this.reconfig_coordinator);
     }
     public HStoreConf getHStoreConf() {
         return (this.hstore_conf);
@@ -1405,6 +1423,7 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         // We will join on our HStoreCoordinator thread. When that goes
         // down then we know that the whole party is over
         try {
+            this.reconfig_coordinator.getListenerThread().join();
             this.hstore_coordinator.getListenerThread().join();
         } catch (InterruptedException ex) {
             throw new RuntimeException(ex);
@@ -1445,6 +1464,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
                 LOG.error("Failed to flush workload trace", ex);
             }
         }
+        
+        if (this.reconfig_coordinator != null)
+            this.reconfig_coordinator.prepareShutdown(false);
         
         if (this.hstore_coordinator != null)
             this.hstore_coordinator.prepareShutdown(false);
@@ -1586,6 +1608,9 @@ public class HStoreSite implements VoltProcedureListener.Handler, Shutdownable, 
         for (int p : this.local_partitions.values()) {
             if (this.executors[p] != null) this.executors[p].shutdown();
         } // FOR
+        if (this.reconfig_coordinator != null) {
+            this.reconfig_coordinator.shutdown();
+        }
         if (this.hstore_coordinator != null) {
             this.hstore_coordinator.shutdown();
         }

@@ -292,7 +292,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.reconfigurationState = ReconfigurationState.NORMAL;
         this.hstore_site = hstore_site;
         this.local_executors = new ArrayList<>();
-        this.channels = hstore_site.getCoordinator().getChannels();
+        this.channels = hstore_site.getReconfigCoordinator().getChannels();
         this.partitionStates = new ConcurrentHashMap<Integer, ReconfigurationCoordinator.ReconfigurationState>();
         this.hstore_conf = hstore_conf;
         executorMap = new HashMap<>();

@@ -35,6 +35,7 @@ public abstract class HStoreConstants {
     public static final int DEFAULT_PORT = 21212;
     
     public static final int MESSENGER_PORT_OFFSET = 10000;
+    public static final int RECONFIG_MESSENGER_PORT_OFFSET = 20000;
     
     // ----------------------------------------------------------------------------
     // THREAD NAMES
@@ -43,6 +44,7 @@ public abstract class HStoreConstants {
     public static final String THREAD_NAME_PERIODIC = "periodic";
     public static final String THREAD_NAME_LISTEN = "listen";
     public static final String THREAD_NAME_COORDINATOR = "coord";
+    public static final String THREAD_NAME_RECONFIG = "reconf";
     public static final String THREAD_NAME_PREPROCESSOR = "pre";
     public static final String THREAD_NAME_POSTPROCESSOR = "post";
     public static final String THREAD_NAME_HELPER = "help";

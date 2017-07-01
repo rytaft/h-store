@@ -30,6 +30,7 @@ public class Site extends CatalogType {
     CatalogMap<Partition> m_partitions;
     boolean m_isUp;
     int m_messenger_port;
+    int m_reconfig_messenger_port;
     int m_proc_port;
 
     void setBaseValues(Catalog catalog, CatalogType parent, String path, String name) {
@@ -40,6 +41,7 @@ public class Site extends CatalogType {
         m_childCollections.put("partitions", m_partitions);
         m_fields.put("isUp", m_isUp);
         m_fields.put("messenger_port", m_messenger_port);
+        m_fields.put("reconfig_messenger_port", m_reconfig_messenger_port);
         m_fields.put("proc_port", m_proc_port);
     }
 
@@ -47,6 +49,7 @@ public class Site extends CatalogType {
         m_id = (Integer) m_fields.get("id");
         m_isUp = (Boolean) m_fields.get("isUp");
         m_messenger_port = (Integer) m_fields.get("messenger_port");
+        m_reconfig_messenger_port = (Integer) m_fields.get("reconfig_messenger_port");
         m_proc_port = (Integer) m_fields.get("proc_port");
     }
 
@@ -83,6 +86,11 @@ public class Site extends CatalogType {
         return m_messenger_port;
     }
 
+    /** GETTER: Port used by ReconfigCoordinator */
+    public int getReconfigMessenger_port() {
+        return m_reconfig_messenger_port;
+    }
+
     /** GETTER: Port used by VoltProcedureListener */
     public int getProc_port() {
         return m_proc_port;
@@ -106,6 +114,11 @@ public class Site extends CatalogType {
     /** SETTER: Port used by HStoreCoordinator */
     public void setMessenger_port(int value) {
         m_messenger_port = value; m_fields.put("messenger_port", value);
+    }
+
+    /** SETTER: Port used by ReconfigCoordinator */
+    public void setReconfigMessenger_port(int value) {
+        m_reconfig_messenger_port = value; m_fields.put("reconfig_messenger_port", value);
     }
 
     /** SETTER: Port used by VoltProcedureListener */
