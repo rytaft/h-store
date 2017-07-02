@@ -3,6 +3,7 @@ package edu.brown.hstore.internal;
 import java.util.List;
 
 import edu.brown.hashing.ExplicitPartitions;
+import edu.brown.hashing.PlannedPartitions.PartitionPhase;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hstore.reconfiguration.ReconfigurationConstants.ReconfigurationProtocols;
@@ -21,6 +22,7 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
 	private ReconfigurationState reconfig_state;
 	private ExplicitPartitions planned_partitions;
 	private List<PartitionRange> newRanges;
+	private PartitionPhase incrementalPlan;
 	public long createTime;
     
     
@@ -30,7 +32,8 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
     		ReconfigurationProtocols reconfig_protocol, 
             ReconfigurationState reconfig_state, 
             ExplicitPartitions planned_partitions,
-            List<PartitionRange> newRanges) {
+            List<PartitionRange> newRanges,
+            PartitionPhase incrementalPlan) {
         super();
         this.createTime = ProfileMeasurement.getTime();
         this.requestType = requestType;
@@ -39,6 +42,7 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
         this.reconfig_state = reconfig_state;
         this.planned_partitions = planned_partitions;
         this.newRanges = newRanges;
+        this.incrementalPlan = incrementalPlan;
     }
     
     public ReconfigUtilRequestMessage(RequestType requestType) {
@@ -50,6 +54,7 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
         this.reconfig_state = null;
         this.planned_partitions = null;
         this.newRanges = null;
+        this.incrementalPlan = null;
     }
 
     public long getQueueTime(){
@@ -78,6 +83,10 @@ public class ReconfigUtilRequestMessage extends InternalMessage {
     
     public List<PartitionRange> getNewRanges() {
         return newRanges;
+    }
+    
+    public PartitionPhase getIncrementalPlan() {
+        return incrementalPlan;
     }
     
 }

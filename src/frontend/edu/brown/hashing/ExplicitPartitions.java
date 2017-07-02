@@ -516,8 +516,17 @@ public abstract class ExplicitPartitions {
         LOG.debug("New incremental plan ranges: " + newRanges.toString());
         return newRanges;
     }
-
-    public void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan, List<PartitionRange> newRanges) {
+    
+    public PartitionPhase getIncrementalPlan(List<PartitionRange> newRanges) {
+        try {
+            return new PartitionPhase(this.catalog_context, newRanges, this.partitionedTablesByFK);
+        } catch (Exception e) {
+            LOG.error(e);
+            throw new RuntimeException(e);
+        }
+    }
+    
+    public void setReconfigurationPlan(ReconfigurationPlan reconfigurationPlan, PartitionPhase incrementalPlan) {
         if (reconfigurationPlan == null) {
             this.reconfigurationPlan = null;
             synchronized(this) {
@@ -540,17 +549,10 @@ public abstract class ExplicitPartitions {
             }
         }     
         
-        try {
-            PartitionPhase new_plan = new PartitionPhase(this.catalog_context, newRanges, this.partitionedTablesByFK);
-            synchronized(this) {
-                this.previousIncrementalPlan = this.incrementalPlan;
-                this.incrementalPlan = new_plan;
-            }
-        } catch (Exception e) {
-            LOG.error(e);
-            throw new RuntimeException(e);
+        synchronized(this) {
+            this.previousIncrementalPlan = this.incrementalPlan;
+            this.incrementalPlan = incrementalPlan;
         }
-
     }
 
     public List<PartitionRange> addAndMergeRanges(List<PartitionRange> ranges, PartitionRange newRange) {

@@ -33,6 +33,7 @@ import edu.brown.hashing.AbstractHasher;
 import edu.brown.hashing.ExplicitHasher;
 import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.PlannedHasher;
+import edu.brown.hashing.PlannedPartitions.PartitionPhase;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
@@ -147,6 +148,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
     private List<ReconfigurationPlan> reconfigPlanQueue;
     private ReconfigurationPlan nextPlan;
     private List<PartitionRange> newRanges;
+    private PartitionPhase incrementalPlan;
     private Object nextPlanLock = new Object();
     private int reconfig_split = 1;
     private boolean auto_split = true;
@@ -484,9 +486,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
                         int siteKBSent = 0;
                         //turn off local executions
                         List<PartitionRange> newRanges = this.planned_partitions.getNewRanges(reconfig_plan);
+                        PartitionPhase incrementalPlan = this.planned_partitions.getIncrementalPlan(newRanges);
+                        
                         for (PartitionExecutor executor : this.local_executors) {
                             //TODO hstore_site.getTransactionQueueManager().clearQueues(executor.getPartitionId())
-                            executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions, newRanges);
+                            executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions, newRanges, incrementalPlan);
                             this.partitionStates.put(partitionId, ReconfigurationState.PREPARE);
                         }
                         //push outgoing ranges for all local PEs
@@ -571,9 +575,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
                             this.sites_complete = new HashSet<Integer>();
                         }
                         List<PartitionRange> newRanges = hasher.getPartitions().getNewRanges(reconfig_plan);
-                        hasher.getPartitions().setReconfigurationPlan(reconfig_plan, newRanges);
+                        PartitionPhase incrementalPlan = hasher.getPartitions().getIncrementalPlan(newRanges);
+                        hasher.getPartitions().setReconfigurationPlan(reconfig_plan, incrementalPlan);
+                        
                         for (PartitionExecutor executor : this.local_executors) {
-                            executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions, newRanges);
+                            executor.initReconfiguration(reconfig_plan, reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions, newRanges, incrementalPlan);
                             this.partitionStates.put(partitionId, ReconfigurationState.PREPARE);
                         }
 
@@ -669,6 +675,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                                                   // of the code to send the next plan after finishing a sub-plan
                 InitReconfiguration init = new InitReconfiguration(this.reconfig_split, this.auto_split, this.local_executors.size(), this.planned_partitions, this.localSiteId);
                 init.start();
+                
+                LOG.info("Started InitReconfiguration thread to complete initialization asynchronously");
                 
             } catch (Exception e) {
                 LOG.error("Exception converting plan", e);
@@ -860,15 +868,17 @@ public class ReconfigurationCoordinator implements Shutdownable {
         this.subplanInProgress.set(true);
         ReconfigurationPlan rplan = getNextPlan(true);
         List<PartitionRange> ranges = getNewRanges(true);
+        PartitionPhase incrementalPlan = getIncrementalPlan(true);
         setNextPlan(null);
         setNewRanges(null);
+        setIncrementalPlan(null);
         try {            
             if(rplan != null) {
 
                 this.reconfigurationDonePartitionIds.clear();
-                this.planned_partitions.setReconfigurationPlan(rplan, ranges);
+                this.planned_partitions.setReconfigurationPlan(rplan, incrementalPlan);
                 ReconfigUtilRequestMessage reconfigUtilMsg = new ReconfigUtilRequestMessage(RequestType.INIT_RECONFIGURATION, rplan, 
-            			reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions, ranges);
+            			reconfigurationProtocol, ReconfigurationState.PREPARE, this.planned_partitions, ranges, incrementalPlan);
                 
             	for (PartitionExecutor executor : this.local_executors) {
                 	executor.queueReconfigUtilRequest(reconfigUtilMsg);                 
@@ -1665,12 +1675,47 @@ public class ReconfigurationCoordinator implements Shutdownable {
         }
     }
     
+    public PartitionPhase getIncrementalPlan(boolean blocking) {
+        if (blocking) {
+            PartitionPhase incrementalPlan = null;
+            synchronized(nextPlanLock) {
+                incrementalPlan = this.incrementalPlan;
+            }
+            int tries = 0;
+            int max_tries = 20;
+            long sleep_time = 50;
+            while (incrementalPlan == null && tries < max_tries) {
+                try {
+                    Thread.sleep(sleep_time);
+                    synchronized(nextPlanLock) {
+                        incrementalPlan = this.incrementalPlan;
+                    }
+                    tries++;
+                } catch (InterruptedException e) {
+                    LOG.error("Error sleeping", e);
+                }
+            }
+            return incrementalPlan;
+        }
+        else {
+            synchronized(nextPlanLock) {
+                return this.incrementalPlan;
+            }
+        }      
+    }
+        
+    
     public void setNewRanges(List<PartitionRange> ranges) {
         synchronized(nextPlanLock) {            
             this.newRanges = ranges;
         }
     }
 
+    public void setIncrementalPlan(PartitionPhase incrementalPlan) {
+        synchronized(nextPlanLock) {            
+            this.incrementalPlan = incrementalPlan;
+        }
+    }
     
     public boolean areAbortsEnabledForStopCopy(){
     	return abortsEnabledForStopCopy;

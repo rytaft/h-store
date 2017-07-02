@@ -132,6 +132,7 @@ import edu.brown.catalog.special.CountedStatement;
 import edu.brown.hashing.ExplicitHasher;
 import edu.brown.hashing.ExplicitPartitions;
 import edu.brown.hashing.PlannedPartitions.PartitionKeyComparator;
+import edu.brown.hashing.PlannedPartitions.PartitionPhase;
 import edu.brown.hashing.PlannedPartitions.PartitionRange;
 import edu.brown.hashing.ReconfigurationPlan;
 import edu.brown.hashing.ReconfigurationPlan.ReconfigurationRange;
@@ -1348,6 +1349,14 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         asyncOutstanding.set(true);
                     }
                 }
+            } 
+            
+            if (this.incoming_ranges == null || this.incoming_ranges.isEmpty()) {
+                this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+            }
+
+            if (this.outgoing_ranges == null || this.outgoing_ranges.isEmpty()) {
+                this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
             }
             
             if (this.currentDtxn != null || this.queuedReconfigUtilMessage.get()) {
@@ -1448,8 +1457,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 //        }
         
         if (hstore_conf.site.exec_profiling) this.profiler.util_time.stopIfStarted();
-        LOG.info("Finished utilityWork in " + (System.currentTimeMillis() - start_utility) + " ms " + 
-                (specTxn == null ? "" : specTxn.toString()));
+        if (trace.val)
+            LOG.trace("Finished utilityWork in " + (System.currentTimeMillis() - start_utility) + " ms " + 
+                    (specTxn == null ? "" : specTxn.toString()));
         return (specTxn != null || work != null);
     }
 
@@ -3487,7 +3497,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     		try {
     			initReconfiguration(reconfigUtilMsg.getReconfigPlan(), reconfigUtilMsg.getReconfigProtocol(), 
     					reconfigUtilMsg.getReconfigState(), reconfigUtilMsg.getExplicitPartitions(),
-    					reconfigUtilMsg.getNewRanges());
+    					reconfigUtilMsg.getNewRanges(), reconfigUtilMsg.getIncrementalPlan());
     		} catch(Exception ex) {
     			throw new RuntimeException("Unexpected error when initializing reconfiguration", ex);
     		}
@@ -6541,7 +6551,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     }
 
     public void initReconfiguration(ReconfigurationPlan reconfig_plan, ReconfigurationProtocols reconfig_protocol, 
-            ReconfigurationState reconfig_state, ExplicitPartitions planned_partitions, List<PartitionRange> newRanges)
+            ReconfigurationState reconfig_state, ExplicitPartitions planned_partitions, List<PartitionRange> newRanges, PartitionPhase incrementalPlan)
             throws Exception {
         // FIXME (ae) We need to check with Andy about concurrency issues here
         LOG.info(String.format("PE %s InitReconfiguration plan  %s %s", this.partitionId, reconfig_protocol, reconfig_state));
@@ -6561,7 +6571,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         this.incoming_ranges = reconfig_plan.getIncoming_ranges().get(this.partitionId);
         this.reconfiguration_tracker = new ReconfigurationTracking(planned_partitions, reconfig_plan, this.partitionId);
         if(this.p_estimator.getHasher() instanceof ExplicitHasher) {
-        	((ExplicitHasher) this.p_estimator.getHasher()).getPartitions().setReconfigurationPlan(reconfig_plan, newRanges);
+        	((ExplicitHasher) this.p_estimator.getHasher()).getPartitions().setReconfigurationPlan(reconfig_plan, incrementalPlan);
         }
         this.queue_async_pulls = false;
         if (asyncOutstanding.getAndSet(false)){
@@ -6606,13 +6616,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             else {
                 LOG.info("Scheduling no asyn msgs");
             }
-            if (this.incoming_ranges == null || this.incoming_ranges.isEmpty()) {
-                this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
-            }
             
-            if (this.outgoing_ranges == null || this.outgoing_ranges.isEmpty()) {
-                this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
-            }
         }
     }
     
