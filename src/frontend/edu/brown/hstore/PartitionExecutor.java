@@ -1349,14 +1349,6 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         asyncOutstanding.set(true);
                     }
                 }
-            } 
-            
-            if (this.incoming_ranges == null || this.incoming_ranges.isEmpty()) {
-                this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_IN);
-            }
-
-            if (this.outgoing_ranges == null || this.outgoing_ranges.isEmpty()) {
-                this.reconfiguration_coordinator.notifyAllRanges(partitionId, ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
             }
             
             if (this.currentDtxn != null || this.queuedReconfigUtilMessage.get()) {

@@ -171,8 +171,10 @@ public class ReconfigurationCoordinator implements Shutdownable {
     	public void run() {
     		try {
                 List<PartitionRange> new_ranges = this.partitions.getNewRanges(next_plan);                    
+                PartitionPhase incremental_plan = this.partitions.getIncrementalPlan(new_ranges);
                 setNextPlan(next_plan);
-                setNewRanges(new_ranges);                    
+                setNewRanges(new_ranges);
+                setIncrementalPlan(incremental_plan);
 
                 Thread.sleep(sleep_time);
             } catch (InterruptedException e) {
@@ -263,9 +265,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
             
             try {   
                 if (next_plan != null) {                    
-                    List<PartitionRange> new_ranges = this.partitions.getNewRanges(next_plan);                    
+                    List<PartitionRange> new_ranges = this.partitions.getNewRanges(next_plan); 
+                    PartitionPhase incremental_plan = this.partitions.getIncrementalPlan(new_ranges);
                     setNextPlan(next_plan);
-                    setNewRanges(new_ranges);  
+                    setNewRanges(new_ranges);
+                    setIncrementalPlan(incremental_plan);
                 } else {
                     FileUtil.appendEventToFile("Null Reconfig plan");
                     LOG.info("No reconfig plan, nothing to do");
@@ -883,6 +887,17 @@ public class ReconfigurationCoordinator implements Shutdownable {
             	for (PartitionExecutor executor : this.local_executors) {
                 	executor.queueReconfigUtilRequest(reconfigUtilMsg);                 
                     this.partitionStates.put(executor.getPartitionId(), ReconfigurationState.PREPARE);
+                    
+                    List<ReconfigurationRange> outgoing_ranges = rplan.getOutgoing_ranges().get(executor.getPartitionId());
+                    List<ReconfigurationRange> incoming_ranges = rplan.getIncoming_ranges().get(executor.getPartitionId());
+                    
+                    if (incoming_ranges == null || incoming_ranges.isEmpty()) {
+                        this.notifyAllRanges(executor.getPartitionId(), ExceptionTypes.ALL_RANGES_MIGRATED_IN);
+                    }
+
+                    if (outgoing_ranges == null || outgoing_ranges.isEmpty()) {
+                        this.notifyAllRanges(executor.getPartitionId(), ExceptionTypes.ALL_RANGES_MIGRATED_OUT);
+                    }
                 }
                 //FileUtil.appendEventToFile("RECONFIGURATION_NEXT_PLAN, siteId="+this.hstore_site.getSiteId() + " plansRemaining=" + this.reconfigPlanQueue.size());
             } else {
