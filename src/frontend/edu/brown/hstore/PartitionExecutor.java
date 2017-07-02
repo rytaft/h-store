@@ -1308,6 +1308,7 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
      * @return true if there is more utility work that can be done
      */
     private boolean utilityWork() {
+        long start_utility = System.currentTimeMillis();
         
         if (this.inReconfiguration && this.reconfig_plan != null){
             this.idle_click_count+=1;
@@ -1447,6 +1448,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
 //        }
         
         if (hstore_conf.site.exec_profiling) this.profiler.util_time.stopIfStarted();
+        LOG.info("Finished utilityWork in " + (System.currentTimeMillis() - start_utility) + " ms " + 
+                (specTxn == null ? "" : specTxn.toString()));
         return (specTxn != null || work != null);
     }
 
