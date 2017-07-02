@@ -1123,6 +1123,12 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 nextWork = null;
               
 
+                if (this.lastTxnReconfig) {
+                    LOG.info("Just finished a reconfig message, restarting loop. work_queue size: " + this.work_queue.size() +
+                            ", currentDtxn: " + (this.currentDtxn == null ? "null" : this.currentDtxn.toString()) +
+                            ", lockQueue size: " + this.queueManager.getLockQueue(this.partitionId).size());
+                }
+                
                 // This is the starting state of the PartitionExecutor.
                 // At this point here we currently don't have a txn to execute
                 // nor
@@ -1139,6 +1145,10 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         profiler.poll_time.start();
                     try {
                         nextTxn = this.queueManager.checkLockQueue(this.partitionId); // NON-BLOCKING
+                        if (this.lastTxnReconfig) {
+                            LOG.info("Checking lock queue after reconfig message. nextTxn: " + 
+                                    (nextTxn == null ? "null" : nextTxn.toString()));
+                        }
                     } finally {
                         if (hstore_conf.site.exec_profiling)
                             profiler.poll_time.stopIfStarted();
@@ -1187,10 +1197,17 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         // If we're allowed to speculatively execute txns, then we don't want to have
                         // to wait to see if anything will show up in our work queue.
 
+                        if (this.lastTxnReconfig) {
+                            LOG.info("Checking work queue after reconfig message");
+                        }
                         if (hstore_conf.site.specexec_enable && this.lockQueue.approximateIsEmpty() == false) {
                             nextWork = this.work_queue.poll();
                         } else {
                             nextWork = this.work_queue.poll(WORK_QUEUE_POLL_TIME, WORK_QUEUE_POLL_TIMEUNIT);    
+                        }
+                        if (this.lastTxnReconfig) {
+                            LOG.info("Checking work queue after reconfig message. nextWork: " + 
+                                    (nextWork == null ? "null" : nextWork.toString()));
                         }
                     } catch (InterruptedException ex) {
                         continue;
