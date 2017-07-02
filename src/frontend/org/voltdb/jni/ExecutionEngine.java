@@ -912,9 +912,9 @@ public abstract class ExecutionEngine implements FastDeserializer.Deserializatio
     
     protected native int nativeUpdateExtractRequest(long pointer, int requestToken, boolean deleteRequestedData);
 
-    public abstract boolean deleteMigratedTuples(Table targetTable, int maxSizeBytes) throws EEException;
+    public abstract boolean deleteMigratedTuples(Table targetTable, int tableId, int maxSizeBytes) throws EEException;
     
-    protected native int nativeDeleteMigratedTuples(long pointer, int maxTuples);
+    protected native int nativeDeleteMigratedTuples(long pointer, int table_id, int maxTuples);
     
 }
 

@@ -539,11 +539,11 @@ public class ExecutionEngineJNI extends ExecutionEngine {
     }
     
     @Override
-    public boolean deleteMigratedTuples(Table targetTable, int maxSizeBytes) throws EEException {
+    public boolean deleteMigratedTuples(Table targetTable, int tableId, int maxSizeBytes) throws EEException {
         if (debug.val) LOG.debug("Delete migrated tuples");
         long tupleBytes = MemoryEstimator.estimateTupleSize(targetTable);
         int tupleExtractLimit = (int)(maxSizeBytes/tupleBytes);
-        final int errorCode = nativeDeleteMigratedTuples(this.pointer, tupleExtractLimit);
+        final int errorCode = nativeDeleteMigratedTuples(this.pointer, tableId, tupleExtractLimit);
         if (debug.val) LOG.debug("Done with deleting tuples");
         checkErrorCode(errorCode);
         boolean moreData = checkIfMoreDataOrError(errorCode);

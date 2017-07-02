@@ -246,7 +246,7 @@ public class MockExecutionEngine extends ExecutionEngine {
     }
     
     @Override
-    public boolean deleteMigratedTuples(Table targetTable, int maxSizeBytes)
+    public boolean deleteMigratedTuples(Table targetTable, int tableId, int maxSizeBytes)
     {
         return false;
     }
