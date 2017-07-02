@@ -571,7 +571,7 @@ public class ReconfigurationPlan {
                         // We need to split up this range
                         while (keysRemaining > 0) {
                             new_max = Math.min(new_min + maxRows, orig_max);
-                            LOG.info(String.format("New range %s-%s", new_min, new_max));
+                            LOG.debug(String.format("New range %s-%s", new_min, new_max));
                             VoltTable max, min;
 
                             if (new_max == orig_max) {

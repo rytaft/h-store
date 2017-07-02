@@ -307,7 +307,7 @@ public class ReconfigurationUtil {
                     debugSendingData.add(new Pair<Integer, Integer>(range.getOldPartition(), range.getNewPartition()));
                 }
             }
-            LOG.info(String.format("PlanSplit:%s has the pairs(%s): %s", j, debugSendingData.size(), StringUtils.join(debugSendingData, ",")));
+            LOG.debug(String.format("PlanSplit:%s has the pairs(%s): %s", j, debugSendingData.size(), StringUtils.join(debugSendingData, ",")));
             ++j;
         }
     }
@@ -620,7 +620,7 @@ public class ReconfigurationUtil {
     }
 
     public static Pair<Object[], Object[]> getSubKeyMinMax(String table_name, Map<String, String> partitionedTablesByFK) {
-        LOG.info("getSubKeyMinMax");
+        LOG.debug("getSubKeyMinMax");
         // HACK - this is currently hard coded for TPCC
         String partitionedTable = partitionedTablesByFK.get(table_name);
         if (partitionedTable == null) {

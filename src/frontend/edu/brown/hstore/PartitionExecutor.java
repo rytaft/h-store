@@ -1123,8 +1123,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                 nextWork = null;
               
 
-                if (this.lastTxnReconfig) {
-                    LOG.info("Just finished a reconfig message, restarting loop. work_queue size: " + this.work_queue.size() +
+                if (debug.val && this.lastTxnReconfig) {
+                    LOG.debug("Just finished a reconfig message, restarting loop. work_queue size: " + this.work_queue.size() +
                             ", currentDtxn: " + (this.currentDtxn == null ? "null" : this.currentDtxn.toString()) +
                             ", lockQueue size: " + this.queueManager.getLockQueue(this.partitionId).size());
                 }
@@ -1145,8 +1145,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         profiler.poll_time.start();
                     try {
                         nextTxn = this.queueManager.checkLockQueue(this.partitionId); // NON-BLOCKING
-                        if (this.lastTxnReconfig) {
-                            LOG.info("Checking lock queue after reconfig message. nextTxn: " + 
+                        if (debug.val && this.lastTxnReconfig) {
+                            LOG.debug("Checking lock queue after reconfig message. nextTxn: " + 
                                     (nextTxn == null ? "null" : nextTxn.toString()));
                         }
                     } finally {
@@ -1197,16 +1197,13 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                         // If we're allowed to speculatively execute txns, then we don't want to have
                         // to wait to see if anything will show up in our work queue.
 
-                        if (this.lastTxnReconfig) {
-                            LOG.info("Checking work queue after reconfig message");
-                        }
                         if (hstore_conf.site.specexec_enable && this.lockQueue.approximateIsEmpty() == false) {
                             nextWork = this.work_queue.poll();
                         } else {
                             nextWork = this.work_queue.poll(WORK_QUEUE_POLL_TIME, WORK_QUEUE_POLL_TIMEUNIT);    
                         }
-                        if (this.lastTxnReconfig) {
-                            LOG.info("Checking work queue after reconfig message. nextWork: " + 
+                        if (debug.val && this.lastTxnReconfig) {
+                            LOG.debug("Checking work queue after reconfig message. nextWork: " + 
                                     (nextWork == null ? "null" : nextWork.toString()));
                         }
                     } catch (InterruptedException ex) {
@@ -1224,26 +1221,28 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                     if (trace.val)
                         LOG.trace("Next Work: " + nextWork);
                     
-                    if (nextWork instanceof DeleteMigratedTuplesMessage ||
-                            nextWork instanceof AsyncNonChunkPushRequestMessage ||
-                            nextWork instanceof AsyncNonChunkPullRequestMessage ||
-                            nextWork instanceof ScheduleAsyncPullRequestMessage ||
-                            nextWork instanceof ReconfigUtilRequestMessage || 
-                            nextWork instanceof AsyncDataPullResponseMessage ||
-                            nextWork instanceof AsyncDataPullRequestMessage || 
-                            nextWork instanceof MultiDataPullResponseMessage || 
-                            nextWork instanceof LivePullRequestMessage) {
-                        if (!this.lastTxnReconfig) {
-                            LOG.info("Executed " + this.nonReconfigTxns + " before this work: " + nextWork.toString());
+                    if (debug.val) {
+                        if (nextWork instanceof DeleteMigratedTuplesMessage ||
+                                nextWork instanceof AsyncNonChunkPushRequestMessage ||
+                                nextWork instanceof AsyncNonChunkPullRequestMessage ||
+                                nextWork instanceof ScheduleAsyncPullRequestMessage ||
+                                nextWork instanceof ReconfigUtilRequestMessage || 
+                                nextWork instanceof AsyncDataPullResponseMessage ||
+                                nextWork instanceof AsyncDataPullRequestMessage || 
+                                nextWork instanceof MultiDataPullResponseMessage || 
+                                nextWork instanceof LivePullRequestMessage) {
+                            if (!this.lastTxnReconfig) {
+                                LOG.debug("Executed " + this.nonReconfigTxns + " before this work: " + nextWork.toString());
+                            }
+                            this.lastTxnReconfig = true; 
+                            this.nonReconfigTxns = 0;
+                        } else {
+                            if (this.lastTxnReconfig) {
+                                LOG.debug("First txn after a reconfig chunk: " + nextWork.toString());
+                                this.lastTxnReconfig = false; 
+                            }
+                            this.nonReconfigTxns++;
                         }
-                        this.lastTxnReconfig = true; 
-                        this.nonReconfigTxns = 0;
-                    } else {
-                        if (this.lastTxnReconfig) {
-                            LOG.info("First txn after a reconfig chunk: " + nextWork.toString());
-                            this.lastTxnReconfig = false; 
-                        }
-                        this.nonReconfigTxns++;
                     }
                     
                     if (hstore_conf.site.exec_profiling) {
