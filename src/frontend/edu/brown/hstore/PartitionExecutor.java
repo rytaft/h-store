@@ -3722,10 +3722,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         try {                
             String tableName = deleteMsg.getTableName();
             Table catalog_tbl = this.catalogContext.getTableByName(tableName);
-            int table_id = catalog_tbl.getRelativeIndex();
             
             long start = System.currentTimeMillis();
-            boolean moreData = this.ee.deleteMigratedTuples(catalog_tbl, table_id, lastCommittedTxnId, getNextUndoToken(), getNextRequestToken(), hstore_conf.site.reconfig_async_chunk_size_kb*1024);
+            boolean moreData = this.ee.deleteMigratedTuples(catalog_tbl, hstore_conf.site.reconfig_async_chunk_size_kb*1024);
             long timeTaken = System.currentTimeMillis() - start;
                                 
             if(moreData){
