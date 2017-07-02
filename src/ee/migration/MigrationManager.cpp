@@ -224,6 +224,7 @@ void MigrationManager::cleanUp() {
   TableTuple tuple(m_table->schema());
   size_t sizeBefore = m_extractedList.size();
   int totalDeleted = 0;
+  boost::timer cleanUpTimer;
 
   while (!m_extractedList.empty()) {
     tuple.move(m_table->dataPtrForTuple(m_extractedList.front()));
@@ -234,7 +235,7 @@ void MigrationManager::cleanUp() {
     m_extractedList.pop();
   }
 
-  VOLT_INFO("Finished cleaning up.  Deleted %d of %d extracted tuples", totalDeleted, sizeBefore);
+  VOLT_INFO("Finished cleaning up.  Deleted %d of %d extracted tuples in %0.4f seconds", totalDeleted, sizeBefore, cleanUpTimer.elapsed());
 }
 
 bool MigrationManager::searchBTree(const RangeMap& rangeMap) {
@@ -508,7 +509,8 @@ bool MigrationManager::undoExtractDelete(int32_t requestTokenId) {
     return false;
 }
 
-bool MigrationManager::cleanUp(int32_t maxTuples) {
+bool MigrationManager::cleanUp(PersistentTable *table, int32_t maxTuples) {
+  init(table);
   TableTuple tuple(m_table->schema());
   size_t sizeBefore = m_extractedList.size();
   int totalDeleted = 0;
