@@ -167,6 +167,7 @@
 <arg value="site.reconfig_replication_delay=${site.reconfig_replication_delay}" />
 <arg value="site.reconfig_plan_delay=${site.reconfig_plan_delay}" />
 <arg value="site.reconfig_async_delay_ms=${site.reconfig_async_delay_ms}" />
+<arg value="site.reconfig_delete_tuples_delay_ms=${site.site.reconfig_delete_tuples_delay_ms}" />
 <arg value="site.reconfig_chunk_size_kb=${site.reconfig_chunk_size_kb}" />
 <arg value="site.reconfig_async_chunk_size_kb=${site.reconfig_async_chunk_size_kb}" />
 <arg value="site.reconfig_subplan_split=${site.reconfig_subplan_split}" />

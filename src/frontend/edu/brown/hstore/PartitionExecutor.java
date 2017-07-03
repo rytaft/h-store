@@ -261,6 +261,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
     //Only schedule on async pull at a time
     private AtomicBoolean asyncOutstanding = new AtomicBoolean(false);
     private long nextAsyncPullTimeMS = 0;
+    private long nextDeleteMigratedTuplesTimeMS = 0;
+    private LinkedList<DeleteMigratedTuplesMessage> deleteMigratedTuplesMsgs = new LinkedList<>();
     private Map<Integer, Long> pullStartTime;
 
     private int tempPullCounter=0;
@@ -1370,6 +1372,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             if (this.currentDtxn != null || this.queuedReconfigUtilMessage.get()) {
                 return processQueuedLiveReconfigWork(true);
             }          
+        }
+        
+        if (!this.deleteMigratedTuplesMsgs.isEmpty() && System.currentTimeMillis() > this.nextDeleteMigratedTuplesTimeMS) {
+            this.nextDeleteMigratedTuplesTimeMS = System.currentTimeMillis() + hstore_conf.site.reconfig_delete_tuples_delay_ms;
+            this.work_queue.offer(this.deleteMigratedTuplesMsgs.removeFirst());
         }
         
         // -------------------------------
@@ -3730,7 +3737,9 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
                                 
             if(moreData){
                 LOG.info(String.format("We have more tuples to delete from table %s", tableName));
-                this.work_queue.offer(deleteMsg);
+                this.deleteMigratedTuplesMsgs.add(deleteMsg);
+            } else {
+                LOG.info(String.format("No more tuples to delete from table %s", tableName));
             }
             
             LOG.info(String.format("Deleted tuples from table %s in %s ms", tableName, timeTaken));     
@@ -6653,7 +6662,8 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
         }
         
         for (Table table : this.catalogContext.getDataTables()) {
-            this.work_queue.offer(new DeleteMigratedTuplesMessage(table.getName()));
+            this.deleteMigratedTuplesMsgs.add(new DeleteMigratedTuplesMessage(table.getName()));
+            this.nextDeleteMigratedTuplesTimeMS = System.currentTimeMillis(); // start deleting now
         }
         
         LOG.info("Clearing up reconfiguration state for p_id " + this.getReconfigDebug());

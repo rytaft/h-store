@@ -805,6 +805,13 @@ public final class HStoreConf {
         public long reconfig_async_delay_ms;
 
         @ConfigProperty(
+                description="The amount of delay between deleting chunks of migrated tuples. ",
+                defaultLong=100,
+                experimental=true
+        )
+        public long reconfig_delete_tuples_delay_ms;
+
+        @ConfigProperty(
                 description="The default live chunk size for reconfiguration ",
                 defaultInt=4000,
                 experimental=true
