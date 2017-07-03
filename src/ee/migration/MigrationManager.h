@@ -138,7 +138,7 @@ private:
     const TupleSchema* m_partitionKeySchema;
     const TupleSchema* m_matchingIndexColsSchema;
     TableCache m_tableCache;
-    TupleList m_extractedList;
+    std::queue<char*> m_extractedList;
 
 #ifdef EXTRACT_STAT_ENABLED
     boost::timer m_timer;
