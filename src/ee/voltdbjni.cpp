@@ -441,6 +441,7 @@ SHAREDLIB_JNIEXPORT jint JNICALL
 Java_org_voltdb_jni_ExecutionEngine_nativeDeleteMigratedTuples(JNIEnv *env,
     jobject obj,
     jlong engine_ptr,
+    jint table_id,
     jint max_tuples)
 {
     VOLT_DEBUG("Calling ee delete migrated tuples");
@@ -453,9 +454,7 @@ Java_org_voltdb_jni_ExecutionEngine_nativeDeleteMigratedTuples(JNIEnv *env,
 
     try{
             updateJNILogProxy(engine);
-            bool success = engine->deleteMigratedTuples(maxTuples);
-            if (success)
-                    return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
+            return engine->deleteMigratedTuples(table_id, maxTuples);
 
     } catch (FatalException e) {
             topend->crashVoltDB(e);

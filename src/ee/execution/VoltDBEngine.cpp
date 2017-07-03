@@ -1476,9 +1476,29 @@ bool VoltDBEngine::updateExtractRequest(int32_t requestToken, bool confirmDelete
         return m_migrationManager->undoExtractDelete(requestToken);            
 }
 
-bool VoltDBEngine::deleteMigratedTuples(int32_t maxTuples){
-    VOLT_DEBUG("deleteMigratedTuples. maxTuples: %d", (int) maxTuples);
-    return m_migrationManager->cleanUp(maxTuples);
+int VoltDBEngine::deleteMigratedTuples(int32_t tableId, int32_t maxTuples){
+    VOLT_DEBUG("deleteMigratedTuples for table %d. maxTuples: %d", (int) tableId, (int) maxTuples);
+    Table* ret = getTable(tableId);
+    if (ret == NULL) {
+        VOLT_ERROR("Table ID %d doesn't exist. Could not load data", (int) tableId);
+        return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
+    }
+
+    //TODO move some computation to external manager?
+    PersistentTable *table = dynamic_cast<PersistentTable*>(ret);
+    if (table == NULL) {
+        VOLT_ERROR("Table ID %d(name '%s') is not a persistent table."
+                " Could not load data",
+                (int) tableId, ret->name().c_str());
+        return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
+    }
+
+    bool moreData = m_migrationManager->cleanUp(table, maxTuples);
+    if (moreData == true)
+      return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS_MORE_DATA;
+    else
+      return org_voltdb_jni_ExecutionEngine_ERRORCODE_SUCCESS;
+
 }
 
 int VoltDBEngine::extractTable(int32_t tableId, ReferenceSerializeInput &serialize_io, int64_t txnId, int64_t lastCommittedTxnId, int32_t requestToken, int32_t extractTupleLimit){

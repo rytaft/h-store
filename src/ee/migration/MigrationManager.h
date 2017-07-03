@@ -111,7 +111,7 @@ public:
     
     bool confirmExtractDelete(int32_t requestTokenId);
     bool undoExtractDelete(int32_t requestTokenId);
-    bool cleanUp(int32_t maxTuples);
+    bool cleanUp(PersistentTable *table, int32_t maxTuples);
     
 private:
     ExecutorContext *m_executorContext;
