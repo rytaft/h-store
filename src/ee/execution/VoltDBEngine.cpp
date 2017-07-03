@@ -1476,19 +1476,22 @@ bool VoltDBEngine::updateExtractRequest(int32_t requestToken, bool confirmDelete
         return m_migrationManager->undoExtractDelete(requestToken);            
 }
 
-int VoltDBEngine::deleteMigratedTuples(int32_t tableId, int32_t maxTuples){
+int VoltDBEngine::deleteMigratedTuples(int32_t tableId, int64_t lastCommittedTxnId, int32_t maxTuples){
     VOLT_DEBUG("deleteMigratedTuples for table %d. maxTuples: %d", (int) tableId, (int) maxTuples);
+    m_executorContext->setupForPlanFragments(getCurrentUndoQuantum(),
+					     -1, // null txnId
+                                            lastCommittedTxnId);
+
     Table* ret = getTable(tableId);
     if (ret == NULL) {
-        VOLT_ERROR("Table ID %d doesn't exist. Could not load data", (int) tableId);
+        VOLT_ERROR("Table ID %d doesn't exist. Could not delete data", (int) tableId);
         return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
     }
 
-    //TODO move some computation to external manager?
     PersistentTable *table = dynamic_cast<PersistentTable*>(ret);
     if (table == NULL) {
         VOLT_ERROR("Table ID %d(name '%s') is not a persistent table."
-                " Could not load data",
+                " Could not delete data",
                 (int) tableId, ret->name().c_str());
         return org_voltdb_jni_ExecutionEngine_ERRORCODE_ERROR;
     }

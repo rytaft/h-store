@@ -457,8 +457,9 @@ Java_org_voltdb_jni_ExecutionEngine_nativeDeleteMigratedTuples(JNIEnv *env,
 
     try{
             updateJNILogProxy(engine);
+            engine->resetReusedResultOutputBuffer();
             engine->setUndoToken(undoToken);
-            return engine->deleteMigratedTuples(table_id, maxTuples);
+            return engine->deleteMigratedTuples(table_id, lastCommittedTxnId, maxTuples);
 
     } catch (FatalException e) {
             topend->crashVoltDB(e);
