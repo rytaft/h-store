@@ -371,11 +371,11 @@ public class ReconfigurationCoordinator implements Shutdownable {
         
         String debugConfig = String.format("Reconfig configuration. Site:%s DetailedTiming: %s AsyncPush:%s AysncPull:%s "
                 + "AsyncQueuePulls:%s LivePulls:%s AsyncPullSizeKB:%s LivePullSizeKB:%s ForceDestination:%s "
-                + "AsyncDelay:%s AutoPlanSplit:%s PlanSplit:%s PlanDelay:%s", 
+                + "AsyncDelay:%s AutoPlanSplit:%s PlanSplit:%s PlanDelay:%s DeleteTuplesDelay:%s", 
                 this.hstore_site.getSiteId(), detailed_timing, async_nonchunk_push, async_nonchunk_pull, async_queue_pulls, 
                 live_pull, hstore_conf.site.reconfig_async_chunk_size_kb, hstore_conf.site.reconfig_chunk_size_kb, 
                 FORCE_DESTINATION, hstore_conf.site.reconfig_async_delay_ms, hstore_conf.site.reconfig_auto_subplan_split, 
-                hstore_conf.site.reconfig_subplan_split, hstore_conf.site.reconfig_plan_delay);
+                hstore_conf.site.reconfig_subplan_split, hstore_conf.site.reconfig_plan_delay, hstore_conf.site.reconfig_delete_tuples_delay_ms);
         LOG.info(debugConfig);
         FileUtil.appendEventToFile(debugConfig);
         if(FORCE_DESTINATION){
