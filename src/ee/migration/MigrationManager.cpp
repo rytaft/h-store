@@ -225,11 +225,9 @@ void MigrationManager::cleanUp() {
   size_t sizeBefore = m_extractedList.size();
   int totalDeleted = 0;
   boost::timer cleanUpTimer;
-  uint32_t current_tuple_id = 0;
 
   while (!m_extractedList.empty()) {
-    current_tuple_id = m_table->getTupleID(m_extractedList.front());
-    tuple.move(m_table->dataPtrForTuple(current_tuple_id));
+    tuple.move(m_extractedList.front());
     if (tuple.isMigrated()) {
       m_table->deleteTuple(tuple, true);
       ++totalDeleted;
@@ -516,11 +514,9 @@ bool MigrationManager::cleanUp(PersistentTable *table, int32_t maxTuples) {
   TableTuple tuple(m_table->schema());
   size_t sizeBefore = m_extractedList.size();
   int totalDeleted = 0;
-  uint32_t current_tuple_id = 0;
 
   while (!m_extractedList.empty() && totalDeleted < maxTuples) {
-    current_tuple_id = m_table->getTupleID(m_extractedList.front());
-    tuple.move(m_table->dataPtrForTuple(current_tuple_id));
+    tuple.move(m_extractedList.front());
     if (tuple.isMigrated()) {
       m_table->deleteTuple(tuple, true);
       ++totalDeleted;

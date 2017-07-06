@@ -1,10 +1,10 @@
 #!/bin/bash
 
-#servers="genbase4:0:0-5;genbase3:1:6-11"
-#clients="genbase1;genbase2;genbase3;genbase4"
+#servers="vise4:0:0-5;vise3:1:6-11"
+#clients="vise1;vise2;vise3;vise4"
 #client_count=4
-servers="genbase4:0:0-5"
-clients="genbase4"
+servers="vise5:0:0-5"
+clients="vise5"
 client_count=1
 Q=1000
 #Q=3000
