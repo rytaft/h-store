@@ -6661,10 +6661,11 @@ public class PartitionExecutor implements Runnable, Configurable, Shutdownable {
             haltProcessing();
         }
         
-        for (Table table : this.catalogContext.getDataTables()) {
-            this.deleteMigratedTuplesMsgs.add(new DeleteMigratedTuplesMessage(table.getName()));
-            this.nextDeleteMigratedTuplesTimeMS = System.currentTimeMillis(); // start deleting now
-        }
+        // TODO (rytaft) Commenting this out for now because deletion currently causes errors in the EE
+//        for (Table table : this.catalogContext.getDataTables()) {
+//            this.deleteMigratedTuplesMsgs.add(new DeleteMigratedTuplesMessage(table.getName()));
+//            this.nextDeleteMigratedTuplesTimeMS = System.currentTimeMillis(); // start deleting now
+//        }
         
         LOG.info("Clearing up reconfiguration state for p_id " + this.getReconfigDebug());
         this.reconfig_plan = null;
