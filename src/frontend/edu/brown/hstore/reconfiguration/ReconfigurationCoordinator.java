@@ -192,14 +192,16 @@ public class ReconfigurationCoordinator implements Shutdownable {
         private int partitions_per_site;
         private ExplicitPartitions partitions;
         private int site_id;
+        private long sleep_time;
         
-        public InitReconfiguration(int reconfig_split, boolean auto_split, int partitions_per_site, ExplicitPartitions partitions, int site_id) { 
+        public InitReconfiguration(int reconfig_split, boolean auto_split, int partitions_per_site, ExplicitPartitions partitions, int site_id, long sleep_time) { 
             super("InitReconfiguration");
             this.reconfig_split = reconfig_split;
             this.auto_split = auto_split;
             this.partitions_per_site = partitions_per_site;
             this.partitions = partitions;
             this.site_id = site_id;
+            this.sleep_time = sleep_time;
         }
         
         public void run() {
@@ -225,6 +227,12 @@ public class ReconfigurationCoordinator implements Shutdownable {
                     //}
                     
                     //receiveNextReconfigurationPlanFromLeader();
+                    
+                    try {
+                        Thread.sleep(sleep_time);
+                    } catch (InterruptedException e) {
+                        LOG.error("Error sleeping", e);
+                    }
                     
                     signalEndReconfigurationToLeader(site_id, -1); // calling partition set to -1
                     
@@ -677,7 +685,8 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 
                 this.subplanInProgress.set(true); // hack to allow init reconfiguration to take advantage
                                                   // of the code to send the next plan after finishing a sub-plan
-                InitReconfiguration init = new InitReconfiguration(this.reconfig_split, this.auto_split, this.local_executors.size(), this.planned_partitions, this.localSiteId);
+                long sleep_time = 5000; // wait 5 seconds after init reconfig
+                InitReconfiguration init = new InitReconfiguration(this.reconfig_split, this.auto_split, this.local_executors.size(), this.planned_partitions, this.localSiteId, sleep_time);
                 init.start();
                 
                 LOG.info("Started InitReconfiguration thread to complete initialization asynchronously");
