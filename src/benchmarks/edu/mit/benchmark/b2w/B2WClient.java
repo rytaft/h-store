@@ -101,6 +101,8 @@ public class B2WClient extends BenchmarkComponent {
 
     private B2WConfig config;
     private TransactionSelector txn_selector;
+    private JSONObject run_once_next_txn;
+    private int next_txn_run_count;
     
     /**
      *  Time of first transaction in milliseconds
@@ -117,6 +119,9 @@ public class B2WClient extends BenchmarkComponent {
             LOG.error("File not found: " + this.config.operations_file + ". Stack trace: " + e.getStackTrace(), e);
             throw new RuntimeException(e);
         }
+        
+        this.run_once_next_txn = null;
+        this.next_txn_run_count = 0;
     }
 
     @Override
@@ -204,14 +209,12 @@ public class B2WClient extends BenchmarkComponent {
     @Override
     protected boolean runOnce()  throws IOException {
         try {
-            JSONObject next_txn = txn_selector.nextTransaction();
-            for (int i = 0; i < config.scale_up; ++i) {
-                if (!runOnce(next_txn)) {
-                    LOG.debug("transaction " + next_txn.toString() + " not successful");
-                    return false;
-                }
+            if (this.run_once_next_txn == null || this.next_txn_run_count >= config.scale_up) {
+                this.run_once_next_txn = txn_selector.nextTransaction();
+                this.next_txn_run_count = 0;
             }
-            return true;
+            ++this.next_txn_run_count;
+            return runOnce(this.run_once_next_txn);
         } catch(JSONException e) {
             throw new RuntimeException(e);
         }
