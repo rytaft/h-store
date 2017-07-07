@@ -685,7 +685,7 @@ public class ReconfigurationCoordinator implements Shutdownable {
                 
                 this.subplanInProgress.set(true); // hack to allow init reconfiguration to take advantage
                                                   // of the code to send the next plan after finishing a sub-plan
-                long sleep_time = 5000; // wait 5 seconds after init reconfig
+                long sleep_time = 3000; // wait 3 seconds after init reconfig
                 InitReconfiguration init = new InitReconfiguration(this.reconfig_split, this.auto_split, this.local_executors.size(), this.planned_partitions, this.localSiteId, sleep_time);
                 init.start();
                 
