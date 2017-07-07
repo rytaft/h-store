@@ -452,9 +452,9 @@ public class PredictiveController {
                 long load2 = 0;
                 long load3 = 0;
                 
-                if(historyNLoads.length > 0) load1 = historyNLoads[historyNLoads.length-1];
-                if(historyNLoads.length > 1) load2 = historyNLoads[historyNLoads.length-2];
-                if(historyNLoads.length > 2) load3 = historyNLoads[historyNLoads.length-3];
+                if(historyNLoads.length > 0) load1 = (long) (historyNLoads[historyNLoads.length-1] * PREDICTION_INFLATION);
+                if(historyNLoads.length > 1) load2 = (long) (historyNLoads[historyNLoads.length-2] * PREDICTION_INFLATION);
+                if(historyNLoads.length > 2) load3 = (long) (historyNLoads[historyNLoads.length-3] * PREDICTION_INFLATION);
                 
                 if (load1 == 0 && load2 == 0 && load3 == 0) continue;
                 
@@ -540,6 +540,7 @@ public class PredictiveController {
                         m_next_moves = convert(currentPlan, moves, activeSites);
                     }
                     next_move = null;
+                    if (m_next_moves.size() == 0) scalein_requested_time = null;
                     m_next_moves_time = System.currentTimeMillis();
                 }
             }
