@@ -239,7 +239,7 @@ public class ReconfigurationUtil {
         }
     }
     
-    public static AutoSplit getAutoSplit(ReconfigurationPlan plan, int partitionsPerSite, int numberOfSplits) {
+    public static AutoSplit getAutoSplit(ReconfigurationPlan plan, int partitionsPerSite, int numberOfSplits, int numRanges) {
         Set<Integer> incoming_partitions = new HashSet<>();
         for (Entry<Integer, List<ReconfigurationRange>> entry : plan.getIncoming_ranges().entrySet()) {
             if (!entry.getValue().isEmpty()) incoming_partitions.add(entry.getKey());
@@ -273,7 +273,8 @@ public class ReconfigurationUtil {
         }
 
         // interleave many reconfigurations to achieve theoretical effective capacity
-        as.extraSplits = as.numberOfSplits * numberOfSplits;
+        int parallel = Math.min(as.s, as.delta) * partitionsPerSite;
+        as.extraSplits = numRanges / parallel;
         
         LOG.info("AutoSplit: " + as.toString());
         return as;
@@ -328,10 +329,14 @@ public class ReconfigurationUtil {
         }
         LOG.info(String.format("Pairs(%s): %s ", migrationPairs.size(), StringUtils.join(migrationPairs, ",")));
 
+        HashMap<String, List<String>> explicitPartitionedTables = new HashMap<>();
+        List<ReconfigurationRange> explicitPartitionedTablesRanges = new ArrayList<>();
+        getExplicitPartitionedTablesAndRanges(plan, explicitPartitionedTables, explicitPartitionedTablesRanges);
+        
         AutoSplit as = null;
         int extraSplits = 0;
         if (autoSplit) {
-            as = getAutoSplit(plan, partitionsPerSite, numberOfSplits);
+            as = getAutoSplit(plan, partitionsPerSite, numberOfSplits, explicitPartitionedTablesRanges.size());
             numberOfSplits = as.numberOfSplits;
             extraSplits = as.extraSplits;
         } else {        
@@ -369,7 +374,7 @@ public class ReconfigurationUtil {
             List<ReconfigurationPlan> splitPlansAgain = new ArrayList<>();
             for (ReconfigurationPlan splitPlan : splitPlans) {
                 int extra = (extraSplitsRemainder > 0 ? 2 : 1);
-                splitPlansAgain.addAll(fineGrainedSplitReconfigurationPlan(splitPlan, extraSplitsPerPlan + extra));
+                splitPlansAgain.addAll(fineGrainedSplitReconfigurationPlan(splitPlan, extraSplitsPerPlan + extra, explicitPartitionedTables, explicitPartitionedTablesRanges));
                 extraSplitsRemainder--;
             }
             // For case 1, interleave plans
@@ -519,18 +524,11 @@ public class ReconfigurationUtil {
         return new Pair<Number, Number>(new Long(-1), new Long(-1));
     }
 
-    public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(ReconfigurationPlan plan, int numberOfSplits) {
-
-        LOG.debug("splitting into " + numberOfSplits + " plans starting with plan: \n Out: " + 
-                plan.getOutgoing_ranges().toString() + " \n In: " + plan.getIncoming_ranges().toString());
+    public static void getExplicitPartitionedTablesAndRanges(ReconfigurationPlan plan,
+            HashMap<String, List<String>> explicitPartitionedTables,
+            List<ReconfigurationRange> explicitPartitionedTablesRanges) {
         
-        if (numberOfSplits <= 1) {
-            return Arrays.asList(plan);
-        }
-
         // Find the explicitly partitioned tables and their ranges
-        HashMap<String, List<String>> explicitPartitionedTables = new HashMap<>();
-        List<ReconfigurationRange> explicitPartitionedTablesRanges = new ArrayList<>();
         for (List<ReconfigurationRange> ranges : plan.getIncoming_ranges().values()) {
             for (ReconfigurationRange range : ranges) {
                 String table = range.getTableName();
@@ -549,6 +547,21 @@ public class ReconfigurationUtil {
             if (table != null) {
                 table.add(entry.getKey());
             }
+        }
+
+    }
+    
+    
+    public static List<ReconfigurationPlan> fineGrainedSplitReconfigurationPlan(ReconfigurationPlan plan, 
+            int numberOfSplits,
+            HashMap<String, List<String>> explicitPartitionedTables,
+            List<ReconfigurationRange> explicitPartitionedTablesRanges) {
+
+        LOG.debug("splitting into " + numberOfSplits + " plans starting with plan: \n Out: " + 
+                plan.getOutgoing_ranges().toString() + " \n In: " + plan.getIncoming_ranges().toString());
+        
+        if (numberOfSplits <= 1) {
+            return Arrays.asList(plan);
         }
         
         int numRanges = explicitPartitionedTablesRanges.size();        
