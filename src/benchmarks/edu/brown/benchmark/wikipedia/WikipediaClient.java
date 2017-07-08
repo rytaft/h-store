@@ -33,6 +33,7 @@ import edu.brown.api.BenchmarkComponent;
 import edu.brown.benchmark.wikipedia.procedures.GetPageAnonymous;
 import edu.brown.benchmark.wikipedia.util.TextGenerator;
 import edu.brown.benchmark.wikipedia.util.WikipediaUtil;
+import edu.brown.benchmark.ycsb.distributions.Utils;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.rand.RandomDistribution.Flat;
@@ -234,6 +235,10 @@ public class WikipediaClient extends BenchmarkComponent {
         }
         return (procNames);
     }
+    
+    protected long getZipfPage() {
+        return Utils.FNVhash64(this.zipf_pages.nextLong()) % util.num_pages + 1;
+    }
 
     protected Object[] generateParams(Transaction txn) {
         Object params[] = null;
@@ -252,7 +257,7 @@ public class WikipediaClient extends BenchmarkComponent {
             }
             case GET_PAGE_ANONYMOUS: {
                 String userIp = this.generateUserIP();
-                long pageId = this.zipf_pages.nextLong();
+                long pageId = this.getZipfPage();
                 int nameSpace = util.getPageNameSpace(pageId);
                 params = new Object[]{
                         pageId,
@@ -265,7 +270,7 @@ public class WikipediaClient extends BenchmarkComponent {
             case GET_PAGE_AUTHENTICATED: {
                 int userId = this.flat_users.nextInt();
                 String userIp = this.generateUserIP();
-                long pageId = this.zipf_pages.nextLong();
+                long pageId = this.getZipfPage();
                 int nameSpace = util.getPageNameSpace(pageId);
                 params = new Object[]{
                         pageId,
@@ -278,7 +283,7 @@ public class WikipediaClient extends BenchmarkComponent {
             }
             case UPDATE_PAGE: {
                 int userId = this.flat_users.nextInt();
-                long pageId = this.zipf_pages.nextLong();
+                long pageId = this.getZipfPage();
                 int nameSpace = util.getPageNameSpace(pageId);
                 String user_ip = this.generateUserIP();
                 params = new Object[]{
