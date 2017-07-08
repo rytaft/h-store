@@ -126,18 +126,18 @@ def getPlanString(args):
   wikipedia_size = None 
   if "type" in args and args["type"] == "wikipedia":
     scale_factor = args.size
-    users = 2001
-    pages = 10001
+    users = 2000
+    pages = 10000
     wikipedia_size = {}
-    wikipedia_size["logging"] = scale_factor * pages
-    wikipedia_size["page"] = scale_factor * pages
-    wikipedia_size["page_restrictions"] = scale_factor * pages
-    wikipedia_size["recentchanges"] = scale_factor * pages
-    wikipedia_size["revision"] = scale_factor * pages
-    wikipedia_size["text"] = scale_factor * pages
-    wikipedia_size["useracct"] = scale_factor * users
-    wikipedia_size["user_groups"] = scale_factor * users
-    wikipedia_size["watchlist"] = scale_factor * pages
+    wikipedia_size["logging"] = scale_factor * pages + 1
+    wikipedia_size["page"] = scale_factor * pages + 1
+    wikipedia_size["page_restrictions"] = scale_factor * pages + 1
+    wikipedia_size["recentchanges"] = scale_factor * pages + 1
+    wikipedia_size["revision"] = scale_factor * pages + 1
+    wikipedia_size["text"] = scale_factor * pages + 1
+    wikipedia_size["useracct"] = scale_factor * users + 1
+    wikipedia_size["user_groups"] = scale_factor * users + 1
+    wikipedia_size["watchlist"] = scale_factor * pages + 1
 
   if "change_type" in args and args["change_type"] == "scale-down":
     raise Exception("not implemented")
@@ -236,18 +236,18 @@ if __name__ == "__main__":
   wikipedia_size = None 
   if args.type == "wikipedia":
     scale_factor = args.size
-    users = 2001
-    pages = 10001
+    users = 2000
+    pages = 10000
     wikipedia_size = {}
-    wikipedia_size["logging"] = scale_factor * pages
-    wikipedia_size["page"] = scale_factor * pages
-    wikipedia_size["page_restrictions"] = scale_factor * pages
-    wikipedia_size["recentchanges"] = scale_factor * pages
-    wikipedia_size["revision"] = scale_factor * pages
-    wikipedia_size["text"] = scale_factor * pages
-    wikipedia_size["useracct"] = scale_factor * users
-    wikipedia_size["user_groups"] = scale_factor * users
-    wikipedia_size["watchlist"] = scale_factor * pages
+    wikipedia_size["logging"] = scale_factor * pages + 1
+    wikipedia_size["page"] = scale_factor * pages + 1
+    wikipedia_size["page_restrictions"] = scale_factor * pages + 1
+    wikipedia_size["recentchanges"] = scale_factor * pages + 1
+    wikipedia_size["revision"] = scale_factor * pages + 1
+    wikipedia_size["text"] = scale_factor * pages + 1
+    wikipedia_size["useracct"] = scale_factor * users + 1
+    wikipedia_size["user_groups"] = scale_factor * users + 1
+    wikipedia_size["watchlist"] = scale_factor * pages + 1
 
   if args.change_type == "scale-down":
     raise Exception("not implemented")
