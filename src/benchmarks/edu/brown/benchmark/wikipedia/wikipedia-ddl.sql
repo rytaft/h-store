@@ -44,6 +44,7 @@ CREATE TABLE useracct (
   UNIQUE (user_name)
 );
 CREATE INDEX IDX_USER_EMAIL_TOKEN ON useracct (user_email_token);
+CREATE INDEX IDX_USER_ID_TREE ON useracct (user_id);
 
 CREATE TABLE user_groups (
   ug_user int DEFAULT '0' NOT NULL,
@@ -51,6 +52,7 @@ CREATE TABLE user_groups (
   UNIQUE (ug_user,ug_group)
 );
 CREATE INDEX IDX_UG_GROUP ON user_groups (ug_group);
+CREATE INDEX IDX_UG_USER_ID_TREE ON user_groups (ug_user);
 
 CREATE TABLE page (
   page_id bigint NOT NULL,
@@ -69,6 +71,7 @@ CREATE TABLE page (
 );
 CREATE INDEX IDX_PAGE_RANDOM ON page (page_random);
 CREATE INDEX IDX_PAGE_LEN ON page (page_len);
+CREATE INDEX IDX_PAGE_ID_TREE ON page (page_id);
 
 CREATE TABLE page_restrictions (
   pr_page bigint NOT NULL REFERENCES page (page_id),
@@ -84,6 +87,7 @@ CREATE TABLE page_restrictions (
 CREATE INDEX IDX_PR_TYPELEVEL ON page_restrictions (pr_type,pr_level);
 CREATE INDEX IDX_PR_LEVEL ON page_restrictions (pr_level);
 CREATE INDEX IDX_PR_CASCADE ON page_restrictions (pr_cascade);
+CREATE INDEX IDX_PR_PAGE_ID_TREE ON page_restrictions (pr_page);
 
 CREATE TABLE recentchanges (
   rc_id int NOT NULL,
@@ -121,6 +125,7 @@ CREATE INDEX IDX_NEW_NAME_TIMESTAMP ON recentchanges (rc_new,rc_namespace,rc_tim
 CREATE INDEX IDX_RC_IP ON recentchanges (rc_ip);
 CREATE INDEX IDX_RC_NS_USERTEXT ON recentchanges (rc_namespace,rc_user_text);
 CREATE INDEX IDX_RC_USER_TEXT ON recentchanges (rc_user_text,rc_timestamp);
+CREATE INDEX IDX_RC_PAGE_ID_TREE ON recentchanges (rc_page);
 
 CREATE TABLE text (
   old_id bigint NOT NULL,
@@ -149,6 +154,7 @@ CREATE INDEX IDX_REV_TIMESTAMP ON revision (rev_timestamp);
 CREATE INDEX IDX_PAGE_TIMESTAMP ON revision (rev_page,rev_timestamp);
 CREATE INDEX IDX_USER_TIMESTAMP ON revision (rev_user,rev_timestamp);
 -- CREATE INDEX IDX_USERTEXT_TIMESTAMP ON revision (rev_user_text,rev_timestamp);
+CREATE INDEX IDX_REV_PAGE_ID_TREE ON revision (rev_page);
 
 CREATE TABLE logging (
   log_id bigint NOT NULL, -- serial
@@ -169,7 +175,7 @@ CREATE INDEX IDX_LOG_USER_TIME ON logging (log_user,log_timestamp);
 CREATE INDEX IDX_LOG_PAGE_TIME ON logging (log_namespace,log_page,log_timestamp);
 CREATE INDEX IDX_LOG_TIMES ON logging (log_timestamp);
 CREATE INDEX IDX_LOG_USER_TYPE_TIME ON logging (log_user,log_type,log_timestamp);
-CREATE INDEX IDX_LOG_PAGE_ID_TIME ON logging (log_page,log_timestamp);
+CREATE INDEX IDX_LOG_PAGE_ID_TIME_TREE ON logging (log_page,log_timestamp);
 
 CREATE TABLE watchlist (
   wl_user int NOT NULL,
@@ -179,3 +185,4 @@ CREATE TABLE watchlist (
   UNIQUE (wl_user,wl_namespace,wl_page)
 );
 CREATE INDEX IDX_WL_NAMESPACE_TITLE ON watchlist (wl_namespace, wl_page);
+CREATE INDEX IDX_WL_PAGE_ID_TREE ON watchlist (wl_page);
