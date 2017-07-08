@@ -209,6 +209,14 @@ public abstract class ExplicitPartitions {
                     else if (tableName.equalsIgnoreCase("user_groups")) {
                         parentCandidates.add(this.catalog_context.getTableByName("useracct"));
                     }
+                    
+                    if (partitionCols == null) {
+                        LOG.info(tableName + " is not partitioned and has no partition column. skipping");
+                        continue;
+                    } else {
+                        LOG.info(tableName + " is not explicitly partitioned.");
+                    }
+
                 } else {
                     if (partitionCols == null) {
                         LOG.info(tableName + " is not partitioned and has no partition column. skipping");
