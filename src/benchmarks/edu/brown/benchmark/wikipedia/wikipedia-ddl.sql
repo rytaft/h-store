@@ -134,6 +134,7 @@ CREATE TABLE text (
   old_page bigint NOT NULL REFERENCES page (page_id),
   PRIMARY KEY (old_id, old_page)
 );
+CREATE INDEX IDX_TEXT_PAGE_ID_TREE ON text (old_page);
 
 CREATE TABLE revision (
   rev_id bigint NOT NULL,
