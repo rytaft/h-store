@@ -226,7 +226,7 @@ public class RandomDistribution {
      */
     public static class FlatHistogram<T> extends DiscreteRNG {
         private static final long serialVersionUID = 1L;
-        private final Flat inner;
+        private final Random inner;
         private final Histogram<T> histogram;
         private final SortedMap<Long, T> value_rle = new TreeMap<Long, T>();
         private Histogram<T> history;
@@ -237,7 +237,7 @@ public class RandomDistribution {
         public FlatHistogram(Random random, Histogram<T> histogram) {
             super(random, 0, (int) histogram.getSampleCount());
             this.histogram = histogram;
-            this.inner = new Flat(random, 0, (int) histogram.getSampleCount());
+            this.inner = random;
 
             long total = 0;
             for (T k : this.histogram.values()) {
@@ -265,7 +265,7 @@ public class RandomDistribution {
         }
 
         public T nextValue() {
-            int idx = this.inner.nextInt();
+            int idx = this.inner.nextInt(histogram.getSampleCount());
             Long total = this.value_rle.tailMap((long) idx).firstKey();
             T val = this.value_rle.get(total);
             if (this.history != null)
