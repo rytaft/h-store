@@ -183,7 +183,33 @@ public abstract class ExplicitPartitions {
                 List<Table> parentCandidates = new ArrayList<>();
                 List<Table> prevParentCandidates = new ArrayList<>();
                 
-                if (!this.catalog_context.jarPath.getName().contains("b2w")) {
+                if (this.catalog_context.jarPath.getName().contains("b2w")) {
+                    if (tableName.equalsIgnoreCase("cart_customer") || 
+                            tableName.equalsIgnoreCase("cart_lines") ||
+                            tableName.equalsIgnoreCase("cart_line_products") ||
+                            tableName.equalsIgnoreCase("cart_line_promotions") ||
+                            tableName.equalsIgnoreCase("cart_line_product_warranties") ||
+                            tableName.equalsIgnoreCase("cart_line_product_stores")) {
+                        parentCandidates.add(this.catalog_context.getTableByName("cart"));
+                    }
+                    else if (tableName.equalsIgnoreCase("checkout_payments") || 
+                            tableName.equalsIgnoreCase("checkout_freight_delivery_time") ||
+                            tableName.equalsIgnoreCase("checkout_stock_transactions")) {
+                        parentCandidates.add(this.catalog_context.getTableByName("checkout"));
+                    }
+                } else if (this.catalog_context.jarPath.getName().contains("wikipedia")) {
+                    if (tableName.equalsIgnoreCase("logging") ||
+                            tableName.equalsIgnoreCase("page_restrictions") ||
+                            tableName.equalsIgnoreCase("recentchanges") ||
+                            tableName.equalsIgnoreCase("revision") ||
+                            tableName.equalsIgnoreCase("text") ||
+                            tableName.equalsIgnoreCase("watchlist")) {
+                        parentCandidates.add(this.catalog_context.getTableByName("page"));
+                    }
+                    else if (tableName.equalsIgnoreCase("user_groups")) {
+                        parentCandidates.add(this.catalog_context.getTableByName("useracct"));
+                    }
+                } else {
                     if (partitionCols == null) {
                         LOG.info(tableName + " is not partitioned and has no partition column. skipping");
                         continue;
@@ -228,21 +254,7 @@ public abstract class ExplicitPartitions {
                             }
                         }
                     }
-                } else {
-                    if (tableName.equalsIgnoreCase("cart_customer") || 
-                            tableName.equalsIgnoreCase("cart_lines") ||
-                            tableName.equalsIgnoreCase("cart_line_products") ||
-                            tableName.equalsIgnoreCase("cart_line_promotions") ||
-                            tableName.equalsIgnoreCase("cart_line_product_warranties") ||
-                            tableName.equalsIgnoreCase("cart_line_product_stores")) {
-                        parentCandidates.add(this.catalog_context.getTableByName("cart"));
-                    }
-                    else if (tableName.equalsIgnoreCase("checkout_payments") || 
-                            tableName.equalsIgnoreCase("checkout_freight_delivery_time") ||
-                            tableName.equalsIgnoreCase("checkout_stock_transactions")) {
-                        parentCandidates.add(this.catalog_context.getTableByName("checkout"));
-                    }
-                }
+                } 
 
                 Table parentTbl = null;
                 if (parentCandidates.size() != 0) {
