@@ -427,7 +427,7 @@ public class PredictiveController {
                 if(moves == null || moves.isEmpty()){
                     // reactive migration
                     record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
-                    m_next_moves = convert(currentPlan, m_planner.getMaxNodes());
+                    m_next_moves = convert(currentPlan, m_planner.getMaxNodes(), activeSites);
                 }
                 else {
                     record("Moves: " + moves.toString());
@@ -464,14 +464,14 @@ public class PredictiveController {
                         load2 < MAX_CAPACITY_PER_SERVER * (activeSites - 1) &&
                         load3 < MAX_CAPACITY_PER_SERVER * (activeSites - 1)) {
                     record("Initiating reactive migration to " + (activeSites - 1) + " nodes");
-                    m_next_moves = convert(currentPlan, activeSites - 1);
+                    m_next_moves = convert(currentPlan, activeSites - 1, activeSites);
                     next_move = null;
 //                } else if (total > 0 && (double) count_gt_50 / total > 0.10) {
                 } else if (load1 > MAX_CAPACITY_PER_SERVER * activeSites &&
                         load2 > MAX_CAPACITY_PER_SERVER * activeSites &&
                         load3 > MAX_CAPACITY_PER_SERVER * activeSites) {
                     record("Initiating reactive migration to " + (activeSites + 1) + " nodes");
-                    m_next_moves = convert(currentPlan, activeSites + 1);
+                    m_next_moves = convert(currentPlan, activeSites + 1, activeSites);
                     next_move = null;
                 } else {
                     try {
@@ -536,7 +536,7 @@ public class PredictiveController {
                     if (moves == null || moves.isEmpty()) {
                         // reactive migration
                         record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
-                        m_next_moves = convert(currentPlan, m_planner.getMaxNodes());
+                        m_next_moves = convert(currentPlan, m_planner.getMaxNodes(), activeSites);
                     } else {
                         record("Moves: " + moves.toString());
                         m_next_moves = convert(currentPlan, moves, activeSites);
@@ -673,12 +673,16 @@ public class PredictiveController {
         return squallMoves;
     }
     
-    private LinkedList<SquallMove> convert(String plan, int nodes){
+    private LinkedList<SquallMove> convert(String plan, int nodes, int activeSites){
         LinkedList<SquallMove> squallMoves = new LinkedList<>();
         if (nodes > m_sites.size()) {
             record("ERROR: required number of nodes (" + nodes + ") exceeds number of sites (" + m_sites.size() + ")");
             nodes = m_sites.size();
         }
+        
+        // skip no-op moves
+        if (nodes == activeSites) return squallMoves;
+        
         ReconfigurationPlanner planner = new ReconfigurationPlanner(plan, nodes * PARTITIONS_PER_SITE, PARTITIONS_PER_SITE);
         planner.repartition();
         try {
