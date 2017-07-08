@@ -117,8 +117,8 @@ public abstract class WikipediaConstants {
     public static final int FREQUENCY_REMOVE_WATCHLIST = 1;
     //public static final int FREQUENCY_UPDATE_PAGE = 8;
     //public static final int FREQUENCY_GET_PAGE_ANONYMOUS = 89;
-    public static final int FREQUENCY_UPDATE_PAGE = 0;
-    public static final int FREQUENCY_GET_PAGE_ANONYMOUS = 97;
+    public static final int FREQUENCY_UPDATE_PAGE = 1;
+    public static final int FREQUENCY_GET_PAGE_ANONYMOUS = 96;
     public static final int FREQUENCY_GET_PAGE_AUTHENTICATED = 1;
     
 	public static final int BATCH_SIZE = 1000;
