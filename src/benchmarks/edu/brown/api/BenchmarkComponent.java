@@ -985,15 +985,15 @@ public abstract class BenchmarkComponent {
                 } // SYNCH
             }
         }
-//        else if (status == Status.ABORT_UNEXPECTED) {
-//            LOG.warn("Invalid " + m_countDisplayNames[txn_idx] + " response!\n" + cresponse);
-//            if (cresponse.getException() != null) {
-//                cresponse.getException().printStackTrace();
-//            }
-//            if (cresponse.getStatusString() != null) {
-//                LOG.warn(cresponse.getStatusString());
-//            }
-//        }
+        else if (status == Status.ABORT_UNEXPECTED) {
+            LOG.warn("Invalid " + m_countDisplayNames[txn_idx] + " response!\n" + cresponse);
+            if (cresponse.getException() != null) {
+                cresponse.getException().printStackTrace();
+            }
+            if (cresponse.getStatusString() != null) {
+                LOG.warn(cresponse.getStatusString());
+            }
+        }
         
         if (m_txnStats.isResponsesStatusesEnabled()) {
             synchronized (m_txnStats.responseStatuses) {
@@ -1285,7 +1285,7 @@ public abstract class BenchmarkComponent {
         	if(m_incrementsTxnRate.hasNextLine()){
         		double increment = Double.parseDouble(m_incrementsTxnRate.nextLine());
         		if (increment != 1){
-        			LOG.info("Thread " + Thread.currentThread() 
+        			LOG.debug("Thread " + Thread.currentThread() 
         					+ " modify load by factor of " + increment 
 //        					+ " for counter " + counter
 //        					+ " txn rate " + m_txnRate 
@@ -1295,7 +1295,7 @@ public abstract class BenchmarkComponent {
         		}
         	}
         	else{
-        		LOG.info("Warning: no increment for tick number " + counter);
+        		LOG.debug("Warning: no increment for tick number " + counter);
         	}
         }
     	// Marco - end
