@@ -34,6 +34,7 @@ import edu.brown.benchmark.wikipedia.procedures.GetPageAnonymous;
 import edu.brown.benchmark.wikipedia.util.TextGenerator;
 import edu.brown.benchmark.wikipedia.util.WikipediaUtil;
 import edu.brown.benchmark.ycsb.distributions.Utils;
+import edu.brown.benchmark.ycsb.distributions.ZipfianGenerator;
 import edu.brown.logging.LoggerUtil;
 import edu.brown.logging.LoggerUtil.LoggerBoolean;
 import edu.brown.rand.RandomDistribution.Flat;
@@ -55,7 +56,8 @@ public class WikipediaClient extends BenchmarkComponent {
 
 	
 	private final Flat flat_users;
-	private final Zipf zipf_pages;
+    //	private final Zipf zipf_pages;
+    private final ZipfianGenerator zipf_pages;
 	private final Flat flat_pages;
 	
     /**
@@ -164,7 +166,8 @@ public class WikipediaClient extends BenchmarkComponent {
         this.util = new WikipediaUtil(this.randGenerator, this.getScaleFactor());
         
         this.flat_users = new Flat(this.randGenerator, 1, util.num_users);
-        this.zipf_pages = new Zipf(this.randGenerator, 1, util.num_pages, WikipediaConstants.USER_ID_SIGMA);
+	//        this.zipf_pages = new Zipf(this.randGenerator, 1, util.num_pages, WikipediaConstants.USER_ID_SIGMA);
+	this.zipf_pages = new ZipfianGenerator(1, util.num_pages, 0.70, true);
         this.flat_pages = new Flat(this.randGenerator, 1, util.num_pages);
     }
     
@@ -237,7 +240,8 @@ public class WikipediaClient extends BenchmarkComponent {
     }
     
     protected long getZipfPage() {
-        return Utils.FNVhash64(this.zipf_pages.nextLong()) % util.num_pages + 1;
+	//        return Utils.FNVhash64(this.zipf_pages.nextLong()) % util.num_pages + 1;
+        return this.zipf_pages.nextLong();
     }
 
     protected Object[] generateParams(Transaction txn) {

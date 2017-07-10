@@ -12,7 +12,7 @@ config=wikipedia-36p
 YYYY=2016
 MM=08
 DD=01
-data_path=wikilogs/load-08-en
+data_path=load-08-en
 
 offset=0
 end_iter=15
@@ -86,12 +86,12 @@ do
     echo "start_offset = $offset" >> properties/benchmarks/wikipedia.properties
     ./scripts/deploy-file.sh properties/benchmarks/wikipedia.properties
 
-    file_id=i
-    if [ $file_id -lt 10 ]; then file_id=0${file_id}
+    file_id=$i
+    if [ $file_id -lt 10 ]; then file_id=0${file_id}; fi
 
-    file_path=${data_path}/rates-${data_path}-${file_id}.txt
+    file_path=wikilogs/${data_path}/rates-${data_path}-${file_id}.txt
     cp ${file_path} txnrates.txt
-    ./scripts/deploy-file txnrates.txt
+    ./scripts/deploy-file.sh txnrates.txt
     ./configs/${config}/commands.sh run
     ./scripts/save_results.sh results/${config}_${date}
 
