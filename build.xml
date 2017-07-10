@@ -1695,7 +1695,7 @@ TEST CASES
         classname="edu.brown.api.BenchmarkController">
         <classpath refid='project.classpath' />
         <jvmarg value="-server" />
-        <jvmarg value="-Xmx2048m" />
+        <jvmarg value="-Xmx4096m" />
         <jvmarg value="-Xcheck:jni"/>
         <jvmarg value="-Djava.library.path=${build.dir}/nativelibs:${thirdpartydynlib.dir}" />
         <jvmarg value="-Dlog4j.configuration=${basedir}/log4j.properties"/>
