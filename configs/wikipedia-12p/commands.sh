@@ -1,12 +1,9 @@
 #!/bin/bash
 
-#servers="vise4:0:0-5;vise3:1:6-11"
-#clients="vise1;vise2;vise3;vise4"
-#client_count=4
-servers="vise5:0:0-5"
-clients="vise5"
+servers="istc13:0:0-5;istc12:1:6-11"
+clients="istc5"
 client_count=1
-Q=1000
+Q=1
 #Q=3000
 # alt: change threads_per_host to 11 and txnrate to $Q and warmup to 60000
 # change threads_per_host to 16 and txnrate to -1 and warmup to 0
@@ -19,11 +16,11 @@ case $1 in
 
 ## LOAD
     "load")
-	ant hstore-benchmark -Dproject=wikipedia -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnoshutdown=true -Dnoexecute=true -Dsite.txn_restart_limit_sysproc=100 -Dsite.jvm_asserts=false -Dsite.commandlog_enable=false -Dsite.exec_db2_redirects=false -Dsite.exec_early_prepare=false -Dsite.exec_force_singlepartitioned=true -Dsite.markov_fixed=false -Dsite.planner_caching=false -Dsite.specexec_enable=true -Dsite.reconfig_async_chunk_size_kb=1000 -Dsite.reconfig_chunk_size_kb=1000 -Dsite.reconfig_async_delay_ms=0 -Dsite.reconfig_auto_subplan_split=false -Dsite.reconfig_subplan_split=1000 -Dsite.reconfig_plan_delay=0 -Dclient.tick_interval=100 -Dsite.queue_profiling=true | tee out-load.log
+	ant hstore-benchmark -Dproject=wikipedia -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnoshutdown=true -Dnoexecute=true -Dsite.txn_restart_limit_sysproc=100 -Dsite.jvm_asserts=false -Dsite.commandlog_enable=false -Dsite.exec_db2_redirects=false -Dsite.exec_early_prepare=false -Dsite.exec_force_singlepartitioned=true -Dsite.markov_fixed=false -Dsite.planner_caching=false -Dsite.specexec_enable=true -Dsite.reconfig_async_chunk_size_kb=600000 -Dsite.reconfig_chunk_size_kb=600000 -Dsite.reconfig_async_delay_ms=0 -Dsite.reconfig_auto_subplan_split=false -Dsite.reconfig_subplan_split=1000 -Dsite.reconfig_plan_delay=0 -Dclient.tick_interval=100 -Dsite.queue_profiling=true | tee out-load.log
 	;;
 ## RUN
     "run")
-	ant hstore-benchmark -Dproject=wikipedia -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnostart=true -Dnoloader=true -Dnoshutdown=true -Dclient.duration=60000 -Dclient.interval=1000 -Dclient.txnrate=${Q} -Dclient.count=$client_count -Dclient.hosts="$clients" -Dclient.threads_per_host=16 -Dclient.blocking_concurrent=1000 -Dclient.output_results_csv=results.csv -Dclient.output_interval=true -Dsite.planner_caching=false -Dclient.txn_hints=false -Dsite.exec_early_prepare=false -Dclient.output_basepartitions=true -Dclient.warmup=30000 -Dclient.tick_interval=100 | tee out.log
+	ant hstore-benchmark -Dproject=wikipedia -Dglobal.hasher_plan=plan.json -Dglobal.hasher_class=edu.brown.hashing.TwoTieredRangeHasher -Dnostart=true -Dnoloader=true -Dnoshutdown=true -Dclient.duration=600000 -Dclient.interval=1000 -Dclient.txnrate=${Q} -Dclient.count=$client_count -Dclient.hosts="$clients" -Dclient.threads_per_host=10 -Dclient.blocking=false -Dclient.output_results_csv=results.csv -Dclient.output_interval=true -Dsite.planner_caching=false -Dclient.txn_hints=false -Dsite.exec_early_prepare=false -Dclient.output_basepartitions=true -Dclient.warmup=0 -Dclient.tick_interval=100 -Dclient.weights="GetPageAnonymous:100,AddWatchList:0,GetPageAuthenticated:0,RemoveWatchList:0,UpdatePage:0" | tee out.log
 	;;
 
 ## LOAD from plan_out.json
