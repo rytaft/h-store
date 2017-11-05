@@ -1,5 +1,6 @@
 package org.qcri.affinityplanner;
 
+import edu.brown.BaseTestCase;
 import edu.brown.utils.FileUtil;
 
 import org.voltdb.client.*;
@@ -18,7 +19,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * Created by rytaft on 11/5/17.
  */
-public class TestPredictiveControllerSimulation {
+public class TestPredictiveControllerSimulation extends BaseTestCase {
     private org.voltdb.client.Client m_client;
     private ReconfigurationPredictor m_planner;
     private LinkedList<SquallMove> m_next_moves;
@@ -89,7 +90,7 @@ public class TestPredictiveControllerSimulation {
 
     }
 
-    private void run () throws Exception {
+    private void runSimulation () throws Exception {
 
         boolean oraclePredictionComplete = false;
         SquallMove next_move = null;
@@ -403,7 +404,7 @@ public class TestPredictiveControllerSimulation {
 
         TestPredictiveControllerSimulation c = new TestPredictiveControllerSimulation();
         try {
-            c.run();
+            c.runSimulation();
         } catch (Exception e) {
             e.printStackTrace();
             record("Not good");
