@@ -236,7 +236,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                                 m_predictedLoad.clear();
                                 String[] predictedLoadStr = line.split(" ");
                                 for (String s : predictedLoadStr) {
-                                    m_predictedLoad.add((long) (Long.parseLong(s) * PREDICTION_INFLATION));
+                                    m_predictedLoad.add((long) (Double.parseDouble(s) * PREDICTION_INFLATION));
                                 }
                             } else {
                                 m_stop = true;
