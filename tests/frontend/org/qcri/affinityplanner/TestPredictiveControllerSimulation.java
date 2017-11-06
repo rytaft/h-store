@@ -105,9 +105,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
             BufferedReader br = new BufferedReader(fr);
 
             while (!m_stop){
-                record("currentTime:" + currentTime + ", numPredictions:" + numPredictions + 
-                        ", m_next_moves_time:" + m_next_moves_time);
-                if (m_next_moves != null && !m_next_moves.isEmpty()
+                if (((m_next_moves != null && !m_next_moves.isEmpty()) || next_move != null)
                         && (currentTime - m_next_moves_time < MAX_MOVES_STALENESS
                                 || USE_ORACLE_PREDICTION || REACTIVE_ONLY)){
                     if (next_move == null) {
@@ -275,7 +273,11 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     }
 
                     next_move = null;
-                    if (m_next_moves.size() == 0) scalein_requested_time = null;
+                    if (m_next_moves.size() == 0) {
+                        scalein_requested_time = null;
+                        record("Simulating sleeping for " + POLL_TIME + " ms");
+                        currentTime += POLL_TIME;
+                    }
                     m_next_moves_time = currentTime;
                 }            
             }
