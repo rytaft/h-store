@@ -114,11 +114,11 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     long sleep_time = next_move.start_time - currentTime;
                     if (sleep_time > 0){
                         if (sleep_time > POLL_TIME) {
-                            record("Simulating sleeping for " + POLL_TIME + " ms");
+                            record("Simulating sleeping for " + POLL_TIME + " ms - waiting on start of move");
                             currentTime += POLL_TIME;
                             continue;
                         } else {
-                            record("Simulating sleeping for " + sleep_time + " ms");
+                            record("Simulating sleeping for " + sleep_time + " ms - waiting on start of move");
                             currentTime += sleep_time;
                         }                    
                     }
@@ -129,6 +129,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                             scalein_requested_time = currentTime;
                         } 
                         if (currentTime - scalein_requested_time < SCALE_IN_WAIT ) {
+                            record("Simulating sleeping for " + POLL_TIME + " ms - scale in wait");
                             currentTime += POLL_TIME;
                             continue;
                         }
@@ -219,6 +220,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                         m_next_moves = convert(activeSites + 1, activeSites, currentTime);
                         next_move = null;
                     } else {
+                        record("Simulating sleeping for " + POLL_TIME + " ms");
                         currentTime += POLL_TIME;
                     }
                 }
@@ -275,7 +277,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     next_move = null;
                     if (m_next_moves.size() == 0) {
                         scalein_requested_time = null;
-                        record("Simulating sleeping for " + POLL_TIME + " ms");
+                        record("Simulating sleeping for " + POLL_TIME + " ms - no predicted moves");
                         currentTime += POLL_TIME;
                     }
                     m_next_moves_time = currentTime;
