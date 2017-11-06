@@ -29,7 +29,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     private ArrayList<Long> m_eff_cap;
 
     private static int PARTITIONS_PER_SITE = 6;
-    private static int NUM_SITES = 10;
+    private static int NUM_SITES = 100;
 
     // Prediction variables
     private ConcurrentLinkedQueue<Long> m_historyNLoads;
@@ -238,6 +238,30 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                                 for (String s : predictedLoadStr) {
                                     m_predictedLoad.add((long) (Double.parseDouble(s) * PREDICTION_INFLATION));
                                 }
+                                
+                                System.out.println(">> Predictions: ");
+                                //System.out.println(predictedLoad.toString());
+                                //System.out.println();
+
+                                //System.out.print(totalLoad + ",");
+                                for (int i = 0; i < m_predictedLoad.size(); i++) {
+                                    if (i != m_predictedLoad.size() - 1) {
+                                        System.out.print(m_predictedLoad.get(i) + ",");
+                                    } else {
+                                        System.out.println(m_predictedLoad.get(i));
+                                    }
+                                }
+                                
+                                // launch planner and get the moves
+                                ArrayList<Move> moves = m_planner.bestMoves(m_predictedLoad, activeSites);
+                                if (moves == null || moves.isEmpty()) {
+                                    // reactive migration
+                                    record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
+                                    m_next_moves = convert(m_planner.getMaxNodes(), activeSites, currentTime);
+                                } else {
+                                    record("Moves: " + moves.toString());
+                                    m_next_moves = convert(moves, activeSites, currentTime);
+                                }
                             } else {
                                 m_stop = true;
                             }
@@ -248,34 +272,9 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                         System.exit(1);
                     }
 
-                    if (!m_predictedLoad.isEmpty()) {
-                        System.out.println(">> Predictions: ");
-                        //System.out.println(predictedLoad.toString());
-                        //System.out.println();
-
-                        //System.out.print(totalLoad + ",");
-                        for (int i = 0; i < m_predictedLoad.size(); i++) {
-                            if (i != m_predictedLoad.size() - 1) {
-                                System.out.print(m_predictedLoad.get(i) + ",");
-                            } else {
-                                System.out.println(m_predictedLoad.get(i));
-                            }
-                        }
-
-                        // launch planner and get the moves
-                        ArrayList<Move> moves = m_planner.bestMoves(m_predictedLoad, activeSites);
-                        if (moves == null || moves.isEmpty()) {
-                            // reactive migration
-                            record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
-                            m_next_moves = convert(m_planner.getMaxNodes(), activeSites, currentTime);
-                        } else {
-                            record("Moves: " + moves.toString());
-                            m_next_moves = convert(moves, activeSites, currentTime);
-                        }
-                        next_move = null;
-                        if (m_next_moves.size() == 0) scalein_requested_time = null;
-                        m_next_moves_time = currentTime;
-                    }
+                    next_move = null;
+                    if (m_next_moves.size() == 0) scalein_requested_time = null;
+                    m_next_moves_time = currentTime;
                 }            
             }
             while (m_eff_cap.size() <= currentTime/1000) {
