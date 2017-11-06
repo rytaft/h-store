@@ -43,7 +43,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     //public static long MAX_CAPACITY_PER_SERVER = (long) Math.ceil(23000 * FUDGE_FACTOR * MONITORING_TIME/1000.0); // Q=26000 txns/s
     private static int DB_MIGRATION_TIME = (int) Math.ceil(4646 * 1000.0/MONITORING_TIME); // D=4224 seconds + 10% buffer
     //public static int DB_MIGRATION_TIME = (int) Math.ceil(1000 * 1000.0/MONITORING_TIME); // D=908 seconds + 10% buffer
-    private static int MAX_MOVES_STALENESS = 5000; // time in milliseconds before moves are considered invalid
+    private static int MAX_MOVES_STALENESS = 30000; // time in milliseconds before moves are considered invalid
     private static int POLL_TIME = 1000;
     private static double PREDICTION_INFLATION = 1.15; // inflate predictions by 15%
 
@@ -264,6 +264,10 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                                     record("Moves: " + moves.toString());
                                     m_next_moves = convert(moves, activeSites, currentTime);
                                 }
+                                next_move = null;
+                                if (m_next_moves.size() == 0) scalein_requested_time = null;
+                                m_next_moves_time = currentTime;
+                                
                             } else {
                                 m_stop = true;
                             }
@@ -274,13 +278,10 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                         System.exit(1);
                     }
 
-                    next_move = null;
                     if (m_next_moves.size() == 0) {
-                        scalein_requested_time = null;
                         record("Simulating sleeping for " + POLL_TIME + " ms - no predicted moves");
                         currentTime += POLL_TIME;
                     }
-                    m_next_moves_time = currentTime;
                 }            
             }
             while (m_eff_cap.size() <= currentTime/1000) {
