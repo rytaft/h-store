@@ -115,11 +115,11 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     if (sleep_time > 0){
                         scalein_requested_time = null;
                         if (sleep_time > POLL_TIME) {
-                            record("Simulating sleeping for " + POLL_TIME + " ms - waiting on start of move");
+                            //record("Simulating sleeping for " + POLL_TIME + " ms - waiting on start of move");
                             currentTime += POLL_TIME;
                             continue;
                         } else {
-                            record("Simulating sleeping for " + sleep_time + " ms - waiting on start of move");
+                            //record("Simulating sleeping for " + sleep_time + " ms - waiting on start of move");
                             currentTime += sleep_time;
                         }                    
                     }
@@ -130,7 +130,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                             scalein_requested_time = currentTime;
                         } 
                         if (currentTime - scalein_requested_time < SCALE_IN_WAIT ) {
-                            record("Simulating sleeping for " + POLL_TIME + " ms - scale in wait");
+                            //record("Simulating sleeping for " + POLL_TIME + " ms - scale in wait");
                             currentTime += POLL_TIME;
                             continue;
                         }
@@ -185,7 +185,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                         m_next_moves = convert(m_planner.getMaxNodes(), activeSites, currentTime);
                     }
                     else {
-                        record("Moves: " + moves.toString());
+                        //record("Moves: " + moves.toString());
                         m_next_moves = convert(moves, activeSites, currentTime);
                     }
                     next_move = null;
@@ -221,7 +221,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                         m_next_moves = convert(activeSites + 1, activeSites, currentTime);
                         next_move = null;
                     } else {
-                        record("Simulating sleeping for " + POLL_TIME + " ms");
+                        //record("Simulating sleeping for " + POLL_TIME + " ms");
                         currentTime += POLL_TIME;
                     }
                 }
@@ -235,6 +235,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                                 line = br.readLine();
                                 numPredictions++;
                             }
+                            record("currentTime: " + currentTime + ", numPredictions: " + numPredictions);
                             if (line != null) {
                                 m_predictedLoad.clear();
                                 String[] predictedLoadStr = line.split(" ");
@@ -242,18 +243,14 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                                     m_predictedLoad.add((long) (Double.parseDouble(s) * PREDICTION_INFLATION));
                                 }
                                 
-                                System.out.println(">> Predictions: ");
-                                //System.out.println(predictedLoad.toString());
-                                //System.out.println();
-
-                                //System.out.print(totalLoad + ",");
-                                for (int i = 0; i < m_predictedLoad.size(); i++) {
-                                    if (i != m_predictedLoad.size() - 1) {
-                                        System.out.print(m_predictedLoad.get(i) + ",");
-                                    } else {
-                                        System.out.println(m_predictedLoad.get(i));
-                                    }
-                                }
+                                //System.out.println(">> Predictions: ");
+                                //for (int i = 0; i < m_predictedLoad.size(); i++) {
+                                //    if (i != m_predictedLoad.size() - 1) {
+                                //        System.out.print(m_predictedLoad.get(i) + ",");
+                                //    } else {
+                                //        System.out.println(m_predictedLoad.get(i));
+                                //    }
+                                //}
                                 
                                 // launch planner and get the moves
                                 ArrayList<Move> moves = m_planner.bestMoves(m_predictedLoad, activeSites);
@@ -262,7 +259,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                                     record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
                                     m_next_moves = convert(m_planner.getMaxNodes(), activeSites, currentTime);
                                 } else {
-                                    record("Moves: " + moves.toString());
+                                    //record("Moves: " + moves.toString());
                                     m_next_moves = convert(moves, activeSites, currentTime);
                                 }
                                 next_move = null;
@@ -280,7 +277,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     }
 
                     if (m_next_moves.size() == 0) {
-                        record("Simulating sleeping for " + POLL_TIME + " ms - no predicted moves");
+                        //record("Simulating sleeping for " + POLL_TIME + " ms - no predicted moves");
                         currentTime += POLL_TIME;
                     }
                 }            
