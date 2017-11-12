@@ -113,6 +113,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     }
                     long sleep_time = next_move.start_time - currentTime;
                     if (sleep_time > 0){
+                        scalein_requested_time = null;
                         if (sleep_time > POLL_TIME) {
                             record("Simulating sleeping for " + POLL_TIME + " ms - waiting on start of move");
                             currentTime += POLL_TIME;
