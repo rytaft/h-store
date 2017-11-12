@@ -39,6 +39,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     private static int MONITORING_TIME = 30000;  //(e.g. 3000 ms = 3 sec = 30 sec B2W-time)
     
     private static int FUDGE_FACTOR = 1;
+    private static long MAX_CAPACITY_PER_SERVER_PER_SEC = (long) Math.ceil(285 * FUDGE_FACTOR); // Q=350 txns/s
     private static long MAX_CAPACITY_PER_SERVER = (long) Math.ceil(285 * FUDGE_FACTOR * MONITORING_TIME/1000.0); // Q=350 txns/s
     //public static long MAX_CAPACITY_PER_SERVER = (long) Math.ceil(23000 * FUDGE_FACTOR * MONITORING_TIME/1000.0); // Q=26000 txns/s
     private static int DB_MIGRATION_TIME = (int) Math.ceil(4646 * 1000.0/MONITORING_TIME); // D=4224 seconds + 10% buffer
@@ -138,7 +139,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
 
                     scalein_requested_time = null;
                     while (m_eff_cap.size() <= currentTime/1000) {
-                        m_eff_cap.add(activeSites * MAX_CAPACITY_PER_SERVER);
+                        m_eff_cap.add(activeSites * MAX_CAPACITY_PER_SERVER_PER_SEC);
                     }                   
                         
                     int duration = m_migration.reconfigTime(activeSites, next_move.nodes) * MONITORING_TIME;
@@ -283,7 +284,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                 }            
             }
             while (m_eff_cap.size() <= currentTime/1000) {
-                m_eff_cap.add(activeSites * MAX_CAPACITY_PER_SERVER);
+                m_eff_cap.add(activeSites * MAX_CAPACITY_PER_SERVER_PER_SEC);
             }
             br.close();
         } catch (IOException e) {
