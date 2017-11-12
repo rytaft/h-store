@@ -106,7 +106,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
 
             while (!m_stop){
                 if (((m_next_moves != null && !m_next_moves.isEmpty()) || next_move != null)
-                        && (currentTime - m_next_moves_time < MAX_MOVES_STALENESS
+                        && (numPredictions * MONITORING_TIME >= currentTime
                                 || USE_ORACLE_PREDICTION || REACTIVE_ONLY)){
                     if (next_move == null) {
                         next_move = m_next_moves.pop();
