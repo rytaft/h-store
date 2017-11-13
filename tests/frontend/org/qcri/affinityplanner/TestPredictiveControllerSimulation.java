@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class TestPredictiveControllerSimulation extends BaseTestCase {
     private org.voltdb.client.Client m_client;
     private ReconfigurationPredictor m_planner;
+    private ReconfigurationPredictor m_tester;
     private LinkedList<SquallMove> m_next_moves;
     private ParallelMigration m_migration;
     private long m_next_moves_time = 0;
@@ -88,6 +89,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         
         m_migration = new ParallelMigration(PARTITIONS_PER_SITE, DB_MIGRATION_TIME);
         m_planner = new ReconfigurationPredictor(MAX_CAPACITY_PER_SERVER, m_migration);
+        m_tester = new ReconfigurationPredictor(MAX_CAPACITY_PER_SERVER_PER_SEC, m_migration);
 
     }
 
@@ -147,7 +149,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     record("Simulating reconfiguration lasting " + duration + " ms");
                     currentTime += duration;
                     for (int i = 1; i <= duration/1000; ++i) {
-                        m_eff_cap.add((long) m_planner.effectiveCapacity(i, duration/1000, activeSites, next_move.nodes));
+                        m_eff_cap.add((long) m_tester.effectiveCapacity(i, duration/1000, activeSites, next_move.nodes));
                     }
                     
                     activeSites = next_move.nodes;
