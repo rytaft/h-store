@@ -27,9 +27,9 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     private ReconfigurationPredictor m_tester;
     private LinkedList<SquallMove> m_next_moves;
     private ParallelMigration m_migration;
-    private long m_next_moves_time = 0;
     private boolean m_stop = false;
     private ArrayList<Long> m_eff_cap;
+    private long m_cost = 0;
 
     private static int PARTITIONS_PER_SITE = 6;
     private static int NUM_SITES = 100;
@@ -83,6 +83,10 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     private ArrayList<Long> getEffCap() {
         return this.m_eff_cap;
     }
+    
+    private long getCost() {
+        return this.m_cost;
+    }
 
     public TestPredictiveControllerSimulation() {
         m_client = ClientFactory.createClient();
@@ -90,6 +94,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         m_historyNLoads = new ConcurrentLinkedQueue<>();
         m_predictedLoad = new ArrayList<>();
         m_eff_cap = new ArrayList<>();
+        m_cost = 0;
         
         m_migration = new ParallelMigration(PARTITIONS_PER_SITE, DB_MIGRATION_TIME);
         m_planner = new ReconfigurationPredictor(MAX_CAPACITY_PER_SERVER, m_migration);
@@ -105,6 +110,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         Long scalein_requested_time = null;
         long currentTime = 0;
         int numPredictions = 0;
+        m_cost = 0;
 
         try {
             File file = new File(PREDICTION_FILE);
@@ -146,6 +152,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     scalein_requested_time = null;
                     while (m_eff_cap.size() <= currentTime/1000) {
                         m_eff_cap.add(activeSites * MAX_CAPACITY_PER_SERVER_PER_SEC);
+                        m_cost += activeSites;
                     }                   
                         
                     int duration = m_migration.reconfigTime(activeSites, next_move.nodes) * MONITORING_TIME;
@@ -155,6 +162,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     for (int i = 1; i <= duration/1000; ++i) {
                         m_eff_cap.add((long) m_tester.effectiveCapacity(i, duration/1000, activeSites, next_move.nodes));
                     }
+                    m_cost += m_migration.moveCost(duration/MONITORING_TIME, activeSites, next_move.nodes) * MONITORING_TIME/1000;
                     
                     activeSites = next_move.nodes;
                     next_move = null;      
@@ -196,7 +204,6 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                         m_next_moves = convert(moves, activeSites, currentTime);
                     }
                     next_move = null;
-                    m_next_moves_time = currentTime;
 
                     oraclePredictionComplete = true;
                 }
@@ -271,7 +278,6 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                                 }
                                 next_move = null;
                                 if (m_next_moves.size() == 0) scalein_requested_time = null;
-                                m_next_moves_time = currentTime;
                                 
                             } else {
                                 m_stop = true;
@@ -291,6 +297,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
             }
             while (m_eff_cap.size() <= currentTime/1000) {
                 m_eff_cap.add(activeSites * MAX_CAPACITY_PER_SERVER_PER_SEC);
+                m_cost += activeSites;
             }
             br.close();
         } catch (IOException e) {
@@ -483,6 +490,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         //c.writeEffCap();
         System.out.println("Results for prediction inflation: " + inflation);
         System.out.println("Seconds above capacity: " + compareToActualLoad(c.getEffCap()));
+        System.out.println("Avg servers: " + ((double)c.getCost())/c.getEffCap().size());
     }
     
     public void testBestMovesRealLoadSimulation() throws Exception {
