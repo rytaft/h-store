@@ -419,6 +419,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     effCapSum += effCap.get(i+j);
                 }
                 bw.write(actualLoadSum/j + "," + effCapSum/j);
+                bw.newLine();
             }
 
             bw.close();
