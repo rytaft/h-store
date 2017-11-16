@@ -7,8 +7,10 @@ import org.voltdb.client.*;
 import org.qcri.affinityplanner.ReconfigurationPredictor.Move;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -58,6 +60,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     //String PREDICTION_FILE = "/data/rytaft/predpoints_forecastwindow_60_train_once.txt";
     String PREDICTION_FILE = "/data/rytaft/predpoints_forecastwindow_60_retrain1month.txt";
     String ACTUAL_LOAD_FILE = "/data/rytaft/actual_load.txt";
+    String EFF_CAP_FILE = "eff_cap.txt";
 
     private class SquallMove {
         protected long start_time;
@@ -373,6 +376,26 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         return sw.toString();
     }
     
+    private void writeEffCap() {
+        try {
+            File f = new File(EFF_CAP_FILE);
+            FileWriter fw = new FileWriter(f);
+            BufferedWriter bw = new BufferedWriter(fw);
+
+            for (Long l : this.getEffCap()) {
+                bw.write(l.toString());
+                bw.newLine();
+            }
+
+            bw.close();
+        } catch (IOException e) {
+            record("Unable to write effective capacity");
+            record(stackTraceToString(e));
+            //System.exit(1);
+        }
+        
+    }
+    
     private int compareToActualLoad(ArrayList<Long> effCap) {
         ArrayList<Long> actualLoad = new ArrayList<>();
         try {
@@ -418,7 +441,8 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
             return;
         }
         
-        System.out.println("Effective capacity: " + c.getEffCap());
+        //System.out.println("Effective capacity: " + c.getEffCap());
+        c.writeEffCap();
         System.out.println("Seconds above capacity: " + compareToActualLoad(c.getEffCap()));
     }
 
