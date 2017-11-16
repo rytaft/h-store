@@ -301,7 +301,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     }
     
     private static void record(String s){
-        System.out.println(s);
+        //System.out.println(s);
         FileUtil.appendEventToFile(s);
     }
     
@@ -459,14 +459,15 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
             }
         }
         
-        writeHourlyComparison(actualLoad, effCap);
-        System.out.println("Seconds above cap list: " + secondsAboveCapList.toString());
+        //writeHourlyComparison(actualLoad, effCap);
+        //System.out.println("Seconds above cap list: " + secondsAboveCapList.toString());
         System.out.println("Actual load size: " + actualLoad.size());
         System.out.println("Effective capacity size: " + effCap.size());
         return secondsAboveCap;
     }
     
-    public void testBestMovesRealLoadSimulation() throws Exception {
+    public void testImpl(double inflation) {
+        PREDICTION_INFLATION = 1 + inflation;
         record("Running the predictive controller simulation");
 
         TestPredictiveControllerSimulation c = new TestPredictiveControllerSimulation();
@@ -479,8 +480,18 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         }
         
         //System.out.println("Effective capacity: " + c.getEffCap());
-        c.writeEffCap();
+        //c.writeEffCap();
+        System.out.println("Results for prediction inflation: " + inflation);
         System.out.println("Seconds above capacity: " + compareToActualLoad(c.getEffCap()));
+    }
+    
+    public void testBestMovesRealLoadSimulation() throws Exception {
+        testImpl(0);
+        testImpl(0.05);
+        testImpl(0.10);
+        testImpl(0.15);
+        testImpl(0.20);
+        testImpl(0.25);
     }
 
 
