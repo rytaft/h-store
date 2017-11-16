@@ -61,6 +61,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     String PREDICTION_FILE = "/data/rytaft/predpoints_forecastwindow_60_retrain1month.txt";
     String ACTUAL_LOAD_FILE = "/data/rytaft/actual_load.txt";
     String EFF_CAP_FILE = "eff_cap.txt";
+    String HOURLY_COMPARISON_FILE = "hourly_comparison.txt";
 
     private class SquallMove {
         protected long start_time;
@@ -396,6 +397,38 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         
     }
     
+    private void writeHourlyComparison(ArrayList<Long> actualLoad, ArrayList<Long> effCap) {
+        try {
+            File f = new File(HOURLY_COMPARISON_FILE);
+            FileWriter fw = new FileWriter(f);
+            BufferedWriter bw = new BufferedWriter(fw);
+
+            for (Long l : this.getEffCap()) {
+                bw.write(l.toString());
+                bw.newLine();
+            }
+            
+            int window = 360;
+            bw.write("actualLoad,effCap");
+            bw.newLine();
+            for (int i = 0; i < actualLoad.size() && i < effCap.size(); i += window) {
+                int actualLoadSum = 0, effCapSum = 0;
+                int j = 0;
+                for (; j < window && (i+j) < actualLoad.size() && (i+j) < effCap.size(); ++j) {
+                    actualLoadSum += actualLoad.get(i+j);
+                    effCapSum += effCap.get(i+j);
+                }
+                bw.write(actualLoadSum/j + "," + effCapSum/j);
+            }
+
+            bw.close();
+        } catch (IOException e) {
+            record("Unable to write effective capacity");
+            record(stackTraceToString(e));
+            //System.exit(1);
+        }
+    }
+    
     private int compareToActualLoad(ArrayList<Long> effCap) {
         ArrayList<Long> actualLoad = new ArrayList<>();
         try {
@@ -416,16 +449,19 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
             //System.exit(1);
         }
         
-        int secondsAboveCap = 0;
-        System.out.println("Actual load size: " + actualLoad.size());
-        System.out.println("Effective capacity size: " + effCap.size());
-        
+        int secondsAboveCap = 0;       
+        ArrayList<Long> secondsAboveCapList = new ArrayList<>();
         for(int i = 0; i < actualLoad.size() && i < effCap.size(); ++i) {
             if (actualLoad.get(i) > effCap.get(i)) {
                 secondsAboveCap++;
+                secondsAboveCapList.add((long) i);
             }
         }
         
+        writeHourlyComparison(actualLoad, effCap);
+        System.out.println("Seconds above cap list: " + secondsAboveCapList.toString());
+        System.out.println("Actual load size: " + actualLoad.size());
+        System.out.println("Effective capacity size: " + effCap.size());
         return secondsAboveCap;
     }
     
