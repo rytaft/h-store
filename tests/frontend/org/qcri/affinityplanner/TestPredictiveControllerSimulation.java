@@ -259,10 +259,11 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                             }
                             record("currentTime: " + currentTime + ", numPredictions: " + numPredictions);
                             if (line != null) {
+                                double perturbation = 1 + (Math.random() * 2 - 1) * m_prediction_perturbation;
                                 m_predictedLoad.clear();
                                 String[] predictedLoadStr = line.split(" ");
                                 for (String s : predictedLoadStr) {
-                                    m_predictedLoad.add((long) (Double.parseDouble(s) * m_prediction_inflation));
+                                    m_predictedLoad.add((long) (Double.parseDouble(s) * m_prediction_inflation * perturbation));
                                 }
                                 
                                 //System.out.println(">> Predictions: ");
