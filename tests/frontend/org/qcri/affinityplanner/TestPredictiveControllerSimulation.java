@@ -35,7 +35,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     private double m_prediction_perturbation = 0;
 
     private static int PARTITIONS_PER_SITE = 6;
-    private static int NUM_SITES = 100;
+    private static int NUM_SITES = 200;
 
     // Prediction variables
     private ConcurrentLinkedQueue<Long> m_historyNLoads;
@@ -174,7 +174,8 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                 else if (m_use_oracle_prediction) {
                     if (oraclePredictionComplete) {
                         record("Oracle Prediction Complete");
-                        System.exit(0);
+                        m_stop = true;
+                        break;
                     }
 
                     ArrayList<Long> predictedLoad = new ArrayList<>();
