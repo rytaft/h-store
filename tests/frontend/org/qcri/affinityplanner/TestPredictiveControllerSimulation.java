@@ -506,24 +506,38 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         System.out.println("Avg servers: " + ((double)c.getCost())/c.getEffCap().size());
     }
     
-    public void testBestMovesRealLoadSimulation() throws Exception {
+    public void testRealLoadSimulationTrainOnce() throws Exception {
         String predTrainOnce = "/data/rytaft/predpoints_forecastwindow_60_train_once.txt";
-        String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month.txt";
-        String predOracle = "/data/rytaft/predpoints_forecastwindow_60_oracle.txt";
         testImpl(false, 0, 0, predTrainOnce);
         testImpl(false, 0.05, 0, predTrainOnce);
         testImpl(false, 0.10, 0, predTrainOnce);
         testImpl(false, 0.15, 0, predTrainOnce);
         testImpl(false, 0.20, 0, predTrainOnce);
         testImpl(false, 0.25, 0, predTrainOnce);
-        
+    }
+
+    public void testRealLoadSimulationRetrain1month() throws Exception {
+        String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month.txt";
         testImpl(false, 0, 0, predRetrain1month);
         testImpl(false, 0.05, 0, predRetrain1month);
         testImpl(false, 0.10, 0, predRetrain1month);
         testImpl(false, 0.15, 0, predRetrain1month);
         testImpl(false, 0.20, 0, predRetrain1month);
         testImpl(false, 0.25, 0, predRetrain1month);
-        
+    }
+
+    public void testRealLoadSimulationOracle() throws Exception {
+        String predOracle = "/data/rytaft/predpoints_forecastwindow_60_oracle.txt";
+        testImpl(false, 0, 0, predOracle);
+        testImpl(false, 0.05, 0, predOracle);
+        testImpl(false, 0.10, 0, predOracle);
+        testImpl(false, 0.15, 0, predOracle);
+        testImpl(false, 0.20, 0, predOracle);
+        testImpl(false, 0.25, 0, predOracle);
+    }
+    
+    public void testRealLoadSimulationOraclePerturbation() throws Exception {
+        String predOracle = "/data/rytaft/predpoints_forecastwindow_60_oracle.txt";
         testImpl(false, 0, 0, predOracle);
         testImpl(false, 0, 0.05, predOracle);
         testImpl(false, 0, 0.10, predOracle);
@@ -537,7 +551,6 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         testImpl(false, 0, 0.50, predOracle);
         testImpl(false, 0, 0.55, predOracle);
     }
-
 
 
 }
