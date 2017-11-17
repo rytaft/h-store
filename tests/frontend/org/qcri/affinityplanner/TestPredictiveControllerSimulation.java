@@ -88,16 +88,13 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         return this.m_cost;
     }
 
-    public TestPredictiveControllerSimulation(boolean useOraclePrediction, double predictionInflation, double predictionPerturbation) {
+    public TestPredictiveControllerSimulation() {
         m_client = ClientFactory.createClient();
         m_client.configureBlocking(false);
         m_historyNLoads = new ConcurrentLinkedQueue<>();
         m_predictedLoad = new ArrayList<>();
         m_eff_cap = new ArrayList<>();
         m_cost = 0;
-        m_use_oracle_prediction = useOraclePrediction;
-        m_prediction_inflation = 1 + predictionInflation;
-        m_prediction_perturbation = predictionPerturbation;
         
         m_migration = new ParallelMigration(PARTITIONS_PER_SITE, DB_MIGRATION_TIME);
         m_planner = new ReconfigurationPredictor(MAX_CAPACITY_PER_SERVER, m_migration);
@@ -105,7 +102,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
 
     }
 
-    private void runSimulation () throws Exception {
+    private void runSimulation (boolean useOraclePrediction, double predictionInflation, double predictionPerturbation) throws Exception {
 
         boolean oraclePredictionComplete = false;
         SquallMove next_move = null;
@@ -114,6 +111,10 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         long currentTime = 0;
         int numPredictions = 0;
         m_cost = 0;
+        m_use_oracle_prediction = useOraclePrediction;
+        m_prediction_inflation = 1 + predictionInflation;
+        m_prediction_perturbation = predictionPerturbation;
+
 
         try {
             File file = new File(PREDICTION_FILE);
@@ -480,10 +481,9 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     public void testImpl(boolean useOraclePrediction, double predictionInflation, double predictionPerturbation) {
         record("Running the predictive controller simulation");
 
-        TestPredictiveControllerSimulation c = new TestPredictiveControllerSimulation(
-                useOraclePrediction, predictionInflation, predictionPerturbation);
+        TestPredictiveControllerSimulation c = new TestPredictiveControllerSimulation();
         try {
-            c.runSimulation();
+            c.runSimulation(useOraclePrediction, predictionInflation, predictionPerturbation);
         } catch (Exception e) {
             e.printStackTrace();
             record("Not good");
