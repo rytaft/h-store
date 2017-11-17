@@ -30,6 +30,9 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     private boolean m_stop = false;
     private ArrayList<Long> m_eff_cap;
     private long m_cost = 0;
+    private boolean m_use_oracle_prediction = false;
+    private double m_prediction_inflation = 1;
+    private double m_prediction_perturbation = 0;
 
     private static int PARTITIONS_PER_SITE = 6;
     private static int NUM_SITES = 100;
@@ -47,12 +50,9 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     //public static long MAX_CAPACITY_PER_SERVER = (long) Math.ceil(23000 * FUDGE_FACTOR * MONITORING_TIME/1000.0); // Q=26000 txns/s
     private static int DB_MIGRATION_TIME = (int) Math.ceil(4646 * 1000.0/MONITORING_TIME); // D=4224 seconds + 10% buffer
     //public static int DB_MIGRATION_TIME = (int) Math.ceil(1000 * 1000.0/MONITORING_TIME); // D=908 seconds + 10% buffer
-    private static int MAX_MOVES_STALENESS = 30000; // time in milliseconds before moves are considered invalid
     private static int POLL_TIME = 1000;
-    private static double PREDICTION_INFLATION = 1.15; // inflate predictions by 15%
 
-    private static String ORACLE_PREDICTION_FILE = "/data/rytaft/oracle_prediction_2016_07_01.txt";
-    private static boolean USE_ORACLE_PREDICTION = false;
+    private static String ORACLE_PREDICTION_FILE = "/data/rytaft/actual_load_5min.txt";
     private static boolean REACTIVE_ONLY = false;
     private static boolean REMOVE_TINY_RECONFS = true;
     private static long SCALE_IN_WAIT = 3 * MONITORING_TIME;
@@ -88,13 +88,16 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         return this.m_cost;
     }
 
-    public TestPredictiveControllerSimulation() {
+    public TestPredictiveControllerSimulation(boolean useOraclePrediction, double predictionInflation, double predictionPerturbation) {
         m_client = ClientFactory.createClient();
         m_client.configureBlocking(false);
         m_historyNLoads = new ConcurrentLinkedQueue<>();
         m_predictedLoad = new ArrayList<>();
         m_eff_cap = new ArrayList<>();
         m_cost = 0;
+        m_use_oracle_prediction = useOraclePrediction;
+        m_prediction_inflation = 1 + predictionInflation;
+        m_prediction_perturbation = predictionPerturbation;
         
         m_migration = new ParallelMigration(PARTITIONS_PER_SITE, DB_MIGRATION_TIME);
         m_planner = new ReconfigurationPredictor(MAX_CAPACITY_PER_SERVER, m_migration);
@@ -120,7 +123,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
             while (!m_stop){
                 if (((m_next_moves != null && !m_next_moves.isEmpty()) || next_move != null)
                         && (numPredictions * MONITORING_TIME >= currentTime
-                                || USE_ORACLE_PREDICTION || REACTIVE_ONLY)){
+                                || m_use_oracle_prediction || REACTIVE_ONLY)){
                     if (next_move == null) {
                         next_move = m_next_moves.pop();
                     }
@@ -167,7 +170,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     activeSites = next_move.nodes;
                     next_move = null;      
                 }
-                else if (USE_ORACLE_PREDICTION) {
+                else if (m_use_oracle_prediction) {
                     if (oraclePredictionComplete) {
                         record("Oracle Prediction Complete");
                         System.exit(0);
@@ -181,7 +184,8 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
 
                         String line = obr.readLine();
                         while (line != null) {
-                            predictedLoad.add((long) (Long.parseLong(line) * PREDICTION_INFLATION));
+                            double perturbation = 1 + (Math.random() * 2 - 1) * m_prediction_perturbation;
+                            predictedLoad.add((long) (Long.parseLong(line) * m_prediction_inflation * perturbation));
                             line = obr.readLine();
                         } 
 
@@ -215,9 +219,9 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     long load2 = 0;
                     long load3 = 0;
 
-                    if(historyNLoads.length > 0) load1 = (long) (historyNLoads[historyNLoads.length-1] * PREDICTION_INFLATION);
-                    if(historyNLoads.length > 1) load2 = (long) (historyNLoads[historyNLoads.length-2] * PREDICTION_INFLATION);
-                    if(historyNLoads.length > 2) load3 = (long) (historyNLoads[historyNLoads.length-3] * PREDICTION_INFLATION);
+                    if(historyNLoads.length > 0) load1 = (long) (historyNLoads[historyNLoads.length-1] * m_prediction_inflation);
+                    if(historyNLoads.length > 1) load2 = (long) (historyNLoads[historyNLoads.length-2] * m_prediction_inflation);
+                    if(historyNLoads.length > 2) load3 = (long) (historyNLoads[historyNLoads.length-3] * m_prediction_inflation);
 
                     if (load1 == 0 && load2 == 0 && load3 == 0) continue;
 
@@ -254,7 +258,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                                 m_predictedLoad.clear();
                                 String[] predictedLoadStr = line.split(" ");
                                 for (String s : predictedLoadStr) {
-                                    m_predictedLoad.add((long) (Double.parseDouble(s) * PREDICTION_INFLATION));
+                                    m_predictedLoad.add((long) (Double.parseDouble(s) * m_prediction_inflation));
                                 }
                                 
                                 //System.out.println(">> Predictions: ");
@@ -473,11 +477,11 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         return secondsAboveCap;
     }
     
-    public void testImpl(double inflation) {
-        PREDICTION_INFLATION = 1 + inflation;
+    public void testImpl(boolean useOraclePrediction, double predictionInflation, double predictionPerturbation) {
         record("Running the predictive controller simulation");
 
-        TestPredictiveControllerSimulation c = new TestPredictiveControllerSimulation();
+        TestPredictiveControllerSimulation c = new TestPredictiveControllerSimulation(
+                useOraclePrediction, predictionInflation, predictionPerturbation);
         try {
             c.runSimulation();
         } catch (Exception e) {
@@ -488,18 +492,35 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         
         //System.out.println("Effective capacity: " + c.getEffCap());
         //c.writeEffCap();
-        System.out.println("Results for prediction inflation: " + inflation);
+        System.out.println("##########################################################");     
+        System.out.println("Showing Results for:");
+        System.out.println("    use oracle prediction: " + useOraclePrediction);
+        System.out.println("    prediction inflation: " + predictionInflation);
+        System.out.println("    prediction perturbation: " + predictionPerturbation);        
         System.out.println("Seconds above capacity: " + compareToActualLoad(c.getEffCap()));
         System.out.println("Avg servers: " + ((double)c.getCost())/c.getEffCap().size());
     }
     
     public void testBestMovesRealLoadSimulation() throws Exception {
-        testImpl(0);
-        testImpl(0.05);
-        testImpl(0.10);
-        testImpl(0.15);
-        testImpl(0.20);
-        testImpl(0.25);
+        testImpl(false, 0, 0);
+        testImpl(false, 0.05, 0);
+        testImpl(false, 0.10, 0);
+        testImpl(false, 0.15, 0);
+        testImpl(false, 0.20, 0);
+        testImpl(false, 0.25, 0);
+        
+        testImpl(true, 0, 0);
+        testImpl(true, 0, 0.05);
+        testImpl(true, 0, 0.10);
+        testImpl(true, 0, 0.15);
+        testImpl(true, 0, 0.20);
+        testImpl(true, 0, 0.25);
+        testImpl(true, 0, 0.30);
+        testImpl(true, 0, 0.35);
+        testImpl(true, 0, 0.40);
+        testImpl(true, 0, 0.45);
+        testImpl(true, 0, 0.50);
+        testImpl(true, 0, 0.55);
     }
 
 
