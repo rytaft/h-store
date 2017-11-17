@@ -262,8 +262,12 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                                 double perturbation = 1 + (Math.random() * 2 - 1) * m_prediction_perturbation;
                                 m_predictedLoad.clear();
                                 String[] predictedLoadStr = line.split(" ");
+                                boolean first = true;
                                 for (String s : predictedLoadStr) {
-                                    m_predictedLoad.add((long) (Double.parseDouble(s) * m_prediction_inflation * perturbation));
+                                    if (first)
+                                        first = false; // skip the first one since that was the load in the past
+                                    else
+                                        m_predictedLoad.add((long) (Double.parseDouble(s) * m_prediction_inflation * perturbation));
                                 }
                                 
                                 //System.out.println(">> Predictions: ");
@@ -537,6 +541,16 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         testImpl(false, 0.25, 0, predOracle);
     }
     
+    public void testRealLoadSimulationOracleNegative() throws Exception {
+        String predOracle = "/data/rytaft/predpoints_forecastwindow_60_oracle.txt";
+        testImpl(false, 0, 0, predOracle);
+        testImpl(false, -0.05, 0, predOracle);
+        testImpl(false, -0.10, 0, predOracle);
+        testImpl(false, -0.15, 0, predOracle);
+        testImpl(false, -0.20, 0, predOracle);
+        testImpl(false, -0.25, 0, predOracle);
+    }
+    
     public void testRealLoadSimulationOraclePerturbation() throws Exception {
         String predOracle = "/data/rytaft/predpoints_forecastwindow_60_oracle.txt";
         testImpl(false, 0, 0, predOracle);
@@ -545,12 +559,6 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         testImpl(false, 0, 0.15, predOracle);
         testImpl(false, 0, 0.20, predOracle);
         testImpl(false, 0, 0.25, predOracle);
-        testImpl(false, 0, 0.30, predOracle);
-        testImpl(false, 0, 0.35, predOracle);
-        testImpl(false, 0, 0.40, predOracle);
-        testImpl(false, 0, 0.45, predOracle);
-        testImpl(false, 0, 0.50, predOracle);
-        testImpl(false, 0, 0.55, predOracle);
     }
 
 
