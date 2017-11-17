@@ -33,6 +33,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     private boolean m_use_oracle_prediction = false;
     private double m_prediction_inflation = 1;
     private double m_prediction_perturbation = 0;
+    private String m_prediction_file;
 
     private static int PARTITIONS_PER_SITE = 6;
     private static int NUM_SITES = 200;
@@ -57,11 +58,11 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     private static boolean REMOVE_TINY_RECONFS = true;
     private static long SCALE_IN_WAIT = 3 * MONITORING_TIME;
 
-    //String PREDICTION_FILE = "/data/rytaft/predpoints_forecastwindow_60_train_once.txt";
-    String PREDICTION_FILE = "/data/rytaft/predpoints_forecastwindow_60_retrain1month.txt";
-    String ACTUAL_LOAD_FILE = "/data/rytaft/actual_load.txt";
-    String EFF_CAP_FILE = "eff_cap.txt";
-    String HOURLY_COMPARISON_FILE = "hourly_comparison.txt";
+    //private static String PREDICTION_FILE = "/data/rytaft/predpoints_forecastwindow_60_train_once.txt";
+    //private static String PREDICTION_FILE = "/data/rytaft/predpoints_forecastwindow_60_retrain1month.txt";
+    private static String ACTUAL_LOAD_FILE = "/data/rytaft/actual_load.txt";
+    private static String EFF_CAP_FILE = "eff_cap.txt";
+    private static String HOURLY_COMPARISON_FILE = "hourly_comparison.txt";
 
     private class SquallMove {
         protected long start_time;
@@ -102,7 +103,8 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
 
     }
 
-    private void runSimulation (boolean useOraclePrediction, double predictionInflation, double predictionPerturbation) throws Exception {
+    private void runSimulation (boolean useOraclePrediction, double predictionInflation, 
+            double predictionPerturbation, String predictionFile) throws Exception {
 
         boolean oraclePredictionComplete = false;
         SquallMove next_move = null;
@@ -114,10 +116,10 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         m_use_oracle_prediction = useOraclePrediction;
         m_prediction_inflation = 1 + predictionInflation;
         m_prediction_perturbation = predictionPerturbation;
-
+        m_prediction_file = predictionFile;
 
         try {
-            File file = new File(PREDICTION_FILE);
+            File file = new File(m_prediction_file);
             FileReader fr = new FileReader(file);
             BufferedReader br = new BufferedReader(fr);
 
@@ -479,12 +481,13 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         return secondsAboveCap;
     }
     
-    public void testImpl(boolean useOraclePrediction, double predictionInflation, double predictionPerturbation) {
+    public void testImpl(boolean useOraclePrediction, double predictionInflation, 
+            double predictionPerturbation, String predictionFile) {
         record("Running the predictive controller simulation");
 
         TestPredictiveControllerSimulation c = new TestPredictiveControllerSimulation();
         try {
-            c.runSimulation(useOraclePrediction, predictionInflation, predictionPerturbation);
+            c.runSimulation(useOraclePrediction, predictionInflation, predictionPerturbation, predictionFile);
         } catch (Exception e) {
             e.printStackTrace();
             record("Not good");
@@ -498,30 +501,41 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         System.out.println("    use oracle prediction: " + useOraclePrediction);
         System.out.println("    prediction inflation: " + predictionInflation);
         System.out.println("    prediction perturbation: " + predictionPerturbation);        
+        System.out.println("    prediction file: " + predictionFile);        
         System.out.println("Seconds above capacity: " + compareToActualLoad(c.getEffCap()));
         System.out.println("Avg servers: " + ((double)c.getCost())/c.getEffCap().size());
     }
     
     public void testBestMovesRealLoadSimulation() throws Exception {
-        testImpl(false, 0, 0);
-        testImpl(false, 0.05, 0);
-        testImpl(false, 0.10, 0);
-        testImpl(false, 0.15, 0);
-        testImpl(false, 0.20, 0);
-        testImpl(false, 0.25, 0);
+        String predTrainOnce = "/data/rytaft/predpoints_forecastwindow_60_train_once.txt";
+        String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month.txt";
+        String predOracle = "/data/rytaft/predpoints_forecastwindow_60_oracle.txt";
+        testImpl(false, 0, 0, predTrainOnce);
+        testImpl(false, 0.05, 0, predTrainOnce);
+        testImpl(false, 0.10, 0, predTrainOnce);
+        testImpl(false, 0.15, 0, predTrainOnce);
+        testImpl(false, 0.20, 0, predTrainOnce);
+        testImpl(false, 0.25, 0, predTrainOnce);
         
-        testImpl(true, 0, 0);
-        testImpl(true, 0, 0.05);
-        testImpl(true, 0, 0.10);
-        testImpl(true, 0, 0.15);
-        testImpl(true, 0, 0.20);
-        testImpl(true, 0, 0.25);
-        testImpl(true, 0, 0.30);
-        testImpl(true, 0, 0.35);
-        testImpl(true, 0, 0.40);
-        testImpl(true, 0, 0.45);
-        testImpl(true, 0, 0.50);
-        testImpl(true, 0, 0.55);
+        testImpl(false, 0, 0, predRetrain1month);
+        testImpl(false, 0.05, 0, predRetrain1month);
+        testImpl(false, 0.10, 0, predRetrain1month);
+        testImpl(false, 0.15, 0, predRetrain1month);
+        testImpl(false, 0.20, 0, predRetrain1month);
+        testImpl(false, 0.25, 0, predRetrain1month);
+        
+        testImpl(false, 0, 0, predOracle);
+        testImpl(false, 0, 0.05, predOracle);
+        testImpl(false, 0, 0.10, predOracle);
+        testImpl(false, 0, 0.15, predOracle);
+        testImpl(false, 0, 0.20, predOracle);
+        testImpl(false, 0, 0.25, predOracle);
+        testImpl(false, 0, 0.30, predOracle);
+        testImpl(false, 0, 0.35, predOracle);
+        testImpl(false, 0, 0.40, predOracle);
+        testImpl(false, 0, 0.45, predOracle);
+        testImpl(false, 0, 0.50, predOracle);
+        testImpl(false, 0, 0.55, predOracle);
     }
 
 
