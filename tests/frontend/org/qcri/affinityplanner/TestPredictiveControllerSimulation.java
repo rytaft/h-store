@@ -449,7 +449,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         }
     }
     
-    private int compareToActualLoad() {
+    private int compareToActualLoad(String debug) {
         ArrayList<Long> effCap = getEffCap();
         ArrayList<Long> actualLoad = new ArrayList<>();
         try {
@@ -481,22 +481,24 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         
         //writeHourlyComparison(actualLoad, effCap);
         //System.out.println("Seconds above cap list: " + secondsAboveCapList.toString());
+        double percentAboveCap = ((double) secondsAboveCap * 100)/(Math.min(actualLoad.size(), effCap.size()));
+        double avgServers = ((double) getCost())/effCap.size();
         System.out.println("Actual load size: " + actualLoad.size());
         System.out.println("Effective capacity size: " + effCap.size());
         System.out.println("Seconds above capacity: " + secondsAboveCap);
-        System.out.println("Percentage above capacity: " + 
-                ((double) secondsAboveCap * 100)/(Math.min(actualLoad.size(), effCap.size())));
-        System.out.println("Avg servers: " + ((double) getCost())/effCap.size());
+        System.out.println("Percentage above capacity: " + percentAboveCap);
+        System.out.println("Avg servers: " + avgServers);
+        System.out.println(debug + "," + percentAboveCap + "," + avgServers);
         return secondsAboveCap;
     }
     
     private void testImpl(boolean useOraclePrediction, double predictionInflation, 
-            double predictionPerturbation, String predictionFile) {
-        testImpl(useOraclePrediction, predictionInflation, predictionPerturbation, predictionFile, 9);
+            double predictionPerturbation, String predictionFile, String config) {
+        testImpl(useOraclePrediction, predictionInflation, predictionPerturbation, predictionFile, 9, config);
     }
     
     private void testImpl(boolean useOraclePrediction, double predictionInflation, 
-            double predictionPerturbation, String predictionFile, int activeSites) {
+            double predictionPerturbation, String predictionFile, int activeSites, String config) {
         record("Running the predictive controller simulation");
 
         TestPredictiveControllerSimulation c = new TestPredictiveControllerSimulation();
@@ -516,68 +518,114 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         System.out.println("    prediction inflation: " + predictionInflation);
         System.out.println("    prediction perturbation: " + predictionPerturbation);        
         System.out.println("    prediction file: " + predictionFile);
-        c.compareToActualLoad();
+        System.out.println("    config: " + config);
+        c.compareToActualLoad("PLOT: " + config + "," + predictionInflation);
     }
     
     public void testSimpleStrategy() throws Exception {
         String simple1 = "/data/rytaft/simple1.txt";
-        testImpl(true, 0.15, 0, simple1, 11);
-        testImpl(true, 0.50, 0, simple1, 15);
-        testImpl(true, 1, 0, simple1, 19);
-        testImpl(true, 2, 0, simple1, 29);
-        testImpl(true, 3, 0, simple1, 39);
-        testImpl(true, 5, 0, simple1, 59);
+        String config = "Simple";
+        testImpl(true, -0.25, 0, simple1, config);
+        testImpl(true, -0.20, 0, simple1, config);
+        testImpl(true, -0.15, 0, simple1, config);
+        testImpl(true, -0.10, 0, simple1, config);
+        testImpl(true, -0.05, 0, simple1, config);
+        testImpl(true, 0, 0, simple1, 9, config);
+        testImpl(true, 0.05, 0, simple1, 10, config);
+        testImpl(true, 0.10, 0, simple1, 10, config);
+        testImpl(true, 0.15, 0, simple1, 11, config);
+        testImpl(true, 0.20, 0, simple1, 11, config);
+        testImpl(true, 0.25, 0, simple1, 11, config);
+        testImpl(true, 0.50, 0, simple1, 15, config);
+        testImpl(true, 0.50, 0, simple1, 15, config);
+        testImpl(true, 1, 0, simple1, 19, config);
+        testImpl(true, 2, 0, simple1, 29, config);
+        testImpl(true, 3, 0, simple1, 39, config);
+        testImpl(true, 5, 0, simple1, 59, config);
     }
 
-    public void testRealLoadSimulationTrainOnce() throws Exception {
-        String predTrainOnce = "/data/rytaft/predpoints_forecastwindow_60_train_once.txt";
-        testImpl(false, 0, 0, predTrainOnce);
-        testImpl(false, 0.05, 0, predTrainOnce);
-        testImpl(false, 0.10, 0, predTrainOnce);
-        testImpl(false, 0.15, 0, predTrainOnce);
-        testImpl(false, 0.20, 0, predTrainOnce);
-        testImpl(false, 0.25, 0, predTrainOnce);
+    public void testOptimal() throws Exception {
+        String optimal = "/data/rytaft/actual_load_5min.txt";
+        String config = "Optimal";
+        testImpl(true, -0.25, 0, optimal, config);
+        testImpl(true, -0.20, 0, optimal, config);
+        testImpl(true, -0.15, 0, optimal, config);
+        testImpl(true, -0.10, 0, optimal, config);
+        testImpl(true, -0.05, 0, optimal, config);
+        testImpl(true, 0, 0, optimal, 9, config);
+        testImpl(true, 0.05, 0, optimal, 10, config);
+        testImpl(true, 0.10, 0, optimal, 10, config);
+        testImpl(true, 0.15, 0, optimal, 11, config);
+        testImpl(true, 0.20, 0, optimal, 11, config);
+        testImpl(true, 0.25, 0, optimal, 11, config);
+        testImpl(true, 0.50, 0, optimal, 15, config);
+        testImpl(true, 1, 0, optimal, 19, config);
+        testImpl(true, 2, 0, optimal, 29, config);
+        testImpl(true, 3, 0, optimal, 39, config);
+        testImpl(true, 5, 0, optimal, 59, config);
     }
+    
+//    public void testRealLoadSimulationTrainOnce() throws Exception {
+//        String predTrainOnce = "/data/rytaft/predpoints_forecastwindow_60_train_once.txt";
+//        testImpl(false, 0, 0, predTrainOnce, config);
+//        testImpl(false, 0.05, 0, predTrainOnce, config);
+//        testImpl(false, 0.10, 0, predTrainOnce, config);
+//        testImpl(false, 0.15, 0, predTrainOnce, config);
+//        testImpl(false, 0.20, 0, predTrainOnce, config);
+//        testImpl(false, 0.25, 0, predTrainOnce, config);
+//    }
 
     public void testRealLoadSimulationRetrain1month() throws Exception {
         String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsPrevLoad.txt";
-        testImpl(false, 0, 0, predRetrain1month);
-        testImpl(false, 0.05, 0, predRetrain1month);
-        testImpl(false, 0.10, 0, predRetrain1month);
-        testImpl(false, 0.15, 0, predRetrain1month);
-        testImpl(false, 0.20, 0, predRetrain1month);
-        testImpl(false, 0.25, 0, predRetrain1month);
+        String config = "P-Store SPAR";
+        testImpl(false, -0.25, 0, predRetrain1month, config);
+        testImpl(false, -0.20, 0, predRetrain1month, config);
+        testImpl(false, -0.15, 0, predRetrain1month, config);
+        testImpl(false, -0.10, 0, predRetrain1month, config);
+        testImpl(false, -0.05, 0, predRetrain1month, config);
+        testImpl(false, 0, 0, predRetrain1month, config);
+        testImpl(false, 0.05, 0, predRetrain1month, config);
+        testImpl(false, 0.10, 0, predRetrain1month, config);
+        testImpl(false, 0.15, 0, predRetrain1month, config);
+        testImpl(false, 0.20, 0, predRetrain1month, config);
+        testImpl(false, 0.25, 0, predRetrain1month, config);
+        testImpl(false, 0.50, 0, predRetrain1month, 15, config);
+        testImpl(false, 1, 0, predRetrain1month, 19, config);
+        testImpl(false, 2, 0, predRetrain1month, 29, config);
+        testImpl(false, 3, 0, predRetrain1month, 39, config);
+        testImpl(false, 5, 0, predRetrain1month, 59, config);
     }
 
     public void testRealLoadSimulationOracle() throws Exception {
         String predOracle = "/data/rytaft/predpoints_forecastwindow_60_oracle.txt";
-        testImpl(false, 0, 0, predOracle);
-        testImpl(false, 0.05, 0, predOracle);
-        testImpl(false, 0.10, 0, predOracle);
-        testImpl(false, 0.15, 0, predOracle);
-        testImpl(false, 0.20, 0, predOracle);
-        testImpl(false, 0.25, 0, predOracle);
+        String config = "P-Store Oracle";
+        testImpl(false, -0.25, 0, predOracle, config);
+        testImpl(false, -0.20, 0, predOracle, config);
+        testImpl(false, -0.15, 0, predOracle, config);
+        testImpl(false, -0.10, 0, predOracle, config);
+        testImpl(false, -0.05, 0, predOracle, config);
+        testImpl(false, 0, 0, predOracle, config);
+        testImpl(false, 0.05, 0, predOracle, config);
+        testImpl(false, 0.10, 0, predOracle, config);
+        testImpl(false, 0.15, 0, predOracle, config);
+        testImpl(false, 0.20, 0, predOracle, config);
+        testImpl(false, 0.25, 0, predOracle, config);
+        testImpl(false, 0.50, 0, predOracle, 15, config);
+        testImpl(false, 1, 0, predOracle, 19, config);
+        testImpl(false, 2, 0, predOracle, 29, config);
+        testImpl(false, 3, 0, predOracle, 39, config);
+        testImpl(false, 5, 0, predOracle, 59, config);
     }
-    
-    public void testRealLoadSimulationOracleNegative() throws Exception {
-        String predOracle = "/data/rytaft/predpoints_forecastwindow_60_oracle.txt";
-        testImpl(false, 0, 0, predOracle);
-        testImpl(false, -0.05, 0, predOracle);
-        testImpl(false, -0.10, 0, predOracle);
-        testImpl(false, -0.15, 0, predOracle);
-        testImpl(false, -0.20, 0, predOracle);
-        testImpl(false, -0.25, 0, predOracle);
-    }
-    
-    public void testRealLoadSimulationOraclePerturbation() throws Exception {
-        String predOracle = "/data/rytaft/predpoints_forecastwindow_60_oracle.txt";
-        testImpl(false, 0, 0, predOracle);
-        testImpl(false, 0, 0.05, predOracle);
-        testImpl(false, 0, 0.10, predOracle);
-        testImpl(false, 0, 0.15, predOracle);
-        testImpl(false, 0, 0.20, predOracle);
-        testImpl(false, 0, 0.25, predOracle);
-    }
+        
+//    public void testRealLoadSimulationOraclePerturbation() throws Exception {
+//        String predOracle = "/data/rytaft/predpoints_forecastwindow_60_oracle.txt";
+//        testImpl(false, 0, 0, predOracle, config);
+//        testImpl(false, 0, 0.05, predOracle, config);
+//        testImpl(false, 0, 0.10, predOracle, config);
+//        testImpl(false, 0, 0.15, predOracle, config);
+//        testImpl(false, 0, 0.20, predOracle, config);
+//        testImpl(false, 0, 0.25, predOracle, config);
+//    }
     
 
 }
