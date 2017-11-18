@@ -434,7 +434,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
             FileWriter fw = new FileWriter(f);
             BufferedWriter bw = new BufferedWriter(fw);
 
-            int window = 360;
+            int window = 12;
             bw.write("actualLoad,effCap");
             bw.newLine();
             for (int i = 0; i < predictedLoad.size() && i < effCap.size(); i += window) {
