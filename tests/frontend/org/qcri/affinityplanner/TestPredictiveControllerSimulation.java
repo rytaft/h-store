@@ -201,6 +201,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
 
                     // launch planner and get the moves
                     ArrayList<Move> moves = m_planner.bestMoves(predictedLoad, activeSites);
+                    writeHourlyComparison2(predictedLoad, moves);
                     if(moves == null || moves.isEmpty()){
                         // reactive migration
                         record("Initiating reactive migration to " + m_planner.getMaxNodes() + " nodes");
@@ -416,17 +417,52 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         
     }
     
+    private void writeHourlyComparison2(ArrayList<Long> predictedLoad, ArrayList<Move> moves) {
+        try {
+            ArrayList<Long> effCap = new ArrayList<>();
+            int t = 0;
+            int nodes = 0;
+            for (Move m : moves) {
+                for (; t < m.time; ++t) {
+                    effCap.add(Math.max(m.nodes, nodes) * MAX_CAPACITY_PER_SERVER);
+                }
+                nodes = m.nodes;
+            }
+            System.out.println("Size of moves: " + effCap.size());
+            
+            File f = new File(HOURLY_COMPARISON_FILE);
+            FileWriter fw = new FileWriter(f);
+            BufferedWriter bw = new BufferedWriter(fw);
+
+            int window = 360;
+            bw.write("actualLoad,effCap");
+            bw.newLine();
+            for (int i = 0; i < predictedLoad.size() && i < effCap.size(); i += window) {
+                int actualLoadSum = 0, effCapSum = 0;
+                int j = 0;
+                for (; j < window && (i+j) < predictedLoad.size() && (i+j) < effCap.size(); ++j) {
+                    actualLoadSum += predictedLoad.get(i+j);
+                    effCapSum += effCap.get(i+j);
+                }
+                bw.write(actualLoadSum/j + "," + effCapSum/j);
+                bw.newLine();
+            }
+
+            bw.close();
+        } catch (IOException e) {
+            record("Unable to write effective capacity");
+            record(stackTraceToString(e));
+            //System.exit(1);
+        }
+    }
+
+    
     private void writeHourlyComparison(ArrayList<Long> actualLoad, ArrayList<Long> effCap) {
         try {
             File f = new File(HOURLY_COMPARISON_FILE);
             FileWriter fw = new FileWriter(f);
             BufferedWriter bw = new BufferedWriter(fw);
 
-            for (Long l : this.getEffCap()) {
-                bw.write(l.toString());
-                bw.newLine();
-            }
-            
             int window = 360;
             bw.write("actualLoad,effCap");
             bw.newLine();
