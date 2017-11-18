@@ -449,7 +449,8 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         }
     }
     
-    private int compareToActualLoad(ArrayList<Long> effCap) {
+    private int compareToActualLoad() {
+        ArrayList<Long> effCap = getEffCap();
         ArrayList<Long> actualLoad = new ArrayList<>();
         try {
             File f = new File(ACTUAL_LOAD_FILE);
@@ -482,6 +483,10 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         //System.out.println("Seconds above cap list: " + secondsAboveCapList.toString());
         System.out.println("Actual load size: " + actualLoad.size());
         System.out.println("Effective capacity size: " + effCap.size());
+        System.out.println("Seconds above capacity: " + secondsAboveCap);
+        System.out.println("Percentage above capacity: " + 
+                ((double) secondsAboveCap)/(Math.min(actualLoad.size(), effCap.size())));
+        System.out.println("Avg servers: " + ((double) getCost())/effCap.size());
         return secondsAboveCap;
     }
     
@@ -510,9 +515,8 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         System.out.println("    use oracle prediction: " + useOraclePrediction);
         System.out.println("    prediction inflation: " + predictionInflation);
         System.out.println("    prediction perturbation: " + predictionPerturbation);        
-        System.out.println("    prediction file: " + predictionFile);        
-        System.out.println("Seconds above capacity: " + compareToActualLoad(c.getEffCap()));
-        System.out.println("Avg servers: " + ((double)c.getCost())/c.getEffCap().size());
+        System.out.println("    prediction file: " + predictionFile);
+        c.compareToActualLoad();
     }
     
     public void testSimpleStrategy() throws Exception {
