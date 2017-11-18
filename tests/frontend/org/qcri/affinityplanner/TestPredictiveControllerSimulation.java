@@ -521,6 +521,8 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         testImpl(true, 0.50, 0, simple1, 15);
         testImpl(true, 1, 0, simple1, 19);
         testImpl(true, 2, 0, simple1, 29);
+        testImpl(true, 3, 0, simple1, 39);
+        testImpl(true, 5, 0, simple1, 59);
     }
 
     public void testRealLoadSimulationTrainOnce() throws Exception {
