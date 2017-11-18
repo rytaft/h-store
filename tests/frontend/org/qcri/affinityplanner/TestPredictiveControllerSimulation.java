@@ -485,7 +485,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         System.out.println("Effective capacity size: " + effCap.size());
         System.out.println("Seconds above capacity: " + secondsAboveCap);
         System.out.println("Percentage above capacity: " + 
-                ((double) secondsAboveCap)/(Math.min(actualLoad.size(), effCap.size())));
+                ((double) secondsAboveCap * 100)/(Math.min(actualLoad.size(), effCap.size())));
         System.out.println("Avg servers: " + ((double) getCost())/effCap.size());
         return secondsAboveCap;
     }
