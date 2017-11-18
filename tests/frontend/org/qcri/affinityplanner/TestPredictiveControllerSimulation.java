@@ -511,18 +511,28 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         System.out.println("Avg servers: " + ((double)c.getCost())/c.getEffCap().size());
     }
     
-    public void testRealLoadSimulationTrainOnce() throws Exception {
-        String predTrainOnce = "/data/rytaft/predpoints_forecastwindow_60_train_once.txt";
-        testImpl(false, 0, 0, predTrainOnce);
-        testImpl(false, 0.05, 0, predTrainOnce);
-        testImpl(false, 0.10, 0, predTrainOnce);
-        testImpl(false, 0.15, 0, predTrainOnce);
-        testImpl(false, 0.20, 0, predTrainOnce);
-        testImpl(false, 0.25, 0, predTrainOnce);
+//    public void testRealLoadSimulationTrainOnce() throws Exception {
+//        String predTrainOnce = "/data/rytaft/predpoints_forecastwindow_60_train_once.txt";
+//        testImpl(false, 0, 0, predTrainOnce);
+//        testImpl(false, 0.05, 0, predTrainOnce);
+//        testImpl(false, 0.10, 0, predTrainOnce);
+//        testImpl(false, 0.15, 0, predTrainOnce);
+//        testImpl(false, 0.20, 0, predTrainOnce);
+//        testImpl(false, 0.25, 0, predTrainOnce);
+//    }
+
+    public void testRealLoadSimulationRetrain1month_nullAsPrevLoad() throws Exception {
+        String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsPrevLoad.txt";
+        testImpl(false, 0, 0, predRetrain1month);
+        testImpl(false, 0.05, 0, predRetrain1month);
+        testImpl(false, 0.10, 0, predRetrain1month);
+        testImpl(false, 0.15, 0, predRetrain1month);
+        testImpl(false, 0.20, 0, predRetrain1month);
+        testImpl(false, 0.25, 0, predRetrain1month);
     }
 
-    public void testRealLoadSimulationRetrain1month() throws Exception {
-        String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month.txt";
+    public void testRealLoadSimulationRetrain1month_nullAsZero() throws Exception {
+        String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsZero.txt";
         testImpl(false, 0, 0, predRetrain1month);
         testImpl(false, 0.05, 0, predRetrain1month);
         testImpl(false, 0.10, 0, predRetrain1month);
