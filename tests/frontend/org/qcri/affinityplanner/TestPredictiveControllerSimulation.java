@@ -53,7 +53,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     //public static int DB_MIGRATION_TIME = (int) Math.ceil(1000 * 1000.0/MONITORING_TIME); // D=908 seconds + 10% buffer
     private static int POLL_TIME = 1000;
 
-    private static String ORACLE_PREDICTION_FILE = "/data/rytaft/actual_load_5min.txt";
+    //private static String ORACLE_PREDICTION_FILE = "/data/rytaft/actual_load_5min.txt";
     private static boolean REACTIVE_ONLY = false;
     private static boolean REMOVE_TINY_RECONFS = true;
     private static long SCALE_IN_WAIT = 3 * MONITORING_TIME;
@@ -182,7 +182,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
 
                     ArrayList<Long> predictedLoad = new ArrayList<>();
                     try {
-                        File f = new File(ORACLE_PREDICTION_FILE);
+                        File f = new File(m_prediction_file);
                         FileReader ofr = new FileReader(f);
                         BufferedReader obr = new BufferedReader(ofr);
 
@@ -511,28 +511,26 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         System.out.println("Avg servers: " + ((double)c.getCost())/c.getEffCap().size());
     }
     
-//    public void testRealLoadSimulationTrainOnce() throws Exception {
-//        String predTrainOnce = "/data/rytaft/predpoints_forecastwindow_60_train_once.txt";
-//        testImpl(false, 0, 0, predTrainOnce);
-//        testImpl(false, 0.05, 0, predTrainOnce);
-//        testImpl(false, 0.10, 0, predTrainOnce);
-//        testImpl(false, 0.15, 0, predTrainOnce);
-//        testImpl(false, 0.20, 0, predTrainOnce);
-//        testImpl(false, 0.25, 0, predTrainOnce);
-//    }
-
-    public void testRealLoadSimulationRetrain1month_nullAsPrevLoad() throws Exception {
-        String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsPrevLoad.txt";
-        testImpl(false, 0, 0, predRetrain1month);
-        testImpl(false, 0.05, 0, predRetrain1month);
-        testImpl(false, 0.10, 0, predRetrain1month);
-        testImpl(false, 0.15, 0, predRetrain1month);
-        testImpl(false, 0.20, 0, predRetrain1month);
-        testImpl(false, 0.25, 0, predRetrain1month);
+    public void testSimpleStrategy() throws Exception {
+        String simple1 = "/data/rytaft/simple1.txt";
+        testImpl(true, 0.15, 0, simple1);
+        testImpl(true, 0.50, 0, simple1);
+        testImpl(true, 1, 0, simple1);
+        testImpl(true, 2, 0, simple1);
     }
 
-    public void testRealLoadSimulationRetrain1month_nullAsZero() throws Exception {
-        String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsZero.txt";
+    public void testRealLoadSimulationTrainOnce() throws Exception {
+        String predTrainOnce = "/data/rytaft/predpoints_forecastwindow_60_train_once.txt";
+        testImpl(false, 0, 0, predTrainOnce);
+        testImpl(false, 0.05, 0, predTrainOnce);
+        testImpl(false, 0.10, 0, predTrainOnce);
+        testImpl(false, 0.15, 0, predTrainOnce);
+        testImpl(false, 0.20, 0, predTrainOnce);
+        testImpl(false, 0.25, 0, predTrainOnce);
+    }
+
+    public void testRealLoadSimulationRetrain1month() throws Exception {
+        String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsPrevLoad.txt";
         testImpl(false, 0, 0, predRetrain1month);
         testImpl(false, 0.05, 0, predRetrain1month);
         testImpl(false, 0.10, 0, predRetrain1month);
@@ -570,6 +568,6 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         testImpl(false, 0, 0.20, predOracle);
         testImpl(false, 0, 0.25, predOracle);
     }
-
+    
 
 }
