@@ -104,11 +104,10 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     }
 
     private void runSimulation (boolean useOraclePrediction, double predictionInflation, 
-            double predictionPerturbation, String predictionFile) throws Exception {
+            double predictionPerturbation, String predictionFile, int activeSites) throws Exception {
 
         boolean oraclePredictionComplete = false;
         SquallMove next_move = null;
-        int activeSites = 9;
         Long scalein_requested_time = null;
         long currentTime = 0;
         int numPredictions = 0;
@@ -486,13 +485,18 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         return secondsAboveCap;
     }
     
-    public void testImpl(boolean useOraclePrediction, double predictionInflation, 
+    private void testImpl(boolean useOraclePrediction, double predictionInflation, 
             double predictionPerturbation, String predictionFile) {
+        testImpl(useOraclePrediction, predictionInflation, predictionPerturbation, predictionFile, 9);
+    }
+    
+    private void testImpl(boolean useOraclePrediction, double predictionInflation, 
+            double predictionPerturbation, String predictionFile, int activeSites) {
         record("Running the predictive controller simulation");
 
         TestPredictiveControllerSimulation c = new TestPredictiveControllerSimulation();
         try {
-            c.runSimulation(useOraclePrediction, predictionInflation, predictionPerturbation, predictionFile);
+            c.runSimulation(useOraclePrediction, predictionInflation, predictionPerturbation, predictionFile, activeSites);
         } catch (Exception e) {
             e.printStackTrace();
             record("Not good");
@@ -513,10 +517,10 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     
     public void testSimpleStrategy() throws Exception {
         String simple1 = "/data/rytaft/simple1.txt";
-        testImpl(true, 0.15, 0, simple1);
-        testImpl(true, 0.50, 0, simple1);
-        testImpl(true, 1, 0, simple1);
-        testImpl(true, 2, 0, simple1);
+        testImpl(true, 0.15, 0, simple1, 11);
+        testImpl(true, 0.50, 0, simple1, 14);
+        testImpl(true, 1, 0, simple1, 19);
+        testImpl(true, 2, 0, simple1, 28);
     }
 
     public void testRealLoadSimulationTrainOnce() throws Exception {
