@@ -518,9 +518,9 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     public void testSimpleStrategy() throws Exception {
         String simple1 = "/data/rytaft/simple1.txt";
         testImpl(true, 0.15, 0, simple1, 11);
-        testImpl(true, 0.50, 0, simple1, 14);
+        testImpl(true, 0.50, 0, simple1, 15);
         testImpl(true, 1, 0, simple1, 19);
-        testImpl(true, 2, 0, simple1, 28);
+        testImpl(true, 2, 0, simple1, 29);
     }
 
     public void testRealLoadSimulationTrainOnce() throws Exception {
