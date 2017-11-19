@@ -598,6 +598,58 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         c.compareToActualLoad("PLOT: " + config + "," + predictionInflation);
     }
     
+    private void testStaticImpl(int totalMachines) {
+        String config = "Static";
+        System.out.println("##########################################################");     
+        System.out.println("Showing Results for:");
+        System.out.println("    use oracle prediction: " + false);
+        System.out.println("    prediction inflation: " + totalMachines);
+        System.out.println("    prediction perturbation: " + 0);        
+        System.out.println("    prediction file: ");
+        System.out.println("    config: " + config);
+
+        ArrayList<Long> effCap = new ArrayList<>();
+        ArrayList<Long> actualLoad = new ArrayList<>();
+        try {
+            File f = new File(ACTUAL_LOAD_FILE);
+            FileReader fr = new FileReader(f);
+            BufferedReader br = new BufferedReader(fr);
+
+            String line = br.readLine();
+            while (line != null) {
+                actualLoad.add(Long.parseLong(line));
+                line = br.readLine();
+            } 
+
+            br.close();
+        } catch (IOException e) {
+            record("Unable to read predicted load");
+            record(stackTraceToString(e));
+            //System.exit(1);
+        }
+        
+        for (int i = 0; i < actualLoad.size(); ++i) {
+            effCap.add(totalMachines * MAX_CAPACITY_PER_SERVER_PER_SEC);
+        }
+
+        int secondsAboveCap = 0;       
+        ArrayList<Long> secondsAboveCapList = new ArrayList<>();
+        for(int i = 0; i < actualLoad.size() && i < effCap.size(); ++i) {
+            if (actualLoad.get(i) > effCap.get(i)) {
+                secondsAboveCap++;
+                secondsAboveCapList.add((long) i);
+            }
+        }
+
+        double percentAboveCap = ((double) secondsAboveCap * 100)/(Math.min(actualLoad.size(), effCap.size()));
+        System.out.println("Actual load size: " + actualLoad.size());
+        System.out.println("Effective capacity size: " + effCap.size());
+        System.out.println("Seconds above capacity: " + secondsAboveCap);
+        System.out.println("Percentage above capacity: " + percentAboveCap);
+        System.out.println("Avg servers: " + totalMachines);
+        System.out.println(config + "," + totalMachines + "," + percentAboveCap + "," + totalMachines);
+    }
+    
     public void testSimpleStrategy() throws Exception {
         String simple1 = "/data/rytaft/simple1.txt";
         String config = "Simple";
@@ -618,6 +670,24 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         testImpl(true, 2, 0, simple1, 29, config);
         testImpl(true, 3, 0, simple1, 39, config);
         testImpl(true, 5, 0, simple1, 59, config);
+    }
+
+    public void testStatic() throws Exception {
+        testStaticImpl(1);
+        testStaticImpl(2);
+        testStaticImpl(3);
+        testStaticImpl(4);
+        testStaticImpl(5);
+        testStaticImpl(6);
+        testStaticImpl(8);
+        testStaticImpl(10);
+        testStaticImpl(12);
+        testStaticImpl(15);
+        testStaticImpl(20);
+        testStaticImpl(25);
+        testStaticImpl(30);
+        testStaticImpl(35);
+        testStaticImpl(40);
     }
 
     public void testOptimal() throws Exception {
