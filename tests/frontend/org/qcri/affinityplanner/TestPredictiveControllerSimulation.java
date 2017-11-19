@@ -695,7 +695,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
 
             writeHourlyLoad(actualLoad, bw, "Actual");
             writeHourlyLoad(testStaticImpl(8), bw, "Static");
-            writeHourlyLoad(testImpl(true, 0.05, 0, "/data/rytaft/simple1.txt", "Simple"), bw, "Simple");
+            writeHourlyLoad(testImpl(true, 0.05, 0, "/data/rytaft/simple1.txt", 11, "Simple"), bw, "Simple");
             writeHourlyLoad(testImpl(false, 0.15, 0, "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsPrevLoad.txt", "P-Store SPAR"), bw, "P-Store SPAR");
             writeHourlyLoad(testImpl(false, 0.15, 0, "/data/rytaft/predpoints_forecastwindow_60_oracle.txt", "P-Store Oracle"), bw, "P-Store Oracle");
             
