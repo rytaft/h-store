@@ -143,7 +143,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     }
 
                     // Don't scale in too quickly or you might need to scale out again right away
-                    if (next_move.nodes < activeSites) { 
+                    if (next_move.nodes < activeSites && !m_use_oracle_prediction) { 
                         if (scalein_requested_time == null) {
                             scalein_requested_time = currentTime;
                         } 
@@ -210,7 +210,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     else {
                         //record("Moves: " + moves.toString());
                         m_next_moves = convert(moves, activeSites, currentTime);
-                        writeHourlyComparison3(predictedLoad, m_next_moves, activeSites, currentTime);
+                        //writeHourlyComparison3(predictedLoad, m_next_moves, activeSites, currentTime);
                     }
                     next_move = null;
 
@@ -351,7 +351,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         long moveStart = currentTime;
         int prevNodes = activeSites;
         String debug = "";
-        if (REMOVE_TINY_RECONFS) {
+        if (REMOVE_TINY_RECONFS && !m_use_oracle_prediction) {
             moves = removeTinyReconfs(moves);
         }
         
@@ -555,7 +555,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
             }
         }
         
-        //writeHourlyComparison(actualLoad, effCap);
+        writeHourlyComparison(actualLoad, effCap);
         //System.out.println("Seconds above cap list: " + secondsAboveCapList.toString());
         double percentAboveCap = ((double) secondsAboveCap * 100)/(Math.min(actualLoad.size(), effCap.size()));
         double avgServers = ((double) getCost())/effCap.size();
