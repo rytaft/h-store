@@ -568,12 +568,12 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         return secondsAboveCap;
     }
     
-    private void testImpl(boolean useOraclePrediction, double predictionInflation, 
+    private ArrayList<Long> testImpl(boolean useOraclePrediction, double predictionInflation, 
             double predictionPerturbation, String predictionFile, String config) {
-        testImpl(useOraclePrediction, predictionInflation, predictionPerturbation, predictionFile, 9, config);
+        return testImpl(useOraclePrediction, predictionInflation, predictionPerturbation, predictionFile, 9, config);
     }
     
-    private void testImpl(boolean useOraclePrediction, double predictionInflation, 
+    private ArrayList<Long> testImpl(boolean useOraclePrediction, double predictionInflation, 
             double predictionPerturbation, String predictionFile, int activeSites, String config) {
         record("Running the predictive controller simulation");
 
@@ -583,7 +583,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         } catch (Exception e) {
             e.printStackTrace();
             record("Not good");
-            return;
+            return null;
         }
         
         //System.out.println("Effective capacity: " + c.getEffCap());
@@ -596,9 +596,10 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         System.out.println("    prediction file: " + predictionFile);
         System.out.println("    config: " + config);
         c.compareToActualLoad("PLOT: " + config + "," + predictionInflation);
+        return c.getEffCap();
     }
     
-    private void testStaticImpl(int totalMachines) {
+    private ArrayList<Long> testStaticImpl(int totalMachines) {
         String config = "Static";
         System.out.println("##########################################################");     
         System.out.println("Showing Results for:");
@@ -648,32 +649,89 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         System.out.println("Percentage above capacity: " + percentAboveCap);
         System.out.println("Avg servers: " + totalMachines);
         System.out.println(config + "," + totalMachines + "," + percentAboveCap + "," + totalMachines);
+        return effCap;
     }
     
-    public void testSimpleStrategy() throws Exception {
-        String simple1 = "/data/rytaft/simple1.txt";
-        String config = "Simple";
-        testImpl(true, -0.5, 0, simple1, config);
-        testImpl(true, -0.35, 0, simple1, config);
-        // testImpl(true, -0.25, 0, simple1, config);
-        // testImpl(true, -0.20, 0, simple1, config);
-        // testImpl(true, -0.15, 0, simple1, config);
-        // testImpl(true, -0.10, 0, simple1, config);
-        // testImpl(true, -0.05, 0, simple1, config);
-        // testImpl(true, 0, 0, simple1, 10, config);
-        // testImpl(true, 0.05, 0, simple1, 10, config);
-        // testImpl(true, 0.10, 0, simple1, 11, config);
-        // testImpl(true, 0.15, 0, simple1, 11, config);
-        // testImpl(true, 0.20, 0, simple1, 12, config);
-        // testImpl(true, 0.25, 0, simple1, 12, config);
-        // testImpl(true, 0.35, 0, simple1, 13, config);
-        // testImpl(true, 0.50, 0, simple1, 15, config);
-        // testImpl(true, 0.50, 0, simple1, 15, config);
-        // testImpl(true, 1, 0, simple1, 19, config);
-        // testImpl(true, 2, 0, simple1, 29, config);
-        // testImpl(true, 3, 0, simple1, 39, config);
-        // testImpl(true, 5, 0, simple1, 59, config);
+    public void writeHourlyLoad(ArrayList<Long> load, BufferedWriter bw, String config) throws IOException {
+        int window = 360;
+        for (int i = 0; i < load.size(); i += window) {
+            int loadSum = 0;
+            int j = 0;
+            for (; j < window && (i+j) < load.size(); ++j) {
+                loadSum += load.get(i+j);
+            }
+            bw.write(config + "," + i/window + "," + loadSum/j);
+            bw.newLine();
+        }
     }
+        
+    public void testTimeSeries() throws Exception {
+        ArrayList<Long> actualLoad = new ArrayList<>();
+        try {
+            File f = new File(ACTUAL_LOAD_FILE);
+            FileReader fr = new FileReader(f);
+            BufferedReader br = new BufferedReader(fr);
+
+            String line = br.readLine();
+            while (line != null) {
+                actualLoad.add(Long.parseLong(line));
+                line = br.readLine();
+            } 
+
+            br.close();
+        } catch (IOException e) {
+            record("Unable to read predicted load");
+            record(stackTraceToString(e));
+            //System.exit(1);
+        }
+        
+        try {
+            File f = new File(HOURLY_COMPARISON_FILE);
+            FileWriter fw = new FileWriter(f);
+            BufferedWriter bw = new BufferedWriter(fw);
+
+            bw.write("config,time,load");
+            bw.newLine();
+
+            writeHourlyLoad(actualLoad, bw, "Actual");
+            writeHourlyLoad(testStaticImpl(8), bw, "Static");
+            writeHourlyLoad(testImpl(true, 0.05, 0, "/data/rytaft/simple1.txt", "Simple"), bw, "Simple");
+            writeHourlyLoad(testImpl(false, 0.15, 0, "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsPrevLoad.txt", "P-Store SPAR"), bw, "P-Store SPAR");
+            writeHourlyLoad(testImpl(false, 0.15, 0, "/data/rytaft/predpoints_forecastwindow_60_oracle.txt", "P-Store Oracle"), bw, "P-Store Oracle");
+            
+            bw.close();
+        } catch (IOException e) {
+            record("Unable to write effective capacity");
+            record(stackTraceToString(e));
+            //System.exit(1);
+        }
+
+        
+    }
+    
+//    public void testSimpleStrategy() throws Exception {
+//        String simple1 = "/data/rytaft/simple1.txt";
+//        String config = "Simple";
+//        testImpl(true, -0.35, 0, simple1, config);
+//        // testImpl(true, -0.25, 0, simple1, config);
+//        // testImpl(true, -0.20, 0, simple1, config);
+//        // testImpl(true, -0.15, 0, simple1, config);
+//        // testImpl(true, -0.10, 0, simple1, config);
+//        // testImpl(true, -0.05, 0, simple1, config);
+//        // testImpl(true, 0, 0, simple1, 10, config);
+//        // testImpl(true, 0.05, 0, simple1, 10, config);
+//        // testImpl(true, 0.10, 0, simple1, 11, config);
+//        // testImpl(true, 0.15, 0, simple1, 11, config);
+//        // testImpl(true, 0.20, 0, simple1, 12, config);
+//        // testImpl(true, 0.25, 0, simple1, 12, config);
+//        // testImpl(true, 0.35, 0, simple1, 13, config);
+//        // testImpl(true, 0.50, 0, simple1, 15, config);
+//        // testImpl(true, 0.50, 0, simple1, 15, config);
+//        // testImpl(true, 1, 0, simple1, 19, config);
+//        // testImpl(true, 2, 0, simple1, 29, config);
+//        // testImpl(true, 3, 0, simple1, 39, config);
+//        // testImpl(true, 5, 0, simple1, 59, config);
+//    }
 
     // public void testStatic() throws Exception {
     //     testStaticImpl(1);
