@@ -31,6 +31,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     private ArrayList<Long> m_eff_cap;
     private long m_cost = 0;
     private boolean m_use_oracle_prediction = false;
+    private boolean m_reactive_only = false;
     private double m_prediction_inflation = 1;
     private double m_prediction_perturbation = 0;
     private String m_prediction_file;
@@ -39,8 +40,8 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     private static int NUM_SITES = 200;
 
     // Prediction variables
-    private ConcurrentLinkedQueue<Long> m_historyNLoads;
     private ArrayList<Long> m_predictedLoad;
+    private ArrayList<Long> m_historicalLoad;
     
     // Time in milliseconds for collecting historical load data and making a prediction:
     private static int MONITORING_TIME = 30000;  //(e.g. 3000 ms = 3 sec = 30 sec B2W-time)
@@ -54,7 +55,6 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     private static int POLL_TIME = 1000;
 
     //private static String ORACLE_PREDICTION_FILE = "/data/rytaft/actual_load_5min.txt";
-    private static boolean REACTIVE_ONLY = false;
     private static boolean REMOVE_TINY_RECONFS = true;
     private static long SCALE_IN_WAIT = 3 * MONITORING_TIME;
 
@@ -92,8 +92,8 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     public TestPredictiveControllerSimulation() {
         m_client = ClientFactory.createClient();
         m_client.configureBlocking(false);
-        m_historyNLoads = new ConcurrentLinkedQueue<>();
         m_predictedLoad = new ArrayList<>();
+        m_historicalLoad = new ArrayList<>();
         m_eff_cap = new ArrayList<>();
         m_cost = 0;
         
@@ -103,7 +103,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
 
     }
 
-    private void runSimulation (boolean useOraclePrediction, double predictionInflation, 
+    private void runSimulation (boolean useOraclePrediction, boolean reactiveOnly, double predictionInflation, 
             double predictionPerturbation, String predictionFile, int activeSites) throws Exception {
 
         boolean oraclePredictionComplete = false;
@@ -111,8 +111,10 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         Long scalein_requested_time = null;
         long currentTime = 0;
         int numPredictions = 0;
+        int numHistorical = 0;
         m_cost = 0;
         m_use_oracle_prediction = useOraclePrediction;
+        m_reactive_only = reactiveOnly;
         m_prediction_inflation = 1 + predictionInflation;
         m_prediction_perturbation = predictionPerturbation;
         m_prediction_file = predictionFile;
@@ -125,7 +127,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
             while (!m_stop){
                 if (((m_next_moves != null && !m_next_moves.isEmpty()) || next_move != null)
                         && (numPredictions * MONITORING_TIME >= currentTime
-                                || m_use_oracle_prediction || REACTIVE_ONLY)){
+                                || m_use_oracle_prediction || m_reactive_only)){
                     if (next_move == null) {
                         next_move = m_next_moves.pop();
                     }
@@ -216,36 +218,51 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
 
                     oraclePredictionComplete = true;
                 }
-                else if (REACTIVE_ONLY){
+                else if (m_reactive_only){
 
-                    // prepare a plan that increases or reduces the number of servers if needed
-                    Long[] historyNLoads = m_historyNLoads.toArray(new Long[]{});
-                    long load1 = 0;
-                    long load2 = 0;
-                    long load3 = 0;
+                    if (m_historicalLoad.size() < 3 || ((numHistorical-2) * MONITORING_TIME) < currentTime) {
+                        String line = br.readLine();
+                        numHistorical++;
+                        while (line != null && ((numHistorical-2) * MONITORING_TIME) < currentTime) {
+                            if (m_historicalLoad.size() >= 3) m_historicalLoad.remove(0);
+                            double perturbation = 1 + (Math.random() * 2 - 1) * m_prediction_perturbation;
+                            m_historicalLoad.add((long) (Long.parseLong(line) * m_prediction_inflation * perturbation));
+                            line = br.readLine();
+                            numHistorical++;
+                        }
+                        if (line != null) {
+                            if (m_historicalLoad.size() >= 3) m_historicalLoad.remove(0);
+                            double perturbation = 1 + (Math.random() * 2 - 1) * m_prediction_perturbation;
+                            m_historicalLoad.add((long) (Long.parseLong(line) * m_prediction_inflation * perturbation));
+                        } else {
+                            m_stop = true;
+                        }
+                        record("currentTime: " + currentTime + ", numHistorical: " + numHistorical);
+                    }
+                            
+                    if (m_historicalLoad.size() >= 3) {
+                        // prepare a plan that increases or reduces the number of servers if needed
+                        long load1 = m_historicalLoad.get(0);
+                        long load2 = m_historicalLoad.get(1);
+                        long load3 = m_historicalLoad.get(2);
 
-                    if(historyNLoads.length > 0) load1 = (long) (historyNLoads[historyNLoads.length-1] * m_prediction_inflation);
-                    if(historyNLoads.length > 1) load2 = (long) (historyNLoads[historyNLoads.length-2] * m_prediction_inflation);
-                    if(historyNLoads.length > 2) load3 = (long) (historyNLoads[historyNLoads.length-3] * m_prediction_inflation);
-
-                    if (load1 == 0 && load2 == 0 && load3 == 0) continue;
-
-                    if(activeSites > 1 && load1 < MAX_CAPACITY_PER_SERVER * (activeSites - 1) &&
-                            load2 < MAX_CAPACITY_PER_SERVER * (activeSites - 1) &&
-                            load3 < MAX_CAPACITY_PER_SERVER * (activeSites - 1)) {
-                        record("Initiating reactive migration to " + (activeSites - 1) + " nodes");
-                        m_next_moves = convert(activeSites - 1, activeSites, currentTime);
-                        next_move = null;
-                        //                } else if (total > 0 && (double) count_gt_50 / total > 0.10) {
-                    } else if (load1 > MAX_CAPACITY_PER_SERVER * activeSites &&
-                            load2 > MAX_CAPACITY_PER_SERVER * activeSites &&
-                            load3 > MAX_CAPACITY_PER_SERVER * activeSites) {
-                        record("Initiating reactive migration to " + (activeSites + 1) + " nodes");
-                        m_next_moves = convert(activeSites + 1, activeSites, currentTime);
-                        next_move = null;
-                    } else {
-                        //record("Simulating sleeping for " + POLL_TIME + " ms");
-                        currentTime += POLL_TIME;
+                        if(activeSites > 1 && load1 < MAX_CAPACITY_PER_SERVER * (activeSites - 1) &&
+                                load2 < MAX_CAPACITY_PER_SERVER * (activeSites - 1) &&
+                                load3 < MAX_CAPACITY_PER_SERVER * (activeSites - 1)) {
+                            record("Initiating reactive migration to " + (activeSites - 1) + " nodes");
+                            m_next_moves = convert(activeSites - 1, activeSites, currentTime);
+                            next_move = null;
+                            //                } else if (total > 0 && (double) count_gt_50 / total > 0.10) {
+                        } else if (load1 > MAX_CAPACITY_PER_SERVER * activeSites &&
+                                load2 > MAX_CAPACITY_PER_SERVER * activeSites &&
+                                load3 > MAX_CAPACITY_PER_SERVER * activeSites) {
+                            record("Initiating reactive migration to " + (activeSites + 1) + " nodes");
+                            m_next_moves = convert(activeSites + 1, activeSites, currentTime);
+                            next_move = null;
+                        } else {
+                            //record("Simulating sleeping for " + POLL_TIME + " ms");
+                            currentTime += POLL_TIME;
+                        }
                     }
                 }
                 else {
@@ -570,16 +587,16 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     
     private ArrayList<Long> testImpl(boolean useOraclePrediction, double predictionInflation, 
             double predictionPerturbation, String predictionFile, String config) {
-        return testImpl(useOraclePrediction, predictionInflation, predictionPerturbation, predictionFile, 9, config);
+        return testImpl(useOraclePrediction, false, predictionInflation, predictionPerturbation, predictionFile, 9, config);
     }
     
-    private ArrayList<Long> testImpl(boolean useOraclePrediction, double predictionInflation, 
+    private ArrayList<Long> testImpl(boolean useOraclePrediction, boolean reactiveOnly, double predictionInflation, 
             double predictionPerturbation, String predictionFile, int activeSites, String config) {
         record("Running the predictive controller simulation");
 
         TestPredictiveControllerSimulation c = new TestPredictiveControllerSimulation();
         try {
-            c.runSimulation(useOraclePrediction, predictionInflation, predictionPerturbation, predictionFile, activeSites);
+            c.runSimulation(useOraclePrediction, reactiveOnly, predictionInflation, predictionPerturbation, predictionFile, activeSites);
         } catch (Exception e) {
             e.printStackTrace();
             record("Not good");
@@ -695,7 +712,8 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
 
             writeHourlyLoad(actualLoad, bw, "Actual");
             writeHourlyLoad(testStaticImpl(8), bw, "Static");
-            writeHourlyLoad(testImpl(true, 0.05, 0, "/data/rytaft/simple1.txt", 11, "Simple"), bw, "Simple");
+            writeHourlyLoad(testImpl(false, true, 0.15, 0, "/data/rytaft/actual_load_5min_history.txt", 9, "Reactive"), bw, "Reactive");
+            writeHourlyLoad(testImpl(true, false, 0.05, 0, "/data/rytaft/simple1.txt", 11, "Simple"), bw, "Simple");
             writeHourlyLoad(testImpl(false, 0.15, 0, "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsPrevLoad.txt", "P-Store SPAR"), bw, "P-Store SPAR");
             writeHourlyLoad(testImpl(false, 0.15, 0, "/data/rytaft/predpoints_forecastwindow_60_oracle.txt", "P-Store Oracle"), bw, "P-Store Oracle");
             
@@ -707,6 +725,30 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         }
 
         
+    }
+
+    public void testReactive() throws Exception {
+        String simple1 = "/data/rytaft/actual_load_5min_history.txt";
+        String config = "Reactive";
+        testImpl(false, true, -0.35, 0, simple1, 9, config);
+        testImpl(false, true, -0.25, 0, simple1, 9, config);
+        testImpl(false, true, -0.20, 0, simple1, 9, config);
+        testImpl(false, true, -0.15, 0, simple1, 9, config);
+        testImpl(false, true, -0.10, 0, simple1, 9, config);
+        testImpl(false, true, -0.05, 0, simple1, 9, config);
+        testImpl(false, true, 0, 0, simple1, 10, config);
+        testImpl(false, true, 0.05, 0, simple1, 10, config);
+        testImpl(false, true, 0.10, 0, simple1, 11, config);
+        testImpl(false, true, 0.15, 0, simple1, 11, config);
+        testImpl(false, true, 0.20, 0, simple1, 12, config);
+        testImpl(false, true, 0.25, 0, simple1, 12, config);
+        testImpl(false, true, 0.35, 0, simple1, 13, config);
+        testImpl(false, true, 0.50, 0, simple1, 15, config);
+        testImpl(false, true, 0.50, 0, simple1, 15, config);
+        testImpl(false, true, 1, 0, simple1, 19, config);
+        testImpl(false, true, 2, 0, simple1, 29, config);
+        testImpl(false, true, 3, 0, simple1, 39, config);
+        testImpl(false, true, 5, 0, simple1, 59, config);
     }
     
 //    public void testSimpleStrategy() throws Exception {
