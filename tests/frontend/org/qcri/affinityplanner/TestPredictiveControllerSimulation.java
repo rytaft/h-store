@@ -210,7 +210,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                     else {
                         //record("Moves: " + moves.toString());
                         m_next_moves = convert(moves, activeSites, currentTime);
-                        writeHourlyComparison3(predictedLoad, m_next_moves);
+                        writeHourlyComparison3(predictedLoad, m_next_moves, activeSites, currentTime);
                     }
                     next_move = null;
 
@@ -418,15 +418,12 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         
     }
     
-    private void writeHourlyComparison3(ArrayList<Long> predictedLoad, LinkedList<SquallMove> moves) {
+    private void writeHourlyComparison3(ArrayList<Long> predictedLoad, LinkedList<SquallMove> moves, int activeSites, long currentTime) {
         try {
             ArrayList<Long> effCap = new ArrayList<>();
-            long t = 0;
-            int nodes = 0;
+            long t = currentTime;
+            int nodes = activeSites;
             for (SquallMove m : moves) {
-                if (t == 0) {
-                    t = m.start_time;
-                }
                 for (; t < m.start_time; t += MONITORING_TIME) {
                     effCap.add(Math.max(m.nodes, nodes) * MAX_CAPACITY_PER_SERVER);
                 }
