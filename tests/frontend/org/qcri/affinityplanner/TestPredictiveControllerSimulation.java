@@ -263,6 +263,11 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                             //record("Simulating sleeping for " + POLL_TIME + " ms");
                             currentTime += POLL_TIME;
                         }
+                        
+                        if (m_next_moves.size() == 0) {
+                            //record("Simulating sleeping for " + POLL_TIME + " ms - no predicted moves");
+                            currentTime += POLL_TIME;
+                        }
                     }
                 }
                 else {
