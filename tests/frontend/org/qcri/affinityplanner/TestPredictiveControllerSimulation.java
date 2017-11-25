@@ -35,6 +35,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     private double m_prediction_inflation = 1;
     private double m_prediction_perturbation = 0;
     private String m_prediction_file;
+    private long m_max_capacity_per_server = 0;
 
     private static int PARTITIONS_PER_SITE = 6;
     private static int NUM_SITES = 200;
@@ -48,7 +49,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     
     private static int FUDGE_FACTOR = 1;
     private static long MAX_CAPACITY_PER_SERVER_PER_SEC = (long) Math.ceil(438 * FUDGE_FACTOR); // Q=350 txns/s
-    private static long MAX_CAPACITY_PER_SERVER = (long) Math.ceil(285 * FUDGE_FACTOR * MONITORING_TIME/1000.0); // Q=350 txns/s
+    //private static long MAX_CAPACITY_PER_SERVER = (long) Math.ceil(285 * FUDGE_FACTOR * MONITORING_TIME/1000.0); // Q=350 txns/s
     //public static long MAX_CAPACITY_PER_SERVER = (long) Math.ceil(23000 * FUDGE_FACTOR * MONITORING_TIME/1000.0); // Q=26000 txns/s
     private static int DB_MIGRATION_TIME = (int) Math.ceil(4646 * 1000.0/MONITORING_TIME); // D=4224 seconds + 10% buffer
     //public static int DB_MIGRATION_TIME = (int) Math.ceil(1000 * 1000.0/MONITORING_TIME); // D=908 seconds + 10% buffer
@@ -98,13 +99,12 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         m_cost = 0;
         
         m_migration = new ParallelMigration(PARTITIONS_PER_SITE, DB_MIGRATION_TIME);
-        m_planner = new ReconfigurationPredictor(MAX_CAPACITY_PER_SERVER, m_migration);
         m_tester = new ReconfigurationPredictor(MAX_CAPACITY_PER_SERVER_PER_SEC, m_migration);
 
     }
 
     private void runSimulation (boolean useOraclePrediction, boolean reactiveOnly, double predictionInflation, 
-            double predictionPerturbation, String predictionFile, int activeSites) throws Exception {
+            double predictionPerturbation, String predictionFile, int activeSites, double Q_percentOfMax) throws Exception {
 
         boolean oraclePredictionComplete = false;
         SquallMove next_move = null;
@@ -118,7 +118,9 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         m_prediction_inflation = 1 + predictionInflation;
         m_prediction_perturbation = predictionPerturbation;
         m_prediction_file = predictionFile;
-
+        m_max_capacity_per_server = (long) Math.ceil(438 * Q_percentOfMax * FUDGE_FACTOR * MONITORING_TIME/1000.0);
+        m_planner = new ReconfigurationPredictor(m_max_capacity_per_server, m_migration);
+        
         try {
             File file = new File(m_prediction_file);
             FileReader fr = new FileReader(file);
@@ -246,16 +248,16 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                         long load2 = m_historicalLoad.get(1);
                         long load3 = m_historicalLoad.get(2);
 
-                        if(activeSites > 1 && load1 < MAX_CAPACITY_PER_SERVER * (activeSites - 1) &&
-                                load2 < MAX_CAPACITY_PER_SERVER * (activeSites - 1) &&
-                                load3 < MAX_CAPACITY_PER_SERVER * (activeSites - 1)) {
+                        if(activeSites > 1 && load1 < m_max_capacity_per_server * (activeSites - 1) &&
+                                load2 < m_max_capacity_per_server * (activeSites - 1) &&
+                                load3 < m_max_capacity_per_server * (activeSites - 1)) {
                             record("Initiating reactive migration to " + (activeSites - 1) + " nodes");
                             m_next_moves = convert(activeSites - 1, activeSites, currentTime);
                             next_move = null;
                             //                } else if (total > 0 && (double) count_gt_50 / total > 0.10) {
-                        } else if (load1 > MAX_CAPACITY_PER_SERVER * activeSites &&
-                                load2 > MAX_CAPACITY_PER_SERVER * activeSites &&
-                                load3 > MAX_CAPACITY_PER_SERVER * activeSites) {
+                        } else if (load1 > m_max_capacity_per_server * activeSites &&
+                                load2 > m_max_capacity_per_server * activeSites &&
+                                load3 > m_max_capacity_per_server * activeSites) {
                             record("Initiating reactive migration to " + (activeSites + 1) + " nodes");
                             m_next_moves = convert(activeSites + 1, activeSites, currentTime);
                             next_move = null;
@@ -447,7 +449,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
             int nodes = activeSites;
             for (SquallMove m : moves) {
                 for (; t < m.start_time; t += MONITORING_TIME) {
-                    effCap.add(Math.max(m.nodes, nodes) * MAX_CAPACITY_PER_SERVER);
+                    effCap.add(Math.max(m.nodes, nodes) * m_max_capacity_per_server);
                 }
                 nodes = m.nodes;
             }
@@ -486,7 +488,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
             int nodes = 0;
             for (Move m : moves) {
                 for (; t < m.time; ++t) {
-                    effCap.add(Math.max(m.nodes, nodes) * MAX_CAPACITY_PER_SERVER);
+                    effCap.add(Math.max(m.nodes, nodes) * m_max_capacity_per_server);
                 }
                 nodes = m.nodes;
             }
@@ -592,16 +594,18 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     
     private ArrayList<Long> testImpl(boolean useOraclePrediction, double predictionInflation, 
             double predictionPerturbation, String predictionFile, String config) {
-        return testImpl(useOraclePrediction, false, predictionInflation, predictionPerturbation, predictionFile, 9, config);
+        return testImpl(useOraclePrediction, false, predictionInflation, predictionPerturbation, 
+                predictionFile, 9, config, 0.65068493150684936);
     }
     
     private ArrayList<Long> testImpl(boolean useOraclePrediction, boolean reactiveOnly, double predictionInflation, 
-            double predictionPerturbation, String predictionFile, int activeSites, String config) {
+            double predictionPerturbation, String predictionFile, int activeSites, String config, double Q_percentOfMax) {
         record("Running the predictive controller simulation");
 
         TestPredictiveControllerSimulation c = new TestPredictiveControllerSimulation();
         try {
-            c.runSimulation(useOraclePrediction, reactiveOnly, predictionInflation, predictionPerturbation, predictionFile, activeSites);
+            c.runSimulation(useOraclePrediction, reactiveOnly, predictionInflation, predictionPerturbation, 
+                    predictionFile, activeSites, Q_percentOfMax);
         } catch (Exception e) {
             e.printStackTrace();
             record("Not good");
@@ -715,12 +719,12 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
             bw.write("config,time,load");
             bw.newLine();
 
-            writeHourlyLoad(actualLoad, bw, "Actual");
-            writeHourlyLoad(testStaticImpl(8), bw, "Static");
-            writeHourlyLoad(testImpl(false, true, 0.15, 0, "/data/rytaft/actual_load_5min_history.txt", 9, "Reactive"), bw, "Reactive");
-            writeHourlyLoad(testImpl(true, false, 0.05, 0, "/data/rytaft/simple1.txt", 11, "Simple"), bw, "Simple");
-            writeHourlyLoad(testImpl(false, 0.15, 0, "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsPrevLoad.txt", "P-Store SPAR"), bw, "P-Store SPAR");
-            writeHourlyLoad(testImpl(false, 0.15, 0, "/data/rytaft/predpoints_forecastwindow_60_oracle.txt", "P-Store Oracle"), bw, "P-Store Oracle");
+//            writeHourlyLoad(actualLoad, bw, "Actual");
+//            writeHourlyLoad(testStaticImpl(8), bw, "Static");
+//            writeHourlyLoad(testImpl(false, true, 0.15, 0, "/data/rytaft/actual_load_5min_history.txt", 9, "Reactive", 0.65), bw, "Reactive");
+//            writeHourlyLoad(testImpl(true, false, 0.05, 0, "/data/rytaft/true, false.txt", 11, "Simple", 0.65), bw, "Simple");
+//            writeHourlyLoad(testImpl(false, 0.15, 0, "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsPrevLoad.txt", "P-Store SPAR"), bw, "P-Store SPAR");
+//            writeHourlyLoad(testImpl(false, 0.15, 0, "/data/rytaft/predpoints_forecastwindow_60_oracle.txt", "P-Store Oracle"), bw, "P-Store Oracle");
             
             bw.close();
         } catch (IOException e) {
@@ -733,52 +737,72 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
     }
 
     public void testReactive() throws Exception {
-        String simple1 = "/data/rytaft/actual_load_5min_history.txt";
+        String reactive = "/data/rytaft/actual_load_5min_history.txt";
         String config = "Reactive";
-        testImpl(false, true, -0.35, 0, simple1, 9, config);
-        testImpl(false, true, -0.25, 0, simple1, 9, config);
-        testImpl(false, true, -0.20, 0, simple1, 9, config);
-        testImpl(false, true, -0.15, 0, simple1, 9, config);
-        testImpl(false, true, -0.10, 0, simple1, 9, config);
-        testImpl(false, true, -0.05, 0, simple1, 9, config);
-        testImpl(false, true, 0, 0, simple1, 10, config);
-        testImpl(false, true, 0.05, 0, simple1, 10, config);
-        testImpl(false, true, 0.10, 0, simple1, 11, config);
-        testImpl(false, true, 0.15, 0, simple1, 11, config);
-        testImpl(false, true, 0.20, 0, simple1, 12, config);
-        testImpl(false, true, 0.25, 0, simple1, 12, config);
-        testImpl(false, true, 0.35, 0, simple1, 13, config);
-        testImpl(false, true, 0.50, 0, simple1, 15, config);
-        testImpl(false, true, 0.50, 0, simple1, 15, config);
-        testImpl(false, true, 1, 0, simple1, 19, config);
-        testImpl(false, true, 2, 0, simple1, 29, config);
-        testImpl(false, true, 3, 0, simple1, 39, config);
-        testImpl(false, true, 5, 0, simple1, 59, config);
+//        testImpl(false, true, -0.35, 0, reactive, 9, config, 0.65);
+//        testImpl(false, true, -0.25, 0, reactive, 9, config, 0.65);
+//        testImpl(false, true, -0.20, 0, reactive, 9, config, 0.65);
+//        testImpl(false, true, -0.15, 0, reactive, 9, config, 0.65);
+//        testImpl(false, true, -0.10, 0, reactive, 9, config, 0.65);
+//        testImpl(false, true, -0.05, 0, reactive, 9, config, 0.65);
+//        testImpl(false, true, 0, 0, reactive, 10, config, 0.65);
+//        testImpl(false, true, 0.05, 0, reactive, 10, config, 0.65);
+//        testImpl(false, true, 0.10, 0, reactive, 11, config, 0.65);
+//        testImpl(false, true, 0.15, 0, reactive, 11, config, 0.65);
+//        testImpl(false, true, 0.20, 0, reactive, 12, config, 0.65);
+//        testImpl(false, true, 0.25, 0, reactive, 12, config, 0.65);
+//        testImpl(false, true, 0.35, 0, reactive, 13, config, 0.65);
+//        testImpl(false, true, 0.50, 0, reactive, 15, config, 0.65);
+//        testImpl(false, true, 0.50, 0, reactive, 15, config, 0.65);
+//        testImpl(false, true, 1, 0, reactive, 19, config, 0.65);
+//        testImpl(false, true, 2, 0, reactive, 29, config, 0.65);
+//        testImpl(false, true, 3, 0, reactive, 39, config, 0.65);
+//        testImpl(false, true, 5, 0, reactive, 59, config, 0.65);
+        testImpl(false, true, 0.15, 0, reactive, 11, config, 0.05);
+        testImpl(false, true, 0.15, 0, reactive, 11, config, 0.15);
+        testImpl(false, true, 0.15, 0, reactive, 11, config, 0.25);
+        testImpl(false, true, 0.15, 0, reactive, 11, config, 0.35);
+        testImpl(false, true, 0.15, 0, reactive, 11, config, 0.45);
+        testImpl(false, true, 0.15, 0, reactive, 11, config, 0.55);
+        testImpl(false, true, 0.15, 0, reactive, 11, config, 0.65);
+        testImpl(false, true, 0.15, 0, reactive, 11, config, 0.75);
+        testImpl(false, true, 0.15, 0, reactive, 11, config, 0.85);
+        testImpl(false, true, 0.15, 0, reactive, 11, config, 0.95);
     }
     
-//    public void testSimpleStrategy() throws Exception {
-//        String simple1 = "/data/rytaft/simple1.txt";
-//        String config = "Simple";
-//        testImpl(true, -0.35, 0, simple1, config);
-//        // testImpl(true, -0.25, 0, simple1, config);
-//        // testImpl(true, -0.20, 0, simple1, config);
-//        // testImpl(true, -0.15, 0, simple1, config);
-//        // testImpl(true, -0.10, 0, simple1, config);
-//        // testImpl(true, -0.05, 0, simple1, config);
-//        // testImpl(true, 0, 0, simple1, 10, config);
-//        // testImpl(true, 0.05, 0, simple1, 10, config);
-//        // testImpl(true, 0.10, 0, simple1, 11, config);
-//        // testImpl(true, 0.15, 0, simple1, 11, config);
-//        // testImpl(true, 0.20, 0, simple1, 12, config);
-//        // testImpl(true, 0.25, 0, simple1, 12, config);
-//        // testImpl(true, 0.35, 0, simple1, 13, config);
-//        // testImpl(true, 0.50, 0, simple1, 15, config);
-//        // testImpl(true, 0.50, 0, simple1, 15, config);
-//        // testImpl(true, 1, 0, simple1, 19, config);
-//        // testImpl(true, 2, 0, simple1, 29, config);
-//        // testImpl(true, 3, 0, simple1, 39, config);
-//        // testImpl(true, 5, 0, simple1, 59, config);
-//    }
+    public void testSimpleStrategy() throws Exception {
+        String simple1 = "/data/rytaft/simple1.txt";
+        String config = "Simple";
+//        testImpl(true, false, -0.35, 0, simple1, 9, config, 0.65);
+//        testImpl(true, false, -0.25, 0, simple1, 9, config, 0.65);
+//        testImpl(true, false, -0.20, 0, simple1, 9, config, 0.65);
+//        testImpl(true, false, -0.15, 0, simple1, 9, config, 0.65);
+//        testImpl(true, false, -0.10, 0, simple1, 9, config, 0.65);
+//        testImpl(true, false, -0.05, 0, simple1, 9, config, 0.65);
+//        testImpl(true, false, 0, 0, simple1, 10, config, 0.65);
+//        testImpl(true, false, 0.05, 0, simple1, 10, config, 0.65);
+//        testImpl(true, false, 0.10, 0, simple1, 11, config, 0.65);
+//        testImpl(true, false, 0.15, 0, simple1, 11, config, 0.65);
+//        testImpl(true, false, 0.20, 0, simple1, 12, config, 0.65);
+//        testImpl(true, false, 0.25, 0, simple1, 12, config, 0.65);
+//        testImpl(true, false, 0.35, 0, simple1, 13, config, 0.65);
+//        testImpl(true, false, 0.50, 0, simple1, 15, config, 0.65);
+//        testImpl(true, false, 0.50, 0, simple1, 15, config, 0.65);
+//        testImpl(true, false, 1, 0, simple1, 19, config, 0.65);
+//        testImpl(true, false, 2, 0, simple1, 29, config, 0.65);
+//        testImpl(true, false, 3, 0, simple1, 39, config, 0.65);
+//        testImpl(true, false, 5, 0, simple1, 59, config, 0.65);
+        testImpl(true, false, 0.15, 0, simple1, 11, config, 0.05);
+        testImpl(true, false, 0.15, 0, simple1, 11, config, 0.15);
+        testImpl(true, false, 0.15, 0, simple1, 11, config, 0.25);
+        testImpl(true, false, 0.15, 0, simple1, 11, config, 0.35);
+        testImpl(true, false, 0.15, 0, simple1, 11, config, 0.45);
+        testImpl(true, false, 0.15, 0, simple1, 11, config, 0.55);
+        testImpl(true, false, 0.15, 0, simple1, 11, config, 0.65);
+        testImpl(true, false, 0.15, 0, simple1, 11, config, 0.75);
+        testImpl(true, false, 0.15, 0, simple1, 11, config, 0.85);
+        testImpl(true, false, 0.15, 0, simple1, 11, config, 0.95);
+    }
 
     // public void testStatic() throws Exception {
     //     testStaticImpl(1);
@@ -831,49 +855,73 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
 //        testImpl(false, 0.25, 0, predTrainOnce, config);
 //    }
 
-    // public void testRealLoadSimulationRetrain1month() throws Exception {
-    //     String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsPrevLoad.txt";
-    //     String config = "P-Store SPAR";
-    //     // testImpl(false, -0.25, 0, predRetrain1month, config);
-    //     // testImpl(false, -0.20, 0, predRetrain1month, config);
-    //     // testImpl(false, -0.15, 0, predRetrain1month, config);
-    //     // testImpl(false, -0.10, 0, predRetrain1month, config);
-    //     // testImpl(false, -0.05, 0, predRetrain1month, config);
-    //     // testImpl(false, 0, 0, predRetrain1month, config);
-    //     // testImpl(false, 0.05, 0, predRetrain1month, config);
-    //     // testImpl(false, 0.10, 0, predRetrain1month, config);
-    //     // testImpl(false, 0.15, 0, predRetrain1month, config);
-    //     // testImpl(false, 0.20, 0, predRetrain1month, config);
-    //     // testImpl(false, 0.25, 0, predRetrain1month, config);
-    //     // testImpl(false, 0.35, 0, predRetrain1month, config);
-    //     // testImpl(false, 0.50, 0, predRetrain1month, 15, config);
-    //     // testImpl(false, 1, 0, predRetrain1month, 19, config);
-    //     // testImpl(false, 2, 0, predRetrain1month, 29, config);
-    //     // testImpl(false, 3, 0, predRetrain1month, 39, config);
-    //     // testImpl(false, 5, 0, predRetrain1month, 59, config);
-    // }
+     public void testRealLoadSimulationRetrain1month() throws Exception {
+         String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsPrevLoad.txt";
+         String config = "P-Store SPAR";
+//         testImpl(false, false, -0.35, 0, predRetrain1month, 9, config, 0.65);
+//         testImpl(false, false, -0.25, 0, predRetrain1month, 9, config, 0.65);
+//         testImpl(false, false, -0.20, 0, predRetrain1month, 9, config, 0.65);
+//         testImpl(false, false, -0.15, 0, predRetrain1month, 9, config, 0.65);
+//         testImpl(false, false, -0.10, 0, predRetrain1month, 9, config, 0.65);
+//         testImpl(false, false, -0.05, 0, predRetrain1month, 9, config, 0.65);
+//         testImpl(false, false, 0, 0, predRetrain1month, 10, config, 0.65);
+//         testImpl(false, false, 0.05, 0, predRetrain1month, 10, config, 0.65);
+//         testImpl(false, false, 0.10, 0, predRetrain1month, 11, config, 0.65);
+//         testImpl(false, false, 0.15, 0, predRetrain1month, 11, config, 0.65);
+//         testImpl(false, false, 0.20, 0, predRetrain1month, 12, config, 0.65);
+//         testImpl(false, false, 0.25, 0, predRetrain1month, 12, config, 0.65);
+//         testImpl(false, false, 0.35, 0, predRetrain1month, 13, config, 0.65);
+//         testImpl(false, false, 0.50, 0, predRetrain1month, 15, config, 0.65);
+//         testImpl(false, false, 0.50, 0, predRetrain1month, 15, config, 0.65);
+//         testImpl(false, false, 1, 0, predRetrain1month, 19, config, 0.65);
+//         testImpl(false, false, 2, 0, predRetrain1month, 29, config, 0.65);
+//         testImpl(false, false, 3, 0, predRetrain1month, 39, config, 0.65);
+//         testImpl(false, false, 5, 0, predRetrain1month, 59, config, 0.65);
+         testImpl(false, false, 0.15, 0, predRetrain1month, 11, config, 0.05);
+         testImpl(false, false, 0.15, 0, predRetrain1month, 11, config, 0.15);
+         testImpl(false, false, 0.15, 0, predRetrain1month, 11, config, 0.25);
+         testImpl(false, false, 0.15, 0, predRetrain1month, 11, config, 0.35);
+         testImpl(false, false, 0.15, 0, predRetrain1month, 11, config, 0.45);
+         testImpl(false, false, 0.15, 0, predRetrain1month, 11, config, 0.55);
+         testImpl(false, false, 0.15, 0, predRetrain1month, 11, config, 0.65);
+         testImpl(false, false, 0.15, 0, predRetrain1month, 11, config, 0.75);
+         testImpl(false, false, 0.15, 0, predRetrain1month, 11, config, 0.85);
+         testImpl(false, false, 0.15, 0, predRetrain1month, 11, config, 0.95);
+     }
 
-    // public void testRealLoadSimulationOracle() throws Exception {
-    //     String predOracle = "/data/rytaft/predpoints_forecastwindow_60_oracle.txt";
-    //     String config = "P-Store Oracle";
-    //     // testImpl(false, -0.25, 0, predOracle, config);
-    //     // testImpl(false, -0.20, 0, predOracle, config);
-    //     // testImpl(false, -0.15, 0, predOracle, config);
-    //     // testImpl(false, -0.10, 0, predOracle, config);
-    //     // testImpl(false, -0.05, 0, predOracle, config);
-    //     // testImpl(false, 0, 0, predOracle, config);
-    //     // testImpl(false, 0.05, 0, predOracle, config);
-    //     // testImpl(false, 0.10, 0, predOracle, config);
-    //     // testImpl(false, 0.15, 0, predOracle, config);
-    //     // testImpl(false, 0.20, 0, predOracle, config);
-    //     // testImpl(false, 0.25, 0, predOracle, config);
-    //     // testImpl(false, 0.35, 0, predOracle, config);
-    //     // testImpl(false, 0.50, 0, predOracle, 15, config);
-    //     // testImpl(false, 1, 0, predOracle, 19, config);
-    //     // testImpl(false, 2, 0, predOracle, 29, config);
-    //     // testImpl(false, 3, 0, predOracle, 39, config);
-    //     // testImpl(false, 5, 0, predOracle, 59, config);
-    // }
+     public void testRealLoadSimulationOracle() throws Exception {
+         String predOracle = "/data/rytaft/predpoints_forecastwindow_60_oracle.txt";
+         String config = "P-Store Oracle";
+//         testImpl(false, false, -0.35, 0, predOracle, 9, config, 0.65);
+//         testImpl(false, false, -0.25, 0, predOracle, 9, config, 0.65);
+//         testImpl(false, false, -0.20, 0, predOracle, 9, config, 0.65);
+//         testImpl(false, false, -0.15, 0, predOracle, 9, config, 0.65);
+//         testImpl(false, false, -0.10, 0, predOracle, 9, config, 0.65);
+//         testImpl(false, false, -0.05, 0, predOracle, 9, config, 0.65);
+//         testImpl(false, false, 0, 0, predOracle, 10, config, 0.65);
+//         testImpl(false, false, 0.05, 0, predOracle, 10, config, 0.65);
+//         testImpl(false, false, 0.10, 0, predOracle, 11, config, 0.65);
+//         testImpl(false, false, 0.15, 0, predOracle, 11, config, 0.65);
+//         testImpl(false, false, 0.20, 0, predOracle, 12, config, 0.65);
+//         testImpl(false, false, 0.25, 0, predOracle, 12, config, 0.65);
+//         testImpl(false, false, 0.35, 0, predOracle, 13, config, 0.65);
+//         testImpl(false, false, 0.50, 0, predOracle, 15, config, 0.65);
+//         testImpl(false, false, 0.50, 0, predOracle, 15, config, 0.65);
+//         testImpl(false, false, 1, 0, predOracle, 19, config, 0.65);
+//         testImpl(false, false, 2, 0, predOracle, 29, config, 0.65);
+//         testImpl(false, false, 3, 0, predOracle, 39, config, 0.65);
+//         testImpl(false, false, 5, 0, predOracle, 59, config, 0.65);
+         testImpl(false, false, 0.15, 0, predOracle, 11, config, 0.05);
+         testImpl(false, false, 0.15, 0, predOracle, 11, config, 0.15);
+         testImpl(false, false, 0.15, 0, predOracle, 11, config, 0.25);
+         testImpl(false, false, 0.15, 0, predOracle, 11, config, 0.35);
+         testImpl(false, false, 0.15, 0, predOracle, 11, config, 0.45);
+         testImpl(false, false, 0.15, 0, predOracle, 11, config, 0.55);
+         testImpl(false, false, 0.15, 0, predOracle, 11, config, 0.65);
+         testImpl(false, false, 0.15, 0, predOracle, 11, config, 0.75);
+         testImpl(false, false, 0.15, 0, predOracle, 11, config, 0.85);
+         testImpl(false, false, 0.15, 0, predOracle, 11, config, 0.95);
+     }
         
 //    public void testRealLoadSimulationOraclePerturbation() throws Exception {
 //        String predOracle = "/data/rytaft/predpoints_forecastwindow_60_oracle.txt";
