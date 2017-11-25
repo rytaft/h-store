@@ -621,6 +621,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
         System.out.println("    prediction perturbation: " + predictionPerturbation);        
         System.out.println("    prediction file: " + predictionFile);
         System.out.println("    config: " + config);
+        System.out.println("    Q percent of max: " + Q_percentOfMax);
         c.compareToActualLoad("PLOT: " + config + "," + predictionInflation);
         return c.getEffCap();
     }
