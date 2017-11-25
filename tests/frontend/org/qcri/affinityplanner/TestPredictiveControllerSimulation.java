@@ -266,7 +266,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
                             currentTime += POLL_TIME;
                         }
                         
-                        if (m_next_moves.size() == 0) {
+                        if (m_next_moves == null || m_next_moves.size() == 0) {
                             //record("Simulating sleeping for " + POLL_TIME + " ms - no predicted moves");
                             currentTime += POLL_TIME;
                         }
@@ -857,7 +857,7 @@ public class TestPredictiveControllerSimulation extends BaseTestCase {
 //    }
 
      public void testRealLoadSimulationRetrain1month() throws Exception {
-         String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsPrevLoad.txt";
+         String predRetrain1month = "/data/rytaft/predpoints_forecastwindow_60_retrain1month_nullAsPrevLoad_1day_accum.txt";
          String config = "P-Store SPAR";
 //         testImpl(false, false, -0.35, 0, predRetrain1month, 9, config, 0.65);
 //         testImpl(false, false, -0.25, 0, predRetrain1month, 9, config, 0.65);
